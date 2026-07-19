@@ -66,11 +66,14 @@ export interface DashboardMetrics {
     userId: string;
     fullName: string;
     assignedArea: number;
+    completedArea: number;
+    activeProjects: number;
+    openTasks: number;
     status: "overloaded" | "balanced" | "underloaded";
   }>;
 }
 
-export interface TeamMember {
+export interface ProjectMember {
   id: string;
   project_id: string;
   user_id: string;

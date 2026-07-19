@@ -167,9 +167,9 @@ export const dashboardMetrics: DashboardMetrics = {
   completedTasksPeriod: 4,
   recentProductivity: 78,
   workload: [
-    { userId: "user-anna", fullName: "Anna Shevchenko", assignedArea: 460, completedArea: 130, activeProjects: 2, openTasks: 1 },
-    { userId: "user-oleksandr", fullName: "Oleksandr Malik", assignedArea: 150, completedArea: 40, activeProjects: 1, openTasks: 1 },
-    { userId: "user-maria", fullName: "Maria Hryc", assignedArea: 120, completedArea: 40, activeProjects: 1, openTasks: 0 },
+    { userId: "user-anna", fullName: "Anna Shevchenko", assignedArea: 460, completedArea: 130, activeProjects: 2, openTasks: 1, status: "balanced" },
+    { userId: "user-oleksandr", fullName: "Oleksandr Malik", assignedArea: 150, completedArea: 40, activeProjects: 1, openTasks: 1, status: "overloaded" },
+    { userId: "user-maria", fullName: "Maria Hryc", assignedArea: 120, completedArea: 40, activeProjects: 1, openTasks: 0, status: "underloaded" },
   ],
 };
 

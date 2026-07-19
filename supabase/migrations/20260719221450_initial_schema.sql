@@ -108,4 +108,46 @@ create index if not exists idx_tasks_assignee on tasks(assignee_id);
 create index if not exists idx_tasks_project on tasks(project_id);
 create index if not exists idx_tasks_completed_date on tasks(completed_at);
 create index if not exists idx_progress_employee_date on project_area_progress(user_id, progress_date);
-create index if not exists idx_progress_project_date on project_area_progress(project_id, progress_date);
+
+create or replace function public.set_updated_at()
+
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger set_studios_updated_at
+  before update on studios
+  for each row execute function public.set_updated_at();
+
+create trigger set_profiles_updated_at
+  before update on profiles
+  for each row execute function public.set_updated_at();
+
+create trigger set_projects_updated_at
+  before update on projects
+  for each row execute function public.set_updated_at();
+
+create trigger set_project_members_updated_at
+  before update on project_members
+  for each row execute function public.set_updated_at();
+
+create trigger set_tasks_updated_at
+  before update on tasks
+  for each row execute function public.set_updated_at();
+
+create trigger set_project_area_progress_updated_at
+  before update on project_area_progress
+  for each row execute function public.set_updated_at();
+
+alter table public.studios enable row level security;
+alter table public.profiles enable row level security;
+alter table public.studio_members enable row level security;
+alter table public.projects enable row level security;
+alter table public.project_members enable row level security;
+alter table public.tasks enable row level security;
+alter table public.project_area_progress enable row level security;
+alter table public.project_activity enable row level security;

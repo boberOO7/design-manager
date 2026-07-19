@@ -1,38 +1,30 @@
-import { createClient } from "@supabase/supabase-js";
-import { isMockMode } from "./client";
-import { studioProfiles, studioProjects, studioTasks } from "@/data/mock";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-export function createSupabaseServerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+export async function createClient() {
+  const cookieStore = await cookies();
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
 
-  return {
-    client,
-    isMockMode,
-    getProfiles: async () => {
-      if (isMockMode) return studioProfiles;
-      const { data, error } = await client.from("profiles").select("*");
-      if (error) throw error;
-      return data;
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Server Components можуть читати cookies,
+            // але не завжди можуть їх змінювати.
+            // Оновлення сесії пізніше виконуватиме proxy.
+          }
+        },
+      },
     },
-    getProjects: async () => {
-      if (isMockMode) return studioProjects;
-      const { data, error } = await client.from("projects").select("*");
-      if (error) throw error;
-      return data;
-    },
-    getTasks: async () => {
-      if (isMockMode) return studioTasks;
-      const { data, error } = await client.from("tasks").select("*");
-      if (error) throw error;
-      return data;
-    },
-  };
+  );
 }
