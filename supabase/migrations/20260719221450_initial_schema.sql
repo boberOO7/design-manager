@@ -151,3 +151,46 @@ alter table public.project_members enable row level security;
 alter table public.tasks enable row level security;
 alter table public.project_area_progress enable row level security;
 alter table public.project_activity enable row level security;
+
+create schema if not exists private;
+
+create or replace function private.is_studio_member(target_studio_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.studio_members
+    where studio_id = target_studio_id
+      and user_id = (select auth.uid())
+      and is_active = true
+  );
+$$;
+
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+revoke execute on function private.is_studio_member(uuid) from public, anon;
+grant execute on function private.is_studio_member(uuid) to authenticated;
+
+create or replace function private.is_studio_admin(target_studio_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.studio_members
+    where studio_id = target_studio_id
+      and user_id = (select auth.uid())
+      and system_role = 'admin'
+      and is_active = true
+  );
+$$;
+
+revoke execute on function private.is_studio_admin(uuid) from public, anon;
+grant execute on function private.is_studio_admin(uuid) to authenticated;
