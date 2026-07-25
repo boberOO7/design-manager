@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bell, Menu, Search } from "lucide-react";
 import { getCurrentUserProfile } from "@/data/queries";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export function AppHeader() {
   const user = getCurrentUserProfile();
@@ -23,7 +24,7 @@ export function AppHeader() {
         <div className="rounded-full border border-stone-200 p-2 text-stone-600">
           <Bell size={16} />
         </div>
-        <Link href="/login" className="rounded-full border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700">Sign out</Link>
+        <SignOutButton />
       </div>
     </header>
   );

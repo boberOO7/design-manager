@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { LockKeyhole, Mail } from "lucide-react";
 import { loginSchema } from "@/lib/validation/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -18,6 +18,17 @@ export default function LoginPage() {
 
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    };
+    checkSession();
+  }, [router, supabase]);
 
   const onSubmit = async (data: any) => {
     setError(null);
