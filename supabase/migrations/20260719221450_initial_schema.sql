@@ -1,7 +1,5 @@
-create extension if not exists "uuid-ossp";
-
 create table if not exists studios (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -20,7 +18,7 @@ create table if not exists profiles (
 );
 
 create table if not exists studio_members (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   studio_id uuid not null references studios(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
   system_role text not null check (system_role in ('admin','employee')) default 'employee',
@@ -30,7 +28,7 @@ create table if not exists studio_members (
 );
 
 create table if not exists projects (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   studio_id uuid not null references studios(id) on delete cascade,
   name text not null,
   project_code text,
@@ -49,7 +47,7 @@ create table if not exists projects (
 );
 
 create table if not exists project_members (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
   project_role text not null check (project_role in ('lead_designer','designer','visualizer','architect','manager','other')),
@@ -58,12 +56,16 @@ create table if not exists project_members (
   assigned_at date not null,
   removed_at date,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (project_id, user_id, is_active) deferrable initially deferred
+  updated_at timestamptz not null default now()
 );
 
+create unique index if not exists
+  idx_project_members_one_active_membership
+on public.project_members(project_id, user_id)
+where is_active = true;
+
 create table if not exists project_area_progress (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
   area_m2 numeric not null check (area_m2 > 0),
@@ -75,7 +77,7 @@ create table if not exists project_area_progress (
 );
 
 create table if not exists tasks (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   title text not null,
   description text,
@@ -91,7 +93,7 @@ create table if not exists tasks (
 );
 
 create table if not exists project_activity (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   actor_id uuid not null references profiles(id),
   action text not null,
@@ -108,8 +110,6 @@ create index if not exists idx_tasks_assignee on tasks(assignee_id);
 create index if not exists idx_tasks_project on tasks(project_id);
 create index if not exists idx_tasks_completed_date on tasks(completed_at);
 create index if not exists idx_progress_employee_date on project_area_progress(user_id, progress_date);
-
-create or replace function public.set_updated_at()
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -194,3 +194,118 @@ $$;
 
 revoke execute on function private.is_studio_admin(uuid) from public, anon;
 grant execute on function private.is_studio_admin(uuid) to authenticated;
+
+create or replace function private.can_access_project(target_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.projects
+    where id = target_project_id
+    and private.is_studio_admin(studio_id)
+  )
+  or exists (
+    select 1
+    from public.project_members
+    where project_id = target_project_id
+      and user_id = (select auth.uid())
+      and is_active = true
+  );
+$$;
+
+revoke execute on function private.can_access_project(uuid) from public, anon;
+grant execute on function private.can_access_project(uuid) to authenticated;
+
+create policy "studios_select_for_active_members"
+on public.studios
+for select
+to authenticated
+using (
+  (select private.is_studio_member(id))
+);
+
+create policy "projects_select_for_authorized_users"
+on public.projects
+for select
+to authenticated
+using (
+  (select private.can_access_project(id))
+);
+
+create policy "project_members_select_for_authorized_users"
+on public.project_members
+for select
+to authenticated
+using (
+  (select private.can_access_project(project_id))
+);
+
+create policy "tasks_select_for_authorized_users"
+on public.tasks
+for select
+to authenticated
+using (
+  (select private.can_access_project(project_id))
+);
+
+create policy "project_area_progress_select_for_authorized_users"
+on public.project_area_progress
+for select
+to authenticated
+using (
+  (select private.can_access_project(project_id))
+);
+create or replace function private.can_view_profile(target_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    coalesce(
+      target_user_id = (select auth.uid())
+      or exists (
+        select 1
+        from public.studio_members as current_member
+        inner join public.studio_members as target_member
+          on target_member.studio_id = current_member.studio_id
+        where current_member.user_id = (select auth.uid())
+          and current_member.is_active = true
+          and target_member.user_id = target_user_id
+          and target_member.is_active = true
+      ),
+      false
+    );
+$$;
+
+revoke execute on function private.can_view_profile(uuid) from public, anon;
+grant execute on function private.can_view_profile(uuid) to authenticated;
+
+create policy "project_activity_select_for_authorized_users"
+on public.project_activity
+for select
+to authenticated
+using (
+  (select private.can_access_project(project_id))
+);
+
+create policy "studio_members_select_for_active_members"
+on public.studio_members
+for select
+to authenticated
+using (
+  (select private.is_studio_member(studio_id))
+);
+
+create policy "profiles_select_for_shared_studio"
+on public.profiles
+for select
+to authenticated
+using (
+  (select private.can_view_profile(id))
+);
