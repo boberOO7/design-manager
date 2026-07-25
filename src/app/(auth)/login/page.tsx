@@ -2,20 +2,36 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { AlertCircle, LockKeyhole, Mail } from "lucide-react";
+import { LockKeyhole, Mail } from "lucide-react";
 import { loginSchema } from "@/lib/validation/auth";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "anna@studio.com", password: "password123" } });
+  } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
 
-  const onSubmit = async () => {
-    setSubmitted(true);
+  const router = useRouter();
+  const supabase = createClient();
+
+  const onSubmit = async (data: any) => {
+    setError(null);
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (authError) {
+      setError(authError.message);
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
   };
 
   return (
@@ -37,7 +53,7 @@ export default function LoginPage() {
             <input type="password" {...register("password")} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2 text-sm focus:border-stone-900 focus:outline-none" />
             {errors.password ? <p className="mt-1 text-sm text-red-600">{errors.password.message}</p> : null}
           </label>
-          {submitted ? <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600"><AlertCircle size={16} /> Mock sign-in complete. You can continue to the dashboard.</div> : null}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60">
             {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
