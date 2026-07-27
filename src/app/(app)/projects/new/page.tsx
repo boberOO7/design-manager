@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
-import { getActiveAdminStudioId, getCurrentUserProfile } from "@/data/queries";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { ProjectForm } from "./project-form";
 
 export const metadata: Metadata = {
@@ -9,15 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default async function NewProjectPage() {
-  const profile = await getCurrentUserProfile();
+  const membership = await getActiveStudioMembership();
 
-  if (!profile || !profile.is_active || profile.system_role !== "admin") {
-    notFound();
-  }
-
-  const studioId = await getActiveAdminStudioId(profile.id);
-
-  if (!studioId) {
+  if (membership?.system_role !== "admin") {
     notFound();
   }
 
@@ -30,4 +24,3 @@ export default async function NewProjectPage() {
     </div>
   );
 }
-

@@ -13,16 +13,15 @@ const dateSchema = z.string().refine(
 export const projectSchema = z
   .object({
     name: z.string().trim().min(1, "Project name is required").max(200, "Project name is too long"),
-    project_code: z.string().trim().max(50, "Project code is too long"),
-    client_name: z.string().trim().max(200, "Client name is too long"),
-    description: z.string().trim().max(5000, "Description is too long"),
-    total_area_m2: z
+    project_code: z.string().trim().max(50, "Project code is too long").optional(),
+    client_name: z.string().trim().max(200, "Client name is too long").optional(),
+    description: z.string().trim().max(5000, "Description is too long").optional(),
+    total_area_m2: z.coerce
       .number({ error: "Enter a valid total area" })
       .positive("Total area must be greater than zero"),
-    status: z.enum(["planned", "active", "paused", "completed"]),
     priority: z.enum(["low", "normal", "high", "urgent"]),
     start_date: dateSchema,
-    due_date: z.union([z.literal(""), dateSchema]),
+    due_date: z.preprocess((value) => (value === "" ? undefined : value), dateSchema.optional()),
   })
   .superRefine((project, context) => {
     if (project.due_date && project.due_date < project.start_date) {

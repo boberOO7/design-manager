@@ -2,9 +2,9 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import {
   getAccessibleProjectsFromSupabase,
-  getActiveAdminStudioId,
   getCurrentUserProfile,
 } from "@/data/queries";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { formatDate, getProgressPercentage } from "@/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -27,11 +27,9 @@ export default async function ProjectsPage() {
     );
   }
 
-  const [result, adminStudioId] = await Promise.all([
+  const [result, membership] = await Promise.all([
     getAccessibleProjectsFromSupabase(),
-    profile.is_active && profile.system_role === "admin"
-      ? getActiveAdminStudioId(profile.id)
-      : Promise.resolve(null),
+    profile.is_active ? getActiveStudioMembership() : Promise.resolve(null),
   ]);
 
   return (
@@ -40,7 +38,7 @@ export default async function ProjectsPage() {
         title="Projects"
         description="Current studio work, filtered for your access scope."
         action={
-          adminStudioId ? (
+          membership?.system_role === "admin" ? (
             <Button asChild>
               <Link href="/projects/new">New project</Link>
             </Button>

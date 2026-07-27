@@ -68,7 +68,15 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
     );
   }
 
-  return profile;
+  if (profile.system_role !== "admin" && profile.system_role !== "employee") {
+    throw new Error(`Profile has an unsupported system role for user ID: ${userId}.`);
+  }
+
+  return {
+    ...profile,
+    avatar_url: profile.avatar_url ?? undefined,
+    system_role: profile.system_role,
+  };
 });
 
 export function getDashboardData(): DashboardMetrics {
@@ -77,25 +85,6 @@ export function getDashboardData(): DashboardMetrics {
 
 export function getProjectsData(): ProjectSummary[] {
   return getAccessibleProjects();
-}
-
-export async function getActiveAdminStudioId(userId: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("studio_members")
-    .select("studio_id")
-    .eq("user_id", userId)
-    .eq("system_role", "admin")
-    .eq("is_active", true)
-    .order("joined_at", { ascending: true })
-    .limit(2);
-
-  if (error) {
-    console.error("Unable to resolve active admin studio membership", error);
-    return null;
-  }
-
-  return data?.length === 1 ? data[0].studio_id : null;
 }
 
 type AccessibleProjectRow = Omit<Project, "total_area_m2"> & {
