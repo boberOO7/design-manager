@@ -15,6 +15,7 @@ import type {
   EmployeeWorkloadSummary,
   LeaderboardEntry,
   Profile,
+  Project,
   ProjectSummary,
   TaskSummary,
 } from "@/types";
@@ -76,6 +77,105 @@ export function getDashboardData(): DashboardMetrics {
 
 export function getProjectsData(): ProjectSummary[] {
   return getAccessibleProjects();
+}
+
+export async function getActiveAdminStudioId(userId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("studio_members")
+    .select("studio_id")
+    .eq("user_id", userId)
+    .eq("system_role", "admin")
+    .eq("is_active", true)
+    .order("joined_at", { ascending: true })
+    .limit(2);
+
+  if (error) {
+    console.error("Unable to resolve active admin studio membership", error);
+    return null;
+  }
+
+  return data?.length === 1 ? data[0].studio_id : null;
+}
+
+type AccessibleProjectRow = Omit<Project, "total_area_m2"> & {
+  total_area_m2: number | string;
+  project_members: Array<{
+    profiles: { full_name: string } | null;
+  }> | null;
+  project_area_progress: Array<{
+    area_m2: number | string;
+  }> | null;
+};
+
+type AccessibleProjectsResult =
+  | { projects: ProjectSummary[]; error: null }
+  | { projects: null; error: "query_failed" };
+
+/**
+ * Reads only the projects visible to the current authenticated user.
+ * RLS determines access; this query intentionally adds no application-side
+ * role or membership filtering.
+ */
+export async function getAccessibleProjectsFromSupabase(): Promise<AccessibleProjectsResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      id,
+      studio_id,
+      name,
+      project_code,
+      client_name,
+      description,
+      total_area_m2,
+      status,
+      priority,
+      start_date,
+      due_date,
+      completed_at,
+      archived_at,
+      created_by,
+      created_at,
+      updated_at,
+      project_members!left(
+        profiles(full_name)
+      ),
+      project_area_progress(area_m2)
+    `)
+    .eq("project_members.is_active", true)
+    .is("archived_at", null)
+    .neq("status", "archived")
+    .order("start_date", { ascending: false })
+    .overrideTypes<AccessibleProjectRow[], { merge: false }>();
+
+  if (error || !data) {
+    console.error("Unable to load accessible projects", error);
+    return { projects: null, error: "query_failed" };
+  }
+
+  const projects = data.map((project): ProjectSummary => {
+    const completedArea = (project.project_area_progress ?? []).reduce(
+      (total, entry) => total + Number(entry.area_m2),
+      0,
+    );
+    const totalArea = Number(project.total_area_m2);
+    const dueDate = project.due_date ? new Date(project.due_date) : null;
+
+    return {
+      ...project,
+      total_area_m2: totalArea,
+      completed_area_m2: completedArea,
+      progress_percentage: totalArea > 0 ? Math.min(100, Math.round((completedArea / totalArea) * 100)) : 0,
+      assigned_employees: (project.project_members ?? []).flatMap((member) =>
+        member.profiles ? [member.profiles.full_name] : [],
+      ),
+      overdue: dueDate !== null && dueDate < new Date() && project.status !== "completed" && project.status !== "archived",
+      memberCount: project.project_members?.length ?? 0,
+    };
+  });
+
+  return { projects, error: null };
 }
 
 export function getProjectData(projectId: string): ProjectSummary | undefined {
