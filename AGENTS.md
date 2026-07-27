@@ -19,3 +19,5 @@ Stack: Next.js 16 App Router, TypeScript, Supabase, Tailwind, pnpm.
 - Preserve the existing visual design unless redesign is requested.
 - Run the narrowest relevant validation; for TypeScript changes, normally run
   `pnpm exec tsc --noEmit` and lint the changed source files.
+- Consult files under `docs/` only when the task depends on product scope,
+  roadmap status, or architecture decisions.
