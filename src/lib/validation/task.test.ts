@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { taskCreationSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -42,6 +42,30 @@ describe("task status validation", () => {
   it("accepts only a status in the Board API payload", () => {
     expect(taskStatusPayloadSchema.safeParse({ status: "todo" }).success).toBe(true);
     expect(taskStatusPayloadSchema.safeParse({ status: "todo", task_id: validTask.assignee_id }).success).toBe(false);
+  });
+});
+
+describe("task editing validation", () => {
+  const validEdit = {
+    title: "  Update lighting plan  ",
+    description: "  Confirm the final fixture schedule.  ",
+    assignee_id: validTask.assignee_id,
+    priority: "high",
+    due_date: "2026-08-01",
+    status: "in_progress",
+  };
+
+  it("trims titles and descriptions and rejects missing titles", () => {
+    const parsed = taskEditSchema.parse(validEdit);
+    expect(parsed.title).toBe("Update lighting plan");
+    expect(parsed.description).toBe("Confirm the final fixture schedule.");
+    expect(taskEditSchema.safeParse({ ...validEdit, title: "  " }).success).toBe(false);
+  });
+
+  it("rejects invalid priority, non-MVP status, and invalid dates", () => {
+    expect(taskEditSchema.safeParse({ ...validEdit, priority: "medium" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, status: "review" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, due_date: "2026-02-30" }).success).toBe(false);
   });
 });
 

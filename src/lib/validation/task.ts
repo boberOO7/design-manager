@@ -31,6 +31,21 @@ export const taskStatusPayloadSchema = z.object({
   status: z.enum(TASK_STATUS_VALUES),
 }).strict();
 
+export const taskEditSchema = z.object({
+  title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
+  description: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.string().trim().max(5000, "Description is too long").optional(),
+  ),
+  assignee_id: z.uuid("Choose a valid project member"),
+  priority: z.enum(TASK_PRIORITY_VALUES),
+  due_date: optionalDateSchema,
+  status: z.enum(["todo", "in_progress", "completed"]),
+}).strict();
+
+export type TaskEditInput = z.infer<typeof taskEditSchema>;
+export type TaskEditField = keyof TaskEditInput;
+
 export type TaskCreationInput = z.infer<typeof taskCreationSchema>;
 export type TaskCreationField = keyof TaskCreationInput;
 

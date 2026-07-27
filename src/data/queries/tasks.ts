@@ -9,7 +9,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, title, description, status, priority, assignee_id, due_date, completed_at, created_at, assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title)")
+    .select("id, project_id, title, description, status, priority, assignee_id, due_date, completed_at, created_at, created_by, assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title), creator:profiles!tasks_created_by_fkey(id, full_name, job_title)")
     .eq("project_id", projectId)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
@@ -22,6 +22,19 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
   return data;
 }
 
+export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id, project_id, title, description, status, priority, assignee_id, due_date, completed_at, created_at, created_by, assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title), creator:profiles!tasks_created_by_fkey(id, full_name, job_title)")
+    .eq("id", taskId)
+    .maybeSingle()
+    .overrideTypes<ProjectTask, { merge: false }>();
+
+  if (error) throw new Error(`Unable to load task ${taskId}.`, { cause: error });
+  return data;
+}
+
 export async function getMyTasks(): Promise<MyTask[]> {
   const profile = await getCurrentUserProfile();
   if (!profile || !profile.is_active) throw new Error("An active authenticated profile is required.");
@@ -29,7 +42,7 @@ export async function getMyTasks(): Promise<MyTask[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, title, status, priority, assignee_id, due_date, completed_at, created_at, project:projects!tasks_project_id_fkey!inner(id, name)")
+    .select("id, project_id, title, description, status, priority, assignee_id, due_date, completed_at, created_at, created_by, assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title), creator:profiles!tasks_created_by_fkey(id, full_name, job_title), project:projects!tasks_project_id_fkey!inner(id, name)")
     .eq("assignee_id", profile.id)
     .overrideTypes<MyTask[], { merge: false }>();
 

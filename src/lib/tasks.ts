@@ -105,6 +105,16 @@ export function canMoveTask({
   return isAdmin || (assigneeId !== null && assigneeId === currentUserId);
 }
 
+export function canEditTaskDetails({
+  isAdmin,
+  isProjectReadOnly,
+}: {
+  isAdmin: boolean;
+  isProjectReadOnly: boolean;
+}): boolean {
+  return isAdmin && !isProjectReadOnly;
+}
+
 export function groupTasksByBoardColumn(tasks: ProjectTask[]): Record<BoardColumnId, ProjectTask[]> {
   const groups: Record<BoardColumnId, ProjectTask[]> = {
     todo: [],
@@ -122,6 +132,24 @@ export function setProjectTaskStatus(
   status: ProjectTask["status"],
 ): ProjectTask[] {
   return tasks.map((task) => task.id === taskId ? { ...task, status } : task);
+}
+
+export function mergeProjectTask<T extends ProjectTask>(tasks: T[], updatedTask: ProjectTask): T[] {
+  const taskIds = new Set<string>();
+  return tasks.flatMap((task) => {
+    if (task.id === updatedTask.id) {
+      if (taskIds.has(task.id)) return [];
+      taskIds.add(task.id);
+      return [{ ...task, ...updatedTask }];
+    }
+    if (taskIds.has(task.id)) return [];
+    taskIds.add(task.id);
+    return [task];
+  });
+}
+
+export function shouldOpenTaskDrawer(dragWasActivated: boolean): boolean {
+  return !dragWasActivated;
 }
 
 export function reconcileProjectTasks(

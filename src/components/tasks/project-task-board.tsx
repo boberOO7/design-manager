@@ -13,6 +13,7 @@ import {
 import { GripVertical, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
+import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import {
   BOARD_COLUMNS,
@@ -23,8 +24,10 @@ import {
   groupTasksByBoardColumn,
   isBoardColumnId,
   isTaskOverdue,
+  mergeProjectTask,
   reconcileProjectTasks,
   setProjectTaskStatus,
+  shouldOpenTaskDrawer,
   type BoardColumnId,
   type WritableTaskStatus,
 } from "@/lib/tasks";
@@ -121,7 +124,17 @@ function TaskCardContent({
   );
 }
 
-function DraggableTaskCard({ task, isPending }: { task: ProjectTask; isPending: boolean }) {
+function DraggableTaskCard({
+  isPending,
+  onOpen,
+  shouldSuppressOpen,
+  task,
+}: {
+  isPending: boolean;
+  onOpen: (taskId: string) => void;
+  shouldSuppressOpen: () => boolean;
+  task: ProjectTask;
+}) {
   const { isDragging, ref } = useDraggable({
     id: task.id,
     disabled: isPending,
@@ -137,6 +150,11 @@ function DraggableTaskCard({ task, isPending }: { task: ProjectTask; isPending: 
       aria-label={`Move task ${task.title}. Valid destinations are To do, In progress and Done. Press Space or Enter, then use the arrow keys to choose a column.`}
       aria-disabled={isPending}
       aria-busy={isPending}
+      onClick={() => {
+        if (shouldOpenTaskDrawer(shouldSuppressOpen())) {
+          onOpen(task.id);
+        }
+      }}
       className={cn(
         "select-none rounded-xl outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2",
         isPending ? "cursor-wait" : "cursor-grab active:cursor-grabbing",
@@ -149,9 +167,11 @@ function DraggableTaskCard({ task, isPending }: { task: ProjectTask; isPending: 
   );
 }
 
-function ReadOnlyTaskCard({ task }: { task: ProjectTask }) {
+function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId: string) => void }) {
   return (
-    <article>
+    <article role="button" tabIndex={0} onClick={() => onOpen(task.id)} onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") onOpen(task.id);
+    }} className="cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2">
       <TaskCardContent task={task} />
     </article>
   );
@@ -164,7 +184,9 @@ function BoardColumn({
   currentUserId,
   isProjectReadOnly,
   label,
+  onOpenTask,
   pendingTaskIds,
+  shouldSuppressOpen,
   tasks,
 }: {
   activeTask: ProjectTask | null;
@@ -173,7 +195,9 @@ function BoardColumn({
   currentUserId: string;
   isProjectReadOnly: boolean;
   label: string;
+  onOpenTask: (taskId: string) => void;
   pendingTaskIds: Set<string>;
+  shouldSuppressOpen: () => boolean;
   tasks: ProjectTask[];
 }) {
   const acceptsActiveTask = activeTask !== null
@@ -216,8 +240,8 @@ function BoardColumn({
             isProjectReadOnly,
           });
           return canDrag
-            ? <DraggableTaskCard key={task.id} task={task} isPending={pendingTaskIds.has(task.id)} />
-            : <ReadOnlyTaskCard key={task.id} task={task} />;
+            ? <DraggableTaskCard key={task.id} task={task} isPending={pendingTaskIds.has(task.id)} onOpen={onOpenTask} shouldSuppressOpen={shouldSuppressOpen} />
+            : <ReadOnlyTaskCard key={task.id} task={task} onOpen={onOpenTask} />;
         })}
       </div>
     </section>
@@ -246,10 +270,12 @@ export function ProjectTaskBoard({
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
+  const suppressCardOpenRef = useRef(false);
 
   useEffect(() => {
     localTasksRef.current = localTasks;
@@ -274,6 +300,9 @@ export function ProjectTaskBoard({
   const groups = groupTasksByBoardColumn(localTasks);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
+    : null;
+  const selectedTask = selectedTaskId
+    ? localTasks.find((task) => task.id === selectedTaskId) ?? null
     : null;
 
   function setTaskPending(taskId: string, pending: boolean) {
@@ -333,6 +362,7 @@ export function ProjectTaskBoard({
     if (taskId === undefined) return;
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
     if (!task) return;
+    suppressCardOpenRef.current = true;
     setActiveTaskId(task.id);
     setBoardError(null);
     setAnnouncement(`Moving task ${task.title}.`);
@@ -342,6 +372,7 @@ export function ProjectTaskBoard({
     const taskId = event.operation.source?.id;
     const targetColumnId = getColumnIdFromDropTarget(event.operation.target?.id);
     setActiveTaskId(null);
+    window.setTimeout(() => { suppressCardOpenRef.current = false; }, 0);
     if (event.canceled || taskId === undefined || !targetColumnId) return;
 
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
@@ -371,6 +402,12 @@ export function ProjectTaskBoard({
     );
   }
 
+  function updateLocalTask(updatedTask: ProjectTask) {
+    const mergedTasks = mergeProjectTask(localTasksRef.current, updatedTask);
+    localTasksRef.current = mergedTasks;
+    setLocalTasks(mergedTasks);
+  }
+
   return (
     <section aria-labelledby="project-board-heading">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -393,7 +430,9 @@ export function ProjectTaskBoard({
               currentUserId={currentUserId}
               isProjectReadOnly={isProjectReadOnly}
               label={column.label}
+              onOpenTask={setSelectedTaskId}
               pendingTaskIds={pendingTaskIds}
+              shouldSuppressOpen={() => suppressCardOpenRef.current}
               tasks={groups[column.id]}
             />
           ))}
@@ -402,6 +441,16 @@ export function ProjectTaskBoard({
           {() => activeTask ? <TaskCardContent task={activeTask} isOverlay showGrip /> : null}
         </DragOverlay>
       </DragDropProvider>
+      {selectedTask ? <TaskDetailsDrawer
+        key={selectedTask.id}
+        canManageTasks={canManageTasks}
+        currentUserId={currentUserId}
+        isProjectReadOnly={isProjectReadOnly}
+        members={members}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdated={updateLocalTask}
+        task={selectedTask}
+      /> : null}
     </section>
   );
 }

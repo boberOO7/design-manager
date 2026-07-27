@@ -32,24 +32,15 @@ export type ProjectTask = Pick<
   | "status"
   | "priority"
   | "assignee_id"
+  | "created_by"
   | "due_date"
   | "completed_at"
   | "created_at"
 > & {
   assignee: ProfileSummary | null;
+  creator: ProfileSummary | null;
 };
 
-export type MyTask = Pick<
-  TaskRow,
-  | "id"
-  | "project_id"
-  | "title"
-  | "status"
-  | "priority"
-  | "assignee_id"
-  | "due_date"
-  | "completed_at"
-  | "created_at"
-> & {
+export type MyTask = ProjectTask & {
   project: { id: string; name: string };
 };

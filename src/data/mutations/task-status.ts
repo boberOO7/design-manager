@@ -8,12 +8,13 @@ import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
-export async function updateTaskStatusMutation(
-  input: unknown,
-): Promise<TaskStatusMutationResult> {
-  const parsed = taskStatusUpdateSchema.safeParse(input);
-  if (!parsed.success) return { formError: "Choose a valid task status.", success: false };
+type AuthorizedTask = NonNullable<Awaited<ReturnType<typeof getTaskForStatusUpdate>>>;
 
+export type TaskMutationAuthorization =
+  | { success: true; task: AuthorizedTask; isStudioAdmin: boolean }
+  | { success: false; formError: string };
+
+export async function authorizeTaskMutation(taskId: string): Promise<TaskMutationAuthorization> {
   const [profile, membership] = await Promise.all([
     getCurrentUserProfile(),
     getActiveStudioMembership(),
@@ -24,7 +25,7 @@ export async function updateTaskStatusMutation(
 
   let task;
   try {
-    task = await getTaskForStatusUpdate(parsed.data.task_id);
+    task = await getTaskForStatusUpdate(taskId);
   } catch (error) {
     console.error("Unable to verify task status authorization", error);
     return { formError: "The task could not be verified.", success: false };
@@ -40,12 +41,24 @@ export async function updateTaskStatusMutation(
     return { formError: "You can update only tasks assigned to you.", success: false };
   }
 
+  return { isStudioAdmin, success: true, task };
+}
+
+export async function updateTaskStatusMutation(
+  input: unknown,
+): Promise<TaskStatusMutationResult> {
+  const parsed = taskStatusUpdateSchema.safeParse(input);
+  if (!parsed.success) return { formError: "Choose a valid task status.", success: false };
+
+  const authorization = await authorizeTaskMutation(parsed.data.task_id);
+  if (!authorization.success) return authorization;
+
   const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
     .update(update)
-    .eq("id", task.id)
+    .eq("id", authorization.task.id)
     .select("id, project_id")
     .maybeSingle();
 

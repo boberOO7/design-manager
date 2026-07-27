@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   canMoveTask,
+  canEditTaskDetails,
   getBoardColumn,
   getTaskStatusForDrop,
   getWritableStatusForBoardColumn,
   groupTasksByBoardColumn,
+  groupMyTasks,
   isTaskOverdue,
   reconcileProjectTasks,
   setProjectTaskStatus,
+  mergeProjectTask,
+  shouldOpenTaskDrawer,
 } from "./tasks";
-import type { ProjectTask } from "../types/tasks";
+import type { MyTask, ProjectTask } from "../types/tasks";
 
 function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
   return {
@@ -23,10 +27,16 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     due_date: null,
     completed_at: null,
     created_at: "2026-07-01T09:00:00.000Z",
+    created_by: "123e4567-e89b-12d3-a456-426614174003",
     assignee: {
       id: "123e4567-e89b-12d3-a456-426614174002",
       full_name: "Alex Employee",
       job_title: "Designer",
+    },
+    creator: {
+      id: "123e4567-e89b-12d3-a456-426614174003",
+      full_name: "Morgan Admin",
+      job_title: "Director",
     },
     ...overrides,
   };
@@ -106,6 +116,14 @@ describe("task movement permission", () => {
   });
 });
 
+describe("task detail editing permission", () => {
+  it("allows only admins to edit details and keeps archived projects read-only", () => {
+    expect(canEditTaskDetails({ isAdmin: true, isProjectReadOnly: false })).toBe(true);
+    expect(canEditTaskDetails({ isAdmin: false, isProjectReadOnly: false })).toBe(false);
+    expect(canEditTaskDetails({ isAdmin: true, isProjectReadOnly: true })).toBe(false);
+  });
+});
+
 describe("task overdue behavior", () => {
   it("does not mark completed or cancelled tasks overdue", () => {
     expect(isTaskOverdue(makeTask({ due_date: "2026-07-01", status: "todo" }), "2026-07-27")).toBe(true);
@@ -166,5 +184,32 @@ describe("optimistic task Board state", () => {
     );
 
     expect(reconciledTasks.map((task) => task.id)).toEqual(["task-1"]);
+  });
+
+  it("merges an updated task without duplicates and moves it to its new column", () => {
+    const originalTask = makeTask({ id: "task-1", status: "todo" });
+    const updatedTask = makeTask({ id: "task-1", status: "completed", title: "Updated task" });
+    const mergedTasks = mergeProjectTask([originalTask, originalTask], updatedTask);
+    const groups = groupTasksByBoardColumn(mergedTasks);
+
+    expect(mergedTasks).toEqual([updatedTask]);
+    expect(groups.done.map((task) => task.id)).toEqual(["task-1"]);
+  });
+
+  it("opens a card only when a drag was not activated", () => {
+    expect(shouldOpenTaskDrawer(false)).toBe(true);
+    expect(shouldOpenTaskDrawer(true)).toBe(false);
+  });
+
+  it("regroups a merged My Tasks item immediately after its status changes", () => {
+    const task: MyTask = {
+      ...makeTask({ id: "my-task", due_date: "2026-07-01", status: "todo" }),
+      project: { id: "project-1", name: "Workspace" },
+    };
+    const mergedTasks = mergeProjectTask([task], { ...task, status: "completed" });
+    const groups = groupMyTasks(mergedTasks, "2026-07-28");
+
+    expect(groups.overdue).toHaveLength(0);
+    expect(groups.completed.map((item) => item.id)).toEqual(["my-task"]);
   });
 });
