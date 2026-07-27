@@ -30,7 +30,7 @@ export default function LoginPage() {
     checkSession();
   }, [router, supabase]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: { email: string; password: string }) => {
     setError(null);
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: data.email,

@@ -1,12 +1,24 @@
 import { PageHeader } from "@/components/shared/page-header";
 import { getLeaderboardData } from "@/data/queries";
 import type { Metadata } from "next";
+import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Leaderboard | StudioFlow",
 };
 
-export default function LeaderboardPage() {
+export default function LeaderboardPage({ profile }: { profile: Profile | null }) {
+  if (!profile) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Leaderboard" description="Please log in to view the leaderboard." />
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center">
+          <p className="text-sm text-stone-600">You must be logged in to view the leaderboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   const leaderboard = getLeaderboardData();
 
   return (

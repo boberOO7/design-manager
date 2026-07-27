@@ -1,12 +1,24 @@
 import { PageHeader } from "@/components/shared/page-header";
 import { getTeamData } from "@/data/queries";
 import type { Metadata } from "next";
+import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Team | StudioFlow",
 };
 
-export default function TeamPage() {
+export default function TeamPage({ profile }: { profile: Profile | null }) {
+  if (!profile) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Team" description="Please log in to view the team." />
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center">
+          <p className="text-sm text-stone-600">You must be logged in to view the team.</p>
+        </div>
+      </div>
+    );
+  }
+
   const teamMembers = getTeamData();
 
   return (

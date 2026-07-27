@@ -2,12 +2,24 @@ import { MetricCard } from "@/components/shared/metric-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { getDashboardData, getEmployeeWorkloadData } from "@/data/queries";
 import type { Metadata } from "next";
+import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Administration | StudioFlow",
 };
 
-export default function AdminPage() {
+export default function AdminPage({ profile }: { profile: Profile | null }) {
+  if (!profile || profile.system_role !== "admin") {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Administration" description="Access restricted to administrators." />
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center">
+          <p className="text-sm text-stone-600">You do not have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
   const metrics = getDashboardData();
   const workload = getEmployeeWorkloadData();
 

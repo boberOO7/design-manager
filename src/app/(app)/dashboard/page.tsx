@@ -1,15 +1,26 @@
 import { MetricCard } from "@/components/shared/metric-card";
 import { PageHeader } from "@/components/shared/page-header";
-import { getDashboardData, getCurrentUserProfile, getLeaderboardData, getProjectsData, getMyTasksData } from "@/data/queries";
+import { getDashboardData, getLeaderboardData, getProjectsData, getMyTasksData } from "@/data/queries";
 import { formatDate, formatNumber, getProgressPercentage } from "@/lib/utils";
 import type { Metadata } from "next";
+import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Dashboard | StudioFlow",
 };
 
-export default function DashboardPage() {
-  const user = getCurrentUserProfile();
+export default function DashboardPage({ profile }: { profile: Profile | null }) {
+  if (!profile) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Dashboard" description="Please log in to view your dashboard." />
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center">
+          <p className="text-sm text-stone-600">You must be logged in to view your dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   const metrics = getDashboardData();
   const projects = getProjectsData();
   const tasks = getMyTasksData();
@@ -17,7 +28,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={`Welcome back, ${user.full_name}`} description="A focused view of active studio delivery, task health, and team productivity." />
+      <PageHeader title={`Welcome back, ${profile.full_name}`} description="A focused view of active studio delivery, task health, and team productivity." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Active projects" value={formatNumber(metrics.activeProjectsCount)} hint="Currently in motion" />
         <MetricCard title="Active area" value={`${formatNumber(metrics.activeTotalArea)} m²`} hint="Assigned workload in motion" />

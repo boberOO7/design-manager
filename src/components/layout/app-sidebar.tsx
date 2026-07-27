@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, FolderKanban, CheckSquare, Users, Trophy, Archive, ShieldCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useMemo, useState } from "react";
-import { getCurrentUserProfile } from "@/data/queries";
+import type { Profile } from "@/types";
 import { cn } from "@/lib/utils";
 import { navigationItems } from "@/constants/navigation";
 
@@ -18,12 +18,15 @@ const icons = {
   "/admin": ShieldCheck,
 };
 
-export function AppSidebar() {
+export function AppSidebar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const user = getCurrentUserProfile();
 
-  const items = useMemo(() => navigationItems.filter((item) => !item.adminOnly || user.system_role === "admin"), [user.system_role]);
+  // Filter navigation items based on real system_role
+  const items = useMemo(() => {
+    if (!profile) return navigationItems;
+    return navigationItems.filter((item) => !item.adminOnly || profile.system_role === "admin");
+  }, [profile]);
 
   return (
     <aside className={cn("hidden border-r border-stone-200 bg-stone-50/70 lg:flex lg:flex-col", collapsed ? "w-20" : "w-72")}> 
@@ -49,8 +52,12 @@ export function AppSidebar() {
         })}
       </nav>
       <div className="border-t border-stone-200 p-4 text-sm text-stone-600">
-        <p className="font-semibold text-stone-900">{user.full_name}</p>
-        <p>{user.job_title}</p>
+        {profile && (
+          <>
+            <p className="font-semibold text-stone-900">{profile.full_name}</p>
+            <p>{profile.job_title}</p>
+          </>
+        )}
       </div>
     </aside>
   );

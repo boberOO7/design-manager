@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   title: "Project Details | StudioFlow",
 };
 
-export default async function ProjectDetailsPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default async function ProjectDetailsPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
   const { projectId } = await params;
   const project = getProjectData(projectId);
   const progressEntries = getProjectProgressData(projectId);

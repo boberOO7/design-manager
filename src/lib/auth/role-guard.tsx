@@ -1,16 +1,34 @@
-import { getCurrentUserProfile } from "@/data/queries";
+import type { Profile } from "@/types";
 import type { ReactNode } from "react";
 
+/**
+ * RoleGuard component for role-based access control.
+ * 
+ * Uses explicit API with profile passed as prop.
+ * 
+ * @example
+ * <RoleGuard user={profile} allow={["admin"]}>
+ *   ...admin-only content
+ * </RoleGuard>
+ */
 export function RoleGuard({
   children,
-  allowAdmin = false,
+  user,
+  allow,
 }: {
   children: ReactNode;
-  allowAdmin?: boolean;
+  user: Profile | null;
+  allow: string[];
 }) {
-  const user = getCurrentUserProfile();
-  if (allowAdmin && user.system_role !== "admin") {
+  if (!user) {
     return null;
   }
+
+  const hasAccess = allow.some((role) => user.system_role === role);
+
+  if (!hasAccess) {
+    return null;
+  }
+
   return <>{children}</>;
 }
