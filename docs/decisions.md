@@ -43,6 +43,24 @@
 - New assignments receive a server-owned assignment date and start with zero
   assigned area; workload allocation remains deferred.
 
+## Task board MVP
+
+- The project Board is the primary project workspace, with Details and Team as
+  compact secondary views on the existing project route.
+- Project tasks use a three-column workflow: To do, In progress and Done.
+  Existing `review` tasks appear in In progress and existing `cancelled` tasks
+  appear in Done without changing their stored database status.
+- Active studio administrators create tasks and assign them to people who are
+  already active members of that exact project.
+- Assigned employees may update only the status of their own tasks. Task row
+  access and every write remain protected by RLS and column-level privileges.
+- Project Board task status changes use whole-card drag-and-drop. Pointer drags
+  start only from non-interactive card areas, and database writes occur only
+  after a completed drop into a different workflow column.
+- Manual ordering within a status column is not persisted. Task authorization
+  remains enforced by the existing Server Action and RLS, while My Tasks keeps
+  its compact status control.
+
 ## Employee invitation and onboarding
 
 - Employees are invited by an authenticated, active administrator of the
