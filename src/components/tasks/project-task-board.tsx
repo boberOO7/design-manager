@@ -12,7 +12,6 @@ import {
 } from "@dnd-kit/react";
 import { GripVertical, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { updateTaskStatus } from "@/app/(app)/projects/[projectId]/task-actions";
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import {
@@ -76,6 +75,13 @@ function priorityClassName(priority: string): string {
   if (priority === "urgent") return "bg-red-100 text-red-800";
   if (priority === "high") return "bg-amber-100 text-amber-800";
   return "bg-stone-100 text-stone-700";
+}
+
+function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true } {
+  return typeof value === "object"
+    && value !== null
+    && "success" in value
+    && value.success === true;
 }
 
 function TaskCardContent({
@@ -285,14 +291,20 @@ export function ProjectTaskBoard({
     targetLabel: string,
     previousStatus: ProjectTask["status"],
   ) {
-    const formData = new FormData();
-    formData.set("task_id", taskId);
-    formData.set("status", targetStatus);
-
     try {
-      const result = await updateTaskStatus({}, formData);
-      if (!result.success) {
-        throw new Error(result.formError ?? "The task status could not be updated.");
+      const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: targetStatus }),
+      });
+      let result: unknown = null;
+      try {
+        result = await response.json();
+      } catch {
+        // A non-JSON response is handled as a safe failed update below.
+      }
+      if (!response.ok || !isSuccessfulTaskStatusResponse(result)) {
+        throw new Error("The task status could not be updated.");
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);

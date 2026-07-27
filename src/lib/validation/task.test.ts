@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
-import { taskCreationSchema, taskStatusUpdateSchema } from "./task";
+import { toTaskStatusActionState } from "../task-status-mutation";
+import { taskCreationSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -36,5 +37,22 @@ describe("task status validation", () => {
       status: "blocked",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts only a status in the Board API payload", () => {
+    expect(taskStatusPayloadSchema.safeParse({ status: "todo" }).success).toBe(true);
+    expect(taskStatusPayloadSchema.safeParse({ status: "todo", task_id: validTask.assignee_id }).success).toBe(false);
+  });
+});
+
+describe("task status mutation result handling", () => {
+  it("returns a safe success response without server-only fields", () => {
+    expect(toTaskStatusActionState({ success: true, projectId: validTask.assignee_id })).toEqual({ success: true });
+  });
+
+  it("preserves a safe mutation error for the Server Action and Route Handler", () => {
+    expect(toTaskStatusActionState({ success: false, formError: "The task was not found or is not available." })).toEqual({
+      formError: "The task was not found or is not available.",
+    });
   });
 });

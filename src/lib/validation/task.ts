@@ -27,6 +27,10 @@ export const taskStatusUpdateSchema = z.object({
   status: z.enum(TASK_STATUS_VALUES),
 });
 
+export const taskStatusPayloadSchema = z.object({
+  status: z.enum(TASK_STATUS_VALUES),
+}).strict();
+
 export type TaskCreationInput = z.infer<typeof taskCreationSchema>;
 export type TaskCreationField = keyof TaskCreationInput;
 

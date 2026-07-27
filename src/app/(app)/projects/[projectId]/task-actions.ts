@@ -1,26 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { updateTaskStatusMutation } from "@/data/mutations/task-status";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getTaskForStatusUpdate } from "@/data/queries/tasks";
+import { toTaskStatusActionState } from "@/lib/task-status-mutation";
 import { createClient } from "@/lib/supabase/server";
 import {
   getTaskCreationInput,
   getTaskStatusInput,
   taskCreationSchema,
-  taskStatusUpdateSchema,
   type TaskActionState,
   type TaskCreationField,
   type TaskStatusActionState,
 } from "@/lib/validation/task";
-import type { TaskInsert, TaskUpdate } from "@/types/tasks";
+import type { TaskInsert } from "@/types/tasks";
 
-function revalidateTaskRoutes(projectId: string) {
+function revalidateTaskCreationRoutes(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/my-tasks");
+}
+
+function revalidateMyTasks() {
   revalidatePath("/my-tasks");
 }
 
@@ -83,7 +85,7 @@ export async function createProjectTask(
     return { formError: "The task could not be created. Please try again." };
   }
 
-  revalidateTaskRoutes(project.id);
+  revalidateTaskCreationRoutes(project.id);
   return { success: true };
 }
 
@@ -91,49 +93,7 @@ export async function updateTaskStatus(
   _previousState: TaskStatusActionState,
   formData: FormData,
 ): Promise<TaskStatusActionState> {
-  const parsed = taskStatusUpdateSchema.safeParse(getTaskStatusInput(formData));
-  if (!parsed.success) return { formError: "Choose a valid task status." };
-
-  const [profile, membership] = await Promise.all([
-    getCurrentUserProfile(),
-    getActiveStudioMembership(),
-  ]);
-  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) {
-    return { formError: "An active studio membership is required." };
-  }
-
-  let task;
-  try {
-    task = await getTaskForStatusUpdate(parsed.data.task_id);
-  } catch (error) {
-    console.error("Unable to verify task status authorization", error);
-    return { formError: "The task could not be verified." };
-  }
-
-  if (!task) return { formError: "The task was not found or is not available." };
-
-  const isStudioAdmin = membership.system_role === "admin"
-    && task.project.studio_id === membership.studio_id;
-  const isAssignee = task.assignee_id === profile.id
-    && task.project.studio_id === membership.studio_id;
-  if (!isStudioAdmin && !isAssignee) {
-    return { formError: "You can update only tasks assigned to you." };
-  }
-
-  const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .update(update)
-    .eq("id", task.id)
-    .select("id, project_id")
-    .maybeSingle();
-
-  if (error || !data) {
-    console.error("Unable to update task status", error);
-    return { formError: "The task status could not be updated. Please try again." };
-  }
-
-  revalidateTaskRoutes(data.project_id);
-  return { success: true };
+  const result = await updateTaskStatusMutation(getTaskStatusInput(formData));
+  if (result.success) revalidateMyTasks();
+  return toTaskStatusActionState(result);
 }
