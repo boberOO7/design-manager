@@ -32,8 +32,9 @@
 
 ## Team and metrics
 
-- [ ] Replace mock Team data with real profiles and studio memberships.
-- [ ] Implement employee management.
+- [X] Replace mock Team data with real profiles and studio memberships.
+- [X] Implement admin-only employee invitation and password onboarding.
+- [ ] Implement employee editing and membership deactivation/reactivation.
 - [ ] Replace mock dashboard metrics with real calculations.
 - [ ] Replace mock workload and leaderboard data.
 

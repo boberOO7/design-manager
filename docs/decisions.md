@@ -42,3 +42,16 @@
   `project_members` RLS.
 - New assignments receive a server-owned assignment date and start with zero
   assigned area; workload allocation remains deferred.
+
+## Employee invitation and onboarding
+
+- Employees are invited by an authenticated, active administrator of the
+  current studio. There is no public self-registration flow in StudioFlow.
+- Every newly invited user receives `employee` application access. The browser
+  cannot choose a system role or studio membership.
+- `job_title` records the employee's stable professional position; it does not
+  grant application permissions.
+- An invitation creates active membership only in the inviting administrator's
+  current studio. It does not create a `project_members` assignment.
+- Employees see projects only after an administrator assigns them through
+  `project_members`, with project visibility enforced by RLS.

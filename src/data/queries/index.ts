@@ -6,7 +6,6 @@ import {
   getMyTasks,
   getProjectAreaProgress,
   getProjectById,
-  getTeamMembers,
 } from "@/data/mock";
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
@@ -173,10 +172,6 @@ export function getProjectData(projectId: string): ProjectSummary | undefined {
 
 export function getMyTasksData(): TaskSummary[] {
   return getMyTasks();
-}
-
-export function getTeamData() {
-  return getTeamMembers();
 }
 
 export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {

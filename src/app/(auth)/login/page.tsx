@@ -7,6 +7,7 @@ import { loginSchema } from "@/lib/validation/auth";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +66,11 @@ export default function LoginPage() {
             {errors.password ? <p className="mt-1 text-sm text-red-600">{errors.password.message}</p> : null}
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-sm font-medium text-stone-700 underline underline-offset-4">
+              Forgot your password?
+            </Link>
+          </div>
           <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60">
             {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
