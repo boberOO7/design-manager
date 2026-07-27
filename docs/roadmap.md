@@ -2,16 +2,16 @@
 
 ## Foundation
 
-- [x] Create Next.js application structure.
-- [x] Create the initial UI with mock business data.
-- [x] Configure Supabase browser and server clients.
-- [x] Create and apply the initial database schema.
-- [x] Enable read-only RLS policies.
-- [x] Implement real Supabase password login.
-- [x] Implement SSR session refresh and protected app routes.
-- [x] Implement sign out.
-- [x] Load the real authenticated Profile in the application shell.
-- [ ] Verify and fix consistent Profile and admin-role checks on Dashboard and Administration.
+- [X] Create Next.js application structure.
+- [X] Create the initial UI with mock business data.
+- [X] Configure Supabase browser and server clients.
+- [X] Create and apply the initial database schema.
+- [X] Enable read-only RLS policies.
+- [X] Implement real Supabase password login.
+- [X] Implement SSR session refresh and protected app routes.
+- [X] Implement sign out.
+- [X] Load the real authenticated Profile in the application shell.
+- [X] Verify and fix consistent Profile and admin-role checks on Dashboard and Administration.
 
 ## Projects
 
