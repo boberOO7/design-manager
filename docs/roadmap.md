@@ -18,8 +18,8 @@
 - [X] Replace the mock Projects list with real Supabase data.
 - [x] Implement a real Project details page.
 - [X] Implement project creation.
-- [ ] Implement project editing.
-- [ ] Implement project archive and restore.
+- [x] Implement project editing.
+- [x] Implement project archive and restore.
 - [ ] Implement project-member assignment.
 
 ## Tasks and progress

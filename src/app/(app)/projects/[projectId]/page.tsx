@@ -1,8 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
+import { archiveProject, restoreProject } from "./actions";
 
 export const metadata: Metadata = {
   title: "Project Details | StudioFlow",
@@ -14,15 +19,50 @@ export default async function ProjectDetailsPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const project = await getProjectById(projectId);
+  const [project, membership] = await Promise.all([
+    getProjectById(projectId),
+    getActiveStudioMembership(),
+  ]);
 
   if (!project) {
     notFound();
   }
 
+  const isArchived = project.status === "archived" || project.archived_at !== null;
+  const canManage =
+    membership?.system_role === "admin" && membership.studio_id === project.studio_id;
+
   return (
     <div className="space-y-6">
-      <PageHeader title={project.name} description={project.client_name ?? "Interior design project overview"} />
+      <PageHeader
+        title={project.name}
+        description={project.client_name ?? "Interior design project overview"}
+        action={
+          canManage ? (
+            <div className="flex items-center gap-3">
+              {!isArchived ? (
+                <Button asChild variant="outline">
+                  <Link href={`/projects/${project.id}/edit`}>Edit project</Link>
+                </Button>
+              ) : null}
+              {isArchived ? (
+                <ProjectStatusAction
+                  action={restoreProject.bind(null, project.id)}
+                  label="Restore"
+                  pendingLabel="Restoring…"
+                />
+              ) : (
+                <ProjectStatusAction
+                  action={archiveProject.bind(null, project.id)}
+                  confirmMessage={`Archive ${project.name}? You can restore it later.`}
+                  label="Archive"
+                  pendingLabel="Archiving…"
+                />
+              )}
+            </div>
+          ) : undefined
+        }
+      />
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-stone-500">Status</p>

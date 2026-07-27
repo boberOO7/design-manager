@@ -16,6 +16,13 @@
 - Do not push migrations or modify remote data without explicit confirmation.
 - Preserve the current visual design unless a redesign is specifically requested.
 
+## Project archive lifecycle
+
+- Archived projects use `status = archived` and retain their project data.
+- Restoring an archived project with an existing `completed_at` date returns it
+  to `completed`.
+- Restoring any other archived project returns it to `paused`.
+
 ## Roles and permissions
 
 - `system_role` controls application access and is currently either

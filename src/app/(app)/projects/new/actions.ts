@@ -4,42 +4,29 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
-import { projectSchema, type ProjectFormValues } from "@/lib/validation/project";
-
-export type CreateProjectActionState = {
-  formError?: string;
-  fieldErrors?: Partial<Record<keyof ProjectFormValues, string>>;
-};
-
-function getOptionalString(formData: FormData, field: string): string | undefined {
-  const value = formData.get(field);
-  return typeof value === "string" ? value : undefined;
-}
+import {
+  getProjectFormInput,
+  projectSchema,
+  type ProjectFormActionState,
+  type ProjectFormField,
+  type ProjectFormValues,
+} from "@/lib/validation/project";
 
 export async function createProject(
-  _previousState: CreateProjectActionState,
+  _previousState: ProjectFormActionState,
   formData: FormData,
-): Promise<CreateProjectActionState> {
+): Promise<ProjectFormActionState> {
   const membership = await getActiveStudioMembership();
 
   if (!membership || membership.system_role !== "admin") {
     return { formError: "Only active studio administrators can create projects." };
   }
 
-  const parsed = projectSchema.safeParse({
-    name: getOptionalString(formData, "name"),
-    project_code: getOptionalString(formData, "project_code"),
-    client_name: getOptionalString(formData, "client_name"),
-    description: getOptionalString(formData, "description"),
-    total_area_m2: getOptionalString(formData, "total_area_m2"),
-    priority: getOptionalString(formData, "priority"),
-    start_date: getOptionalString(formData, "start_date"),
-    due_date: getOptionalString(formData, "due_date"),
-  });
+  const parsed = projectSchema.safeParse(getProjectFormInput(formData, false));
 
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
-    const fieldErrors: Partial<Record<keyof ProjectFormValues, string>> = {};
+    const fieldErrors: Partial<Record<ProjectFormField, string>> = {};
 
     for (const field of Object.keys(flattened) as Array<keyof ProjectFormValues>) {
       const message = flattened[field]?.[0];
