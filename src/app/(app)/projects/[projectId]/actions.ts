@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUserProfile } from "@/data/queries";
-import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -14,30 +13,6 @@ import {
 } from "@/lib/validation/project";
 
 const unavailableProjectError = "The project was not found or is not available.";
-
-async function getAdminMembership() {
-  try {
-    const profile = await getCurrentUserProfile();
-
-    if (!profile || !profile.is_active || profile.system_role !== "admin") {
-      return null;
-    }
-
-    const membership = await getActiveStudioMembership();
-    if (
-      !membership ||
-      membership.authenticatedUserId !== profile.id ||
-      membership.system_role !== "admin"
-    ) {
-      return null;
-    }
-
-    return membership;
-  } catch (error) {
-    console.error("Unable to verify project administrator", error);
-    return null;
-  }
-}
 
 function revalidateProjectRoutes(projectId: string) {
   revalidatePath("/projects");
@@ -50,7 +25,7 @@ export async function updateProject(
   _previousState: ProjectFormActionState,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
-  const membership = await getAdminMembership();
+  const membership = await getActiveStudioAdmin();
   if (!membership) {
     return { formError: "Only active studio administrators can edit projects." };
   }
@@ -115,7 +90,7 @@ export async function updateProject(
 }
 
 export async function archiveProject(projectId: string): Promise<void> {
-  const membership = await getAdminMembership();
+  const membership = await getActiveStudioAdmin();
   if (!membership) redirect(`/projects/${projectId}`);
 
   const project = await getProjectById(projectId);
@@ -150,7 +125,7 @@ export async function archiveProject(projectId: string): Promise<void> {
 }
 
 export async function restoreProject(projectId: string): Promise<void> {
-  const membership = await getAdminMembership();
+  const membership = await getActiveStudioAdmin();
   if (!membership) redirect("/archive");
 
   const project = await getProjectById(projectId);

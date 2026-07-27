@@ -20,7 +20,7 @@
 - [X] Implement project creation.
 - [x] Implement project editing.
 - [x] Implement project archive and restore.
-- [ ] Implement project-member assignment.
+- [x] Implement project-member assignment.
 
 ## Tasks and progress
 

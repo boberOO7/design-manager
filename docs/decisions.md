@@ -28,7 +28,17 @@
 - `system_role` controls application access and is currently either
   `admin` or `employee`.
 - All non-admin employees initially have the same application permissions.
-- `job_title` describes a person's profession and does not grant permissions.
-- `project_members.project_role` describes responsibility within one project
-  and does not grant studio-wide admin permissions.
+- `job_title` is the person's stable professional role and does not grant
+  application permissions.
+- `project_members` represents assignment to a project. Per-project role
+  selection is not exposed in the MVP; the required database role is supplied
+  by the server.
 - More granular permission roles are deferred until they are actually needed.
+
+## Project-member write authorization
+
+- Private, narrowly scoped security-definer helpers resolve a project's studio
+  for project-member write policies without recursively invoking
+  `project_members` RLS.
+- New assignments receive a server-owned assignment date and start with zero
+  assigned area; workload allocation remains deferred.

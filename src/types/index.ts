@@ -1,9 +1,10 @@
+import type { ProjectMemberRow } from "@/types/project-members";
+
 export type SystemRole = "admin" | "employee";
 export type ProjectStatus = "planned" | "active" | "paused" | "completed" | "archived";
 export type ProjectPriority = "low" | "normal" | "high" | "urgent";
 export type TaskStatus = "todo" | "in_progress" | "review" | "completed" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
-export type ProjectRole = "lead_designer" | "designer" | "visualizer" | "architect" | "manager" | "other";
 
 export interface Profile {
   id: string;
@@ -73,18 +74,7 @@ export interface DashboardMetrics {
   }>;
 }
 
-export interface ProjectMember {
-  id: string;
-  project_id: string;
-  user_id: string;
-  project_role: ProjectRole;
-  assigned_area_m2: number;
-  is_active: boolean;
-  assigned_at: string;
-  removed_at?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ProjectMember = ProjectMemberRow;
 
 export interface ProjectAreaProgressEntry {
   id: string;

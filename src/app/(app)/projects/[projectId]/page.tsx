@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
+import { ProjectTeamSection } from "@/components/projects/project-team-section";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
+import {
+  getAssignableStudioMembers,
+  getProjectMembers,
+} from "@/data/queries/project-members";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
 import { archiveProject, restoreProject } from "./actions";
@@ -19,9 +24,10 @@ export default async function ProjectDetailsPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const [project, membership] = await Promise.all([
+  const [project, adminMembership, projectMembers] = await Promise.all([
     getProjectById(projectId),
-    getActiveStudioMembership(),
+    getActiveStudioAdmin(),
+    getProjectMembers(projectId),
   ]);
 
   if (!project) {
@@ -30,7 +36,10 @@ export default async function ProjectDetailsPage({
 
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage =
-    membership?.system_role === "admin" && membership.studio_id === project.studio_id;
+    adminMembership?.studio_id === project.studio_id;
+  const assignableMembers = canManage
+    ? await getAssignableStudioMembers(project.id)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -122,6 +131,12 @@ export default async function ProjectDetailsPage({
           ) : null}
         </dl>
       </div>
+      <ProjectTeamSection
+        assignableMembers={assignableMembers}
+        canManage={canManage}
+        members={projectMembers}
+        projectId={project.id}
+      />
       <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-900">Progress</h2>
         <p className="mt-2 text-sm text-stone-500">Progress tracking will be available here soon.</p>
