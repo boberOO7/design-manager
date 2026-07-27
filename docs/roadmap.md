@@ -16,7 +16,7 @@
 ## Projects
 
 - [X] Replace the mock Projects list with real Supabase data.
-- [ ] Implement a real Project details page.
+- [x] Implement a real Project details page.
 - [X] Implement project creation.
 - [ ] Implement project editing.
 - [ ] Implement project archive and restore.

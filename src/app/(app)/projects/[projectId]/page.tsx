@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
-import { getProjectData, getProjectProgressData } from "@/data/queries";
-import { formatDate, getProgressPercentage } from "@/lib/utils";
+import { getProjectById } from "@/data/queries/project-by-id";
+import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -14,8 +14,7 @@ export default async function ProjectDetailsPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const project = getProjectData(projectId);
-  const progressEntries = getProjectProgressData(projectId);
+  const project = await getProjectById(projectId);
 
   if (!project) {
     notFound();
@@ -34,36 +33,62 @@ export default async function ProjectDetailsPage({
           <p className="mt-2 font-semibold text-stone-900">{project.total_area_m2} m²</p>
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-stone-500">Deadline</p>
-          <p className="mt-2 font-semibold text-stone-900">{formatDate(project.due_date)}</p>
+          <p className="text-sm text-stone-500">Priority</p>
+          <p className="mt-2 font-semibold text-stone-900">{project.priority}</p>
         </div>
       </div>
       <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-stone-900">Project details</h2>
+        <dl className="mt-4 grid gap-5 text-sm md:grid-cols-2">
+          {project.project_code ? (
+            <div>
+              <dt className="text-stone-500">Project code</dt>
+              <dd className="mt-1 font-medium text-stone-900">{project.project_code}</dd>
+            </div>
+          ) : null}
+          {project.client_name ? (
+            <div>
+              <dt className="text-stone-500">Client</dt>
+              <dd className="mt-1 font-medium text-stone-900">{project.client_name}</dd>
+            </div>
+          ) : null}
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Progress</h2>
-            <p className="text-sm text-stone-500">Completed square meters and tracked delivery milestones.</p>
+            <dt className="text-stone-500">Start date</dt>
+            <dd className="mt-1 font-medium text-stone-900">{formatDate(project.start_date)}</dd>
           </div>
-          <span className="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">{getProgressPercentage(project.total_area_m2, project.completed_area_m2)}%</span>
-        </div>
-        <div className="mt-4 h-2 rounded-full bg-stone-100">
-          <div className="h-2 rounded-full bg-stone-900" style={{ width: `${getProgressPercentage(project.total_area_m2, project.completed_area_m2)}%` }} />
-        </div>
-        <div className="mt-4 text-sm text-stone-600">Completed area: {project.completed_area_m2} m²</div>
+          {project.due_date ? (
+            <div>
+              <dt className="text-stone-500">Due date</dt>
+              <dd className="mt-1 font-medium text-stone-900">{formatDate(project.due_date)}</dd>
+            </div>
+          ) : null}
+          {project.completed_at ? (
+            <div>
+              <dt className="text-stone-500">Completion date</dt>
+              <dd className="mt-1 font-medium text-stone-900">{formatDate(project.completed_at)}</dd>
+            </div>
+          ) : null}
+          {project.archived_at ? (
+            <div>
+              <dt className="text-stone-500">Archive date</dt>
+              <dd className="mt-1 font-medium text-stone-900">{formatDate(project.archived_at)}</dd>
+            </div>
+          ) : null}
+          {project.description ? (
+            <div className="md:col-span-2">
+              <dt className="text-stone-500">Description</dt>
+              <dd className="mt-1 whitespace-pre-wrap text-stone-700">{project.description}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-stone-900">Progress</h2>
+        <p className="mt-2 text-sm text-stone-500">Progress tracking will be available here soon.</p>
       </div>
       <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-900">Recent progress entries</h2>
-        <div className="mt-4 space-y-3">
-          {progressEntries.map((entry) => (
-            <div key={entry.id} className="rounded-xl border border-stone-200 p-3">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-stone-900">{entry.area_m2} m² completed</p>
-                <p className="text-sm text-stone-500">{formatDate(entry.progress_date)}</p>
-              </div>
-              {entry.note ? <p className="mt-1 text-sm text-stone-500">{entry.note}</p> : null}
-            </div>
-          ))}
-        </div>
+        <p className="mt-2 text-sm text-stone-500">Progress entries are not connected yet.</p>
       </div>
     </div>
   );

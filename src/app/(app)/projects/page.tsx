@@ -56,7 +56,11 @@ export default async function ProjectsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {result.projects.map((project) => (
-            <div key={project.id} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <Link
+              key={project.id}
+              href={`/projects/${project.id}`}
+              className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-stone-300 hover:shadow-md"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-stone-900">{project.name}</p>
@@ -73,7 +77,7 @@ export default async function ProjectsPage() {
                 <span>{formatDate(project.due_date)}</span>
               </div>
               <div className="mt-3 text-sm text-stone-500">Assigned: {project.assigned_employees.join(", ") || "—"}</div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
