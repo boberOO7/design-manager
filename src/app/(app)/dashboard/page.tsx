@@ -1,15 +1,16 @@
 import { MetricCard } from "@/components/shared/metric-card";
 import { PageHeader } from "@/components/shared/page-header";
-import { getDashboardData, getLeaderboardData, getProjectsData, getMyTasksData } from "@/data/queries";
+import { getCurrentUserProfile, getDashboardData, getLeaderboardData, getProjectsData, getMyTasksData } from "@/data/queries";
 import { formatDate, formatNumber, getProgressPercentage } from "@/lib/utils";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Dashboard | StudioFlow",
 };
 
-export default function DashboardPage({ profile }: { profile: Profile | null }) {
+export default async function DashboardPage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile) {
     return (
       <div className="space-y-8">

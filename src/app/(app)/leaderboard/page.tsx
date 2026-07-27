@@ -1,13 +1,14 @@
 import { PageHeader } from "@/components/shared/page-header";
-import { getLeaderboardData } from "@/data/queries";
+import { getCurrentUserProfile, getLeaderboardData } from "@/data/queries";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Leaderboard | StudioFlow",
 };
 
-export default function LeaderboardPage({ profile }: { profile: Profile | null }) {
+export default async function LeaderboardPage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile) {
     return (
       <div className="space-y-6">

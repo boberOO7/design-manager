@@ -9,6 +9,7 @@ import {
   getTeamMembers,
 } from "@/data/mock";
 import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
 import type {
   DashboardMetrics,
   EmployeeWorkloadSummary,
@@ -27,7 +28,7 @@ export function getDataMode(): DataMode {
 /**
  * Server-side profile fetcher - uses real Supabase authentication
  */
-export async function getCurrentUserProfile(): Promise<Profile | null> {
+export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => {
   if (getDataMode() === "mock") {
     // In mock mode, still use mock data for backward compatibility
     // but this will be replaced with real auth when Supabase is configured
@@ -44,7 +45,7 @@ export async function getCurrentUserProfile(): Promise<Profile | null> {
   }
 
   // Extract authenticated user ID from claims
-  const userId = claimsData.claims.sub as string | undefined;
+  const userId = claimsData.claims.sub;
 
   if (!userId) {
     return null;
@@ -67,7 +68,7 @@ export async function getCurrentUserProfile(): Promise<Profile | null> {
   }
 
   return profile;
-}
+});
 
 export function getDashboardData(): DashboardMetrics {
   return getDashboardMetrics();

@@ -1,14 +1,15 @@
 import { MetricCard } from "@/components/shared/metric-card";
 import { PageHeader } from "@/components/shared/page-header";
-import { getDashboardData, getEmployeeWorkloadData } from "@/data/queries";
+import { getCurrentUserProfile, getDashboardData, getEmployeeWorkloadData } from "@/data/queries";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Administration | StudioFlow",
 };
 
-export default function AdminPage({ profile }: { profile: Profile | null }) {
+export default async function AdminPage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile || profile.system_role !== "admin") {
     return (
       <div className="space-y-8">

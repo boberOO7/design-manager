@@ -1,13 +1,14 @@
 import { PageHeader } from "@/components/shared/page-header";
-import { getTeamData } from "@/data/queries";
+import { getCurrentUserProfile, getTeamData } from "@/data/queries";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Team | StudioFlow",
 };
 
-export default function TeamPage({ profile }: { profile: Profile | null }) {
+export default async function TeamPage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile) {
     return (
       <div className="space-y-6">

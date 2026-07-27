@@ -1,17 +1,11 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/data/queries";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    redirect("/login");
-  }
-
   // Obtain the real profile once on the server
   let profile = null;
   try {

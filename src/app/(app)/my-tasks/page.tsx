@@ -1,14 +1,15 @@
 import { PageHeader } from "@/components/shared/page-header";
-import { getMyTasksData } from "@/data/queries";
+import { getCurrentUserProfile, getMyTasksData } from "@/data/queries";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "My Tasks | StudioFlow",
 };
 
-export default function MyTasksPage({ profile }: { profile: Profile | null }) {
+export default async function MyTasksPage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile) {
     return (
       <div className="space-y-6">

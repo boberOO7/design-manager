@@ -1,13 +1,14 @@
 import { PageHeader } from "@/components/shared/page-header";
-import { getProjectsData } from "@/data/queries";
+import { getCurrentUserProfile, getProjectsData } from "@/data/queries";
 import type { Metadata } from "next";
-import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Archive | StudioFlow",
 };
 
-export default function ArchivePage({ profile }: { profile: Profile | null }) {
+export default async function ArchivePage() {
+  const profile = await getCurrentUserProfile();
+
   if (!profile) {
     return (
       <div className="space-y-6">
