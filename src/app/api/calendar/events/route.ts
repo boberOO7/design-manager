@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
-import { calendarEventSchema, calendarFieldErrors } from "@/lib/validation/calendar";
+import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 
 export async function POST(request: Request) {
   const admin = await getActiveStudioAdmin();
@@ -21,14 +21,14 @@ export async function POST(request: Request) {
     ends_at: value.endsAt, all_day: value.allDay, location: value.location,
     meeting_url: value.meetingUrl, description: value.description,
   }).select("id").single();
-  if (error || !event) return NextResponse.json({ success: false, formError: "The event could not be created. Check the project and event details." }, { status: 400 });
+  if (error || !event) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 
   const attendeeIds = [...new Set(value.attendeeIds)];
   if (attendeeIds.length > 0) {
     const { error: attendeeError } = await supabase.from("calendar_event_attendees").insert(attendeeIds.map((userId) => ({ event_id: event.id, user_id: userId })));
     if (attendeeError) {
       await supabase.from("calendar_events").update({ cancelled_at: new Date().toISOString() }).eq("id", event.id);
-      return NextResponse.json({ success: false, formError: "The attendees are not valid for this event." }, { status: 400 });
+      return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(attendeeError) }, { status: 400 });
     }
   }
 

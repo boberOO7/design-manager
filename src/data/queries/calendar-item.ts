@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { instantToDateOnly } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import type { CalendarItem, CalendarPerson, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
@@ -16,7 +17,7 @@ export async function getNormalizedCalendarEvent(eventId: string, currentUserId:
   const attendees: CalendarPerson[] = data.attendees.map((attendee) => ({ ...attendee.profile, projectIds: [] }));
   return {
     source: "calendar_event", key: `calendar_event:${data.id}`, id: data.id, title: data.title,
-    startDate: instantToDateOnly(data.starts_at), endDate: instantToDateOnly(data.ends_at), allDay: data.all_day,
+    startDate: instantToDateOnly(data.starts_at), endDate: data.all_day ? getInclusiveAllDayEndDate(data.ends_at) : instantToDateOnly(data.ends_at), allDay: data.all_day,
     projectId: data.project_id, personIds: [...new Set([...attendees.map((person) => person.id), data.created_by, ...(data.project_id === null ? [currentUserId] : [])])],
     eventType: data.event_type, startsAt: data.starts_at, endsAt: data.ends_at, description: data.description,
     location: data.location, meetingUrl: data.meeting_url, project: data.project, attendees,

@@ -23,7 +23,6 @@ export const calendarEventSchema = z.object({
 });
 
 export const timeOffRequestSchema = z.object({
-  userId: z.string().uuid().optional(),
   requestType: z.enum(TIME_OFF_REQUEST_TYPES),
   startDate: z.iso.date(),
   endDate: z.iso.date(),
@@ -52,4 +51,22 @@ export function calendarFieldErrors(error: z.ZodError): Record<string, string> {
     errors[field] ??= issue.message;
   }
   return errors;
+}
+
+export function getCalendarEventPersistenceError(error: { code?: string; message?: string } | null): { formError: string; fieldErrors?: Record<string, string> } {
+  const message = error?.message ?? "";
+
+  if (message.includes("must start and end at Europe/Kyiv") || message.includes("ends_at") || message.includes("Event end")) {
+    return { formError: "Choose an end that is after the start.", fieldErrors: { endsAt: "Event end must be after its start." } };
+  }
+  if (error?.code === "22P02" || message.includes("event_type")) {
+    return { formError: "Choose a supported event type.", fieldErrors: { eventType: "Unsupported event type." } };
+  }
+  if (message.includes("Attendee") || message.includes("attendee") || message.includes("project members")) {
+    return { formError: "One or more attendees are not valid for this event.", fieldErrors: { attendeeIds: "Choose active eligible attendees." } };
+  }
+  if (message.includes("project") || message.includes("Project") || message.includes("Events on completed or archived")) {
+    return { formError: "The selected project is unavailable or cannot receive events.", fieldErrors: { projectId: "Choose an accessible planned, active, or paused project." } };
+  }
+  return { formError: "The event could not be saved. Please try again." };
 }

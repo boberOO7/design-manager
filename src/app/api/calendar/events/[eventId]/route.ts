@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
-import { calendarEventSchema, calendarFieldErrors } from "@/lib/validation/calendar";
+import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 
 type Context = { params: Promise<{ eventId: string }> };
 
@@ -22,14 +22,14 @@ export async function PATCH(request: Request, context: Context) {
     starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay,
     location: value.location, meeting_url: value.meetingUrl, description: value.description,
   }).eq("id", eventId).eq("studio_id", admin.studio_id).is("cancelled_at", null).select("id").maybeSingle();
-  if (error || !data) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
+  if (error || !data) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 
   const { error: deleteError } = await supabase.from("calendar_event_attendees").delete().eq("event_id", eventId);
-  if (deleteError) return NextResponse.json({ success: false, formError: "The event was updated, but its attendee list could not be changed." }, { status: 400 });
+  if (deleteError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(deleteError) }, { status: 400 });
   const attendeeIds = [...new Set(value.attendeeIds)];
   if (attendeeIds.length > 0) {
     const { error: attendeeError } = await supabase.from("calendar_event_attendees").insert(attendeeIds.map((userId) => ({ event_id: eventId, user_id: userId })));
-    if (attendeeError) return NextResponse.json({ success: false, formError: "The event was updated, but one or more attendees are invalid." }, { status: 400 });
+    if (attendeeError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(attendeeError) }, { status: 400 });
   }
 
   const item = await getNormalizedCalendarEvent(eventId, admin.authenticatedUserId);

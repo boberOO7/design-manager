@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import type { CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
@@ -131,7 +132,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     if (event.project_id === null) personIds.push(membership.authenticatedUserId);
     items.push({
       source: "calendar_event", key: `calendar_event:${event.id}`, id: event.id,
-      title: event.title, startDate: instantToDateOnly(event.starts_at), endDate: instantToDateOnly(event.ends_at),
+      title: event.title, startDate: instantToDateOnly(event.starts_at), endDate: event.all_day ? getInclusiveAllDayEndDate(event.ends_at) : instantToDateOnly(event.ends_at),
       allDay: event.all_day, projectId: event.project_id, personIds: [...new Set(personIds)],
       eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
       description: event.description, location: event.location, meetingUrl: event.meeting_url,

@@ -1,0 +1,82 @@
+import { addCalendarDays, instantToDateOnly, instantToWallInput, zonedWallTimeToIso } from "./calendar";
+import type { CalendarEventType, CalendarItem } from "../types/calendar";
+
+export type CalendarEventFormValues = {
+  title: string;
+  eventType: CalendarEventType;
+  projectId: string;
+  allDay: boolean;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  attendeeIds: string[];
+  location: string;
+  meetingUrl: string;
+  description: string;
+};
+
+function splitWallDateTime(value: string): { date: string; time: string } {
+  const [date, time] = value.split("T");
+  if (!date || !time) throw new Error("Invalid local date and time");
+  return { date, time };
+}
+
+export function getAllDayEventBounds(startDate: string, endDate: string): { startsAt: string; endsAt: string } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < startDate) {
+    throw new Error("Invalid all-day date range");
+  }
+
+  return {
+    startsAt: zonedWallTimeToIso(`${startDate}T00:00`),
+    endsAt: zonedWallTimeToIso(`${addCalendarDays(endDate, 1)}T00:00`),
+  };
+}
+
+export function getInclusiveAllDayEndDate(endsAt: string): string {
+  return addCalendarDays(instantToDateOnly(endsAt), -1);
+}
+
+export function createCalendarEventFormValues(
+  item: Extract<CalendarItem, { source: "calendar_event" }> | undefined,
+  baseDate: string,
+): CalendarEventFormValues {
+  const start = item ? splitWallDateTime(instantToWallInput(item.startsAt)) : { date: baseDate, time: "09:00" };
+  const end = item ? splitWallDateTime(instantToWallInput(item.endsAt)) : { date: baseDate, time: "10:00" };
+
+  return {
+    title: item?.title ?? "",
+    eventType: item?.eventType ?? "meeting",
+    projectId: item?.projectId ?? "",
+    allDay: item?.allDay ?? false,
+    startDate: item?.allDay ? item.startDate : start.date,
+    endDate: item?.allDay ? item.endDate : end.date,
+    startTime: start.time,
+    endTime: end.time,
+    attendeeIds: item?.attendees.map((person) => person.id) ?? [],
+    location: item?.location ?? "",
+    meetingUrl: item?.meetingUrl ?? "",
+    description: item?.description ?? "",
+  };
+}
+
+export function toCalendarEventMutationPayload(values: CalendarEventFormValues) {
+  const bounds = values.allDay
+    ? getAllDayEventBounds(values.startDate, values.endDate)
+    : {
+      startsAt: zonedWallTimeToIso(`${values.startDate}T${values.startTime}`),
+      endsAt: zonedWallTimeToIso(`${values.endDate}T${values.endTime}`),
+    };
+
+  return {
+    title: values.title,
+    eventType: values.eventType,
+    projectId: values.projectId || null,
+    allDay: values.allDay,
+    ...bounds,
+    attendeeIds: values.attendeeIds,
+    location: values.location,
+    meetingUrl: values.meetingUrl,
+    description: values.description,
+  };
+}
