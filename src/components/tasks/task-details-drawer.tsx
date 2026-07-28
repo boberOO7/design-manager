@@ -140,6 +140,8 @@ export function TaskDetailsDrawer({
     setIsSaving(true);
     setFormError(null);
     setSuccessMessage(null);
+    const updatedTask = { ...task, status };
+    onTaskUpdated(updatedTask);
     try {
       const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}/status`, {
         method: "PATCH",
@@ -153,13 +155,13 @@ export function TaskDetailsDrawer({
         // The safe fallback below covers malformed API responses.
       }
       if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true) {
+        onTaskUpdated(task);
         setFormError("The task status could not be updated. Please try again.");
         return;
       }
-      const updatedTask = { ...task, status };
-      onTaskUpdated(updatedTask);
       setSuccessMessage("Task status saved.");
     } catch {
+      onTaskUpdated(task);
       setFormError("The task status could not be updated. Please try again.");
     } finally {
       setIsSaving(false);

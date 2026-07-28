@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
-import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
+import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { Button } from "@/components/ui/button";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
@@ -116,13 +116,14 @@ export default async function ProjectDetailsPage({
       </nav>
 
       {view === "board" ? (
-        <ProjectTaskBoard
+        <ProjectWorkspace
           canCreate={canManage && !isArchived}
           canManageTasks={canManage}
           currentUserId={profile.id}
           isProjectReadOnly={isArchived}
           members={taskAssignees}
-          projectId={project.id}
+          project={project}
+          isEmployee={!canManage}
           tasks={tasks}
         />
       ) : null}

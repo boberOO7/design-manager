@@ -21,6 +21,15 @@
   read-only apart from the established task-status interaction; advanced
   analytics and leaderboard metrics are deferred.
 
+## Project task progress and health
+
+- Project progress is derived from non-cancelled tasks as completed eligible
+  tasks divided by all eligible tasks; cancelled tasks are excluded.
+- Project health is derived rather than stored, using deterministic lifecycle,
+  deadline, overdue-task, and open-priority rules.
+- Employee contribution is informational task progress only, not a performance
+  score or ranking.
+
 ## Project archive lifecycle
 
 - Archived projects use `status = archived` and retain their project data.

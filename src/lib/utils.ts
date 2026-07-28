@@ -34,6 +34,12 @@ export function formatDateShort(value?: string | null) {
   });
 }
 
+/** Formats a database `date` value without converting it through UTC midnight. */
+export function formatDateOnly(value?: string | null) {
+  if (!value) return "—";
+  return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export function getProgressPercentage(total: number, completed: number) {
   if (total <= 0) return 0;
   return Math.min(100, Math.round((completed / total) * 100));

@@ -256,6 +256,7 @@ export function ProjectTaskBoard({
   members,
   projectId,
   tasks,
+  onTasksChange,
 }: {
   canCreate: boolean;
   canManageTasks: boolean;
@@ -264,6 +265,7 @@ export function ProjectTaskBoard({
   members: AssignableProjectMember[];
   projectId: string;
   tasks: ProjectTask[];
+  onTasksChange?: (tasks: ProjectTask[]) => void;
 }) {
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
@@ -279,7 +281,8 @@ export function ProjectTaskBoard({
 
   useEffect(() => {
     localTasksRef.current = localTasks;
-  }, [localTasks]);
+    onTasksChange?.(localTasks);
+  }, [localTasks, onTasksChange]);
 
   useEffect(() => {
     setLocalTasks((currentTasks) => {
