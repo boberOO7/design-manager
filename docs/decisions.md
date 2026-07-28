@@ -16,6 +16,11 @@
 - Do not push migrations or modify remote data without explicit confirmation.
 - Preserve the current visual design unless a redesign is specifically requested.
 
+- Dashboard content is role-specific: admins receive studio-wide operational
+  visibility while employees receive personal work priorities. It remains
+  read-only apart from the established task-status interaction; advanced
+  analytics and leaderboard metrics are deferred.
+
 ## Project archive lifecycle
 
 - Archived projects use `status = archived` and retain their project data.
