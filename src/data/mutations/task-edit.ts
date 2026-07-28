@@ -66,7 +66,9 @@ export async function updateTaskDetailsMutation(
   try {
     const task = await getProjectTaskById(data.id);
     if (!task) return { success: false, formError: "The task could not be loaded. Please refresh and try again." };
-    return { success: true, task };
+    const { data: project, error: projectError } = await supabase.from("projects").select("status").eq("id", task.project_id).maybeSingle();
+    if (projectError || !project) return { success: false, formError: "The task was updated, but the project could not be refreshed. Please refresh the page." };
+    return { success: true, task, projectStatus: project.status };
   } catch (error) {
     console.error("Unable to load updated task", error);
     return { success: false, formError: "The task was updated, but could not be refreshed. Please refresh the page." };

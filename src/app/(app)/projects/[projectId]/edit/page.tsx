@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getProjectById } from "@/data/queries/project-by-id";
-import { isEditableProjectStatus, isProjectPriority } from "@/lib/validation/project";
+import { isProjectPriority } from "@/lib/validation/project";
 import { updateProject } from "../actions";
 
 export const metadata: Metadata = {
@@ -34,8 +34,8 @@ export default async function EditProjectPage({
     !project ||
     project.studio_id !== membership.studio_id ||
     project.status === "archived" ||
+    project.status === "completed" ||
     project.archived_at ||
-    !isEditableProjectStatus(project.status) ||
     !isProjectPriority(project.priority)
   ) {
     notFound();
@@ -59,7 +59,6 @@ export default async function EditProjectPage({
             priority: project.priority,
             start_date: project.start_date,
             due_date: project.due_date ?? undefined,
-            status: project.status,
           }}
           mode="edit"
         />

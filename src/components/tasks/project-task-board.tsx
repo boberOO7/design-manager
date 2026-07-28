@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
+import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
 const interactiveSelector = [
@@ -80,11 +81,13 @@ function priorityClassName(priority: string): string {
   return "bg-stone-100 text-stone-700";
 }
 
-function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true } {
+function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string } {
   return typeof value === "object"
     && value !== null
     && "success" in value
-    && value.success === true;
+    && value.success === true
+    && "projectStatus" in value
+    && typeof value.projectStatus === "string";
 }
 
 function TaskCardContent({
@@ -255,8 +258,10 @@ export function ProjectTaskBoard({
   isProjectReadOnly,
   members,
   projectId,
+  projectStatus,
   tasks,
   onTasksChange,
+  onProjectStatusChange,
 }: {
   canCreate: boolean;
   canManageTasks: boolean;
@@ -264,8 +269,10 @@ export function ProjectTaskBoard({
   isProjectReadOnly: boolean;
   members: AssignableProjectMember[];
   projectId: string;
+  projectStatus: ProjectLifecycleStatus;
   tasks: ProjectTask[];
   onTasksChange?: (tasks: ProjectTask[]) => void;
+  onProjectStatusChange?: (status: ProjectLifecycleStatus) => void;
 }) {
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
@@ -322,6 +329,7 @@ export function ProjectTaskBoard({
     targetStatus: WritableTaskStatus,
     targetLabel: string,
     previousStatus: ProjectTask["status"],
+    previousProjectStatus: ProjectLifecycleStatus,
   ) {
     try {
       const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/status`, {
@@ -340,6 +348,7 @@ export function ProjectTaskBoard({
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);
+      if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusChange?.(result.projectStatus);
       previousStatusesRef.current.delete(taskId);
       setTaskPending(taskId, false);
       setAnnouncement(`Task ${taskTitle} moved to ${targetLabel}.`);
@@ -354,6 +363,7 @@ export function ProjectTaskBoard({
       );
       localTasksRef.current = rolledBackTasks;
       setLocalTasks(rolledBackTasks);
+      onProjectStatusChange?.(previousProjectStatus);
       setTaskPending(taskId, false);
       setBoardError(`Could not move task ${taskTitle}. The previous status was restored.`);
       setAnnouncement(`Could not move task ${taskTitle}. The previous status was restored.`);
@@ -395,6 +405,7 @@ export function ProjectTaskBoard({
     );
     localTasksRef.current = optimisticTasks;
     setLocalTasks(optimisticTasks);
+    onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus));
 
     void persistTaskMove(
       task.id,
@@ -402,6 +413,7 @@ export function ProjectTaskBoard({
       targetStatus,
       targetLabel,
       task.status,
+      projectStatus,
     );
   }
 
@@ -451,6 +463,7 @@ export function ProjectTaskBoard({
         isProjectReadOnly={isProjectReadOnly}
         members={members}
         onClose={() => setSelectedTaskId(null)}
+        onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}
         task={selectedTask}
       /> : null}

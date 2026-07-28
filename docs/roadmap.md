@@ -30,6 +30,7 @@
 - [ ] Implement project area progress recording.
 - [ ] Implement project activity history.
 - [ ] Implement task-derived project progress and operational health.
+- [ ] Implement controlled project lifecycle workflow.
 
 ## Team and metrics
 

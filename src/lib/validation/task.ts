@@ -57,6 +57,7 @@ export type TaskActionState = {
 
 export type TaskStatusActionState = {
   success?: boolean;
+  projectStatus?: string;
   formError?: string;
 };
 

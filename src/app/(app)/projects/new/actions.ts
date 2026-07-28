@@ -22,7 +22,7 @@ export async function createProject(
     return { formError: "Only active studio administrators can create projects." };
   }
 
-  const parsed = projectSchema.safeParse(getProjectFormInput(formData, false));
+  const parsed = projectSchema.safeParse(getProjectFormInput(formData));
 
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;

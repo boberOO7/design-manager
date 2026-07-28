@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { calculatePersonalProgress, calculateProjectProgress, getProjectHealth, getProjectHealthLabel } from "@/lib/project-progress";
+import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
 import { formatDateOnly } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
 
@@ -27,8 +28,9 @@ export function ProjectWorkspace({
   tasks: ProjectTask[];
 }) {
   const [currentTasks, setCurrentTasks] = useState(tasks);
+  const { status, setStatus } = useProjectLifecycle();
   const progress = calculateProjectProgress(currentTasks);
-  const health = getProjectHealth({ projectStatus: project.status, projectDueDate: project.due_date, progress });
+  const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
   const personal = calculatePersonalProgress(currentTasks, currentUserId);
 
   return <>
@@ -47,6 +49,6 @@ export function ProjectWorkspace({
       {health.reason && !isProjectReadOnly ? <p className="mt-4 text-sm font-medium text-stone-700">{health.reason}</p> : null}
       {isEmployee ? <div className="mt-4 border-t border-stone-100 pt-4 text-sm"><p className="font-medium text-stone-900">Your tasks</p><p className="mt-1 text-stone-600">{personal.eligibleTaskCount === 0 ? "No tasks assigned to you" : `${personal.completedTaskCount} of ${personal.eligibleTaskCount} completed · ${personal.progressPercent}%`}</p></div> : null}
     </section>
-    <ProjectTaskBoard canCreate={canCreate} canManageTasks={canManageTasks} currentUserId={currentUserId} isProjectReadOnly={isProjectReadOnly} members={members} projectId={project.id} tasks={tasks} onTasksChange={setCurrentTasks} />
+    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={setCurrentTasks} />
   </>;
 }

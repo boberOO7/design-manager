@@ -10,9 +10,10 @@ import { formatDate } from "@/lib/utils";
 import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import type { ProjectTask } from "@/types/tasks";
+import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 type TaskEditResponse =
-  | { success: true; task: ProjectTask }
+  | { success: true; task: ProjectTask; projectStatus: string }
   | { success?: false; formError?: string; fieldErrors?: Partial<Record<TaskEditField, string>> };
 
 function isTaskEditResponse(value: unknown): value is TaskEditResponse {
@@ -41,6 +42,7 @@ export function TaskDetailsDrawer({
   members,
   onClose,
   onTaskUpdated,
+  onProjectStatusUpdated,
   project,
   task,
 }: {
@@ -50,6 +52,7 @@ export function TaskDetailsDrawer({
   members: AssignableProjectMember[];
   onClose: () => void;
   onTaskUpdated: (task: ProjectTask) => void;
+  onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
   project?: { id: string; name: string };
   task: ProjectTask;
 }) {
@@ -117,6 +120,7 @@ export function TaskDetailsDrawer({
       }
       if (response.ok && isTaskEditResponse(result) && result.success) {
         onTaskUpdated(result.task);
+        if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
         setValues(makeFormValues(result.task));
         setIsEditing(false);
         setSuccessMessage("Task changes saved.");
@@ -154,12 +158,13 @@ export function TaskDetailsDrawer({
       } catch {
         // The safe fallback below covers malformed API responses.
       }
-      if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true) {
+      if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true || !("projectStatus" in result) || typeof result.projectStatus !== "string") {
         onTaskUpdated(task);
         setFormError("The task status could not be updated. Please try again.");
         return;
       }
       setSuccessMessage("Task status saved.");
+      if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
     } catch {
       onTaskUpdated(task);
       setFormError("The task status could not be updated. Please try again.");

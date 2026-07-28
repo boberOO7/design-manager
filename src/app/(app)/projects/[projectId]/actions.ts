@@ -40,7 +40,11 @@ export async function updateProject(
     return { formError: unavailableProjectError };
   }
 
-  const parsed = editProjectSchema.safeParse(getProjectFormInput(formData, true));
+  if (formData.has("status")) {
+    return { formError: "Project status is managed through lifecycle actions." };
+  }
+
+  const parsed = editProjectSchema.safeParse(getProjectFormInput(formData));
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     const fieldErrors: Partial<Record<ProjectFormField, string>> = {};
@@ -54,12 +58,6 @@ export async function updateProject(
   }
 
   const values = parsed.data;
-  const completedAt =
-    values.status === "completed"
-      ? (project.completed_at ?? new Date().toISOString().slice(0, 10))
-      : project.status === "completed"
-        ? null
-        : project.completed_at;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects")
@@ -69,11 +67,9 @@ export async function updateProject(
       client_name: values.client_name || null,
       description: values.description || null,
       total_area_m2: values.total_area_m2,
-      status: values.status,
       priority: values.priority,
       start_date: values.start_date,
       due_date: values.due_date || null,
-      completed_at: completedAt,
     })
     .eq("id", project.id)
     .eq("studio_id", membership.studio_id)

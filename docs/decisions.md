@@ -30,6 +30,15 @@
 - Employee contribution is informational task progress only, not a performance
   score or ranking.
 
+## Project lifecycle workflow
+
+- Project lifecycle is stored, with one-way automatic activation when a planned
+  project task enters in-progress, review, or completed work.
+- Pausing, completing, and reopening remain explicit administrator decisions;
+  project status is managed through lifecycle actions rather than Edit Project.
+- Completed projects require all tasks closed and remain read-only until an
+  administrator reopens them.
+
 ## Project archive lifecycle
 
 - Archived projects use `status = archived` and retain their project data.

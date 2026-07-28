@@ -67,5 +67,11 @@ export async function updateTaskStatusMutation(
     return { formError: "The task status could not be updated. Please try again.", success: false };
   }
 
-  return { projectId: data.project_id, success: true };
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("status")
+    .eq("id", data.project_id)
+    .maybeSingle();
+  if (projectError || !project) return { formError: "The task status was updated, but the project could not be refreshed. Please refresh the page.", success: false };
+  return { projectId: data.project_id, projectStatus: project.status, success: true };
 }

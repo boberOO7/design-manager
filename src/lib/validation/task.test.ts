@@ -71,7 +71,7 @@ describe("task editing validation", () => {
 
 describe("task status mutation result handling", () => {
   it("returns a safe success response without server-only fields", () => {
-    expect(toTaskStatusActionState({ success: true, projectId: validTask.assignee_id })).toEqual({ success: true });
+    expect(toTaskStatusActionState({ success: true, projectId: validTask.assignee_id, projectStatus: "active" })).toEqual({ success: true, projectStatus: "active" });
   });
 
   it("preserves a safe mutation error for the Server Action and Route Handler", () => {

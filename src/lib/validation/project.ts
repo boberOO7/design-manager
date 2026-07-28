@@ -38,12 +38,7 @@ function validateDateOrder(
 
 export const projectSchema = z.object(projectFields).superRefine(validateDateOrder);
 
-export const editProjectSchema = z
-  .object({
-    ...projectFields,
-    status: z.enum(["planned", "active", "paused", "completed"]),
-  })
-  .superRefine(validateDateOrder);
+export const editProjectSchema = z.object(projectFields).strict().superRefine(validateDateOrder);
 
 export type ProjectFormValues = z.infer<typeof projectSchema>;
 export type EditProjectFormValues = z.infer<typeof editProjectSchema>;
@@ -59,7 +54,7 @@ function getOptionalString(formData: FormData, field: ProjectFormField): string 
   return typeof value === "string" ? value : undefined;
 }
 
-export function getProjectFormInput(formData: FormData, includeStatus: boolean) {
+export function getProjectFormInput(formData: FormData) {
   return {
     name: getOptionalString(formData, "name"),
     project_code: getOptionalString(formData, "project_code"),
@@ -69,14 +64,7 @@ export function getProjectFormInput(formData: FormData, includeStatus: boolean) 
     priority: getOptionalString(formData, "priority"),
     start_date: getOptionalString(formData, "start_date"),
     due_date: getOptionalString(formData, "due_date"),
-    ...(includeStatus ? { status: getOptionalString(formData, "status") } : {}),
   };
-}
-
-export function isEditableProjectStatus(
-  status: string,
-): status is EditProjectFormValues["status"] {
-  return status === "planned" || status === "active" || status === "paused" || status === "completed";
 }
 
 export function isProjectPriority(

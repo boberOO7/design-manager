@@ -96,18 +96,6 @@ export function ProjectForm({
           {fieldError("due_date") ? <p id="due_date-error" className="mt-1.5 text-sm text-red-600">{fieldError("due_date")}</p> : null}
         </label>
 
-        {mode === "edit" ? (
-          <label className="block text-sm font-medium text-stone-700">
-            Status
-            <select name="status" defaultValue={defaultValues.status ?? "planned"} className={inputClassName} {...errorAttributes("status")}>
-              <option value="planned">Planned</option>
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="completed">Completed</option>
-            </select>
-            {fieldError("status") ? <p id="status-error" className="mt-1.5 text-sm text-red-600">{fieldError("status")}</p> : null}
-          </label>
-        ) : null}
       </div>
 
       {state.formError ? (
