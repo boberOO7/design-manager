@@ -80,6 +80,16 @@
 - Recurring events, reminders, public holidays, and Google/Outlook or external
   calendar synchronization are deferred.
 
+## Administration
+
+- Administration is the primary administrative action queue for time-off decisions,
+  upcoming team availability, and compact Team/access context; it does not duplicate
+  the operational Dashboard.
+- Calendar remains a contextual approval surface. Both surfaces use the same
+  time-off Route Handler workflow and normalized response model.
+- Request history is limited to time-off decisions until a general Activity History
+  system exists.
+
 ## Project-member write authorization
 
 - Private, narrowly scoped security-definer helpers resolve a project's studio

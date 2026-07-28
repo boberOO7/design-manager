@@ -40,6 +40,10 @@
 - [ ] Replace mock dashboard metrics with real calculations.
 - [ ] Replace mock workload and leaderboard data.
 
+## Administration
+
+- [ ] Replace the mock Administration page with the real admin action queue.
+
 ## Calendar
 
 - [ ] Deliver the role-aware Calendar milestone (Month, Week, Agenda, events,
