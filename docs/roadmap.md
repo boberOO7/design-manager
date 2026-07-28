@@ -40,6 +40,11 @@
 - [ ] Replace mock dashboard metrics with real calculations.
 - [ ] Replace mock workload and leaderboard data.
 
+## Calendar
+
+- [ ] Deliver the role-aware Calendar milestone (Month, Week, Agenda, events,
+  live deadlines, and privacy-safe time off).
+
 ## Production
 
 - [ ] Add required write RLS policies.

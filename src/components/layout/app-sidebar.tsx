@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, FolderKanban, CheckSquare, Users, Trophy, Archive, ShieldCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutGrid, FolderKanban, CheckSquare, Users, Trophy, Archive, ShieldCheck, PanelLeftClose, PanelLeftOpen, CalendarDays } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Profile } from "@/types";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ const icons = {
   "/dashboard": LayoutGrid,
   "/projects": FolderKanban,
   "/my-tasks": CheckSquare,
+  "/calendar": CalendarDays,
   "/team": Users,
   "/leaderboard": Trophy,
   "/archive": Archive,

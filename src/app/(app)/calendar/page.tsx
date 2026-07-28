@@ -1,0 +1,24 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
+import { getCalendarData } from "@/data/queries/calendar";
+import { getCalendarRange, instantToDateOnly } from "@/lib/calendar";
+import type { CalendarView } from "@/types/calendar";
+
+export const metadata: Metadata = { title: "Calendar | StudioFlow" };
+
+function validDate(value: string | undefined): string {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : instantToDateOnly(new Date().toISOString());
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const requestedView = typeof params.view === "string" ? params.view : "month";
+  const view: CalendarView = requestedView === "week" || requestedView === "agenda" ? requestedView : "month";
+  const date = validDate(typeof params.date === "string" ? params.date : undefined);
+  const range = getCalendarRange(view, date);
+  const data = await getCalendarData(range);
+  if (!data) redirect("/login");
+
+  return <CalendarWorkspace key={`${view}:${date}`} initialData={data} initialView={view} initialDate={date} searchParams={params} />;
+}

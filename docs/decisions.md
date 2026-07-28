@@ -58,6 +58,28 @@
   by the server.
 - More granular permission roles are deferred until they are actually needed.
 
+## Calendar
+
+- Calendar combines manually managed studio/project events, employee time-off,
+  and live project/task deadline projections in one normalized UI model.
+- Project and task deadlines remain canonical date-only fields on their
+  original tables; Calendar never copies them into event rows. Task deadlines
+  are hidden by default to keep dense Month views readable.
+- Time-off request types, private notes, review notes, pending requests, and
+  rejected requests are visible only to the requesting employee and active
+  studio administrators. Coworkers receive only approved dates/times, display
+  name, and the fixed label “Out of office” through a dedicated safe RPC.
+- Timed events are stored as absolute `timestamptz` values and displayed in the
+  StudioFlow application timezone (`Europe/Kyiv`). Project/task deadlines and
+  time-off ranges retain date-only semantics; partial time off is a same-day
+  local wall-time interval.
+- New project events are limited to planned, active, and paused projects.
+  Completed projects must be reopened before receiving a new event; existing
+  historical events remain readable and cancellable. Archived projects cannot
+  receive events.
+- Recurring events, reminders, public holidays, and Google/Outlook or external
+  calendar synchronization are deferred.
+
 ## Project-member write authorization
 
 - Private, narrowly scoped security-definer helpers resolve a project's studio

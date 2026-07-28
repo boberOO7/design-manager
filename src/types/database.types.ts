@@ -14,6 +14,40 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_event_attendees: {
+        Row: { created_at: string; event_id: string; user_id: string }
+        Insert: { created_at?: string; event_id: string; user_id: string }
+        Update: { created_at?: string; event_id?: string; user_id?: string }
+        Relationships: [
+          { foreignKeyName: "calendar_event_attendees_event_id_fkey"; columns: ["event_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_event_attendees_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      calendar_events: {
+        Row: {
+          all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
+          description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
+          id: string; location: string | null; meeting_url: string | null; project_id: string | null;
+          starts_at: string; studio_id: string; title: string; updated_at: string
+        }
+        Insert: {
+          all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
+          description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
+          id?: string; location?: string | null; meeting_url?: string | null; project_id?: string | null;
+          starts_at: string; studio_id: string; title: string; updated_at?: string
+        }
+        Update: {
+          all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
+          description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
+          id?: string; location?: string | null; meeting_url?: string | null; project_id?: string | null;
+          starts_at?: string; studio_id?: string; title?: string; updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "calendar_events_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_events_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -415,15 +449,51 @@ export type Database = {
           },
         ]
       }
+      time_off_requests: {
+        Row: {
+          all_day: boolean; cancelled_at: string | null; created_at: string; end_date: string; end_time: string | null;
+          id: string; private_note: string | null; request_type: Database["public"]["Enums"]["time_off_request_type"];
+          review_note: string | null; reviewed_at: string | null; reviewed_by: string | null; start_date: string;
+          start_time: string | null; status: Database["public"]["Enums"]["time_off_request_status"];
+          studio_id: string; updated_at: string; user_id: string
+        }
+        Insert: {
+          all_day?: boolean; cancelled_at?: string | null; created_at?: string; end_date: string; end_time?: string | null;
+          id?: string; private_note?: string | null; request_type: Database["public"]["Enums"]["time_off_request_type"];
+          review_note?: string | null; reviewed_at?: string | null; reviewed_by?: string | null; start_date: string;
+          start_time?: string | null; status?: Database["public"]["Enums"]["time_off_request_status"];
+          studio_id: string; updated_at?: string; user_id: string
+        }
+        Update: {
+          all_day?: boolean; cancelled_at?: string | null; created_at?: string; end_date?: string; end_time?: string | null;
+          id?: string; private_note?: string | null; request_type?: Database["public"]["Enums"]["time_off_request_type"];
+          review_note?: string | null; reviewed_at?: string | null; reviewed_by?: string | null; start_date?: string;
+          start_time?: string | null; status?: Database["public"]["Enums"]["time_off_request_status"];
+          studio_id?: string; updated_at?: string; user_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "time_off_requests_reviewed_by_fkey"; columns: ["reviewed_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "time_off_requests_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+          { foreignKeyName: "time_off_requests_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_calendar_coworker_availability: {
+        Args: { range_end: string; range_start: string; target_studio_id: string }
+        Returns: {
+          all_day: boolean; employee_name: string; end_date: string; end_time: string | null; id: string;
+          label: string; start_date: string; start_time: string | null; user_id: string
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "other"
+      time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
+      time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -550,6 +620,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      calendar_event_type: ["meeting", "client_presentation", "site_visit", "internal_review", "other"],
+      time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
+      time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],
+    },
   },
 } as const
