@@ -32,10 +32,11 @@ export default async function ProjectDetailsPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; task?: string | string[] }>;
 }) {
   const [{ projectId }, query] = await Promise.all([params, searchParams]);
   const view = getProjectView(query.view);
+  const initialTaskId = typeof query.task === "string" ? query.task : undefined;
   const [project, adminMembership, profile] = await Promise.all([
     getProjectById(projectId),
     getActiveStudioAdmin(),
@@ -89,6 +90,7 @@ export default async function ProjectDetailsPage({
           canCreate={canManage && !isArchived}
           canManageTasks={canManage}
           currentUserId={profile.id}
+          initialTaskId={initialTaskId}
           isProjectReadOnly={isArchived}
           members={taskAssignees}
           project={project}

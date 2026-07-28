@@ -90,6 +90,13 @@
 - Request history is limited to time-off decisions until a general Activity History
   system exists.
 
+## In-app notifications
+
+- Notifications are persistent, recipient-private, and event-driven in the MVP.
+- Scheduled deadline reminders require a later reliable scheduler milestone; email, push, and real-time subscriptions are not part of this milestone.
+- Notification content excludes private time-off and review notes. Administration notification unread counts and pending-request counts remain separate concepts.
+- Notification links reuse the existing task, Calendar, and Administration drawers.
+
 ## Project-member write authorization
 
 - Private, narrowly scoped security-definer helpers resolve a project's studio

@@ -255,6 +255,7 @@ export function ProjectTaskBoard({
   canCreate,
   canManageTasks,
   currentUserId,
+  initialTaskId,
   isProjectReadOnly,
   members,
   projectId,
@@ -266,6 +267,7 @@ export function ProjectTaskBoard({
   canCreate: boolean;
   canManageTasks: boolean;
   currentUserId: string;
+  initialTaskId?: string;
   isProjectReadOnly: boolean;
   members: AssignableProjectMember[];
   projectId: string;
@@ -279,7 +281,7 @@ export function ProjectTaskBoard({
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());

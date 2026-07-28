@@ -50,7 +50,12 @@ function CalendarPill({ item, onClick }: { item: CalendarItem; onClick: () => vo
 export function CalendarWorkspace({ initialData, initialView, initialDate, searchParams }: { initialData: CalendarPageData; initialView: CalendarView; initialDate: string; searchParams: SearchParams }) {
   const router = useRouter();
   const [items, setItems] = useState(initialData.items);
-  const [drawer, setDrawer] = useState<Drawer>(null);
+  const [drawer, setDrawer] = useState<Drawer>(() => {
+    const eventId = param(searchParams, "event");
+    const requestId = param(searchParams, "request");
+    const item = initialData.items.find((candidate) => candidate.id === (eventId || requestId) && (eventId ? candidate.source === "calendar_event" : candidate.source === "time_off_request_admin"));
+    return item ? { kind: "item", item } : null;
+  });
   const [showFilters, setShowFilters] = useState(false);
   const filters: CalendarFilters = {
     events: param(searchParams, "events") !== "0",
@@ -59,6 +64,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     timeOff: param(searchParams, "timeOff") !== "0",
     projectId: param(searchParams, "project"), personId: param(searchParams, "person"), mine: param(searchParams, "mine") === "1",
   };
+
 
   const visibleItems = filterCalendarItems(items, filters, initialData.currentUserId);
 
@@ -117,7 +123,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
       <DayDetails date={drawer.date} items={getDayItems(visibleItems, drawer.date)} onItem={(item) => setDrawer({ kind: "item", item })} />
       <div className="mt-6 flex flex-wrap gap-2">{initialData.isAdmin ? <Button size="sm" onClick={() => setDrawer({ kind: "event-form", date: drawer.date })}>Add event on this day</Button> : null}<Button size="sm" variant="outline" onClick={() => setDrawer({ kind: "time-off-form", date: drawer.date })}>Request time off</Button></div>
     </DetailPanel> : null}
-    {drawer?.kind === "item" ? <ItemPanel item={drawer.item} data={initialData} onClose={() => setDrawer(null)} onEdit={(item) => setDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { if (removedKey) setItems((current) => removeCalendarItem(current, removedKey)); if (item) setItems((current) => mergeCalendarItem(current, item)); setDrawer(item ? { kind: "item", item } : null); }} /> : null}
+    {drawer?.kind === "item" ? <ItemPanel item={drawer.item} data={initialData} onClose={() => setDrawer(null)} onEdit={(item) => setDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { if (removedKey) setItems((current) => removeCalendarItem(current, removedKey)); if (item) setItems((current) => mergeCalendarItem(current, item)); setDrawer(item ? { kind: "item", item } : null); router.refresh(); }} /> : null}
     {drawer?.kind === "event-form" ? <EventForm data={initialData} item={drawer.item} initialDate={drawer.date} onClose={() => setDrawer(null)} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); setDrawer({ kind: "item", item }); }} /> : null}
     {drawer?.kind === "time-off-form" ? <TimeOffForm data={initialData} initialDate={drawer.date} onClose={() => setDrawer(null)} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); setDrawer({ kind: "item", item }); }} /> : null}
   </div>;
@@ -165,8 +171,9 @@ function DayDetails({ items, onItem }: { date: string; items: CalendarItem[]; on
 
 function ItemPanel({ item, data, onClose, onEdit, onMutated }: { item: CalendarItem; data: CalendarPageData; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void }) {
   const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [reviewNote, setReviewNote] = useState("");
+  const timeOffMutationInFlight = useRef(false);
   async function cancelEvent() { if (item.source !== "calendar_event" || !window.confirm("Cancel this event?")) return; setPending(true); const response = await fetch(`/api/calendar/events/${encodeURIComponent(item.id)}`, { method: "DELETE" }); setPending(false); if (response.ok) onMutated(null, item.key); else setError("The event could not be cancelled."); }
-  async function timeOffAction(action: "approve" | "reject" | "cancel") { if (item.source !== "time_off_request_admin") return; if (action === "cancel" && !window.confirm("Cancel this request?")) return; setPending(true); setError(""); try { const result = await updateTimeOffRequest(item.id, action, reviewNote); if (isTimeOffMutationResult(result)) onMutated(result.item ?? null, result.removedKey ?? null); else setError("The request could not be updated."); } catch { setError("The request could not be updated."); } finally { setPending(false); } }
+  async function timeOffAction(action: "approve" | "reject" | "cancel") { if (item.source !== "time_off_request_admin" || timeOffMutationInFlight.current) return; if (action === "cancel" && !window.confirm("Cancel this request?")) return; timeOffMutationInFlight.current = true; setPending(true); setError(""); try { const result = await updateTimeOffRequest(item.id, action, reviewNote); if (isTimeOffMutationResult(result)) onMutated(result.item ?? null, result.removedKey ?? null); else setError("The request could not be updated."); } catch { setError("The request could not be updated."); } finally { timeOffMutationInFlight.current = false; setPending(false); } }
   return <DetailPanel title={item.title} eyebrow={itemLabel(item)} onClose={pending ? () => undefined : onClose}>{error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}<div className="space-y-6 text-sm">
     <section><h3 className="font-semibold text-stone-900">When</h3><p className="mt-2 text-stone-600">{item.source === "calendar_event" ? `${formatCalendarDateTime(item.startsAt)} – ${formatCalendarDateTime(item.endsAt)}` : `${dateLabel(item.startDate, { month: "long", day: "numeric", year: "numeric" })}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" })}` : ""}`}</p></section>
     {item.source === "calendar_event" ? <><section><h3 className="font-semibold">Details</h3><p className="mt-2 whitespace-pre-wrap leading-6 text-stone-600">{item.description || "No description"}</p>{item.location ? <p className="mt-3 flex gap-2"><MapPin className="size-4" />{item.location}</p> : null}{item.meetingUrl ? <a className="mt-2 flex gap-2 underline" href={item.meetingUrl} target="_blank" rel="noreferrer"><Video className="size-4" />Open meeting link</a> : null}</section><section><h3 className="font-semibold">Attendees</h3><p className="mt-2 text-stone-600">{item.attendees.map((person) => person.full_name).join(", ") || "No attendees"}</p></section>{item.project ? <Link className="font-medium underline" href={`/projects/${item.project.id}`}>Open {item.project.name}</Link> : null}{data.isAdmin ? <div className="flex gap-2"><Button disabled={pending} onClick={() => onEdit(item)}>Edit event</Button><Button disabled={pending} variant="outline" onClick={() => void cancelEvent()}>Cancel event</Button></div> : null}</> : null}

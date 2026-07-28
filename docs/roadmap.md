@@ -44,6 +44,10 @@
 
 - [ ] Replace the mock Administration page with the real admin action queue.
 
+## Notifications
+
+- [ ] Deliver persistent in-app Notifications with event-driven delivery.
+
 ## Calendar
 
 - [ ] Deliver the role-aware Calendar milestone (Month, Week, Agenda, events,

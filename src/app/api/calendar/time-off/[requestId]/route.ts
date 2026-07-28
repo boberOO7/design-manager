@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
+import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedTimeOffRequest } from "@/data/queries/calendar-item";
-import { canTransitionTimeOff } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
+import { deriveTimeOffUpdate, timeOffUpdateFields } from "@/lib/time-off-request";
 import { calendarFieldErrors, timeOffActionSchema } from "@/lib/validation/calendar";
-import type { TimeOffStatus } from "@/types/calendar";
 
 type Context = { params: Promise<{ requestId: string }> };
 
 export async function PATCH(request: Request, context: Context) {
   const membership = await getActiveStudioMembership();
   if (!membership) return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
+  const profile = await getCurrentUserProfile();
+  if (
+    !profile
+    || !profile.is_active
+    || profile.id !== membership.authenticatedUserId
+    || profile.system_role !== membership.system_role
+  ) {
+    return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
+  }
   const { requestId } = await context.params;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
@@ -20,18 +29,52 @@ export async function PATCH(request: Request, context: Context) {
   const supabase = await createClient();
   const { data: existing, error: readError } = await supabase.from("time_off_requests").select("id, user_id, status").eq("id", requestId).eq("studio_id", membership.studio_id).maybeSingle();
   if (readError || !existing) return NextResponse.json({ success: false, formError: "The request was not found." }, { status: 404 });
-  const role = membership.system_role === "admin" ? "admin" : "employee";
-  const nextStatus: TimeOffStatus = parsed.data.action === "approve" ? "approved" : parsed.data.action === "reject" ? "rejected" : "cancelled";
-  if ((role === "employee" && existing.user_id !== membership.authenticatedUserId) || !canTransitionTimeOff(existing.status as TimeOffStatus, nextStatus, role)) {
+  const update = deriveTimeOffUpdate({
+    action: parsed.data.action,
+    actorId: membership.authenticatedUserId,
+    actorRole: membership.system_role,
+    ownerId: existing.user_id,
+    currentStatus: existing.status,
+    reviewNote: parsed.data.reviewNote,
+    now: new Date().toISOString(),
+  });
+  if (!update) {
     return NextResponse.json({ success: false, formError: "This time-off action is not allowed." }, { status: 403 });
   }
 
-  const now = new Date().toISOString();
-  const update = nextStatus === "cancelled"
-    ? { status: nextStatus, cancelled_at: now }
-    : { status: nextStatus, reviewed_by: membership.authenticatedUserId, reviewed_at: now, review_note: parsed.data.reviewNote };
-  const { error } = await supabase.from("time_off_requests").update(update).eq("id", requestId).eq("studio_id", membership.studio_id);
-  if (error) return NextResponse.json({ success: false, formError: "The request could not be updated." }, { status: 400 });
+  const { error, count } = await supabase
+    .from("time_off_requests")
+    .update(update, { count: "exact" })
+    .eq("id", requestId)
+    .eq("studio_id", membership.studio_id);
+  if (error || count !== 1) {
+    const postgresContext = error && "context" in error && typeof error.context === "string" ? error.context : null;
+    const postgresWhere = error && "where" in error && typeof error.where === "string" ? error.where : null;
+    console.error("time_off_requests transition failed", {
+      error: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint, context: postgresContext, where: postgresWhere } : null,
+      transition: {
+        authenticatedUserId: membership.authenticatedUserId,
+        membershipUserId: profile.id,
+        studioId: membership.studio_id,
+        studioRole: membership.system_role,
+        requestId,
+        oldStatus: existing.status,
+        requestedStatus: update.status,
+        reviewNotePresent: parsed.data.reviewNote !== null,
+        updateFields: timeOffUpdateFields(update),
+        affectedRows: count,
+      },
+    });
+    return NextResponse.json({ success: false, formError: "The request could not be updated." }, { status: 400 });
+  }
   const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
+  if (update.status !== "cancelled" && !item) {
+    console.error("time_off_requests transition succeeded but reload failed", {
+      requestId,
+      studioId: membership.studio_id,
+      status: update.status,
+    });
+    return NextResponse.json({ success: true, item: null, removedKey: null, requiresRefresh: true });
+  }
   return NextResponse.json({ success: true, item, removedKey: item ? null : `time_off_request_admin:${requestId}` });
 }

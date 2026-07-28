@@ -1,8 +1,10 @@
 import { Bell, Menu, Search } from "lucide-react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { getNotificationData } from "@/data/queries/notifications";
 import type { Profile } from "@/types";
 
-export function AppHeader({ profile }: { profile: Profile | null }) {
+export async function AppHeader({ profile }: { profile: Profile | null }) {
   if (!profile) {
     return (
       <header className="flex items-center justify-between border-b border-stone-200 bg-white px-5 py-4 lg:px-8">
@@ -28,6 +30,8 @@ export function AppHeader({ profile }: { profile: Profile | null }) {
     );
   }
 
+  const notifications = await getNotificationData();
+
   return (
     <header className="flex items-center justify-between border-b border-stone-200 bg-white px-5 py-4 lg:px-8">
       <div className="flex items-center gap-3">
@@ -43,9 +47,7 @@ export function AppHeader({ profile }: { profile: Profile | null }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <div className="rounded-full border border-stone-200 p-2 text-stone-600">
-          <Bell size={16} />
-        </div>
+        <NotificationBell initialData={notifications} />
         <SignOutButton />
       </div>
     </header>

@@ -48,6 +48,26 @@ export type Database = {
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      notifications: {
+        Row: {
+          actor_id: string | null; body: string; created_at: string; entity_id: string | null;
+          entity_type: string | null; href: string; id: string; metadata: Json;
+          notification_type: Database["public"]["Enums"]["notification_type"]; read_at: string | null;
+          recipient_id: string; studio_id: string; title: string
+        }
+        Insert: {
+          actor_id?: string | null; body: string; created_at?: string; entity_id?: string | null;
+          entity_type?: string | null; href: string; id?: string; metadata?: Json;
+          notification_type: Database["public"]["Enums"]["notification_type"]; read_at?: string | null;
+          recipient_id: string; studio_id: string; title: string
+        }
+        Update: { read_at?: string | null }
+        Relationships: [
+          { foreignKeyName: "notifications_actor_id_fkey"; columns: ["actor_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "notifications_recipient_id_fkey"; columns: ["recipient_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "notifications_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -492,6 +512,7 @@ export type Database = {
     }
     Enums: {
       calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "other"
+      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_updated" | "calendar_event_cancelled"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
       time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
     }
@@ -622,6 +643,7 @@ export const Constants = {
   public: {
     Enums: {
       calendar_event_type: ["meeting", "client_presentation", "site_visit", "internal_review", "other"],
+      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_updated", "calendar_event_cancelled"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
       time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],
     },

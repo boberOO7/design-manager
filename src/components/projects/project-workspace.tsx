@@ -16,11 +16,12 @@ function healthClassName(health: string): string {
 }
 
 export function ProjectWorkspace({
-  canCreate, canManageTasks, currentUserId, isEmployee, isProjectReadOnly, members, project, tasks,
+  canCreate, canManageTasks, currentUserId, initialTaskId, isEmployee, isProjectReadOnly, members, project, tasks,
 }: {
   canCreate: boolean;
   canManageTasks: boolean;
   currentUserId: string;
+  initialTaskId?: string;
   isEmployee: boolean;
   isProjectReadOnly: boolean;
   members: AssignableProjectMember[];
@@ -49,6 +50,6 @@ export function ProjectWorkspace({
       {health.reason && !isProjectReadOnly ? <p className="mt-4 text-sm font-medium text-stone-700">{health.reason}</p> : null}
       {isEmployee ? <div className="mt-4 border-t border-stone-100 pt-4 text-sm"><p className="font-medium text-stone-900">Your tasks</p><p className="mt-1 text-stone-600">{personal.eligibleTaskCount === 0 ? "No tasks assigned to you" : `${personal.completedTaskCount} of ${personal.eligibleTaskCount} completed · ${personal.progressPercent}%`}</p></div> : null}
     </section>
-    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={setCurrentTasks} />
+    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={setCurrentTasks} />
   </>;
 }
