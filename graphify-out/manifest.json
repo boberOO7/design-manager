@@ -260,9 +260,9 @@
     "semantic_hash": "390151c0f09bbf8265554ffc7ead1b38"
   },
   "src/app/(app)/projects/[projectId]/page.tsx": {
-    "mtime": 1785332855.9814336,
-    "ast_hash": "fa532ee009b5763c254e1d886754af62",
-    "semantic_hash": "fa532ee009b5763c254e1d886754af62"
+    "mtime": 1785355826.4261644,
+    "ast_hash": "4233662267a0a9b64aed62fcc55eee90",
+    "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
     "mtime": 1785182860.6522992,
@@ -410,8 +410,8 @@
     "semantic_hash": "3385de99bab4f3bbc60079dddd4c84ee"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1785353409.670309,
-    "ast_hash": "ac891d5db02c6a94bebab9c847c0be73",
+    "mtime": 1785362809.1297498,
+    "ast_hash": "69b82ebe5a735375eb9f63491d5e7908",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -745,14 +745,14 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1785330383.2855814,
-    "ast_hash": "709335ec20f072f3f2829cb96702a0c2",
-    "semantic_hash": "709335ec20f072f3f2829cb96702a0c2"
+    "mtime": 1785362786.7577512,
+    "ast_hash": "4e407af229de6ee7aeacede50708c3d9",
+    "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1785330361.6415825,
-    "ast_hash": "8e4ecc690690862770cdf3cd72229d00",
-    "semantic_hash": "8e4ecc690690862770cdf3cd72229d00"
+    "mtime": 1785362824.3297489,
+    "ast_hash": "7950b31581fbee15778083765ec47a29",
+    "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
     "mtime": 1785330829.9575553,
@@ -890,9 +890,9 @@
     "semantic_hash": "0ff9d58dfbcffde2191a1a76ce017dac"
   },
   "src/lib/time-off-stabilization-migration.test.ts": {
-    "mtime": 1785279813.946106,
-    "ast_hash": "c15c895d5ad96490d1b259aecd8cddec",
-    "semantic_hash": "c15c895d5ad96490d1b259aecd8cddec"
+    "mtime": 1785355888.6461627,
+    "ast_hash": "d4a1441302b3f1bf6f5027d7fcf43e8f",
+    "semantic_hash": ""
   },
   "src/lib/utils.ts": {
     "mtime": 1785249376.5540795,
@@ -975,9 +975,9 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1785275457.5782945,
-    "ast_hash": "7655b76b120cabe75946a278ec16972b",
-    "semantic_hash": "7655b76b120cabe75946a278ec16972b"
+    "mtime": 1785355748.638168,
+    "ast_hash": "50bcc581bab7f9c291321446821d8b55",
+    "semantic_hash": ""
   },
   "src/types/index.ts": {
     "mtime": 1785160660.1917562,
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1785353389.2863104,
-    "ast_hash": "33b173a5aa00943e9639b6d99fd3b999",
+    "mtime": 1785355826.6141644,
+    "ast_hash": "0922b1dffaea3ca7ec5762e637b39532",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1465,8 +1465,8 @@
     "semantic_hash": ""
   },
   "docs/roadmap.md": {
-    "mtime": 1785353389.4583104,
-    "ast_hash": "785eb7b88b7a73ca24eb1b24518480f3",
+    "mtime": 1785355826.7901645,
+    "ast_hash": "a36a4a95272caf3b63543a7c72324f30",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
@@ -1497,6 +1497,36 @@
   "public/window.svg": {
     "mtime": 1784467404.970091,
     "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": ""
+  },
+  "src/components/projects/project-activity-section.tsx": {
+    "mtime": 1785355943.9741585,
+    "ast_hash": "d14adb1c2de1babe48dc1d8ac08a8f2e",
+    "semantic_hash": ""
+  },
+  "src/data/queries/project-activity.ts": {
+    "mtime": 1785355800.9541645,
+    "ast_hash": "6e3ebe801ddeb858efa75bc303028330",
+    "semantic_hash": ""
+  },
+  "src/lib/project-activity-migration.test.ts": {
+    "mtime": 1785355854.582164,
+    "ast_hash": "73645629c6d5ef1125d139f49f46e414",
+    "semantic_hash": ""
+  },
+  "src/lib/project-activity.test.ts": {
+    "mtime": 1785355850.0541642,
+    "ast_hash": "a720c364fa3e1acc71af97c6373c2789",
+    "semantic_hash": ""
+  },
+  "src/lib/project-activity.ts": {
+    "mtime": 1785355866.1181638,
+    "ast_hash": "564fc1ead97a9a4e4ffa8b8fd5e78031",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260729200758_project_activity_history.sql": {
+    "mtime": 1785355748.4741683,
+    "ast_hash": "9ab13f67caa45dbf78bda84893c1a6af",
     "semantic_hash": ""
   }
 }

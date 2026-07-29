@@ -3,7 +3,7 @@ import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
   filterCalendarItems, getDayItems, getMonthGrid, getVisibleDayItems, instantToDateOnly,
   isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
-  getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
+  getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
   MONTH_EVENT_GEOMETRY, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
 } from "./calendar";
@@ -51,6 +51,41 @@ describe("Calendar dates and views", () => {
   it("limits Month cells to three items and reports overflow", () => {
     const items = Array.from({ length: 5 }, (_, index) => deadline({ id: `p${index}`, key: `project_deadline:p${index}` }));
     expect(getVisibleDayItems(items, "2026-07-28")).toMatchObject({ visible: expect.any(Array), overflow: 2 });
+  });
+});
+
+describe("Calendar SSR-safe item projections", () => {
+  const date = "2026-07-28";
+  const mixedItems: CalendarItem[] = [
+    absence("time-off", "Vasilios Liakhovskyi", date, date),
+    { ...allDayEvent(date, date), title: "вф", eventType: "site_visit" },
+    deadline({ id: "equal", key: "project_deadline:equal", title: "Another item" }),
+  ];
+
+  it("does not mutate the initial snapshot and gives equal keys a canonical total order", () => {
+    const originalOrder = mixedItems.map((item) => item.key);
+    const first = sortCalendarItems(mixedItems);
+    const second = sortCalendarItems([...mixedItems].reverse());
+    expect(mixedItems.map((item) => item.key)).toEqual(originalOrder);
+    expect(first.map((item) => item.key)).toEqual(["calendar_event:e1", "project_deadline:equal", "time_off:time-off"]);
+    expect(second.map((item) => item.key)).toEqual(first.map((item) => item.key));
+  });
+
+  it("produces the same item identities and labels for server and client initial projections", () => {
+    const serverProjection = getDayItems(mixedItems, date);
+    const clientProjection = getDayItems(mixedItems, date);
+    expect(clientProjection.map((item) => [item.key, item.title])).toEqual(serverProjection.map((item) => [item.key, item.title]));
+  });
+
+  it("keeps Month mobile and desktop projections isolated while preserving lanes and overflow", () => {
+    const dates = getMonthGrid("2026-07-15");
+    const desktopSegments = getMonthLayoutSegments(mixedItems, dates);
+    const mobileProjection = getMonthMobileDayItems(mixedItems, desktopSegments, date, 2);
+    const repeatedDesktopSegments = getMonthLayoutSegments(mixedItems, dates);
+    const repeatedMobileProjection = getMonthMobileDayItems(mixedItems, repeatedDesktopSegments, date, 2);
+    expect(desktopSegments.map((segment) => [segment.segmentId, segment.lane])).toEqual(repeatedDesktopSegments.map((segment) => [segment.segmentId, segment.lane]));
+    expect(mobileProjection.visible.map((item) => item.key)).toEqual(repeatedMobileProjection.visible.map((item) => item.key));
+    expect(mobileProjection.overflow).toBe(1);
   });
 });
 

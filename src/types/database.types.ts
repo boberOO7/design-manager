@@ -106,34 +106,29 @@ export type Database = {
       }
       project_activity: {
         Row: {
-          action: string
-          actor_id: string
+          action_type: string
+          actor_id: string | null
+          changes: Json
           created_at: string
           entity_id: string | null
           entity_type: string
           id: string
-          metadata: Json
           project_id: string
+          studio_id: string
         }
         Insert: {
-          action: string
-          actor_id: string
+          action_type: string
+          actor_id?: string | null
+          changes?: Json
           created_at?: string
           entity_id?: string | null
           entity_type: string
           id?: string
-          metadata?: Json
           project_id: string
+          studio_id: string
         }
         Update: {
-          action?: string
-          actor_id?: string
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string
-          id?: string
-          metadata?: Json
-          project_id?: string
+          never?: never
         }
         Relationships: [
           {
@@ -148,6 +143,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_activity_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
             referencedColumns: ["id"]
           },
         ]

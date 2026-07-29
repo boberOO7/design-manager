@@ -114,6 +114,15 @@
 - Notification content excludes private time-off and review notes. Administration notification unread counts and pending-request counts remain separate concepts.
 - Notification links reuse the existing task, Calendar, and Administration drawers.
 
+## Project Activity History
+
+- Activity History is an immutable, project-scoped audit feed: it has no recipient,
+  delivery, or unread/read state and remains available after viewing.
+- Activity access follows the existing project visibility boundary. It records only
+  safe change metadata (states, priority, assignee identifiers, dates, and project
+  member assignment fields), never task descriptions, notes, or other free text.
+- History starts at migration deployment; earlier project changes are not backfilled.
+
 ## Project-member write authorization
 
 - Private, narrowly scoped security-definer helpers resolve a project's studio

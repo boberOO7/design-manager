@@ -18,8 +18,8 @@ function functionSql(name: string): string {
 }
 
 describe("time-off stabilization migration contract", () => {
-  it("is the only new consolidation migration and leaves historical trigger creation singular", () => {
-    expect(migrationNames.at(-1)).toBe("20260728225825_stabilize_time_off_approval_and_notifications.sql");
+  it("keeps its consolidation migration and leaves historical trigger creation singular", () => {
+    expect(migrationNames).toContain("20260728225825_stabilize_time_off_approval_and_notifications.sql");
     const history = migrations.join("\n");
     expect(history.match(/create trigger validate_time_off_request_before_write/g)).toHaveLength(1);
     expect(history.match(/create trigger notify_time_off_request_after_write/g)).toHaveLength(1);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Filter, MapPin, Plus, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -11,7 +11,7 @@ import {
   APPLICATION_TIME_ZONE, addCalendarDays, filterCalendarItems,
   formatCalendarDateTime, formatCalendarTime, getCalendarRange, getDayItems, getMonthGrid,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
-  getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getVisibleDayItems, getWeekAllDaySegments,
+  getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments, getMonthMobileDayItems,
   itemOccursOn, mergeCalendarItem, MONTH_EVENT_GEOMETRY, MONTH_LANE_GAP, MONTH_LANE_HEIGHT, parseDateOnly, WEEK_PIXELS_PER_MINUTE,
   removeCalendarItem, startOfMondayWeek, toDateOnly,
 } from "@/lib/calendar";
@@ -61,7 +61,7 @@ function CalendarPill({ item, month = false, mobile = false, onClick }: { item: 
 
 export function CalendarWorkspace({ initialData, initialView, initialDate, searchParams }: { initialData: CalendarPageData; initialView: CalendarView; initialDate: string; searchParams: SearchParams }) {
   const router = useRouter();
-  const [items, setItems] = useState(initialData.items);
+  const [items, setItems] = useState(() => [...initialData.items]);
   const [drawer, setDrawer] = useState<Drawer>(() => {
     const eventId = param(searchParams, "event");
     const requestId = param(searchParams, "request");
@@ -177,12 +177,12 @@ function MonthView({ anchor, today, items, onDay, onItem }: { anchor: string; to
         </div>
       </section>;
     })}</div>
-    <div className="divide-y divide-stone-100 md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const mobileItems = [...getDayItems(items, date).filter((item) => !allDayItemKeys.has(item.key)), ...segments.filter((segment) => segment.visibleStartDate === date).map((segment) => segment.item)]; const { visible, overflow } = getVisibleDayItems(mobileItems, date, 4); return <div key={date} className="flex w-full gap-3 p-3 text-left sm:gap-4 sm:p-4"><button type="button" onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { weekday: "long", month: "long", day: "numeric" })}`} className="min-h-11 w-12 shrink-0 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"><span className="block text-xs font-semibold uppercase text-stone-400">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-stone-900 text-white" : "text-stone-900"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} mobile month onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} aria-label={`Show ${overflow} more events on ${dateLabel(date, { month: "long", day: "numeric" })}`} className="min-h-11 text-left text-xs font-semibold text-stone-600">+{overflow} more</button> : null}</div></div>; })}</div></>;
+    <div className="divide-y divide-stone-100 md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const { visible, overflow } = getMonthMobileDayItems(items, segments, date); return <div key={date} className="flex w-full gap-3 p-3 text-left sm:gap-4 sm:p-4"><button type="button" onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { weekday: "long", month: "long", day: "numeric" })}`} className="min-h-11 w-12 shrink-0 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"><span className="block text-xs font-semibold uppercase text-stone-400">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-stone-900 text-white" : "text-stone-900"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} mobile month onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} aria-label={`Show ${overflow} more events on ${dateLabel(date, { month: "long", day: "numeric" })}`} className="min-h-11 text-left text-xs font-semibold text-stone-600">+{overflow} more</button> : null}</div></div>; })}</div></>;
 }
 
 function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void }) {
   const start = startOfMondayWeek(anchor);
-  const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index));
+  const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index)), [start]);
   const allDaySegments = getWeekAllDaySegments(items, dates);
   const allDayLanes = Math.max(1, ...allDaySegments.map((segment) => segment.lane + 1));
   const timedSegments = getTimedWeekLayout(getTimedWeekSegments(items, dates));
@@ -190,10 +190,13 @@ function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarIt
   for (const segment of timedSegments) timedByDate.set(segment.date, [...(timedByDate.get(segment.date) ?? []), segment]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
-  const initialCurrentDayIndexRef = useRef(getCurrentWeekTimePosition(dates, new Date())?.dayIndex);
-  const [now, setNow] = useState(() => new Date());
-  const currentTime = getCurrentWeekTimePosition(dates, now);
+  const initialCurrentDayIndexRef = useRef<number | undefined>(undefined);
+  const [now, setNow] = useState<Date | null>(null);
+  const currentTime = now ? getCurrentWeekTimePosition(dates, now) : null;
   useEffect(() => {
+    const initialNow = new Date();
+    initialCurrentDayIndexRef.current = getCurrentWeekTimePosition(dates, initialNow)?.dayIndex;
+    const frame = window.requestAnimationFrame(() => setNow(initialNow));
     const container = scrollRef.current;
     if (container) container.scrollTop = getInitialWeekScrollTop();
     const horizontalContainer = horizontalScrollRef.current;
@@ -201,8 +204,8 @@ function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarIt
       horizontalContainer.scrollLeft = Math.max(0, initialCurrentDayIndexRef.current * 112 - 56);
     }
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    return () => { window.cancelAnimationFrame(frame); window.clearInterval(timer); };
+  }, [dates]);
 
   return <div className="relative"><p id="week-scroll-hint" className="border-b border-stone-100 px-3 py-2 text-xs text-stone-500 md:hidden">Swipe sideways to see all days. Times stay on the left.</p><div ref={horizontalScrollRef} aria-describedby="week-scroll-hint" aria-label="Weekly calendar. Scroll horizontally to see all seven days." className="overflow-x-auto overscroll-x-contain"><div className="min-w-[840px] sm:min-w-[900px]">
     <div className="grid grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))] border-b border-stone-200">

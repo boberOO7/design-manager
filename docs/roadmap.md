@@ -33,6 +33,7 @@
 - [ ] Implement task status updates.
 - [ ] Implement project area progress recording.
 - [ ] Implement project activity history.
+- [ ] Deliver the project-scoped Activity History vertical slice (migration pending deployment).
 - [ ] Implement task-derived project progress and operational health.
 - [ ] Implement controlled project lifecycle workflow.
 

@@ -112,12 +112,22 @@ export function calendarItemTimestamp(item: CalendarItem): number {
   return parseDateOnly(item.startDate).getTime();
 }
 
+function compareCanonical(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export function sortCalendarItems(items: CalendarItem[]): CalendarItem[] {
   return [...items].sort((left, right) => {
-    const day = left.startDate.localeCompare(right.startDate);
+    const day = compareCanonical(left.startDate, right.startDate);
     if (day !== 0) return day;
     if (left.allDay !== right.allDay) return left.allDay ? -1 : 1;
-    return calendarItemTimestamp(left) - calendarItemTimestamp(right) || left.title.localeCompare(right.title);
+    const timestamp = calendarItemTimestamp(left) - calendarItemTimestamp(right);
+    if (timestamp !== 0) return timestamp;
+    const id = compareCanonical(left.id, right.id);
+    if (id !== 0) return id;
+    const source = compareCanonical(left.source, right.source);
+    if (source !== 0) return source;
+    return compareCanonical(left.key, right.key);
   });
 }
 
@@ -158,6 +168,16 @@ export type MonthLayoutSegment = {
   visibleStartDate: string;
   visibleEndDate: string;
 };
+
+/** Returns the compact Month-list projection without mutating the shared item snapshot. */
+export function getMonthMobileDayItems(items: CalendarItem[], segments: MonthLayoutSegment[], date: string, limit = 4): { visible: CalendarItem[]; overflow: number } {
+  const allDayItemKeys = new Set(segments.map((segment) => segment.itemId));
+  const timedItems = getDayItems(items, date).filter((item) => !allDayItemKeys.has(item.key));
+  const startingAllDayItems = segments
+    .filter((segment) => segment.visibleStartDate === date)
+    .map((segment) => segment.item);
+  return getVisibleDayItems([...timedItems, ...startingAllDayItems], date, limit);
+}
 
 export const WEEK_PIXELS_PER_MINUTE = 1;
 export const WEEK_MIN_EVENT_HEIGHT = 18;
