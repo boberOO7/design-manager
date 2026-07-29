@@ -23,6 +23,11 @@ type CalendarBase = {
   personIds: string[];
 };
 
+type CalendarTimeOffSubject = {
+  subjectUserId: string;
+  subjectName: string;
+};
+
 export type CalendarItem =
   | (CalendarBase & {
       source: "calendar_event";
@@ -52,17 +57,13 @@ export type CalendarItem =
         assigneeName: string;
       };
     })
-  | (CalendarBase & {
+  | (CalendarBase & CalendarTimeOffSubject & {
       source: "time_off";
-      userId: string;
-      employeeName: string;
       startTime: string | null;
       endTime: string | null;
     })
-  | (CalendarBase & {
+  | (CalendarBase & CalendarTimeOffSubject & {
       source: "time_off_request_admin";
-      userId: string;
-      employeeName: string;
       requestType: TimeOffRequestType;
       status: TimeOffStatus;
       startTime: string | null;

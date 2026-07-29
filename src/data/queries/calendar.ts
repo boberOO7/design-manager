@@ -2,7 +2,7 @@ import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
-import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import type { CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
@@ -56,7 +56,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const timeOffPromise = supabase
     .from("time_off_requests")
-    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, review_note")
+    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, review_note, subject:profiles!time_off_requests_user_id_fkey!inner(full_name)")
     .eq("studio_id", membership.studio_id)
     .lte("start_date", end)
     .gte("end_date", start)
@@ -99,7 +99,6 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     job_title: membershipRow.profile.job_title,
     projectIds: membershipRow.profile.assignments.filter((assignment) => assignment.is_active).map((assignment) => assignment.project_id),
   })).sort((a, b) => a.full_name.localeCompare(b.full_name));
-  const peopleById = new Map(people.map((person) => [person.id, person]));
   const items: CalendarItem[] = [];
 
   for (const project of projectDeadlinesResult.data ?? []) {
@@ -141,28 +140,24 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   }
 
   for (const request of timeOffResult.data ?? []) {
-    const person = peopleById.get(request.user_id);
-    if (!person || request.status === "cancelled") continue;
-    items.push({
-      source: "time_off_request_admin", key: `time_off_request_admin:${request.id}`, id: request.id,
-      title: request.status === "pending" ? "Pending request" : request.status === "rejected" ? "Rejected request" : "Out of office",
-      startDate: request.start_date, endDate: request.end_date, allDay: request.all_day, projectId: null,
-      personIds: [request.user_id], userId: request.user_id, employeeName: person.full_name,
+    const item = normalizePrivateTimeOff({
+      id: request.id, userId: request.user_id, employeeName: request.subject.full_name,
       requestType: request.request_type as TimeOffRequestType, status: request.status as TimeOffStatus,
-      startTime: request.start_time, endTime: request.end_time, privateNote: request.private_note,
+      startDate: request.start_date, endDate: request.end_date, startTime: request.start_time,
+      endTime: request.end_time, allDay: request.all_day, privateNote: request.private_note,
       reviewNote: request.review_note, reviewedBy: request.reviewed_by, reviewedAt: request.reviewed_at,
-      isOwn: request.user_id === membership.authenticatedUserId,
+      currentUserId: membership.authenticatedUserId,
     });
+    if (item) items.push(item);
   }
 
   for (const availability of coworkerResult.data ?? []) {
-    items.push({
-      source: "time_off", key: `time_off:${availability.id}`, id: availability.id,
-      title: "Out of office", startDate: availability.start_date, endDate: availability.end_date,
-      allDay: availability.all_day, projectId: null, personIds: [availability.user_id],
-      userId: availability.user_id, employeeName: availability.employee_name,
-      startTime: availability.start_time, endTime: availability.end_time,
+    const item = normalizeCoworkerTimeOff({
+      id: availability.id, userId: availability.user_id, employeeName: availability.employee_name,
+      startDate: availability.start_date, endDate: availability.end_date, startTime: availability.start_time,
+      endTime: availability.end_time, allDay: availability.all_day, status: "approved",
     });
+    if (item) items.push(item);
   }
 
   return {

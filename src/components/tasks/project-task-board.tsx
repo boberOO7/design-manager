@@ -32,6 +32,7 @@ import {
   type WritableTaskStatus,
 } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
+import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -75,12 +76,6 @@ function getColumnIdFromDropTarget(id: string | number | undefined): BoardColumn
   return isBoardColumnId(columnId) ? columnId : null;
 }
 
-function priorityClassName(priority: string): string {
-  if (priority === "urgent") return "bg-red-100 text-red-800";
-  if (priority === "high") return "bg-amber-100 text-amber-800";
-  return "bg-stone-100 text-stone-700";
-}
-
 function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string } {
   return typeof value === "object"
     && value !== null
@@ -110,13 +105,13 @@ function TaskCardContent({
           {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-stone-300" aria-hidden="true" /> : null}
           <h4 className="min-w-0 font-medium leading-5 text-stone-900">{task.title}</h4>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${priorityClassName(task.priority)}`}>{getTaskPriorityLabel(task.priority)}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
       </div>
       <p className="mt-2 truncate text-sm text-stone-500">{task.assignee?.full_name ?? "Unassigned"}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
         {task.due_date ? <span>Due {formatDateShort(task.due_date)}</span> : <span>No due date</span>}
         {overdue ? <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700">Overdue</span> : null}
-        {(task.status === "review" || task.status === "cancelled") ? <span className="rounded-full bg-stone-100 px-2 py-0.5">{getTaskStatusLabel(task.status)}</span> : null}
+        {(task.status === "review" || task.status === "cancelled") ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span> : null}
         {isPending ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> Saving

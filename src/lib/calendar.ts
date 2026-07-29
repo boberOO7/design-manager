@@ -154,7 +154,17 @@ export function removeCalendarItem(items: CalendarItem[], key: string): Calendar
 }
 
 export function deduplicateCalendarItems(items: CalendarItem[]): CalendarItem[] {
-  return sortCalendarItems([...new Map(items.map((item) => [item.key, item])).values()]);
+  const uniqueItems = new Map<string, CalendarItem>();
+  for (const item of items) {
+    const identity = item.source === "time_off" || item.source === "time_off_request_admin"
+      ? `time_off:${item.id}`
+      : item.key;
+    const existing = uniqueItems.get(identity);
+    if (!existing || (existing.source === "time_off" && item.source === "time_off_request_admin")) {
+      uniqueItems.set(identity, item);
+    }
+  }
+  return sortCalendarItems([...uniqueItems.values()]);
 }
 
 export function isValidEventRange(startsAt: string, endsAt: string): boolean {
@@ -178,6 +188,11 @@ export function isCoworkerRequestVisible(status: TimeOffStatus): boolean {
   return status === "approved";
 }
 
+export function formatTimeOffAvailabilityTitle(subjectName: string | null | undefined): string {
+  const safeName = subjectName?.trim() || "Team member";
+  return `${safeName} · Out of office`;
+}
+
 export function canAttendCalendarEvent(input: { eventStudioId: string; personStudioId: string; projectId: string | null; eventType: CalendarEventType; personProjectIds: string[] }): boolean {
   if (input.eventStudioId !== input.personStudioId) return false;
   if (input.projectId === null || input.eventType === "meeting" || input.eventType === "client_presentation") return true;
@@ -186,10 +201,15 @@ export function canAttendCalendarEvent(input: { eventStudioId: string; personStu
 
 export function normalizeCoworkerTimeOff(input: { id: string; userId: string; employeeName: string; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; status: TimeOffStatus }): Extract<CalendarItem, { source: "time_off" }> | null {
   if (!isCoworkerRequestVisible(input.status)) return null;
-  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: "Out of office", startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], userId: input.userId, employeeName: input.employeeName, startTime: input.startTime, endTime: input.endTime };
+  const subjectName = input.employeeName.trim() || "Team member";
+  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: formatTimeOffAvailabilityTitle(subjectName), startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, startTime: input.startTime, endTime: input.endTime };
 }
 
 export function normalizePrivateTimeOff(input: { id: string; userId: string; employeeName: string; requestType: TimeOffRequestType; status: TimeOffStatus; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; privateNote: string | null; reviewNote: string | null; reviewedBy: string | null; reviewedAt: string | null; currentUserId: string }): Extract<CalendarItem, { source: "time_off_request_admin" }> | null {
   if (input.status === "cancelled") return null;
-  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title: input.status === "pending" ? "Pending request" : input.status === "rejected" ? "Rejected request" : "Out of office", startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], userId: input.userId, employeeName: input.employeeName, requestType: input.requestType, status: input.status, startTime: input.startTime, endTime: input.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
+  const subjectName = input.employeeName.trim() || "Team member";
+  const title = input.status === "approved"
+    ? formatTimeOffAvailabilityTitle(subjectName)
+    : input.status === "pending" ? "Pending request" : "Rejected request";
+  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title, startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: input.startTime, endTime: input.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
 }

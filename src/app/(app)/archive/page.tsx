@@ -5,6 +5,7 @@ import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getArchivedProjects } from "@/data/queries/archived-projects";
 import { formatDate } from "@/lib/utils";
+import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { restoreProject } from "@/app/(app)/projects/[projectId]/actions";
 import type { Metadata } from "next";
 
@@ -47,6 +48,7 @@ export default async function ArchivePage() {
           {result.projects.map((project) => {
             const canRestore =
               membership?.system_role === "admin" && membership.studio_id === project.studio_id;
+            const lifecycleStyle = getProjectLifecycleBadgeStyle(project.status);
 
             return (
               <div key={project.id} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
@@ -57,7 +59,7 @@ export default async function ArchivePage() {
                     </Link>
                     <p className="text-sm text-stone-500">{project.project_code || project.client_name || "Archived project"}</p>
                   </div>
-                  <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">{project.status}</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${lifecycleStyle.className}`}>{lifecycleStyle.label}</span>
                 </div>
                 {project.description ? <p className="mt-3 text-sm text-stone-600">{project.description}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">

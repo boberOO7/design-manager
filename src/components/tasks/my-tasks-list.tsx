@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { getTaskPriorityLabel, getTaskStatusLabel, groupMyTasks, mergeProjectTask, type MyTaskGroupId } from "@/lib/tasks";
+import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { MyTask, ProjectTask } from "@/types/tasks";
 
@@ -56,10 +57,10 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
                       <h3 className="font-semibold text-stone-900">{task.title}</h3>
                       <Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-stone-500 hover:text-stone-900 hover:underline">{task.project.name}</Link>
                     </div>
-                    <span className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">{getTaskStatusLabel(task.status)}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3 text-sm text-stone-500">
-                    <span>{getTaskPriorityLabel(task.priority)}</span>
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
                     <span>{task.due_date ? `Due ${formatDate(task.due_date)}` : "No due date"}</span>
                   </div>
                 </article>

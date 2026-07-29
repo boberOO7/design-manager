@@ -9,6 +9,7 @@ import { BOARD_COLUMNS, canEditTaskDetails, getTaskPriorityLabel, getTaskStatusL
 import { formatDate } from "@/lib/utils";
 import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
+import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
@@ -193,8 +194,8 @@ export function TaskDetailsDrawer({
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">Task details</p>
               <h2 id="task-details-title" className="mt-1 text-xl font-semibold leading-6 text-stone-950">{task.title}</h2>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-stone-900 px-2.5 py-1 text-xs font-semibold text-white">{getTaskStatusLabel(task.status)}</span>
-                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">{getTaskPriorityLabel(task.priority)}</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
               </div>
             </div>
             <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={requestClose} aria-label="Close task details" className="size-9 shrink-0 p-0">

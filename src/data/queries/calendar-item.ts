@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
-import { instantToDateOnly } from "@/lib/calendar";
+import { instantToDateOnly, normalizePrivateTimeOff } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import type { CalendarItem, CalendarPerson, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
@@ -32,14 +32,12 @@ export async function getNormalizedTimeOffRequest(requestId: string, currentUser
     .eq("id", requestId)
     .maybeSingle();
   if (error || !data || data.status === "cancelled") return null;
-  return {
-    source: "time_off_request_admin", key: `time_off_request_admin:${data.id}`, id: data.id,
-    title: data.status === "pending" ? "Pending request" : data.status === "rejected" ? "Rejected request" : "Out of office",
-    startDate: data.start_date, endDate: data.end_date, allDay: data.all_day, projectId: null,
-    personIds: [data.user_id], userId: data.user_id, employeeName: data.profile.full_name,
+  return normalizePrivateTimeOff({
+    id: data.id, userId: data.user_id, employeeName: data.profile.full_name,
     requestType: data.request_type as TimeOffRequestType, status: data.status as TimeOffStatus,
-    startTime: data.start_time, endTime: data.end_time, privateNote: data.private_note,
+    startDate: data.start_date, endDate: data.end_date, startTime: data.start_time,
+    endTime: data.end_time, allDay: data.all_day, privateNote: data.private_note,
     reviewNote: data.review_note, reviewedBy: data.reviewed_by, reviewedAt: data.reviewed_at,
-    isOwn: data.user_id === currentUserId,
-  };
+    currentUserId,
+  });
 }

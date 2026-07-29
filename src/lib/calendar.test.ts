@@ -49,16 +49,51 @@ describe("Calendar filtering and identity", () => {
     expect(items.map((item) => item.key)).toEqual(["project_deadline:p1", "task_deadline:p1"]); expect(new Set(items.map((item) => item.key)).size).toBe(items.length);
   });
   it("merges local mutations without duplicating an item", () => { expect(mergeCalendarItem([deadline(), deadline()], deadline({ title: "Updated" }))).toHaveLength(1); });
+  it("deduplicates the same absence returned by direct and RPC sources without merging separate people", () => {
+    const direct = normalizePrivateTimeOff({ id: "r1", userId: "u1", employeeName: "Avery", requestType: "vacation", status: "approved", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: "Private", reviewNote: "Reviewed", reviewedBy: "admin", reviewedAt: null, currentUserId: "admin" });
+    const rpcDuplicate = normalizeCoworkerTimeOff({ id: "r1", userId: "u1", employeeName: "Avery", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, status: "approved" });
+    const overlappingPerson = normalizeCoworkerTimeOff({ id: "r2", userId: "u2", employeeName: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, status: "approved" });
+    if (!direct || !rpcDuplicate || !overlappingPerson) throw new Error("Expected normalized absences");
+    const items = deduplicateCalendarItems([rpcDuplicate, direct, overlappingPerson]);
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.title)).toEqual(["Avery · Out of office", "Taylor · Out of office"]);
+    expect(items.find((item) => item.id === "r1")?.source).toBe("time_off_request_admin");
+  });
 });
 
 describe("Calendar privacy and workflow", () => {
   const raw = { id: "r1", userId: "u2", employeeName: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true };
-  it("hides rejected and cancelled requests from coworkers and makes approved availability generic", () => {
+  it("hides rejected and cancelled requests from coworkers and gives approved availability a named generic label", () => {
     expect(normalizeCoworkerTimeOff({ ...raw, status: "rejected" })).toBeNull(); expect(normalizeCoworkerTimeOff({ ...raw, status: "cancelled" })).toBeNull();
-    expect(normalizeCoworkerTimeOff({ ...raw, status: "approved" })).toMatchObject({ title: "Out of office", source: "time_off" });
+    const availability = normalizeCoworkerTimeOff({ ...raw, status: "approved" });
+    expect(availability).toMatchObject({ title: "Taylor · Out of office", source: "time_off" });
+    expect(availability?.title).not.toContain("medical_appointment");
+    expect(availability?.title).not.toContain("Private");
+    expect(availability?.title).not.toContain("review");
+    if (!availability) throw new Error("Expected approved availability");
+    expect(getDayItems([availability], raw.startDate)[0]?.title).toBe("Taylor · Out of office");
   });
   it("retains allowed private fields for the owner/admin detail model", () => {
     expect(normalizePrivateTimeOff({ ...raw, requestType: "medical_appointment", status: "pending", privateNote: "Private", reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "u2" })).toMatchObject({ requestType: "medical_appointment", privateNote: "Private", isOwn: true });
+  });
+  it("uses the absent person's name for own and administrator-visible approved availability", () => {
+    const own = normalizePrivateTimeOff({ ...raw, employeeName: "Vasilios Liakhovskyi", requestType: "vacation", status: "approved", privateNote: "Private", reviewNote: "Reviewed", reviewedBy: "admin-1", reviewedAt: null, currentUserId: "u2" });
+    const adminVisible = normalizePrivateTimeOff({ ...raw, employeeName: "Vasilios Genshin", requestType: "medical_appointment", status: "approved", privateNote: "Medical details", reviewNote: "Reviewed", reviewedBy: "admin-1", reviewedAt: null, currentUserId: "admin-1" });
+    const adminOwn = normalizePrivateTimeOff({ ...raw, id: "r2", userId: "admin-1", employeeName: "Studio Admin", requestType: "day_off", status: "approved", privateNote: null, reviewNote: null, reviewedBy: "admin-1", reviewedAt: null, currentUserId: "admin-1" });
+    expect(own).toMatchObject({ title: "Vasilios Liakhovskyi · Out of office", subjectUserId: "u2", subjectName: "Vasilios Liakhovskyi", isOwn: true });
+    expect(adminVisible).toMatchObject({ title: "Vasilios Genshin · Out of office", subjectName: "Vasilios Genshin", isOwn: false });
+    expect(adminOwn).toMatchObject({ title: "Studio Admin · Out of office", isOwn: true });
+    expect(adminVisible?.title).not.toContain("admin-1");
+    expect(adminVisible?.title).not.toContain("medical_appointment");
+    expect(adminVisible?.title).not.toContain("Medical details");
+    expect(adminVisible?.title).not.toContain("Reviewed");
+  });
+  it("uses the same normalized title for Month, Week, and Agenda inputs and has a safe missing-name fallback", () => {
+    const availability = normalizeCoworkerTimeOff({ ...raw, employeeName: "", status: "approved" });
+    if (!availability) throw new Error("Expected normalized availability");
+    expect(availability.title).toBe("Team member · Out of office");
+    const titles = ["month", "week", "agenda"].map(() => getDayItems([availability], raw.startDate)[0]?.title);
+    expect(titles).toEqual(["Team member · Out of office", "Team member · Out of office", "Team member · Out of office"]);
   });
   it("prevents employees from approving and enforces the transition matrix", () => {
     expect(canTransitionTimeOff("pending", "approved", "employee")).toBe(false); expect(canTransitionTimeOff("pending", "cancelled", "employee")).toBe(true);

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { getEmployeeTasksNeedingAttention, getTodayDate } from "@/lib/dashboard";
 import { getTaskPriorityLabel, getTaskStatusLabel, isTaskOverdue, mergeProjectTask } from "@/lib/tasks";
+import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { MyTask, ProjectTask } from "@/types/tasks";
 
@@ -31,9 +32,9 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
         }} className="cursor-pointer rounded-xl border border-stone-200 p-3 outline-none transition hover:border-stone-300 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-stone-500">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0"><h3 className="truncate font-medium text-stone-900">{task.title}</h3><Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-stone-500 hover:text-stone-900 hover:underline">{task.project.name}</Link></div>
-            <span className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-[11px] font-medium text-stone-700">{getTaskStatusLabel(task.status)}</span>
+            <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-stone-100 px-2 py-1 text-stone-700">{getTaskPriorityLabel(task.priority)}</span>{task.due_date ? <span className={overdue ? "rounded-full bg-red-50 px-2 py-1 font-medium text-red-700" : dueToday ? "rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800" : "rounded-full bg-stone-100 px-2 py-1 text-stone-600"}>{overdue ? "Overdue" : dueToday ? "Due today" : `Due ${formatDate(task.due_date)}`}</span> : null}</div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs"><span className={`rounded-full px-2 py-1 font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>{task.due_date ? <span className={overdue ? "rounded-full bg-red-50 px-2 py-1 font-medium text-red-700" : dueToday ? "rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800" : "rounded-full bg-stone-100 px-2 py-1 text-stone-600"}>{overdue ? "Overdue" : dueToday ? "Due today" : `Due ${formatDate(task.due_date)}`}</span> : null}</div>
         </article>;
       })}
     </div>
