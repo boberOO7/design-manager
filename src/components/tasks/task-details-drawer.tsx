@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { BOARD_COLUMNS, canEditTaskDetails, getTaskPriorityLabel, getTaskStatusLabel, isTaskStatus } from "@/lib/tasks";
 import { formatDate } from "@/lib/utils";
@@ -175,18 +176,11 @@ export function TaskDetailsDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/45" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) requestClose();
-    }}>
-      <style>{"@keyframes task-details-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }"}</style>
+    <Drawer isOpen onClose={requestClose} initialFocusRef={panelRef} title="Task details" className="w-full max-w-[34rem]">
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="task-details-title"
         tabIndex={-1}
-        className="flex h-dvh w-full max-w-[34rem] animate-[task-details-slide-in_180ms_ease-out] flex-col bg-white text-stone-900 shadow-2xl outline-none"
-        onMouseDown={(event) => event.stopPropagation()}
+        className="flex h-dvh flex-col bg-white text-stone-900 outline-none"
       >
         <header className="sticky top-0 z-10 border-b border-stone-100 bg-white px-5 py-4 shadow-sm">
           <div className="flex items-start justify-between gap-4">
@@ -277,6 +271,6 @@ export function TaskDetailsDrawer({
           </div>
         </footer> : null}
       </div>
-    </div>
+    </Drawer>
   );
 }

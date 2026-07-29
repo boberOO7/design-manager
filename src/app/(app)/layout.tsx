@@ -23,10 +23,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-stone-50 text-stone-900">
+      <a href="#main-content" className="sr-only z-[60] rounded-[var(--ui-radius-control)] bg-stone-900 px-4 py-3 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
       <AppSidebar profile={profile} />
       <div className="flex min-h-screen flex-1 flex-col">
         <AppHeader profile={profile} />
-        <main className="flex-1 p-5 lg:p-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 p-5 outline-none lg:p-8">{children}</main>
       </div>
     </div>
   );

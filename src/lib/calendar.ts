@@ -191,14 +191,14 @@ export type MonthLaneLayout = { laneCount: number; overlayHeight: number; itemOf
 export function getMonthLaneLayout(segments: MonthLayoutSegment[], maximumLanes = 3): MonthLaneLayout {
   const laneCount = Math.min(maximumLanes, Math.max(0, ...segments.map((segment) => segment.lane + 1)));
   const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
-  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + 8 };
+  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + MONTH_LANE_GAP };
 }
 
 export function getMonthDateLaneLayout(segments: MonthLayoutSegment[], date: string): MonthLaneLayout {
   const coveringSegments = segments.filter((segment) => segment.visibleStartDate <= date && segment.visibleEndDate >= date);
   const laneCount = Math.max(0, ...coveringSegments.map((segment) => segment.lane + 1));
   const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
-  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + 8 };
+  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + MONTH_LANE_GAP };
 }
 
 function isMonthAllDayItem(item: CalendarItem): boolean {

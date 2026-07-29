@@ -141,11 +141,12 @@ function DraggableTaskCard({
   });
 
   return (
-    <article
+    <button
+      type="button"
       ref={ref}
       role="button"
       tabIndex={isPending ? -1 : 0}
-      aria-label={`Move task ${task.title}. Valid destinations are To do, In progress and Done. Press Space or Enter, then use the arrow keys to choose a column.`}
+      aria-label={`Open task ${task.title}. Drag the card to move it; keyboard drag is also available.`}
       aria-disabled={isPending}
       aria-busy={isPending}
       onClick={() => {
@@ -154,24 +155,22 @@ function DraggableTaskCard({
         }
       }}
       className={cn(
-        "select-none rounded-xl outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2",
+        "w-full select-none rounded-xl text-left outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2",
         isPending ? "cursor-wait" : "cursor-grab active:cursor-grabbing",
         isDragging && "cursor-grabbing opacity-30",
       )}
       style={{ touchAction: "pan-x pan-y" }}
     >
       <TaskCardContent task={task} isPending={isPending} showGrip />
-    </article>
+    </button>
   );
 }
 
 function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId: string) => void }) {
   return (
-    <article role="button" tabIndex={0} onClick={() => onOpen(task.id)} onKeyDown={(event) => {
-      if (event.key === "Enter" || event.key === " ") onOpen(task.id);
-    }} className="cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2">
+    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2" aria-label={`Open task ${task.title}`}>
       <TaskCardContent task={task} />
-    </article>
+    </button>
   );
 }
 

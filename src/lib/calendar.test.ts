@@ -91,6 +91,7 @@ describe("Month spanning layout", () => {
     const [spanning] = getMonthLayoutSegments([absence("spanning", "Taylor", "2026-07-28", "2026-07-30")], dates);
     expect(single).toMatchObject({ startColumn: spanning?.startColumn, columnSpan: 1 });
     expect(MONTH_EVENT_GEOMETRY).toEqual({ horizontalInset: 8, barHeight: 20, laneGap: 2, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2, borderRadius: 6 });
+    expect(MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.laneGap).toBe(22);
     expect(spanning?.endColumn).toBe(4);
     if (!single || !spanning) throw new Error("Expected Month segments");
     expect(getMonthSegmentGeometry(single)).toMatchObject({ leftInset: 8, rightInset: 8, height: 20, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2 });
@@ -136,9 +137,9 @@ describe("Month spanning layout", () => {
     const augFirstAbsence = absence("later", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([longAbsence, augFirstAbsence], dates).filter((segment) => segment.weekIndex === 0);
     expect(segments.map((segment) => [segment.itemId, segment.lane])).toEqual([[longAbsence.key, 0], [augFirstAbsence.key, 1]]);
-    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 50 });
-    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 28 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 50 });
+    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 44 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 22 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 44 });
     expect(getMonthDateLaneLayout(segments, "2026-07-28")).toMatchObject({ laneCount: 0, itemOffset: 8 });
   });
 
@@ -146,8 +147,8 @@ describe("Month spanning layout", () => {
     const first = absence("first", "Avery", "2026-07-29", "2026-08-02");
     const hidden = absence("hidden", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([first, hidden], dates).filter((segment) => segment.weekIndex === 0);
-    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 28 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 50 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 22 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 44 });
   });
 });
 

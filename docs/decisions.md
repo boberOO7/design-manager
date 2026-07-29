@@ -168,3 +168,15 @@
   safe, and return focus to their trigger when closed. They must prevent
   background interaction and provide visible focus states and comfortable touch
   targets.
+- Drawers share one accessibility contract: dialog labelling, focus trap, scroll
+  lock, Escape/backdrop dismissal when safe, a close control, and return focus
+  to the trigger or a stable fallback after mutation. Pending and unsaved-change
+  workflows retain their existing close protection.
+- Related in-page panels use tabs only when they expose tab panels; local modes
+  and filters use segmented buttons with pressed state. Task cards are native
+  buttons: click/Enter opens details, while eligible cards retain whole-card
+  pointer and keyboard drag behavior without nested interactive controls.
+- Authenticated pages expose a skip link and one stable main landmark. Mobile
+  controls target roughly 44px hit areas. Calendar event labels include the
+  event title and applicable date/time/location; current-time decoration is not
+  a keyboard stop. Reduced motion never delays focus or functionality.
