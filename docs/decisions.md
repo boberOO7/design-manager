@@ -75,6 +75,11 @@
   StudioFlow application timezone (`Europe/Kyiv`). Project/task deadlines and
   time-off ranges retain date-only semantics; partial time off is a same-day
   local wall-time interval.
+- Month view renders eligible multi-day all-day items as deterministic,
+  week-local grid segments, reserving compact space only for lanes in use.
+  Week uses the same all-day concepts plus a Europe/Kyiv hourly time grid;
+  timed overlaps receive deterministic horizontal columns and the current-time
+  indicator updates locally once per minute.
 - New project events are limited to planned, active, and paused projects.
   Completed projects must be reopened before receiving a new event; existing
   historical events remain readable and cancellable. Archived projects cannot

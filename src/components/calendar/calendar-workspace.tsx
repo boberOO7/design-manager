@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   APPLICATION_TIME_ZONE, addCalendarDays, filterCalendarItems,
   formatCalendarDateTime, formatCalendarTime, getCalendarRange, getDayItems, getMonthGrid,
-  getVisibleDayItems, itemOccursOn, mergeCalendarItem, parseDateOnly,
+  getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
+  getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getVisibleDayItems, getWeekAllDaySegments,
+  itemOccursOn, mergeCalendarItem, MONTH_EVENT_GEOMETRY, MONTH_LANE_GAP, MONTH_LANE_HEIGHT, parseDateOnly, WEEK_PIXELS_PER_MINUTE,
   removeCalendarItem, startOfMondayWeek, toDateOnly,
 } from "@/lib/calendar";
 import { createCalendarEventFormValues, toCalendarEventMutationPayload } from "@/lib/calendar-event-form";
@@ -47,8 +49,9 @@ function itemTone(item: CalendarItem) {
 }
 function dateLabel(date: string, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) { return new Intl.DateTimeFormat("en-US", options).format(parseDateOnly(date)); }
 
-function CalendarPill({ item, onClick }: { item: CalendarItem; onClick: () => void }) {
-  return <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} className={`w-full truncate rounded-md border-l-2 px-2 py-1 text-left text-xs font-medium ${itemTone(item)}`} title={`${itemLabel(item)}: ${item.title}`}>
+function CalendarPill({ item, month = false, onClick }: { item: CalendarItem; month?: boolean; onClick: () => void }) {
+  const monthStyle = month ? { height: MONTH_EVENT_GEOMETRY.barHeight, paddingInline: MONTH_EVENT_GEOMETRY.textPaddingInline, paddingBlock: MONTH_EVENT_GEOMETRY.verticalPadding, borderRadius: MONTH_EVENT_GEOMETRY.borderRadius, borderLeftWidth: MONTH_EVENT_GEOMETRY.borderInlineStartWidth } : undefined;
+  return <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} className={month ? `w-full truncate overflow-hidden text-left text-xs font-medium leading-5 ${itemTone(item)}` : `w-full truncate rounded-md border-l-2 px-2 py-1 text-left text-xs font-medium ${itemTone(item)}`} style={monthStyle} title={`${itemLabel(item)}: ${item.title}`}>
     <span className="sr-only">{itemLabel(item)}: </span>{!item.allDay && item.source === "calendar_event" ? `${formatCalendarTime(item.startsAt)} ` : ""}{item.title}
   </button>;
 }
@@ -147,14 +150,72 @@ function FilterBar({ data, filters, onChange }: { data: CalendarPageData; filter
 
 function MonthView({ anchor, today, items, onDay, onItem }: { anchor: string; today: string; items: CalendarItem[]; onDay: (date: string) => void; onItem: (item: CalendarItem) => void }) {
   const dates = getMonthGrid(anchor); const month = anchor.slice(0, 7);
+  const segments = getMonthLayoutSegments(items, dates);
+  const visibleLaneCount = 3;
+  const allDayItemKeys = new Set(segments.map((segment) => segment.itemId));
+  const segmentsByWeek = new Map<number, typeof segments>();
+  for (const segment of segments) segmentsByWeek.set(segment.weekIndex, [...(segmentsByWeek.get(segment.weekIndex) ?? []), segment]);
+
   return <><div className="hidden grid-cols-7 border-b border-stone-200 text-center text-xs font-semibold uppercase tracking-wide text-stone-500 md:grid">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-3">{day}</div>)}</div>
-    <div className="hidden grid-cols-7 md:grid">{dates.map((date) => { const { visible, overflow } = getVisibleDayItems(items, date); return <div key={date} className={`min-h-32 border-b border-r border-stone-100 p-2 text-left align-top hover:bg-stone-50 ${date.slice(0, 7) !== month ? "bg-stone-50/60 text-stone-400" : ""}`}><button type="button" onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { month: "long", day: "numeric" })}`} className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold ${date === today ? "bg-stone-900 text-white" : "hover:bg-stone-100"}`}>{Number(date.slice(-2))}</button><div className="mt-1 grid gap-1">{visible.map((item) => <CalendarPill key={item.key} item={item} onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} className="px-2 text-left text-xs font-semibold text-stone-500">+{overflow} more</button> : null}</div></div>; })}</div>
-    <div className="divide-y divide-stone-100 md:hidden">{dates.filter((date) => getDayItems(items, date).length > 0 || date === today).map((date) => { const { visible, overflow } = getVisibleDayItems(items, date, 4); return <div key={date} className="flex w-full gap-4 p-4 text-left"><button type="button" onClick={() => onDay(date)} className="w-12 shrink-0 text-center"><span className="block text-xs font-semibold uppercase text-stone-400">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-stone-900 text-white" : "text-stone-900"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1 space-y-1">{visible.map((item) => <CalendarPill key={item.key} item={item} onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} className="text-xs text-stone-500">+{overflow} more</button> : null}</div></div>; })}</div></>;
+    <div className="hidden md:block">{Array.from({ length: 6 }, (_, weekIndex) => {
+      const weekDates = dates.slice(weekIndex * 7, weekIndex * 7 + 7);
+      const weekSegments = segmentsByWeek.get(weekIndex) ?? [];
+      const laneLayout = getMonthLaneLayout(weekSegments, visibleLaneCount);
+      return <section key={weekDates[0]} className="relative grid grid-cols-7" aria-label={`Week of ${dateLabel(weekDates[0] ?? anchor)}`}>
+        {weekDates.map((date) => {
+          const timedItems = getDayItems(items, date).filter((item) => !allDayItemKeys.has(item.key));
+          const hiddenSpanningItems = new Set(weekSegments.filter((segment) => segment.lane >= visibleLaneCount && segment.visibleStartDate <= date && segment.visibleEndDate >= date).map((segment) => segment.itemId));
+          const overflow = hiddenSpanningItems.size;
+          const dateLaneLayout = getMonthDateLaneLayout(weekSegments, date);
+          return <div key={date} className={`min-h-36 border-b border-r border-stone-100 p-2 text-left align-top hover:bg-stone-50 ${date.slice(0, 7) !== month ? "bg-stone-50/60 text-stone-400" : ""}`}><button type="button" onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { month: "long", day: "numeric" })}`} className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold ${date === today ? "bg-stone-900 text-white" : "hover:bg-stone-100"}`}>{Number(date.slice(-2))}</button><div className="grid" style={{ marginTop: dateLaneLayout.itemOffset, rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{timedItems.map((item) => <CalendarPill key={item.key} item={item} month onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} className="px-2 text-left text-xs font-semibold text-stone-500">+{overflow} more</button> : null}</div></div>;
+        })}
+        <div className="pointer-events-none absolute inset-x-0 top-10 grid grid-cols-7" style={{ gridTemplateRows: `repeat(${laneLayout.laneCount}, ${MONTH_LANE_HEIGHT}px)`, rowGap: MONTH_LANE_GAP }} aria-label="Month all-day calendar items">
+          {weekSegments.filter((segment) => segment.lane < visibleLaneCount).map((segment) => { const geometry = getMonthSegmentGeometry(segment); return <button key={segment.segmentId} type="button" onClick={() => onItem(segment.item)} title={segment.item.title} aria-label={`${segment.item.title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}${segment.continuesBefore ? ", continues from the previous week" : ""}${segment.continuesAfter ? ", continues into the next week" : ""}`} className={`pointer-events-auto min-w-0 overflow-hidden text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-1 ${itemTone(segment.item)}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1, height: geometry.height, marginLeft: geometry.leftInset, marginRight: geometry.rightInset, paddingInline: geometry.textPaddingInline, paddingBlock: geometry.verticalPadding, borderLeftWidth: geometry.borderInlineStartWidth, borderTopLeftRadius: geometry.leftRadius, borderBottomLeftRadius: geometry.leftRadius, borderTopRightRadius: geometry.rightRadius, borderBottomRightRadius: geometry.rightRadius }}><span className="block truncate">{segment.showLabel ? segment.item.title : ""}</span></button>; })}
+        </div>
+      </section>;
+    })}</div>
+    <div className="divide-y divide-stone-100 md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const mobileItems = [...getDayItems(items, date).filter((item) => !allDayItemKeys.has(item.key)), ...segments.filter((segment) => segment.visibleStartDate === date).map((segment) => segment.item)]; const { visible, overflow } = getVisibleDayItems(mobileItems, date, 4); return <div key={date} className="flex w-full gap-4 p-4 text-left"><button type="button" onClick={() => onDay(date)} className="w-12 shrink-0 text-center"><span className="block text-xs font-semibold uppercase text-stone-400">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-stone-900 text-white" : "text-stone-900"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} month onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} className="text-xs text-stone-500">+{overflow} more</button> : null}</div></div>; })}</div></>;
 }
 
 function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void }) {
-  const start = startOfMondayWeek(anchor); const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index));
-  return <div className="grid divide-y divide-stone-100 lg:grid-cols-7 lg:divide-x lg:divide-y-0">{dates.map((date) => { const dayItems = getDayItems(items, date); const allDay = dayItems.filter((item) => item.allDay); const timed = dayItems.filter((item) => !item.allDay); return <section key={date} className="min-h-48 p-3"><h3 className="text-sm font-semibold text-stone-900">{dateLabel(date, { weekday: "short", month: "short", day: "numeric" })}</h3><div className="mt-3 space-y-1">{allDay.map((item) => <CalendarPill key={item.key} item={item} onClick={() => onItem(item)} />)}</div>{timed.length ? <div className="mt-4 border-t border-stone-100 pt-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-stone-400">Timed</p><div className="space-y-2">{timed.map((item) => <CalendarPill key={item.key} item={item} onClick={() => onItem(item)} />)}</div></div> : null}{dayItems.length === 0 ? <p className="mt-4 text-xs text-stone-400">No items</p> : null}</section>; })}</div>;
+  const start = startOfMondayWeek(anchor);
+  const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index));
+  const allDaySegments = getWeekAllDaySegments(items, dates);
+  const allDayLanes = Math.max(1, ...allDaySegments.map((segment) => segment.lane + 1));
+  const timedSegments = getTimedWeekLayout(getTimedWeekSegments(items, dates));
+  const timedByDate = new Map<string, typeof timedSegments>();
+  for (const segment of timedSegments) timedByDate.set(segment.date, [...(timedByDate.get(segment.date) ?? []), segment]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(() => new Date());
+  const currentTime = getCurrentWeekTimePosition(dates, now);
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (container) container.scrollTop = getInitialWeekScrollTop();
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return <div className="overflow-x-auto"><div className="min-w-[900px]">
+    <div className="grid grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))] border-b border-stone-200">
+      <div className="border-r border-stone-100" />
+      {dates.map((date, dayIndex) => <div key={date} className={`border-r border-stone-100 px-2 py-3 text-center text-xs font-semibold ${currentTime?.dayIndex === dayIndex ? "bg-stone-50 text-stone-950" : "text-stone-500"}`}><span className="block uppercase tracking-wide">{dateLabel(date, { weekday: "short" })}</span><span className="mt-1 block text-sm">{dateLabel(date, { month: "short", day: "numeric" })}</span></div>)}
+    </div>
+    <div className="grid grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))] border-b border-stone-200">
+      <div className="border-r border-stone-100 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-stone-400">All-day</div>
+      <div className="relative col-span-7 grid grid-cols-7 gap-y-1 px-1 py-1" style={{ minHeight: allDayLanes * 22 + 8, gridTemplateRows: `repeat(${allDayLanes}, 20px)` }}>
+        {allDaySegments.map((segment) => <button key={segment.segmentId} type="button" onClick={() => onItem(segment.item)} title={segment.item.title} aria-label={`${segment.item.title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-md"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-md"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="block truncate">{segment.item.title}</span></button>)}
+      </div>
+    </div>
+    <div ref={scrollRef} className="max-h-[36rem] overflow-y-auto">
+      <div className="grid grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]">
+        <div className="sticky left-0 z-20 bg-white">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="h-[60px] border-r border-b border-stone-100 pr-2 pt-1 text-right text-[10px] text-stone-400">{String(hour).padStart(2, "0")}:00</div>)}</div>
+        {dates.map((date, dayIndex) => <div key={date} className={`relative border-r border-stone-100 ${dayIndex === currentTime?.dayIndex ? "bg-stone-50/40" : ""}`} style={{ height: 24 * 60 * WEEK_PIXELS_PER_MINUTE, backgroundImage: "repeating-linear-gradient(to bottom, transparent 0, transparent 59px, rgb(245 245 244) 60px)", backgroundSize: `100% ${60 * WEEK_PIXELS_PER_MINUTE}px` }}>
+          {(timedByDate.get(date) ?? []).map((segment) => <button key={segment.segmentId} type="button" onClick={() => onItem(segment.item)} title={segment.item.title} aria-label={`${segment.item.title}, ${formatCalendarTime(segment.item.startsAt)} to ${formatCalendarTime(segment.item.endsAt)}`} className={`absolute overflow-hidden border-l-2 px-2 py-1 text-left text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900 ${itemTone(segment.item)}`} style={{ top: segment.startMinute * WEEK_PIXELS_PER_MINUTE, height: getTimedEventHeight(segment.startMinute, segment.endMinute), left: `calc(${(segment.column / segment.columnCount) * 100}% + 2px)`, width: `calc(${100 / segment.columnCount}% - 4px)` }}><span className="block truncate">{segment.item.title}</span><span className="block truncate text-[10px] font-normal opacity-80">{formatCalendarTime(segment.item.startsAt)}–{formatCalendarTime(segment.item.endsAt)}{segment.item.location ? ` · ${segment.item.location}` : ""}</span></button>)}
+          {currentTime?.dayIndex === dayIndex ? <div className="pointer-events-none absolute z-10 inset-x-0 border-t-2 border-red-500" style={{ top: currentTime.minute * WEEK_PIXELS_PER_MINUTE }} role="status" aria-label={`Current time: ${String(Math.floor(currentTime.minute / 60)).padStart(2, "0")}:${String(currentTime.minute % 60).padStart(2, "0")} Kyiv`}><span className="absolute -left-1 -top-1.5 size-3 rounded-full bg-red-500" /></div> : null}
+        </div>)}
+      </div>
+    </div>
+  </div></div>;
 }
 
 function AgendaView({ start, items, onItem }: { start: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void }) {

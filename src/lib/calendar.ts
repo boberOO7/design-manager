@@ -143,6 +143,225 @@ export function getVisibleDayItems(items: CalendarItem[], date: string, limit = 
   return { visible: dayItems.slice(0, limit), overflow: Math.max(0, dayItems.length - limit) };
 }
 
+export type MonthLayoutSegment = {
+  itemId: string;
+  segmentId: string;
+  item: CalendarItem;
+  weekIndex: number;
+  startColumn: number;
+  endColumn: number;
+  columnSpan: number;
+  lane: number;
+  continuesBefore: boolean;
+  continuesAfter: boolean;
+  showLabel: boolean;
+  visibleStartDate: string;
+  visibleEndDate: string;
+};
+
+export const WEEK_PIXELS_PER_MINUTE = 1;
+export const WEEK_MIN_EVENT_HEIGHT = 18;
+export const MONTH_EVENT_GEOMETRY = {
+  horizontalInset: 8,
+  barHeight: 20,
+  laneGap: 2,
+  textPaddingInline: 8,
+  verticalPadding: 0,
+  borderInlineStartWidth: 2,
+  borderRadius: 6,
+} as const;
+export const MONTH_LANE_HEIGHT = MONTH_EVENT_GEOMETRY.barHeight;
+export const MONTH_LANE_GAP = MONTH_EVENT_GEOMETRY.laneGap;
+
+export function getMonthSegmentGeometry(segment: Pick<MonthLayoutSegment, "continuesBefore" | "continuesAfter">) {
+  return {
+    leftInset: segment.continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
+    rightInset: segment.continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
+    height: MONTH_EVENT_GEOMETRY.barHeight,
+    textPaddingInline: MONTH_EVENT_GEOMETRY.textPaddingInline,
+    verticalPadding: MONTH_EVENT_GEOMETRY.verticalPadding,
+    borderInlineStartWidth: MONTH_EVENT_GEOMETRY.borderInlineStartWidth,
+    leftRadius: segment.continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
+    rightRadius: segment.continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
+  };
+}
+
+export type MonthLaneLayout = { laneCount: number; overlayHeight: number; itemOffset: number };
+
+export function getMonthLaneLayout(segments: MonthLayoutSegment[], maximumLanes = 3): MonthLaneLayout {
+  const laneCount = Math.min(maximumLanes, Math.max(0, ...segments.map((segment) => segment.lane + 1)));
+  const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
+  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + 8 };
+}
+
+export function getMonthDateLaneLayout(segments: MonthLayoutSegment[], date: string): MonthLaneLayout {
+  const coveringSegments = segments.filter((segment) => segment.visibleStartDate <= date && segment.visibleEndDate >= date);
+  const laneCount = Math.max(0, ...coveringSegments.map((segment) => segment.lane + 1));
+  const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
+  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + 8 };
+}
+
+function isMonthAllDayItem(item: CalendarItem): boolean {
+  return item.allDay;
+}
+
+/** Splits every all-day item into week-local, deterministic grid segments for Month view. */
+export function getMonthLayoutSegments(items: CalendarItem[], dates: string[]): MonthLayoutSegment[] {
+  if (dates.length !== 42) throw new Error("Month layout requires exactly 42 dates");
+  const visibleStart = dates[0];
+  const visibleEnd = dates[dates.length - 1];
+  if (!visibleStart || !visibleEnd) return [];
+
+  const segments = items
+    .filter(isMonthAllDayItem)
+    .filter((item) => item.endDate >= visibleStart && item.startDate <= visibleEnd)
+    .flatMap((item) => {
+      const clippedStart = item.startDate < visibleStart ? visibleStart : item.startDate;
+      const clippedEnd = item.endDate > visibleEnd ? visibleEnd : item.endDate;
+      const startIndex = dates.indexOf(clippedStart);
+      const endIndex = dates.indexOf(clippedEnd);
+      if (startIndex < 0 || endIndex < 0) return [];
+
+      const itemSegments: MonthLayoutSegment[] = [];
+      for (let weekIndex = Math.floor(startIndex / 7); weekIndex <= Math.floor(endIndex / 7); weekIndex += 1) {
+        const weekStartIndex = weekIndex * 7;
+        const segmentStartIndex = Math.max(startIndex, weekStartIndex);
+        const segmentEndIndex = Math.min(endIndex, weekStartIndex + 6);
+        const segmentStart = dates[segmentStartIndex];
+        const segmentEnd = dates[segmentEndIndex];
+        if (!segmentStart || !segmentEnd) continue;
+        itemSegments.push({
+          itemId: item.key,
+          segmentId: `${item.key}:${weekIndex}:${segmentStart}:${segmentEnd}`,
+          item,
+          weekIndex,
+          startColumn: segmentStartIndex - weekStartIndex + 1,
+          endColumn: segmentEndIndex - weekStartIndex + 1,
+          columnSpan: segmentEndIndex - segmentStartIndex + 1,
+          lane: 0,
+          continuesBefore: item.startDate < segmentStart,
+          continuesAfter: item.endDate > segmentEnd,
+          showLabel: true,
+          visibleStartDate: segmentStart,
+          visibleEndDate: segmentEnd,
+        });
+      }
+      return itemSegments;
+    });
+
+  const byWeek = new Map<number, MonthLayoutSegment[]>();
+  for (const segment of segments) byWeek.set(segment.weekIndex, [...(byWeek.get(segment.weekIndex) ?? []), segment]);
+
+  return [...byWeek.entries()].flatMap(([, weekSegments]) => {
+    const laneEnds: number[] = [];
+    return [...weekSegments]
+      .sort((left, right) => left.visibleStartDate.localeCompare(right.visibleStartDate)
+        || right.columnSpan - left.columnSpan
+        || left.itemId.localeCompare(right.itemId))
+      .map((segment) => {
+        const lane = laneEnds.findIndex((endColumn) => endColumn < segment.startColumn);
+        const assignedLane = lane === -1 ? laneEnds.length : lane;
+        laneEnds[assignedLane] = segment.endColumn;
+        return { ...segment, lane: assignedLane };
+      });
+  });
+}
+
+export function getWeekAllDaySegments(items: CalendarItem[], dates: string[]): MonthLayoutSegment[] {
+  if (dates.length !== 7) throw new Error("Week all-day layout requires exactly 7 dates");
+  const visibleStart = dates[0];
+  const visibleEnd = dates[dates.length - 1];
+  if (!visibleStart || !visibleEnd) return [];
+
+  const segments = items.filter((item) => item.allDay && item.endDate >= visibleStart && item.startDate <= visibleEnd).map((item) => {
+    const visibleStartDate = item.startDate < visibleStart ? visibleStart : item.startDate;
+    const visibleEndDate = item.endDate > visibleEnd ? visibleEnd : item.endDate;
+    const startColumn = dates.indexOf(visibleStartDate) + 1;
+    const endColumn = dates.indexOf(visibleEndDate) + 1;
+    return {
+      itemId: item.key, segmentId: `${item.key}:week:${visibleStartDate}:${visibleEndDate}`, item, weekIndex: 0,
+      startColumn, endColumn, columnSpan: endColumn - startColumn + 1, lane: 0,
+      continuesBefore: item.startDate < visibleStartDate, continuesAfter: item.endDate > visibleEndDate,
+      showLabel: true, visibleStartDate, visibleEndDate,
+    };
+  });
+
+  const laneEnds: number[] = [];
+  return segments.sort((left, right) => left.visibleStartDate.localeCompare(right.visibleStartDate)
+    || right.columnSpan - left.columnSpan || left.itemId.localeCompare(right.itemId)).map((segment) => {
+    const lane = laneEnds.findIndex((endColumn) => endColumn < segment.startColumn);
+    const assignedLane = lane === -1 ? laneEnds.length : lane;
+    laneEnds[assignedLane] = segment.endColumn;
+    return { ...segment, lane: assignedLane };
+  });
+}
+
+type KyivDateTime = { date: string; minute: number };
+
+function getKyivDateTime(value: string | Date): KyivDateTime {
+  const parts = zonedParts(value instanceof Date ? value : new Date(value));
+  return { date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`, minute: parts.hour * 60 + parts.minute };
+}
+
+export type TimedWeekSegment = { itemId: string; segmentId: string; item: Extract<CalendarItem, { source: "calendar_event" }>; date: string; startMinute: number; endMinute: number };
+export type TimedWeekLayoutSegment = TimedWeekSegment & { column: number; columnCount: number };
+
+export function getTimedWeekSegments(items: CalendarItem[], dates: string[]): TimedWeekSegment[] {
+  const visibleDates = new Set(dates);
+  return items.flatMap((item) => {
+    if (item.source !== "calendar_event" || item.allDay) return [];
+    const start = getKyivDateTime(item.startsAt);
+    const end = getKyivDateTime(item.endsAt);
+    const lastDate = end.minute === 0 ? addCalendarDays(end.date, -1) : end.date;
+    const result: TimedWeekSegment[] = [];
+    for (let date = start.date; date <= lastDate; date = addCalendarDays(date, 1)) {
+      if (!visibleDates.has(date)) continue;
+      const startMinute = date === start.date ? start.minute : 0;
+      const endMinute = date === end.date ? end.minute : 24 * 60;
+      if (endMinute > startMinute) result.push({ itemId: item.key, segmentId: `${item.key}:timed:${date}`, item, date, startMinute, endMinute });
+    }
+    return result;
+  });
+}
+
+export function getTimedWeekLayout(segments: TimedWeekSegment[]): TimedWeekLayoutSegment[] {
+  const byDate = new Map<string, TimedWeekSegment[]>();
+  for (const segment of segments) byDate.set(segment.date, [...(byDate.get(segment.date) ?? []), segment]);
+  return [...byDate.values()].flatMap((daySegments) => {
+    const ordered = [...daySegments].sort((left, right) => left.startMinute - right.startMinute || (right.endMinute - right.startMinute) - (left.endMinute - left.startMinute) || left.itemId.localeCompare(right.itemId));
+    const clusters: TimedWeekSegment[][] = [];
+    let cluster: TimedWeekSegment[] = [];
+    let clusterEnd = -1;
+    for (const segment of ordered) {
+      if (cluster.length && segment.startMinute >= clusterEnd) { clusters.push(cluster); cluster = []; clusterEnd = -1; }
+      cluster.push(segment); clusterEnd = Math.max(clusterEnd, segment.endMinute);
+    }
+    if (cluster.length) clusters.push(cluster);
+    return clusters.flatMap((group) => {
+      const laneEnds: number[] = [];
+      const assigned = group.map((segment) => {
+        const column = laneEnds.findIndex((endMinute) => endMinute <= segment.startMinute);
+        const assignedColumn = column === -1 ? laneEnds.length : column;
+        laneEnds[assignedColumn] = segment.endMinute;
+        return { segment, column: assignedColumn };
+      });
+      return assigned.map(({ segment, column }) => ({ ...segment, column, columnCount: laneEnds.length }));
+    });
+  });
+}
+
+export function getTimedEventHeight(startMinute: number, endMinute: number, pixelsPerMinute = WEEK_PIXELS_PER_MINUTE, minimumHeight = WEEK_MIN_EVENT_HEIGHT): number {
+  return Math.max(minimumHeight, (endMinute - startMinute) * pixelsPerMinute);
+}
+
+export function getInitialWeekScrollTop(pixelsPerMinute = WEEK_PIXELS_PER_MINUTE): number { return 8 * 60 * pixelsPerMinute; }
+
+export function getCurrentWeekTimePosition(dates: string[], now: Date): { dayIndex: number; minute: number } | null {
+  const current = getKyivDateTime(now);
+  const dayIndex = dates.indexOf(current.date);
+  return dayIndex === -1 ? null : { dayIndex, minute: current.minute };
+}
+
 export function mergeCalendarItem(items: CalendarItem[], updated: CalendarItem): CalendarItem[] {
   const map = new Map(items.map((item) => [item.key, item]));
   map.set(updated.key, updated);
