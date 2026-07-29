@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types";
 import type { ProjectTaskForProgress } from "@/lib/project-progress";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectListRow = Pick<ProjectRow, "id" | "name" | "project_code" | "client_name" | "description" | "status" | "due_date" | "archived_at">;
+type ProjectListRow = Pick<ProjectRow, "id" | "name" | "project_code" | "client_name" | "description" | "status" | "priority" | "due_date" | "archived_at">;
 
 export type AccessibleProjectWithTasks = ProjectListRow & { tasks: ProjectTaskForProgress[] };
 
@@ -14,7 +14,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const supabase = await createClient();
   const { data: projects, error: projectsError } = await supabase
     .from("projects")
-    .select("id, name, project_code, client_name, description, status, due_date, archived_at")
+    .select("id, name, project_code, client_name, description, status, priority, due_date, archived_at")
     .is("archived_at", null)
     .neq("status", "archived")
     .order("start_date", { ascending: false })

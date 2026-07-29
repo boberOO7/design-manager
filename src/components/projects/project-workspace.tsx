@@ -1,49 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
+import { ProjectContextBand, type ProjectContextProject } from "@/components/projects/project-context-band";
 import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
-import { calculatePersonalProgress, calculateProjectProgress, getProjectHealth, getProjectHealthLabel } from "@/lib/project-progress";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
-import { formatDateOnly } from "@/lib/utils";
-import { getProjectHealthBadgeStyle, getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
+import { getProjectTaskSnapshotUpdate } from "@/lib/tasks";
 import type { ProjectTask } from "@/types/tasks";
 
 export function ProjectWorkspace({
-  canCreate, canManageTasks, currentUserId, initialTaskId, isEmployee, isProjectReadOnly, members, project, tasks,
+  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, tasks,
 }: {
+  archiveAction: (formData: FormData) => Promise<void>;
   canCreate: boolean;
+  canManage: boolean;
   canManageTasks: boolean;
   currentUserId: string;
   initialTaskId?: string;
-  isEmployee: boolean;
+  isArchived: boolean;
   isProjectReadOnly: boolean;
   members: AssignableProjectMember[];
-  project: { id: string; status: string; due_date: string | null };
+  navigation: ReactNode;
+  project: ProjectContextProject;
+  restoreAction: (formData: FormData) => Promise<void>;
   tasks: ProjectTask[];
 }) {
-  const [currentTasks, setCurrentTasks] = useState(tasks);
+  const [contextTasks, setContextTasks] = useState(tasks);
   const { status, setStatus } = useProjectLifecycle();
-  const progress = calculateProjectProgress(currentTasks);
-  const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
-  const personal = calculatePersonalProgress(currentTasks, currentUserId);
-
+  const handleBoardTasksChange = useCallback((nextTasks: ProjectTask[]) => {
+    setContextTasks((currentTasks) => getProjectTaskSnapshotUpdate(currentTasks, nextTasks));
+  }, []);
   return <>
-    <section aria-labelledby="project-overview-heading" className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 id="project-overview-heading" className="font-semibold text-stone-900">Project overview</h2><p className="mt-1 text-sm text-stone-500">Task-derived progress and operational health.</p></div>
-        {!isProjectReadOnly ? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getProjectHealthBadgeStyle(health.health).className}`}>{getProjectHealthLabel(health.health)}</span> : <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getProjectLifecycleBadgeStyle("archived").className}`}>Archived</span>}
-      </div>
-      <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
-        <div><p className="text-stone-500">Progress</p>{progress.progressPercent === null ? <p className="mt-1 font-medium text-stone-700">No tasks yet</p> : <><p className="mt-1 font-semibold text-stone-900">{progress.progressPercent}%</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100" role="progressbar" aria-label={`Project progress: ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="h-full rounded-full bg-stone-900" style={{ width: `${progress.progressPercent}%` }} /></div></>}</div>
-        <div><p className="text-stone-500">Tasks</p><p className="mt-1 font-medium text-stone-900">{progress.openTaskCount} open · {progress.completedTaskCount} completed</p></div>
-        <div><p className="text-stone-500">Overdue</p><p className="mt-1 font-medium text-stone-900">{progress.overdueTaskCount}</p></div>
-        <div><p className="text-stone-500">Deadline</p><p className="mt-1 font-medium text-stone-900">{project.due_date ? formatDateOnly(project.due_date) : "No deadline"}</p></div>
-        <div><p className="text-stone-500">Next task due</p><p className="mt-1 font-medium text-stone-900">{progress.nearestOpenTaskDueDate ? formatDateOnly(progress.nearestOpenTaskDueDate) : "No open due date"}</p></div>
-      </div>
-      {health.reason && !isProjectReadOnly ? <p className="mt-4 text-sm font-medium text-stone-700">{health.reason}</p> : null}
-      {isEmployee ? <div className="mt-4 border-t border-stone-100 pt-4 text-sm"><p className="font-medium text-stone-900">Your tasks</p><p className="mt-1 text-stone-600">{personal.eligibleTaskCount === 0 ? "No tasks assigned to you" : `${personal.completedTaskCount} of ${personal.eligibleTaskCount} completed · ${personal.progressPercent}%`}</p></div> : null}
-    </section>
-    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={setCurrentTasks} />
+    <ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} />
+    {navigation}
+    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;
 }

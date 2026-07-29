@@ -281,11 +281,16 @@ export function ProjectTaskBoard({
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
+  const onTasksChangeRef = useRef(onTasksChange);
+
+  useEffect(() => {
+    onTasksChangeRef.current = onTasksChange;
+  }, [onTasksChange]);
 
   useEffect(() => {
     localTasksRef.current = localTasks;
-    onTasksChange?.(localTasks);
-  }, [localTasks, onTasksChange]);
+    onTasksChangeRef.current?.(localTasks);
+  }, [localTasks]);
 
   useEffect(() => {
     setLocalTasks((currentTasks) => {

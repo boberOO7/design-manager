@@ -24,6 +24,7 @@
 - [x] Implement project editing.
 - [x] Implement project archive and restore.
 - [x] Implement project-member assignment.
+- [ ] Complete the Projects presentation milestone: operational desktop list and responsive project cards.
 
 ## Tasks and progress
 

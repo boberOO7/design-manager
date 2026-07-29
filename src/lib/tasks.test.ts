@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   canMoveTask,
   canEditTaskDetails,
+  areProjectTaskSnapshotsEqual,
   getBoardColumn,
   getTaskStatusForDrop,
   getWritableStatusForBoardColumn,
+  getProjectTaskSnapshotUpdate,
   groupTasksByBoardColumn,
   groupMyTasks,
   isTaskOverdue,
@@ -171,6 +173,54 @@ describe("optimistic task Board state", () => {
 
     expect(reconciledTasks).toHaveLength(1);
     expect(reconciledTasks[0]?.status).toBe("completed");
+  });
+
+  it("preserves the local array reference for unchanged server tasks", () => {
+    const currentTasks = [makeTask({ id: "task-1" })];
+    const serverTasks = [makeTask({ id: "task-1" })];
+    expect(reconcileProjectTasks(serverTasks, currentTasks, new Set(), new Map())).toBe(currentTasks);
+  });
+
+  it("does not repeat a mount snapshot update after Board and Workspace agree", () => {
+    const initialTasks = [makeTask({ id: "task-1" })];
+    const boardEmission = [makeTask({ id: "task-1" })];
+    const contextTasks = getProjectTaskSnapshotUpdate(initialTasks, boardEmission);
+    expect(getProjectTaskSnapshotUpdate(contextTasks, boardEmission)).toBe(contextTasks);
+  });
+
+  it("does not create a parent snapshot update for semantically identical Board tasks", () => {
+    const currentTasks = [makeTask({ id: "task-1" })];
+    const nextTasks = [makeTask({ id: "task-1" })];
+    expect(areProjectTaskSnapshotsEqual(currentTasks, nextTasks)).toBe(true);
+    expect(getProjectTaskSnapshotUpdate(currentTasks, nextTasks)).toBe(currentTasks);
+  });
+
+  it("emits one distinct snapshot for an optimistic drag and one for its rollback", () => {
+    const initialTasks = [makeTask({ id: "task-1", status: "todo" })];
+    const optimisticTasks = setProjectTaskStatus(initialTasks, "task-1", "completed");
+    const rolledBackTasks = setProjectTaskStatus(optimisticTasks, "task-1", "todo");
+    expect(getProjectTaskSnapshotUpdate(initialTasks, optimisticTasks)).toBe(optimisticTasks);
+    expect(getProjectTaskSnapshotUpdate(optimisticTasks, optimisticTasks)).toBe(optimisticTasks);
+    expect(getProjectTaskSnapshotUpdate(optimisticTasks, rolledBackTasks)).toBe(rolledBackTasks);
+  });
+
+  it("keeps a confirmed optimistic move stable until refreshed server data agrees", () => {
+    const serverTasks = [makeTask({ id: "task-1", status: "todo" })];
+    const optimisticTasks = setProjectTaskStatus(serverTasks, "task-1", "completed");
+    const reconciledTasks = reconcileProjectTasks(serverTasks, optimisticTasks, new Set(), new Map<string, "completed">([["task-1", "completed"]]));
+    expect(reconciledTasks).toBe(optimisticTasks);
+  });
+
+  it("updates a derived context snapshot for task edits without requiring server reconciliation", () => {
+    const currentTasks = [makeTask({ id: "task-1", title: "Draft" })];
+    const editedTasks = mergeProjectTask(currentTasks, makeTask({ id: "task-1", title: "Approved" }));
+    expect(getProjectTaskSnapshotUpdate(currentTasks, editedTasks)).toBe(editedTasks);
+  });
+
+  it("updates a derived context snapshot when a new task is added without a Board refetch", () => {
+    const currentTasks = [makeTask({ id: "task-1" })];
+    const createdTasks = [...currentTasks, makeTask({ id: "task-2", title: "New task" })];
+    expect(getProjectTaskSnapshotUpdate(currentTasks, createdTasks)).toBe(createdTasks);
   });
 
   it("deduplicates tasks while reconciling refreshed server props", () => {

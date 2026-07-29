@@ -136,12 +136,14 @@ export function setProjectTaskStatus(
   taskId: string,
   status: ProjectTask["status"],
 ): ProjectTask[] {
-  return tasks.map((task) => task.id === taskId ? { ...task, status } : task);
+  const task = tasks.find((item) => item.id === taskId);
+  if (!task || task.status === status) return tasks;
+  return tasks.map((item) => item.id === taskId ? { ...item, status } : item);
 }
 
 export function mergeProjectTask<T extends ProjectTask>(tasks: T[], updatedTask: ProjectTask): T[] {
   const taskIds = new Set<string>();
-  return tasks.flatMap((task) => {
+  const merged = tasks.flatMap((task) => {
     if (task.id === updatedTask.id) {
       if (taskIds.has(task.id)) return [];
       taskIds.add(task.id);
@@ -151,6 +153,43 @@ export function mergeProjectTask<T extends ProjectTask>(tasks: T[], updatedTask:
     taskIds.add(task.id);
     return [task];
   });
+  return areProjectTaskSnapshotsEqual(tasks, merged) ? tasks : merged;
+}
+
+function areTaskPeopleEqual(
+  left: ProjectTask["assignee"],
+  right: ProjectTask["assignee"],
+): boolean {
+  return left?.id === right?.id
+    && left?.full_name === right?.full_name
+    && left?.job_title === right?.job_title;
+}
+
+function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
+  return left.id === right.id
+    && left.project_id === right.project_id
+    && left.title === right.title
+    && left.description === right.description
+    && left.status === right.status
+    && left.priority === right.priority
+    && left.assignee_id === right.assignee_id
+    && left.due_date === right.due_date
+    && left.completed_at === right.completed_at
+    && left.created_at === right.created_at
+    && left.created_by === right.created_by
+    && areTaskPeopleEqual(left.assignee, right.assignee)
+    && areTaskPeopleEqual(left.creator, right.creator);
+}
+
+export function areProjectTaskSnapshotsEqual(left: readonly ProjectTask[], right: readonly ProjectTask[]): boolean {
+  return left === right || (left.length === right.length && left.every((task, index) => {
+    const other = right[index];
+    return other !== undefined && areProjectTasksEqual(task, other);
+  }));
+}
+
+export function getProjectTaskSnapshotUpdate(currentTasks: ProjectTask[], nextTasks: ProjectTask[]): ProjectTask[] {
+  return areProjectTaskSnapshotsEqual(currentTasks, nextTasks) ? currentTasks : nextTasks;
 }
 
 export function shouldOpenTaskDrawer(dragWasActivated: boolean): boolean {
@@ -188,7 +227,7 @@ export function reconcileProjectTasks(
     }
   }
 
-  return reconciledTasks;
+  return getProjectTaskSnapshotUpdate(currentTasks, reconciledTasks);
 }
 
 export function groupMyTasks(

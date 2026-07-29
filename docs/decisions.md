@@ -181,6 +181,10 @@
   workload remains operational context rather than employee scoring. Supporting
   Dashboard information uses quieter bordered lists, and empty Dashboard states
   stay compact rather than creating oversized panels.
+- Desktop Projects uses an operational list while mobile retains responsive
+  project cards. Project health and lifecycle remain separate signals, projects
+  without eligible tasks show “No tasks yet” rather than a misleading progress
+  bar, and default ordering prioritizes operational risk.
 - Authenticated pages expose a skip link and one stable main landmark. Mobile
   controls target roughly 44px hit areas. Calendar event labels include the
   event title and applicable date/time/location; current-time decoration is not
