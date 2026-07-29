@@ -410,8 +410,8 @@
     "semantic_hash": "3385de99bab4f3bbc60079dddd4c84ee"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1785362809.1297498,
-    "ast_hash": "69b82ebe5a735375eb9f63491d5e7908",
+    "mtime": 1785364633.5616415,
+    "ast_hash": "dd669e138fab78ab709762980802949c",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -545,14 +545,14 @@
     "semantic_hash": "d86444844a1ef439329cce33f909f709"
   },
   "src/components/ui/button.tsx": {
-    "mtime": 1785327987.0457263,
-    "ast_hash": "dae892190afd00fb4275a2bedbfbd382",
-    "semantic_hash": "dae892190afd00fb4275a2bedbfbd382"
+    "mtime": 1785363381.7457156,
+    "ast_hash": "ac1e861ab2e5a3515785060ea679ae1f",
+    "semantic_hash": ""
   },
   "src/components/ui/drawer.tsx": {
-    "mtime": 1785329364.621643,
-    "ast_hash": "2da8822bc7e1e00897e734f2314350a0",
-    "semantic_hash": "2da8822bc7e1e00897e734f2314350a0"
+    "mtime": 1785363532.5417066,
+    "ast_hash": "22ca9b54e0390e694d5c057444743c7e",
+    "semantic_hash": ""
   },
   "src/components/ui/empty-state.tsx": {
     "mtime": 1785330740.48556,
@@ -560,9 +560,9 @@
     "semantic_hash": "ae9dbe520d2b938aebdbeef2f51afa23"
   },
   "src/components/ui/form-field.tsx": {
-    "mtime": 1785327987.2857263,
-    "ast_hash": "5bca8310eb58ba3550a7cb4cb5cf5a7f",
-    "semantic_hash": "5bca8310eb58ba3550a7cb4cb5cf5a7f"
+    "mtime": 1785363381.5857158,
+    "ast_hash": "f46e11dbe63e19eb0480ba58b701626d",
+    "semantic_hash": ""
   },
   "src/components/ui/panel.tsx": {
     "mtime": 1785327987.1577263,
@@ -745,13 +745,13 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1785362786.7577512,
-    "ast_hash": "4e407af229de6ee7aeacede50708c3d9",
+    "mtime": 1785365566.4655862,
+    "ast_hash": "dca31bb14726fc8d940c2081957c3633",
     "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1785362824.3297489,
-    "ast_hash": "7950b31581fbee15778083765ec47a29",
+    "mtime": 1785365548.7215874,
+    "ast_hash": "8db704338eca98f113eb47946d272c34",
     "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
@@ -1527,6 +1527,16 @@
   "supabase/migrations/20260729200758_project_activity_history.sql": {
     "mtime": 1785355748.4741683,
     "ast_hash": "9ab13f67caa45dbf78bda84893c1a6af",
+    "semantic_hash": ""
+  },
+  "src/components/ui/drawer.test.ts": {
+    "mtime": 1785363532.6977067,
+    "ast_hash": "d52bcd05d875d3f33d147e2ed67e0cb2",
+    "semantic_hash": ""
+  },
+  "src/components/ui/form-field.test.ts": {
+    "mtime": 1785363532.8257067,
+    "ast_hash": "cffcf51c62570bb3a496c500930aa549",
     "semantic_hash": ""
   }
 }

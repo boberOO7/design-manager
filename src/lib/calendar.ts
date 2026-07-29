@@ -323,22 +323,57 @@ function getKyivDateTime(value: string | Date): KyivDateTime {
   return { date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`, minute: parts.hour * 60 + parts.minute };
 }
 
-export type TimedWeekSegment = { itemId: string; segmentId: string; item: Extract<CalendarItem, { source: "calendar_event" }>; date: string; startMinute: number; endMinute: number };
+type TimedWeekItem = Extract<CalendarItem, { source: "calendar_event" | "time_off" | "time_off_request_admin" }>;
+
+export type TimedWeekSegment = { itemId: string; segmentId: string; item: TimedWeekItem; date: string; startMinute: number; endMinute: number };
 export type TimedWeekLayoutSegment = TimedWeekSegment & { column: number; columnCount: number };
+
+export function normalizeCalendarTime(value: string | null): string | null {
+  if (value === null) return null;
+  const match = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  return hour <= 23 && minute <= 59 ? `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` : null;
+}
+
+export function getTimeOffTemporalSemantics(input: { allDay: boolean; startTime: string | null; endTime: string | null }) {
+  if (input.allDay) return { allDay: true, startTime: null, endTime: null };
+  return { allDay: false, startTime: normalizeCalendarTime(input.startTime), endTime: normalizeCalendarTime(input.endTime) };
+}
+
+function timeToMinute(value: string): number | null {
+  const normalized = normalizeCalendarTime(value);
+  if (!normalized) return null;
+  const [hour, minute] = normalized.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function getTimedWeekItemRange(item: CalendarItem): { item: TimedWeekItem; start: KyivDateTime; end: KyivDateTime } | null {
+  if (item.source === "calendar_event") {
+    if (item.allDay) return null;
+    return { item, start: getKyivDateTime(item.startsAt), end: getKyivDateTime(item.endsAt) };
+  }
+  if ((item.source !== "time_off" && item.source !== "time_off_request_admin") || item.allDay || !item.startTime || !item.endTime) return null;
+  const startMinute = timeToMinute(item.startTime);
+  const endMinute = timeToMinute(item.endTime);
+  if (startMinute === null || endMinute === null || item.startDate !== item.endDate || endMinute <= startMinute) return null;
+  return { item, start: { date: item.startDate, minute: startMinute }, end: { date: item.endDate, minute: endMinute } };
+}
 
 export function getTimedWeekSegments(items: CalendarItem[], dates: string[]): TimedWeekSegment[] {
   const visibleDates = new Set(dates);
   return items.flatMap((item) => {
-    if (item.source !== "calendar_event" || item.allDay) return [];
-    const start = getKyivDateTime(item.startsAt);
-    const end = getKyivDateTime(item.endsAt);
+    const range = getTimedWeekItemRange(item);
+    if (!range) return [];
+    const { item: timedItem, start, end } = range;
     const lastDate = end.minute === 0 ? addCalendarDays(end.date, -1) : end.date;
     const result: TimedWeekSegment[] = [];
     for (let date = start.date; date <= lastDate; date = addCalendarDays(date, 1)) {
       if (!visibleDates.has(date)) continue;
       const startMinute = date === start.date ? start.minute : 0;
       const endMinute = date === end.date ? end.minute : 24 * 60;
-      if (endMinute > startMinute) result.push({ itemId: item.key, segmentId: `${item.key}:timed:${date}`, item, date, startMinute, endMinute });
+      if (endMinute > startMinute) result.push({ itemId: timedItem.key, segmentId: `${timedItem.key}:timed:${date}`, item: timedItem, date, startMinute, endMinute });
     }
     return result;
   });
@@ -441,7 +476,8 @@ export function canAttendCalendarEvent(input: { eventStudioId: string; personStu
 export function normalizeCoworkerTimeOff(input: { id: string; userId: string; employeeName: string; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; status: TimeOffStatus }): Extract<CalendarItem, { source: "time_off" }> | null {
   if (!isCoworkerRequestVisible(input.status)) return null;
   const subjectName = input.employeeName.trim() || "Team member";
-  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: formatTimeOffAvailabilityTitle(subjectName), startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, startTime: input.startTime, endTime: input.endTime };
+  const temporal = getTimeOffTemporalSemantics(input);
+  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: formatTimeOffAvailabilityTitle(subjectName), startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, startTime: temporal.startTime, endTime: temporal.endTime };
 }
 
 export function normalizePrivateTimeOff(input: { id: string; userId: string; employeeName: string; requestType: TimeOffRequestType; status: TimeOffStatus; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; privateNote: string | null; reviewNote: string | null; reviewedBy: string | null; reviewedAt: string | null; currentUserId: string }): Extract<CalendarItem, { source: "time_off_request_admin" }> | null {
@@ -450,5 +486,6 @@ export function normalizePrivateTimeOff(input: { id: string; userId: string; emp
   const title = input.status === "approved"
     ? formatTimeOffAvailabilityTitle(subjectName)
     : input.status === "pending" ? "Pending request" : "Rejected request";
-  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title, startDate: input.startDate, endDate: input.endDate, allDay: input.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: input.startTime, endTime: input.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
+  const temporal = getTimeOffTemporalSemantics(input);
+  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title, startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: temporal.startTime, endTime: temporal.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
 }

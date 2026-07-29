@@ -5,7 +5,7 @@ import {
   isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
-  MONTH_EVENT_GEOMETRY, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
+  MONTH_EVENT_GEOMETRY, normalizeCalendarTime, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
 } from "./calendar";
 import type { CalendarItem } from "@/types/calendar";
 
@@ -29,6 +29,14 @@ function allDayEvent(startDate: string, endDate: string): Extract<CalendarItem, 
 function timedEvent(id: string, startsAt: string, endsAt: string): Extract<CalendarItem, { source: "calendar_event" }> {
   return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "other", startsAt, endsAt, description: null, location: null, meetingUrl: null, project: null, attendees: [] };
 }
+
+function timedAbsence(id: string, startDate: string, startTime: string, endTime: string): Extract<CalendarItem, { source: "time_off" }> {
+  const item = normalizeCoworkerTimeOff({ id, userId: "u2", employeeName: "Vasilios Genshin", startDate, endDate: startDate, startTime, endTime, allDay: false, status: "approved" });
+  if (!item) throw new Error("Expected approved timed absence");
+  return item;
+}
+
+const rawPartialTimeOff = { id: "medical-appointment", userId: "u2", employeeName: "Vasilios Genshin", startDate: "2026-08-12", endDate: "2026-08-12", startTime: "09:00:00", endTime: "12:00:00", allDay: false };
 
 describe("Calendar dates and views", () => {
   it("starts a six-week Month grid on Monday and includes adjacent dates", () => {
@@ -198,6 +206,40 @@ describe("Hourly Week layout", () => {
     expect(getTimedEventHeight(540, 545)).toBe(18);
   });
 
+  it("projects partial-day time off into the timed Week layout with its local date and duration", () => {
+    const timeOff = normalizeCoworkerTimeOff({ ...rawPartialTimeOff, status: "approved" });
+    if (!timeOff) throw new Error("Expected approved timed absence");
+    const week = ["2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-16"];
+    const [segment] = getTimedWeekSegments([timeOff], week);
+
+    expect(segment).toMatchObject({ itemId: timeOff.key, item: timeOff, date: "2026-08-12", startMinute: 540, endMinute: 720 });
+    expect(getTimedEventHeight(segment?.startMinute ?? 0, segment?.endMinute ?? 0)).toBe(180);
+    expect(getWeekAllDaySegments([timeOff], week)).toEqual([]);
+  });
+
+  it("preserves a partial-day time-off identity across Calendar projections and its category filter", () => {
+    const timeOff = timedAbsence("medical", "2026-08-12", "09:00", "12:00");
+    const week = ["2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-16"];
+
+    expect(getDayItems([timeOff], "2026-08-12").map((item) => item.key)).toEqual([timeOff.key]);
+    expect(getTimedWeekSegments([timeOff], week).map((segment) => segment.item.key)).toEqual([timeOff.key]);
+    expect(filterCalendarItems([timeOff], DEFAULT_CALENDAR_FILTERS, "u2").map((item) => item.key)).toEqual([timeOff.key]);
+    expect(filterCalendarItems([timeOff], { ...DEFAULT_CALENDAR_FILTERS, timeOff: false }, "u2")).toEqual([]);
+  });
+
+  it("keeps all-day time off out of the hourly grid and accepts timed time off in ordinary overlap layout", () => {
+    const allDay = absence("all-day", "Taylor", "2026-08-12", "2026-08-12");
+    const timeOff = timedAbsence("medical", "2026-08-12", "09:00", "12:00");
+    const event = timedEvent("overlap", "2026-08-12T07:00:00.000Z", "2026-08-12T09:30:00.000Z");
+    const week = ["2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-16"];
+    const timed = getTimedWeekSegments([allDay, timeOff, event], week);
+    const layout = getTimedWeekLayout(timed);
+
+    expect(timed.map((segment) => segment.itemId)).toEqual([timeOff.key, event.key]);
+    expect(getWeekAllDaySegments([allDay, timeOff], week).map((segment) => segment.itemId)).toEqual([allDay.key]);
+    expect(layout.filter((segment) => segment.date === "2026-08-12").map((segment) => segment.columnCount)).toEqual([2, 2]);
+  });
+
   it("allocates deterministic side-by-side columns only within overlap groups", () => {
     const first = timedEvent("first", "2026-07-27T06:00:00.000Z", "2026-07-27T07:00:00.000Z");
     const overlap = timedEvent("overlap", "2026-07-27T06:30:00.000Z", "2026-07-27T07:30:00.000Z");
@@ -293,6 +335,28 @@ describe("Calendar privacy and workflow", () => {
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s2", projectId: null, eventType: "meeting", personProjectIds: [] })).toBe(false);
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s1", projectId: "p1", eventType: "site_visit", personProjectIds: [] })).toBe(false);
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s1", projectId: "p1", eventType: "site_visit", personProjectIds: ["p1"] })).toBe(true);
+  });
+});
+
+describe("Production-shaped time-off normalization", () => {
+  it("preserves PostgreSQL seconds-formatted partial-day times for employee and admin Calendar sources", () => {
+    const coworker = normalizeCoworkerTimeOff({ ...rawPartialTimeOff, status: "approved" });
+    const admin = normalizePrivateTimeOff({ ...rawPartialTimeOff, requestType: "medical_appointment", status: "approved", privateNote: "Private", reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "admin" });
+
+    expect(coworker).toMatchObject({ source: "time_off", allDay: false, startDate: "2026-08-12", endDate: "2026-08-12", startTime: "09:00", endTime: "12:00" });
+    expect(admin).toMatchObject({ source: "time_off_request_admin", allDay: false, startTime: "09:00", endTime: "12:00" });
+  });
+
+  it("normalizes partial-day sick leave while preserving full-day and malformed-row semantics", () => {
+    const sickLeave = normalizePrivateTimeOff({ ...rawPartialTimeOff, id: "sick-leave", requestType: "sick_leave", startTime: "13:15:00", endTime: "15:45:00", status: "approved", privateNote: null, reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "u2" });
+    const vacation = normalizeCoworkerTimeOff({ ...rawPartialTimeOff, id: "vacation", startTime: null, endTime: null, allDay: true, status: "approved" });
+    const malformedPartial = normalizeCoworkerTimeOff({ ...rawPartialTimeOff, id: "malformed", startTime: null, endTime: null, allDay: false, status: "approved" });
+
+    expect(sickLeave).toMatchObject({ allDay: false, startTime: "13:15", endTime: "15:45" });
+    expect(vacation).toMatchObject({ allDay: true, startTime: null, endTime: null });
+    expect(malformedPartial).toMatchObject({ allDay: false, startTime: null, endTime: null });
+    expect(normalizeCalendarTime("09:00:00")).toBe("09:00");
+    expect(normalizeCalendarTime("09:00:30.500")).toBe("09:00");
   });
 });
 
