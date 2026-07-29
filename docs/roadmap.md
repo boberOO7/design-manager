@@ -12,6 +12,7 @@
 - [X] Implement sign out.
 - [X] Load the real authenticated Profile in the application shell.
 - [X] Verify and fix consistent Profile and admin-role checks on Dashboard and Administration.
+- [ ] Complete the UI foundation milestone: compact shared primitives, accessible mobile navigation, and tokenized visual conventions.
 
 ## Projects
 

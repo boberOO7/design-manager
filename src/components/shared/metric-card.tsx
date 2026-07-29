@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Panel } from "@/components/ui/panel";
 
 export function MetricCard({
   title,
@@ -12,10 +13,10 @@ export function MetricCard({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-2xl border border-stone-200 bg-white p-5 shadow-sm", className)}>
+    <Panel className={cn("p-5", className)}>
       <p className="text-sm font-medium text-stone-500">{title}</p>
-      <p className="mt-3 text-2xl font-semibold text-stone-900">{value}</p>
+      <p className="ui-numeric mt-3 text-2xl font-semibold text-stone-900">{value}</p>
       {hint ? <p className="mt-2 text-sm text-stone-500">{hint}</p> : null}
-    </div>
+    </Panel>
   );
 }

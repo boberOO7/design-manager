@@ -2,32 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, FolderKanban, CheckSquare, Users, Trophy, Archive, ShieldCheck, PanelLeftClose, PanelLeftOpen, CalendarDays } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Profile } from "@/types";
 import { cn } from "@/lib/utils";
-import { navigationItems } from "@/constants/navigation";
-
-const icons = {
-  "/dashboard": LayoutGrid,
-  "/projects": FolderKanban,
-  "/my-tasks": CheckSquare,
-  "/calendar": CalendarDays,
-  "/team": Users,
-  "/leaderboard": Trophy,
-  "/archive": Archive,
-  "/admin": ShieldCheck,
-};
+import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 
 export function AppSidebar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   // Filter navigation items based on real system_role
-  const items = useMemo(() => {
-    if (!profile) return navigationItems;
-    return navigationItems.filter((item) => !item.adminOnly || profile.system_role === "admin");
-  }, [profile]);
+  const items = useMemo(() => getNavigationItems(profile), [profile]);
 
   return (
     <aside className={cn("hidden border-r border-stone-200 bg-stone-50/70 lg:flex lg:flex-col", collapsed ? "w-20" : "w-72")}> 
@@ -42,10 +28,10 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {items.map((item) => {
-          const Icon = icons[item.href as keyof typeof icons] ?? LayoutGrid;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const Icon = navigationIcons[item.href];
+          const active = isNavigationItemActive(pathname, item.href);
           return (
-            <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition", active ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-200 hover:text-stone-900", collapsed && "justify-center px-2")}> 
+          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-[var(--ui-radius-control)] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-white" : "text-[var(--ui-text-secondary)] hover:bg-stone-200 hover:text-[var(--ui-text)]", collapsed && "justify-center px-2")}>
               <Icon size={18} />
               {!collapsed ? <span>{item.label}</span> : null}
             </Link>

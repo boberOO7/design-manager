@@ -142,3 +142,29 @@
   current studio. It does not create a `project_members` assignment.
 - Employees see projects only after an administrator assigns them through
   `project_members`, with project visibility enforced by RLS.
+
+## UI foundation
+
+- StudioFlow follows a “Quiet architectural operations system” direction: a warm
+  stone-neutral foundation, restrained professional hierarchy, compact
+  operational density, and no decorative gradients, glass effects, or motion.
+- Geist is the sole application UI typeface, with sensible system sans-serif
+  fallbacks. Numeric metrics, dates, times, areas, and counters use tabular
+  figures where appropriate.
+- The spacing rhythm is based on 4px and 8px increments. Standard panels use a
+  12px radius, controls use an 8px radius, and larger radii are reserved for
+  drawers and intentional prominent surfaces.
+- Borders are the primary method for separating surfaces. Panel shadows are
+  restrained and must not be stacked between nested surfaces.
+- Lightweight shared primitives provide panels, form fields, inputs, segmented
+  controls, empty states, and drawers. Product pages adopt them incrementally;
+  the foundation is not a separate generic design-system framework.
+- Primary hierarchy uses charcoal, information uses blue, success uses emerald,
+  warning uses amber, danger uses red, and lifecycle completion/review uses
+  violet. Amber is not a generic decorative color. Unread notifications use the
+  established charcoal indicator rather than an amber background treatment.
+- Mobile navigation and all modal drawers must be keyboard-operable: labelled,
+  focus-trapped while open, dismissible with Escape and backdrop click where
+  safe, and return focus to their trigger when closed. They must prevent
+  background interaction and provide visible focus states and comfortable touch
+  targets.

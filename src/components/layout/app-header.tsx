@@ -1,6 +1,7 @@
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { getNotificationData } from "@/data/queries/notifications";
 import type { Profile } from "@/types";
 
@@ -9,9 +10,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
     return (
       <header className="flex items-center justify-between border-b border-stone-200 bg-white px-5 py-4 lg:px-8">
         <div className="flex items-center gap-3">
-          <button type="button" className="rounded-md border border-stone-200 p-2 text-stone-600 lg:hidden">
-            <Menu size={18} />
-          </button>
+          <MobileNavigation profile={profile} />
           <div className="rounded-full border border-stone-200 bg-stone-50 p-2 text-stone-600">
             <Search size={16} />
           </div>
@@ -35,9 +34,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
   return (
     <header className="flex items-center justify-between border-b border-stone-200 bg-white px-5 py-4 lg:px-8">
       <div className="flex items-center gap-3">
-        <button type="button" className="rounded-md border border-stone-200 p-2 text-stone-600 lg:hidden">
-          <Menu size={18} />
-        </button>
+        <MobileNavigation profile={profile} />
         <div className="rounded-full border border-stone-200 bg-stone-50 p-2 text-stone-600">
           <Search size={16} />
         </div>
