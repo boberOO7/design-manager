@@ -3,7 +3,7 @@ import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTas
 import { isTaskOverdue } from "./tasks";
 
 const today = "2026-07-27";
-const project: DashboardProject = { id: "p1", name: "Alpha", project_code: null, client_name: null, due_date: null };
+const project: DashboardProject = { id: "p1", name: "Alpha", project_code: null, client_name: null, due_date: null, status: "active" };
 function task(overrides: Partial<DashboardTask> = {}): DashboardTask { return { id: "t1", project_id: "p1", title: "Task", description: null, status: "todo", priority: "normal", assignee_id: "u1", due_date: null, completed_at: null, created_at: "2026-07-01T12:00:00Z", created_by: "admin", assignee: null, creator: null, project: { id: "p1", name: "Alpha" }, ...overrides }; }
 
 describe("dashboard calculations", () => {

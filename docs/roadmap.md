@@ -14,6 +14,7 @@
 - [X] Verify and fix consistent Profile and admin-role checks on Dashboard and Administration.
 - [ ] Complete the UI foundation milestone: compact shared primitives, accessible mobile navigation, and tokenized visual conventions.
 - [ ] Complete accessibility and interaction consistency pass.
+- [ ] Complete the Dashboard presentation milestone: priority-led hierarchy and compact operational density.
 
 ## Projects
 

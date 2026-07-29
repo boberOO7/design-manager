@@ -176,6 +176,11 @@
   and filters use segmented buttons with pressed state. Task cards are native
   buttons: click/Enter opens details, while eligible cards retain whole-card
   pointer and keyboard drag behavior without nested interactive controls.
+- Dashboard presentation is priority-led rather than card-grid-led. Each role
+  begins with one compact metric strip, then a dominant attention queue; admin
+  workload remains operational context rather than employee scoring. Supporting
+  Dashboard information uses quieter bordered lists, and empty Dashboard states
+  stay compact rather than creating oversized panels.
 - Authenticated pages expose a skip link and one stable main landmark. Mobile
   controls target roughly 44px hit areas. Calendar event labels include the
   event title and applicable date/time/location; current-time decoration is not

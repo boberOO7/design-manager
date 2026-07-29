@@ -41,7 +41,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return null;
   if (membership.system_role !== "admin" && membership.system_role !== "employee") throw new Error("Active studio membership has an unsupported role.");
   const supabase = await createClient();
-  const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", ["planned", "active", "paused"]);
+  const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date, status").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", ["planned", "active", "paused"]);
   const taskQuery = supabase.from("tasks").select("id, project_id, title, description, status, priority, assignee_id, due_date, completed_at, created_at, created_by, assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title), creator:profiles!tasks_created_by_fkey(id, full_name, job_title), project:projects!tasks_project_id_fkey!inner(id, name, studio_id)").eq("project.studio_id", membership.studio_id).is("project.archived_at", null).in("project.status", ["planned", "active", "paused"]);
   if (membership.system_role === "employee") taskQuery.eq("assignee_id", profile.id);
   const [projectsResult, tasksResult, membersResult] = await Promise.all([

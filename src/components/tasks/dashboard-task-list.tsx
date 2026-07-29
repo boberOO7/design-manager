@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getEmployeeTasksNeedingAttention, getTodayDate } from "@/lib/dashboard";
 import { getTaskPriorityLabel, getTaskStatusLabel, isTaskOverdue, mergeProjectTask } from "@/lib/tasks";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
@@ -22,21 +23,21 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
   }
 
   return <>
-    <div className="space-y-2">
-      {items.length === 0 && emptyState ? <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center"><p className="font-medium text-stone-900">{emptyState.title}</p><p className="mt-1 text-sm text-stone-500">{emptyState.description}</p><Link href={emptyState.linkHref} className="mt-3 inline-block text-sm font-medium text-stone-900 underline">{emptyState.linkLabel}</Link></div> : null}
+    <div>
+      {items.length === 0 && emptyState ? <EmptyState compact title={emptyState.title} description={emptyState.description} action={<Link href={emptyState.linkHref} className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--ui-text)] underline underline-offset-4">{emptyState.linkLabel}</Link>} /> : null}
+      {items.length ? <ul className="divide-y divide-[var(--ui-border)]">
       {items.map((task) => {
         const overdue = isTaskOverdue(task);
         const dueToday = task.due_date === getTodayDate();
-        return <article key={task.id} role="button" tabIndex={0} onClick={() => setSelectedTaskId(task.id)} onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedTaskId(task.id); }
-        }} className="cursor-pointer rounded-xl border border-stone-200 p-3 outline-none transition hover:border-stone-300 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-stone-500">
+        return <li key={task.id} className="p-3 sm:px-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0"><h3 className="truncate font-medium text-stone-900">{task.title}</h3><Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-stone-500 hover:text-stone-900 hover:underline">{task.project.name}</Link></div>
+            <div className="min-w-0"><button type="button" onClick={() => setSelectedTaskId(task.id)} className="min-h-11 max-w-full cursor-pointer break-words text-left font-medium text-[var(--ui-text)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{task.title}<span className="sr-only">, open task details</span></button><Link href={`/projects/${task.project_id}`} className="block break-words text-sm text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{task.project.name}</Link></div>
             <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs"><span className={`rounded-full px-2 py-1 font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>{task.due_date ? <span className={overdue ? "rounded-full bg-red-50 px-2 py-1 font-medium text-red-700" : dueToday ? "rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800" : "rounded-full bg-stone-100 px-2 py-1 text-stone-600"}>{overdue ? "Overdue" : dueToday ? "Due today" : `Due ${formatDate(task.due_date)}`}</span> : null}</div>
-        </article>;
+          <div className="mt-2 flex flex-wrap gap-2 text-xs"><span className={`rounded-full px-2 py-1 font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>{task.due_date ? <span className={overdue ? "rounded-full border border-red-200 bg-red-50 px-2 py-1 font-medium text-red-800" : dueToday ? "rounded-full border border-amber-200 bg-amber-50 px-2 py-1 font-medium text-amber-800" : "rounded-full border border-stone-200 bg-stone-100 px-2 py-1 text-stone-700"}>{overdue ? "Overdue" : dueToday ? "Due today" : `Due ${formatDate(task.due_date)}`}</span> : null}</div>
+        </li>;
       })}
+      </ul> : null}
     </div>
     {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={false} members={[]} onClose={() => setSelectedTaskId(null)} onTaskUpdated={updateTask} project={selectedTask.project} task={selectedTask} /> : null}
   </>;

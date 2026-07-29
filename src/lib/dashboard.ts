@@ -1,5 +1,6 @@
 import { isTaskFinished, isTaskOverdue } from "./tasks";
 import type { TaskPriority, TaskStatus } from "../types/tasks";
+import type { ProjectLifecycleStatus } from "./project-lifecycle";
 
 export type DashboardTask = {
   id: string;
@@ -24,6 +25,7 @@ export type DashboardProject = {
   project_code: string | null;
   client_name: string | null;
   due_date: string | null;
+  status: ProjectLifecycleStatus;
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string };
