@@ -46,7 +46,7 @@
 
 ## Administration
 
-- [ ] Replace the mock Administration page with the real admin action queue.
+- [X] Replace the mock Administration page with the real admin action queue.
 
 ## Notifications
 

@@ -96,6 +96,9 @@
   time-off Route Handler workflow and normalized response model.
 - Request history is limited to time-off decisions until a general Activity History
   system exists.
+- Administration presents pending time-off as the dominant operational queue;
+  upcoming availability is supporting context and recent decisions are quiet,
+  non-actionable history. All three continue to use the same authorized request model.
 
 ## In-app notifications
 
