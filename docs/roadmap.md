@@ -57,6 +57,9 @@
 - [x] Deliver the role-aware Calendar milestone (Month, Week, Agenda, events,
   live deadlines, and privacy-safe time off).
 - [x] Apply shared semantic status styling and named privacy-safe coworker availability.
+- [x] Complete Phase 3E Calendar mobile polish: responsive controls, compact
+  Month and Agenda presentation, intentional Week scrolling, and mobile-ready
+  drawers.
 
 ## Production
 

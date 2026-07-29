@@ -80,6 +80,13 @@
   Week uses the same all-day concepts plus a Europe/Kyiv hourly time grid;
   timed overlaps receive deterministic horizontal columns and the current-time
   indicator updates locally once per minute.
+- Calendar keeps its desktop Month geometry and seven-day Week grid intact on
+  narrow screens. Month uses its existing compact chronological representation
+  below the desktop breakpoint; Week remains horizontally scrollable with a
+  visible mobile instruction, a stable hour gutter, and an initial current-day
+  position when applicable. Calendar controls wrap into purposeful groups and
+  mobile drawers retain near-full-width, scrollable forms with reachable action
+  footers.
 - New project events are limited to planned, active, and paused projects.
   Completed projects must be reopened before receiving a new event; existing
   historical events remain readable and cancellable. Archived projects cannot
