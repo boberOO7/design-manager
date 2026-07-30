@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
+import { getProjectTasks } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
 import {
   editProjectSchema,
@@ -58,6 +59,13 @@ export async function updateProject(
   }
 
   const values = parsed.data;
+  if (project.progress_method === "area") {
+    const tasks = await getProjectTasks(project.id);
+    const assignedArea = tasks.filter((task) => task.status !== "cancelled").reduce((total, task) => total + Number(task.completed_area_m2 ?? 0), 0);
+    if (assignedArea > values.total_area_m2) {
+      return { formError: "Please correct the highlighted fields.", fieldErrors: { total_area_m2: `Design scope must cover the ${assignedArea} m² already assigned to tasks.` } };
+    }
+  }
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects")

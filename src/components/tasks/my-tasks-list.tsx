@@ -73,7 +73,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
         key={selectedTask.id}
         canManageTasks={false}
         currentUserId={currentUserId}
-        isProjectReadOnly={false}
+        isProjectReadOnly={selectedTask.project.status === "completed" || selectedTask.project.status === "archived" || selectedTask.project.archived_at !== null}
         members={[]}
         onClose={() => setSelectedTaskId(null)}
         onTaskUpdated={updateTask}

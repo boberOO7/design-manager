@@ -24,7 +24,9 @@ export async function PATCH(
     task_id: taskId,
     status: payload.data.status,
   });
-  const response = toTaskStatusActionState(result);
+  const response = result.success
+    ? { success: true as const, projectStatus: result.projectStatus, task: result.task }
+    : toTaskStatusActionState(result);
 
   return NextResponse.json(response, { status: result.success ? 200 : 400 });
 }

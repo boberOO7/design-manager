@@ -1,4 +1,4 @@
-import { calculateProjectProgress, getProjectHealth, type ProjectHealth, type ProjectProgress, type ProjectTaskForProgress } from "@/lib/project-progress";
+import { calculateProjectProgress, getProjectHealth, isProjectProgressMethod, type ProjectHealth, type ProjectProgress, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paused", "completed"] as const;
 export const PROJECT_LIST_HEALTH_FILTERS = ["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"] as const;
@@ -12,7 +12,7 @@ export type ProjectListFilters = {
   sort: (typeof PROJECT_LIST_SORTS)[number];
 };
 
-export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null }> = T & {
+export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; progress_method: string; total_area_m2: number }> = T & {
   health: ProjectHealth;
   healthReason: string | null;
   progress: ProjectProgress;
@@ -34,9 +34,12 @@ export function getProjectListFilters(searchParams: Record<string, string | stri
   };
 }
 
-export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
+export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; progress_method: string; total_area_m2: number }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
   return projects.map((project) => {
-    const progress = calculateProjectProgress(project.tasks, today);
+    const progress = calculateProjectProgress(project.tasks, today, {
+      method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal",
+      designScopeAreaM2: Number(project.total_area_m2),
+    });
     const health = getProjectHealth({ projectStatus: project.status, projectDueDate: project.due_date, progress, today });
     return { ...project, progress, health: health.health, healthReason: health.reason };
   });
@@ -46,7 +49,7 @@ function compareNullableDate(left: string | null, right: string | null): number 
   return (left ?? "9999-12-31").localeCompare(right ?? "9999-12-31");
 }
 
-export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; tasks: readonly ProjectTaskForProgress[] }>(projects: readonly PresentedProject<T>[], filters: ProjectListFilters): PresentedProject<T>[] {
+export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; progress_method: string; total_area_m2: number; tasks: readonly ProjectTaskForProgress[] }>(projects: readonly PresentedProject<T>[], filters: ProjectListFilters): PresentedProject<T>[] {
   const filtered = projects.filter((project) =>
     (filters.lifecycle === "all" || project.status === filters.lifecycle)
     && (filters.health === "all" || project.health === filters.health)

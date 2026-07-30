@@ -58,11 +58,11 @@ describe("manual lifecycle transitions", () => {
     expect(isValidArchiveState("archived", "2026-07-28")).toBe(true);
     expect(isValidArchiveState("active", null)).toBe(true);
   });
-  it("keeps review and cancelled outside the writable MVP task-status boundary", () => {
+  it("exposes Client review while keeping cancelled outside the writable task-status boundary", () => {
     expect(isWritableTaskStatus("todo")).toBe(true);
     expect(isWritableTaskStatus("in_progress")).toBe(true);
     expect(isWritableTaskStatus("completed")).toBe(true);
-    expect(isWritableTaskStatus("review")).toBe(false);
+    expect(isWritableTaskStatus("review")).toBe(true);
     expect(isWritableTaskStatus("cancelled")).toBe(false);
   });
   it("keeps completion dates consistent across complete, archive, restore, and reopen", () => {

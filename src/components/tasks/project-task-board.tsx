@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
+import { calculateTaskProgress } from "@/lib/project-progress";
 import type { ProjectAttributionMode } from "@/lib/productivity";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
@@ -77,13 +78,16 @@ function getColumnIdFromDropTarget(id: string | number | undefined): BoardColumn
   return isBoardColumnId(columnId) ? columnId : null;
 }
 
-function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string } {
+function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string; task: ProjectTask } {
   return typeof value === "object"
     && value !== null
     && "success" in value
     && value.success === true
     && "projectStatus" in value
-    && typeof value.projectStatus === "string";
+    && typeof value.projectStatus === "string"
+    && "task" in value
+    && typeof value.task === "object"
+    && value.task !== null;
 }
 
 function getTaskStatusError(value: unknown): string | null {
@@ -104,6 +108,7 @@ function TaskCardContent({
   task: ProjectTask;
 }) {
   const overdue = isTaskOverdue(task);
+  const progress = calculateTaskProgress(task);
 
   return (
     <div className={cn("rounded-xl border border-stone-200 bg-white p-4", isOverlay ? "scale-[1.02] shadow-2xl" : "shadow-sm")}>
@@ -115,10 +120,11 @@ function TaskCardContent({
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
       </div>
       <p className="mt-2 truncate text-sm text-stone-500">{task.assignee?.full_name ?? "Unassigned"}</p>
+      <div className="mt-3"><div className="flex items-center justify-between gap-2 text-xs"><span className="text-stone-500">{progress.source === "checklist" ? `Checklist ${progress.completedChecklistCount}/${progress.checklistCount}` : task.status === "review" ? "Awaiting approval" : task.status === "completed" ? "Approved" : task.status === "in_progress" ? "Manual production" : "Not started"}</span><span className="ui-numeric font-semibold text-stone-700">{progress.presentedOverallPercent}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-100" role="progressbar" aria-label={`${task.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
         {task.due_date ? <span>Due {formatDateShort(task.due_date)}</span> : <span>No due date</span>}
         {overdue ? <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700">Overdue</span> : null}
-        {(task.status === "review" || task.status === "cancelled") ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span> : null}
+        {task.status === "cancelled" ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span> : null}
         {isPending ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> Saving
@@ -220,7 +226,7 @@ function BoardColumn({
       ref={ref}
       aria-labelledby={`column-${columnId}`}
       className={cn(
-        "flex min-h-[28rem] min-w-72 flex-col rounded-2xl border bg-stone-100/70 p-3 transition-[border-color,background-color,box-shadow] lg:min-w-0",
+        "flex min-h-72 min-w-0 flex-col rounded-2xl border bg-stone-100/70 p-3 transition-[border-color,background-color,box-shadow] xl:min-h-[28rem]",
         isHighlighted
           ? "border-stone-500 bg-stone-200/80 ring-2 ring-stone-400/40 shadow-md"
           : "border-stone-200",
@@ -358,6 +364,9 @@ export function ProjectTaskBoard({
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);
+      const mergedTasks = mergeProjectTask(localTasksRef.current, result.task);
+      localTasksRef.current = mergedTasks;
+      setLocalTasks(mergedTasks);
       if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusChange?.(result.projectStatus);
       previousStatusesRef.current.delete(taskId);
       setTaskPending(taskId, false);
@@ -446,7 +455,7 @@ export function ProjectTaskBoard({
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid auto-cols-[minmax(18rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-3 lg:grid-flow-row lg:grid-cols-3 lg:auto-cols-auto lg:overflow-visible">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {BOARD_COLUMNS.map((column) => (
             <BoardColumn
               key={column.id}

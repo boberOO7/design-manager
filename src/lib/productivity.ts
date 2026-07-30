@@ -17,6 +17,20 @@ export type ProductivityLeaderboardEntry = {
   completed_tasks: number;
 };
 
+export const LEADERBOARD_BONUS_BY_RANK = {
+  1: 15,
+  2: 10,
+  3: 5,
+} as const;
+
+export type LeaderboardBonusPercent = (typeof LEADERBOARD_BONUS_BY_RANK)[keyof typeof LEADERBOARD_BONUS_BY_RANK] | 0;
+
+export function getLeaderboardBonusPercent(rank: number): LeaderboardBonusPercent {
+  return rank in LEADERBOARD_BONUS_BY_RANK
+    ? LEADERBOARD_BONUS_BY_RANK[rank as keyof typeof LEADERBOARD_BONUS_BY_RANK]
+    : 0;
+}
+
 export type ProjectAttributionMode = "project_fallback" | "task_level";
 
 export function getProjectAttributionMode(tasks: ReadonlyArray<{ completed_area_m2?: number | null }>): ProjectAttributionMode {
@@ -47,12 +61,23 @@ function kyivParts(now: Date) {
   return { year: Number(parts.find((part) => part.type === "year")?.value), month: Number(parts.find((part) => part.type === "month")?.value) };
 }
 
-export function getKyivMonthBounds(now = new Date()): { start: string; end: string } {
+export function getKyivMonthBounds(now = new Date(), monthOffset = 0): { start: string; end: string } {
   const { year, month } = kyivParts(now);
-  const nextYear = month === 12 ? year + 1 : year;
-  const nextMonth = month === 12 ? 1 : month + 1;
+  const startDate = new Date(Date.UTC(year, month - 1 + monthOffset, 1));
+  const nextDate = new Date(Date.UTC(year, month + monthOffset, 1));
+  const startYear = startDate.getUTCFullYear();
+  const startMonth = startDate.getUTCMonth() + 1;
+  const nextYear = nextDate.getUTCFullYear();
+  const nextMonth = nextDate.getUTCMonth() + 1;
   const wall = (targetYear: number, targetMonth: number) => `${targetYear}-${String(targetMonth).padStart(2, "0")}-01T00:00`;
-  return { start: zonedWallTimeToIso(wall(year, month)), end: zonedWallTimeToIso(wall(nextYear, nextMonth)) };
+  return { start: zonedWallTimeToIso(wall(startYear, startMonth)), end: zonedWallTimeToIso(wall(nextYear, nextMonth)) };
+}
+
+export function getLeaderboardTotals(entries: ProductivityLeaderboardEntry[]): { completed_area_m2: number; completed_tasks: number } {
+  return entries.reduce((totals, entry) => ({
+    completed_area_m2: totals.completed_area_m2 + entry.completed_area_m2,
+    completed_tasks: totals.completed_tasks + entry.completed_tasks,
+  }), { completed_area_m2: 0, completed_tasks: 0 });
 }
 
 export function projectProductivityLeaderboard(attributions: ProductivityAttribution[]): ProductivityLeaderboardEntry[] {

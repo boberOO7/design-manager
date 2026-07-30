@@ -178,21 +178,33 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
   return getEmployeeWorkload();
 }
 
-export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {
-  const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
-  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return [];
-  const bounds = getKyivMonthBounds();
+async function getLeaderboardForMonth(studioId: string, monthOffset: number): Promise<ProductivityLeaderboardEntry[]> {
+  const bounds = getKyivMonthBounds(undefined, monthOffset);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("productivity_attributions")
     .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type")
-    .eq("studio_id", membership.studio_id)
+    .eq("studio_id", studioId)
     .is("voided_at", null)
     .gte("completed_at", bounds.start)
     .lt("completed_at", bounds.end)
     .overrideTypes<ProductivityAttribution[], { merge: false }>();
   if (error || !data) throw new Error("Unable to load monthly productivity.", { cause: error });
   return projectProductivityLeaderboard(data);
+}
+
+export async function getLeaderboardOverviewData(): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[] }> {
+  const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
+  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [] };
+  const [current, previous] = await Promise.all([
+    getLeaderboardForMonth(membership.studio_id, 0),
+    getLeaderboardForMonth(membership.studio_id, -1),
+  ]);
+  return { current, previous };
+}
+
+export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {
+  return (await getLeaderboardOverviewData()).current;
 }
 
 export function getProjectProgressData(projectId: string) {

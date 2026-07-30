@@ -28,14 +28,15 @@
 
 ## Tasks and progress
 
-- [ ] Replace mock tasks with real Supabase data.
-- [ ] Implement task creation and editing.
-- [ ] Implement task status updates.
+- [x] Replace mock tasks with real Supabase data.
+- [x] Implement task creation and editing.
+- [x] Implement task status updates.
+- [x] Deliver four-stage task progress, Client review, project weighting, and the optional weighted checklist.
 - [ ] Implement project area progress recording.
 - [ ] Implement project activity history.
 - [ ] Deliver the project-scoped Activity History vertical slice (migration pending deployment).
-- [ ] Implement task-derived project progress and operational health.
-- [ ] Implement controlled project lifecycle workflow.
+- [x] Implement task-derived project progress and operational health.
+- [x] Implement controlled project lifecycle workflow.
 
 ## Team and metrics
 

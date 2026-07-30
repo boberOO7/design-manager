@@ -1,17 +1,18 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
-import { BOARD_COLUMNS, canEditTaskDetails, getTaskPriorityLabel, getTaskStatusLabel, isTaskStatus } from "@/lib/tasks";
+import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getTaskPriorityLabel, getTaskStatusLabel, isTaskStatus } from "@/lib/tasks";
+import { calculateTaskProgress } from "@/lib/project-progress";
 import { formatDate } from "@/lib/utils";
 import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
-import type { ProjectTask } from "@/types/tasks";
+import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 type TaskEditResponse =
@@ -19,6 +20,11 @@ type TaskEditResponse =
   | { success?: false; formError?: string; fieldErrors?: Partial<Record<TaskEditField, string>> };
 
 function isTaskEditResponse(value: unknown): value is TaskEditResponse {
+  return typeof value === "object" && value !== null && "success" in value;
+}
+
+type TaskWorkResponse = { success: true; task: ProjectTask } | { success?: false; formError?: string };
+function isTaskWorkResponse(value: unknown): value is TaskWorkResponse {
   return typeof value === "object" && value !== null && "success" in value;
 }
 
@@ -30,9 +36,8 @@ function makeFormValues(task: ProjectTask) {
     priority: task.priority,
     due_date: task.due_date ?? "",
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
-    status: task.status === "review"
-      ? "in_progress"
-      : task.status === "cancelled"
+    progress_weight: task.progress_weight.toString(),
+    status: task.status === "cancelled"
         ? "completed"
         : task.status,
   };
@@ -66,11 +71,16 @@ export function TaskDetailsDrawer({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<TaskEditField, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [newChecklistTitle, setNewChecklistTitle] = useState("");
+  const [newChecklistWeight, setNewChecklistWeight] = useState("1");
+  const [manualProgress, setManualProgress] = useState(task.production_completion.toString());
   const [values, setValues] = useState(() => makeFormValues(task));
 
   const canEdit = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
   const canUpdateStatus = !isProjectReadOnly
     && (canManageTasks || task.assignee_id === currentUserId);
+  const canEditWork = canEditTaskWork({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, status: task.status });
+  const taskProgress = calculateTaskProgress(task);
   const isDirty = JSON.stringify(values) !== JSON.stringify(makeFormValues(task));
 
   useEffect(() => {
@@ -169,6 +179,7 @@ export function TaskDetailsDrawer({
         setFormError(formError);
         return;
       }
+      if (isTaskWorkResponse(result) && result.success) onTaskUpdated(result.task);
       setSuccessMessage("Task status saved.");
       if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
     } catch {
@@ -177,6 +188,42 @@ export function TaskDetailsDrawer({
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function mutateTaskWork(url: string, init: RequestInit, success: string) {
+    setIsSaving(true); setFormError(null); setSuccessMessage(null);
+    try {
+      const response = await fetch(url, init);
+      let result: unknown = null;
+      try { result = await response.json(); } catch { /* Safe fallback below. */ }
+      if (!response.ok || !isTaskWorkResponse(result) || !result.success) {
+        throw new Error(isTaskWorkResponse(result) && !result.success ? result.formError ?? "The task could not be updated." : "The task could not be updated.");
+      }
+      onTaskUpdated(result.task);
+      setManualProgress(result.task.production_completion.toString());
+      setSuccessMessage(success);
+      return true;
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : "The task could not be updated.");
+      return false;
+    } finally { setIsSaving(false); }
+  }
+
+  async function saveManualProgress() {
+    await mutateTaskWork(`/api/tasks/${encodeURIComponent(task.id)}/progress`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ production_completion: manualProgress }) }, "Production progress saved.");
+  }
+
+  async function addChecklistItem() {
+    const saved = await mutateTaskWork(`/api/tasks/${encodeURIComponent(task.id)}/checklist`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newChecklistTitle, weight: newChecklistWeight }) }, "Checklist item added.");
+    if (saved) { setNewChecklistTitle(""); setNewChecklistWeight("1"); }
+  }
+
+  async function updateChecklistItem(itemId: string, change: { title?: string; weight?: string; is_completed?: boolean }) {
+    await mutateTaskWork(`/api/tasks/${encodeURIComponent(task.id)}/checklist/${encodeURIComponent(itemId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) }, "Checklist updated.");
+  }
+
+  async function deleteChecklistItem(itemId: string) {
+    await mutateTaskWork(`/api/tasks/${encodeURIComponent(task.id)}/checklist/${encodeURIComponent(itemId)}`, { method: "DELETE" }, "Checklist item deleted.");
   }
 
   return (
@@ -229,10 +276,15 @@ export function TaskDetailsDrawer({
                 <label className="grid gap-1.5 text-sm font-medium text-stone-700">Due date
                   <input type="date" value={values.due_date} disabled={isSaving} onChange={(event) => setValues({ ...values, due_date: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200" />
                 </label>
-                <label className="grid gap-1.5 text-sm font-medium text-stone-700">Completed area <span className="font-normal text-stone-500">(optional m²)</span>
+                <label className="grid gap-1.5 text-sm font-medium text-stone-700">Task area <span className="font-normal text-stone-500">(optional m²)</span>
                   <input type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200" />
-                  <span className="text-xs font-normal leading-5 text-stone-500">Captured when this task enters Done; later edits do not rewrite past credit.</span>
+                  <span className="text-xs font-normal leading-5 text-stone-500">Used by Area progress and captured for productivity credit when this task enters Done.</span>
                   {fieldErrors.completed_area_m2 ? <span className="text-red-700">{fieldErrors.completed_area_m2}</span> : null}
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium text-stone-700">Progress weight
+                  <input type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200" />
+                  <span className="text-xs font-normal leading-5 text-stone-500">Used only when the project progress method is Weighted.</span>
+                  {fieldErrors.progress_weight ? <span className="text-red-700">{fieldErrors.progress_weight}</span> : null}
                 </label>
               </div>
               <label className="grid gap-1.5 text-sm font-medium text-stone-700">Status
@@ -243,6 +295,17 @@ export function TaskDetailsDrawer({
             </div>
           ) : (
             <div className="space-y-6">
+              <section aria-labelledby="task-progress-heading">
+                <div className="flex items-end justify-between gap-3"><div><h3 id="task-progress-heading" className="text-sm font-semibold text-stone-900">Progress</h3><p className="mt-1 text-xs text-stone-500">Production is the first 80%; client approval is the final 20%.</p></div><span className="ui-numeric text-lg font-semibold text-stone-900">{taskProgress.presentedOverallPercent}%</span></div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-100" role="progressbar" aria-label={`${task.title} overall progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={taskProgress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${taskProgress.overallPercent}%` }} /></div>
+                <p className="mt-2 text-xs text-stone-600">{taskProgress.source === "checklist" ? `${taskProgress.completedChecklistCount} of ${taskProgress.checklistCount} checklist items complete · ${taskProgress.presentedProductionPercent}% production` : task.status === "review" ? "Production complete · awaiting client approval" : task.status === "completed" ? "Production complete · client approved" : task.status === "in_progress" ? `${taskProgress.presentedProductionPercent}% manual production completion` : "Production has not started"}</p>
+                {task.status === "in_progress" && task.checklist_items.length === 0 && canEditWork ? <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-3"><label className="text-xs font-medium text-stone-700" htmlFor={`manual-progress-${task.id}`}>Manual production completion</label><div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center"><input id={`manual-progress-${task.id}`} type="range" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="min-h-11 flex-1 accent-stone-900" /><div className="flex items-center gap-2"><input aria-label="Manual production completion percentage" type="number" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="h-11 w-20 rounded-lg border border-stone-300 bg-white px-2 text-right ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /><span className="text-sm text-stone-500">%</span><Button type="button" size="sm" disabled={isSaving || Number(manualProgress) === task.production_completion} onClick={() => void saveManualProgress()}>Save</Button></div></div></div> : null}
+              </section>
+              <section className="border-t border-stone-100 pt-5" aria-labelledby="task-checklist-heading">
+                <div className="flex items-end justify-between gap-3"><div><h3 id="task-checklist-heading" className="text-sm font-semibold text-stone-900">Checklist</h3><p className="mt-1 text-xs leading-5 text-stone-500">Optional weighted work stages, not subtasks.</p></div>{task.checklist_items.length ? <span className="ui-numeric text-xs font-medium text-stone-600">{taskProgress.presentedProductionPercent}% production</span> : null}</div>
+                {task.checklist_items.length ? <ul className="mt-3 space-y-2">{task.checklist_items.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} disabled={isSaving} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-3 rounded-xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">No checklist items. In-progress production uses the manual percentage.</p>}
+                {canEditWork ? <div className="mt-3 grid gap-2 rounded-xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-[minmax(0,1fr)_5rem_auto]"><label className="grid gap-1 text-xs font-medium text-stone-700">New item<input value={newChecklistTitle} maxLength={200} disabled={isSaving} onChange={(event) => setNewChecklistTitle(event.target.value)} className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-stone-700">Weight<input type="number" min="0.01" max="1000" step="0.01" value={newChecklistWeight} disabled={isSaving} onChange={(event) => setNewChecklistWeight(event.target.value)} className="h-11 rounded-lg border border-stone-300 bg-white px-2 ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><Button type="button" size="sm" className="min-h-11 self-end" disabled={isSaving || !newChecklistTitle.trim()} onClick={() => void addChecklistItem()}><Plus className="size-4" aria-hidden="true" /> Add</Button></div> : null}
+              </section>
               <section>
                 <h3 className="text-sm font-semibold text-stone-900">Description</h3>
                 <p className="mt-2 max-w-prose whitespace-pre-wrap text-sm leading-7 text-stone-700">{task.description || "No description added"}</p>
@@ -257,7 +320,8 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-stone-500">Created by</dt><dd className="mt-1 font-medium text-stone-900">{task.creator?.full_name ?? "Unknown"}</dd></div>
                   <div><dt className="text-stone-500">Created</dt><dd className="mt-1 font-medium text-stone-900">{formatDate(task.created_at)}</dd></div>
                   {task.completed_at ? <div><dt className="text-stone-500">Completed</dt><dd className="mt-1 font-medium text-stone-900">{formatDate(task.completed_at)}</dd></div> : null}
-                  {task.completed_area_m2 ? <div><dt className="text-stone-500">Completed area</dt><dd className="mt-1 font-medium tabular-nums text-stone-900">{task.completed_area_m2} m²</dd></div> : null}
+                  {task.completed_area_m2 ? <div><dt className="text-stone-500">Task area</dt><dd className="mt-1 font-medium tabular-nums text-stone-900">{task.completed_area_m2} m²</dd></div> : null}
+                  <div><dt className="text-stone-500">Progress weight</dt><dd className="mt-1 font-medium tabular-nums text-stone-900">{task.progress_weight}</dd></div>
                   {project ? <div><dt className="text-stone-500">Project</dt><dd className="mt-1 font-medium"><Link href={`/projects/${project.id}`} className="text-stone-900 hover:underline">{project.name}</Link></dd></div> : null}
                 </dl>
               </section>
@@ -283,4 +347,22 @@ export function TaskDetailsDrawer({
       </div>
     </Drawer>
   );
+}
+
+function ChecklistItemRow({ canEdit, disabled, item, onDelete, onUpdate }: {
+  canEdit: boolean;
+  disabled: boolean;
+  item: TaskChecklistItem;
+  onDelete: (itemId: string) => Promise<void>;
+  onUpdate: (itemId: string, change: { title?: string; weight?: string; is_completed?: boolean }) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [weight, setWeight] = useState(item.weight.toString());
+  const isDirty = title.trim() !== item.title || Number(weight) !== item.weight;
+  return <li className="rounded-xl border border-stone-200 bg-white p-3">
+    <div className="flex items-start gap-3">
+      <input type="checkbox" checked={item.is_completed} disabled={!canEdit || disabled} onChange={(event) => void onUpdate(item.id, { is_completed: event.target.checked })} aria-label={`Mark ${item.title} ${item.is_completed ? "incomplete" : "complete"}`} className="mt-0.5 size-5 shrink-0 accent-stone-900" />
+      {canEdit ? <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(0,1fr)_4.5rem_auto]"><label className="grid gap-1 text-xs text-stone-500">Title<input value={title} maxLength={200} disabled={disabled} onChange={(event) => setTitle(event.target.value)} className="h-10 min-w-0 rounded-lg border border-stone-200 px-2 text-sm text-stone-900 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs text-stone-500">Weight<input type="number" min="0.01" max="1000" step="0.01" value={weight} disabled={disabled} onChange={(event) => setWeight(event.target.value)} className="h-10 rounded-lg border border-stone-200 px-2 text-sm ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><div className="flex items-end gap-1"><Button type="button" size="sm" variant="outline" className="min-h-10" disabled={disabled || !isDirty || !title.trim()} onClick={() => void onUpdate(item.id, { title, weight })}>Save</Button><Button type="button" size="sm" variant="ghost" className="min-h-10 min-w-10 p-0 text-red-700" disabled={disabled} aria-label={`Delete checklist item ${item.title}`} onClick={() => { if (window.confirm(`Delete “${item.title}”?`)) void onDelete(item.id); }}><Trash2 className="size-4" aria-hidden="true" /></Button></div></div> : <div className="min-w-0 flex-1"><p className={item.is_completed ? "break-words text-sm text-stone-500 line-through" : "break-words text-sm font-medium text-stone-800"}>{item.title}</p><p className="mt-1 text-xs text-stone-500">Weight {item.weight}</p></div>}
+    </div>
+  </li>;
 }

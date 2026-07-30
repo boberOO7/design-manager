@@ -25,8 +25,22 @@
 
 ## Project task progress and health
 
-- Project progress is derived from non-cancelled tasks as completed eligible
-  tasks divided by all eligible tasks; cancelled tasks are excluded.
+- Task progress separates production completion from client approval. To do is
+  0%, In progress is production completion × 80%, Client review is 80%, and
+  Done is 100%. Cancelled tasks are excluded from project aggregation.
+- In-progress tasks without checklist items use a stored manual production
+  percentage. A non-empty checklist replaces that percentage with completed
+  checklist weight divided by total checklist weight; deleting the final item
+  restores the stored manual fallback. Presentation rounds to the nearest whole
+  percent only after aggregation while domain calculations retain precision.
+- Project progress has one explicit method: Equal weights every included task as
+  1; Area weights the existing task `completed_area_m2` allocation against the
+  project `total_area_m2` design scope so unallocated scope remains unfinished;
+  Weighted uses each task's positive explicit `progress_weight`. Area and
+  arbitrary weights are never combined in one formula.
+- `completed_area_m2` is the canonical task-area allocation for both Area
+  progress and completion-time productivity attribution. Productivity remains
+  an immutable snapshot; later task edits do not rewrite historical credit.
 - Project health is derived rather than stored, using deterministic lifecycle,
   deadline, overdue-task, and open-priority rules.
 - Employee contribution is informational task progress only, not a performance
@@ -156,19 +170,30 @@
 
 - The project Board is the primary project workspace, with Details and Team as
   compact secondary views on the existing project route.
-- Project tasks use a three-column workflow: To do, In progress and Done.
-  Existing `review` tasks appear in In progress and existing `cancelled` tasks
-  appear in Done without changing their stored database status.
+- Project tasks use a four-column workflow: To do, In progress, Client review,
+  and Done. The existing `review` database status is the Client review column;
+  cancelled tasks remain visible in Done without changing stored status. Task
+  cancellation is not an exposed mutation for either administrators or assigned
+  employees; this milestone does not add a cancellation workflow.
 - Active studio administrators create tasks and assign them to people who are
   already active members of that exact project.
-- Assigned employees may update only the status of their own tasks. Task row
-  access and every write remain protected by RLS and column-level privileges.
+- Assigned employees may update the status and in-progress production of their
+  own tasks and may manage their To do/In progress checklist. Administrators may
+  do the same for tasks they manage. Task rows and checklist rows remain
+  protected by Route Handler checks, RLS, column privileges, and database
+  transition guards.
+- Checklist items are lightweight weighted stages with only title, completion,
+  weight, and deterministic order. They are not subtasks: they have no assignee,
+  deadline, status, comments, notifications, My Tasks presence, drawer, or
+  children. Position is assigned at insertion and is immutable afterward; no
+  checklist reorder UI or mutation is part of this milestone. A task cannot enter
+  Client review or Done with incomplete items.
 - Project Board task status changes use whole-card drag-and-drop. Pointer drags
   start only from non-interactive card areas, and database writes occur only
   after a completed drop into a different workflow column.
-- Manual ordering within a status column is not persisted. Task authorization
-  remains enforced by the existing Server Action and RLS, while My Tasks keeps
-  its compact status control.
+- Manual ordering within a status column is not persisted. Rejected optimistic
+  moves restore the previous task and project state and announce the reason.
+  My Tasks keeps its compact status control and the shared task drawer.
 
 ## Employee invitation and onboarding
 

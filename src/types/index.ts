@@ -3,6 +3,7 @@ import type { ProjectMemberRow } from "@/types/project-members";
 export type SystemRole = "admin" | "employee";
 export type ProjectStatus = "planned" | "active" | "paused" | "completed" | "archived";
 export type ProjectPriority = "low" | "normal" | "high" | "urgent";
+export type ProjectProgressMethod = "equal" | "area" | "weighted";
 export type TaskStatus = "todo" | "in_progress" | "review" | "completed" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 
@@ -28,6 +29,7 @@ export interface Project {
   total_area_m2: number;
   status: ProjectStatus;
   priority: ProjectPriority;
+  progress_method: ProjectProgressMethod;
   start_date: string;
   due_date?: string | null;
   completed_at?: string | null;

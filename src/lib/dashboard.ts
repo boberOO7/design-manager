@@ -1,23 +1,9 @@
 import { isTaskFinished, isTaskOverdue } from "./tasks";
-import type { TaskPriority, TaskStatus } from "../types/tasks";
+import type { MyTask } from "../types/tasks";
 import type { ProjectLifecycleStatus } from "./project-lifecycle";
+import { calculateProjectProgress, isProjectProgressMethod } from "./project-progress";
 
-export type DashboardTask = {
-  id: string;
-  project_id: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assignee_id: string;
-  due_date: string | null;
-  completed_at: string | null;
-  created_at: string;
-  created_by: string;
-  assignee: { id: string; full_name: string; job_title: string } | null;
-  creator: { id: string; full_name: string; job_title: string } | null;
-  project: { id: string; name: string };
-};
+export type DashboardTask = MyTask;
 
 export type DashboardProject = {
   id: string;
@@ -26,6 +12,8 @@ export type DashboardProject = {
   client_name: string | null;
   due_date: string | null;
   status: ProjectLifecycleStatus;
+  progress_method: string;
+  total_area_m2: number;
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string };
@@ -109,7 +97,7 @@ export function getEmployeeTasksNeedingAttention<T extends EmployeeAttentionTask
     || left.created_at.localeCompare(right.created_at));
 }
 
-export type AttentionProject = DashboardProject & { openTaskCount: number; overdueCount: number; urgentCount: number; deadlineDaysAway: number | null };
+export type AttentionProject = DashboardProject & { openTaskCount: number; overdueCount: number; urgentCount: number; deadlineDaysAway: number | null; progressPercent: number | null };
 
 export function getProjectsRequiringAttention(projects: DashboardProject[], tasks: DashboardTask[], today: string): AttentionProject[] {
   const byProject = new Map(projects.map((project) => [project.id, project]));
@@ -118,7 +106,9 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
     const deadlineDaysAway = project.due_date && project.due_date >= today && project.due_date <= getDateDaysFrom(today, 7)
       ? Math.round((new Date(`${project.due_date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
       : null;
-    summaries.set(project.id, { ...project, openTaskCount: 0, overdueCount: 0, urgentCount: 0, deadlineDaysAway });
+    const projectTasks = tasks.filter((task) => task.project_id === project.id);
+    const progress = calculateProjectProgress(projectTasks, today, { method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal", designScopeAreaM2: project.total_area_m2 });
+    summaries.set(project.id, { ...project, openTaskCount: 0, overdueCount: 0, urgentCount: 0, deadlineDaysAway, progressPercent: progress.progressPercent });
   }
   for (const task of tasks) {
     const summary = summaries.get(task.project_id);

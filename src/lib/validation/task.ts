@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES } from "../../types/tasks";
+import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const optionalDateSchema = z.preprocess(
@@ -16,6 +16,8 @@ const optionalCompletedAreaSchema = z.preprocess(
   z.coerce.number().finite("Enter a valid area").positive("Area must be greater than zero").max(1_000_000, "Area is too large").optional(),
 );
 
+const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
+
 export const taskCreationSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
   description: z.preprocess(
@@ -30,11 +32,11 @@ export const taskCreationSchema = z.object({
 
 export const taskStatusUpdateSchema = z.object({
   task_id: z.uuid("Choose a valid task"),
-  status: z.enum(TASK_STATUS_VALUES),
+  status: z.enum(["todo", "in_progress", "review", "completed"]),
 });
 
 export const taskStatusPayloadSchema = z.object({
-  status: z.enum(TASK_STATUS_VALUES),
+  status: z.enum(["todo", "in_progress", "review", "completed"]),
 }).strict();
 
 export const taskEditSchema = z.object({
@@ -47,8 +49,24 @@ export const taskEditSchema = z.object({
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
-  status: z.enum(["todo", "in_progress", "completed"]),
+  progress_weight: progressWeightSchema,
+  status: z.enum(["todo", "in_progress", "review", "completed"]),
 }).strict();
+
+export const taskProductionProgressSchema = z.object({
+  production_completion: z.coerce.number().finite("Enter a valid percentage").min(0).max(100),
+}).strict();
+
+export const checklistItemCreateSchema = z.object({
+  title: z.string().trim().min(1, "Checklist item title is required").max(200, "Checklist item title is too long"),
+  weight: progressWeightSchema.default(1),
+}).strict();
+
+export const checklistItemUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  weight: progressWeightSchema.optional(),
+  is_completed: z.boolean().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, "Provide a checklist change");
 
 export type TaskEditInput = z.infer<typeof taskEditSchema>;
 export type TaskEditField = keyof TaskEditInput;
@@ -81,6 +99,7 @@ export function getTaskCreationInput(formData: FormData) {
     priority: getFormString(formData, "priority"),
     due_date: getFormString(formData, "due_date"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
+    progress_weight: getFormString(formData, "progress_weight"),
   };
 }
 

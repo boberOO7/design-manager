@@ -8,7 +8,7 @@ import type { TaskStatusActionState } from "@/lib/validation/task";
 
 export function TaskStatusControl({ taskId, status }: { taskId: string; status: string }) {
   const [state, formAction, isPending] = useActionState<TaskStatusActionState, FormData>(updateTaskStatus, {});
-  const isExtraStatus = status === "review" || status === "cancelled";
+  const isExtraStatus = status === "cancelled";
 
   return (
     <form action={formAction} className="mt-3 border-t border-stone-100 pt-3">

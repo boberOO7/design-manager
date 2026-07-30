@@ -39,6 +39,9 @@ function validateDateOrder(
 export const projectSchema = z.object(projectFields).superRefine(validateDateOrder);
 
 export const editProjectSchema = z.object(projectFields).strict().superRefine(validateDateOrder);
+export const projectProgressMethodSchema = z.object({
+  progress_method: z.enum(["equal", "area", "weighted"]),
+}).strict();
 
 export type ProjectFormValues = z.infer<typeof projectSchema>;
 export type EditProjectFormValues = z.infer<typeof editProjectSchema>;

@@ -30,7 +30,7 @@ describe("task creation validation", () => {
     expect(taskCreationSchema.safeParse({ ...validTask, priority: "medium" }).success).toBe(false);
   });
 
-  it("accepts optional positive completed area and rejects zero or negative values", () => {
+  it("accepts optional positive task area and rejects zero or negative values", () => {
     expect(taskCreationSchema.parse({ ...validTask, completed_area_m2: "42.5" }).completed_area_m2).toBe(42.5);
     expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "0" }).success).toBe(false);
     expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "-1" }).success).toBe(false);
@@ -49,6 +49,8 @@ describe("task status validation", () => {
   it("accepts only a status in the Board API payload", () => {
     expect(taskStatusPayloadSchema.safeParse({ status: "todo" }).success).toBe(true);
     expect(taskStatusPayloadSchema.safeParse({ status: "todo", task_id: validTask.assignee_id }).success).toBe(false);
+    expect(taskStatusPayloadSchema.safeParse({ status: "cancelled" }).success).toBe(false);
+    expect(taskStatusUpdateSchema.safeParse({ task_id: validTask.assignee_id, status: "cancelled" }).success).toBe(false);
   });
 });
 
@@ -60,6 +62,7 @@ describe("task editing validation", () => {
     priority: "high",
     due_date: "2026-08-01",
     completed_area_m2: "70",
+    progress_weight: "2.5",
     status: "in_progress",
   };
 
@@ -70,9 +73,11 @@ describe("task editing validation", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, title: "  " }).success).toBe(false);
   });
 
-  it("rejects invalid priority, non-MVP status, and invalid dates", () => {
+  it("accepts Client review and rejects invalid priority, weight, and dates", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, priority: "medium" }).success).toBe(false);
-    expect(taskEditSchema.safeParse({ ...validEdit, status: "review" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, status: "review" }).success).toBe(true);
+    expect(taskEditSchema.safeParse({ ...validEdit, status: "cancelled" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, progress_weight: "0" }).success).toBe(false);
     expect(taskEditSchema.safeParse({ ...validEdit, due_date: "2026-02-30" }).success).toBe(false);
   });
 });

@@ -3,7 +3,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
-import { getTaskForStatusUpdate } from "@/data/queries/tasks";
+import { getProjectTaskById, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { canCompleteAttributedTask } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
@@ -56,6 +56,11 @@ export async function updateTaskStatusMutation(
   const authorization = await authorizeTaskMutation(parsed.data.task_id);
   if (!authorization.success) return authorization;
 
+  if ((parsed.data.status === "review" || parsed.data.status === "completed")
+    && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
+    return { formError: "Complete every checklist item before moving this task to Client review or Done.", success: false };
+  }
+
   if (parsed.data.status === "completed" && authorization.task.completed_area_m2 !== null) {
     const activeContributors = await getAssignableProjectMembers(
       authorization.task.project_id,
@@ -67,7 +72,7 @@ export async function updateTaskStatusMutation(
       assigneeId: authorization.task.assignee_id,
       isActiveProjectMember,
     })) {
-      return { formError: "This task has completed area. Assign it to an active project member before marking it complete.", success: false };
+      return { formError: "This task has task area. Assign it to an active project member before marking it complete.", success: false };
     }
   }
 
@@ -85,6 +90,9 @@ export async function updateTaskStatusMutation(
     return { formError: "The task status could not be updated. Please try again.", success: false };
   }
   revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -92,5 +100,7 @@ export async function updateTaskStatusMutation(
     .eq("id", data.project_id)
     .maybeSingle();
   if (projectError || !project) return { formError: "The task status was updated, but the project could not be refreshed. Please refresh the page.", success: false };
-  return { projectId: data.project_id, projectStatus: project.status, success: true };
+  const task = await getProjectTaskById(data.id);
+  if (!task) return { formError: "The task status was updated, but the task could not be refreshed. Please refresh the page.", success: false };
+  return { projectId: data.project_id, projectStatus: project.status, task, success: true };
 }

@@ -325,6 +325,7 @@ export type Database = {
           id: string
           name: string
           priority: string
+          progress_method: string
           project_code: string | null
           start_date: string
           status: string
@@ -343,6 +344,7 @@ export type Database = {
           id?: string
           name: string
           priority?: string
+          progress_method?: string
           project_code?: string | null
           start_date: string
           status?: string
@@ -361,6 +363,7 @@ export type Database = {
           id?: string
           name?: string
           priority?: string
+          progress_method?: string
           project_code?: string | null
           start_date?: string
           status?: string
@@ -459,6 +462,8 @@ export type Database = {
           due_date: string | null
           id: string
           priority: string
+          production_completion: number
+          progress_weight: number
           project_id: string
           start_date: string | null
           status: string
@@ -475,6 +480,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
+          production_completion?: number
+          progress_weight?: number
           project_id: string
           start_date?: string | null
           status?: string
@@ -491,6 +498,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
+          production_completion?: number
+          progress_weight?: number
           project_id?: string
           start_date?: string | null
           status?: string
@@ -517,6 +526,47 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_checklist_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          position: number
+          task_id: string
+          title: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          position: number
+          task_id: string
+          title: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          position?: number
+          task_id?: string
+          title?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

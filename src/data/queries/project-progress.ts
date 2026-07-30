@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types";
 import type { ProjectTaskForProgress } from "@/lib/project-progress";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectListRow = Pick<ProjectRow, "id" | "name" | "project_code" | "client_name" | "description" | "status" | "priority" | "due_date" | "archived_at">;
+type ProjectListRow = Pick<ProjectRow, "id" | "name" | "project_code" | "client_name" | "description" | "status" | "priority" | "due_date" | "archived_at" | "progress_method" | "total_area_m2">;
 
 export type AccessibleProjectWithTasks = ProjectListRow & { tasks: ProjectTaskForProgress[] };
 
@@ -14,7 +14,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const supabase = await createClient();
   const { data: projects, error: projectsError } = await supabase
     .from("projects")
-    .select("id, name, project_code, client_name, description, status, priority, due_date, archived_at")
+    .select("id, name, project_code, client_name, description, status, priority, due_date, archived_at, progress_method, total_area_m2")
     .is("archived_at", null)
     .neq("status", "archived")
     .order("start_date", { ascending: false })
@@ -27,7 +27,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const ids = projects.map((project) => project.id);
   const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
-    .select("id, project_id, status, priority, due_date, assignee_id")
+    .select("id, project_id, status, priority, due_date, assignee_id, completed_area_m2, production_completion, progress_weight, checklist_items:task_checklist_items(id, is_completed, weight)")
     .in("project_id", ids)
     .overrideTypes<Array<ProjectTaskForProgress & { project_id: string }>, { merge: false }>();
   if (tasksError || !tasks) {

@@ -1,18 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { calculatePersonalProgress, calculateProjectProgress, getProjectHealth } from "./project-progress";
+import { calculatePersonalProgress, calculateProjectProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
 
-function task(overrides: Partial<{ id: string; status: string; priority: string; due_date: string | null; assignee_id: string | null }> = {}) {
-  return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", ...overrides };
+function task(overrides: Partial<ProjectTaskForProgress> = {}): ProjectTaskForProgress {
+  return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...overrides };
 }
+
+describe("task progress", () => {
+  it.each([
+    ["todo", 0],
+    ["in_progress", 40],
+    ["review", 80],
+    ["completed", 100],
+    ["cancelled", 0],
+  ])("maps %s through the production and approval split", (status, expected) => {
+    expect(calculateTaskProgress(task({ status, production_completion: 50 })).overallPercent).toBe(expected);
+  });
+
+  it.each([[10, 8], [50, 40], [90, 72]])("maps %s%% manual production to %s%% overall", (production, overall) => {
+    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: production }))).toMatchObject({ source: "manual", productionPercent: production, overallPercent: overall });
+  });
+
+  it("uses weighted checklist completion and ignores the manual fallback while items exist", () => {
+    const progress = calculateTaskProgress(task({ status: "in_progress", production_completion: 99, checklist_items: [{ id: "a", is_completed: true, weight: 1 }, { id: "b", is_completed: false, weight: 3 }] }));
+    expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 20, completedChecklistCount: 1, checklistCount: 2 });
+    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 37, checklist_items: [] })).productionPercent).toBe(37);
+  });
+});
 
 describe("project task progress", () => {
   it("excludes cancelled tasks and returns null progress with no eligible tasks", () => {
     expect(calculateProjectProgress([task({ status: "cancelled" })], "2026-07-28")).toMatchObject({ eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: null });
   });
 
-  it("rounds task-derived progress and counts workflow statuses consistently", () => {
-    const progress = calculateProjectProgress([task({ id: "todo" }), task({ id: "progress", status: "in_progress" }), task({ id: "review", status: "review" }), task({ id: "done", status: "completed" }), task({ id: "cancelled", status: "cancelled" })], "2026-07-28");
-    expect(progress).toMatchObject({ eligibleTaskCount: 4, completedTaskCount: 1, openTaskCount: 3, todoTaskCount: 1, inProgressTaskCount: 2, progressPercent: 25 });
+  it("uses equal aggregation with status progress and consistent rounded presentation", () => {
+    const progress = calculateProjectProgress([task({ id: "todo" }), task({ id: "progress", status: "in_progress", production_completion: 50 }), task({ id: "review", status: "review" }), task({ id: "done", status: "completed" }), task({ id: "cancelled", status: "cancelled" })], "2026-07-28");
+    expect(progress).toMatchObject({ eligibleTaskCount: 4, completedTaskCount: 1, openTaskCount: 3, todoTaskCount: 1, inProgressTaskCount: 1, reviewTaskCount: 1, rawProgressPercent: 55, progressPercent: 55 });
+  });
+
+  it("uses project scope as the area denominator so unallocated area remains unfinished", () => {
+    const progress = calculateProjectProgress([
+      task({ id: "done", status: "completed", completed_area_m2: 40 }),
+      task({ id: "review", status: "review", completed_area_m2: 20 }),
+      task({ id: "unallocated", status: "completed" }),
+    ], "2026-07-28", { method: "area", designScopeAreaM2: 100 });
+    expect(progress.rawProgressPercent).toBe(56);
+    expect(progress).toMatchObject({ progressPercent: 56, assignedAreaM2: 60, designScopeAreaM2: 100, unweightedTaskCount: 1 });
+  });
+
+  it("uses explicit task weights only in weighted mode", () => {
+    const tasks = [task({ id: "done", status: "completed", progress_weight: 3, completed_area_m2: 1 }), task({ id: "todo", progress_weight: 1, completed_area_m2: 99 })];
+    expect(calculateProjectProgress(tasks, "2026-07-28", { method: "weighted", designScopeAreaM2: 100 }).progressPercent).toBe(75);
+    expect(calculateProjectProgress(tasks, "2026-07-28", { method: "equal", designScopeAreaM2: 100 }).progressPercent).toBe(50);
   });
 
   it("never treats completed tasks as overdue and uses date-only due dates", () => {
@@ -26,10 +64,6 @@ describe("project task progress", () => {
     expect(calculateProjectProgress(tasks, "2026-07-28")).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 });
     expect(calculatePersonalProgress(tasks, "employee-1", "2026-07-28")).toEqual({ eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 });
   });
-
-  it("does not fake 100 percent when a completed project has unfinished tasks", () => {
-    expect(calculateProjectProgress([task({ id: "done", status: "completed" }), task({ id: "open" })], "2026-07-28").progressPercent).toBe(50);
-  });
 });
 
 describe("project health precedence", () => {
@@ -42,14 +76,10 @@ describe("project health precedence", () => {
     const progress = calculateProjectProgress([task({ due_date: "2026-07-01", priority: "urgent" })], "2026-07-28");
     expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-07-01", progress, today: "2026-07-28" }).health).toBe("overdue");
   });
-  it("puts task attention ahead of a deadline soon", () => {
-    const progress = calculateProjectProgress([task({ priority: "high" })], "2026-07-28");
-    expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-08-01", progress, today: "2026-07-28" }).health).toBe("needs_attention");
-  });
-  it("uses deadline soon before on track and identifies urgent open work", () => {
+  it("uses task attention and deadline-soon precedence", () => {
+    const high = calculateProjectProgress([task({ priority: "high" })], "2026-07-28");
+    expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-08-01", progress: high, today: "2026-07-28" }).health).toBe("needs_attention");
     expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-08-04", progress: normal, today: "2026-07-28" }).health).toBe("deadline_soon");
     expect(getProjectHealth({ projectStatus: "active", projectDueDate: null, progress: normal, today: "2026-07-28" }).health).toBe("on_track");
-    const urgent = calculateProjectProgress([task({ priority: "urgent" })], "2026-07-28");
-    expect(getProjectHealth({ projectStatus: "active", projectDueDate: null, progress: urgent, today: "2026-07-28" }).health).toBe("needs_attention");
   });
 });

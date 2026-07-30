@@ -28,6 +28,7 @@ export function getActivitySummary(actionType: string, changes: Json): string {
 export function formatActivityValue(value: Json): string {
   if (value === null) return "No date";
   if (typeof value === "boolean") return value ? "Active" : "Inactive";
+  if (value === "review") return "Client review";
   if (typeof value === "string") return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   return String(value);
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canMoveTask,
   canEditTaskDetails,
+  canEditTaskWork,
   areProjectTaskSnapshotsEqual,
   getBoardColumn,
   getTaskStatusForDrop,
@@ -14,11 +15,12 @@ import {
   setProjectTaskStatus,
   mergeProjectTask,
   shouldOpenTaskDrawer,
+  BOARD_COLUMNS,
 } from "./tasks";
 import type { MyTask, ProjectTask } from "../types/tasks";
 
 function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
-  return {
+  const task: ProjectTask = {
     id: "123e4567-e89b-12d3-a456-426614174000",
     project_id: "123e4567-e89b-12d3-a456-426614174001",
     title: "Task",
@@ -30,6 +32,10 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     completed_at: null,
     created_at: "2026-07-01T09:00:00.000Z",
     created_by: "123e4567-e89b-12d3-a456-426614174003",
+    completed_area_m2: null,
+    production_completion: 0,
+    progress_weight: 1,
+    checklist_items: [],
     assignee: {
       id: "123e4567-e89b-12d3-a456-426614174002",
       full_name: "Alex Employee",
@@ -42,19 +48,24 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     },
     ...overrides,
   };
+  return task;
 }
 
 describe("task Board status mapping", () => {
-  it("maps Board columns to the three writable database statuses", () => {
+  it("renders the four-stage workflow in operational order", () => {
+    expect(BOARD_COLUMNS.map((column) => [column.label, column.status])).toEqual([["To do", "todo"], ["In progress", "in_progress"], ["Client review", "review"], ["Done", "completed"]]);
+  });
+  it("maps Board columns to the four writable database statuses", () => {
     expect(getWritableStatusForBoardColumn("todo")).toBe("todo");
     expect(getWritableStatusForBoardColumn("in-progress")).toBe("in_progress");
+    expect(getWritableStatusForBoardColumn("client-review")).toBe("review");
     expect(getWritableStatusForBoardColumn("done")).toBe("completed");
   });
 
   it("maps every database status into exactly one display column", () => {
     expect(getBoardColumn("todo")).toBe("todo");
     expect(getBoardColumn("in_progress")).toBe("in-progress");
-    expect(getBoardColumn("review")).toBe("in-progress");
+    expect(getBoardColumn("review")).toBe("client-review");
     expect(getBoardColumn("completed")).toBe("done");
     expect(getBoardColumn("cancelled")).toBe("done");
   });
@@ -62,11 +73,11 @@ describe("task Board status mapping", () => {
   it.each([
     ["todo", "todo"],
     ["in_progress", "in-progress"],
-    ["review", "in-progress"],
+    ["review", "client-review"],
     ["completed", "done"],
     ["cancelled", "done"],
   ])("treats dropping %s into %s as a no-op", (status, columnId) => {
-    if (columnId === "todo" || columnId === "in-progress" || columnId === "done") {
+    if (columnId === "todo" || columnId === "in-progress" || columnId === "client-review" || columnId === "done") {
       expect(getTaskStatusForDrop(status, columnId)).toBeNull();
     }
   });
@@ -85,11 +96,12 @@ describe("task Board status mapping", () => {
       makeTask({ id: "5", status: "cancelled" }),
     ];
     const groups = groupTasksByBoardColumn(tasks);
-    const groupedIds = [...groups.todo, ...groups["in-progress"], ...groups.done]
+    const groupedIds = [...groups.todo, ...groups["in-progress"], ...groups["client-review"], ...groups.done]
       .map((task) => task.id);
 
     expect(groups.todo).toHaveLength(1);
-    expect(groups["in-progress"]).toHaveLength(2);
+    expect(groups["in-progress"]).toHaveLength(1);
+    expect(groups["client-review"]).toHaveLength(1);
     expect(groups.done).toHaveLength(2);
     expect(new Set(groupedIds).size).toBe(tasks.length);
     expect(groupedIds).toHaveLength(tasks.length);
@@ -126,6 +138,15 @@ describe("task detail editing permission", () => {
   });
 });
 
+describe("task work editing permission", () => {
+  it("allows admins and the assignee to edit an active checklist, but respects workflow read-only states", () => {
+    expect(canEditTaskWork({ assigneeId: "employee-1", currentUserId: "employee-1", isAdmin: false, isProjectReadOnly: false, status: "in_progress" })).toBe(true);
+    expect(canEditTaskWork({ assigneeId: "employee-2", currentUserId: "employee-1", isAdmin: true, isProjectReadOnly: false, status: "todo" })).toBe(true);
+    expect(canEditTaskWork({ assigneeId: "employee-1", currentUserId: "employee-1", isAdmin: false, isProjectReadOnly: false, status: "review" })).toBe(false);
+    expect(canEditTaskWork({ assigneeId: "employee-1", currentUserId: "employee-1", isAdmin: true, isProjectReadOnly: true, status: "in_progress" })).toBe(false);
+  });
+});
+
 describe("task overdue behavior", () => {
   it("does not mark completed or cancelled tasks overdue", () => {
     expect(isTaskOverdue(makeTask({ due_date: "2026-07-01", status: "todo" }), "2026-07-27")).toBe(true);
@@ -158,6 +179,15 @@ describe("optimistic task Board state", () => {
 
     expect(rolledBackTasks.find((task) => task.id === "task-1")?.status).toBe("todo");
     expect(rolledBackTasks.find((task) => task.id === "task-2")?.status).toBe("completed");
+  });
+
+  it("rolls back an optimistic Client review move when the server rejects an incomplete checklist", () => {
+    const initial = [makeTask({ id: "task-1", status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] })];
+    const optimistic = setProjectTaskStatus(initial, "task-1", "review");
+    expect(groupTasksByBoardColumn(optimistic)["client-review"]).toHaveLength(1);
+    const rolledBack = setProjectTaskStatus(optimistic, "task-1", initial[0].status);
+    expect(groupTasksByBoardColumn(rolledBack)["in-progress"]).toHaveLength(1);
+    expect(rolledBack[0].checklist_items[0]?.is_completed).toBe(false);
   });
 
   it("does not let stale server props overwrite a pending optimistic status", () => {
@@ -254,7 +284,7 @@ describe("optimistic task Board state", () => {
   it("regroups a merged My Tasks item immediately after its status changes", () => {
     const task: MyTask = {
       ...makeTask({ id: "my-task", due_date: "2026-07-01", status: "todo" }),
-      project: { id: "project-1", name: "Workspace" },
+      project: { id: "project-1", name: "Workspace", status: "active", archived_at: null },
     };
     const mergedTasks = mergeProjectTask([task], { ...task, status: "completed" });
     const groups = groupMyTasks(mergedTasks, "2026-07-28");

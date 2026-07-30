@@ -3,6 +3,7 @@ import type { Database } from "@/types/database.types";
 export type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
+export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_items"]["Row"];
 
 export const TASK_STATUS_VALUES = [
   "todo",
@@ -36,13 +37,15 @@ export type ProjectTask = Pick<
   | "due_date"
   | "completed_at"
   | "created_at"
+  | "production_completion"
+  | "progress_weight"
 > & {
-  /** Optional during the database migration rollout so existing projections remain readable. */
-  completed_area_m2?: TaskRow["completed_area_m2"];
+  completed_area_m2: TaskRow["completed_area_m2"];
+  checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;
   creator: ProfileSummary | null;
 };
 
 export type MyTask = ProjectTask & {
-  project: { id: string; name: string };
+  project: { id: string; name: string; status: string; archived_at: string | null };
 };

@@ -1,12 +1,12 @@
 import type { MyTask, ProjectTask, TaskPriority, TaskStatus } from "../types/tasks";
 
-export type BoardColumnId = "todo" | "in-progress" | "done";
+export type BoardColumnId = "todo" | "in-progress" | "client-review" | "done";
 export type MyTaskGroupId = "overdue" | "today" | "upcoming" | "completed";
-export type WritableTaskStatus = TaskStatus & ("todo" | "in_progress" | "completed");
-export const WRITABLE_TASK_STATUS_VALUES = ["todo", "in_progress", "completed"] as const;
+export type WritableTaskStatus = TaskStatus & ("todo" | "in_progress" | "review" | "completed");
+export const WRITABLE_TASK_STATUS_VALUES = ["todo", "in_progress", "review", "completed"] as const;
 
 export function isWritableTaskStatus(status: string): status is (typeof WRITABLE_TASK_STATUS_VALUES)[number] {
-  return status === "todo" || status === "in_progress" || status === "completed";
+  return status === "todo" || status === "in_progress" || status === "review" || status === "completed";
 }
 
 export const BOARD_COLUMNS: ReadonlyArray<{
@@ -16,13 +16,14 @@ export const BOARD_COLUMNS: ReadonlyArray<{
 }> = [
   { id: "todo", label: "To do", status: "todo" },
   { id: "in-progress", label: "In progress", status: "in_progress" },
+  { id: "client-review", label: "Client review", status: "review" },
   { id: "done", label: "Done", status: "completed" },
 ];
 
 const BOARD_COLUMN_BY_STATUS: Record<TaskStatus, BoardColumnId> = {
   todo: "todo",
   in_progress: "in-progress",
-  review: "in-progress",
+  review: "client-review",
   completed: "done",
   cancelled: "done",
 };
@@ -30,6 +31,7 @@ const BOARD_COLUMN_BY_STATUS: Record<TaskStatus, BoardColumnId> = {
 const WRITABLE_STATUS_BY_COLUMN: Record<BoardColumnId, WritableTaskStatus> = {
   todo: "todo",
   "in-progress": "in_progress",
+  "client-review": "review",
   done: "completed",
 };
 
@@ -45,7 +47,7 @@ export function getTaskStatusLabel(status: string): string {
   switch (status) {
     case "todo": return "To do";
     case "in_progress": return "In progress";
-    case "review": return "Review";
+    case "review": return "Client review";
     case "completed": return "Done";
     case "cancelled": return "Cancelled";
     default: return "Unknown";
@@ -92,7 +94,7 @@ export function getTaskStatusForDrop(
 }
 
 export function isBoardColumnId(value: string): value is BoardColumnId {
-  return value === "todo" || value === "in-progress" || value === "done";
+  return value === "todo" || value === "in-progress" || value === "client-review" || value === "done";
 }
 
 export function canMoveTask({
@@ -120,10 +122,27 @@ export function canEditTaskDetails({
   return isAdmin && !isProjectReadOnly;
 }
 
+export function canEditTaskWork({
+  assigneeId,
+  currentUserId,
+  isAdmin,
+  isProjectReadOnly,
+  status,
+}: {
+  assigneeId: string | null;
+  currentUserId: string;
+  isAdmin: boolean;
+  isProjectReadOnly: boolean;
+  status: string;
+}): boolean {
+  return (status === "todo" || status === "in_progress") && canMoveTask({ assigneeId, currentUserId, isAdmin, isProjectReadOnly });
+}
+
 export function groupTasksByBoardColumn(tasks: ProjectTask[]): Record<BoardColumnId, ProjectTask[]> {
   const groups: Record<BoardColumnId, ProjectTask[]> = {
     todo: [],
     "in-progress": [],
+    "client-review": [],
     done: [],
   };
 
@@ -177,6 +196,19 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.completed_at === right.completed_at
     && left.created_at === right.created_at
     && left.created_by === right.created_by
+    && left.completed_area_m2 === right.completed_area_m2
+    && left.production_completion === right.production_completion
+    && left.progress_weight === right.progress_weight
+    && left.checklist_items.length === right.checklist_items.length
+    && left.checklist_items.every((item, index) => {
+      const other = right.checklist_items[index];
+      return other !== undefined
+        && item.id === other.id
+        && item.title === other.title
+        && item.is_completed === other.is_completed
+        && item.weight === other.weight
+        && item.position === other.position;
+    })
     && areTaskPeopleEqual(left.assignee, right.assignee)
     && areTaskPeopleEqual(left.creator, right.creator);
 }

@@ -37,7 +37,7 @@ export function getTaskStatusBadgeStyle(status: TaskStatus | string): SemanticBa
   switch (status) {
     case "todo": return badge("To do", "neutral");
     case "in_progress": return badge("In progress", "info");
-    case "review": return badge("Review", "violet");
+    case "review": return badge("Client review", "violet");
     case "completed": return badge("Done", "success");
     case "cancelled": return badge("Cancelled", "muted");
     default: return badge("Unknown", "neutral");

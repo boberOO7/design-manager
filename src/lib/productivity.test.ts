@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { canCompleteAttributedTask, getKyivMonthBounds, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { canCompleteAttributedTask, getKyivMonthBounds, getLeaderboardBonusPercent, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
 
 describe("monthly productivity projection", () => {
   it("uses Europe/Kyiv month boundaries across a DST month", () => {
     expect(getKyivMonthBounds(new Date("2026-03-31T20:30:00.000Z"))).toEqual({
+      start: "2026-02-28T22:00:00.000Z",
+      end: "2026-03-31T21:00:00.000Z",
+    });
+  });
+
+  it("returns the previous Kyiv month boundaries without changing current-month behavior", () => {
+    expect(getKyivMonthBounds(new Date("2026-04-15T12:00:00.000Z"), -1)).toEqual({
       start: "2026-02-28T22:00:00.000Z",
       end: "2026-03-31T21:00:00.000Z",
     });
@@ -53,5 +60,22 @@ describe("monthly productivity projection", () => {
 
   it("does not treat studio or admin access as project contribution", () => {
     expect(isEligibleProjectFallbackContributor({ hasActiveProjectMembership: false, hasActiveStudioMembership: true, hasActiveProfile: true })).toBe(false);
+  });
+
+  it("maps only the top three shared ranks to bonus eligibility", () => {
+    expect(getLeaderboardBonusPercent(1)).toBe(15);
+    expect(getLeaderboardBonusPercent(2)).toBe(10);
+    expect(getLeaderboardBonusPercent(3)).toBe(5);
+    expect(getLeaderboardBonusPercent(4)).toBe(0);
+  });
+
+  it("gives tied leaders the same bonus and keeps empty months healthy", () => {
+    const entries = projectProductivityLeaderboard([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 20, source_type: "task" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 20, source_type: "task" },
+      { contributor_id: "c", contributor_name: "Cam", contributor_job_title: "Visualizer", credited_area_m2: 10, source_type: "task" },
+    ]);
+    expect(entries.map((entry) => [entry.rank, getLeaderboardBonusPercent(entry.rank)])).toEqual([[1, 15], [1, 15], [3, 5]]);
+    expect(getLeaderboardTotals([])).toEqual({ completed_area_m2: 0, completed_tasks: 0 });
   });
 });

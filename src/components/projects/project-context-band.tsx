@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectLifecycleControls } from "@/components/projects/project-lifecycle-controls";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
-import { calculateProjectProgress, getProjectHealth, getProjectHealthLabel } from "@/lib/project-progress";
+import { calculateProjectProgress, getProjectHealth, getProjectHealthLabel, isProjectProgressMethod } from "@/lib/project-progress";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle, getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { getTaskPriorityLabel } from "@/lib/tasks";
 import { formatDateOnly } from "@/lib/utils";
@@ -19,6 +19,8 @@ export type ProjectContextProject = {
   client_name: string | null;
   due_date: string | null;
   priority: string;
+  progress_method: string;
+  total_area_m2: number;
 };
 
 export function ProjectContextBand({ archiveAction, canManage, isArchived, project, restoreAction, tasks }: {
@@ -30,7 +32,10 @@ export function ProjectContextBand({ archiveAction, canManage, isArchived, proje
   tasks: ProjectTask[];
 }) {
   const { status } = useProjectLifecycle();
-  const progress = calculateProjectProgress(tasks);
+  const progress = calculateProjectProgress(tasks, undefined, {
+    method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal",
+    designScopeAreaM2: Number(project.total_area_m2),
+  });
   const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
   const lifecycleStyle = getProjectLifecycleBadgeStyle(isArchived ? "archived" : status);
   const healthStyle = getProjectHealthBadgeStyle(health.health);

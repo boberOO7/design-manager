@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectProgressLabel, type ProjectListFilters } from "./project-list-presentation";
+import type { ProjectTaskForProgress } from "./project-progress";
 
 const today = "2026-07-29";
-function project(overrides: Partial<{ id: string; name: string; priority: string; status: string; due_date: string | null; tasks: Array<{ id: string; status: string; priority: string; due_date: string | null; assignee_id: string | null }> }> = {}) {
-  return { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, tasks: [], ...overrides };
+type TestTask = Partial<ProjectTaskForProgress> & Pick<ProjectTaskForProgress, "id" | "status" | "priority" | "due_date" | "assignee_id">;
+function progressTask(input: TestTask): ProjectTaskForProgress {
+  return { completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...input };
+}
+function project(overrides: Partial<{ id: string; name: string; priority: string; status: string; due_date: string | null; progress_method: string; total_area_m2: number; tasks: TestTask[] }> = {}) {
+  const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, progress_method: "equal", total_area_m2: 100, tasks: [] as TestTask[], ...overrides };
+  return { ...value, tasks: value.tasks.map(progressTask) };
 }
 const operational: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational" };
 

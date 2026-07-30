@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const migrationPath = new URL("../../supabase/migrations/20260730120000_productivity_attribution.sql", import.meta.url);
+const progressMigrationPath = new URL("../../supabase/migrations/20260730120100_task_progress_checklists.sql", import.meta.url);
 
 describe("productivity attribution migration contract", () => {
   it("uses immutable completion events with task and fallback exclusivity", async () => {
@@ -38,5 +39,18 @@ describe("productivity attribution migration contract", () => {
     const sql = await readFile(migrationPath, "utf8");
     expect(sql).toContain("Attributed task completion requires an active project-member assignee");
     expect(sql).toContain("member.project_id = new.project_id");
+  });
+
+  it("credits task area only on completion, exactly once, without progress-method rewrites", async () => {
+    const [sql, progressSql] = await Promise.all([
+      readFile(migrationPath, "utf8"),
+      readFile(progressMigrationPath, "utf8"),
+    ]);
+    expect(sql).toContain("if new.status = 'completed' and old.status is distinct from 'completed' then");
+    expect(sql).toContain("new.id, new.assignee_id, 'task', new.completed_area_m2");
+    expect(sql).toContain("on public.productivity_attributions(task_id)\n  where source_type = 'task' and voided_at is null");
+    expect(sql).toContain("elsif old.status = 'completed' and new.status is distinct from 'completed' then");
+    expect(sql).not.toContain("progress_method");
+    expect(progressSql).not.toContain("productivity_attributions");
   });
 });

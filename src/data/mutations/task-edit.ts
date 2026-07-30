@@ -3,7 +3,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectTaskById } from "@/data/queries/tasks";
+import { getProjectTaskById, getProjectTasks } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
 import { taskEditSchema } from "@/lib/validation/task";
@@ -30,6 +30,10 @@ export async function updateTaskDetailsMutation(
   if (!authorization.isStudioAdmin) {
     return { success: false, formError: "Only active studio administrators can edit task details." };
   }
+  if ((parsed.data.status === "review" || parsed.data.status === "completed")
+    && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
+    return { success: false, formError: "Complete every checklist item before moving this task to Client review or Done." };
+  }
 
   const members = await getAssignableProjectMembers(
     authorization.task.project_id,
@@ -42,14 +46,23 @@ export async function updateTaskDetailsMutation(
       fieldErrors: { assignee_id: "Choose an active member of this project." },
     };
   }
+  if (authorization.task.project.progress_method === "area") {
+    const projectTasks = await getProjectTasks(authorization.task.project_id);
+    const otherArea = projectTasks.filter((task) => task.id !== authorization.task.id && task.status !== "cancelled").reduce((total, task) => total + Number(task.completed_area_m2 ?? 0), 0);
+    const nextArea = otherArea + Number(parsed.data.completed_area_m2 ?? 0);
+    if (nextArea > authorization.task.project.total_area_m2) {
+      return { success: false, formError: "Please correct the highlighted fields.", fieldErrors: { completed_area_m2: `Task areas cannot exceed the ${authorization.task.project.total_area_m2} m² design scope.` } };
+    }
+  }
 
-  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "status"> = {
+  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "progress_weight" | "status"> = {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     assignee_id: parsed.data.assignee_id,
     priority: parsed.data.priority,
     due_date: parsed.data.due_date ?? null,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
+    progress_weight: parsed.data.progress_weight,
     status: parsed.data.status,
   };
   const supabase = await createClient();
@@ -65,6 +78,8 @@ export async function updateTaskDetailsMutation(
     return { success: false, formError: "The task could not be updated. Please try again." };
   }
   revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
 
   try {
     const task = await getProjectTaskById(data.id);
