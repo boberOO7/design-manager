@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const PROFESSIONAL_ROLES = ["Designer", "Architect"] as const;
+
+export type ProfessionalRole = (typeof PROFESSIONAL_ROLES)[number];
+
 export const employeeInvitationSchema = z.object({
   email: z
     .string()
@@ -13,11 +17,9 @@ export const employeeInvitationSchema = z.object({
     .trim()
     .min(2, "Full name must be at least 2 characters")
     .max(120, "Full name is too long"),
-  job_title: z
-    .string()
-    .trim()
-    .min(2, "Job title must be at least 2 characters")
-    .max(100, "Job title is too long"),
+  job_title: z.enum(PROFESSIONAL_ROLES, {
+    error: "Choose Designer or Architect",
+  }),
 });
 
 export type EmployeeInvitationValues = z.infer<typeof employeeInvitationSchema>;
@@ -39,5 +41,15 @@ export function getEmployeeInvitationInput(formData: FormData) {
     email: getFormString(formData, "email"),
     full_name: getFormString(formData, "full_name"),
     job_title: getFormString(formData, "job_title"),
+  };
+}
+
+export function getEmployeeInvitationPayload(invitation: EmployeeInvitationValues) {
+  return {
+    email: invitation.email,
+    data: {
+      full_name: invitation.full_name,
+      job_title: invitation.job_title,
+    },
   };
 }

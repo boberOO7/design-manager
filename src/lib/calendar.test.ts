@@ -3,7 +3,7 @@ import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
   filterCalendarItems, getDayItems, getMonthGrid, getVisibleDayItems, instantToDateOnly,
   isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
-  getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
+  getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
   MONTH_EVENT_GEOMETRY, normalizeCalendarTime, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
 } from "./calendar";
@@ -129,16 +129,32 @@ describe("Month spanning layout", () => {
     expect(getMonthLayoutSegments([absence("inclusive", "Avery", "2026-07-28", "2026-07-29")], dates)[0]).toMatchObject({ columnSpan: 2, visibleEndDate: "2026-07-29" });
   });
 
-  it("uses one shared geometry contract for one-day and spanning all-day segments", () => {
+  it("uses one shared geometry contract for events, time off, and deadlines", () => {
     const [single] = getMonthLayoutSegments([absence("single", "Avery", "2026-07-28", "2026-07-28")], dates);
     const [spanning] = getMonthLayoutSegments([absence("spanning", "Taylor", "2026-07-28", "2026-07-30")], dates);
+    const categorySegments = getMonthLayoutSegments([
+      allDayEvent("2026-07-28", "2026-07-28"),
+      absence("time-off", "Avery", "2026-07-28", "2026-07-28"),
+      normalizePrivateTimeOff({ id: "request", userId: "u3", employeeName: "Morgan", requestType: "vacation", status: "approved", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: null, reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "u3" }),
+      deadline(),
+      task(),
+    ].filter((item): item is CalendarItem => item !== null), dates);
     expect(single).toMatchObject({ startColumn: spanning?.startColumn, columnSpan: 1 });
-    expect(MONTH_EVENT_GEOMETRY).toEqual({ horizontalInset: 8, barHeight: 20, laneGap: 2, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2, borderRadius: 6 });
+    expect(MONTH_EVENT_GEOMETRY).toEqual({ cellPaddingBlockStart: 8, dateHeaderHeight: 28, headerClearance: 8, horizontalInset: 8, barHeight: 20, laneGap: 2, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2, borderRadius: 6 });
     expect(MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.laneGap).toBe(22);
     expect(spanning?.endColumn).toBe(4);
     if (!single || !spanning) throw new Error("Expected Month segments");
+    expect(getMonthItemGeometry()).toEqual(getMonthSegmentGeometry(single));
     expect(getMonthSegmentGeometry(single)).toMatchObject({ leftInset: 8, rightInset: 8, height: 20, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2 });
     expect(getMonthSegmentGeometry(spanning)).toMatchObject({ leftInset: 8, rightInset: 8, height: 20, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2 });
+    expect(categorySegments.map(getMonthSegmentGeometry)).toEqual(Array.from({ length: 5 }, () => expect.objectContaining({ height: MONTH_EVENT_GEOMETRY.barHeight, textPaddingInline: MONTH_EVENT_GEOMETRY.textPaddingInline, borderInlineStartWidth: MONTH_EVENT_GEOMETRY.borderInlineStartWidth })));
+  });
+
+  it("uses the same header-clearance origin before all Month lanes and after their overlays", () => {
+    const headerBottom = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight;
+    expect(getMonthItemTop()).toBe(headerBottom + MONTH_EVENT_GEOMETRY.headerClearance);
+    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight)).toBe(getMonthItemTop() + MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.headerClearance);
+    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight * 3 + MONTH_EVENT_GEOMETRY.laneGap * 2)).toBe(116);
   });
 
   it("keeps continuation boundaries gapless and leaves timed events out of Month all-day segments", () => {
@@ -168,7 +184,7 @@ describe("Month spanning layout", () => {
   it("reserves compact Month overlay space only for lanes that are actually used", () => {
     expect(getMonthLaneLayout([])).toMatchObject({ laneCount: 0, overlayHeight: 0, itemOffset: 8 });
     const oneLane = getMonthLayoutSegments([absence("one", "Avery", "2026-07-27", "2026-07-29")], dates);
-    expect(getMonthLaneLayout(oneLane)).toMatchObject({ laneCount: 1, overlayHeight: 20 });
+    expect(getMonthLaneLayout(oneLane)).toMatchObject({ laneCount: 1, overlayHeight: 20, itemOffset: 36 });
     const threeLanes = getMonthLayoutSegments([
       absence("a", "Avery", "2026-07-27", "2026-07-31"), absence("b", "Taylor", "2026-07-27", "2026-07-31"), absence("c", "Morgan", "2026-07-27", "2026-07-31"),
     ], dates);
@@ -180,9 +196,9 @@ describe("Month spanning layout", () => {
     const augFirstAbsence = absence("later", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([longAbsence, augFirstAbsence], dates).filter((segment) => segment.weekIndex === 0);
     expect(segments.map((segment) => [segment.itemId, segment.lane])).toEqual([[longAbsence.key, 0], [augFirstAbsence.key, 1]]);
-    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 44 });
-    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 22 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 44 });
+    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 58 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 36 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 58 });
     expect(getMonthDateLaneLayout(segments, "2026-07-28")).toMatchObject({ laneCount: 0, itemOffset: 8 });
   });
 
@@ -190,8 +206,8 @@ describe("Month spanning layout", () => {
     const first = absence("first", "Avery", "2026-07-29", "2026-08-02");
     const hidden = absence("hidden", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([first, hidden], dates).filter((segment) => segment.weekIndex === 0);
-    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 22 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 44 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 36 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 58 });
   });
 });
 

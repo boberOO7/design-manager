@@ -182,6 +182,9 @@ export function getMonthMobileDayItems(items: CalendarItem[], segments: MonthLay
 export const WEEK_PIXELS_PER_MINUTE = 1;
 export const WEEK_MIN_EVENT_HEIGHT = 18;
 export const MONTH_EVENT_GEOMETRY = {
+  cellPaddingBlockStart: 8,
+  dateHeaderHeight: 28,
+  headerClearance: 8,
   horizontalInset: 8,
   barHeight: 20,
   laneGap: 2,
@@ -193,17 +196,32 @@ export const MONTH_EVENT_GEOMETRY = {
 export const MONTH_LANE_HEIGHT = MONTH_EVENT_GEOMETRY.barHeight;
 export const MONTH_LANE_GAP = MONTH_EVENT_GEOMETRY.laneGap;
 
-export function getMonthSegmentGeometry(segment: Pick<MonthLayoutSegment, "continuesBefore" | "continuesAfter">) {
+/** The common vertical origin for every desktop Month item, below the date header. */
+export function getMonthItemTop(overlayHeight = 0): number {
+  const headerBottom = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight;
+  return headerBottom + MONTH_EVENT_GEOMETRY.headerClearance + (overlayHeight === 0 ? 0 : overlayHeight + MONTH_EVENT_GEOMETRY.headerClearance);
+}
+
+function getMonthFlowItemOffset(overlayHeight: number): number {
+  const headerBottom = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight;
+  return getMonthItemTop(overlayHeight) - headerBottom;
+}
+
+export function getMonthItemGeometry({ continuesBefore = false, continuesAfter = false }: Partial<Pick<MonthLayoutSegment, "continuesBefore" | "continuesAfter">> = {}) {
   return {
-    leftInset: segment.continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
-    rightInset: segment.continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
+    leftInset: continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
+    rightInset: continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.horizontalInset,
     height: MONTH_EVENT_GEOMETRY.barHeight,
     textPaddingInline: MONTH_EVENT_GEOMETRY.textPaddingInline,
     verticalPadding: MONTH_EVENT_GEOMETRY.verticalPadding,
     borderInlineStartWidth: MONTH_EVENT_GEOMETRY.borderInlineStartWidth,
-    leftRadius: segment.continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
-    rightRadius: segment.continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
+    leftRadius: continuesBefore ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
+    rightRadius: continuesAfter ? 0 : MONTH_EVENT_GEOMETRY.borderRadius,
   };
+}
+
+export function getMonthSegmentGeometry(segment: Pick<MonthLayoutSegment, "continuesBefore" | "continuesAfter">) {
+  return getMonthItemGeometry(segment);
 }
 
 export type MonthLaneLayout = { laneCount: number; overlayHeight: number; itemOffset: number };
@@ -211,14 +229,14 @@ export type MonthLaneLayout = { laneCount: number; overlayHeight: number; itemOf
 export function getMonthLaneLayout(segments: MonthLayoutSegment[], maximumLanes = 3): MonthLaneLayout {
   const laneCount = Math.min(maximumLanes, Math.max(0, ...segments.map((segment) => segment.lane + 1)));
   const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
-  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + MONTH_LANE_GAP };
+  return { laneCount, overlayHeight, itemOffset: getMonthFlowItemOffset(overlayHeight) };
 }
 
 export function getMonthDateLaneLayout(segments: MonthLayoutSegment[], date: string): MonthLaneLayout {
   const coveringSegments = segments.filter((segment) => segment.visibleStartDate <= date && segment.visibleEndDate >= date);
   const laneCount = Math.max(0, ...coveringSegments.map((segment) => segment.lane + 1));
   const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
-  return { laneCount, overlayHeight, itemOffset: overlayHeight === 0 ? 8 : overlayHeight + MONTH_LANE_GAP };
+  return { laneCount, overlayHeight, itemOffset: getMonthFlowItemOffset(overlayHeight) };
 }
 
 function isMonthAllDayItem(item: CalendarItem): boolean {

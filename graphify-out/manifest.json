@@ -285,14 +285,14 @@
     "semantic_hash": "d86eb59184bbebc89900afef1c90a762"
   },
   "src/app/(app)/team/actions.ts": {
-    "mtime": 1785163974.3190923,
-    "ast_hash": "2bc58e4d2d4e7d3f8340a097a4f66700",
-    "semantic_hash": "2bc58e4d2d4e7d3f8340a097a4f66700"
+    "mtime": 1785368497.6214092,
+    "ast_hash": "cb23b08590024b159f1d9896cab2479e",
+    "semantic_hash": ""
   },
   "src/app/(app)/team/page.tsx": {
-    "mtime": 1785161825.0755227,
-    "ast_hash": "4a334aa258a18806dfe378d7774dabf7",
-    "semantic_hash": "4a334aa258a18806dfe378d7774dabf7"
+    "mtime": 1785368498.109409,
+    "ast_hash": "fb445db6c2f4fa1a77840d6e8b0e6511",
+    "semantic_hash": ""
   },
   "src/app/(auth)/forgot-password/actions.ts": {
     "mtime": 1785164040.6230772,
@@ -410,8 +410,8 @@
     "semantic_hash": "3385de99bab4f3bbc60079dddd4c84ee"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1785364633.5616415,
-    "ast_hash": "dd669e138fab78ab709762980802949c",
+    "mtime": 1785367641.9374602,
+    "ast_hash": "b07c071dd2031d023ac05f179c95fb80",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -540,9 +540,9 @@
     "semantic_hash": "271dfd1b4f54c7c92350f8593ff9e70c"
   },
   "src/components/team/invite-employee-form.tsx": {
-    "mtime": 1785161620.0675645,
-    "ast_hash": "d86444844a1ef439329cce33f909f709",
-    "semantic_hash": "d86444844a1ef439329cce33f909f709"
+    "mtime": 1785368571.205405,
+    "ast_hash": "a5aa7d60c6e7bb7da6f8c08262f71703",
+    "semantic_hash": ""
   },
   "src/components/ui/button.tsx": {
     "mtime": 1785363381.7457156,
@@ -745,13 +745,13 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1785365566.4655862,
-    "ast_hash": "dca31bb14726fc8d940c2081957c3633",
+    "mtime": 1785367642.1054602,
+    "ast_hash": "750b68eb0340ed986beb4a99b8bae49e",
     "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1785365548.7215874,
-    "ast_hash": "8db704338eca98f113eb47946d272c34",
+    "mtime": 1785367641.7694602,
+    "ast_hash": "d587d27749eeb1a33be9a6b5df0af5f7",
     "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
@@ -910,14 +910,14 @@
     "semantic_hash": "30d4f82b59cff3a509f20900dd8b9e69"
   },
   "src/lib/validation/employee-invitation.test.ts": {
-    "mtime": 1785161758.6795366,
-    "ast_hash": "7fd6c7cf4cf6f1ebba59727b34a94383",
-    "semantic_hash": "7fd6c7cf4cf6f1ebba59727b34a94383"
+    "mtime": 1785368497.7894092,
+    "ast_hash": "6de9a30802f54545c8348c0f1e76b523",
+    "semantic_hash": ""
   },
   "src/lib/validation/employee-invitation.ts": {
-    "mtime": 1785161558.695577,
-    "ast_hash": "aa10636350af1134fd83918753d51df4",
-    "semantic_hash": "aa10636350af1134fd83918753d51df4"
+    "mtime": 1785368497.4894092,
+    "ast_hash": "1acb6f4937c551b38962614fdc8da6cd",
+    "semantic_hash": ""
   },
   "src/lib/validation/password-recovery.test.ts": {
     "mtime": 1785164040.4070773,

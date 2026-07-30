@@ -30,17 +30,7 @@ export default async function TeamPage() {
         description="Active studio members and their professional roles."
       />
 
-      {adminMembership ? (
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-stone-900">Invite an employee</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              New employees receive studio access only. Assign projects separately when they are ready.
-            </p>
-          </div>
-          <InviteEmployeeForm />
-        </section>
-      ) : null}
+      {adminMembership ? <InviteEmployeeForm /> : null}
 
       <section aria-labelledby="team-directory-heading">
         <div className="mb-4 flex items-center justify-between gap-4">

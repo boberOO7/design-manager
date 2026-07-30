@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   employeeInvitationSchema,
   getEmployeeInvitationInput,
+  getEmployeeInvitationPayload,
   type EmployeeInvitationActionState,
   type EmployeeInvitationField,
 } from "@/lib/validation/employee-invitation";
@@ -77,12 +78,10 @@ export async function inviteEmployee(
   }
 
   const invitation = parsed.data;
+  const invitationPayload = getEmployeeInvitationPayload(invitation);
   const { data: inviteData, error: inviteError } =
-    await supabaseAdmin.auth.admin.inviteUserByEmail(invitation.email, {
-      data: {
-        full_name: invitation.full_name,
-        job_title: invitation.job_title,
-      },
+    await supabaseAdmin.auth.admin.inviteUserByEmail(invitationPayload.email, {
+      data: invitationPayload.data,
       redirectTo,
     });
 
