@@ -9,6 +9,7 @@ const validTask = {
   assignee_id: "123e4567-e89b-12d3-a456-426614174000",
   priority: "normal",
   due_date: "",
+  completed_area_m2: "",
 };
 
 describe("task creation validation", () => {
@@ -27,6 +28,12 @@ describe("task creation validation", () => {
       expect(taskCreationSchema.safeParse({ ...validTask, priority }).success).toBe(true);
     }
     expect(taskCreationSchema.safeParse({ ...validTask, priority: "medium" }).success).toBe(false);
+  });
+
+  it("accepts optional positive completed area and rejects zero or negative values", () => {
+    expect(taskCreationSchema.parse({ ...validTask, completed_area_m2: "42.5" }).completed_area_m2).toBe(42.5);
+    expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "0" }).success).toBe(false);
+    expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "-1" }).success).toBe(false);
   });
 });
 
@@ -52,6 +59,7 @@ describe("task editing validation", () => {
     assignee_id: validTask.assignee_id,
     priority: "high",
     due_date: "2026-08-01",
+    completed_area_m2: "70",
     status: "in_progress",
   };
 

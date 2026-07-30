@@ -43,7 +43,8 @@
 - [X] Implement admin-only employee invitation and password onboarding.
 - [ ] Implement employee editing and membership deactivation/reactivation.
 - [ ] Replace mock dashboard metrics with real calculations.
-- [ ] Replace mock workload and leaderboard data.
+- [ ] Replace mock workload data.
+- [x] Replace mock leaderboard data with durable monthly productivity attribution (migration pending deployment).
 
 ## Administration
 

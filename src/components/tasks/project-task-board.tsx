@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
+import type { ProjectAttributionMode } from "@/lib/productivity";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
@@ -83,6 +84,12 @@ function isSuccessfulTaskStatusResponse(value: unknown): value is { success: tru
     && value.success === true
     && "projectStatus" in value
     && typeof value.projectStatus === "string";
+}
+
+function getTaskStatusError(value: unknown): string | null {
+  return typeof value === "object" && value !== null && "formError" in value && typeof value.formError === "string"
+    ? value.formError
+    : null;
 }
 
 function TaskCardContent({
@@ -247,6 +254,7 @@ function BoardColumn({
 
 export function ProjectTaskBoard({
   canCreate,
+  attributionMode,
   canManageTasks,
   currentUserId,
   initialTaskId,
@@ -259,6 +267,7 @@ export function ProjectTaskBoard({
   onProjectStatusChange,
 }: {
   canCreate: boolean;
+  attributionMode: ProjectAttributionMode;
   canManageTasks: boolean;
   currentUserId: string;
   initialTaskId?: string;
@@ -345,7 +354,7 @@ export function ProjectTaskBoard({
         // A non-JSON response is handled as a safe failed update below.
       }
       if (!response.ok || !isSuccessfulTaskStatusResponse(result)) {
-        throw new Error("The task status could not be updated.");
+        throw new Error(getTaskStatusError(result) ?? "The task status could not be updated.");
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);
@@ -353,7 +362,7 @@ export function ProjectTaskBoard({
       previousStatusesRef.current.delete(taskId);
       setTaskPending(taskId, false);
       setAnnouncement(`Task ${taskTitle} moved to ${targetLabel}.`);
-    } catch {
+    } catch (error) {
       const rollbackStatus = previousStatusesRef.current.get(taskId) ?? previousStatus;
       previousStatusesRef.current.delete(taskId);
       confirmedStatusesRef.current.delete(taskId);
@@ -366,8 +375,9 @@ export function ProjectTaskBoard({
       setLocalTasks(rolledBackTasks);
       onProjectStatusChange?.(previousProjectStatus);
       setTaskPending(taskId, false);
-      setBoardError(`Could not move task ${taskTitle}. The previous status was restored.`);
-      setAnnouncement(`Could not move task ${taskTitle}. The previous status was restored.`);
+      const message = error instanceof Error ? error.message : "The task status could not be updated.";
+      setBoardError(`${message} The previous status was restored.`);
+      setAnnouncement(`${message} The previous status was restored.`);
     }
   }
 
@@ -431,7 +441,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-stone-900">Project board</h2>
           <p className="text-sm text-stone-500">Drag permitted tasks between columns to update their status.</p>
         </div>
-        {canCreate ? <AddTaskDialog members={members} projectId={projectId} /> : null}
+        {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>

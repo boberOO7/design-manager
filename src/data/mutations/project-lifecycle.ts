@@ -1,5 +1,6 @@
 import "server-only";
 
+import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { createClient } from "@/lib/supabase/server";
@@ -40,5 +41,6 @@ export async function updateProjectLifecycleStatus(projectId: string, requestedS
     .select("status")
     .maybeSingle();
   if (error || !data || !isProjectLifecycleStatus(data.status)) return { success: false, formError: "The project lifecycle could not be updated. Please try again." };
+  revalidatePath("/leaderboard");
   return { success: true, status: data.status };
 }

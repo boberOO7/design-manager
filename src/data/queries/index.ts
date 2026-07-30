@@ -2,7 +2,6 @@ import {
   getAccessibleProjects,
   getDashboardMetrics,
   getEmployeeWorkload,
-  getLeaderboard,
   getMyTasks,
   getProjectAreaProgress,
   getProjectById,
@@ -12,12 +11,13 @@ import { cache } from "react";
 import type {
   DashboardMetrics,
   EmployeeWorkloadSummary,
-  LeaderboardEntry,
   Profile,
   Project,
   ProjectSummary,
   TaskSummary,
 } from "@/types";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getKyivMonthBounds, projectProductivityLeaderboard, type ProductivityAttribution, type ProductivityLeaderboardEntry } from "@/lib/productivity";
 
 export type DataMode = "mock" | "supabase";
 
@@ -178,8 +178,21 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
   return getEmployeeWorkload();
 }
 
-export function getLeaderboardData(): LeaderboardEntry[] {
-  return getLeaderboard();
+export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {
+  const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
+  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return [];
+  const bounds = getKyivMonthBounds();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("productivity_attributions")
+    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type")
+    .eq("studio_id", membership.studio_id)
+    .is("voided_at", null)
+    .gte("completed_at", bounds.start)
+    .lt("completed_at", bounds.end)
+    .overrideTypes<ProductivityAttribution[], { merge: false }>();
+  if (error || !data) throw new Error("Unable to load monthly productivity.", { cause: error });
+  return projectProductivityLeaderboard(data);
 }
 
 export function getProjectProgressData(projectId: string) {

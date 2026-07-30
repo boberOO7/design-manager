@@ -1,5 +1,6 @@
 import "server-only";
 
+import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTaskById } from "@/data/queries/tasks";
@@ -42,12 +43,13 @@ export async function updateTaskDetailsMutation(
     };
   }
 
-  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "status"> = {
+  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "status"> = {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     assignee_id: parsed.data.assignee_id,
     priority: parsed.data.priority,
     due_date: parsed.data.due_date ?? null,
+    completed_area_m2: parsed.data.completed_area_m2 ?? null,
     status: parsed.data.status,
   };
   const supabase = await createClient();
@@ -62,6 +64,7 @@ export async function updateTaskDetailsMutation(
     console.error("Unable to update task details", error);
     return { success: false, formError: "The task could not be updated. Please try again." };
   }
+  revalidatePath("/leaderboard");
 
   try {
     const task = await getProjectTaskById(data.id);

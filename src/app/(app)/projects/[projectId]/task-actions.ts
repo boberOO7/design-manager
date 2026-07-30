@@ -45,6 +45,7 @@ export async function createProjectTask(
       assignee_id: flattened.assignee_id?.[0],
       priority: flattened.priority?.[0],
       due_date: flattened.due_date?.[0],
+      completed_area_m2: flattened.completed_area_m2?.[0],
     };
     return { formError: "Please correct the highlighted fields.", fieldErrors };
   }
@@ -72,6 +73,7 @@ export async function createProjectTask(
     assignee_id: parsed.data.assignee_id,
     created_by: adminMembership.authenticatedUserId,
     due_date: parsed.data.due_date ?? null,
+    completed_area_m2: parsed.data.completed_area_m2 ?? null,
   };
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -31,6 +31,7 @@ export interface Project {
   start_date: string;
   due_date?: string | null;
   completed_at?: string | null;
+  completed_area_m2?: number | null;
   archived_at?: string | null;
   created_by: string;
   created_at: string;

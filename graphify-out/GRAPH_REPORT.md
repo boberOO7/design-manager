@@ -1,32 +1,32 @@
 # Graph Report - design-manager  (2026-07-30)
 
 ## Corpus Check
-- 299 files · ~162,146 words
+- 303 files · ~164,899 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2989 nodes · 4816 edges · 209 communities (170 shown, 39 thin omitted)
+- 3005 nodes · 4861 edges · 216 communities (176 shown, 40 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 39 edges (avg confidence: 0.54)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1607d9fd`
+- Built from commit: `2a4e20b8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - gray
 - BM25
-- lib/tasks.ts
-- types/tasks.ts
+- project-task-board.tsx
+- task-actions.ts
 - slide_search_core.py
 - lib/calendar.ts
-- types/calendar.ts
+- addCalendarDays
 - queries/dashboard.ts
 - project-activity-section.tsx
 - spacing
 - calendar-workspace.tsx
-- validation/calendar.ts
+- dashboard/page.tsx
 - lib/administration.ts
 - TestTailwindConfigGenerator
 - design_system.py
@@ -34,9 +34,9 @@
 - team/actions.ts
 - html-token-validator.py
 - task-details-drawer.tsx
-- [projectId]/page.tsx
+- queries/project-members.ts
 - project-list-presentation.ts
-- database.types.ts
+- getActiveStudioMembership
 - BM25
 - Tailwind CSS Utility Reference
 - lib/project-lifecycle.ts
@@ -48,18 +48,18 @@
 - TailwindConfigGenerator
 - color
 - main
-- lg
-- getActiveStudioAdmin
+- database.types.ts
+- [projectId]/page.tsx
 - Brand Guidelines v1.0
 - fetch-background.py
-- team.ts
-- shadow
+- app-header.tsx
+- color
 - project-context-band.tsx
 - card
 - TestShadcnInstaller
 - BM25
 - dependencies
-- xl
+- productivity.ts
 - icon/generate.py
 - fontSize
 - createClient
@@ -69,7 +69,7 @@
 - scripts/core.py
 - set-password/actions.ts
 - mock/index.ts
-- md
+- 50
 - .add_components
 - design-tokens-starter.json
 - validate-tokens.cjs
@@ -88,29 +88,35 @@
 - _run
 - package.json
 - time-off-stabilization-migration.test.ts
-- radius
-- ._generate_javascript
+- $type
+- .generate_config_string
 - confirm/route.ts
-- none
-- test_core.py
-- zod
+- notification-bell.tsx
+- detect_domain
+- 8
 - radius
+- login/page.tsx
 - app/layout.tsx
 - notification-insert-shape-migration.test.ts
+- $type
 - Design
+- time-off-request.ts
 - validate_data.py
 - test_sync_brand_to_tokens.py
 - main
 - padding-y
 - Canvas Design System
-- @dnd-kit/react
+- $type
 - Form & Input Components
 - Tailwind CSS Responsive Design
-- calendar-event-form.ts
+- 0
+- types/calendar.ts
 - .__init__
 - app-layout.tsx
 - calendar-migration.test.ts
 - .test_add_components_dry_run
+- 12
+- @dnd-kit/react
 - destructive
 - .test_add_components_no_components
 - .test_recommend_plugins
@@ -123,6 +129,8 @@
 - .test_full_configuration_typescript
 - .test_base_config_structure
 - .test_default_content_paths_react
+- destructive-foreground
+- muted
 - eslint.config.mjs
 - lucide-react
 - next.config.ts
@@ -197,9 +205,10 @@
 - Pre-Delivery Checklist
 - graphify reference: query, path, explain
 - Brand Guidelines Template
-- $type
+- primary-foreground
 - Common Rules for Professional UI
 - Example Workflow
+- secondary-foreground
 - StudioFlow
 - ring
 - .test_add_components_no_config
@@ -209,25 +218,23 @@
 - README.md
 - .test_list_installed_no_config
 - .test_init_dry_run
+- clsx
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
 - slides-create.md
 - create.md
 - extraction-spec.md
+- productivity-migration.test.ts
 - project-activity-migration.test.ts
-- destructive-foreground
-- muted
-- primary-foreground
-- secondary-foreground
 
 ## God Nodes (most connected - your core abstractions)
-1. `createClient()` - 73 edges
+1. `createClient()` - 74 edges
 2. `TailwindConfigGenerator` - 58 edges
 3. `TestTailwindConfigGenerator` - 35 edges
 4. `ShadcnInstaller` - 34 edges
-5. `getActiveStudioMembership()` - 32 edges
+5. `getActiveStudioMembership()` - 34 edges
 6. `cn()` - 30 edges
-7. `getCurrentUserProfile` - 27 edges
+7. `getCurrentUserProfile` - 28 edges
 8. `TestShadcnInstaller` - 26 edges
 9. `getActiveStudioAdmin()` - 23 edges
 10. `DesignSystemGenerator` - 19 edges
@@ -247,23 +254,23 @@
 ## Import Cycles
 - None detected.
 
-## Communities (209 total, 39 thin omitted)
+## Communities (216 total, 40 thin omitted)
 
 ### Community 0 - "gray"
-Cohesion: 0.05
-Nodes (53): $type, $value, $type, $value, $type, $value, $type, $value (+45 more)
+Cohesion: 0.11
+Nodes (19): $type, $value, $type, $value, $type, $value, $type, $value (+11 more)
 
 ### Community 1 - "BM25"
 Cohesion: 0.07
 Nodes (42): BM25, detect_domain(), get_cip_brief(), _load_csv(), Load CSV and return list of dicts, Core search function using BM25, Auto-detect the most relevant domain from query, Main search function with auto-domain detection (+34 more)
 
-### Community 2 - "lib/tasks.ts"
+### Community 2 - "project-task-board.tsx"
 Cohesion: 0.09
-Nodes (33): revalidateMyTasks(), updateTaskStatus(), AddTaskDialog(), BoardColumn(), DraggableTaskCard(), getColumnDropId(), getColumnIdFromDropTarget(), interactiveSelector (+25 more)
+Nodes (40): ProjectContextProject, ProjectWorkspace(), BoardColumn(), DraggableTaskCard(), getColumnDropId(), getColumnIdFromDropTarget(), interactiveSelector, keyboardSensor (+32 more)
 
-### Community 3 - "types/tasks.ts"
+### Community 3 - "task-actions.ts"
 Cohesion: 0.10
-Nodes (35): PATCH(), PATCH(), createProjectTask(), revalidateTaskCreationRoutes(), updateTaskDetailsMutation(), AuthorizedTask, authorizeTaskMutation(), TaskMutationAuthorization (+27 more)
+Nodes (35): PATCH(), PATCH(), createProjectTask(), revalidateMyTasks(), revalidateTaskCreationRoutes(), updateTaskStatus(), updateTaskDetailsMutation(), AuthorizedTask (+27 more)
 
 ### Community 4 - "slide_search_core.py"
 Cohesion: 0.09
@@ -271,31 +278,31 @@ Nodes (36): format_context(), format_result(), main(), Format a single search re
 
 ### Community 5 - "lib/calendar.ts"
 Cohesion: 0.09
-Nodes (42): AgendaView(), MonthView(), calendarItemTimestamp(), canAttendCalendarEvent(), compareCanonical(), DEFAULT_CALENDAR_FILTERS, formatTimeOffAvailabilityTitle(), getCurrentWeekTimePosition() (+34 more)
+Nodes (38): WeekView(), calendarItemTimestamp(), canAttendCalendarEvent(), compareCanonical(), deduplicateCalendarItems(), DEFAULT_CALENDAR_FILTERS, filterCalendarItems(), formatTimeOffAvailabilityTitle() (+30 more)
 
-### Community 6 - "types/calendar.ts"
-Cohesion: 0.13
-Nodes (24): CalendarPage(), metadata, validDate(), CalendarQueryInput, getCalendarData(), getNormalizedCalendarEvent(), canTransitionTimeOff(), deduplicateCalendarItems() (+16 more)
+### Community 6 - "addCalendarDays"
+Cohesion: 0.67
+Nodes (6): addCalendarDays(), getCalendarRange(), getMonthGrid(), parseDateOnly(), startOfMondayWeek(), toDateOnly()
 
 ### Community 7 - "queries/dashboard.ts"
-Cohesion: 0.08
-Nodes (51): AdminDashboard(), DashboardPage(), Deadlines(), EmployeeDashboard(), metadata, DashboardSection(), MetricStrip(), metricToneClasses (+43 more)
+Cohesion: 0.11
+Nodes (41): LeaderboardPage(), metadata, metadata, MyTasksPage(), PageHeader(), AdminDashboard, DashboardData, DashboardDeadline (+33 more)
 
 ### Community 8 - "project-activity-section.tsx"
 Cohesion: 0.29
 Nodes (14): ActivityRow(), actorName(), initials(), ProjectActivitySection(), ActivityChange, ActivityChanges, formatActivityValue(), formatRelativeTime() (+6 more)
 
 ### Community 9 - "spacing"
-Cohesion: 0.06
-Nodes (34): $type, $value, $type, $value, $type, $value, $type, $value (+26 more)
+Cohesion: 0.08
+Nodes (25): $type, $value, $type, $value, $type, $value, $type, $value (+17 more)
 
 ### Community 10 - "calendar-workspace.tsx"
-Cohesion: 0.12
-Nodes (30): CalendarPill(), CalendarWorkspace(), dateLabel(), DayDetails(), Drawer, eventLabels, isCalendarItem(), isMutationResult() (+22 more)
+Cohesion: 0.11
+Nodes (31): AgendaView(), CalendarPill(), CalendarWorkspace(), dateLabel(), DayDetails(), Drawer, eventLabels, isCalendarItem() (+23 more)
 
-### Community 11 - "validation/calendar.ts"
-Cohesion: 0.16
-Nodes (17): CalendarSupabaseClient, getVerifiedActiveAdminMembership(), POST(), CalendarEventInsertPayload, createCalendarEventInsertPayload(), eventInput, membership, VerifiedCalendarEventAdminMembership (+9 more)
+### Community 11 - "dashboard/page.tsx"
+Cohesion: 0.18
+Nodes (18): AdminDashboard(), DashboardPage(), Deadlines(), EmployeeDashboard(), metadata, DashboardSection(), MetricStrip(), metricToneClasses (+10 more)
 
 ### Community 12 - "lib/administration.ts"
 Cohesion: 0.25
@@ -306,36 +313,36 @@ Cohesion: 0.07
 Nodes (15): Test adding colors multiple times., Test adding full color palette., Test adding custom breakpoints., Test TailwindConfigGenerator class., Test generating TypeScript configuration., Test generating config with plugins., Test validating config with no content paths., Test validating config with empty theme extensions. (+7 more)
 
 ### Community 14 - "design_system.py"
-Cohesion: 0.12
-Nodes (24): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_markdown(), format_master_md(), format_page_override_md(), generate_design_system(), _generate_intelligent_overrides() (+16 more)
+Cohesion: 0.11
+Nodes (25): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_markdown(), format_master_md(), format_page_override_md(), generate_design_system(), _generate_intelligent_overrides() (+17 more)
 
 ### Community 15 - "compilerOptions"
 Cohesion: 0.07
 Nodes (28): dom, dom.iterable, esnext, **/*.mts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules (+20 more)
 
 ### Community 16 - "team/actions.ts"
-Cohesion: 0.14
-Nodes (19): inviteEmployee(), isExistingAuthUserError(), requestPasswordRecovery(), ForgotPasswordForm(), getAuthConfirmationUrl(), createAdminClient(), EmployeeInvitationActionState, EmployeeInvitationField (+11 more)
+Cohesion: 0.13
+Nodes (20): inviteEmployee(), isExistingAuthUserError(), requestPasswordRecovery(), ForgotPasswordForm(), InviteEmployeeForm(), getAuthConfirmationUrl(), createAdminClient(), EmployeeInvitationActionState (+12 more)
 
 ### Community 17 - "html-token-validator.py"
 Cohesion: 0.14
 Nodes (24): get_context(), is_allowed_exception(), is_allowed_rgba(), is_inside_block(), load_css_variables(), main(), print_result(), print_summary() (+16 more)
 
 ### Community 18 - "task-details-drawer.tsx"
-Cohesion: 0.26
-Nodes (18): DashboardTaskList(), MyTasksList(), sections, TaskCardContent(), makeFormValues(), TaskDetailsDrawer(), TaskEditResponse, getPriorityBadgeStyle() (+10 more)
+Cohesion: 0.16
+Nodes (26): ArchivePage(), metadata, ProjectDesktopRow(), ProjectMobileCard(), DashboardTaskList(), MyTasksList(), sections, TaskCardContent() (+18 more)
 
-### Community 19 - "[projectId]/page.tsx"
+### Community 19 - "queries/project-members.ts"
 Cohesion: 0.14
-Nodes (20): ProjectMemberActionState, getProjectView(), metadata, ProjectDetails(), ProjectDetailsPage(), ProjectView, AddProjectMemberForm(), getInitials() (+12 more)
+Nodes (19): addProjectMember(), getFormString(), ProjectMemberActionState, removeProjectMember(), revalidateProjectMembership(), AddProjectMemberForm(), getInitials(), ProjectTeamSection() (+11 more)
 
 ### Community 20 - "project-list-presentation.ts"
-Cohesion: 0.09
-Nodes (35): metadata, ProjectsPage(), labels, ProjectListControls(), AccessibleProjectWithTasks, getAccessibleProjectsWithTasks(), ProjectListRow, ProjectRow (+27 more)
+Cohesion: 0.08
+Nodes (39): metadata, ProjectsPage(), labels, ProjectListControls(), ProjectItem, ProjectList(), ProjectProgress(), AccessibleProjectWithTasks (+31 more)
 
-### Community 21 - "database.types.ts"
-Cohesion: 0.11
-Nodes (17): ArchivedProject, ArchivedProjectsResult, ProjectRow, updateSession(), proxy(), CompositeTypes, Constants, Database (+9 more)
+### Community 21 - "getActiveStudioMembership"
+Cohesion: 0.18
+Nodes (13): PATCH(), getInitials(), metadata, TeamPage(), ActiveStudioMembership, getActiveStudioMembership(), StudioMembershipRow, getNotificationData() (+5 more)
 
 ### Community 22 - "BM25"
 Cohesion: 0.12
@@ -346,8 +353,8 @@ Cohesion: 0.05
 Nodes (43): Arbitrary Values, Aspect Ratio, Background Colors, Border Color, Border Radius, Border Style, Border Width, Borders (+35 more)
 
 ### Community 24 - "lib/project-lifecycle.ts"
-Cohesion: 0.14
-Nodes (22): PATCH(), LifecycleContext, ProjectLifecycleProvider(), actions, ProjectLifecycleMutationResult, updateProjectLifecycleStatus(), canUpdateProjectMetadata(), countOpenLifecycleTasks() (+14 more)
+Cohesion: 0.17
+Nodes (18): PATCH(), ProjectLifecycleMutationResult, updateProjectLifecycleStatus(), canUpdateProjectMetadata(), countOpenLifecycleTasks(), getAutomaticProjectStatus(), getLifecycleCompletedAt(), getRestoredProjectStatus() (+10 more)
 
 ### Community 25 - "DesignSystemGenerator"
 Cohesion: 0.13
@@ -362,8 +369,8 @@ Cohesion: 0.17
 Nodes (15): createProject(), metadata, NewProjectPage(), ProjectForm(), ProjectFormAction, ProjectFormDefaults, dateSchema, EditProjectFormValues (+7 more)
 
 ### Community 28 - "queries/index.ts"
-Cohesion: 0.11
-Nodes (25): LeaderboardPage(), metadata, metadata, MyTasksPage(), PageHeader(), getAccessibleProjects(), getDashboardMetrics(), getEmployeeWorkload() (+17 more)
+Cohesion: 0.14
+Nodes (17): getAccessibleProjects(), getDashboardMetrics(), getEmployeeWorkload(), getMyTasks(), getProjectAreaProgress(), getProjectById(), AccessibleProjectRow, AccessibleProjectsResult (+9 more)
 
 ### Community 29 - "generate-slide.py"
 Cohesion: 0.15
@@ -378,16 +385,16 @@ Cohesion: 0.11
 Nodes (19): $type, $value, background, foreground, muted-foreground, primary, primary-hover, secondary (+11 more)
 
 ### Community 32 - "main"
+Cohesion: 0.13
+Nodes (8): main(), Add custom font families. Args: fonts: Dict of font_type: [font_names] e.g.,…, Add custom spacing values. Args: spacing: Dict of name: value e.g., {'18':…, Add custom breakpoints. Args: breakpoints: Dict of name: width e.g., {'3xl':…, Add plugin requirements. Args: plugins: List of plugin names e.g.,…, Get plugin recommendations based on configuration. Returns: List of recommended…, Validate configuration. Returns: Tuple of (valid, message), Add custom colors to theme. Args: colors: Dict of color_name: color_value Value…
+
+### Community 33 - "database.types.ts"
 Cohesion: 0.11
-Nodes (10): main(), Add custom font families. Args: fonts: Dict of font_type: [font_names] e.g.,…, Add custom spacing values. Args: spacing: Dict of name: value e.g., {'18':…, Add custom breakpoints. Args: breakpoints: Dict of name: width e.g., {'3xl':…, Add plugin requirements. Args: plugins: List of plugin names e.g.,…, Get plugin recommendations based on configuration. Returns: List of recommended…, Generate configuration file content. Returns: Configuration file as string, Write configuration to file. Returns: Tuple of (success, message) (+2 more)
+Nodes (17): ArchivedProject, ArchivedProjectsResult, getArchivedProjects(), ProjectRow, ProjectListRow, ProjectRow, updateSession(), proxy() (+9 more)
 
-### Community 33 - "lg"
-Cohesion: 0.60
-Nodes (5): lg, $type, $value, lg, lg
-
-### Community 34 - "getActiveStudioAdmin"
-Cohesion: 0.19
-Nodes (18): archiveProject(), restoreProject(), revalidateProjectRoutes(), updateProject(), EditProjectPage(), metadata, addProjectMember(), getFormString() (+10 more)
+### Community 34 - "[projectId]/page.tsx"
+Cohesion: 0.17
+Nodes (21): archiveProject(), restoreProject(), revalidateProjectRoutes(), updateProject(), EditProjectPage(), metadata, getProjectView(), metadata (+13 more)
 
 ### Community 35 - "Brand Guidelines v1.0"
 Cohesion: 0.05
@@ -397,17 +404,17 @@ Nodes (37): 1. Color Palette, 2. Typography, 3. Logo Usage, 4. Voice & Tone, 5. 
 Cohesion: 0.17
 Nodes (17): generate_css_for_background(), get_background_image(), get_curated_images(), get_overlay_css(), get_pexels_search_url(), load_backgrounds_config(), load_brand_colors(), main() (+9 more)
 
-### Community 37 - "team.ts"
-Cohesion: 0.24
-Nodes (9): getInitials(), metadata, TeamPage(), InviteEmployeeForm(), getCurrentStudioTeam(), ProfileRow, StudioMemberRow, TeamMember (+1 more)
+### Community 37 - "app-header.tsx"
+Cohesion: 0.26
+Nodes (10): AppLayout(), AppHeader(), AppSidebar(), MobileNavigation(), getNavigationItems(), isNavigationItemActive(), navigationIcons, NavigationItem (+2 more)
 
-### Community 38 - "shadow"
-Cohesion: 0.47
-Nodes (6): sm, shadow, sm, sm, $type, $value
+### Community 38 - "color"
+Cohesion: 0.20
+Nodes (15): $type, $value, 500, blue, green, red, white, yellow (+7 more)
 
 ### Community 39 - "project-context-band.tsx"
-Cohesion: 0.08
-Nodes (30): ArchivePage(), metadata, DeadlineSummary(), ProjectContextBand(), ProjectContextProject, useProjectLifecycle(), ProjectLifecycleControls(), ProjectDeadlines() (+22 more)
+Cohesion: 0.14
+Nodes (13): DeadlineSummary(), ProjectContextBand(), LifecycleContext, ProjectLifecycleProvider(), useProjectLifecycle(), actions, ProjectLifecycleControls(), ProjectDeadlines() (+5 more)
 
 ### Community 40 - "card"
 Cohesion: 0.20
@@ -423,23 +430,23 @@ Nodes (9): BM25, _normalize(), Apply synonym substitution before tokenizing., BM
 
 ### Community 43 - "dependencies"
 Cohesion: 0.12
-Nodes (17): class-variance-authority, clsx, @hookform/resolvers, next, dependencies, class-variance-authority, clsx, @hookform/resolvers (+9 more)
+Nodes (17): class-variance-authority, @hookform/resolvers, next, dependencies, class-variance-authority, @hookform/resolvers, next, @radix-ui/react-slot (+9 more)
 
-### Community 44 - "xl"
-Cohesion: 0.67
-Nodes (4): xl, xl, $type, $value
+### Community 44 - "productivity.ts"
+Cohesion: 0.33
+Nodes (8): canCompleteAttributedTask(), getKyivMonthBounds(), getProjectAttributionMode(), isEligibleProjectFallbackContributor(), kyivParts(), ProductivityAttribution, ProductivityLeaderboardEntry, projectProductivityLeaderboard()
 
 ### Community 45 - "icon/generate.py"
 Cohesion: 0.20
 Nodes (15): apply_color(), apply_viewbox_size(), extract_svgs(), generate_batch(), generate_icon(), generate_sizes(), load_env(), main() (+7 more)
 
 ### Community 46 - "fontSize"
-Cohesion: 0.12
-Nodes (16): $type, $value, $type, $value, $type, $value, $type, $value (+8 more)
+Cohesion: 0.06
+Nodes (47): $type, $value, $type, $value, $type, $value, $type, $value (+39 more)
 
 ### Community 47 - "createClient"
-Cohesion: 0.16
-Nodes (20): Context, DELETE(), PATCH(), Context, PATCH(), CalendarSupabaseClient, getVerifiedTimeOffMembership(), POST() (+12 more)
+Cohesion: 0.12
+Nodes (30): Context, DELETE(), PATCH(), CalendarSupabaseClient, getVerifiedActiveAdminMembership(), POST(), Context, PATCH() (+22 more)
 
 ### Community 48 - "extract-colors.cjs"
 Cohesion: 0.22
@@ -462,12 +469,12 @@ Cohesion: 0.31
 Nodes (8): setUserPassword(), SetPasswordPage(), SetPasswordForm(), getSetPasswordInput(), SetPasswordActionState, SetPasswordField, setPasswordSchema, SetPasswordValues
 
 ### Community 53 - "mock/index.ts"
-Cohesion: 0.05
-Nodes (52): AppLayout(), LoginPage(), SignOutButton(), AppHeader(), AppSidebar(), MobileNavigation(), iconFor(), NotificationBell() (+44 more)
+Cohesion: 0.09
+Nodes (22): dashboardMetrics, employeeWorkload, leaderboardEntries, projectAreaProgress, projectMembers, studioProfiles, studioProjects, studioTasks (+14 more)
 
-### Community 54 - "md"
-Cohesion: 0.67
-Nodes (4): $type, $value, md, md
+### Community 54 - "50"
+Cohesion: 0.29
+Nodes (8): $type, $value, $type, $value, 50, 800, 50, 800
 
 ### Community 55 - ".add_components"
 Cohesion: 0.17
@@ -541,29 +548,37 @@ Nodes (8): name, private, scripts, build, dev, lint, start, version
 Cohesion: 0.22
 Nodes (7): foundation, insertPolicyFix, migration, migrationNames, migrations, migrationsDirectory, notificationShapeFix
 
-### Community 73 - "radius"
-Cohesion: 0.29
-Nodes (8): $type, $value, $type, $value, radius, default, full, default
+### Community 73 - "$type"
+Cohesion: 0.53
+Nodes (6): $type, $value, 600, 600, 600, 600
 
-### Community 74 - "._generate_javascript"
-Cohesion: 0.29
-Nodes (4): Generate TypeScript configuration., Generate JavaScript configuration., Format plugins array for config. Validates each plugin name against a strict…, Add indentation to JSON string.
+### Community 74 - ".generate_config_string"
+Cohesion: 0.20
+Nodes (6): Generate configuration file content. Returns: Configuration file as string, Generate TypeScript configuration., Generate JavaScript configuration., Format plugins array for config. Validates each plugin name against a strict…, Add indentation to JSON string., Write configuration to file. Returns: Tuple of (success, message)
 
 ### Community 75 - "confirm/route.ts"
 Cohesion: 0.50
 Nodes (5): GET(), getInvalidLinkRedirect(), getSafeConfirmationDestination(), getSupportedEmailOtpType(), SupportedEmailOtpType
 
-### Community 76 - "none"
-Cohesion: 0.67
-Nodes (4): $type, $value, none, none
+### Community 76 - "notification-bell.tsx"
+Cohesion: 0.19
+Nodes (14): iconFor(), NotificationBell(), relativeTime(), getSegmentedControlItemProps(), SegmentedControl(), SegmentedControlItem, NotificationData, NotificationItem (+6 more)
 
-### Community 77 - "test_core.py"
-Cohesion: 0.25
-Nodes (4): detect_domain(), Auto-detect the most relevant domain from query. Matches are weighted by…, TestDomainDetection, TestPersistence
+### Community 77 - "detect_domain"
+Cohesion: 0.43
+Nodes (3): detect_domain(), Auto-detect the most relevant domain from query. Matches are weighted by…, TestDomainDetection
+
+### Community 78 - "8"
+Cohesion: 0.67
+Nodes (3): $type, $value, 8
 
 ### Community 79 - "radius"
 Cohesion: 0.60
 Nodes (5): radius, radius, radius, $type, $value
+
+### Community 80 - "login/page.tsx"
+Cohesion: 0.43
+Nodes (4): LoginPage(), SignOutButton(), createClient(), loginSchema
 
 ### Community 81 - "app/layout.tsx"
 Cohesion: 0.40
@@ -573,9 +588,17 @@ Nodes (3): geistMono, geistSans, metadata
 Cohesion: 0.50
 Nodes (4): insertParts(), notificationsMigration, patchMigration, topLevelExpressions()
 
+### Community 83 - "$type"
+Cohesion: 0.60
+Nodes (5): $type, $value, 700, 700, 700
+
 ### Community 84 - "Design"
 Cohesion: 0.06
 Nodes (35): Banner Design (Built-in), Banner: Design Rules, Banner: Quick Size Reference, Banner: Top Art Styles, Banner: Workflow, CIP Design (Built-in), CIP: Generate Brief, CIP: Generate Mockups (+27 more)
+
+### Community 85 - "time-off-request.ts"
+Cohesion: 0.27
+Nodes (8): canTransitionTimeOff(), deriveTimeOffUpdate(), base, TimeOffAction, TimeOffActorRole, TimeOffUpdate, timeOffUpdateFields(), TimeOffStatus
 
 ### Community 86 - "validate_data.py"
 Cohesion: 0.83
@@ -589,6 +612,10 @@ Nodes (4): padding-y, padding-y, $type, $value
 Cohesion: 0.06
 Nodes (35): 1. Visual Communication First, 2. Minimal Text Integration, 3. Expert Craftsmanship, 4. Systematic Patterns, Analog Meditation, Approach, Canvas Boundaries, Canvas Design System (+27 more)
 
+### Community 91 - "$type"
+Cohesion: 0.60
+Nodes (5): $type, $value, border, border, border
+
 ### Community 92 - "Form & Input Components"
 Cohesion: 0.06
 Nodes (32): Accordion, Alert, Alert Dialog, Avatar, Badge, Button, Card, Checkbox (+24 more)
@@ -597,13 +624,29 @@ Nodes (32): Accordion, Alert, Alert Dialog, Avatar, Badge, Button, Card, Checkbo
 Cohesion: 0.06
 Nodes (32): 1. Mobile-First Design, 2. Consistent Breakpoint Usage, 3. Test at Breakpoint Boundaries, 4. Use Container for Content Width, 5. Progressive Enhancement, 6. Avoid Too Many Breakpoints, Best Practices, Breakpoint System (+24 more)
 
-### Community 95 - "calendar-event-form.ts"
-Cohesion: 0.23
-Nodes (12): EventForm(), CalendarEventFormValues, createCalendarEventFormValues(), getAllDayEventBounds(), splitWallDateTime(), baseValues, toCalendarEventMutationPayload(), instantToWallInput() (+4 more)
+### Community 94 - "0"
+Cohesion: 0.67
+Nodes (3): $type, $value, 0
+
+### Community 95 - "types/calendar.ts"
+Cohesion: 0.11
+Nodes (29): CalendarPage(), metadata, validDate(), EventForm(), CalendarQueryInput, getCalendarData(), CalendarEventFormValues, createCalendarEventFormValues() (+21 more)
+
+### Community 100 - "12"
+Cohesion: 0.67
+Nodes (3): $type, $value, 12
 
 ### Community 102 - "destructive"
 Cohesion: 0.67
 Nodes (3): destructive, $type, $value
+
+### Community 114 - "destructive-foreground"
+Cohesion: 0.67
+Nodes (3): destructive-foreground, $type, $value
+
+### Community 115 - "muted"
+Cohesion: 0.67
+Nodes (3): muted, $type, $value
 
 ### Community 131 - "Typography Specifications"
 Cohesion: 0.06
@@ -762,8 +805,8 @@ Cohesion: 0.15
 Nodes (12): Categories, Dark Mode, File Organization, Layer 1: Primitive Tokens, Layer 2: Semantic Tokens, Layer 3: Component Tokens, Layer Overview, Migration from Flat Tokens (+4 more)
 
 ### Community 170 - "StudioFlow architecture decisions"
-Cohesion: 0.14
-Nodes (13): Administration, Calendar, Employee invitation and onboarding, In-app notifications, Project Activity History, Project archive lifecycle, Project lifecycle workflow, Project-member write authorization (+5 more)
+Cohesion: 0.13
+Nodes (14): Administration, Calendar, Employee invitation and onboarding, In-app notifications, Productivity attribution, Project Activity History, Project archive lifecycle, Project lifecycle workflow (+6 more)
 
 ### Community 171 - "Primitive Tokens"
 Cohesion: 0.17
@@ -810,8 +853,8 @@ Cohesion: 0.20
 Nodes (9): Administration, Calendar, Foundation, Notifications, Production, Projects, StudioFlow roadmap, Tasks and progress (+1 more)
 
 ### Community 182 - "cn"
-Cohesion: 0.15
-Nodes (13): MetricCard(), Button, ButtonProps, buttonVariants, Drawer(), getDrawerTabFocusTarget(), EmptyState(), FormField() (+5 more)
+Cohesion: 0.14
+Nodes (14): MetricCard(), AddTaskDialog(), ButtonProps, buttonVariants, Drawer(), getDrawerTabFocusTarget(), EmptyState(), FormField() (+6 more)
 
 ### Community 183 - "Prerequisites"
 Cohesion: 0.22
@@ -857,9 +900,9 @@ Nodes (5): For /graphify explain, For /graphify path, graphify reference: query,
 Cohesion: 0.40
 Nodes (4): Brand Guidelines Template, Document Structure, Extractable Fields, Usage
 
-### Community 194 - "$type"
-Cohesion: 0.60
-Nodes (5): $type, $value, border, border, border
+### Community 194 - "primary-foreground"
+Cohesion: 0.67
+Nodes (3): primary-foreground, $type, $value
 
 ### Community 195 - "Common Rules for Professional UI"
 Cohesion: 0.40
@@ -868,6 +911,10 @@ Nodes (5): Common Rules for Professional UI, Icons & Visual Elements, Interactio
 ### Community 196 - "Example Workflow"
 Cohesion: 0.40
 Nodes (5): Example Workflow, Step 1: Analyze Requirements, Step 2: Generate Design System (REQUIRED), Step 3: Supplement with Detailed Searches (as needed), Step 4: Stack Guidelines
+
+### Community 197 - "secondary-foreground"
+Cohesion: 0.67
+Nodes (3): secondary-foreground, $type, $value
 
 ### Community 198 - "StudioFlow"
 Cohesion: 0.50
@@ -893,41 +940,25 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 Cohesion: 0.50
 Nodes (3): Deploy on Vercel, Getting Started, Learn More
 
-### Community 216 - "destructive-foreground"
-Cohesion: 0.67
-Nodes (3): destructive-foreground, $type, $value
-
-### Community 217 - "muted"
-Cohesion: 0.67
-Nodes (3): muted, $type, $value
-
-### Community 218 - "primary-foreground"
-Cohesion: 0.67
-Nodes (3): primary-foreground, $type, $value
-
-### Community 219 - "secondary-foreground"
-Cohesion: 0.67
-Nodes (3): secondary-foreground, $type, $value
-
 ## Knowledge Gaps
-- **1236 isolated node(s):** `fs`, `path`, `fs`, `path`, `fs` (+1231 more)
+- **1239 isolated node(s):** `fs`, `path`, `fs`, `path`, `fs` (+1234 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **39 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `createClient()` connect `createClient` to `getActiveStudioAdmin`, `types/tasks.ts`, `team.ts`, `types/calendar.ts`, `project-context-band.tsx`, `queries/dashboard.ts`, `validation/calendar.ts`, `confirm/route.ts`, `lib/administration.ts`, `team/actions.ts`, `[projectId]/page.tsx`, `set-password/actions.ts`, `database.types.ts`, `mock/index.ts`, `project-list-presentation.ts`, `lib/project-lifecycle.ts`, `project.ts`, `queries/index.ts`?**
-  _High betweenness centrality (0.012) - this node is a cross-community bridge._
-- **Why does `primitive` connect `primitive` to `gray`, `shadow`, `radius`, `spacing`, `fontSize`, `design-tokens-starter.json`?**
+- **Why does `createClient()` connect `createClient` to `database.types.ts`, `[projectId]/page.tsx`, `task-actions.ts`, `queries/dashboard.ts`, `confirm/route.ts`, `lib/administration.ts`, `team/actions.ts`, `queries/project-members.ts`, `set-password/actions.ts`, `getActiveStudioMembership`, `project-list-presentation.ts`, `lib/project-lifecycle.ts`, `project.ts`, `queries/index.ts`, `types/calendar.ts`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
+- **Why does `primitive` connect `primitive` to `design-tokens-starter.json`, `fontSize`, `color`, `spacing`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `semantic` connect `design-tokens-starter.json` to `color`?**
+- **Why does `getActiveStudioMembership()` connect `getActiveStudioMembership` to `[projectId]/page.tsx`, `task-actions.ts`, `queries/dashboard.ts`, `createClient`, `team/actions.ts`, `task-details-drawer.tsx`, `project-list-presentation.ts`, `project.ts`, `queries/index.ts`, `types/calendar.ts`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `TailwindConfigGenerator` (e.g. with `TestGeneratedConfigIsValidJs` and `TestTailwindConfigGenerator`) actually correct?**
   _`TailwindConfigGenerator` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `fs`, `path`, `fs` to the rest of the system?**
-  _1236 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1239 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `gray` be split into smaller, more focused modules?**
-  _Cohesion score 0.05370101596516691 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
 - **Should `BM25` be split into smaller, more focused modules?**
   _Cohesion score 0.06693877551020408 - nodes in this community are weakly interconnected._

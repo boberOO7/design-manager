@@ -1,8 +1,11 @@
 import "server-only";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getTaskForStatusUpdate } from "@/data/queries/tasks";
+import { getAssignableProjectMembers } from "@/data/queries/project-members";
+import { canCompleteAttributedTask } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { taskStatusUpdateSchema } from "@/lib/validation/task";
@@ -53,6 +56,21 @@ export async function updateTaskStatusMutation(
   const authorization = await authorizeTaskMutation(parsed.data.task_id);
   if (!authorization.success) return authorization;
 
+  if (parsed.data.status === "completed" && authorization.task.completed_area_m2 !== null) {
+    const activeContributors = await getAssignableProjectMembers(
+      authorization.task.project_id,
+      authorization.task.project.studio_id,
+    );
+    const isActiveProjectMember = activeContributors.some((member) => member.id === authorization.task.assignee_id);
+    if (!canCompleteAttributedTask({
+      completedAreaM2: authorization.task.completed_area_m2,
+      assigneeId: authorization.task.assignee_id,
+      isActiveProjectMember,
+    })) {
+      return { formError: "This task has completed area. Assign it to an active project member before marking it complete.", success: false };
+    }
+  }
+
   const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -66,6 +84,7 @@ export async function updateTaskStatusMutation(
     console.error("Unable to update task status", error);
     return { formError: "The task status could not be updated. Please try again.", success: false };
   }
+  revalidatePath("/leaderboard");
 
   const { data: project, error: projectError } = await supabase
     .from("projects")

@@ -32,6 +32,27 @@
 - Employee contribution is informational task progress only, not a performance
   score or ranking.
 
+## Productivity attribution
+
+- Productivity uses immutable attribution rows created by completion transitions,
+  rather than `updated_at` or mutable completion dates. Reopening voids the active
+  row and recompleting creates one fresh row, so current-month totals never double
+  count.
+- A completed task with a positive `completed_area_m2` credits its completion-time
+  assignee for that exact snapshot. Later reassignment or area edits do not rewrite
+  historical credit.
+- On project completion, fallback credit is created only when no task on that
+  project has any task-level area allocation. Each active project member who is
+  also an active studio member receives the whole project area; partially allocated
+  projects receive no fallback. Contributor name and professional role are snapped
+  to preserve auditability after membership changes.
+- The Leaderboard is a quiet current-month Europe/Kyiv productivity projection of
+  active attribution rows, ordered by credited area, task count, name, then ID.
+- Attribution source and contributor identifiers are snapshots rather than task,
+  project-member, or profile foreign keys. Hard-deleting a task or project does
+  not remove completed-work history; deleting a studio remains the intentional
+  tenant-wide deletion boundary.
+
 ## Project lifecycle workflow
 
 - Project lifecycle is stored, with one-way automatic activation when a planned

@@ -11,6 +11,11 @@ const optionalDateSchema = z.preprocess(
   }, "Enter a valid date").optional(),
 );
 
+const optionalCompletedAreaSchema = z.preprocess(
+  (value) => value === "" || value === null ? undefined : value,
+  z.coerce.number().finite("Enter a valid area").positive("Area must be greater than zero").max(1_000_000, "Area is too large").optional(),
+);
+
 export const taskCreationSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
   description: z.preprocess(
@@ -20,6 +25,7 @@ export const taskCreationSchema = z.object({
   assignee_id: z.uuid("Choose a valid project member"),
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
+  completed_area_m2: optionalCompletedAreaSchema,
 });
 
 export const taskStatusUpdateSchema = z.object({
@@ -40,6 +46,7 @@ export const taskEditSchema = z.object({
   assignee_id: z.uuid("Choose a valid project member"),
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
+  completed_area_m2: optionalCompletedAreaSchema,
   status: z.enum(["todo", "in_progress", "completed"]),
 }).strict();
 
@@ -73,6 +80,7 @@ export function getTaskCreationInput(formData: FormData) {
     assignee_id: getFormString(formData, "assignee_id"),
     priority: getFormString(formData, "priority"),
     due_date: getFormString(formData, "due_date"),
+    completed_area_m2: getFormString(formData, "completed_area_m2"),
   };
 }
 

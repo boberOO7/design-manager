@@ -37,6 +37,8 @@ export type ProjectTask = Pick<
   | "completed_at"
   | "created_at"
 > & {
+  /** Optional during the database migration rollout so existing projections remain readable. */
+  completed_area_m2?: TaskRow["completed_area_m2"];
   assignee: ProfileSummary | null;
   creator: ProfileSummary | null;
 };

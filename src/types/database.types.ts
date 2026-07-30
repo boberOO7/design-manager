@@ -266,6 +266,53 @@ export type Database = {
           },
         ]
       }
+      productivity_attributions: {
+        Row: {
+          completed_at: string
+          contributor_id: string
+          contributor_job_title: string
+          contributor_name: string
+          credited_area_m2: number
+          created_at: string
+          id: string
+          project_id: string
+          source_type: string
+          studio_id: string
+          task_id: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          completed_at?: string
+          contributor_id: string
+          contributor_job_title: string
+          contributor_name: string
+          credited_area_m2: number
+          created_at?: string
+          id?: string
+          project_id: string
+          source_type: string
+          studio_id: string
+          task_id?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          completed_at?: string
+          contributor_id?: string
+          contributor_job_title?: string
+          contributor_name?: string
+          credited_area_m2?: number
+          created_at?: string
+          id?: string
+          project_id?: string
+          source_type?: string
+          studio_id?: string
+          task_id?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "productivity_attributions_studio_id_fkey", columns: ["studio_id"], isOneToOne: false, referencedRelation: "studios", referencedColumns: ["id"] },
+        ]
+      }
       projects: {
         Row: {
           archived_at: string | null
@@ -405,6 +452,7 @@ export type Database = {
         Row: {
           assignee_id: string
           completed_at: string | null
+          completed_area_m2: number | null
           created_at: string
           created_by: string
           description: string | null
@@ -420,6 +468,7 @@ export type Database = {
         Insert: {
           assignee_id: string
           completed_at?: string | null
+          completed_area_m2?: number | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -435,6 +484,7 @@ export type Database = {
         Update: {
           assignee_id?: string
           completed_at?: string | null
+          completed_area_m2?: number | null
           created_at?: string
           created_by?: string
           description?: string | null

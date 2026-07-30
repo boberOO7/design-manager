@@ -29,6 +29,7 @@ function makeFormValues(task: ProjectTask) {
     assignee_id: task.assignee_id,
     priority: task.priority,
     due_date: task.due_date ?? "",
+    completed_area_m2: task.completed_area_m2?.toString() ?? "",
     status: task.status === "review"
       ? "in_progress"
       : task.status === "cancelled"
@@ -162,7 +163,10 @@ export function TaskDetailsDrawer({
       }
       if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true || !("projectStatus" in result) || typeof result.projectStatus !== "string") {
         onTaskUpdated(task);
-        setFormError("The task status could not be updated. Please try again.");
+        const formError = typeof result === "object" && result !== null && "formError" in result && typeof result.formError === "string"
+          ? result.formError
+          : "The task status could not be updated. Please try again.";
+        setFormError(formError);
         return;
       }
       setSuccessMessage("Task status saved.");
@@ -225,6 +229,11 @@ export function TaskDetailsDrawer({
                 <label className="grid gap-1.5 text-sm font-medium text-stone-700">Due date
                   <input type="date" value={values.due_date} disabled={isSaving} onChange={(event) => setValues({ ...values, due_date: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200" />
                 </label>
+                <label className="grid gap-1.5 text-sm font-medium text-stone-700">Completed area <span className="font-normal text-stone-500">(optional m²)</span>
+                  <input type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200" />
+                  <span className="text-xs font-normal leading-5 text-stone-500">Captured when this task enters Done; later edits do not rewrite past credit.</span>
+                  {fieldErrors.completed_area_m2 ? <span className="text-red-700">{fieldErrors.completed_area_m2}</span> : null}
+                </label>
               </div>
               <label className="grid gap-1.5 text-sm font-medium text-stone-700">Status
                 <select value={values.status} disabled={isSaving} onChange={(event) => setValues({ ...values, status: event.target.value })} className="h-10 rounded-xl border border-stone-200 px-3 outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-200">
@@ -248,6 +257,7 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-stone-500">Created by</dt><dd className="mt-1 font-medium text-stone-900">{task.creator?.full_name ?? "Unknown"}</dd></div>
                   <div><dt className="text-stone-500">Created</dt><dd className="mt-1 font-medium text-stone-900">{formatDate(task.created_at)}</dd></div>
                   {task.completed_at ? <div><dt className="text-stone-500">Completed</dt><dd className="mt-1 font-medium text-stone-900">{formatDate(task.completed_at)}</dd></div> : null}
+                  {task.completed_area_m2 ? <div><dt className="text-stone-500">Completed area</dt><dd className="mt-1 font-medium tabular-nums text-stone-900">{task.completed_area_m2} m²</dd></div> : null}
                   {project ? <div><dt className="text-stone-500">Project</dt><dd className="mt-1 font-medium"><Link href={`/projects/${project.id}`} className="text-stone-900 hover:underline">{project.name}</Link></dd></div> : null}
                 </dl>
               </section>
