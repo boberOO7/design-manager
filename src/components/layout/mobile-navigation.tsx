@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
+import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types";
@@ -32,10 +33,18 @@ export function MobileNavigation({ profile }: { profile: Profile | null }) {
     <Drawer isOpen={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} side="left" title="Application navigation">
       <div id={mobileNavigationId} className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-[var(--ui-border)] px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-[var(--ui-text)]">StudioFlow</p>
-            <p className="text-xs text-[var(--ui-text-muted)]">Interior design ops</p>
-          </div>
+          <Link
+            href="/dashboard"
+            aria-label="StudioFlow home"
+            className="flex items-center gap-3 rounded-[var(--ui-radius-control)] text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
+            onClick={() => setOpen(false)}
+          >
+            <StudioFlowMark className="h-6" />
+            <span>
+              <span className="block text-sm font-semibold">StudioFlow</span>
+              <span className="block text-xs text-[var(--ui-text-muted)]">Interior design ops</span>
+            </span>
+          </Link>
           <button type="button" aria-label="Close navigation" className="inline-flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => setOpen(false)}>
             <X size={20} aria-hidden="true" />
           </button>

@@ -375,9 +375,9 @@
     "semantic_hash": "b9bb57eb581e79940598b3faadbef56b"
   },
   "src/app/layout.tsx": {
-    "mtime": 1784484338.1089053,
-    "ast_hash": "16aaf1b87a916ee39ae3d1422453fd97",
-    "semantic_hash": "16aaf1b87a916ee39ae3d1422453fd97"
+    "mtime": 1785714630.6123016,
+    "ast_hash": "5194b0b3b3eadd29dff03602757eebba",
+    "semantic_hash": ""
   },
   "src/app/page.tsx": {
     "mtime": 1784468203.3458471,
@@ -430,14 +430,14 @@
     "semantic_hash": "e3b47852574e9c3b3467cd7b3397de08"
   },
   "src/components/layout/app-sidebar.tsx": {
-    "mtime": 1785328242.5617113,
-    "ast_hash": "4ee4b65b58d87fab4371b4003c0266f8",
-    "semantic_hash": "4ee4b65b58d87fab4371b4003c0266f8"
+    "mtime": 1785714630.4883015,
+    "ast_hash": "2461b0a80b9fe32a906b331a8e024a96",
+    "semantic_hash": ""
   },
   "src/components/layout/mobile-navigation.tsx": {
-    "mtime": 1785328242.669711,
-    "ast_hash": "415dac730544b9de8372686a1c75dae6",
-    "semantic_hash": "415dac730544b9de8372686a1c75dae6"
+    "mtime": 1785713916.0123453,
+    "ast_hash": "18c2f76f3cc7056894897afc1ad65bcf",
+    "semantic_hash": ""
   },
   "src/components/layout/notification-bell.tsx": {
     "mtime": 1785329405.9016423,
@@ -1687,6 +1687,21 @@
   "src/components/administration/checklist-template-manager.test.ts": {
     "mtime": 1785712761.1564176,
     "ast_hash": "758000fb3589e118717e8b7f492f4eee",
+    "semantic_hash": ""
+  },
+  "src/components/brand/studioflow-mark.tsx": {
+    "mtime": 1785714630.3443015,
+    "ast_hash": "517b2456bf2566ed78b5f49ce2a03866",
+    "semantic_hash": ""
+  },
+  "public/favicon-dark.svg": {
+    "mtime": 1785714630.8643014,
+    "ast_hash": "f3780dbcc577c74b4a0eddd016843151",
+    "semantic_hash": ""
+  },
+  "public/favicon-light.svg": {
+    "mtime": 1785714630.7323015,
+    "ast_hash": "7bf1965571f2049255580858729110dc",
     "semantic_hash": ""
   }
 }
