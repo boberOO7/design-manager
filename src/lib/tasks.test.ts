@@ -5,6 +5,7 @@ import {
   canEditTaskWork,
   areProjectTaskSnapshotsEqual,
   getBoardColumn,
+  getOptimisticTaskForStatus,
   getTaskStatusForDrop,
   getWritableStatusForBoardColumn,
   getProjectTaskSnapshotUpdate,
@@ -181,13 +182,20 @@ describe("optimistic task Board state", () => {
     expect(rolledBackTasks.find((task) => task.id === "task-2")?.status).toBe("completed");
   });
 
-  it("rolls back an optimistic Client review move when the server rejects an incomplete checklist", () => {
+  it("optimistically completes a checklist for Client review and restores it when the move is rejected", () => {
     const initial = [makeTask({ id: "task-1", status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] })];
     const optimistic = setProjectTaskStatus(initial, "task-1", "review");
     expect(groupTasksByBoardColumn(optimistic)["client-review"]).toHaveLength(1);
-    const rolledBack = setProjectTaskStatus(optimistic, "task-1", initial[0].status);
+    expect(optimistic[0]?.checklist_items[0]?.is_completed).toBe(true);
+    expect(optimistic[0]?.production_completion).toBe(100);
+    const rolledBack = mergeProjectTask(optimistic, initial[0]);
     expect(groupTasksByBoardColumn(rolledBack)["in-progress"]).toHaveLength(1);
     expect(rolledBack[0].checklist_items[0]?.is_completed).toBe(false);
+  });
+
+  it("does not change checklist data for status transitions outside Client review", () => {
+    const task = makeTask({ status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] });
+    expect(getOptimisticTaskForStatus(task, "completed").checklist_items[0]?.is_completed).toBe(false);
   });
 
   it("does not let stale server props overwrite a pending optimistic status", () => {

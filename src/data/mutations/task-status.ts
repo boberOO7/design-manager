@@ -56,9 +56,9 @@ export async function updateTaskStatusMutation(
   const authorization = await authorizeTaskMutation(parsed.data.task_id);
   if (!authorization.success) return authorization;
 
-  if ((parsed.data.status === "review" || parsed.data.status === "completed")
+  if (parsed.data.status === "completed"
     && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
-    return { formError: "Complete every checklist item before moving this task to Client review or Done.", success: false };
+    return { formError: "Complete every checklist item before moving this task to Done.", success: false };
   }
 
   if (parsed.data.status === "completed" && authorization.task.completed_area_m2 !== null) {

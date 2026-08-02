@@ -17,6 +17,7 @@ const optionalCompletedAreaSchema = z.preprocess(
 );
 
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
+const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 
 export const taskCreationSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
@@ -59,12 +60,12 @@ export const taskProductionProgressSchema = z.object({
 
 export const checklistItemCreateSchema = z.object({
   title: z.string().trim().min(1, "Checklist item title is required").max(200, "Checklist item title is too long"),
-  weight: progressWeightSchema.default(1),
+  weight: checklistWeightSchema.default(1),
 }).strict();
 
 export const checklistItemUpdateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
-  weight: progressWeightSchema.optional(),
+  weight: checklistWeightSchema.optional(),
   is_completed: z.boolean().optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, "Provide a checklist change");
 

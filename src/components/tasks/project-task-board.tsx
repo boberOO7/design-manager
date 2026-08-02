@@ -294,6 +294,7 @@ export function ProjectTaskBoard({
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());
+  const previousTasksRef = useRef(new Map<string, ProjectTask>());
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
   const onTasksChangeRef = useRef(onTasksChange);
@@ -369,17 +370,18 @@ export function ProjectTaskBoard({
       setLocalTasks(mergedTasks);
       if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusChange?.(result.projectStatus);
       previousStatusesRef.current.delete(taskId);
+      previousTasksRef.current.delete(taskId);
       setTaskPending(taskId, false);
       setAnnouncement(`Task ${taskTitle} moved to ${targetLabel}.`);
     } catch (error) {
+      const rollbackTask = previousTasksRef.current.get(taskId);
       const rollbackStatus = previousStatusesRef.current.get(taskId) ?? previousStatus;
       previousStatusesRef.current.delete(taskId);
+      previousTasksRef.current.delete(taskId);
       confirmedStatusesRef.current.delete(taskId);
-      const rolledBackTasks = setProjectTaskStatus(
-        localTasksRef.current,
-        taskId,
-        rollbackStatus,
-      );
+      const rolledBackTasks = rollbackTask
+        ? mergeProjectTask(localTasksRef.current, rollbackTask)
+        : setProjectTaskStatus(localTasksRef.current, taskId, rollbackStatus);
       localTasksRef.current = rolledBackTasks;
       setLocalTasks(rolledBackTasks);
       onProjectStatusChange?.(previousProjectStatus);
@@ -416,6 +418,7 @@ export function ProjectTaskBoard({
     if (!targetLabel) return;
 
     previousStatusesRef.current.set(task.id, task.status);
+    previousTasksRef.current.set(task.id, task);
     setTaskPending(task.id, true);
     setBoardError(null);
     const optimisticTasks = setProjectTaskStatus(

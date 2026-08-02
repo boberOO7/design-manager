@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { checklistItemCreateSchema, checklistItemUpdateSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -51,6 +51,17 @@ describe("task status validation", () => {
     expect(taskStatusPayloadSchema.safeParse({ status: "todo", task_id: validTask.assignee_id }).success).toBe(false);
     expect(taskStatusPayloadSchema.safeParse({ status: "cancelled" }).success).toBe(false);
     expect(taskStatusUpdateSchema.safeParse({ task_id: validTask.assignee_id, status: "cancelled" }).success).toBe(false);
+  });
+});
+
+describe("checklist validation", () => {
+  it("defaults to whole-number weight one and rejects invalid weight values", () => {
+    expect(checklistItemCreateSchema.parse({ title: "Drawings" }).weight).toBe(1);
+    expect(checklistItemCreateSchema.parse({ title: "Drawings", weight: "3" }).weight).toBe(3);
+    expect(checklistItemCreateSchema.safeParse({ title: "Drawings", weight: "1.5" }).success).toBe(false);
+    expect(checklistItemCreateSchema.safeParse({ title: "Drawings", weight: "0" }).success).toBe(false);
+    expect(checklistItemCreateSchema.safeParse({ title: "Drawings", weight: "-1" }).success).toBe(false);
+    expect(checklistItemUpdateSchema.safeParse({ weight: "1.5" }).success).toBe(false);
   });
 });
 

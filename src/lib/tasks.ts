@@ -157,7 +157,23 @@ export function setProjectTaskStatus(
 ): ProjectTask[] {
   const task = tasks.find((item) => item.id === taskId);
   if (!task || task.status === status) return tasks;
-  return tasks.map((item) => item.id === taskId ? { ...item, status } : item);
+  return tasks.map((item) => item.id === taskId ? getOptimisticTaskForStatus(task, status) : item);
+}
+
+export function getOptimisticTaskForStatus(
+  task: ProjectTask,
+  status: ProjectTask["status"],
+): ProjectTask {
+  if (task.status === status) return task;
+  if (status === "review") {
+    return {
+      ...task,
+      status,
+      production_completion: 100,
+      checklist_items: task.checklist_items.map((item) => ({ ...item, is_completed: true })),
+    };
+  }
+  return { ...task, status };
 }
 
 export function mergeProjectTask<T extends ProjectTask>(tasks: T[], updatedTask: ProjectTask): T[] {

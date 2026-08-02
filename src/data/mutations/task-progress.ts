@@ -8,7 +8,7 @@ import { checklistItemCreateSchema, checklistItemUpdateSchema, taskProductionPro
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 
 export type TaskWorkMutationResult =
-  | { success: true; task: ProjectTask }
+  | { success: true; task: ProjectTask; checklistItemId?: string }
   | { success: false; formError: string };
 
 function revalidateProgressConsumers(projectId: string) {
@@ -63,17 +63,18 @@ export async function createChecklistItem(taskId: string, input: unknown): Promi
   if (!authorization.success) return authorization;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("task_checklist_items").insert({
+  const { data, error } = await supabase.from("task_checklist_items").insert({
     task_id: taskId,
     title: parsed.data.title,
     weight: parsed.data.weight,
     position: 0,
-  });
-  if (error) {
+  }).select("id").maybeSingle();
+  if (error || !data) {
     console.error("Unable to create checklist item", error);
     return { success: false, formError: "The checklist item could not be added. Please try again." };
   }
-  return loadUpdatedTask(taskId, authorization.task.project_id);
+  const result = await loadUpdatedTask(taskId, authorization.task.project_id);
+  return result.success ? { ...result, checklistItemId: data.id } : result;
 }
 
 export async function updateChecklistItem(taskId: string, itemId: string, input: unknown): Promise<TaskWorkMutationResult> {

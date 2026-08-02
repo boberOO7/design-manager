@@ -1,11 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = new URL("../../supabase/migrations/20260730120100_task_progress_checklists.sql", import.meta.url);
+const milestoneMigrationPath = new URL("../../supabase/migrations/20260730120100_task_progress_checklists.sql", import.meta.url);
+const fixMigrationPath = new URL("../../supabase/migrations/20260730141740_fix_task_progress_checklist_workflow.sql", import.meta.url);
 
 describe("task progress migration contract", () => {
   it("backfills equal progress and constrains all new numeric settings", async () => {
-    const sql = await readFile(migrationPath, "utf8");
+    const sql = await readFile(milestoneMigrationPath, "utf8");
     expect(sql).toContain("progress_method text not null default 'equal'");
     expect(sql).toContain("progress_method in ('equal', 'area', 'weighted')");
     expect(sql).toContain("production_completion >= 0 and production_completion <= 100");
@@ -13,7 +14,7 @@ describe("task progress migration contract", () => {
   });
 
   it("creates a lightweight ordered checklist with RLS-safe editor policies", async () => {
-    const sql = await readFile(migrationPath, "utf8");
+    const sql = await readFile(milestoneMigrationPath, "utf8");
     expect(sql).toContain("create table public.task_checklist_items");
     expect(sql).toContain("unique (task_id, position)");
     expect(sql).toContain("pg_advisory_xact_lock");
@@ -26,31 +27,36 @@ describe("task progress migration contract", () => {
     expect(sql).toContain("private.can_update_project_task_status(task.project_id, task.assignee_id)");
   });
 
-  it("blocks incomplete review, normalizes production, and preserves review-to-progress production", async () => {
-    const sql = await readFile(migrationPath, "utf8");
-    expect(sql).toContain("new.status in ('review', 'completed')");
+  it("atomically completes incomplete review checklists, normalizes production, and keeps Done guarded", async () => {
+    const sql = await readFile(fixMigrationPath, "utf8");
+    expect(sql).toContain("drop constraint if exists task_checklist_items_weight_check");
+    expect(sql).toContain("trunc(weight) = weight");
+    expect(sql).toContain("if new.status = 'review' and old.status is distinct from 'review' then");
+    expect(sql).toContain("update public.task_checklist_items");
+    expect(sql).toContain("set is_completed = true");
+    expect(sql).toContain("elsif new.status = 'completed'");
     expect(sql).toContain("and not item.is_completed");
     expect(sql).toContain("new.production_completion := 100");
     expect(sql).toContain("new.status <> 'in_progress'");
-    expect(sql).toContain("status in ('todo', 'in_progress', 'review', 'completed')");
+    expect(await readFile(milestoneMigrationPath, "utf8")).toContain("status in ('todo', 'in_progress', 'review', 'completed')");
   });
 
   it("preserves the existing non-cancellable task mutation boundary", async () => {
-    const sql = await readFile(migrationPath, "utf8");
+    const sql = await readFile(milestoneMigrationPath, "utf8");
     expect(sql).toContain("status in ('todo', 'in_progress', 'review', 'completed')");
     expect(sql).not.toContain("status in ('todo', 'in_progress', 'review', 'completed', 'cancelled')");
   });
 
   it("rejects missing or non-positive design scope before enabling area progress", async () => {
-    const sql = await readFile(migrationPath, "utf8");
+    const sql = await readFile(fixMigrationPath, "utf8");
     expect(sql).toContain("if new.total_area_m2 is null or new.total_area_m2 <= 0 then");
     expect(sql).toContain("if scope_area is null or scope_area <= 0 then");
     expect(sql.match(/Area progress requires a positive project design-scope area/g)).toHaveLength(2);
   });
 
   it("serializes task and project area validation per affected project", async () => {
-    const sql = await readFile(migrationPath, "utf8");
-    expect(sql.match(/pg_advisory_xact_lock/g)).toHaveLength(3);
+    const sql = await readFile(fixMigrationPath, "utf8");
+    expect(sql.match(/pg_advisory_xact_lock/g)).toHaveLength(2);
     expect(sql.match(/studioflow:task-area:/g)).toHaveLength(2);
     expect(sql).toContain("values (new.project_id), (old_project_id)");
     expect(sql).toContain("values (new.id), (old.id)");
@@ -59,7 +65,7 @@ describe("task progress migration contract", () => {
   });
 
   it("enforces design-scope area coverage without mixing area and explicit weights", async () => {
-    const sql = await readFile(migrationPath, "utf8");
+    const sql = await readFile(fixMigrationPath, "utf8");
     expect(sql).toContain("allocated_area > scope_area");
     expect(sql).toContain("task.status <> 'cancelled'");
     expect(sql).toContain("Task area allocation cannot exceed the project design-scope area");

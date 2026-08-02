@@ -186,8 +186,9 @@
   weight, and deterministic order. They are not subtasks: they have no assignee,
   deadline, status, comments, notifications, My Tasks presence, drawer, or
   children. Position is assigned at insertion and is immutable afterward; no
-  checklist reorder UI or mutation is part of this milestone. A task cannot enter
-  Client review or Done with incomplete items.
+  checklist reorder UI or mutation is part of this milestone. Moving a task to
+  Client review atomically completes its remaining checklist items and normalizes
+  production to 100%; Done still requires the checklist already be complete.
 - Project Board task status changes use whole-card drag-and-drop. Pointer drags
   start only from non-interactive card areas, and database writes occur only
   after a completed drop into a different workflow column.
