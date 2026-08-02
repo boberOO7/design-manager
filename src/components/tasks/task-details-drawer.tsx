@@ -6,13 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
-import {
-  createOptimisticChecklistItem,
-  isValidChecklistWeightInput,
-  removeChecklistItem,
-  replaceOptimisticChecklistItem,
-  updateChecklistItemLocally,
-} from "@/lib/checklist-interaction";
+import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
+import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
 import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, getTaskPriorityLabel, getTaskStatusLabel, isTaskStatus } from "@/lib/tasks";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { formatDate } from "@/lib/utils";
@@ -31,7 +26,6 @@ function isTaskEditResponse(value: unknown): value is TaskEditResponse {
 }
 
 type TaskWorkResponse = { success: true; task: ProjectTask; checklistItemId?: string } | { success?: false; formError?: string };
-type SuccessfulTaskWorkResponse = Extract<TaskWorkResponse, { success: true }>;
 function isTaskWorkResponse(value: unknown): value is TaskWorkResponse {
   return typeof value === "object" && value !== null && "success" in value;
 }
@@ -74,12 +68,13 @@ export function TaskDetailsDrawer({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const checklistTitleRef = useRef<HTMLInputElement>(null);
-  const checklistItemsRef = useRef(task.checklist_items);
+  const checklistStoreRef = useRef<ReturnType<typeof getChecklistAutosaveStore> | null>(null);
+  if (!checklistStoreRef.current) checklistStoreRef.current = getChecklistAutosaveStore(task.id);
+  const checklistStore = checklistStoreRef.current;
+  checklistStore.seed(task);
+  const taskRef = useRef(task);
   const checklistFormRevisionRef = useRef(0);
   const lastSubmittedChecklistRevisionRef = useRef(-1);
-  const checklistOperationVersionsRef = useRef(new Map<string, number>());
-  const checklistOperationIdRef = useRef(0);
-  const taskRef = useRef(task);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false);
@@ -88,8 +83,7 @@ export function TaskDetailsDrawer({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [newChecklistWeight, setNewChecklistWeight] = useState("1");
-  const [checklistItems, setChecklistItems] = useState(task.checklist_items);
-  const [pendingChecklistItemIds, setPendingChecklistItemIds] = useState<Set<string>>(() => new Set());
+  const [, setChecklistRevision] = useState(0);
   const [manualProgress, setManualProgress] = useState(task.production_completion.toString());
   const [values, setValues] = useState(() => makeFormValues(task));
 
@@ -98,13 +92,21 @@ export function TaskDetailsDrawer({
     && (canManageTasks || task.assignee_id === currentUserId);
   const canEditWork = canEditTaskWork({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, status: task.status });
   taskRef.current = task;
-  const displayedChecklistItems = task.status === "review" ? task.checklist_items : checklistItems;
+  const checklistSnapshot = checklistStore.getSnapshot();
+  const displayedChecklistItems = task.status === "review" ? task.checklist_items : checklistSnapshot.items;
   const taskProgress = calculateTaskProgress({ ...task, checklist_items: displayedChecklistItems });
   const isDirty = JSON.stringify(values) !== JSON.stringify(makeFormValues(task));
 
   useEffect(() => {
     panelRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    return checklistStore.subscribe(() => {
+      setChecklistRevision((revision) => revision + 1);
+      onTaskUpdated({ ...taskRef.current, checklist_items: checklistStore.getSnapshot().items });
+    });
+  }, [checklistStore, onTaskUpdated]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -152,8 +154,7 @@ export function TaskDetailsDrawer({
       }
       if (response.ok && isTaskEditResponse(result) && result.success) {
         onTaskUpdated(result.task);
-        checklistItemsRef.current = result.task.checklist_items;
-        setChecklistItems(result.task.checklist_items);
+        checklistStore.seed(result.task);
         if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
         setValues(makeFormValues(result.task));
         setIsEditing(false);
@@ -181,8 +182,7 @@ export function TaskDetailsDrawer({
     const updatedTask = getOptimisticTaskForStatus(task, status);
     onTaskUpdated(updatedTask);
     if (status === "review") {
-      checklistItemsRef.current = updatedTask.checklist_items;
-      setChecklistItems(updatedTask.checklist_items);
+      checklistStore.seed(updatedTask);
     }
     try {
       const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}/status`, {
@@ -198,8 +198,7 @@ export function TaskDetailsDrawer({
       }
       if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true || !("projectStatus" in result) || typeof result.projectStatus !== "string") {
         onTaskUpdated(task);
-        checklistItemsRef.current = task.checklist_items;
-        setChecklistItems(task.checklist_items);
+        checklistStore.seed(task);
         const formError = typeof result === "object" && result !== null && "formError" in result && typeof result.formError === "string"
           ? result.formError
           : "The task status could not be updated. Please try again.";
@@ -208,15 +207,13 @@ export function TaskDetailsDrawer({
       }
       if (isTaskWorkResponse(result) && result.success) {
         onTaskUpdated(result.task);
-        checklistItemsRef.current = result.task.checklist_items;
-        setChecklistItems(result.task.checklist_items);
+        checklistStore.seed(result.task);
       }
       setSuccessMessage("Task status saved.");
       if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
     } catch {
       onTaskUpdated(task);
-      checklistItemsRef.current = task.checklist_items;
-      setChecklistItems(task.checklist_items);
+      checklistStore.seed(task);
       setFormError("The task status could not be updated. Please try again.");
     } finally {
       setIsSaving(false);
@@ -246,30 +243,6 @@ export function TaskDetailsDrawer({
     await mutateTaskWork(`/api/tasks/${encodeURIComponent(task.id)}/progress`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ production_completion: manualProgress }) }, "Production progress saved.");
   }
 
-  function setChecklistPending(itemId: string, pending: boolean) {
-    setPendingChecklistItemIds((current) => {
-      const next = new Set(current);
-      if (pending) next.add(itemId); else next.delete(itemId);
-      return next;
-    });
-  }
-
-  function commitChecklistItems(nextItems: TaskChecklistItem[], taskSnapshot = taskRef.current) {
-    checklistItemsRef.current = nextItems;
-    setChecklistItems(nextItems);
-    onTaskUpdated({ ...taskSnapshot, checklist_items: nextItems });
-  }
-
-  async function requestChecklistMutation(url: string, init: RequestInit): Promise<SuccessfulTaskWorkResponse> {
-    const response = await fetch(url, init);
-    let result: unknown = null;
-    try { result = await response.json(); } catch { /* Safe fallback below. */ }
-    if (!response.ok || !isTaskWorkResponse(result) || !result.success) {
-      throw new Error(isTaskWorkResponse(result) && !result.success ? result.formError ?? "The checklist could not be updated." : "The checklist could not be updated.");
-    }
-    return result;
-  }
-
   async function addChecklistItem() {
     const revision = checklistFormRevisionRef.current;
     if (revision === lastSubmittedChecklistRevisionRef.current) return;
@@ -280,110 +253,26 @@ export function TaskDetailsDrawer({
     }
 
     lastSubmittedChecklistRevisionRef.current = revision;
-    setFormError(null);
     setSuccessMessage(null);
-    const temporaryItemId = `temporary-checklist-${task.id}-${++checklistOperationIdRef.current}`;
-    const now = new Date().toISOString();
-    const temporaryItem = createOptimisticChecklistItem({
-      id: temporaryItemId,
-      now,
-      position: Math.max(-1, ...checklistItemsRef.current.map((item) => item.position)) + 1,
-      taskId: task.id,
-      title: parsed.data.title,
-      weight: parsed.data.weight,
-    });
-    commitChecklistItems([...checklistItemsRef.current, temporaryItem]);
-    setChecklistPending(temporaryItemId, true);
     setNewChecklistTitle("");
     setNewChecklistWeight("1");
     checklistFormRevisionRef.current += 1;
     window.requestAnimationFrame(() => checklistTitleRef.current?.focus());
 
-    try {
-      const result = await requestChecklistMutation(`/api/tasks/${encodeURIComponent(task.id)}/checklist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: parsed.data.title, weight: parsed.data.weight }),
-      });
-      const persistedItem = result.checklistItemId
-        ? result.task.checklist_items.find((item) => item.id === result.checklistItemId)
-        : undefined;
-      if (persistedItem) {
-        commitChecklistItems(
-          replaceOptimisticChecklistItem(checklistItemsRef.current, temporaryItemId, persistedItem),
-          result.task,
-        );
-      }
-      setSuccessMessage("Checklist item added.");
-    } catch (cause) {
-      commitChecklistItems(removeChecklistItem(checklistItemsRef.current, temporaryItemId));
-      setFormError(cause instanceof Error ? cause.message : "The checklist item could not be added.");
-    } finally {
-      setChecklistPending(temporaryItemId, false);
-    }
+    await checklistStore.create(taskRef.current, parsed.data.title, parsed.data.weight);
   }
 
-  async function updateChecklistItem(itemId: string, change: { title?: string; weight?: string; is_completed?: boolean }) {
-    if (change.weight !== undefined && !isValidChecklistWeightInput(change.weight)) {
-      setFormError("Weight must be a whole number from 1 to 1000.");
-      return;
-    }
-    const existingItem = checklistItemsRef.current.find((item) => item.id === itemId);
-    if (!existingItem) return;
+  function updateChecklistItem(itemId: string, change: ChecklistChange, immediate = false) {
     const update = {
       ...change,
       title: change.title?.trim(),
-      weight: change.weight === undefined ? undefined : Number(change.weight),
     };
-    const operationVersion = (checklistOperationVersionsRef.current.get(itemId) ?? 0) + 1;
-    checklistOperationVersionsRef.current.set(itemId, operationVersion);
-    commitChecklistItems(updateChecklistItemLocally(checklistItemsRef.current, itemId, update));
-    setChecklistPending(itemId, true);
-    setFormError(null);
-    setSuccessMessage(null);
-
-    try {
-      const result = await requestChecklistMutation(`/api/tasks/${encodeURIComponent(task.id)}/checklist/${encodeURIComponent(itemId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(update),
-      });
-      if (checklistOperationVersionsRef.current.get(itemId) === operationVersion) {
-        const persistedItem = result.task.checklist_items.find((item) => item.id === itemId);
-        if (persistedItem) commitChecklistItems(updateChecklistItemLocally(checklistItemsRef.current, itemId, persistedItem), result.task);
-        setSuccessMessage("Checklist updated.");
-      }
-    } catch (cause) {
-      if (checklistOperationVersionsRef.current.get(itemId) === operationVersion) {
-        commitChecklistItems(updateChecklistItemLocally(checklistItemsRef.current, itemId, existingItem));
-        setFormError(cause instanceof Error ? cause.message : "The checklist item could not be updated.");
-      }
-    } finally {
-      if (checklistOperationVersionsRef.current.get(itemId) === operationVersion) setChecklistPending(itemId, false);
-    }
+    checklistStore.update(taskRef.current, itemId, update, immediate);
   }
 
   async function deleteChecklistItem(itemId: string) {
-    const index = checklistItemsRef.current.findIndex((item) => item.id === itemId);
-    const existingItem = checklistItemsRef.current[index];
-    if (!existingItem) return;
-    commitChecklistItems(removeChecklistItem(checklistItemsRef.current, itemId));
-    setChecklistPending(itemId, true);
-    setFormError(null);
     setSuccessMessage(null);
-    try {
-      await requestChecklistMutation(`/api/tasks/${encodeURIComponent(task.id)}/checklist/${encodeURIComponent(itemId)}`, { method: "DELETE" });
-      setSuccessMessage("Checklist item deleted.");
-    } catch (cause) {
-      if (!checklistItemsRef.current.some((item) => item.id === itemId)) {
-        const restoredItems = [...checklistItemsRef.current];
-        restoredItems.splice(index, 0, existingItem);
-        commitChecklistItems(restoredItems);
-      }
-      setFormError(cause instanceof Error ? cause.message : "The checklist item could not be deleted.");
-    } finally {
-      setChecklistPending(itemId, false);
-    }
+    await checklistStore.remove(taskRef.current, itemId);
   }
 
   return (
@@ -463,7 +352,8 @@ export function TaskDetailsDrawer({
               </section>
               <section className="border-t border-stone-100 pt-5" aria-labelledby="task-checklist-heading">
                 <div className="flex items-end justify-between gap-3"><div><h3 id="task-checklist-heading" className="text-sm font-semibold text-stone-900">Checklist</h3><p className="mt-1 text-xs leading-5 text-stone-500">Optional weighted work stages, not subtasks.</p></div>{displayedChecklistItems.length ? <span className="ui-numeric text-xs font-medium text-stone-600">{taskProgress.presentedProductionPercent}% production</span> : null}</div>
-                {displayedChecklistItems.length ? <ul className="mt-3 space-y-2">{displayedChecklistItems.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={pendingChecklistItemIds.has(item.id)} disabled={isSaving} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-3 rounded-xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">No checklist items. In-progress production uses the manual percentage.</p>}
+                {checklistSnapshot.error ? <p role="alert" className="mt-3 text-sm text-red-800">{checklistSnapshot.error}</p> : null}
+                {displayedChecklistItems.length ? <ul className="mt-3 divide-y divide-stone-100 border-y border-stone-100">{displayedChecklistItems.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-3 rounded-xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">No checklist items. In-progress production uses the manual percentage.</p>}
                 {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-3 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-[minmax(0,1fr)_6rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-stone-700">New item<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-stone-700">Weight<input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} className="h-11 min-w-0 rounded-lg border border-stone-300 bg-white px-3 ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={!newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> Add</Button></form> : null}
               </section>
               <section>
@@ -509,24 +399,22 @@ export function TaskDetailsDrawer({
   );
 }
 
-function ChecklistItemRow({ canEdit, disabled, item, onDelete, onUpdate, pending }: {
+function ChecklistItemRow({ canEdit, item, onDelete, onUpdate, pending }: {
   canEdit: boolean;
-  disabled: boolean;
   item: TaskChecklistItem;
   onDelete: (itemId: string) => Promise<void>;
-  onUpdate: (itemId: string, change: { title?: string; weight?: string; is_completed?: boolean }) => Promise<void>;
+  onUpdate: (itemId: string, change: ChecklistChange, immediate?: boolean) => void;
   pending: boolean;
 }) {
   const [title, setTitle] = useState(item.title);
   const [weight, setWeight] = useState(item.weight.toString());
-  const isDirty = title.trim() !== item.title || Number(weight) !== item.weight;
-  const isDisabled = disabled || pending;
-  return <li className="rounded-xl border border-stone-200 bg-white p-3">
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3">
-      <label className="flex min-h-11 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-700 focus-within:ring-2 focus-within:ring-[var(--ui-focus)]">
-        <input type="checkbox" checked={item.is_completed} disabled={!canEdit || isDisabled} onChange={(event) => void onUpdate(item.id, { is_completed: event.target.checked })} aria-label={`Mark ${item.title} ${item.is_completed ? "incomplete" : "complete"}`} className="size-5 accent-stone-900" />
+  return <li className="py-2.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap">
+      <label className="flex size-11 shrink-0 items-center justify-center text-stone-700 focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--ui-focus)] focus-within:ring-offset-2">
+        <input type="checkbox" checked={item.is_completed} disabled={!canEdit} onChange={(event) => onUpdate(item.id, { is_completed: event.target.checked }, true)} aria-label={`Mark ${item.title} ${item.is_completed ? "incomplete" : "complete"}`} className="size-5 accent-stone-900" />
       </label>
-      {canEdit ? <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_6rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs text-stone-500">Title<input value={title} maxLength={200} disabled={isDisabled} onChange={(event) => setTitle(event.target.value)} className="h-11 min-w-0 rounded-lg border border-stone-200 px-3 text-sm text-stone-900 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs text-stone-500">Weight<input type="number" min="1" max="1000" step="1" inputMode="numeric" value={weight} disabled={isDisabled} onChange={(event) => setWeight(event.target.value)} className="h-11 min-w-0 rounded-lg border border-stone-200 px-3 text-sm ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><div className="flex min-h-11 items-end gap-1"><Button type="button" size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none" disabled={isDisabled || !isDirty || !title.trim() || !isValidChecklistWeightInput(weight)} onClick={() => void onUpdate(item.id, { title, weight })}>{pending ? "Saving…" : "Save"}</Button><Button type="button" size="sm" variant="ghost" className="min-h-11 min-w-11 p-0 text-red-700" disabled={isDisabled} aria-label={`Delete checklist item ${item.title}`} onClick={() => { if (window.confirm(`Delete “${item.title}”?`)) void onDelete(item.id); }}><Trash2 className="size-4" aria-hidden="true" /></Button></div></div> : <div className="min-w-0 py-1"><p className={item.is_completed ? "break-words text-sm text-stone-500 line-through" : "break-words text-sm font-medium text-stone-800"}>{item.title}</p><p className="mt-1 text-xs text-stone-500">Weight {item.weight}</p></div>}
+      {canEdit ? <><label className="min-w-0 flex-1"><span className="sr-only">Checklist title</span><input value={title} maxLength={200} onChange={(event) => { const value = event.target.value; setTitle(value); if (value.trim()) onUpdate(item.id, { title: value }); }} onBlur={() => { if (!title.trim()) setTitle(item.title); }} className="h-11 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-sm text-stone-900 outline-none hover:border-stone-200 focus:border-stone-300 focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="flex w-20 shrink-0 items-center gap-1 text-xs text-stone-500"><span className="sr-only">Weight</span><input type="number" min="1" max="1000" step="1" inputMode="numeric" value={weight} onChange={(event) => { const value = event.target.value; setWeight(value); if (isValidChecklistWeightInput(value)) onUpdate(item.id, { weight: Number(value) }); }} onBlur={() => { if (!isValidChecklistWeightInput(weight)) setWeight(item.weight.toString()); }} className="h-11 w-full rounded-lg border border-transparent bg-transparent px-2 text-right text-sm ui-numeric outline-none hover:border-stone-200 focus:border-stone-300 focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /><span aria-hidden="true">wt</span></label><Button type="button" size="sm" variant="ghost" className="size-11 shrink-0 p-0 text-red-700" aria-label={`Delete checklist item ${item.title}`} onClick={() => { if (window.confirm(`Delete “${item.title}”?`)) void onDelete(item.id); }}><Trash2 className="size-4" aria-hidden="true" /></Button></> : <div className="min-w-0 flex-1"><p className={item.is_completed ? "break-words text-sm text-stone-500 line-through" : "break-words text-sm font-medium text-stone-800"}>{item.title}</p><p className="text-xs text-stone-500">Weight {item.weight}</p></div>}
+      {pending ? <span className="sr-only" role="status">Saving checklist item</span> : null}
     </div>
   </li>;
 }

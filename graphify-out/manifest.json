@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1785420097.9694128,
-    "ast_hash": "22020a4bc58501aa33eee846cddc2acb",
+    "mtime": 1785674588.7942216,
+    "ast_hash": "daa063f7076d89d4e027a74054c0125f",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -1595,18 +1595,18 @@
     "semantic_hash": ""
   },
   "src/lib/task-progress-migration.test.ts": {
-    "mtime": 1785419935.64544,
-    "ast_hash": "3e94be59d45e9f9a3a250056a9a9a589",
+    "mtime": 1785421284.6971915,
+    "ast_hash": "cbbf8a0199f702e28384630cf0a29b28",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120100_task_progress_checklists.sql": {
-    "mtime": 1785419737.1054761,
-    "ast_hash": "d7d5681438db2ebba863be25df775d30",
+    "mtime": 1785421505.373151,
+    "ast_hash": "dad2074df4aa137d45113f004edfb4eb",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1785420016.409423,
-    "ast_hash": "8e3de3087f6784e9d332577156a2a7e6",
+    "mtime": 1785674558.4382238,
+    "ast_hash": "27a5390cce4022c389b83f95a31a4091",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -1622,6 +1622,21 @@
   "src/lib/checklist-interaction.ts": {
     "mtime": 1785419747.933473,
     "ast_hash": "e68f4b076bcb9f5cf82cd4cb004a7a81",
+    "semantic_hash": ""
+  },
+  "src/lib/checklist-autosave.test.ts": {
+    "mtime": 1785674534.6142223,
+    "ast_hash": "039d26dab2097a999d983e39bb8fac45",
+    "semantic_hash": ""
+  },
+  "src/lib/checklist-autosave.ts": {
+    "mtime": 1785674517.954227,
+    "ast_hash": "dcec5090b30302f767df3c3f0d6bfd8b",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260730141740_fix_task_progress_checklist_workflow.sql": {
+    "mtime": 1785421171.9452138,
+    "ast_hash": "98d820211e0bb9296b80a44d26910d66",
     "semantic_hash": ""
   }
 }

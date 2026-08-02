@@ -15,12 +15,14 @@ describe("task checklist drawer contract", () => {
     expect(checklistSection).toContain('inputMode="numeric"');
   });
 
-  it("keeps the checkbox within each item row and exposes an item-level pending state", async () => {
+  it("keeps checkbox and title in one logical row without a per-item Save button", async () => {
     const source = await readFile(drawerPath, "utf8");
     const itemRow = source.slice(source.indexOf("function ChecklistItemRow"));
 
     expect(itemRow).toContain('type="checkbox"');
-    expect(itemRow).toContain("pending ? \"Saving…\" : \"Save\"");
+    expect(itemRow).toContain("Checklist title");
+    expect(itemRow).not.toContain('>Save<');
+    expect(itemRow).toContain("Saving checklist item");
     expect(itemRow).toContain('step="1"');
   });
 });
