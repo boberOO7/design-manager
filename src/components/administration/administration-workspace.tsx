@@ -65,7 +65,7 @@ export function AdministrationWorkspace({ initialData, requestId }: { initialDat
   }
 
   return <div className="space-y-6">
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,1fr)] xl:items-start">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,1fr)] xl:items-start">
       <Panel id="requests" className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--ui-border)] pb-4">
           <div>
@@ -78,14 +78,14 @@ export function AdministrationWorkspace({ initialData, requestId }: { initialDat
         {data.pendingRequests.length ? <ul className="divide-y divide-[var(--ui-border)]">{data.pendingRequests.map((request) => <PendingRequestRow key={request.id} request={request} isPending={pendingRequestId === request.id} onApprove={(trigger) => { void decide(request, "approve").then((success) => { if (!success) openRequest(request, trigger, true); }); }} onOpen={(trigger) => openRequest(request, trigger)} />)}</ul> : <EmptyState className="mt-4" compact title="No time-off requests require action." description="Upcoming availability and recent decisions remain available alongside this queue." />}
       </Panel>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <Panel id="upcoming" className="border-emerald-100 p-4 sm:p-5">
           <SectionHeading accentClassName="border-emerald-300" eyebrow="Availability" title="Upcoming availability" description="Approved team absence over the next 30 days." />
           {data.upcomingAbsences.length ? <ul className="mt-3 divide-y divide-[var(--ui-border)]">{data.upcomingAbsences.map((request) => <AvailabilityRow key={request.id} request={request} />)}</ul> : <EmptyState className="mt-3" compact title="No approved team absence" description="There is no approved absence in the next 30 days." />}
         </Panel>
         <Panel className="bg-[var(--ui-surface-muted)] p-4 shadow-none sm:p-5">
           <SectionHeading accentClassName="border-stone-300" eyebrow="History" title="Recent decisions" description="The latest reviewed or cancelled time-off requests." />
-          {data.recentDecisions.length ? <ul className="mt-3 divide-y divide-[var(--ui-border)]">{data.recentDecisions.map((request) => <DecisionRow key={request.id} request={request} />)}</ul> : <EmptyState className="mt-3 bg-[var(--ui-surface)]" compact title="No recent time-off decisions." />}
+          {data.recentDecisions.length ? <div className="mt-3 border-y border-[var(--ui-border)] md:max-h-72 md:overflow-y-auto md:pr-2" aria-label="Recent decisions history"><ul className="divide-y divide-[var(--ui-border)]">{data.recentDecisions.map((request) => <DecisionRow key={request.id} request={request} />)}</ul></div> : <EmptyState className="mt-3 bg-[var(--ui-surface)]" compact title="No recent time-off decisions." />}
         </Panel>
         <Panel className="p-4 shadow-none sm:p-5"><ChecklistTemplateManager studioId={data.studioId} templates={data.checklistTemplates} /></Panel>
       </div>

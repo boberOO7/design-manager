@@ -23,3 +23,13 @@ export function isChecklistTemplateDraftCustomized(template: Pick<StudioChecklis
   const source = template?.stages ?? [];
   return source.length !== draft.length || source.some((stage, index) => stage.title !== draft[index]?.title || stage.weight !== draft[index]?.weight);
 }
+
+export function moveChecklistTemplateStage(stages: ChecklistTemplateStage[], sourceId: string, targetId: string): ChecklistTemplateStage[] {
+  const sourceIndex = stages.findIndex((stage) => stage.id === sourceId);
+  const targetIndex = stages.findIndex((stage) => stage.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return stages;
+  const next = [...stages];
+  const [source] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, source);
+  return next;
+}

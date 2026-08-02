@@ -190,9 +190,9 @@
     "semantic_hash": "9b77af189a21a7a64e4bd7a426f64176"
   },
   "package.json": {
-    "mtime": 1785175158.500851,
-    "ast_hash": "a9cb2a32259ff4129dfa55966ca2f0eb",
-    "semantic_hash": "a9cb2a32259ff4129dfa55966ca2f0eb"
+    "mtime": 1785701163.9725735,
+    "ast_hash": "5a5d6ccae6edfa6424030362652cebff",
+    "semantic_hash": ""
   },
   "postcss.config.mjs": {
     "mtime": 1784467404.970091,
@@ -385,13 +385,13 @@
     "semantic_hash": "b98eef43c3ac4600ed07fd3681405cad"
   },
   "src/components/administration/administration-workspace.test.ts": {
-    "mtime": 1785698754.5727239,
-    "ast_hash": "376c396126cdde8971fca62d5703c0cd",
+    "mtime": 1785712194.3124533,
+    "ast_hash": "35fa824c197d8898cb0c9c445ad71a87",
     "semantic_hash": ""
   },
   "src/components/administration/administration-workspace.tsx": {
-    "mtime": 1785698702.7447267,
-    "ast_hash": "3afde3db29addb4f50fad17114cce95e",
+    "mtime": 1785712182.5204542,
+    "ast_hash": "a11f0649ece0fb7678e85d82b7112997",
     "semantic_hash": ""
   },
   "src/components/auth/forgot-password-form.tsx": {
@@ -1655,8 +1655,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/checklist-template-manager.tsx": {
-    "mtime": 1785700988.4725838,
-    "ast_hash": "70c98a4b9e9eedccf407c4aae69759cc",
+    "mtime": 1785712751.580418,
+    "ast_hash": "403614eababc57e7d6c67b1e540be2f3",
     "semantic_hash": ""
   },
   "src/data/queries/checklist-templates.ts": {
@@ -1670,23 +1670,23 @@
     "semantic_hash": ""
   },
   "src/lib/studio-checklist-templates.test.ts": {
-    "mtime": 1785698754.3327239,
-    "ast_hash": "66b0b678328b0439cd029f652cd01c41",
+    "mtime": 1785712054.876461,
+    "ast_hash": "c5aea4837884c68298acfaf76daaf057",
     "semantic_hash": ""
   },
   "src/lib/studio-checklist-templates.ts": {
-    "mtime": 1785698534.7447367,
-    "ast_hash": "1a40bd319650e137b50d3176510ed493",
+    "mtime": 1785712054.704461,
+    "ast_hash": "df8dcbd986cf80a55fd72844b6188907",
     "semantic_hash": ""
   },
   "supabase/migrations/20260802192102_studio_checklist_templates.sql": {
-    "mtime": 1785700978.9765842,
-    "ast_hash": "ab4f4eeb27d92a0d296006279a350a35",
+    "mtime": 1785701323.8405633,
+    "ast_hash": "a45ab176e90419ce0ea5c8bf00641c7a",
     "semantic_hash": ""
   },
   "src/components/administration/checklist-template-manager.test.ts": {
-    "mtime": 1785701007.4285827,
-    "ast_hash": "f42e6c64dcde2ae5e05ae804e072ad6b",
+    "mtime": 1785712761.1564176,
+    "ast_hash": "758000fb3589e118717e8b7f492f4eee",
     "semantic_hash": ""
   }
 }

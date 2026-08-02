@@ -32,6 +32,11 @@ describe("Administration workspace presentation", () => {
     expect(workspace).toContain("ChecklistTemplateManager");
   });
 
+  it("bounds recent history on larger screens without forcing a nested mobile scroll", () => {
+    expect(workspace).toContain('md:max-h-72 md:overflow-y-auto');
+    expect(workspace).toContain('aria-label="Recent decisions history"');
+  });
+
   it("uses shared semantic badges for decisions while keeping reviewer attribution separate", () => {
     const decisionRow = workspace.slice(workspace.indexOf("function DecisionRow"), workspace.indexOf("function RequestDrawer"));
     expect(decisionRow).toContain("getTimeOffStatusBadgeStyle(request.status)");
