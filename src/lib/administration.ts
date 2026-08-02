@@ -1,6 +1,7 @@
 import { addCalendarDays, parseDateOnly } from "@/lib/calendar";
 import type { TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 import type { SystemRole } from "@/types";
+import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 
 export type AdministrationRequest = {
   id: string;
@@ -22,6 +23,8 @@ export type AdministrationRequest = {
 };
 
 export type AdministrationModel = {
+  checklistTemplates: StudioChecklistTemplate[];
+  studioId: string;
   today: string;
   upcomingEnd: string;
   pendingRequests: AdministrationRequest[];

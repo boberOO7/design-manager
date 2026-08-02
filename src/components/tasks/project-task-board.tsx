@@ -37,6 +37,7 @@ import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import type { ProjectAttributionMode } from "@/lib/productivity";
+import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
@@ -269,6 +270,7 @@ export function ProjectTaskBoard({
   projectId,
   projectStatus,
   tasks,
+  templates,
   onTasksChange,
   onProjectStatusChange,
 }: {
@@ -282,6 +284,7 @@ export function ProjectTaskBoard({
   projectId: string;
   projectStatus: ProjectLifecycleStatus;
   tasks: ProjectTask[];
+  templates: StudioChecklistTemplate[];
   onTasksChange?: (tasks: ProjectTask[]) => void;
   onProjectStatusChange?: (status: ProjectLifecycleStatus) => void;
 }) {
@@ -453,7 +456,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-stone-900">Project board</h2>
           <p className="text-sm text-stone-500">Drag permitted tasks between columns to update their status.</p>
         </div>
-        {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} /> : null}
+        {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>

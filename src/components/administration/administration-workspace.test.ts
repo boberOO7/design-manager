@@ -29,6 +29,7 @@ describe("Administration workspace presentation", () => {
     expect(workspace).toContain('title="No time-off requests require action."');
     expect(workspace).toContain("Upcoming availability");
     expect(workspace).toContain("Recent decisions");
+    expect(workspace).toContain("ChecklistTemplateManager");
   });
 
   it("uses shared semantic badges for decisions while keeping reviewer attribution separate", () => {

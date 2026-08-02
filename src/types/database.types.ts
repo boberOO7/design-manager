@@ -48,6 +48,23 @@ export type Database = {
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      checklist_template_items: {
+        Row: { created_at: string; id: string; position: number; template_id: string; title: string; updated_at: string; weight: number }
+        Insert: { created_at?: string; id?: string; position: number; template_id: string; title: string; updated_at?: string; weight: number }
+        Update: { position?: number; template_id?: string; title?: string; updated_at?: string; weight?: number }
+        Relationships: [
+          { foreignKeyName: "checklist_template_items_template_id_fkey"; columns: ["template_id"]; isOneToOne: false; referencedRelation: "checklist_templates"; referencedColumns: ["id"] },
+        ]
+      }
+      checklist_templates: {
+        Row: { archived_at: string | null; created_at: string; created_by: string; id: string; name: string; studio_id: string; updated_at: string }
+        Insert: { archived_at?: string | null; created_at?: string; created_by: string; id?: string; name: string; studio_id: string; updated_at?: string }
+        Update: { archived_at?: string | null; created_by?: string; name?: string; studio_id?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "checklist_templates_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "checklist_templates_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string | null; body: string; created_at: string; entity_id: string | null;
@@ -607,6 +624,14 @@ export type Database = {
       create_task_with_checklist: {
         Args: { p_checklist_items?: Json; p_task: Json }
         Returns: string
+      }
+      save_checklist_template: {
+        Args: { p_name: string; p_stages: Json; p_studio_id: string; p_template_id: string | null }
+        Returns: string
+      }
+      set_checklist_template_archived: {
+        Args: { p_archived: boolean; p_template_id: string }
+        Returns: string | null
       }
       get_calendar_coworker_availability: {
         Args: { range_end: string; range_start: string; target_studio_id: string }

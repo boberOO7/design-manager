@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { applyAdministrationDecision, formatAdministrationDateRange, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
 import { getTimeOffStatusBadgeStyle } from "@/lib/semantic-styles";
 import { updateTimeOffRequest } from "@/lib/time-off-request-client";
+import { ChecklistTemplateManager } from "@/components/administration/checklist-template-manager";
 import type { CalendarItem } from "@/types/calendar";
 
 const labels = { vacation: "Vacation", day_off: "Day off", medical_appointment: "Medical appointment", sick_leave: "Sick leave", other: "Other" } as const;
@@ -86,6 +87,7 @@ export function AdministrationWorkspace({ initialData, requestId }: { initialDat
           <SectionHeading accentClassName="border-stone-300" eyebrow="History" title="Recent decisions" description="The latest reviewed or cancelled time-off requests." />
           {data.recentDecisions.length ? <ul className="mt-3 divide-y divide-[var(--ui-border)]">{data.recentDecisions.map((request) => <DecisionRow key={request.id} request={request} />)}</ul> : <EmptyState className="mt-3 bg-[var(--ui-surface)]" compact title="No recent time-off decisions." />}
         </Panel>
+        <Panel className="p-4 shadow-none sm:p-5"><ChecklistTemplateManager studioId={data.studioId} templates={data.checklistTemplates} /></Panel>
       </div>
     </div>
 

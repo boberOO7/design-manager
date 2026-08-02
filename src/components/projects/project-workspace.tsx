@@ -9,9 +9,10 @@ import { useProjectLifecycle } from "@/components/projects/project-lifecycle-con
 import { getProjectTaskSnapshotUpdate } from "@/lib/tasks";
 import { getProjectAttributionMode } from "@/lib/productivity";
 import type { ProjectTask } from "@/types/tasks";
+import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 
 export function ProjectWorkspace({
-  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, tasks,
+  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, tasks, templates,
 }: {
   archiveAction: (formData: FormData) => Promise<void>;
   canCreate: boolean;
@@ -26,6 +27,7 @@ export function ProjectWorkspace({
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
   tasks: ProjectTask[];
+  templates: StudioChecklistTemplate[];
 }) {
   const [contextTasks, setContextTasks] = useState(tasks);
   const { status, setStatus } = useProjectLifecycle();
@@ -38,6 +40,6 @@ export function ProjectWorkspace({
     <aside className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-4 py-3 text-sm text-[var(--ui-text-secondary)]"><p className="font-medium text-[var(--ui-text)]">{attributionMode === "task_level" ? "Task-level productivity attribution" : "Project-completion productivity fallback"}</p><p className="mt-1">{attributionMode === "task_level" ? "At least one task has task area. Only area-bearing completed tasks receive m² credit; unallocated work does not use project fallback." : "No task has task area. When the project is completed, each active project contributor receives the full project area."}</p></aside>
     <ProjectProgressSettings canManage={canManage} isReadOnly={isProjectReadOnly || status === "completed"} project={project} tasks={contextTasks} />
     {navigation}
-    <ProjectTaskBoard attributionMode={attributionMode} canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
+    <ProjectTaskBoard attributionMode={attributionMode} canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;
 }
