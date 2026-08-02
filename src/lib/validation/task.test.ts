@@ -35,6 +35,12 @@ describe("task creation validation", () => {
     expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "0" }).success).toBe(false);
     expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "-1" }).success).toBe(false);
   });
+
+  it("defaults to no checklist and validates an edited checklist template payload", () => {
+    expect(taskCreationSchema.parse(validTask).checklist_items).toEqual([]);
+    expect(taskCreationSchema.parse({ ...validTask, checklist_items: JSON.stringify([{ title: "Plans", weight: 2 }]) }).checklist_items).toEqual([{ title: "Plans", weight: 2 }]);
+    expect(taskCreationSchema.safeParse({ ...validTask, checklist_items: JSON.stringify([{ title: "Plans", weight: 1.5 }]) }).success).toBe(false);
+  });
 });
 
 describe("task status validation", () => {

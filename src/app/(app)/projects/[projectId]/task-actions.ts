@@ -16,7 +16,6 @@ import {
   type TaskCreationField,
   type TaskStatusActionState,
 } from "@/lib/validation/task";
-import type { TaskInsert } from "@/types/tasks";
 
 function revalidateTaskCreationRoutes(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
@@ -47,6 +46,7 @@ export async function createProjectTask(
       priority: flattened.priority?.[0],
       due_date: flattened.due_date?.[0],
       completed_area_m2: flattened.completed_area_m2?.[0],
+      checklist_items: flattened.checklist_items?.[0],
     };
     return { formError: "Please correct the highlighted fields.", fieldErrors };
   }
@@ -73,22 +73,20 @@ export async function createProjectTask(
     }
   }
 
-  const task: TaskInsert = {
+  const task = {
     project_id: project.id,
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     priority: parsed.data.priority,
     assignee_id: parsed.data.assignee_id,
-    created_by: adminMembership.authenticatedUserId,
     due_date: parsed.data.due_date ?? null,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
   };
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .insert(task)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("create_task_with_checklist", {
+    p_task: task,
+    p_checklist_items: parsed.data.checklist_items,
+  });
 
   if (error || !data) {
     console.error("Unable to create project task", error);

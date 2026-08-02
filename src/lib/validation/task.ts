@@ -18,6 +18,13 @@ const optionalCompletedAreaSchema = z.preprocess(
 
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
+const checklistTemplateItemsSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string" || value === "") return [];
+    try { return JSON.parse(value); } catch { return value; }
+  },
+  z.array(z.object({ title: z.string().trim().min(1).max(200), weight: checklistWeightSchema }).strict()).max(50),
+);
 
 export const taskCreationSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
@@ -29,6 +36,7 @@ export const taskCreationSchema = z.object({
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
+  checklist_items: checklistTemplateItemsSchema,
 });
 
 export const taskStatusUpdateSchema = z.object({
@@ -100,6 +108,7 @@ export function getTaskCreationInput(formData: FormData) {
     priority: getFormString(formData, "priority"),
     due_date: getFormString(formData, "due_date"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
+    checklist_items: getFormString(formData, "checklist_items"),
     progress_weight: getFormString(formData, "progress_weight"),
   };
 }

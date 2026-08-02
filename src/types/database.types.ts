@@ -604,6 +604,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_task_with_checklist: {
+        Args: { p_checklist_items?: Json; p_task: Json }
+        Returns: string
+      }
       get_calendar_coworker_availability: {
         Args: { range_end: string; range_start: string; target_studio_id: string }
         Returns: {

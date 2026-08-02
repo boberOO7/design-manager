@@ -265,8 +265,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
-    "mtime": 1785410236.6752226,
-    "ast_hash": "8eb8ae0fb51f9d5e2c577a5e4ab00054",
+    "mtime": 1785693857.9810271,
+    "ast_hash": "41943e4a9dfed9d0401917e517c67db9",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/actions.ts": {
@@ -510,8 +510,8 @@
     "semantic_hash": "f413f39fda0f14ca029f284b299412db"
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1785409722.4913177,
-    "ast_hash": "a931b96f3b22df96b1f9510da1b0184d",
+    "mtime": 1785679806.5378983,
+    "ast_hash": "c2072a5b676f84c4dc0f0ea23aa601e4",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
@@ -955,13 +955,13 @@
     "semantic_hash": "977ff5c5a9214dc7c923a1b648427687"
   },
   "src/lib/validation/task.test.ts": {
-    "mtime": 1785419935.5214403,
-    "ast_hash": "35ace84e782d3f18b6f2a843963afbd9",
+    "mtime": 1785679775.0339003,
+    "ast_hash": "75e9c69aca551bcd999656d0e554f4b1",
     "semantic_hash": ""
   },
   "src/lib/validation/task.ts": {
-    "mtime": 1785419736.7854762,
-    "ast_hash": "c66a055390f313d908aa85964139846a",
+    "mtime": 1785679699.7699041,
+    "ast_hash": "295880f4d5a960abfedaf6c9f33a62a0",
     "semantic_hash": ""
   },
   "src/proxy.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1785409369.835382,
-    "ast_hash": "37e3c91a958c481fe477a5f7ea1ae544",
+    "mtime": 1785679699.941904,
+    "ast_hash": "f3fc681b7ad0c1b273b2a409bcf77284",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1625,8 +1625,8 @@
     "semantic_hash": ""
   },
   "src/lib/checklist-autosave.test.ts": {
-    "mtime": 1785674534.6142223,
-    "ast_hash": "039d26dab2097a999d983e39bb8fac45",
+    "mtime": 1785674656.5142171,
+    "ast_hash": "594ba7c5296752a14e4eb69c742d5f75",
     "semantic_hash": ""
   },
   "src/lib/checklist-autosave.ts": {
@@ -1637,6 +1637,31 @@
   "supabase/migrations/20260730141740_fix_task_progress_checklist_workflow.sql": {
     "mtime": 1785421171.9452138,
     "ast_hash": "98d820211e0bb9296b80a44d26910d66",
+    "semantic_hash": ""
+  },
+  "src/components/tasks/add-task-dialog.test.ts": {
+    "mtime": 1785693858.265027,
+    "ast_hash": "44db32a38292b176f72fcbaa5c784c7b",
+    "semantic_hash": ""
+  },
+  "src/lib/task-checklist-template-migration.test.ts": {
+    "mtime": 1785693858.121027,
+    "ast_hash": "edbe6cb8e93ea79e10979149d38ad27d",
+    "semantic_hash": ""
+  },
+  "src/lib/task-checklist-templates.test.ts": {
+    "mtime": 1785679774.9019003,
+    "ast_hash": "c3a6e329195676a2c480c4efeed647c0",
+    "semantic_hash": ""
+  },
+  "src/lib/task-checklist-templates.ts": {
+    "mtime": 1785679699.641904,
+    "ast_hash": "96944b6d36c400c68db09de1b6f933db",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260802140739_create_task_with_checklist_template.sql": {
+    "mtime": 1785693857.837027,
+    "ast_hash": "8c461b63955542ab933b7eddfb620269",
     "semantic_hash": ""
   }
 }
