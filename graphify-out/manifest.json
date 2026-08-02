@@ -510,8 +510,8 @@
     "semantic_hash": "f413f39fda0f14ca029f284b299412db"
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1785679806.5378983,
-    "ast_hash": "c2072a5b676f84c4dc0f0ea23aa601e4",
+    "mtime": 1785697834.0887787,
+    "ast_hash": "56fae3ad5876200f923d91591b5ed7dd",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.test.ts": {
-    "mtime": 1785693858.265027,
-    "ast_hash": "44db32a38292b176f72fcbaa5c784c7b",
+    "mtime": 1785697834.3887787,
+    "ast_hash": "715742e06aa9b8a56e63544e68b30f3b",
     "semantic_hash": ""
   },
   "src/lib/task-checklist-template-migration.test.ts": {
@@ -1650,13 +1650,13 @@
     "semantic_hash": ""
   },
   "src/lib/task-checklist-templates.test.ts": {
-    "mtime": 1785679774.9019003,
-    "ast_hash": "c3a6e329195676a2c480c4efeed647c0",
+    "mtime": 1785697834.2447786,
+    "ast_hash": "2d35eb713ac42a02dda08e35a31325d2",
     "semantic_hash": ""
   },
   "src/lib/task-checklist-templates.ts": {
-    "mtime": 1785679699.641904,
-    "ast_hash": "96944b6d36c400c68db09de1b6f933db",
+    "mtime": 1785697833.9487786,
+    "ast_hash": "ead68f5294553e41c52221c5bff34252",
     "semantic_hash": ""
   },
   "supabase/migrations/20260802140739_create_task_with_checklist_template.sql": {

@@ -10,7 +10,7 @@ import { getTaskPriorityLabel } from "@/lib/tasks";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import type { ProjectAttributionMode } from "@/lib/productivity";
-import { BUILT_IN_CHECKLIST_TEMPLATES, createChecklistTemplateDraft, type ChecklistTemplateItem } from "@/lib/task-checklist-templates";
+import { BUILT_IN_CHECKLIST_TEMPLATES, createChecklistTemplateDraft, isChecklistTemplateDraftCustomized, type ChecklistTemplateItem } from "@/lib/task-checklist-templates";
 
 export function AddTaskDialog({
   members,
@@ -28,6 +28,10 @@ export function AddTaskDialog({
   const [state, formAction, isPending] = useActionState<TaskActionState, FormData>(action, {});
   const [templateId, setTemplateId] = useState("");
   const [checklistItems, setChecklistItems] = useState<ChecklistTemplateItem[]>([]);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const selectedTemplate = BUILT_IN_CHECKLIST_TEMPLATES.find((template) => template.id === templateId);
+  const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(templateId, checklistItems);
+  const totalWeight = checklistItems.reduce((total, item) => total + item.weight, 0);
 
   useEffect(() => {
     if (state.success) {
@@ -39,11 +43,11 @@ export function AddTaskDialog({
 
   return (
     <>
-      <Button size="sm" onClick={() => { setTemplateId(""); setChecklistItems([]); dialogRef.current?.showModal(); }}>Add task</Button>
+      <Button size="sm" onClick={() => { setTemplateId(""); setChecklistItems([]); setIsCustomizerOpen(false); dialogRef.current?.showModal(); }}>Add task</Button>
       <dialog
         ref={dialogRef}
         aria-labelledby="add-task-title"
-        className="m-auto w-[min(92vw,34rem)] rounded-[var(--ui-radius-drawer)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-0 text-[var(--ui-text)] shadow-2xl backdrop:bg-stone-900/45"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(92vw,34rem)] overflow-y-auto rounded-[var(--ui-radius-drawer)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-0 text-[var(--ui-text)] shadow-2xl backdrop:bg-stone-900/45"
       >
         <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
           <div>
@@ -84,14 +88,14 @@ export function AddTaskDialog({
           <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{attributionMode === "task_level" ? "This project uses task-level attribution. Only tasks with task area add m² credit." : "Adding task area opts this whole project into task-level attribution. The project-completion fallback will not be used."}</p>
           <section aria-labelledby="checklist-template-heading" className="border-t border-stone-100 pt-4">
             <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 id="checklist-template-heading" className="text-sm font-medium text-stone-900">Checklist template</h3><p className="mt-1 text-xs leading-5 text-stone-500">Optional weighted stages. You can edit this draft before creating the task.</p></div></div>
-            <label className="mt-3 grid gap-1 text-sm font-medium text-stone-700"><span className="sr-only">Checklist template</span><select value={templateId} disabled={isPending} onChange={(event) => { const nextTemplateId = event.target.value; setTemplateId(nextTemplateId); setChecklistItems(createChecklistTemplateDraft(nextTemplateId)); }} className={inputClassName}><option value="">No checklist template</option>{BUILT_IN_CHECKLIST_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}</select></label>
+            <label className="mt-3 grid gap-1 text-sm font-medium text-stone-700"><span className="sr-only">Checklist template</span><select value={templateId} disabled={isPending} onChange={(event) => { const nextTemplateId = event.target.value; if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm("Changing the template will replace your checklist edits. Continue?")) return; setTemplateId(nextTemplateId); setChecklistItems(createChecklistTemplateDraft(nextTemplateId)); setIsCustomizerOpen(false); }} className={inputClassName}><option value="">No checklist template</option>{BUILT_IN_CHECKLIST_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}</select></label>
             <input type="hidden" name="checklist_items" value={JSON.stringify(checklistItems.map(({ title, weight }) => ({ title, weight })))} />
-            {checklistItems.length ? <ul className="mt-3 divide-y divide-stone-100 border-y border-stone-100">{checklistItems.map((item, index) => <li key={item.id} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><label className="min-w-0 flex-1"><span className="sr-only">Checklist item title</span><Input value={item.title} maxLength={200} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, title: event.target.value } : candidate))} /></label><label className="flex w-20 items-center gap-1 text-xs text-stone-500"><span className="sr-only">Checklist item weight</span><Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={item.weight} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, weight: Number(event.target.value) } : candidate))} /><span aria-hidden="true">wt</span></label><Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => setChecklistItems((current) => current.filter((_, candidateIndex) => candidateIndex !== index))} className="size-11 shrink-0 p-0 text-red-700" aria-label={`Remove ${item.title} from checklist template`}><Trash2 className="size-4" aria-hidden="true" /></Button></li>)}</ul> : null}
+            {selectedTemplate ? <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5"><div className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 text-sm font-medium text-stone-800">{selectedTemplate.label} <span className="font-normal text-stone-500">· {checklistItems.length} stages · total weight {totalWeight}</span>{isCustomized ? <span className="ml-2 text-xs font-medium text-amber-800">Customized</span> : null}</p><Button type="button" size="sm" variant="outline" disabled={isPending} aria-expanded={isCustomizerOpen} onClick={() => setIsCustomizerOpen((open) => !open)}>{isCustomizerOpen ? "Collapse" : "Customize"}</Button></div>{isCustomizerOpen ? <ul className="mt-3 divide-y divide-stone-200 border-y border-stone-200">{checklistItems.map((item, index) => <li key={item.id} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><label className="min-w-0 flex-1"><span className="sr-only">Checklist item title</span><Input value={item.title} maxLength={200} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, title: event.target.value } : candidate))} /></label><label className="flex w-20 items-center gap-1 text-xs text-stone-500"><span className="sr-only">Checklist item weight</span><Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={item.weight} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, weight: Number(event.target.value) } : candidate))} /><span aria-hidden="true">wt</span></label><Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => setChecklistItems((current) => current.filter((_, candidateIndex) => candidateIndex !== index))} className="size-11 shrink-0 p-0 text-red-700" aria-label={`Remove ${item.title} from checklist template`}><Trash2 className="size-4" aria-hidden="true" /></Button></li>)}</ul> : null}</div> : null}
             {state.fieldErrors?.checklist_items ? <p role="alert" className="mt-2 text-sm text-red-700">{state.fieldErrors.checklist_items}</p> : null}
           </section>
           {members.length === 0 ? <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Assign at least one active team member before creating a task.</p> : null}
           {state.formError ? <p role="alert" className="text-sm text-red-700">{state.formError}</p> : null}
-          <div className="flex justify-end gap-3 border-t border-stone-100 pt-4">
+          <div className="sticky bottom-0 -mx-5 flex justify-end gap-3 border-t border-stone-100 bg-[var(--ui-surface)] px-5 pt-4 pb-1">
             <Button type="button" variant="outline" onClick={() => dialogRef.current?.close()} disabled={isPending}>Cancel</Button>
             <Button type="submit" disabled={isPending || members.length === 0}>{isPending ? "Creating…" : "Create task"}</Button>
           </div>

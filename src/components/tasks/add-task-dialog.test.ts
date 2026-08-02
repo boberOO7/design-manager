@@ -10,6 +10,12 @@ describe("task creation checklist template contract", () => {
     expect(source).toContain('name="checklist_items"');
     expect(source).toContain("checklistItems.map(({ title, weight }) => ({ title, weight }))");
     expect(source).toContain("Remove ${item.title} from checklist template");
+    expect(source).toContain("total weight {totalWeight}");
+    expect(source).toContain('aria-expanded={isCustomizerOpen}');
+    expect(source).toContain('"Customize"');
+    expect(source).toContain('"Collapse"');
+    expect(source).toContain("Changing the template will replace your checklist edits");
+    expect(source).toContain("sticky bottom-0");
   });
 
   it("guards repeated form submission while the creation action is in flight", async () => {
