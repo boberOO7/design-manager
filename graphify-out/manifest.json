@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1785761506.5273402,
-    "ast_hash": "51b6436ade62b652a5412ac235ed73ee",
+    "mtime": 1785764708.9504192,
+    "ast_hash": "5903c416cdd236682775108b21de61dd",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -745,13 +745,13 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1785715087.600273,
-    "ast_hash": "750b68eb0340ed986beb4a99b8bae49e",
+    "mtime": 1785764783.4543977,
+    "ast_hash": "1724ead2dd0b1dc5c4814faafb665242",
     "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1785758396.5202363,
-    "ast_hash": "e7e7bf94b9184d89761062ce1039b459",
+    "mtime": 1785764545.9984667,
+    "ast_hash": "d9ec83cc06caadef011bf7df5c60a321",
     "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
@@ -1780,8 +1780,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1785761372.0793781,
-    "ast_hash": "f7f6afa4d20b725a4c766a9b898fc8f4",
+    "mtime": 1785764761.0024042,
+    "ast_hash": "32f29e2d8c1e9061f8c546276d1161e6",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {

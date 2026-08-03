@@ -480,9 +480,20 @@ export function isCoworkerRequestVisible(status: TimeOffStatus): boolean {
   return status === "approved";
 }
 
-export function formatTimeOffAvailabilityTitle(subjectName: string | null | undefined): string {
-  const safeName = subjectName?.trim() || "Team member";
-  return `${safeName} · Out of office`;
+export type CalendarTimeOffTitleLabels = {
+  outOfOffice: string;
+  pendingRequest: string;
+  rejectedRequest: string;
+  unknownEmployee: string;
+};
+
+export function getCalendarItemDisplayTitle(item: CalendarItem, labels: CalendarTimeOffTitleLabels): string {
+  if (item.source !== "time_off" && item.source !== "time_off_request_admin") return item.title;
+  const subjectName = item.subjectName || labels.unknownEmployee;
+  const statusLabel = item.source === "time_off" || item.status === "approved"
+    ? labels.outOfOffice
+    : item.status === "pending" ? labels.pendingRequest : labels.rejectedRequest;
+  return `${subjectName}: ${statusLabel}`;
 }
 
 export function canAttendCalendarEvent(input: { eventStudioId: string; personStudioId: string; projectId: string | null; eventType: CalendarEventType; personProjectIds: string[] }): boolean {
@@ -493,17 +504,14 @@ export function canAttendCalendarEvent(input: { eventStudioId: string; personStu
 
 export function normalizeCoworkerTimeOff(input: { id: string; userId: string; employeeName: string; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; status: TimeOffStatus }): Extract<CalendarItem, { source: "time_off" }> | null {
   if (!isCoworkerRequestVisible(input.status)) return null;
-  const subjectName = input.employeeName.trim() || "Team member";
+  const subjectName = input.employeeName;
   const temporal = getTimeOffTemporalSemantics(input);
-  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: formatTimeOffAvailabilityTitle(subjectName), startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, startTime: temporal.startTime, endTime: temporal.endTime };
+  return { source: "time_off", key: `time_off:${input.id}`, id: input.id, title: subjectName, startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, startTime: temporal.startTime, endTime: temporal.endTime };
 }
 
 export function normalizePrivateTimeOff(input: { id: string; userId: string; employeeName: string; requestType: TimeOffRequestType; status: TimeOffStatus; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; privateNote: string | null; reviewNote: string | null; reviewedBy: string | null; reviewedAt: string | null; currentUserId: string }): Extract<CalendarItem, { source: "time_off_request_admin" }> | null {
   if (input.status === "cancelled") return null;
-  const subjectName = input.employeeName.trim() || "Team member";
-  const title = input.status === "approved"
-    ? formatTimeOffAvailabilityTitle(subjectName)
-    : input.status === "pending" ? "Pending request" : "Rejected request";
+  const subjectName = input.employeeName;
   const temporal = getTimeOffTemporalSemantics(input);
-  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title, startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: temporal.startTime, endTime: temporal.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
+  return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title: subjectName, startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: temporal.startTime, endTime: temporal.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };
 }

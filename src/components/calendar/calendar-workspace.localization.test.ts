@@ -41,3 +41,21 @@ describe("time-off form localization contract", () => {
     }
   });
 });
+
+describe("time-off calendar title localization", () => {
+  it("derives Month, Week, Agenda, tooltip, accessibility, and detail titles at render time", () => {
+    expect(source).toContain("getCalendarItemDisplayTitle");
+    expect(source).toContain("function useCalendarItemTitle()");
+    expect(source).toContain('outOfOffice: t("outOfOffice")');
+    expect(source).toContain('const title = itemTitle(item)');
+    expect(source).toContain('title={title}');
+    expect(source).toContain('aria-label={`${title}, ${dateLabel(segment.visibleStartDate)}');
+    expect(source).toContain('title={itemTitle(item)}');
+    expect(source).not.toContain("segment.item.title");
+  });
+
+  it("keeps the approved time-off title localized in both canonical message files", () => {
+    expect(en.Calendar.outOfOffice).toBe("Out of office");
+    expect(uk.Calendar.outOfOffice).toBe("Відсутній(-я)");
+  });
+});
