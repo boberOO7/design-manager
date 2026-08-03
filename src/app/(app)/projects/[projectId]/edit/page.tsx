@@ -46,7 +46,7 @@ export default async function EditProjectPage({
   return (
     <div className="space-y-6">
       <PageHeader title="Edit project" description={`Update ${project.name}.`} />
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm lg:p-8">
+      <div className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-sm lg:p-8">
         <ProjectForm
           action={action}
           cancelHref={`/projects/${project.id}`}

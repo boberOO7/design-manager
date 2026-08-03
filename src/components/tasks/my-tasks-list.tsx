@@ -32,10 +32,10 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
           <section key={section.id} aria-labelledby={`my-tasks-${section.id}`}>
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <h2 id={`my-tasks-${section.id}`} className="font-semibold text-stone-900">{section.title}</h2>
-                <p className="text-sm text-stone-500">{section.description}</p>
+                <h2 id={`my-tasks-${section.id}`} className="font-semibold text-[var(--ui-text)]">{section.title}</h2>
+                <p className="text-sm text-[var(--ui-text-muted)]">{section.description}</p>
               </div>
-              <span className="rounded-full bg-stone-200 px-2.5 py-1 text-xs font-medium text-stone-700">{groups[section.id].length}</span>
+              <span className="rounded-full bg-[var(--ui-surface-strong)] px-2.5 py-1 text-xs font-medium text-[var(--ui-text-secondary)]">{groups[section.id].length}</span>
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {groups[section.id].map((task) => (
@@ -50,16 +50,16 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
                       setSelectedTaskId(task.id);
                     }
                   }}
-                  className="cursor-pointer rounded-2xl border border-stone-200 bg-white p-4 shadow-sm outline-none transition hover:border-stone-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2"
+                  className="cursor-pointer rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 shadow-sm outline-none transition hover:border-[var(--ui-border-strong)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-stone-900">{task.title}</h3>
-                      <Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-stone-500 hover:text-stone-900 hover:underline">{task.project.name}</Link>
+                      <h3 className="font-semibold text-[var(--ui-text)]">{task.title}</h3>
+                      <Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:underline">{task.project.name}</Link>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-stone-500">
+                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--ui-text-muted)]">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
                     <span>{task.due_date ? `Due ${formatDate(task.due_date)}` : "No due date"}</span>
                   </div>

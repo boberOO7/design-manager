@@ -50,6 +50,6 @@ export function ProjectProgressSettings({ canManage, isReadOnly, project, tasks 
         <select value={method} disabled={isSaving} onChange={(event) => { if (isProjectProgressMethod(event.target.value)) { setMethod(event.target.value); setMessage(null); setError(null); } }} className="min-h-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><option value="equal">Equal</option><option value="area">Area</option><option value="weighted">Weighted</option></select>
       </label><Button type="button" className="min-h-11 self-end" disabled={isSaving || method === initialMethod} onClick={() => void save()}>{isSaving ? "Saving…" : "Save method"}</Button></div> : null}
     </div>
-    {message ? <p role="status" className="mt-3 text-sm text-emerald-800">{message}</p> : null}{error ? <p role="alert" className="mt-3 text-sm text-red-800">{error}</p> : null}
+    {message ? <p role="status" className="mt-3 text-sm text-[var(--ui-success-text)]">{message}</p> : null}{error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
   </section>;
 }

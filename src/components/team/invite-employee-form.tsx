@@ -11,7 +11,7 @@ import { ChevronDown, UserPlus } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 
 const inputClassName =
-  "mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-stone-900 focus:ring-2 focus:ring-stone-200";
+  "mt-2 w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]";
 
 export function InviteEmployeeForm() {
   const [state, formAction, isPending] = useActionState<
@@ -34,12 +34,12 @@ export function InviteEmployeeForm() {
 
   return (
     <section aria-labelledby="invite-employee-heading">
-      <div className="flex flex-col justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 shadow-sm sm:flex-row sm:items-center">
         <div>
-          <h2 id="invite-employee-heading" className="font-semibold text-stone-900">
+          <h2 id="invite-employee-heading" className="font-semibold text-[var(--ui-text)]">
             Invite an employee
           </h2>
-          <p className="mt-0.5 text-sm text-stone-500">
+          <p className="mt-0.5 text-sm text-[var(--ui-text-muted)]">
             Add a Designer or Architect to this studio.
           </p>
         </div>
@@ -66,17 +66,17 @@ export function InviteEmployeeForm() {
           id={panelId}
           ref={formRef}
           action={formAction}
-          className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-5"
+          className="mt-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4 sm:p-5"
           noValidate
         >
           <fieldset disabled={isPending}>
             <legend className="sr-only">Employee invitation details</legend>
-            <p className="mb-4 text-sm text-stone-600">
+            <p className="mb-4 text-sm text-[var(--ui-text-secondary)]">
               New employees receive studio access only. Assign projects separately when they are ready.
             </p>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <label className="block text-sm font-medium text-stone-700">
-                Employee email <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
+                Employee email <span className="text-[var(--ui-danger-text)]">*</span>
                 <input
                   name="email"
                   type="email"
@@ -86,14 +86,14 @@ export function InviteEmployeeForm() {
                   {...errorAttributes("email")}
                 />
                 {fieldError("email") ? (
-                  <p id="invite-email-error" className="mt-1.5 text-sm text-red-600">
+                  <p id="invite-email-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">
                     {fieldError("email")}
                   </p>
                 ) : null}
               </label>
 
-              <label className="block text-sm font-medium text-stone-700">
-                Full name <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
+                Full name <span className="text-[var(--ui-danger-text)]">*</span>
                 <input
                   name="full_name"
                   required
@@ -102,14 +102,14 @@ export function InviteEmployeeForm() {
                   {...errorAttributes("full_name")}
                 />
                 {fieldError("full_name") ? (
-                  <p id="invite-full_name-error" className="mt-1.5 text-sm text-red-600">
+                  <p id="invite-full_name-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">
                     {fieldError("full_name")}
                   </p>
                 ) : null}
               </label>
 
-              <label className="block text-sm font-medium text-stone-700">
-                Professional role <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
+                Professional role <span className="text-[var(--ui-danger-text)]">*</span>
                 <select
                   name="job_title"
                   required
@@ -127,7 +127,7 @@ export function InviteEmployeeForm() {
                   ))}
                 </select>
                 {fieldError("job_title") ? (
-                  <p id="invite-job_title-error" className="mt-1.5 text-sm text-red-600">
+                  <p id="invite-job_title-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">
                     {fieldError("job_title")}
                   </p>
                 ) : null}
@@ -136,17 +136,17 @@ export function InviteEmployeeForm() {
           </fieldset>
 
           {state.formError ? (
-            <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div role="alert" className="mt-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">
               {state.formError}
             </div>
           ) : null}
           {state.success ? (
-            <div role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <div role="status" className="mt-4 rounded-xl border border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] px-4 py-3 text-sm text-[var(--ui-success-text)]">
               {state.success}
             </div>
           ) : null}
 
-          <div className="mt-4 flex justify-end border-t border-stone-200 pt-4">
+          <div className="mt-4 flex justify-end border-t border-[var(--ui-border)] pt-4">
             <Button type="submit" disabled={isPending}>
               {isPending ? "Sending invitation…" : "Invite employee"}
             </Button>

@@ -26,7 +26,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   return <div className="space-y-6">
     <PageHeader title="Projects" description="Current studio work, filtered for your access scope." action={membership?.system_role === "admin" ? <Button asChild><Link href="/projects/new">New project</Link></Button> : undefined} />
-    {result.error ? <EmptyState compact title="Projects could not be loaded." description="Please try again later." className="border-red-200 bg-red-50" /> : result.projects.length === 0 ? <EmptyState compact title="No projects are available in your access scope yet." /> : <>
+    {result.error ? <EmptyState compact title="Projects could not be loaded." description="Please try again later." className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : result.projects.length === 0 ? <EmptyState compact title="No projects are available in your access scope yet." /> : <>
       <ProjectListControls filters={filters} />
       {projects.length ? <ProjectList projects={projects} /> : <EmptyState compact title={emptyState.title} description="Adjust or reset the filters to see your accessible projects." action={emptyState.canReset ? <Button asChild variant="outline"><Link href="/projects">Reset filters</Link></Button> : undefined} />}
       {hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">Showing {projects.length} of {result.projects.length} accessible projects.</p> : null}

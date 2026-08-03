@@ -6,19 +6,112 @@
   --foreground: #1c1917;
   --ui-page: #f8f5ef;
   --ui-surface: #ffffff;
+  --ui-surface-subtle: #fafaf9;
   --ui-surface-muted: #f5f5f4;
+  --ui-surface-strong: #e7e5e4;
   --ui-text: #1c1917;
   --ui-text-secondary: #57534e;
   --ui-text-muted: #78716c;
+  --ui-text-subtle: #a8a29e;
   --ui-border: #e7e5e4;
+  --ui-border-subtle: #f5f5f4;
   --ui-border-strong: #d6d3d1;
   --ui-focus: #57534e;
+  --ui-focus-soft: #e7e5e4;
+  --ui-focus-offset: #ffffff;
   --ui-action-primary: #1c1917;
+  --ui-action-primary-hover: #292524;
+  --ui-action-primary-text: #ffffff;
   --ui-action-danger: #b91c1c;
+  --ui-danger-solid: #ef4444;
+  --ui-overlay: rgb(12 10 9 / 0.48);
+  --ui-progress-track: #f5f5f4;
+  --ui-calendar-gridline: #f5f5f4;
+  --ui-neutral-surface: #f5f5f4;
+  --ui-neutral-border: #e7e5e4;
+  --ui-neutral-text: #44403c;
+  --ui-info-surface: #eff6ff;
+  --ui-info-border: #bfdbfe;
+  --ui-info-accent: #2563eb;
+  --ui-info-text: #1e40af;
+  --ui-event-surface: #f0f9ff;
+  --ui-event-border: #0284c7;
+  --ui-event-text: #0c4a6e;
+  --ui-success-surface: #ecfdf5;
+  --ui-success-border: #a7f3d0;
+  --ui-success-accent: #059669;
+  --ui-success-text: #065f46;
+  --ui-warning-surface: #fffbeb;
+  --ui-warning-border: #fde68a;
+  --ui-warning-accent: #d97706;
+  --ui-warning-text: #92400e;
+  --ui-danger-surface: #fef2f2;
+  --ui-danger-border: #fecaca;
+  --ui-danger-text: #991b1b;
+  --ui-violet-surface: #f5f3ff;
+  --ui-violet-border: #ddd6fe;
+  --ui-violet-text: #5b21b6;
   --ui-radius-panel: 0.75rem;
   --ui-radius-control: 0.5rem;
   --ui-radius-drawer: 1rem;
   --ui-shadow-panel: 0 1px 2px rgb(28 25 23 / 0.06);
+  --ui-shadow-sticky: 0 -8px 20px rgb(28 25 23 / 0.05);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #141311;
+  --foreground: #fafaf9;
+  --ui-page: #141311;
+  --ui-surface: #1c1a17;
+  --ui-surface-subtle: #201e1a;
+  --ui-surface-muted: #292621;
+  --ui-surface-strong: #35312b;
+  --ui-text: #fafaf9;
+  --ui-text-secondary: #d6d3d1;
+  --ui-text-muted: #a8a29e;
+  --ui-text-subtle: #78716c;
+  --ui-border: #3f3a34;
+  --ui-border-subtle: #292621;
+  --ui-border-strong: #57534e;
+  --ui-focus: #d6d3d1;
+  --ui-focus-soft: #57534e;
+  --ui-focus-offset: #1c1a17;
+  --ui-action-primary: #f5f5f4;
+  --ui-action-primary-hover: #e7e5e4;
+  --ui-action-primary-text: #1c1917;
+  --ui-action-danger: #fca5a5;
+  --ui-danger-solid: #f87171;
+  --ui-overlay: rgb(0 0 0 / 0.68);
+  --ui-progress-track: #35312b;
+  --ui-calendar-gridline: #292621;
+  --ui-neutral-surface: #292621;
+  --ui-neutral-border: #57534e;
+  --ui-neutral-text: #e7e5e4;
+  --ui-info-surface: #172554;
+  --ui-info-border: #1e40af;
+  --ui-info-accent: #60a5fa;
+  --ui-info-text: #bfdbfe;
+  --ui-event-surface: #082f49;
+  --ui-event-border: #38bdf8;
+  --ui-event-text: #bae6fd;
+  --ui-success-surface: #052e24;
+  --ui-success-border: #047857;
+  --ui-success-accent: #34d399;
+  --ui-success-text: #a7f3d0;
+  --ui-warning-surface: #3b2508;
+  --ui-warning-border: #a16207;
+  --ui-warning-accent: #fbbf24;
+  --ui-warning-text: #fde68a;
+  --ui-danger-surface: #3f1518;
+  --ui-danger-border: #991b1b;
+  --ui-danger-text: #fecaca;
+  --ui-violet-surface: #2e1065;
+  --ui-violet-border: #6d28d9;
+  --ui-violet-text: #ddd6fe;
+  --ui-shadow-panel: 0 1px 2px rgb(0 0 0 / 0.28);
+  --ui-shadow-sticky: 0 -8px 20px rgb(0 0 0 / 0.24);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -33,6 +126,52 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+}
+
+input,
+select,
+textarea {
+  accent-color: var(--ui-action-primary);
+}
+
+*,
+*::before,
+*::after {
+  --tw-ring-offset-color: var(--ui-focus-offset);
+}
+
+html,
+body {
+  scrollbar-color: var(--ui-border-strong) var(--ui-page);
+}
+
+::selection {
+  background: var(--ui-action-primary);
+  color: var(--ui-action-primary-text);
+}
+
+.theme-switch__icon {
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+}
+
+.theme-switch__sun {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+.theme-switch__moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
+:root[data-theme="dark"] .theme-switch__sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+
+:root[data-theme="dark"] .theme-switch__moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
 }
 
 :focus-visible {
@@ -52,5 +191,9 @@ body {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .theme-switch__icon {
+    transition: none;
   }
 }

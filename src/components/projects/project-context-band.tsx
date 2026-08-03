@@ -62,7 +62,7 @@ function ProjectContextActions({ archiveAction, isArchived, projectId, projectNa
 
 function ProgressSummary({ progress, projectName }: { progress: ReturnType<typeof calculateProjectProgress>; projectName: string }) {
   if (progress.progressPercent === null) return <Metric label="Progress" value="No tasks yet" />;
-  return <div><p className="text-xs font-medium text-[var(--ui-text-muted)]">Progress</p><div className="mt-1 flex items-center gap-2"><div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100" role="progressbar" aria-label={`${projectName} progress: ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} /></div><span className="ui-numeric text-sm font-semibold text-[var(--ui-text)]">{progress.progressPercent}%</span></div></div>;
+  return <div><p className="text-xs font-medium text-[var(--ui-text-muted)]">Progress</p><div className="mt-1 flex items-center gap-2"><div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={`${projectName} progress: ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} /></div><span className="ui-numeric text-sm font-semibold text-[var(--ui-text)]">{progress.progressPercent}%</span></div></div>;
 }
 
 function DeadlineSummary({ nextTaskDueDate, projectDueDate }: { nextTaskDueDate: string | null; projectDueDate: string | null }) {
@@ -70,7 +70,7 @@ function DeadlineSummary({ nextTaskDueDate, projectDueDate }: { nextTaskDueDate:
 }
 
 function Metric({ danger = false, label, value }: { danger?: boolean; label: string; value: string }) {
-  return <div><p className="text-xs font-medium text-[var(--ui-text-muted)]">{label}</p><p className={`ui-numeric mt-1 font-medium ${danger ? "text-red-800" : "text-[var(--ui-text)]"}`}>{value}</p></div>;
+  return <div><p className="text-xs font-medium text-[var(--ui-text-muted)]">{label}</p><p className={`ui-numeric mt-1 font-medium ${danger ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]"}`}>{value}</p></div>;
 }
 
 function Badge({ className, label }: { className: string; label: string }) {

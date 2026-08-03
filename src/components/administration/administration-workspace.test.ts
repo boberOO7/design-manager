@@ -49,6 +49,6 @@ describe("Administration workspace presentation", () => {
   it("keeps current availability distinct with the shared approved-status marker", () => {
     const availabilityRow = workspace.slice(workspace.indexOf("function AvailabilityRow"), workspace.indexOf("function DecisionRow"));
     expect(availabilityRow).toContain("getTimeOffStatusBadgeStyle(request.status)");
-    expect(workspace).toContain("border-emerald-100");
+    expect(workspace).toContain("border-[var(--ui-success-border)]");
   });
 });

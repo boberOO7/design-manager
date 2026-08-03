@@ -112,22 +112,22 @@ function TaskCardContent({
   const progress = calculateTaskProgress(task);
 
   return (
-    <div className={cn("rounded-xl border border-stone-200 bg-white p-4", isOverlay ? "scale-[1.02] shadow-2xl" : "shadow-sm")}>
+    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4", isOverlay ? "scale-[1.02] shadow-2xl" : "shadow-sm")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-1.5">
-          {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-stone-300" aria-hidden="true" /> : null}
-          <h4 className="min-w-0 font-medium leading-5 text-stone-900">{task.title}</h4>
+          {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
+          <h4 className="min-w-0 font-medium leading-5 text-[var(--ui-text)]">{task.title}</h4>
         </div>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
       </div>
-      <p className="mt-2 truncate text-sm text-stone-500">{task.assignee?.full_name ?? "Unassigned"}</p>
-      <div className="mt-3"><div className="flex items-center justify-between gap-2 text-xs"><span className="text-stone-500">{progress.source === "checklist" ? `Checklist ${progress.completedChecklistCount}/${progress.checklistCount}` : task.status === "review" ? "Awaiting approval" : task.status === "completed" ? "Approved" : task.status === "in_progress" ? "Manual production" : "Not started"}</span><span className="ui-numeric font-semibold text-stone-700">{progress.presentedOverallPercent}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-100" role="progressbar" aria-label={`${task.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+      <p className="mt-2 truncate text-sm text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? "Unassigned"}</p>
+      <div className="mt-3"><div className="flex items-center justify-between gap-2 text-xs"><span className="text-[var(--ui-text-muted)]">{progress.source === "checklist" ? `Checklist ${progress.completedChecklistCount}/${progress.checklistCount}` : task.status === "review" ? "Awaiting approval" : task.status === "completed" ? "Approved" : task.status === "in_progress" ? "Manual production" : "Not started"}</span><span className="ui-numeric font-semibold text-[var(--ui-text-secondary)]">{progress.presentedOverallPercent}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={`${task.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]">
         {task.due_date ? <span>Due {formatDateShort(task.due_date)}</span> : <span>No due date</span>}
-        {overdue ? <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700">Overdue</span> : null}
+        {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-2 py-0.5 font-medium text-[var(--ui-danger-text)]">Overdue</span> : null}
         {task.status === "cancelled" ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span> : null}
         {isPending ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ui-info-surface)] px-2 py-0.5 font-medium text-[var(--ui-info-text)]">
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> Saving
           </span>
         ) : null}
@@ -169,7 +169,7 @@ function DraggableTaskCard({
         }
       }}
       className={cn(
-        "w-full select-none rounded-xl text-left outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2",
+        "w-full select-none rounded-xl text-left outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2",
         isPending ? "cursor-wait" : "cursor-grab active:cursor-grabbing",
         isDragging && "cursor-grabbing opacity-30",
       )}
@@ -182,7 +182,7 @@ function DraggableTaskCard({
 
 function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId: string) => void }) {
   return (
-    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2" aria-label={`Open task ${task.title}`}>
+    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={`Open task ${task.title}`}>
       <TaskCardContent task={task} />
     </button>
   );
@@ -227,22 +227,22 @@ function BoardColumn({
       ref={ref}
       aria-labelledby={`column-${columnId}`}
       className={cn(
-        "flex min-h-72 min-w-0 flex-col rounded-2xl border bg-stone-100/70 p-3 transition-[border-color,background-color,box-shadow] xl:min-h-[28rem]",
+        "flex min-h-72 min-w-0 flex-col rounded-2xl border bg-[var(--ui-surface-muted)] p-3 transition-[border-color,background-color,box-shadow] xl:min-h-[28rem]",
         isHighlighted
-          ? "border-stone-500 bg-stone-200/80 ring-2 ring-stone-400/40 shadow-md"
-          : "border-stone-200",
+          ? "border-[var(--ui-focus)] bg-[var(--ui-surface-strong)] ring-2 ring-[var(--ui-focus)] shadow-md"
+          : "border-[var(--ui-border)]",
       )}
     >
       <div className="flex items-center justify-between px-1 pb-3">
-        <h3 id={`column-${columnId}`} className="text-sm font-semibold text-stone-800">{label}</h3>
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-stone-600">{tasks.length}</span>
+        <h3 id={`column-${columnId}`} className="text-sm font-semibold text-[var(--ui-text)]">{label}</h3>
+        <span className="rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{tasks.length}</span>
       </div>
       <div className="mb-2 h-9" aria-hidden={!isHighlighted}>
-        {isHighlighted ? <p className="rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-center text-xs font-medium text-stone-700">Release to move to {label}</p> : null}
+        {isHighlighted ? <p className="rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-center text-xs font-medium text-[var(--ui-text-secondary)]">Release to move to {label}</p> : null}
       </div>
       <div className="flex flex-1 flex-col gap-3">
         {tasks.length === 0 ? (
-          <div className="flex min-h-36 flex-1 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white/60 p-5 text-center text-sm text-stone-500">No tasks</div>
+          <div className="flex min-h-36 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-5 text-center text-sm text-[var(--ui-text-muted)]">No tasks</div>
         ) : tasks.map((task) => {
           const canDrag = canMoveTask({
             assigneeId: task.assignee_id,
@@ -453,12 +453,12 @@ export function ProjectTaskBoard({
     <section aria-labelledby="project-board-heading">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
-          <h2 id="project-board-heading" className="font-semibold text-stone-900">Project board</h2>
-          <p className="text-sm text-stone-500">Drag permitted tasks between columns to update their status.</p>
+          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">Project board</h2>
+          <p className="text-sm text-[var(--ui-text-muted)]">Drag permitted tasks between columns to update their status.</p>
         </div>
         {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} templates={templates} /> : null}
       </div>
-      {boardError ? <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{boardError}</div> : null}
+      {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

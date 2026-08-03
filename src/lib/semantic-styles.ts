@@ -10,13 +10,13 @@ export type SemanticBadgeStyle = {
 };
 
 const styles = {
-  neutral: { className: "border border-stone-200 bg-stone-100 text-stone-700", variant: "neutral" },
-  info: { className: "border border-blue-200 bg-blue-50 text-blue-800", variant: "info" },
-  warning: { className: "border border-amber-200 bg-amber-50 text-amber-800", variant: "warning" },
-  danger: { className: "border border-red-200 bg-red-50 text-red-800", variant: "danger" },
-  success: { className: "border border-emerald-200 bg-emerald-50 text-emerald-800", variant: "success" },
-  violet: { className: "border border-violet-200 bg-violet-50 text-violet-800", variant: "violet" },
-  muted: { className: "border border-stone-200 bg-stone-50 text-stone-500", variant: "muted" },
+  neutral: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]", variant: "neutral" },
+  info: { className: "border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]", variant: "info" },
+  warning: { className: "border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]", variant: "warning" },
+  danger: { className: "border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]", variant: "danger" },
+  success: { className: "border border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]", variant: "success" },
+  violet: { className: "border border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)]", variant: "violet" },
+  muted: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] text-[var(--ui-text-muted)]", variant: "muted" },
 } as const;
 
 function badge(label: string, style: keyof typeof styles): SemanticBadgeStyle {

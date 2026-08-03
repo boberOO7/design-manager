@@ -14,8 +14,8 @@ export default async function LeaderboardPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Leaderboard" description="Please log in to view the leaderboard." />
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center">
-          <p className="text-sm text-stone-600">You must be logged in to view the leaderboard.</p>
+        <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-6 text-center">
+          <p className="text-sm text-[var(--ui-text-secondary)]">You must be logged in to view the leaderboard.</p>
         </div>
       </div>
     );
@@ -28,7 +28,7 @@ export default async function LeaderboardPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Productivity" description="Current-month completed work for the studio team." />
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Monthly productivity could not be loaded. Please refresh and try again.</div>
+        <div role="alert" className="rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] p-5 text-sm text-[var(--ui-danger-text)]">Monthly productivity could not be loaded. Please refresh and try again.</div>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default async function LeaderboardPage() {
 function BonusBadge({ compact = false, rank }: { compact?: boolean; rank: number }) {
   const bonus = getLeaderboardBonusPercent(rank);
   if (bonus === 0) return compact ? <span className="text-xs text-[var(--ui-text-muted)]">—</span> : null;
-  return <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold tabular-nums text-violet-800">+{bonus}% bonus</span>;
+  return <span className="inline-flex rounded-full border border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] px-2 py-1 text-xs font-semibold tabular-nums text-[var(--ui-violet-text)]">+{bonus}% bonus</span>;
 }
 
 function formatArea(value: number) {

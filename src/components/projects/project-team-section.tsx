@@ -26,15 +26,15 @@ export function ProjectTeamSection({
   projectId: string;
 }) {
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold text-stone-900">Project team</h2>
-        <p className="mt-1 text-sm text-stone-500">People assigned to this project and their professional roles.</p>
+        <h2 className="text-lg font-semibold text-[var(--ui-text)]">Project team</h2>
+        <p className="mt-1 text-sm text-[var(--ui-text-muted)]">People assigned to this project and their professional roles.</p>
       </div>
 
       {canManage ? (
-        <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 p-4">
-          <h3 className="text-sm font-semibold text-stone-900">Add member</h3>
+        <div className="mt-5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4">
+          <h3 className="text-sm font-semibold text-[var(--ui-text)]">Add member</h3>
           <div className="mt-3">
             <AddProjectMemberForm assignableMembers={assignableMembers} projectId={projectId} />
           </div>
@@ -42,20 +42,20 @@ export function ProjectTeamSection({
       ) : null}
 
       {members.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-dashed border-stone-200 p-5 text-center">
-          <p className="text-sm text-stone-500">No team members are assigned to this project yet.</p>
+        <div className="mt-5 rounded-xl border border-dashed border-[var(--ui-border)] p-5 text-center">
+          <p className="text-sm text-[var(--ui-text-muted)]">No team members are assigned to this project yet.</p>
         </div>
       ) : (
-        <div className="mt-5 divide-y divide-stone-100">
+        <div className="mt-5 divide-y divide-[var(--ui-border-subtle)]">
           {members.map((member) => (
             <div key={member.id} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-semibold text-white" aria-hidden="true">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-sm font-semibold text-[var(--ui-action-primary-text)]" aria-hidden="true">
                   {getInitials(member.profile.full_name)}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-stone-900">{member.profile.full_name}</p>
-                  {member.profile.job_title ? <p className="truncate text-sm text-stone-500">{member.profile.job_title}</p> : null}
+                  <p className="truncate font-semibold text-[var(--ui-text)]">{member.profile.full_name}</p>
+                  {member.profile.job_title ? <p className="truncate text-sm text-[var(--ui-text-muted)]">{member.profile.job_title}</p> : null}
                 </div>
               </div>
               {canManage ? (

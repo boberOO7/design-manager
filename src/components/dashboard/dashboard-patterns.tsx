@@ -5,8 +5,8 @@ import type { DashboardMetric } from "@/lib/dashboard-presentation";
 
 const metricToneClasses = {
   neutral: "text-[var(--ui-text)]",
-  warning: "text-amber-800",
-  danger: "text-red-800",
+  warning: "text-[var(--ui-warning-text)]",
+  danger: "text-[var(--ui-danger-text)]",
 } as const;
 
 export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {

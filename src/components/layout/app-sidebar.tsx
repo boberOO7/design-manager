@@ -17,8 +17,8 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
   const items = useMemo(() => getNavigationItems(profile), [profile]);
 
   return (
-    <aside className={cn("hidden border-r border-stone-200 bg-stone-50/70 lg:flex lg:flex-col", collapsed ? "w-20" : "w-72")}>
-      <div className={cn("flex items-center justify-between border-b border-stone-200 py-4", collapsed ? "px-2" : "px-5")}>
+    <aside className={cn("hidden border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] lg:flex lg:flex-col", collapsed ? "w-20" : "w-72")}>
+      <div className={cn("flex items-center justify-between border-b border-[var(--ui-border)] py-4", collapsed ? "px-2" : "px-5")}>
         <Link
           href="/dashboard"
           aria-label="StudioFlow home"
@@ -28,7 +28,7 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           {!collapsed ? (
             <span className="min-w-0">
               <span className="block text-sm font-semibold">StudioFlow</span>
-              <span className="block text-xs text-stone-500">Interior design ops</span>
+              <span className="block text-xs text-[var(--ui-text-muted)]">Interior design ops</span>
             </span>
           ) : null}
         </Link>
@@ -36,7 +36,7 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           type="button"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={() => setCollapsed((value) => !value)}
-          className="shrink-0 rounded-[var(--ui-radius-control)] p-2 text-stone-500 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
+          className="shrink-0 rounded-[var(--ui-radius-control)] p-2 text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
         >
           {collapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
         </button>
@@ -46,17 +46,17 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           const Icon = navigationIcons[item.href];
           const active = isNavigationItemActive(pathname, item.href);
           return (
-          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-[var(--ui-radius-control)] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-white" : "text-[var(--ui-text-secondary)] hover:bg-stone-200 hover:text-[var(--ui-text)]", collapsed && "justify-center px-2")}>
+          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-[var(--ui-radius-control)] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]", collapsed && "justify-center px-2")}>
               <Icon size={18} />
               {!collapsed ? <span>{item.label}</span> : null}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-stone-200 p-4 text-sm text-stone-600">
+      <div className="border-t border-[var(--ui-border)] p-4 text-sm text-[var(--ui-text-secondary)]">
         {profile && (
           <>
-            <p className="font-semibold text-stone-900">{profile.full_name}</p>
+            <p className="font-semibold text-[var(--ui-text)]">{profile.full_name}</p>
             <p>{profile.job_title}</p>
           </>
         )}

@@ -59,7 +59,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
   }, [focusKey, isOpen]);
 
   if (!isOpen) return null;
-  return <div className="fixed inset-0 z-50 bg-stone-950/45" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div className="fixed inset-0 z-50 bg-[var(--ui-overlay)]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none", side === "left" ? "left-0 rounded-r-[var(--ui-radius-drawer)]" : "right-0 rounded-l-[var(--ui-radius-drawer)]", className)}>
       <h2 id={titleId} className="sr-only">{title}</h2>
       {description ? <p id={descriptionId} className="sr-only">{description}</p> : null}

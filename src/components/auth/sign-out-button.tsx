@@ -29,10 +29,10 @@ export function SignOutButton() {
     <button
       onClick={handleSignOut}
       disabled={isLoading}
-      className="rounded-full border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 disabled:opacity-50"
+      className="rounded-full border border-[var(--ui-border-strong)] px-3 py-2 text-sm font-medium text-[var(--ui-text-secondary)] disabled:opacity-50"
     >
       {isLoading ? "Signing out…" : "Sign out"}
-      {error && <span className="ml-2 text-red-500 text-xs">{error}</span>}
+      {error && <span className="ml-2 text-[var(--ui-danger-text)] text-xs">{error}</span>}
     </button>
   );
 }

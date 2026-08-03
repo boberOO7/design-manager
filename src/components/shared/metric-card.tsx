@@ -14,9 +14,9 @@ export function MetricCard({
 }) {
   return (
     <Panel className={cn("p-5", className)}>
-      <p className="text-sm font-medium text-stone-500">{title}</p>
-      <p className="ui-numeric mt-3 text-2xl font-semibold text-stone-900">{value}</p>
-      {hint ? <p className="mt-2 text-sm text-stone-500">{hint}</p> : null}
+      <p className="text-sm font-medium text-[var(--ui-text-muted)]">{title}</p>
+      <p className="ui-numeric mt-3 text-2xl font-semibold text-[var(--ui-text)]">{value}</p>
+      {hint ? <p className="mt-2 text-sm text-[var(--ui-text-muted)]">{hint}</p> : null}
     </Panel>
   );
 }

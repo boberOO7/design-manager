@@ -38,7 +38,7 @@ export function RemoveProjectMemberButton({
         </Button>
       </form>
       {state.formError ? (
-        <p role="alert" className="text-right text-sm text-red-700">{state.formError}</p>
+        <p role="alert" className="text-right text-sm text-[var(--ui-danger-text)]">{state.formError}</p>
       ) : null}
     </div>
   );

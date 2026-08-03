@@ -19,7 +19,7 @@ export default async function NewProjectPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="New project" description="Create a project for your studio." />
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm lg:p-8">
+      <div className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-sm lg:p-8">
         <ProjectForm action={createProject} cancelHref="/projects" mode="create" />
       </div>
     </div>

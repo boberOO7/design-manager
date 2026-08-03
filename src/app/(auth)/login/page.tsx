@@ -47,31 +47,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-100 px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--ui-surface-muted)] px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-8 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-stone-500">StudioFlow</p>
-          <h1 className="mt-2 text-2xl font-semibold text-stone-900">Interior design studio workspace</h1>
-          <p className="mt-2 text-sm text-stone-600">Sign in to review projects, tasks, and team productivity.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--ui-text-muted)]">StudioFlow</p>
+          <h1 className="mt-2 text-2xl font-semibold text-[var(--ui-text)]">Interior design studio workspace</h1>
+          <p className="mt-2 text-sm text-[var(--ui-text-secondary)]">Sign in to review projects, tasks, and team productivity.</p>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-          <label className="block text-sm font-medium text-stone-700">
+          <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
             <span className="mb-2 flex items-center gap-2"><Mail size={16} /> Email</span>
-            <input {...register("email")} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2 text-sm focus:border-stone-900 focus:outline-none" />
-            {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email.message}</p> : null}
+            <input {...register("email")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
+            {errors.email ? <p className="mt-1 text-sm text-[var(--ui-danger-text)]">{errors.email.message}</p> : null}
           </label>
-          <label className="block text-sm font-medium text-stone-700">
+          <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
             <span className="mb-2 flex items-center gap-2"><LockKeyhole size={16} /> Password</span>
-            <input type="password" {...register("password")} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2 text-sm focus:border-stone-900 focus:outline-none" />
-            {errors.password ? <p className="mt-1 text-sm text-red-600">{errors.password.message}</p> : null}
+            <input type="password" {...register("password")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
+            {errors.password ? <p className="mt-1 text-sm text-[var(--ui-danger-text)]">{errors.password.message}</p> : null}
           </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-[var(--ui-danger-text)]">{error}</p>}
           <div className="text-right">
-            <Link href="/forgot-password" className="text-sm font-medium text-stone-700 underline underline-offset-4">
+            <Link href="/forgot-password" className="text-sm font-medium text-[var(--ui-text-secondary)] underline underline-offset-4">
               Forgot your password?
             </Link>
           </div>
-          <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60">
+          <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-[var(--ui-action-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--ui-action-primary-text)] transition hover:bg-[var(--ui-action-primary-hover)] disabled:opacity-60">
             {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
