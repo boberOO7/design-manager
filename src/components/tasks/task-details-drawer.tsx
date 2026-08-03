@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
+import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
@@ -324,16 +325,16 @@ export function TaskDetailsDrawer({
                 {fieldErrors.description ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("assignee")}
-                <select value={values.assignee_id} disabled={isSaving} onChange={(event) => setValues({ ...values, assignee_id: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]">
-                  {members.map((member) => <option key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</option>)}
-                </select>
+                <Select value={values.assignee_id} disabled={isSaving} onValueChange={(assigneeId) => setValues({ ...values, assignee_id: assigneeId })}>
+                  {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
+                </Select>
                 {fieldErrors.assignee_id ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("priority")}
-                  <select value={values.priority} disabled={isSaving} onChange={(event) => setValues({ ...values, priority: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]">
-                    {TASK_PRIORITY_VALUES.map((priority) => <option key={priority} value={priority}>{priorityT(priority)}</option>)}
-                  </select>
+                  <Select value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
+                    {TASK_PRIORITY_VALUES.map((priority) => <SelectItem key={priority} value={priority}>{priorityT(priority)}</SelectItem>)}
+                  </Select>
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("dueDate")}
                   <input type="date" value={values.due_date} disabled={isSaving} onChange={(event) => setValues({ ...values, due_date: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
@@ -350,9 +351,9 @@ export function TaskDetailsDrawer({
                 </label>
               </div>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("status")}
-                <select value={values.status} disabled={isSaving} onChange={(event) => setValues({ ...values, status: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]">
-                  {BOARD_COLUMNS.map((column) => <option key={column.id} value={column.status}>{statusLabel(column.status)}</option>)}
-                </select>
+                <Select value={values.status} disabled={isSaving} onValueChange={(status) => setValues({ ...values, status })}>
+                  {BOARD_COLUMNS.map((column) => <SelectItem key={column.id} value={column.status}>{statusLabel(column.status)}</SelectItem>)}
+                </Select>
               </label>
             </div>
           ) : (
@@ -390,10 +391,10 @@ export function TaskDetailsDrawer({
               </section>
               {!canManageTasks && canUpdateStatus ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--ui-text)]">{t("updateStatus")}
-                  <select defaultValue={task.status} disabled={isSaving} onChange={(event) => void saveEmployeeStatus(event.target.value)} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 text-sm font-normal outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]">
-                    <option value={task.status}>{statusLabel(task.status)}</option>
-                    {BOARD_COLUMNS.filter((column) => column.status !== task.status).map((column) => <option key={column.id} value={column.status}>{statusLabel(column.status)}</option>)}
-                  </select>
+                  <Select value={task.status} disabled={isSaving} onValueChange={(status) => void saveEmployeeStatus(status)} className="font-normal">
+                    <SelectItem value={task.status}>{statusLabel(task.status)}</SelectItem>
+                    {BOARD_COLUMNS.filter((column) => column.status !== task.status).map((column) => <SelectItem key={column.id} value={column.status}>{statusLabel(column.status)}</SelectItem>)}
+                  </Select>
                 </label>
               </section> : null}
             </div>

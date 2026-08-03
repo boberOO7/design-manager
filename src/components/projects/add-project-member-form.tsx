@@ -3,15 +3,13 @@
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableStudioMember } from "@/data/queries/project-members";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import {
   addProjectMember,
   type ProjectMemberActionState,
 } from "@/app/(app)/projects/[projectId]/member-actions";
-
-const selectClassName =
-  "h-10 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]";
 
 export function AddProjectMemberForm({
   assignableMembers,
@@ -38,14 +36,13 @@ export function AddProjectMemberForm({
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">
           {t("studioMember")}
-          <select name="profile_id" defaultValue="" required className={selectClassName} disabled={isPending}>
-            <option value="" disabled>{t("selectMember")}</option>
+          <Select name="profile_id" required placeholder={t("selectMember")} disabled={isPending}>
             {assignableMembers.map((member) => (
-              <option key={member.id} value={member.id}>
+              <SelectItem key={member.id} value={member.id}>
                 {member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}
-              </option>
+              </SelectItem>
             ))}
-          </select>
+          </Select>
         </label>
         <div className="flex items-end">
           <Button type="submit" disabled={isPending} className="w-full md:w-auto">

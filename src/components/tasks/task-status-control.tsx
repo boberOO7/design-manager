@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { updateTaskStatus } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import { BOARD_COLUMNS } from "@/lib/tasks";
 import type { TaskStatusActionState } from "@/lib/validation/task";
 
@@ -18,10 +19,10 @@ export function TaskStatusControl({ taskId, status }: { taskId: string; status: 
       <input type="hidden" name="task_id" value={taskId} />
       <label className="sr-only" htmlFor={`task-status-${taskId}`}>{t("taskStatus")}</label>
       <div className="flex gap-2">
-        <select id={`task-status-${taskId}`} name="status" defaultValue={status} disabled={isPending} className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2 text-xs text-[var(--ui-text-secondary)] outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]">
-          {isExtraStatus ? <option value={status}>{statusLabel(status)}</option> : null}
-          {BOARD_COLUMNS.map((column) => <option key={column.id} value={column.status}>{statusLabel(column.status === "in_progress" ? "inProgress" : column.status)}</option>)}
-        </select>
+        <Select id={`task-status-${taskId}`} name="status" defaultValue={status} disabled={isPending} size="compact" className="min-w-0 flex-1 text-[var(--ui-text-secondary)]">
+          {isExtraStatus ? <SelectItem value={status}>{statusLabel(status)}</SelectItem> : null}
+          {BOARD_COLUMNS.map((column) => <SelectItem key={column.id} value={column.status}>{statusLabel(column.status === "in_progress" ? "inProgress" : column.status)}</SelectItem>)}
+        </Select>
         <Button type="submit" size="sm" variant="outline" disabled={isPending}>{isPending ? t("moving") : t("move")}</Button>
       </div>
       {state.formError ? <p role="alert" className="mt-2 text-xs text-[var(--ui-danger-text)]">{state.formError}</p> : null}

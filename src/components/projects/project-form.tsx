@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 import type {
   EditProjectFormValues,
@@ -77,12 +78,12 @@ export function ProjectForm({
 
         <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
           {t("priority")}
-          <select name="priority" defaultValue={defaultValues.priority ?? "normal"} className={inputClassName} {...errorAttributes("priority")}>
-            <option value="low">{priority("low")}</option>
-            <option value="normal">{priority("normal")}</option>
-            <option value="high">{priority("high")}</option>
-            <option value="urgent">{priority("urgent")}</option>
-          </select>
+          <Select name="priority" defaultValue={defaultValues.priority ?? "normal"} className="mt-2" {...errorAttributes("priority")}>
+            <SelectItem value="low">{priority("low")}</SelectItem>
+            <SelectItem value="normal">{priority("normal")}</SelectItem>
+            <SelectItem value="high">{priority("high")}</SelectItem>
+            <SelectItem value="urgent">{priority("urgent")}</SelectItem>
+          </Select>
           {fieldError("priority") ? <p id="priority-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{fieldError("priority")}</p> : null}
         </label>
 

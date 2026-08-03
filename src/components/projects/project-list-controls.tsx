@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 import { PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, PROJECT_LIST_SORTS, PROJECT_LIST_SORT_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
 
@@ -38,5 +39,5 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
 }
 
 function FilterSelect<T extends string>({ getOptionLabel, label, onChange, options, value }: { getOptionLabel: (option: T) => string; label: string; onChange: (value: string) => void; options: readonly T[]; value: T }) {
-  return <label className="grid min-w-32 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm font-medium text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{options.map((option) => <option key={option} value={option}>{getOptionLabel(option)}</option>)}</select></label>;
+  return <label className="grid max-w-full gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{label}<Select value={value} width="content" onValueChange={onChange} className="font-medium">{options.map((option) => <SelectItem key={option} value={option}>{getOptionLabel(option)}</SelectItem>)}</Select></label>;
 }

@@ -5,7 +5,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
-import { FormField, Input, Textarea, inputClassName } from "@/components/ui/form-field";
+import { FormField, Input, Textarea } from "@/components/ui/form-field";
+import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
@@ -75,15 +76,14 @@ export function AddTaskDialog({
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("assignee")} error={state.fieldErrors?.assignee_id ? validation("correctFields") : undefined}>
-              <select name="assignee_id" required defaultValue="" disabled={isPending || members.length === 0} className={inputClassName}>
-                <option value="" disabled>{t("selectProjectMember")}</option>
-                {members.map((member) => <option key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</option>)}
-              </select>
+              <Select name="assignee_id" required placeholder={t("selectProjectMember")} disabled={isPending || members.length === 0}>
+                {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
+              </Select>
             </FormField>
             <FormField label={t("priority")}>
-              <select name="priority" defaultValue="normal" disabled={isPending} className={inputClassName}>
-                {TASK_PRIORITY_VALUES.map((value) => <option key={value} value={value}>{priority(value)}</option>)}
-              </select>
+              <Select name="priority" defaultValue="normal" disabled={isPending}>
+                {TASK_PRIORITY_VALUES.map((value) => <SelectItem key={value} value={value}>{priority(value)}</SelectItem>)}
+              </Select>
             </FormField>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -98,7 +98,7 @@ export function AddTaskDialog({
           <p className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs leading-5 text-[var(--ui-text-secondary)]">{attributionMode === "task_level" ? t("taskAttribution") : t("projectAttribution")}</p>
           <section aria-labelledby="checklist-template-heading" className="border-t border-[var(--ui-border-subtle)] pt-4">
             <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 id="checklist-template-heading" className="text-sm font-medium text-[var(--ui-text)]">{templatesT("checklistTemplate")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{templatesT("optionalStages")}</p></div></div>
-            <label className="mt-3 grid gap-1 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sr-only">{templatesT("checklistTemplate")}</span><select value={templateId} disabled={isPending} onChange={(event) => { const nextTemplateId = event.target.value; if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm(templatesT("changingConfirm"))) return; const nextTemplate = templates.find((template) => template.id === nextTemplateId); setTemplateId(nextTemplateId); setChecklistItems(cloneChecklistTemplateStages(nextTemplate)); setIsCustomizerOpen(false); }} className={inputClassName}><option value="">{templatesT("noChecklistTemplate")}</option>{templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
+            <label className="mt-3 grid gap-1 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sr-only">{templatesT("checklistTemplate")}</span><Select value={templateId} disabled={isPending} onValueChange={(nextTemplateId) => { if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm(templatesT("changingConfirm"))) return; const nextTemplate = templates.find((template) => template.id === nextTemplateId); setTemplateId(nextTemplateId); setChecklistItems(cloneChecklistTemplateStages(nextTemplate)); setIsCustomizerOpen(false); }}><SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</Select></label>
             <input type="hidden" name="checklist_items" value={JSON.stringify(checklistItems.map(({ title, weight }) => ({ title, weight })))} />
             {selectedTemplate ? <div className="mt-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 py-2.5"><div className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 text-sm font-medium text-[var(--ui-text)]">{selectedTemplate.name} <span className="font-normal text-[var(--ui-text-muted)]">· {templatesT("stages", { count: checklistItems.length })} · {templatesT("totalWeight", { weight: totalWeight })}</span>{isCustomized ? <span className="ml-2 text-xs font-medium text-[var(--ui-warning-text)]">{templatesT("customized")}</span> : null}</p><Button type="button" size="sm" variant="outline" disabled={isPending} aria-expanded={isCustomizerOpen} onClick={() => setIsCustomizerOpen((open) => !open)}>{isCustomizerOpen ? templatesT("collapse") : templatesT("customize")}</Button></div>{isCustomizerOpen ? <ul className="mt-3 divide-y divide-[var(--ui-border)] border-y border-[var(--ui-border)]">{checklistItems.map((item, index) => <li key={item.id} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><label className="min-w-0 flex-1"><span className="sr-only">{templatesT("itemTitle")}</span><Input value={item.title} maxLength={200} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, title: event.target.value } : candidate))} /></label><label className="flex w-20 items-center gap-1 text-xs text-[var(--ui-text-muted)]"><span className="sr-only">{templatesT("itemWeight")}</span><Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={item.weight} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, weight: Number(event.target.value) } : candidate))} /><span aria-hidden="true">{checklist("weightAbbreviation")}</span></label><Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => setChecklistItems((current) => current.filter((_, candidateIndex) => candidateIndex !== index))} className="size-11 shrink-0 p-0 text-[var(--ui-danger-text)]" aria-label={templatesT("remove", { title: item.title })}><Trash2 className="size-4" aria-hidden="true" /></Button></li>)}</ul> : null}</div> : null}
             {state.fieldErrors?.checklist_items ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{validation("invalidChecklistItem")}</p> : null}

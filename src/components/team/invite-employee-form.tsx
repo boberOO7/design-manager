@@ -2,6 +2,7 @@
 
 import { inviteEmployee } from "@/app/(app)/team/actions";
 import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import {
   PROFESSIONAL_ROLES,
   type EmployeeInvitationActionState,
@@ -114,22 +115,19 @@ export function InviteEmployeeForm() {
 
               <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
                 {t("professionalRole")} <span className="text-[var(--ui-danger-text)]">*</span>
-                <select
+                <Select
                   name="job_title"
                   required
-                  className={inputClassName}
+                  className="mt-2"
                   {...errorAttributes("job_title")}
-                  defaultValue=""
+                  placeholder={t("selectRole")}
                 >
-                  <option value="" disabled>
-                    {t("selectRole")}
-                  </option>
                   {PROFESSIONAL_ROLES.map((role) => (
-                    <option key={role} value={role}>
+                    <SelectItem key={role} value={role}>
                       {roles(getCanonicalRoleTranslationKey(role) ?? "designer")}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </Select>
                 {fieldError("job_title") ? (
                   <p id="invite-job_title-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">
                     {t("correctFields")}

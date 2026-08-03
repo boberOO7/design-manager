@@ -36,4 +36,12 @@ describe("Projects filter localization", () => {
     expect(PROJECT_LIST_SORTS.map((value) => uk.Projects[PROJECT_LIST_SORT_LABEL_KEYS[value]])).toEqual(["Операційний пріоритет", "Дедлайн", "Назва", "Стан", "Прогрес"]);
     expect(PROJECT_LIST_SORTS.map((value) => en.Projects[PROJECT_LIST_SORT_LABEL_KEYS[value]])).toEqual(["Operational priority", "Deadline", "Name", "Health", "Progress"]);
   });
+
+  it("content-sizes each localized filter without feature-specific widths", async () => {
+    const source = await readFile(controlsPath, "utf8");
+
+    expect(source.match(/width="content"/g)).toHaveLength(1);
+    expect(source).toContain("flex flex-wrap items-end gap-3");
+    expect(source).not.toContain("min-w-32");
+  });
 });
