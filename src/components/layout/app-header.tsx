@@ -18,7 +18,7 @@ function getInitials(fullName: string) {
 export async function AppHeader({ profile }: { profile: Profile | null }) {
   if (!profile) {
     return (
-      <header className="flex items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 py-4 lg:px-8">
+      <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <MobileNavigation profile={profile} />
           <div className="min-w-0">
@@ -40,7 +40,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
   const notifications = await getNotificationData();
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 py-4 lg:px-8">
+    <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <MobileNavigation profile={profile} />
         <div className="hidden size-11 shrink-0 items-center justify-center rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs font-semibold text-[var(--ui-text-secondary)] sm:inline-flex" aria-hidden="true">

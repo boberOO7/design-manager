@@ -15,7 +15,7 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
 
   return (
     <aside className="hidden w-72 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] lg:flex lg:flex-col">
-      <div className="border-b border-[var(--ui-border)] px-5 py-4">
+      <div className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center border-b border-[var(--ui-border)] px-5">
         <Link
           href="/dashboard"
           aria-label="StudioFlow home"

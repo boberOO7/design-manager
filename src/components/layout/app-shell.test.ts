@@ -5,6 +5,7 @@ const headerPath = new URL("./app-header.tsx", import.meta.url);
 const sidebarPath = new URL("./app-sidebar.tsx", import.meta.url);
 const controlPath = new URL("./shell-control.tsx", import.meta.url);
 const dashboardPath = new URL("../../app/(app)/dashboard/page.tsx", import.meta.url);
+const stylesPath = new URL("../../app/globals.css", import.meta.url);
 
 describe("application shell cleanup", () => {
   it("uses a single shared shell-control primitive for persistent header actions", async () => {
@@ -27,5 +28,18 @@ describe("application shell cleanup", () => {
     expect(sidebar).not.toContain("PanelLeft");
     expect(sidebar).toContain("w-72");
     expect(dashboard).not.toContain("Welcome back, ${dashboard.profile.full_name}");
+  });
+
+  it("uses one tokenized height and divider for both desktop shell headers", async () => {
+    const [header, sidebar, styles] = await Promise.all([
+      readFile(headerPath, "utf8"),
+      readFile(sidebarPath, "utf8"),
+      readFile(stylesPath, "utf8"),
+    ]);
+    expect(styles).toContain("--ui-shell-header-height: 4.75rem");
+    expect(header).toContain("h-[var(--ui-shell-header-height)]");
+    expect(sidebar).toContain("h-[var(--ui-shell-header-height)]");
+    expect(header).toContain("border-b border-[var(--ui-border)]");
+    expect(sidebar).toContain("border-b border-[var(--ui-border)]");
   });
 });

@@ -54,6 +54,7 @@
   --ui-radius-panel: 0.75rem;
   --ui-radius-control: 0.5rem;
   --ui-radius-drawer: 1rem;
+  --ui-shell-header-height: 4.75rem;
   --ui-shadow-panel: 0 1px 2px rgb(28 25 23 / 0.06);
   --ui-shadow-sticky: 0 -8px 20px rgb(28 25 23 / 0.05);
   color-scheme: light;
