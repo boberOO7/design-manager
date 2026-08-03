@@ -3,6 +3,14 @@ import type { TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 import type { SystemRole } from "@/types";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 
+const timeOffRequestTypeLabels = {
+  vacation: "Vacation",
+  day_off: "Day off",
+  medical_appointment: "Medical appointment",
+  sick_leave: "Sick leave",
+  other: "Other",
+} as const satisfies Record<TimeOffRequestType, string>;
+
 export type AdministrationRequest = {
   id: string;
   employeeName: string;
@@ -32,6 +40,10 @@ export type AdministrationModel = {
   recentDecisions: AdministrationRequest[];
   team: { activeMembers: number; administrators: number; inactiveMembers: number };
 };
+
+export function getTimeOffRequestTypeLabel(requestType: TimeOffRequestType): string {
+  return timeOffRequestTypeLabels[requestType];
+}
 
 export function canReceiveAdministrationModel(role: SystemRole): boolean {
   return role === "admin";

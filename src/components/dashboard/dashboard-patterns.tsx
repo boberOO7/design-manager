@@ -21,9 +21,9 @@ export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {
 
 export function DashboardSection({ children, className, description, title }: { children: ReactNode; className?: string; description?: string; title: string }) {
   return <section className={cn("min-w-0", className)}>
-    <div className="mb-3">
+    <div className="mb-2.5">
       <h2 className="text-base font-semibold text-[var(--ui-text)]">{title}</h2>
-      {description ? <p className="mt-1 text-sm text-[var(--ui-text-muted)]">{description}</p> : null}
+      {description ? <p className="mt-0.5 text-sm text-[var(--ui-text-muted)]">{description}</p> : null}
     </div>
     {children}
   </section>;

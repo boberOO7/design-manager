@@ -225,8 +225,8 @@
     "semantic_hash": "1583bde56cbd83e93c85fe8be1a01ad9"
   },
   "src/app/(app)/dashboard/page.tsx": {
-    "mtime": 1785716304.5201967,
-    "ast_hash": "7234c88ea1ac0c9229313f95d4500762",
+    "mtime": 1785720023.5119681,
+    "ast_hash": "e421bb36813c92b4759f130b7f2092aa",
     "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
@@ -390,8 +390,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/administration-workspace.tsx": {
-    "mtime": 1785715287.0482607,
-    "ast_hash": "665a73e42432ea690393f1e12e694f3a",
+    "mtime": 1785718619.308054,
+    "ast_hash": "448f587587d318f94e07fccadfabe511",
     "semantic_hash": ""
   },
   "src/components/auth/forgot-password-form.tsx": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
-    "mtime": 1785715287.0522606,
-    "ast_hash": "13514aea7383f37727c5ea501032375d",
+    "mtime": 1785717457.2961242,
+    "ast_hash": "23953e75652a1adec1d2ecb98305ad7b",
     "semantic_hash": ""
   },
   "src/components/layout/app-header.tsx": {
@@ -515,8 +515,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
-    "mtime": 1785715287.0562608,
-    "ast_hash": "749974e6e002754bb5225b656da6e3fa",
+    "mtime": 1785717476.2161252,
+    "ast_hash": "781753398b0e2c0842becbf2b86e690e",
     "semantic_hash": ""
   },
   "src/components/tasks/my-tasks-list.tsx": {
@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "src/lib/administration.ts": {
-    "mtime": 1785715087.6122727,
-    "ast_hash": "87879658062d528b26c54ef5c297f299",
+    "mtime": 1785718619.156054,
+    "ast_hash": "52a4e94ef2fd01c4724374f067af279b",
     "semantic_hash": ""
   },
   "src/lib/auth/confirmation-url.ts": {
