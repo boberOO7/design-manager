@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-header.tsx": {
-    "mtime": 1785760934.8995066,
-    "ast_hash": "efc7fda04779a1f3ca1b7ffad05999be",
+    "mtime": 1785783562.1849923,
+    "ast_hash": "07b2c0a7f393be3ced6e9f542ff57d2b",
     "semantic_hash": ""
   },
   "src/components/layout/app-layout.tsx": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1785782878.1251886,
-    "ast_hash": "a559953824fc81268184038c61a22549",
+    "mtime": 1785783562.3449922,
+    "ast_hash": "dc52cd9c646581de6a887fb3e7a612f5",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -1817,6 +1817,21 @@
   "src/lib/task-card-presentation.ts": {
     "mtime": 1785782027.0894327,
     "ast_hash": "701d4f54f10c6a4a4d0351ea5ffa5a70",
+    "semantic_hash": ""
+  },
+  "src/components/ui/user-avatar.tsx": {
+    "mtime": 1785783584.9289858,
+    "ast_hash": "5a72c959ec9857abd141e93c34be1d03",
+    "semantic_hash": ""
+  },
+  "src/lib/user-avatar.test.ts": {
+    "mtime": 1785783561.9609923,
+    "ast_hash": "47a4e39e6d8ee509f48c011b459ebacb",
+    "semantic_hash": ""
+  },
+  "src/lib/user-avatar.ts": {
+    "mtime": 1785783588.7009847,
+    "ast_hash": "da033b92da658f52d1c3a76a2d566293",
     "semantic_hash": ""
   }
 }

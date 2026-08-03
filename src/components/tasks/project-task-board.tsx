@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import {
   BOARD_COLUMNS,
@@ -118,7 +119,10 @@ function TaskCardContent({
         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-4 ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
       </div>
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs leading-4">
-        <span className="truncate text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? t("unassigned")}</span>
+        <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
+          <UserAvatar name={task.assignee?.full_name} decorative />
+          <span className="truncate">{task.assignee?.full_name ?? t("unassigned")}</span>
+        </div>
         {progress ? <span className="ui-numeric whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
           ? card("checklistProgress", { completed: progress.completed, total: progress.total, percent: formatNumber(progress.percent, locale) })
           : card("manualProgress", { percent: formatNumber(progress.percent, locale) })}</span> : null}
