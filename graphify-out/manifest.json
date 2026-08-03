@@ -490,7 +490,7 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-workspace.tsx": {
-    "mtime": 1785781036.7417183,
+    "mtime": 1785781182.9856763,
     "ast_hash": "8eb0b48ec6b5d9a1021bb81eebff3f5f",
     "semantic_hash": ""
   },
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1785781036.9097183,
-    "ast_hash": "bcbed1560890c2aef81c474f7280c93c",
+    "mtime": 1785782878.1251886,
+    "ast_hash": "a559953824fc81268184038c61a22549",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -825,13 +825,13 @@
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.test.ts": {
-    "mtime": 1785715087.6082728,
-    "ast_hash": "fdd8ba94947f5d1d6dfd7b09b6a7672f",
-    "semantic_hash": "fdd8ba94947f5d1d6dfd7b09b6a7672f"
+    "mtime": 1785782878.2891886,
+    "ast_hash": "5446058973f98248d10b82ceb1a938d7",
+    "semantic_hash": ""
   },
   "src/lib/semantic-styles.ts": {
-    "mtime": 1785715087.5962727,
-    "ast_hash": "434d023f1de4fab3569de6f465ce7abc",
+    "mtime": 1785782877.9971888,
+    "ast_hash": "a200a193e5b77081fb26fec78e49e994",
     "semantic_hash": ""
   },
   "src/lib/supabase/admin.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1785752413.4219608,
-    "ast_hash": "6912c17f4d3e0449b377e8e00a5708b0",
+    "mtime": 1785782878.4051886,
+    "ast_hash": "8937b214f3a950a9f9f88634ac3c3bea",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1785781073.7657075,
-    "ast_hash": "f4ca5f4d0c376ca779c96276a7473622",
+    "mtime": 1785782032.829431,
+    "ast_hash": "0135a6edc447de399f93dbdc4e237ec2",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1785781073.9417074,
-    "ast_hash": "f7f1d432bd4f82efc32d202eee075574",
+    "mtime": 1785782032.977431,
+    "ast_hash": "65a72ce33587c314e038de4ec0c82f52",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1807,6 +1807,16 @@
   "src/components/ui/select.tsx": {
     "mtime": 1785779518.9621549,
     "ast_hash": "b4e5b6597b2361efc06923959d2c9f68",
+    "semantic_hash": ""
+  },
+  "src/lib/task-card-presentation.test.ts": {
+    "mtime": 1785782027.2214327,
+    "ast_hash": "2cb88ea8fbf15489aa31bd6e651506e3",
+    "semantic_hash": ""
+  },
+  "src/lib/task-card-presentation.ts": {
+    "mtime": 1785782027.0894327,
+    "ast_hash": "701d4f54f10c6a4a4d0351ea5ffa5a70",
     "semantic_hash": ""
   }
 }

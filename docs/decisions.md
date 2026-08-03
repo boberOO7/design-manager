@@ -15,7 +15,7 @@
 - Create a new migration for every later schema or RLS change.
 - Do not push migrations or modify remote data without explicit confirmation.
 - Preserve the current visual design unless a redesign is specifically requested.
-- StudioFlow uses a shared typed semantic color system for badges and compact status surfaces. Green is reserved for positive, active, and success states; Normal priority remains neutral.
+- StudioFlow uses a shared typed semantic color system for badges and compact status surfaces. Green is reserved for positive, active, and success states; task priority follows Low neutral, Normal blue, High amber, and Urgent red.
 - Coworker Calendar availability displays the employee name plus the fixed generic label “Out of office”. Request type, private notes, review notes, and other sensitive time-off details remain restricted to authorized owner/admin detail views.
 
 - Dashboard content is role-specific: admins receive studio-wide operational

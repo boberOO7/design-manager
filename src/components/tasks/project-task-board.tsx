@@ -30,11 +30,10 @@ import {
   type BoardColumnId,
   type WritableTaskStatus,
 } from "@/lib/tasks";
-import { cn } from "@/lib/utils";
+import { cn, formatDateShort, formatNumber } from "@/lib/utils";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
-import { formatDateShort } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
-import { calculateTaskProgress } from "@/lib/project-progress";
+import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { ProjectAttributionMode } from "@/lib/productivity";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -102,24 +101,29 @@ function TaskCardContent({
   task: ProjectTask;
 }) {
   const t = useTranslations("Tasks");
+  const card = useTranslations("BoardTaskCard");
   const priority = useTranslations("Priority");
   const status = useTranslations("Status");
   const locale = useLocale();
   const overdue = isTaskOverdue(task);
-  const progress = calculateTaskProgress(task);
+  const progress = getBoardTaskProgressSummary(task);
 
   return (
-    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3", isOverlay ? "scale-[1.02] shadow-2xl" : "shadow-sm")}>
+    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3", isOverlay && "scale-[1.02] shadow-xl")}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
           {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
-          <h4 className="min-w-0 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]">{task.title}</h4>
+          <h4 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]" title={task.title}>{task.title}</h4>
         </div>
         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-4 ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
       </div>
-      <p className="mt-1.5 truncate text-xs leading-4 text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? t("unassigned")}</p>
-      <div className="mt-2"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs leading-4"><span className="min-w-0 text-[var(--ui-text-muted)] [overflow-wrap:anywhere]">{progress.source === "checklist" ? t("checklistProgress", { completed: progress.completedChecklistCount, total: progress.checklistCount }) : task.status === "review" ? t("awaitingApproval") : task.status === "completed" ? t("approved") : task.status === "in_progress" ? t("manualProduction") : t("notStarted")}</span><span className="ui-numeric font-semibold text-[var(--ui-text-secondary)]">{progress.presentedOverallPercent}%</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("progressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs leading-4 text-[var(--ui-text-muted)]">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs leading-4">
+        <span className="truncate text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? t("unassigned")}</span>
+        {progress ? <span className="ui-numeric whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
+          ? card("checklistProgress", { completed: progress.completed, total: progress.total, percent: formatNumber(progress.percent, locale) })
+          : card("manualProgress", { percent: formatNumber(progress.percent, locale) })}</span> : null}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--ui-border-subtle)] pt-2 text-xs leading-4 text-[var(--ui-text-muted)]">
         {task.due_date ? <span>{t("due", { date: formatDateShort(task.due_date, locale) })}</span> : <span>{t("noDueDate")}</span>}
         {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
         {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}

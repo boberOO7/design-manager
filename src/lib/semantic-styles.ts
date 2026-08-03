@@ -25,8 +25,8 @@ function badge(label: string, style: keyof typeof styles): SemanticBadgeStyle {
 
 export function getPriorityBadgeStyle(priority: TaskPriority | string): SemanticBadgeStyle {
   switch (priority) {
-    case "low": return badge("Low", "info");
-    case "normal": return badge("Normal", "neutral");
+    case "low": return badge("Low", "neutral");
+    case "normal": return badge("Normal", "info");
     case "high": return badge("High", "warning");
     case "urgent": return badge("Urgent", "danger");
     default: return badge("Unknown", "neutral");
