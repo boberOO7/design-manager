@@ -19,7 +19,7 @@ export default async function DashboardPage() {
 
 function EmployeeDashboard({ dashboard }: { dashboard: Extract<Awaited<ReturnType<typeof getDashboard>>, { kind: "employee" }> }) {
   return <div className="space-y-8">
-    <PageHeader title={`Welcome back, ${dashboard.profile.full_name}`} description="Your personal work priorities and upcoming deadlines." />
+    <PageHeader title="Welcome back" description="Your personal work priorities and upcoming deadlines." />
     <MetricStrip metrics={getEmployeeDashboardMetrics(dashboard.metrics)} />
     <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.85fr)]">
       <DashboardSection title="Needs attention" description="Your highest-priority open work.">
@@ -39,7 +39,7 @@ function EmployeeDashboard({ dashboard }: { dashboard: Extract<Awaited<ReturnTyp
 
 function AdminDashboard({ dashboard }: { dashboard: Extract<Awaited<ReturnType<typeof getDashboard>>, { kind: "admin" }> }) {
   return <div className="space-y-8">
-    <PageHeader title={`Welcome back, ${dashboard.profile.full_name}`} description="Studio-wide operational priorities and your assigned work." />
+    <PageHeader title="Welcome back" description="Studio-wide operational priorities and your assigned work." />
     <MetricStrip metrics={getAdminDashboardMetrics(dashboard.metrics)} />
     <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.85fr)]">
       <DashboardSection title="Projects requiring attention" description="Risk-ranked active projects.">

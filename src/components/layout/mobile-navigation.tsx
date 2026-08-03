@@ -59,7 +59,6 @@ export function MobileNavigation({ profile }: { profile: Profile | null }) {
             </Link>;
           })}
         </nav>
-        {profile ? <div className="border-t border-[var(--ui-border)] px-5 py-4"><p className="text-sm font-semibold text-[var(--ui-text)]">{profile.full_name}</p><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{profile.job_title}</p></div> : null}
       </div>
     </Drawer>
   </>;

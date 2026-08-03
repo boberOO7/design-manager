@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
+import { ShellControl } from "@/components/layout/shell-control";
 import {
   DARK_THEME_COLOR,
   getNextTheme,
@@ -70,12 +71,11 @@ export function ThemeSwitch() {
   }
 
   return (
-    <button
-      type="button"
+    <ShellControl
       aria-label={label}
       title={label}
       onClick={toggleTheme}
-      className="group inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-focus-offset)]"
+      className="group size-11"
     >
       <span className="relative block size-5 overflow-hidden" aria-hidden="true">
         <Sun
@@ -85,6 +85,6 @@ export function ThemeSwitch() {
           className="theme-switch__icon theme-switch__moon absolute inset-0 size-5"
         />
       </span>
-    </button>
+    </ShellControl>
   );
 }

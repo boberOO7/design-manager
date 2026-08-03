@@ -4,6 +4,7 @@ import { Bell, CalendarDays, CheckSquare, Clock3, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Drawer } from "@/components/ui/drawer";
+import { ShellControl } from "@/components/layout/shell-control";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { NotificationData, NotificationItem } from "@/data/queries/notifications";
 import { markAllNotificationsRead, markNotificationRead, unreadNotificationCount } from "@/lib/notifications";
@@ -46,10 +47,10 @@ export function NotificationBell({ initialData }: { initialData: NotificationDat
     catch { setItems(before); } finally { setPending(null); }
   }
   return <>
-    <button ref={triggerRef} type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="notifications-drawer" aria-label={`Notifications, ${unread} unread`} className="relative inline-flex size-11 items-center justify-center rounded-full border border-[var(--ui-border)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]">
+    <ShellControl ref={triggerRef} onClick={() => setOpen(true)} aria-expanded={open} aria-controls="notifications-drawer" aria-label={`Notifications, ${unread} unread`} className="relative size-11">
       <Bell size={16} />
       {unread ? <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[var(--ui-action-primary)] px-1 text-center text-[10px] font-bold leading-4 text-[var(--ui-action-primary-text)]">{unread > 99 ? "99+" : unread}</span> : null}
-    </button>
+    </ShellControl>
     <Drawer isOpen={open} onClose={requestClose} returnFocusRef={triggerRef} initialFocusRef={closeRef} title="Notifications" className="w-[calc(100%-1rem)] max-w-md sm:w-full" >
       <div id="notifications-drawer" className="flex min-h-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-[var(--ui-border)] p-5"><div><h2 className="font-semibold">Notifications</h2><p className="text-sm text-[var(--ui-text-muted)]">{unread} unread</p></div><button ref={closeRef} type="button" onClick={requestClose} className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-[var(--ui-surface-muted)]" aria-label="Close notifications"><X size={18}/></button></header>

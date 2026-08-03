@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
+import { ShellControl } from "@/components/layout/shell-control";
 import { createClient } from "@/lib/supabase/client";
 
 export function SignOutButton() {
@@ -26,13 +28,16 @@ export function SignOutButton() {
   };
 
   return (
-    <button
+    <div className="flex items-center gap-2">
+      <ShellControl
       onClick={handleSignOut}
       disabled={isLoading}
-      className="rounded-full border border-[var(--ui-border-strong)] px-3 py-2 text-sm font-medium text-[var(--ui-text-secondary)] disabled:opacity-50"
-    >
-      {isLoading ? "Signing out…" : "Sign out"}
-      {error && <span className="ml-2 text-[var(--ui-danger-text)] text-xs">{error}</span>}
-    </button>
+        className="gap-2 px-3 text-sm font-medium hover:border-[var(--ui-danger-border)] hover:text-[var(--ui-danger-text)]"
+      >
+        <LogOut size={16} aria-hidden="true" />
+        {isLoading ? "Signing out…" : "Sign out"}
+      </ShellControl>
+      {error ? <span role="alert" className="text-xs text-[var(--ui-danger-text)]">{error}</span> : null}
+    </div>
   );
 }
