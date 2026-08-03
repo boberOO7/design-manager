@@ -1,16 +1,16 @@
 # Graph Report - design-manager  (2026-08-03)
 
 ## Corpus Check
-- 351 files · ~185,477 words
+- 351 files · ~185,370 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3207 nodes · 5374 edges · 220 communities (169 shown, 51 thin omitted)
+- 3207 nodes · 5374 edges · 221 communities (169 shown, 52 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 43 edges (avg confidence: 0.53)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7837bf09`
+- Built from commit: `1a6f2f41`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -115,9 +115,9 @@
 - app-layout.tsx
 - calendar-migration.test.ts
 - .test_add_components_dry_run
-- .test_add_components_no_config
-- .test_list_installed_no_config
-- .test_init_dry_run
+- test_shadcn_add.py
+- .test_check_shadcn_config_exists
+- .test_get_installed_components_empty
 - .test_add_components_no_components
 - .test_recommend_plugins
 - .test_recommend_plugins_nextjs
@@ -193,6 +193,7 @@
 - Slide Strategies
 - StudioFlow product specification
 - StudioFlow roadmap
+- .test_get_installed_components_with_files
 - Prerequisites
 - graphify reference: extra exports and benchmark
 - ui-ux-pro-max
@@ -257,7 +258,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (220 total, 51 thin omitted)
+## Communities (221 total, 52 thin omitted)
 
 ### Community 0 - "queries/index.ts"
 Cohesion: 0.15
@@ -280,8 +281,8 @@ Cohesion: 0.09
 Nodes (36): format_context(), format_result(), main(), Format a single search result for display, Format contextual recommendations for display., BM25, calculate_pattern_break(), detect_domain() (+28 more)
 
 ### Community 5 - "[projectId]/page.tsx"
-Cohesion: 0.12
-Nodes (31): PATCH(), archiveProject(), restoreProject(), revalidateProjectRoutes(), updateProject(), EditProjectPage(), addProjectMember(), getFormString() (+23 more)
+Cohesion: 0.14
+Nodes (27): PATCH(), archiveProject(), restoreProject(), revalidateProjectRoutes(), updateProject(), addProjectMember(), getFormString(), removeProjectMember() (+19 more)
 
 ### Community 6 - "calendar-workspace.tsx"
 Cohesion: 0.12
@@ -413,7 +414,7 @@ Nodes (14): ProjectMemberActionState, getInitials(), metadata, TeamPage(), AddPr
 
 ### Community 38 - "task.ts"
 Cohesion: 0.11
-Nodes (29): PATCH(), revalidateMyTasks(), revalidateTaskCreationRoutes(), updateTaskStatus(), TaskStatusControl(), updateTaskStatusMutation(), toTaskStatusActionState(), checklistItemCreateSchema (+21 more)
+Nodes (30): PATCH(), createProjectTask(), revalidateMyTasks(), revalidateTaskCreationRoutes(), updateTaskStatus(), TaskStatusControl(), updateTaskStatusMutation(), toTaskStatusActionState() (+22 more)
 
 ### Community 39 - "lib/calendar.ts"
 Cohesion: 0.09
@@ -425,7 +426,7 @@ Nodes (45): $type, $value, $type, $value, bg, fg, font-size, hover-bg (+37 more)
 
 ### Community 41 - "TestShadcnInstaller"
 Cohesion: 0.12
-Nodes (10): Test ShadcnInstaller class., Test adding all components without config., Test adding all components in dry run mode., Create temporary project structure., Test listing installed components when none exist., Test listing installed components when they exist., Test checking for existing shadcn config., Test getting installed components without config. (+2 more)
+Nodes (10): Test ShadcnInstaller class., Test adding all components without config., Test adding all components in dry run mode., Create temporary project structure., Test listing installed components when none exist., Test listing installed components when they exist., Test initialization with default project root., Test initialization with custom project root. (+2 more)
 
 ### Community 42 - "BM25"
 Cohesion: 0.15
@@ -448,8 +449,8 @@ Cohesion: 0.12
 Nodes (16): $type, $value, $type, $value, $type, $value, $type, $value (+8 more)
 
 ### Community 47 - "project.ts"
-Cohesion: 0.16
-Nodes (15): createProject(), NewProjectPage(), ProjectForm(), ProjectFormAction, ProjectFormDefaults, dateSchema, EditProjectFormValues, editProjectSchema (+7 more)
+Cohesion: 0.13
+Nodes (18): createProject(), NewProjectPage(), EditProjectPage(), ProjectForm(), ProjectFormAction, ProjectFormDefaults, dateSchema, EditProjectFormValues (+10 more)
 
 ### Community 48 - "extract-colors.cjs"
 Cohesion: 0.22
@@ -461,7 +462,7 @@ Nodes (13): checkManifest(), formatBytes(), formatOutput(), fs, main(), parseFil
 
 ### Community 50 - "ShadcnInstaller"
 Cohesion: 0.14
-Nodes (8): Handle shadcn/ui component installation., ShadcnInstaller, Test adding components that are already installed., Test initialization with default project root., Test initialization with custom project root., Test checking for non-existent shadcn config., Test getting installed components when none exist., Test getting installed components when files exist.
+Nodes (8): Handle shadcn/ui component installation., ShadcnInstaller, Test adding components without shadcn config., Test adding components that are already installed., Test listing installed components without config., Test initialization with dry run mode., Test checking for non-existent shadcn config., Test getting installed components without config.
 
 ### Community 51 - "scripts/core.py"
 Cohesion: 0.21
@@ -480,8 +481,8 @@ Cohesion: 0.23
 Nodes (12): AppLayout(), StudioFlowMark(), AppHeader(), getInitials(), AppSidebar(), MobileNavigation(), getNavigationItems(), isNavigationItemActive() (+4 more)
 
 ### Community 55 - ".add_components"
-Cohesion: 0.17
-Nodes (8): main(), Add all available shadcn/ui components. Args: overwrite: If True, overwrite…, List installed components. Returns: Tuple of (success, message with component…, Check if shadcn is initialized in project. Returns: True if components.json…, Get list of already installed components. Returns: List of installed component…, Read shadcn version from project package.json; fall back to a pinned default., Add shadcn/ui components. Args: components: List of component names to add…, Tests for shadcn_add.py
+Cohesion: 0.22
+Nodes (7): main(), Add all available shadcn/ui components. Args: overwrite: If True, overwrite…, List installed components. Returns: Tuple of (success, message with component…, Check if shadcn is initialized in project. Returns: True if components.json…, Get list of already installed components. Returns: List of installed component…, Read shadcn version from project package.json; fall back to a pinned default., Add shadcn/ui components. Args: components: List of component names to add…
 
 ### Community 56 - "primitive"
 Cohesion: 0.15
@@ -914,7 +915,7 @@ Nodes (4): xl, xl, $type, $value
 ## Knowledge Gaps
 - **1294 isolated node(s):** `fs`, `path`, `fs`, `path`, `fs` (+1289 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

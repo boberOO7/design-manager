@@ -490,8 +490,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-workspace.tsx": {
-    "mtime": 1785755241.3171453,
-    "ast_hash": "844985d7ae0d1874ff8f5dfdcf933d7c",
+    "mtime": 1785781036.7417183,
+    "ast_hash": "8eb0b48ec6b5d9a1021bb81eebff3f5f",
     "semantic_hash": ""
   },
   "src/components/projects/remove-project-member-button.tsx": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1785757041.1326277,
-    "ast_hash": "a436b123da47bb645788fba18b4c33bc",
+    "mtime": 1785781036.9097183,
+    "ast_hash": "bcbed1560890c2aef81c474f7280c93c",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1785762994.7629125,
-    "ast_hash": "82e296f3ab1df3fb27d56ded78680a5a",
+    "mtime": 1785781073.7657075,
+    "ast_hash": "f4ca5f4d0c376ca779c96276a7473622",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1785762994.7629125,
-    "ast_hash": "9304bfc46f73405fcaa22a0ea257060f",
+    "mtime": 1785781073.9417074,
+    "ast_hash": "f7f1d432bd4f82efc32d202eee075574",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
