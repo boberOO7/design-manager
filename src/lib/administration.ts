@@ -85,8 +85,8 @@ export function applyAdministrationDecision(model: AdministrationModel, request:
   return { ...model, pendingRequests, recentDecisions, upcomingAbsences };
 }
 
-export function formatAdministrationDateRange(request: Pick<AdministrationRequest, "startDate" | "endDate" | "startTime" | "endTime" | "allDay">): string {
-  const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(parseDateOnly(value));
+export function formatAdministrationDateRange(request: Pick<AdministrationRequest, "startDate" | "endDate" | "startTime" | "endTime" | "allDay">, locale = "en"): string {
+  const date = (value: string) => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }).format(parseDateOnly(value));
   const range = request.startDate === request.endDate ? date(request.startDate) : `${date(request.startDate)} – ${date(request.endDate)}`;
   return request.allDay ? range : `${range} · ${request.startTime}–${request.endTime}`;
 }

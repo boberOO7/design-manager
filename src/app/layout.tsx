@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DARK_THEME_COLOR, LIGHT_THEME_COLOR, themeBootstrapScript } from "@/lib/theme";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +15,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Navigation");
+  return {
   title: "StudioFlow",
-  description: "Project and productivity management for interior design studios",
+  description: t("tagline"),
   icons: {
     icon: [
       {
@@ -30,7 +34,8 @@ export const metadata: Metadata = {
       },
     ],
   },
-};
+  };
+}
 
 export const viewport: Viewport = {
   colorScheme: "light dark",
@@ -40,14 +45,15 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)]">
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

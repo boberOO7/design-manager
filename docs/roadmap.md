@@ -11,6 +11,7 @@
 - [X] Implement SSR session refresh and protected app routes.
 - [X] Implement sign out.
 - [X] Load the real authenticated Profile in the application shell.
+- [x] Establish English/Ukrainian i18n foundation and migrate the shared shell and Dashboard reference surface.
 - [X] Verify and fix consistent Profile and admin-role checks on Dashboard and Administration.
 - [ ] Complete the UI foundation milestone: compact shared primitives, accessible mobile navigation, and tokenized visual conventions.
 - [ ] Complete accessibility and interaction consistency pass.

@@ -12,14 +12,14 @@ import {
 import type { Profile } from "@/types";
 
 export const navigationItems = [
-  { href: "/dashboard", label: "Dashboard", adminOnly: false },
-  { href: "/projects", label: "Projects", adminOnly: false },
-  { href: "/my-tasks", label: "My Tasks", adminOnly: false },
-  { href: "/calendar", label: "Calendar", adminOnly: false },
-  { href: "/team", label: "Team", adminOnly: false },
-  { href: "/leaderboard", label: "Leaderboard", adminOnly: false },
-  { href: "/archive", label: "Archive", adminOnly: false },
-  { href: "/admin", label: "Administration", adminOnly: true },
+  { href: "/dashboard", label: "Dashboard", messageKey: "dashboard", adminOnly: false },
+  { href: "/projects", label: "Projects", messageKey: "projects", adminOnly: false },
+  { href: "/my-tasks", label: "My Tasks", messageKey: "myTasks", adminOnly: false },
+  { href: "/calendar", label: "Calendar", messageKey: "calendar", adminOnly: false },
+  { href: "/team", label: "Team", messageKey: "team", adminOnly: false },
+  { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
+  { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: false },
+  { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },
 ] as const;
 
 export type NavigationItem = (typeof navigationItems)[number];

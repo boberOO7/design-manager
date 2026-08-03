@@ -2,9 +2,9 @@ export type DashboardRole = "admin" | "employee";
 export type DashboardMetricTone = "neutral" | "warning" | "danger";
 
 export type DashboardMetric = {
-  label: string;
+  labelKey: "metricActiveProjects" | "metricOpenTasks" | "metricOverdueTasks" | "metricDueThisWeek" | "metricDueToday" | "metricInProgress" | "metricUpcoming";
   value: number;
-  description: string;
+  descriptionKey: "metricActiveProjectsHint" | "metricOpenTasksHint" | "metricOverdueTasksHint" | "metricDueThisWeekHint" | "metricDueTodayHint" | "metricInProgressHint" | "metricUpcomingHint";
   tone: DashboardMetricTone;
 };
 
@@ -29,19 +29,19 @@ export const DASHBOARD_EMPTY_STATES = {
 
 export function getAdminDashboardMetrics(metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }): DashboardMetric[] {
   return [
-    { label: "Active projects", value: metrics.activeProjects, description: "Planned, active, or paused", tone: "neutral" },
-    { label: "Open tasks", value: metrics.openTasks, description: "Excludes completed and cancelled", tone: "neutral" },
-    { label: "Overdue tasks", value: metrics.overdueTasks, description: "Open work past due", tone: metrics.overdueTasks > 0 ? "danger" : "neutral" },
-    { label: "Due this week", value: metrics.dueThisWeek, description: "Today through Sunday", tone: metrics.dueThisWeek > 0 ? "warning" : "neutral" },
+    { labelKey: "metricActiveProjects", value: metrics.activeProjects, descriptionKey: "metricActiveProjectsHint", tone: "neutral" },
+    { labelKey: "metricOpenTasks", value: metrics.openTasks, descriptionKey: "metricOpenTasksHint", tone: "neutral" },
+    { labelKey: "metricOverdueTasks", value: metrics.overdueTasks, descriptionKey: "metricOverdueTasksHint", tone: metrics.overdueTasks > 0 ? "danger" : "neutral" },
+    { labelKey: "metricDueThisWeek", value: metrics.dueThisWeek, descriptionKey: "metricDueThisWeekHint", tone: metrics.dueThisWeek > 0 ? "warning" : "neutral" },
   ];
 }
 
 export function getEmployeeDashboardMetrics(metrics: { overdue: number; dueToday: number; inProgress: number; upcoming: number }): DashboardMetric[] {
   return [
-    { label: "Overdue", value: metrics.overdue, description: "Open tasks past due", tone: metrics.overdue > 0 ? "danger" : "neutral" },
-    { label: "Due today", value: metrics.dueToday, description: "Open tasks due today", tone: metrics.dueToday > 0 ? "warning" : "neutral" },
-    { label: "In progress", value: metrics.inProgress, description: "Including review", tone: "neutral" },
-    { label: "Upcoming", value: metrics.upcoming, description: "Due in the next 7 days", tone: "neutral" },
+    { labelKey: "metricOverdueTasks", value: metrics.overdue, descriptionKey: "metricOverdueTasksHint", tone: metrics.overdue > 0 ? "danger" : "neutral" },
+    { labelKey: "metricDueToday", value: metrics.dueToday, descriptionKey: "metricDueTodayHint", tone: metrics.dueToday > 0 ? "warning" : "neutral" },
+    { labelKey: "metricInProgress", value: metrics.inProgress, descriptionKey: "metricInProgressHint", tone: "neutral" },
+    { labelKey: "metricUpcoming", value: metrics.upcoming, descriptionKey: "metricUpcomingHint", tone: "neutral" },
   ];
 }
 

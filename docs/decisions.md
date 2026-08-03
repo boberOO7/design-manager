@@ -211,6 +211,14 @@
 
 ## UI foundation
 
+- Localization uses `next-intl` with centralized typed `en`/`uk` configuration.
+  URLs remain unprefixed; the server resolves the locale from the `studioflow-locale`
+  cookie, falling back to the browser's Accept-Language and then English. The
+  persistent shell selector writes that cookie and refreshes the current route,
+  preventing a wrong-language first render or hydration mismatch. Messages use
+  stable feature namespaces, and locale-aware date/number formatting receives
+  the active locale explicitly. Cross-device profile persistence is deferred.
+
 - StudioFlow follows a “Quiet architectural operations system” direction: a warm
   stone-neutral foundation, restrained professional hierarchy, compact
   operational density, and no decorative gradients, glass effects, or motion.

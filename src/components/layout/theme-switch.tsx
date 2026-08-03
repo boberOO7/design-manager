@@ -3,6 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { ShellControl } from "@/components/layout/shell-control";
+import { useTranslations } from "next-intl";
 import {
   DARK_THEME_COLOR,
   getNextTheme,
@@ -43,6 +44,7 @@ function getServerThemeSnapshot(): ResolvedTheme {
 }
 
 export function ThemeSwitch() {
+  const t = useTranslations("Account");
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function ThemeSwitch() {
   }, []);
 
   const nextTheme = getNextTheme(theme);
-  const label = `Switch to ${nextTheme} theme`;
+  const label = t("themeSwitch", { theme: t(nextTheme) });
 
   function toggleTheme() {
     const next = getNextTheme(theme);

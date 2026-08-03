@@ -12,7 +12,7 @@ describe("theme switch contract", () => {
     expect(source).toContain('window.matchMedia("(prefers-color-scheme: dark)")');
     expect(source).toContain('window.localStorage.setItem(THEME_STORAGE_KEY, next)');
     expect(source).toContain('media.addEventListener("change", syncSystemTheme)');
-    expect(source).toContain("`Switch to ${nextTheme} theme`");
+    expect(source).toContain('t("themeSwitch", { theme: t(nextTheme) })');
   });
 
   it("uses stable transform and opacity motion with a reduced-motion fallback", async () => {

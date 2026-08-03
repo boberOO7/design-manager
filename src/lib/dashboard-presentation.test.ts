@@ -3,8 +3,8 @@ import { DASHBOARD_EMPTY_STATES, DASHBOARD_SECTIONS, getAdminDashboardMetrics, g
 
 describe("dashboard presentation helpers", () => {
   it("preserves the role-specific metric order", () => {
-    expect(getAdminDashboardMetrics({ activeProjects: 1, openTasks: 2, overdueTasks: 3, dueThisWeek: 4 }).map((metric) => metric.label)).toEqual(["Active projects", "Open tasks", "Overdue tasks", "Due this week"]);
-    expect(getEmployeeDashboardMetrics({ overdue: 1, dueToday: 2, inProgress: 3, upcoming: 4 }).map((metric) => metric.label)).toEqual(["Overdue", "Due today", "In progress", "Upcoming"]);
+    expect(getAdminDashboardMetrics({ activeProjects: 1, openTasks: 2, overdueTasks: 3, dueThisWeek: 4 }).map((metric) => metric.labelKey)).toEqual(["metricActiveProjects", "metricOpenTasks", "metricOverdueTasks", "metricDueThisWeek"]);
+    expect(getEmployeeDashboardMetrics({ overdue: 1, dueToday: 2, inProgress: 3, upcoming: 4 }).map((metric) => metric.labelKey)).toEqual(["metricOverdueTasks", "metricDueToday", "metricInProgress", "metricUpcoming"]);
   });
 
   it("maps overdue and due-soon emphasis truthfully without decorating zero states", () => {

@@ -3,6 +3,8 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
+import { LanguageSelector } from "@/components/layout/language-selector";
+import { getTranslations } from "next-intl/server";
 import { getNotificationData } from "@/data/queries/notifications";
 import type { Profile } from "@/types";
 
@@ -16,19 +18,20 @@ function getInitials(fullName: string) {
 }
 
 export async function AppHeader({ profile }: { profile: Profile | null }) {
+  const t = await getTranslations("Account");
   if (!profile) {
     return (
       <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <MobileNavigation profile={profile} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[var(--ui-text)]">Guest</p>
-            <p className="truncate text-xs text-[var(--ui-text-muted)]">Please log in</p>
+            <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{t("guest")}</p>
+            <p className="truncate text-xs text-[var(--ui-text-muted)]">{t("pleaseLogIn")}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <ThemeSwitch />
-          <div className="inline-flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-[var(--ui-text-secondary)]" aria-label="Notifications unavailable">
+          <div className="inline-flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-[var(--ui-text-secondary)]" aria-label={t("notificationsUnavailable")}>
             <Bell size={16} />
           </div>
           <SignOutButton />
@@ -52,6 +55,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
         </div>
       </div>
         <div className="flex shrink-0 items-center gap-2">
+        <LanguageSelector />
         <ThemeSwitch />
         <NotificationBell initialData={notifications} />
         <SignOutButton />
