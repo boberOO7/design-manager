@@ -6,11 +6,13 @@ import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { isProjectPriority } from "@/lib/validation/project";
+import { getTranslations } from "next-intl/server";
 import { updateProject } from "../actions";
 
-export const metadata: Metadata = {
-  title: "Edit Project | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Projects");
+  return { title: t("editProjectMetadata") };
+}
 
 export default async function EditProjectPage({
   params,
@@ -18,10 +20,11 @@ export default async function EditProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const [profile, membership, project] = await Promise.all([
+  const [profile, membership, project, t] = await Promise.all([
     getCurrentUserProfile(),
     getActiveStudioMembership(),
     getProjectById(projectId),
+    getTranslations("Projects"),
   ]);
 
   if (
@@ -45,7 +48,7 @@ export default async function EditProjectPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Edit project" description={`Update ${project.name}.`} />
+      <PageHeader title={t("editProject")} description={t("editProjectDescription", { projectName: project.name })} />
       <div className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-sm lg:p-8">
         <ProjectForm
           action={action}

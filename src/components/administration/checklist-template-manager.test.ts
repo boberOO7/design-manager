@@ -19,12 +19,12 @@ describe("checklist template manager persistence", () => {
 
   it("uses a single section-level manager and a compact stage reordering surface", async () => {
     const source = await readFile(managerPath, "utf8");
-    expect(source).toContain(">Manage templates<");
+    expect(source).toContain('t("manage")');
     expect(source).not.toContain(">Manage</button>");
     expect(source).toContain("DragDropProvider");
     expect(source).toContain("GripVertical");
     expect(source).toContain("moveChecklistTemplateStage");
-    expect(source).toContain("Drag to reorder");
+    expect(source).toContain('t("reorderHelp")');
   });
 
   it("renders a full-width row overlay and aligned template controls", async () => {

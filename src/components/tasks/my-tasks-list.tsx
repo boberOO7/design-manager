@@ -2,20 +2,25 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
-import { getTaskPriorityLabel, getTaskStatusLabel, groupMyTasks, mergeProjectTask, type MyTaskGroupId } from "@/lib/tasks";
+import { groupMyTasks, mergeProjectTask, type MyTaskGroupId } from "@/lib/tasks";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { MyTask, ProjectTask } from "@/types/tasks";
 
-const sections: Array<{ id: MyTaskGroupId; title: string; description: string }> = [
-  { id: "overdue", title: "Overdue", description: "Open work past its due date" },
-  { id: "today", title: "Today", description: "Work due today" },
-  { id: "upcoming", title: "Upcoming", description: "Current and upcoming work" },
-  { id: "completed", title: "Completed", description: "Finished or cancelled work" },
+const sections: Array<{ id: MyTaskGroupId; title: "overdue" | "today" | "upcoming" | "completed"; description: "overdueDescription" | "todayDescription" | "upcomingDescription" | "completedDescription" }> = [
+  { id: "overdue", title: "overdue", description: "overdueDescription" },
+  { id: "today", title: "today", description: "todayDescription" },
+  { id: "upcoming", title: "upcoming", description: "upcomingDescription" },
+  { id: "completed", title: "completed", description: "completedDescription" },
 ];
 
 export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUserId: string; tasks: MyTask[] }) {
+  const t = useTranslations("Tasks");
+  const status = useTranslations("Status");
+  const priority = useTranslations("Priority");
+  const locale = useLocale();
   const [tasks, setTasks] = useState(initialTasks);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const groups = groupMyTasks(tasks);
@@ -32,8 +37,8 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
           <section key={section.id} aria-labelledby={`my-tasks-${section.id}`}>
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <h2 id={`my-tasks-${section.id}`} className="font-semibold text-[var(--ui-text)]">{section.title}</h2>
-                <p className="text-sm text-[var(--ui-text-muted)]">{section.description}</p>
+                <h2 id={`my-tasks-${section.id}`} className="font-semibold text-[var(--ui-text)]">{t(section.title)}</h2>
+                <p className="text-sm text-[var(--ui-text-muted)]">{t(section.description)}</p>
               </div>
               <span className="rounded-full bg-[var(--ui-surface-strong)] px-2.5 py-1 text-xs font-medium text-[var(--ui-text-secondary)]">{groups[section.id].length}</span>
             </div>
@@ -57,11 +62,11 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
                       <h3 className="font-semibold text-[var(--ui-text)]">{task.title}</h3>
                       <Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:underline">{task.project.name}</Link>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--ui-text-muted)]">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
-                    <span>{task.due_date ? `Due ${formatDate(task.due_date)}` : "No due date"}</span>
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
+                    <span>{task.due_date ? t("due", { date: formatDate(task.due_date, locale) }) : t("noDueDate")}</span>
                   </div>
                 </article>
               ))}

@@ -8,20 +8,23 @@ import { formatDate } from "@/lib/utils";
 import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { restoreProject } from "@/app/(app)/projects/[projectId]/actions";
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "Archive | StudioFlow",
 };
 
 export default async function ArchivePage() {
+  const t = await getTranslations("Archive");
+  const locale = await getLocale();
   const profile = await getCurrentUserProfile();
 
   if (!profile) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Archive" description="Please log in to view archived projects." />
+        <PageHeader title={t("title")} description={t("loginDescription")} />
         <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-6 text-center">
-          <p className="text-sm text-[var(--ui-text-secondary)]">You must be logged in to view archived projects.</p>
+          <p className="text-sm text-[var(--ui-text-secondary)]">{t("loginRequired")}</p>
         </div>
       </div>
     );
@@ -34,14 +37,14 @@ export default async function ArchivePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Archive" description="Archived projects preserved for reference." />
+      <PageHeader title={t("title")} description={t("description")} />
       {result.error ? (
         <div className="rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] p-6 text-center">
-          <p className="text-sm text-[var(--ui-danger-text)]">Archived projects could not be loaded. Please try again later.</p>
+          <p className="text-sm text-[var(--ui-danger-text)]">{t("loadFailed")}</p>
         </div>
       ) : result.projects.length === 0 ? (
         <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-6 text-center">
-          <p className="text-sm text-[var(--ui-text-secondary)]">No archived projects are available in your access scope.</p>
+          <p className="text-sm text-[var(--ui-text-secondary)]">{t("empty")}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -57,20 +60,20 @@ export default async function ArchivePage() {
                     <Link href={`/projects/${project.id}`} className="font-semibold text-[var(--ui-text)] hover:underline">
                       {project.name}
                     </Link>
-                    <p className="text-sm text-[var(--ui-text-muted)]">{project.project_code || project.client_name || "Archived project"}</p>
+                    <p className="text-sm text-[var(--ui-text-muted)]">{project.project_code || project.client_name || t("archivedProject")}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-medium ${lifecycleStyle.className}`}>{lifecycleStyle.label}</span>
                 </div>
                 {project.description ? <p className="mt-3 text-sm text-[var(--ui-text-secondary)]">{project.description}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-4 border-t border-[var(--ui-border-subtle)] pt-4">
                   <p className="text-sm text-[var(--ui-text-muted)]">
-                    Archived {project.archived_at ? formatDate(project.archived_at) : "date unavailable"}
+                    {t("archivedOn", { date: project.archived_at ? formatDate(project.archived_at, locale) : t("dateUnavailable") })}
                   </p>
                   {canRestore ? (
                     <ProjectStatusAction
                       action={restoreProject.bind(null, project.id)}
-                      label="Restore"
-                      pendingLabel="Restoring…"
+                      label={t("restore")}
+                      pendingLabel={t("restoring")}
                     />
                   ) : null}
                 </div>

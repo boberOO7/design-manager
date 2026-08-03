@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCurrentStudioTeam } from "@/data/queries/team";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
 export const metadata: Metadata = {
   title: "Team | StudioFlow",
@@ -18,7 +20,9 @@ function getInitials(fullName: string) {
 }
 
 export default async function TeamPage() {
-  const [teamMembers, adminMembership] = await Promise.all([
+  const [t, roles, teamMembers, adminMembership] = await Promise.all([
+    getTranslations("Team"),
+    getTranslations("Roles"),
     getCurrentStudioTeam(),
     getActiveStudioAdmin(),
   ]);
@@ -26,8 +30,8 @@ export default async function TeamPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Team"
-        description="Active studio members and their professional roles."
+        title={t("title")}
+        description={t("description")}
       />
 
       {adminMembership ? <InviteEmployeeForm /> : null}
@@ -35,18 +39,18 @@ export default async function TeamPage() {
       <section aria-labelledby="team-directory-heading">
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 id="team-directory-heading" className="text-lg font-semibold text-[var(--ui-text)]">
-            Studio directory
+            {t("directory")}
           </h2>
           <p className="text-sm text-[var(--ui-text-muted)]">
-            {teamMembers.length} active {teamMembers.length === 1 ? "member" : "members"}
+            {t("memberCount", { count: teamMembers.length })}
           </p>
         </div>
 
         {teamMembers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] p-8 text-center">
-            <p className="font-medium text-[var(--ui-text)]">No active team members</p>
+            <p className="font-medium text-[var(--ui-text)]">{t("noMembers")}</p>
             <p className="mt-1 text-sm text-[var(--ui-text-muted)]">
-              Active studio members will appear here once they are added.
+              {t("noMembersDescription")}
             </p>
           </div>
         ) : (
@@ -56,7 +60,7 @@ export default async function TeamPage() {
                 <div className="flex items-start gap-4">
                   {member.avatar_url ? (
                     <span
-                      aria-label={`${member.full_name} avatar`}
+                      aria-label={t("avatar", { name: member.full_name })}
                       role="img"
                       className="h-12 w-12 shrink-0 rounded-full bg-[var(--ui-surface-strong)] bg-cover bg-center"
                       style={{ backgroundImage: `url(${member.avatar_url})` }}
@@ -72,19 +76,19 @@ export default async function TeamPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-[var(--ui-text)]">{member.full_name}</p>
                     {member.job_title ? (
-                      <p className="mt-1 truncate text-sm text-[var(--ui-text-muted)]">{member.job_title}</p>
+                      <p className="mt-1 truncate text-sm text-[var(--ui-text-muted)]">{(() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })()}</p>
                     ) : (
-                      <p className="mt-1 text-sm text-[var(--ui-text-subtle)]">Job title not provided</p>
+                      <p className="mt-1 text-sm text-[var(--ui-text-subtle)]">{t("jobTitleUnavailable")}</p>
                     )}
                   </div>
                 </div>
                 <div className="mt-5 flex items-center justify-between border-t border-[var(--ui-border-subtle)] pt-4">
                   <span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--ui-text-secondary)]">
-                    {member.system_role === "admin" ? "Admin" : "Employee"}
+                    {member.system_role === "admin" ? roles("administrator") : t("employee")}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--ui-success-text)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--ui-success-surface)]0" />
-                    {member.is_active ? "Active" : "Inactive"}
+                    {member.is_active ? t("active") : t("inactive")}
                   </span>
                 </div>
               </article>

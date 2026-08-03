@@ -44,12 +44,12 @@ export function instantToDateOnly(value: string): string {
   return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
-export function formatCalendarTime(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone: APPLICATION_TIME_ZONE, hour: "numeric", minute: "2-digit" }).format(new Date(value));
+export function formatCalendarTime(value: string, locale = "en"): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
-export function formatCalendarDateTime(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone: APPLICATION_TIME_ZONE, month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+export function formatCalendarDateTime(value: string, locale = "en"): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
 export function instantToWallInput(value: string): string {

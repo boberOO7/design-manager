@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   removeProjectMember,
@@ -16,6 +17,7 @@ export function RemoveProjectMemberButton({
   memberName: string;
   projectId: string;
 }) {
+  const t = useTranslations("ProjectWorkspace");
   const action = removeProjectMember.bind(null, projectId);
   const [state, formAction, isPending] = useActionState<ProjectMemberActionState, FormData>(
     action,
@@ -27,14 +29,14 @@ export function RemoveProjectMemberButton({
       <form
         action={formAction}
         onSubmit={(event) => {
-          if (!window.confirm(`Remove ${memberName} from this project?`)) {
+          if (!window.confirm(t("removeMember", { name: memberName }))) {
             event.preventDefault();
           }
         }}
       >
         <input type="hidden" name="assignment_id" value={assignmentId} />
         <Button type="submit" size="sm" variant="ghost" disabled={isPending}>
-          {isPending ? "Removing…" : "Remove"}
+          {isPending ? t("removing") : t("remove")}
         </Button>
       </form>
       {state.formError ? (

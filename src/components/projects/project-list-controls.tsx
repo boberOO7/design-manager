@@ -2,16 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_SORTS, type ProjectListFilters } from "@/lib/project-list-presentation";
-
-const labels = {
-  lifecycle: { all: "All lifecycles", planned: "Planned", active: "Active", paused: "Paused", completed: "Completed" },
-  health: { all: "All health", overdue: "Overdue", needs_attention: "Needs attention", deadline_soon: "Deadline soon", on_track: "On track", completed: "Completed" },
-  priority: { all: "All priorities", urgent: "Urgent", high: "High", normal: "Normal", low: "Low" },
-  sort: { operational: "Operational priority", deadline: "Deadline", name: "Name", health: "Health", progress: "Progress" },
-} as const;
+import { useTranslations } from "next-intl";
+import { PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, PROJECT_LIST_SORTS, PROJECT_LIST_SORT_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
 
 export function ProjectListControls({ filters }: { filters: ProjectListFilters }) {
+  const t = useTranslations("Projects");
+  const priority = useTranslations("Priority");
   const router = useRouter();
 
   function update(key: keyof ProjectListFilters, value: string) {
@@ -33,14 +29,14 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
   }
 
   return <div className="flex flex-wrap items-end gap-3 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3">
-    <FilterSelect label="Lifecycle" value={filters.lifecycle} options={PROJECT_LIST_LIFECYCLE_FILTERS} labels={labels.lifecycle} onChange={(value) => update("lifecycle", value)} />
-    <FilterSelect label="Health" value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} labels={labels.health} onChange={(value) => update("health", value)} />
-    <FilterSelect label="Priority" value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} labels={labels.priority} onChange={(value) => update("priority", value)} />
-    <FilterSelect label="Sort by" value={filters.sort} options={PROJECT_LIST_SORTS} labels={labels.sort} onChange={(value) => update("sort", value)} />
-    {(filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "operational") ? <Button type="button" variant="ghost" onClick={reset}>Reset filters</Button> : null}
+    <FilterSelect label={t("lifecycle")} value={filters.lifecycle} options={PROJECT_LIST_LIFECYCLE_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option])} onChange={(value) => update("lifecycle", value)} />
+    <FilterSelect label={t("health")} value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_HEALTH_LABEL_KEYS[option])} onChange={(value) => update("health", value)} />
+    <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
+    <FilterSelect label={t("sortBy")} value={filters.sort} options={PROJECT_LIST_SORTS} getOptionLabel={(option) => t(PROJECT_LIST_SORT_LABEL_KEYS[option])} onChange={(value) => update("sort", value)} />
+    {(filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "operational") ? <Button type="button" variant="ghost" onClick={reset}>{t("resetFilters")}</Button> : null}
   </div>;
 }
 
-function FilterSelect<T extends string>({ label, labels: optionLabels, onChange, options, value }: { label: string; labels: Record<T, string>; onChange: (value: string) => void; options: readonly T[]; value: T }) {
-  return <label className="grid min-w-32 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm font-medium text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{options.map((option) => <option key={option} value={option}>{optionLabels[option]}</option>)}</select></label>;
+function FilterSelect<T extends string>({ getOptionLabel, label, onChange, options, value }: { getOptionLabel: (option: T) => string; label: string; onChange: (value: string) => void; options: readonly T[]; value: T }) {
+  return <label className="grid min-w-32 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm font-medium text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{options.map((option) => <option key={option} value={option}>{getOptionLabel(option)}</option>)}</select></label>;
 }

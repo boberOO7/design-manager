@@ -3,17 +3,19 @@ import { MyTasksList } from "@/components/tasks/my-tasks-list";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getMyTasks } from "@/data/queries/tasks";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "My Tasks | StudioFlow",
 };
 
 export default async function MyTasksPage() {
+  const t = await getTranslations("Tasks");
   const [profile, tasks] = await Promise.all([getCurrentUserProfile(), getMyTasks()]);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Tasks" description="Real project work assigned specifically to you." />
+      <PageHeader title={t("myTasks")} description={t("myTasksDescription")} />
       {tasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-10 text-center">
           <h2 className="font-semibold text-[var(--ui-text)]">No tasks assigned</h2>

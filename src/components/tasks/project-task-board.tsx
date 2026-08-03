@@ -12,15 +12,14 @@ import {
 } from "@dnd-kit/react";
 import { GripVertical, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import {
   BOARD_COLUMNS,
   canMoveTask,
-  getTaskPriorityLabel,
   getTaskStatusForDrop,
-  getTaskStatusLabel,
   groupTasksByBoardColumn,
   isBoardColumnId,
   isTaskOverdue,
@@ -91,12 +90,6 @@ function isSuccessfulTaskStatusResponse(value: unknown): value is { success: tru
     && value.task !== null;
 }
 
-function getTaskStatusError(value: unknown): string | null {
-  return typeof value === "object" && value !== null && "formError" in value && typeof value.formError === "string"
-    ? value.formError
-    : null;
-}
-
 function TaskCardContent({
   isOverlay = false,
   isPending = false,
@@ -108,6 +101,10 @@ function TaskCardContent({
   showGrip?: boolean;
   task: ProjectTask;
 }) {
+  const t = useTranslations("Tasks");
+  const priority = useTranslations("Priority");
+  const status = useTranslations("Status");
+  const locale = useLocale();
   const overdue = isTaskOverdue(task);
   const progress = calculateTaskProgress(task);
 
@@ -118,17 +115,17 @@ function TaskCardContent({
           {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
           <h4 className="min-w-0 font-medium leading-5 text-[var(--ui-text)]">{task.title}</h4>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{getTaskPriorityLabel(task.priority)}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
       </div>
-      <p className="mt-2 truncate text-sm text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? "Unassigned"}</p>
-      <div className="mt-3"><div className="flex items-center justify-between gap-2 text-xs"><span className="text-[var(--ui-text-muted)]">{progress.source === "checklist" ? `Checklist ${progress.completedChecklistCount}/${progress.checklistCount}` : task.status === "review" ? "Awaiting approval" : task.status === "completed" ? "Approved" : task.status === "in_progress" ? "Manual production" : "Not started"}</span><span className="ui-numeric font-semibold text-[var(--ui-text-secondary)]">{progress.presentedOverallPercent}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={`${task.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
+      <p className="mt-2 truncate text-sm text-[var(--ui-text-muted)]">{task.assignee?.full_name ?? t("unassigned")}</p>
+      <div className="mt-3"><div className="flex items-center justify-between gap-2 text-xs"><span className="text-[var(--ui-text-muted)]">{progress.source === "checklist" ? t("checklistProgress", { completed: progress.completedChecklistCount, total: progress.checklistCount }) : task.status === "review" ? t("awaitingApproval") : task.status === "completed" ? t("approved") : task.status === "in_progress" ? t("manualProduction") : t("notStarted")}</span><span className="ui-numeric font-semibold text-[var(--ui-text-secondary)]">{progress.presentedOverallPercent}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("progressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.overallPercent}%` }} /></div></div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]">
-        {task.due_date ? <span>Due {formatDateShort(task.due_date)}</span> : <span>No due date</span>}
-        {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-2 py-0.5 font-medium text-[var(--ui-danger-text)]">Overdue</span> : null}
-        {task.status === "cancelled" ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{getTaskStatusLabel(task.status)}</span> : null}
+        {task.due_date ? <span>{t("due", { date: formatDateShort(task.due_date, locale) })}</span> : <span>{t("noDueDate")}</span>}
+        {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-2 py-0.5 font-medium text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
+        {task.status === "cancelled" ? <span className={`rounded-full px-2 py-0.5 font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
         {isPending ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ui-info-surface)] px-2 py-0.5 font-medium text-[var(--ui-info-text)]">
-            <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> Saving
+            <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> {t("saving")}
           </span>
         ) : null}
       </div>
@@ -147,6 +144,7 @@ function DraggableTaskCard({
   shouldSuppressOpen: () => boolean;
   task: ProjectTask;
 }) {
+  const t = useTranslations("Tasks");
   const { isDragging, ref } = useDraggable({
     id: task.id,
     disabled: isPending,
@@ -160,7 +158,7 @@ function DraggableTaskCard({
       ref={ref}
       role="button"
       tabIndex={isPending ? -1 : 0}
-      aria-label={`Open task ${task.title}. Drag the card to move it; keyboard drag is also available.`}
+      aria-label={t("openTaskDrag", { name: task.title })}
       aria-disabled={isPending}
       aria-busy={isPending}
       onClick={() => {
@@ -181,8 +179,9 @@ function DraggableTaskCard({
 }
 
 function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId: string) => void }) {
+  const t = useTranslations("Tasks");
   return (
-    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={`Open task ${task.title}`}>
+    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
       <TaskCardContent task={task} />
     </button>
   );
@@ -211,6 +210,7 @@ function BoardColumn({
   shouldSuppressOpen: () => boolean;
   tasks: ProjectTask[];
 }) {
+  const t = useTranslations("Tasks");
   const acceptsActiveTask = activeTask !== null
     && getTaskStatusForDrop(activeTask.status, columnId) !== null;
   const { isDropTarget, ref } = useDroppable({
@@ -238,11 +238,11 @@ function BoardColumn({
         <span className="rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{tasks.length}</span>
       </div>
       <div className="mb-2 h-9" aria-hidden={!isHighlighted}>
-        {isHighlighted ? <p className="rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-center text-xs font-medium text-[var(--ui-text-secondary)]">Release to move to {label}</p> : null}
+        {isHighlighted ? <p className="rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-center text-xs font-medium text-[var(--ui-text-secondary)]">{t("releaseToMove", { status: label })}</p> : null}
       </div>
       <div className="flex flex-1 flex-col gap-3">
         {tasks.length === 0 ? (
-          <div className="flex min-h-36 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-5 text-center text-sm text-[var(--ui-text-muted)]">No tasks</div>
+          <div className="flex min-h-36 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-5 text-center text-sm text-[var(--ui-text-muted)]">{t("noTasks")}</div>
         ) : tasks.map((task) => {
           const canDrag = canMoveTask({
             assigneeId: task.assignee_id,
@@ -288,6 +288,8 @@ export function ProjectTaskBoard({
   onTasksChange?: (tasks: ProjectTask[]) => void;
   onProjectStatusChange?: (status: ProjectLifecycleStatus) => void;
 }) {
+  const t = useTranslations("Tasks");
+  const statusLabels = useTranslations("Status");
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -364,7 +366,7 @@ export function ProjectTaskBoard({
         // A non-JSON response is handled as a safe failed update below.
       }
       if (!response.ok || !isSuccessfulTaskStatusResponse(result)) {
-        throw new Error(getTaskStatusError(result) ?? "The task status could not be updated.");
+        throw new Error(t("statusUpdateFailed"));
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);
@@ -375,7 +377,7 @@ export function ProjectTaskBoard({
       previousStatusesRef.current.delete(taskId);
       previousTasksRef.current.delete(taskId);
       setTaskPending(taskId, false);
-      setAnnouncement(`Task ${taskTitle} moved to ${targetLabel}.`);
+      setAnnouncement(t("taskMoved", { name: taskTitle, status: targetLabel }));
     } catch (error) {
       const rollbackTask = previousTasksRef.current.get(taskId);
       const rollbackStatus = previousStatusesRef.current.get(taskId) ?? previousStatus;
@@ -389,9 +391,10 @@ export function ProjectTaskBoard({
       setLocalTasks(rolledBackTasks);
       onProjectStatusChange?.(previousProjectStatus);
       setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : "The task status could not be updated.";
-      setBoardError(`${message} The previous status was restored.`);
-      setAnnouncement(`${message} The previous status was restored.`);
+      const message = error instanceof Error ? error.message : t("statusUpdateFailed");
+      const restoredMessage = t("statusRestored", { message });
+      setBoardError(restoredMessage);
+      setAnnouncement(restoredMessage);
     }
   }
 
@@ -403,7 +406,7 @@ export function ProjectTaskBoard({
     suppressCardOpenRef.current = true;
     setActiveTaskId(task.id);
     setBoardError(null);
-    setAnnouncement(`Moving task ${task.title}.`);
+    setAnnouncement(t("movingTask", { name: task.title }));
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -417,7 +420,8 @@ export function ProjectTaskBoard({
     if (!task || pendingTaskIdsRef.current.has(task.id)) return;
     const targetStatus = getTaskStatusForDrop(task.status, targetColumnId);
     if (!targetStatus) return;
-    const targetLabel = BOARD_COLUMNS.find((column) => column.id === targetColumnId)?.label;
+    if (targetStatus === "review" && !window.confirm(t("confirmClientReview"))) return;
+    const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
     if (!targetLabel) return;
 
     previousStatusesRef.current.set(task.id, task.status);
@@ -453,8 +457,8 @@ export function ProjectTaskBoard({
     <section aria-labelledby="project-board-heading">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
-          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">Project board</h2>
-          <p className="text-sm text-[var(--ui-text-muted)]">Drag permitted tasks between columns to update their status.</p>
+          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
+          <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
         {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} templates={templates} /> : null}
       </div>
@@ -470,7 +474,7 @@ export function ProjectTaskBoard({
               columnId={column.id}
               currentUserId={currentUserId}
               isProjectReadOnly={isProjectReadOnly}
-              label={column.label}
+              label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
               onOpenTask={setSelectedTaskId}
               pendingTaskIds={pendingTaskIds}
               shouldSuppressOpen={() => suppressCardOpenRef.current}

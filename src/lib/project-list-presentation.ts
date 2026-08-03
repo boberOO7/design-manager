@@ -12,6 +12,22 @@ export type ProjectListFilters = {
   sort: (typeof PROJECT_LIST_SORTS)[number];
 };
 
+export const PROJECT_LIST_LIFECYCLE_LABEL_KEYS = {
+  all: "allLifecycles", planned: "lifecyclePlanned", active: "lifecycleActive", paused: "lifecyclePaused", completed: "lifecycleCompleted",
+} as const satisfies Record<ProjectListFilters["lifecycle"], "allLifecycles" | "lifecyclePlanned" | "lifecycleActive" | "lifecyclePaused" | "lifecycleCompleted">;
+
+export const PROJECT_LIST_HEALTH_LABEL_KEYS = {
+  all: "allHealth", overdue: "healthOverdue", needs_attention: "healthNeedsAttention", deadline_soon: "healthDeadlineSoon", on_track: "healthOnTrack", completed: "healthCompleted",
+} as const satisfies Record<ProjectListFilters["health"], "allHealth" | "healthOverdue" | "healthNeedsAttention" | "healthDeadlineSoon" | "healthOnTrack" | "healthCompleted">;
+
+export const PROJECT_LIST_PRIORITY_LABEL_KEYS = {
+  all: "allPriorities", urgent: "urgent", high: "high", normal: "normal", low: "low",
+} as const satisfies Record<ProjectListFilters["priority"], "allPriorities" | "urgent" | "high" | "normal" | "low">;
+
+export const PROJECT_LIST_SORT_LABEL_KEYS = {
+  operational: "operationalPriority", deadline: "deadline", name: "name", health: "health", progress: "progress",
+} as const satisfies Record<ProjectListFilters["sort"], "operationalPriority" | "deadline" | "name" | "health" | "progress">;
+
 export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; progress_method: string; total_area_m2: number }> = T & {
   health: ProjectHealth;
   healthReason: string | null;

@@ -7,8 +7,9 @@ export default getRequestConfig(async () => {
   const headerStore = await headers();
   const locale = resolveLocale(cookieStore.get(localeCookieName)?.value, headerStore.get("accept-language"));
 
+  const baseMessages = (await import(`../../messages/${locale}.json`)).default;
   return {
     locale: locale ?? defaultLocale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
+    messages: baseMessages,
   };
 });

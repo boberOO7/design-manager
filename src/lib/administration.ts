@@ -1,15 +1,9 @@
 import { addCalendarDays, parseDateOnly } from "@/lib/calendar";
 import type { TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
+import { timeOffRequestTypeKey } from "@/lib/time-off-labels";
 import type { SystemRole } from "@/types";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 
-const timeOffRequestTypeLabels = {
-  vacation: "Vacation",
-  day_off: "Day off",
-  medical_appointment: "Medical appointment",
-  sick_leave: "Sick leave",
-  other: "Other",
-} as const satisfies Record<TimeOffRequestType, string>;
 
 export type AdministrationRequest = {
   id: string;
@@ -41,8 +35,8 @@ export type AdministrationModel = {
   team: { activeMembers: number; administrators: number; inactiveMembers: number };
 };
 
-export function getTimeOffRequestTypeLabel(requestType: TimeOffRequestType): string {
-  return timeOffRequestTypeLabels[requestType];
+export function getTimeOffRequestTypeLabel(requestType: TimeOffRequestType): (typeof timeOffRequestTypeKey)[TimeOffRequestType] {
+  return timeOffRequestTypeKey[requestType];
 }
 
 export function canReceiveAdministrationModel(role: SystemRole): boolean {

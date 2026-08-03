@@ -43,19 +43,20 @@ export function getActivityChangeText(changes: Json): string | null {
   return null;
 }
 
-export function groupActivityByLocalDate<T extends { created_at: string }>(items: T[]): Array<{ date: string; items: T[] }> {
+export function groupActivityByLocalDate<T extends { created_at: string }>(items: T[], locale = "en"): Array<{ date: string; items: T[] }> {
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    const date = new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date(item.created_at));
+    const date = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date(item.created_at));
     groups.set(date, [...(groups.get(date) ?? []), item]);
   }
   return [...groups].map(([date, groupedItems]) => ({ date, items: groupedItems }));
 }
 
-export function formatRelativeTime(value: string, now = new Date()): string {
+export function formatRelativeTime(value: string, now = new Date(), locale = "en"): string {
   const seconds = Math.max(0, Math.floor((now.getTime() - new Date(value).getTime()) / 1000));
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 60) return locale === "uk" ? "щойно" : "just now";
+  const unit = seconds < 3600 ? "minute" : seconds < 86400 ? "hour" : "day";
+  const count = Math.floor(seconds / (unit === "minute" ? 60 : unit === "hour" ? 3600 : 86400));
+  if (locale === "en") return `${count}${unit === "minute" ? "m" : unit === "hour" ? "h" : "d"} ago`;
+  return new Intl.RelativeTimeFormat(locale, { numeric: "always", style: "short" }).format(-count, unit);
 }

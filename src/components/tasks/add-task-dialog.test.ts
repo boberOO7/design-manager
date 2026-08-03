@@ -6,15 +6,15 @@ const dialogPath = new URL("./add-task-dialog.tsx", import.meta.url);
 describe("task creation checklist template contract", () => {
   it("keeps templates optional and submits only the edited title and weight fields", async () => {
     const source = await readFile(dialogPath, "utf8");
-    expect(source).toContain("No checklist template");
+    expect(source).toContain('templatesT("noChecklistTemplate")');
     expect(source).toContain('name="checklist_items"');
     expect(source).toContain("checklistItems.map(({ title, weight }) => ({ title, weight }))");
-    expect(source).toContain("Remove ${item.title} from checklist template");
-    expect(source).toContain("total weight {totalWeight}");
+    expect(source).toContain('templatesT("remove", { title: item.title })');
+    expect(source).toContain('templatesT("totalWeight", { weight: totalWeight })');
     expect(source).toContain('aria-expanded={isCustomizerOpen}');
-    expect(source).toContain('"Customize"');
-    expect(source).toContain('"Collapse"');
-    expect(source).toContain("Changing the template will replace your checklist edits");
+    expect(source).toContain('templatesT("customize")');
+    expect(source).toContain('templatesT("collapse")');
+    expect(source).toContain('templatesT("changingConfirm")');
     expect(source).toContain("sticky bottom-0");
   });
 
