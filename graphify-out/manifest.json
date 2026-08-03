@@ -1470,8 +1470,8 @@
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
-    "mtime": 1785752036.826067,
-    "ast_hash": "617bf0e8addb8468e6ed4830e94c73a6",
+    "mtime": 1785752495.6779368,
+    "ast_hash": "8cfc6ada6554c6b0380b9dfb1e14b517",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -1735,18 +1735,18 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1785752122.9220428,
-    "ast_hash": "ce3c485f90d7cd6e48ba8f664a0da8c7",
+    "mtime": 1785753321.877698,
+    "ast_hash": "3e8f370f35f0fee281e4368000d20cde",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1785752123.030043,
-    "ast_hash": "482fbcf1bc2a3c8530c3da72d1c5573e",
+    "mtime": 1785753322.037698,
+    "ast_hash": "03789d465b03407184391db5bf1a4a49",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
-    "mtime": 1785752122.742043,
-    "ast_hash": "eb6e7a7c0ba72675d2dbe580d9422515",
+    "mtime": 1785753322.173698,
+    "ast_hash": "157a2fed5571645c5d3eac315d0ba313",
     "semantic_hash": ""
   },
   "src/i18n/config.ts": {
@@ -1757,6 +1757,16 @@
   "src/i18n/request.ts": {
     "mtime": 1785752122.6260428,
     "ast_hash": "730b1b00590bba5ce08d099e5a465094",
+    "semantic_hash": ""
+  },
+  "src/components/layout/language-selector.test.ts": {
+    "mtime": 1785753322.3696978,
+    "ast_hash": "c9ce9b28a9323c4a4ea497cecacc7e5b",
+    "semantic_hash": ""
+  },
+  "src/i18n/config.test.ts": {
+    "mtime": 1785752501.9779348,
+    "ast_hash": "3ac6da772a205bea15ab95fce6f5e43c",
     "semantic_hash": ""
   }
 }

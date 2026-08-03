@@ -3,6 +3,7 @@
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { ShellControl } from "@/components/layout/shell-control";
 import { localeCookieName, type AppLocale } from "@/i18n/config";
 
 export function LanguageSelector() {
@@ -10,18 +11,21 @@ export function LanguageSelector() {
   const router = useRouter();
   const t = useTranslations("Account");
 
-  function changeLocale(nextLocale: AppLocale) {
-    if (nextLocale === locale) return;
+  const nextLocale: AppLocale = locale === "en" ? "uk" : "en";
+  const label = t(nextLocale === "en" ? "switchToEnglish" : "switchToUkrainian");
+
+  function switchLocale() {
     document.cookie = `${localeCookieName}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
     router.refresh();
   }
 
-  return <label className="flex min-h-11 items-center gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] px-2 text-[var(--ui-text-secondary)]">
+  return <ShellControl
+    aria-label={label}
+    title={label}
+    onClick={switchLocale}
+    className="min-w-11 gap-1.5 px-2.5 font-semibold tracking-wide"
+  >
     <Languages size={16} aria-hidden="true" />
-    <span className="sr-only">{t("language")}</span>
-    <select aria-label={t("language")} value={locale} onChange={(event) => changeLocale(event.target.value as AppLocale)} className="min-w-0 bg-transparent text-sm font-medium outline-none">
-      <option value="en">English</option>
-      <option value="uk">Українська</option>
-    </select>
-  </label>;
+    <span className="text-xs leading-none">{locale === "en" ? "EN" : "УКР"}</span>
+  </ShellControl>;
 }
