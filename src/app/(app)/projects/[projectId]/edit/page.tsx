@@ -56,6 +56,8 @@ export default async function EditProjectPage({
           defaultValues={{
             name: project.name,
             project_code: project.project_code ?? undefined,
+            project_type: project.project_type ?? undefined,
+            city: project.city ?? undefined,
             client_name: project.client_name ?? undefined,
             description: project.description ?? undefined,
             total_area_m2: project.total_area_m2,

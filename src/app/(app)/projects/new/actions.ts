@@ -45,6 +45,8 @@ export async function createProject(
       created_by: membership.authenticatedUserId,
       name: project.name,
       project_code: project.project_code || null,
+      project_type: project.project_type || null,
+      city: project.city || null,
       client_name: project.client_name || null,
       description: project.description || null,
       total_area_m2: project.total_area_m2,

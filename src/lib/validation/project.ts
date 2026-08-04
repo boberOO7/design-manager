@@ -13,6 +13,8 @@ const dateSchema = z.string().refine(
 const projectFields = {
   name: z.string().trim().min(1, "Project name is required").max(200, "Project name is too long"),
   project_code: z.string().trim().max(50, "Project code is too long").optional(),
+  project_type: z.string().trim().max(100, "Project type is too long").optional(),
+  city: z.string().trim().max(100, "City is too long").optional(),
   client_name: z.string().trim().max(200, "Client name is too long").optional(),
   description: z.string().trim().max(5000, "Description is too long").optional(),
   total_area_m2: z.coerce
@@ -61,6 +63,8 @@ export function getProjectFormInput(formData: FormData) {
   return {
     name: getOptionalString(formData, "name"),
     project_code: getOptionalString(formData, "project_code"),
+    project_type: getOptionalString(formData, "project_type"),
+    city: getOptionalString(formData, "city"),
     client_name: getOptionalString(formData, "client_name"),
     description: getOptionalString(formData, "description"),
     total_area_m2: getOptionalString(formData, "total_area_m2"),

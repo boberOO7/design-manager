@@ -59,6 +59,18 @@ export function ProjectForm({
         </label>
 
         <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
+          {t("projectType")}
+          <input name="project_type" defaultValue={defaultValues.project_type} className={inputClassName} autoComplete="off" {...errorAttributes("project_type")} />
+          {fieldError("project_type") ? <p id="project_type-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{fieldError("project_type")}</p> : null}
+        </label>
+
+        <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
+          {t("city")}
+          <input name="city" defaultValue={defaultValues.city} className={inputClassName} autoComplete="address-level2" {...errorAttributes("city")} />
+          {fieldError("city") ? <p id="city-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{fieldError("city")}</p> : null}
+        </label>
+
+        <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
           {t("clientName")}
           <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="organization" {...errorAttributes("client_name")} />
           {fieldError("client_name") ? <p id="client_name-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{fieldError("client_name")}</p> : null}

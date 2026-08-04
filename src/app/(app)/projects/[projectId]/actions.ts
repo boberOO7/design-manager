@@ -72,6 +72,8 @@ export async function updateProject(
     .update({
       name: values.name,
       project_code: values.project_code || null,
+      project_type: values.project_type || null,
+      city: values.city || null,
       client_name: values.client_name || null,
       description: values.description || null,
       total_area_m2: values.total_area_m2,

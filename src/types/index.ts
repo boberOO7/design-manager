@@ -24,6 +24,8 @@ export interface Project {
   studio_id: string;
   name: string;
   project_code?: string | null;
+  project_type?: string | null;
+  city?: string | null;
   client_name?: string | null;
   description?: string | null;
   total_area_m2: number;

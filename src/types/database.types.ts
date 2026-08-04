@@ -334,6 +334,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           client_name: string | null
+          city: string | null
           completed_at: string | null
           created_at: string
           created_by: string
@@ -344,6 +345,7 @@ export type Database = {
           priority: string
           progress_method: string
           project_code: string | null
+          project_type: string | null
           start_date: string
           status: string
           studio_id: string
@@ -353,6 +355,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           client_name?: string | null
+          city?: string | null
           completed_at?: string | null
           created_at?: string
           created_by: string
@@ -363,6 +366,7 @@ export type Database = {
           priority?: string
           progress_method?: string
           project_code?: string | null
+          project_type?: string | null
           start_date: string
           status?: string
           studio_id: string
@@ -372,6 +376,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           client_name?: string | null
+          city?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string
@@ -382,6 +387,7 @@ export type Database = {
           priority?: string
           progress_method?: string
           project_code?: string | null
+          project_type?: string | null
           start_date?: string
           status?: string
           studio_id?: string

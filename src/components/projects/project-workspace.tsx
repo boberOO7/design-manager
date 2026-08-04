@@ -3,7 +3,6 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { ProjectContextBand, type ProjectContextProject } from "@/components/projects/project-context-band";
 import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
-import { ProjectProgressSettings } from "@/components/projects/project-progress-settings";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
 import { getProjectTaskSnapshotUpdate } from "@/lib/tasks";
@@ -37,7 +36,6 @@ export function ProjectWorkspace({
   }, []);
   return <>
     <ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} />
-    <ProjectProgressSettings canManage={canManage} isReadOnly={isProjectReadOnly || status === "completed"} project={project} tasks={contextTasks} />
     {navigation}
     <ProjectTaskBoard attributionMode={attributionMode} canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;
