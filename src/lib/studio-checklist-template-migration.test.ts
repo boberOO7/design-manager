@@ -8,7 +8,10 @@ describe("studio checklist template migration", () => {
     const source = await readFile(migrationPath, "utf8");
     expect(source).toContain("create table public.checklist_templates");
     expect(source).toContain("create table public.checklist_template_items");
-    expect(source).toContain("on conflict (studio_id, name) do nothing");
+    expect(source).toContain(
+      ") as preset(name)\non conflict do nothing;",
+    );
+    expect(source).not.toContain("on conflict (studio_id, name)");
     expect(source).toContain("('Interior design workflow')");
     expect(source).toContain("('Architectural workflow')");
     expect(source).toContain("position integer not null");
@@ -29,7 +32,9 @@ describe("studio checklist template migration", () => {
 
   it("protects immutable ownership and normalizes names and stage titles", async () => {
     const source = await readFile(migrationPath, "utf8");
-    expect(source).toContain("on public.checklist_templates(studio_id, lower(btrim(name)))");
+    expect(source).toContain(
+      "create unique index checklist_templates_studio_normalized_name_key\non public.checklist_templates(studio_id, lower(btrim(name)));",
+    );
     expect(source).toContain("normalized_name text := btrim(p_name)");
     expect(source).toContain("btrim(item.title)");
     expect(source).toContain("A checklist template with this name already exists");

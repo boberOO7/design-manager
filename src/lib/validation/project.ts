@@ -1,6 +1,25 @@
 import { z } from "zod";
+import { isCountryCode } from "@/lib/countries";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+export const PROJECT_TYPE_KEYS = [
+  "residential",
+  "commercial",
+  "office",
+  "retail",
+  "hospitality",
+  "public",
+  "industrial",
+  "mixed_use",
+  "other",
+] as const;
+
+export type ProjectTypeKey = (typeof PROJECT_TYPE_KEYS)[number];
+
+export function isProjectTypeKey(value: string | null | undefined): value is ProjectTypeKey {
+  return PROJECT_TYPE_KEYS.some((key) => key === value);
+}
 const dateSchema = z.string().refine(
   (value) => {
     if (!datePattern.test(value)) return false;
@@ -12,8 +31,8 @@ const dateSchema = z.string().refine(
 
 const projectFields = {
   name: z.string().trim().min(1, "Project name is required").max(200, "Project name is too long"),
-  project_code: z.string().trim().max(50, "Project code is too long").optional(),
-  project_type: z.string().trim().max(100, "Project type is too long").optional(),
+  project_type: z.preprocess((value) => value === "" ? null : value, z.enum(PROJECT_TYPE_KEYS).nullable()),
+  country_code: z.string().trim().refine(isCountryCode, "Choose a valid country"),
   city: z.string().trim().max(100, "City is too long").optional(),
   client_name: z.string().trim().max(200, "Client name is too long").optional(),
   description: z.string().trim().max(5000, "Description is too long").optional(),
@@ -52,6 +71,7 @@ export type ProjectFormField = keyof EditProjectFormValues;
 export type ProjectFormActionState = {
   formError?: string;
   fieldErrors?: Partial<Record<ProjectFormField, string>>;
+  projectId?: string;
 };
 
 function getOptionalString(formData: FormData, field: ProjectFormField): string | undefined {
@@ -62,8 +82,8 @@ function getOptionalString(formData: FormData, field: ProjectFormField): string 
 export function getProjectFormInput(formData: FormData) {
   return {
     name: getOptionalString(formData, "name"),
-    project_code: getOptionalString(formData, "project_code"),
     project_type: getOptionalString(formData, "project_type"),
+    country_code: getOptionalString(formData, "country_code"),
     city: getOptionalString(formData, "city"),
     client_name: getOptionalString(formData, "client_name"),
     description: getOptionalString(formData, "description"),
@@ -72,6 +92,17 @@ export function getProjectFormInput(formData: FormData) {
     start_date: getOptionalString(formData, "start_date"),
     due_date: getOptionalString(formData, "due_date"),
   };
+}
+
+export function getKyivDateOnly(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (type: "year" | "month" | "day") => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
 export function isProjectPriority(

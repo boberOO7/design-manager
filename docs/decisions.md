@@ -76,6 +76,25 @@
 - Completed projects require all tasks closed and remain read-only until an
   administrator reopens them.
 
+## Structured project creation metadata
+
+- Project creation is a compact, URL-preserving modal on the Projects list. The
+  legacy `/projects/new` route redirects to `/projects`; editing continues to use
+  the same shared form implementation.
+- `start_date` is the user-editable planned start of project work. New projects
+  default it to the current `Europe/Kyiv` calendar date, and lifecycle activation
+  never rewrites it.
+- Project codes are immutable UI references generated in PostgreSQL as
+  `SPACE_{YEAR}_{NNN}` from a private studio/year counter. Allocation is atomic,
+  existing manual codes remain valid, and codes are unique within a studio.
+- Project types store canonical language-neutral keys. Existing legacy values
+  remain readable until an administrator explicitly selects a canonical value.
+- Project countries store required ISO 3166-1 alpha-2 codes and default existing
+  and new records to `UA`. Country names are localized at presentation time.
+- City names remain text. GeoNames suggestions are fetched only through a
+  server-side provider using `GEONAMES_USERNAME`, with country filtering and
+  short caching; manual city entry remains available when lookup is unsuitable.
+
 ## Project archive lifecycle
 
 - Archived projects use `status = archived` and retain their project data.

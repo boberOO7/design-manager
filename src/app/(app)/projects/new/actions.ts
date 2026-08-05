@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -38,14 +37,14 @@ export async function createProject(
 
   const supabase = await createClient();
   const project = parsed.data;
-  const { error: insertError } = await supabase
+  const { data, error: insertError } = await supabase
     .from("projects")
     .insert({
       studio_id: membership.studio_id,
       created_by: membership.authenticatedUserId,
       name: project.name,
-      project_code: project.project_code || null,
-      project_type: project.project_type || null,
+      project_type: project.project_type,
+      country_code: project.country_code,
       city: project.city || null,
       client_name: project.client_name || null,
       description: project.description || null,
@@ -58,11 +57,11 @@ export async function createProject(
     .select("id")
     .single();
 
-  if (insertError) {
+  if (insertError || !data) {
     console.error("Unable to create project", insertError);
     return { formError: "The project could not be created. Please try again." };
   }
 
   revalidatePath("/projects");
-  redirect("/projects");
+  return { projectId: data.id };
 }

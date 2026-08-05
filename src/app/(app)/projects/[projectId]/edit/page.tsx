@@ -55,8 +55,8 @@ export default async function EditProjectPage({
           cancelHref={`/projects/${project.id}`}
           defaultValues={{
             name: project.name,
-            project_code: project.project_code ?? undefined,
             project_type: project.project_type ?? undefined,
+            country_code: project.country_code,
             city: project.city ?? undefined,
             client_name: project.client_name ?? undefined,
             description: project.description ?? undefined,

@@ -25,6 +25,8 @@
 - [x] Implement project editing.
 - [x] Implement project archive and restore.
 - [x] Implement project-member assignment.
+- [x] Deliver compact modal project creation with structured type, country/city,
+  planned-start, and automatic project-code metadata.
 - [ ] Complete the Projects presentation milestone: operational desktop list and responsive project cards.
 
 ## Tasks and progress

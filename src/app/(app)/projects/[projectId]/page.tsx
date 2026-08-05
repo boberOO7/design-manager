@@ -12,7 +12,9 @@ import { getProjectActivity } from "@/data/queries/project-activity";
 import { getAssignableProjectMembers, getAssignableStudioMembers, getProjectMembers } from "@/data/queries/project-members";
 import { getProjectTasks } from "@/data/queries/tasks";
 import { getStudioChecklistTemplates } from "@/data/queries/checklist-templates";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
+import { getCountryName } from "@/lib/countries";
+import { isProjectTypeKey } from "@/lib/validation/project";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { archiveProject, restoreProject } from "./actions";
@@ -51,6 +53,17 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
 }
 
 async function ProjectDetails({ locale, project }: { locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
-  const t = await getTranslations("ProjectWorkspace");
-  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]"><h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectDetails")}</h2><dl className="mt-4 grid gap-5 text-sm md:grid-cols-2"><div><dt className="text-[var(--ui-text-muted)]">{t("startDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.start_date, locale)}</dd></div>{project.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.completed_at, locale)}</dd></div> : null}{project.archived_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("archiveDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.archived_at, locale)}</dd></div> : null}{project.description ? <div className="md:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("description")}</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ui-text-secondary)]">{project.description}</dd></div> : null}</dl></section>;
+  const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
+  const typeLabel = project.project_type ? (isProjectTypeKey(project.project_type) ? projectTypes(project.project_type) : project.project_type) : null;
+  const items = [
+    { label: form("projectCode"), value: project.project_code },
+    { label: form("projectType"), value: typeLabel },
+    { label: form("clientName"), value: project.client_name },
+    { label: form("country"), value: getCountryName(project.country_code, locale) },
+    { label: form("city"), value: project.city },
+    { label: form("totalArea"), value: `${formatNumber(project.total_area_m2, locale)} m²` },
+    { label: t("plannedStartDate"), value: formatDate(project.start_date, locale) },
+    { label: form("dueDate"), value: project.due_date ? formatDate(project.due_date, locale) : null },
+  ];
+  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]"><h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectDetails")}</h2><dl className="mt-4 grid gap-5 text-sm md:grid-cols-2">{items.map((item) => <div key={item.label}><dt className="text-[var(--ui-text-muted)]">{item.label}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{item.value ?? t("notAvailable")}</dd></div>)}{project.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.completed_at, locale)}</dd></div> : null}{project.archived_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("archiveDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.archived_at, locale)}</dd></div> : null}{project.description ? <div className="md:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("description")}</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ui-text-secondary)]">{project.description}</dd></div> : null}</dl></section>;
 }

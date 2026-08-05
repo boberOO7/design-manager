@@ -77,6 +77,6 @@ describe("manual lifecycle transitions", () => {
     expect(canUpdateProjectMetadata("active")).toBe(true);
   });
   it("rejects lifecycle status in the normal project-edit validator", () => {
-    expect(editProjectSchema.safeParse({ name: "Project", project_code: "", client_name: "", description: "", total_area_m2: 10, priority: "normal", start_date: "2026-07-28", due_date: "", status: "active" }).success).toBe(false);
+    expect(editProjectSchema.safeParse({ name: "Project", project_type: "", country_code: "UA", city: "", client_name: "", description: "", total_area_m2: 10, priority: "normal", start_date: "2026-07-28", due_date: "", status: "active" }).success).toBe(false);
   });
 });

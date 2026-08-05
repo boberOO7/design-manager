@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   editProjectSchema,
   getProjectFormInput,
+  isProjectTypeKey,
   type ProjectFormActionState,
   type ProjectFormField,
 } from "@/lib/validation/project";
@@ -45,7 +46,16 @@ export async function updateProject(
     return { formError: "Project status is managed through lifecycle actions." };
   }
 
-  const parsed = editProjectSchema.safeParse(getProjectFormInput(formData));
+  const input = getProjectFormInput(formData);
+  const preserveLegacyProjectType = Boolean(
+    project.project_type
+    && !isProjectTypeKey(project.project_type)
+    && input.project_type === project.project_type,
+  );
+  const parsed = editProjectSchema.safeParse({
+    ...input,
+    project_type: preserveLegacyProjectType ? "" : input.project_type,
+  });
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     const fieldErrors: Partial<Record<ProjectFormField, string>> = {};
@@ -71,8 +81,8 @@ export async function updateProject(
     .from("projects")
     .update({
       name: values.name,
-      project_code: values.project_code || null,
-      project_type: values.project_type || null,
+      ...(preserveLegacyProjectType ? {} : { project_type: values.project_type }),
+      country_code: values.country_code,
       city: values.city || null,
       client_name: values.client_name || null,
       description: values.description || null,

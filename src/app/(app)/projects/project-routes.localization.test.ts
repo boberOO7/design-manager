@@ -7,17 +7,14 @@ const newProjectPage = new URL("./new/page.tsx", import.meta.url);
 const editProjectPage = new URL("./[projectId]/edit/page.tsx", import.meta.url);
 
 describe("project create and edit route localization", () => {
-  it("connects route headings, descriptions, and metadata to canonical messages", async () => {
+  it("redirects the legacy create route and keeps edit route copy canonical", async () => {
     const [newSource, editSource] = await Promise.all([
       readFile(newProjectPage, "utf8"),
       readFile(editProjectPage, "utf8"),
     ]);
 
-    expect(newSource).toContain('getTranslations("Projects")');
-    expect(newSource).toContain('title={t("newProject")}');
-    expect(newSource).toContain('description={t("newProjectDescription")}');
-    expect(newSource).toContain('title: t("newProjectMetadata")');
-    expect(newSource).not.toContain('title="New project"');
+    expect(newSource).toContain('redirect("/projects")');
+    expect(newSource).not.toContain("<ProjectForm");
 
     expect(editSource).toContain('getTranslations("Projects")');
     expect(editSource).toContain('title={t("editProject")}');

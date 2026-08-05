@@ -245,13 +245,13 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/actions.ts": {
-    "mtime": 1785784171.936815,
-    "ast_hash": "29f555a65652cd900b620e1f319f8461",
+    "mtime": 1785965407.9838178,
+    "ast_hash": "456a1abc4c0cf3c3dabe27c30e1dbf45",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/edit/page.tsx": {
-    "mtime": 1785784172.088815,
-    "ast_hash": "b23e6b63437ce4c04c2da7af38c4873e",
+    "mtime": 1785965408.1318178,
+    "ast_hash": "53c949f4dd26fc0c8efb03dd891d340d",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/member-actions.ts": {
@@ -260,8 +260,8 @@
     "semantic_hash": "390151c0f09bbf8265554ffc7ead1b38"
   },
   "src/app/(app)/projects/[projectId]/page.tsx": {
-    "mtime": 1785755801.124984,
-    "ast_hash": "d548143c6391ee7ee4fe9e8545094e0e",
+    "mtime": 1785965470.6438153,
+    "ast_hash": "fb2a3ccb799a6988d0610d06b4f5ce76",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
@@ -270,18 +270,18 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/actions.ts": {
-    "mtime": 1785784171.784815,
-    "ast_hash": "5cd2403b50ff90ee8f6d3a59d56cd85f",
+    "mtime": 1785965173.7678277,
+    "ast_hash": "f8f6f01edbc6e78a46f6d18f347197d6",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/page.tsx": {
-    "mtime": 1785762979.6829169,
-    "ast_hash": "fef401923bd35183e30476f9b4ce5579",
+    "mtime": 1785965408.8078177,
+    "ast_hash": "827b0595892b9afe16d9bbcca3e16058",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/page.tsx": {
-    "mtime": 1785759759.7838461,
-    "ast_hash": "1c73a1b4bf09b292b3013bb184008b2c",
+    "mtime": 1785965408.2838178,
+    "ast_hash": "219c79c567db0c283bad043be38d694d",
     "semantic_hash": ""
   },
   "src/app/(app)/team/actions.ts": {
@@ -450,13 +450,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1785784307.6167765,
-    "ast_hash": "acf9be4edcb8da2057d47edfb2a06925",
+    "mtime": 1785965470.5038152,
+    "ast_hash": "a78f796fc8f34a6a58cb3d2697971db7",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1785784171.6448152,
-    "ast_hash": "420a23a76c20d77c2fc9dd565d1e8fd0",
+    "mtime": 1785965960.2837956,
+    "ast_hash": "bce7f08c5f2ccb4c4a77012b6723c2fc",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -655,8 +655,8 @@
     "semantic_hash": "fa930b73c5b394459efb78fad5d64401"
   },
   "src/data/queries/project-by-id.ts": {
-    "mtime": 1785784171.3088152,
-    "ast_hash": "f6e0c595e0f6fd81c806f0d1636c0a4c",
+    "mtime": 1785965409.0558178,
+    "ast_hash": "ab26ab54886378bb66804448076b78b4",
     "semantic_hash": ""
   },
   "src/data/queries/project-members.ts": {
@@ -795,8 +795,8 @@
     "semantic_hash": "baf87ceed9028ea2634a1436d2c2515f"
   },
   "src/lib/project-lifecycle.test.ts": {
-    "mtime": 1785715087.5962727,
-    "ast_hash": "678bc6b600ac619d6228b5b534cda5dd",
+    "mtime": 1785965669.991807,
+    "ast_hash": "7179184f440179500ef6e42ca0bbfb5f",
     "semantic_hash": ""
   },
   "src/lib/project-lifecycle.ts": {
@@ -890,8 +890,8 @@
     "semantic_hash": "0ff9d58dfbcffde2191a1a76ce017dac"
   },
   "src/lib/time-off-stabilization-migration.test.ts": {
-    "mtime": 1785715087.5922728,
-    "ast_hash": "d4a1441302b3f1bf6f5027d7fcf43e8f",
+    "mtime": 1785970020.8236248,
+    "ast_hash": "858279bacf6e4d79418141c62bd1ef33",
     "semantic_hash": ""
   },
   "src/lib/utils.ts": {
@@ -940,8 +940,8 @@
     "semantic_hash": "9843fb0e820742b2b5c9338b370ff224"
   },
   "src/lib/validation/project.ts": {
-    "mtime": 1785784171.4968152,
-    "ast_hash": "ef7be84d68788c671595e63af5787d8d",
+    "mtime": 1785965201.9998267,
+    "ast_hash": "5afe6fcda567e4cabf99cb067c7140ab",
     "semantic_hash": ""
   },
   "src/lib/validation/set-password.test.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1785784171.0568154,
-    "ast_hash": "e731c312e6357c4403a635e6a550a18d",
+    "mtime": 1785965153.1198287,
+    "ast_hash": "d7a27a35282954d2beac32bf391dc8bf",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1450,13 +1450,13 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1784467404.970091,
-    "ast_hash": "f15aaa42d5d299d091b1171097ea56ad",
+    "mtime": 1785965550.3958118,
+    "ast_hash": "8a27bcbba213295a0cdc3f6a45a55c57",
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1785782878.4051886,
-    "ast_hash": "8937b214f3a950a9f9f88634ac3c3bea",
+    "mtime": 1785965831.6598003,
+    "ast_hash": "2d7feadae162b0c70b4b5dafc7a1b27c",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1465,8 +1465,8 @@
     "semantic_hash": ""
   },
   "docs/roadmap.md": {
-    "mtime": 1785752413.5259607,
-    "ast_hash": "c3ebf32715bdb46a1637883a1c7030ae",
+    "mtime": 1785965831.7718003,
+    "ast_hash": "754b2b3f567ff2f356c77d5da89d7cc0",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
@@ -1665,8 +1665,8 @@
     "semantic_hash": ""
   },
   "src/lib/studio-checklist-template-migration.test.ts": {
-    "mtime": 1785715087.600273,
-    "ast_hash": "ee3e261c3e3be9a6d4bf35d670482550",
+    "mtime": 1785970020.7116249,
+    "ast_hash": "f9e50c40317b51c195bb6d725e41f1da",
     "semantic_hash": ""
   },
   "src/lib/studio-checklist-templates.test.ts": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1785784207.7648048,
-    "ast_hash": "4125f6e6aed275c4963d24545c8b102b",
+    "mtime": 1785965544.375812,
+    "ast_hash": "b509d853166a93269adc4ab836732218",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1785784207.920805,
-    "ast_hash": "ed2d6e32b7120a77b8bceff60212a775",
+    "mtime": 1785965544.487812,
+    "ast_hash": "858f1095fe855904ecc5f6eebd28aae6",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1790,8 +1790,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/project-routes.localization.test.ts": {
-    "mtime": 1785763035.2109015,
-    "ast_hash": "3ac49fbda5d1313abf58984c33e77dcb",
+    "mtime": 1785965670.1158068,
+    "ast_hash": "b3ed7a0c57cc5fb1487a795eadfe88c5",
     "semantic_hash": ""
   },
   "src/components/projects/project-list-controls.test.ts": {
@@ -1835,13 +1835,78 @@
     "semantic_hash": ""
   },
   "src/lib/validation/project.test.ts": {
-    "mtime": 1785784367.8047593,
-    "ast_hash": "c2cc2831cd6eb3ce8fb1d8c076360266",
+    "mtime": 1785965700.4958053,
+    "ast_hash": "e11dda9f1ae13de337fad9ab0636f826",
     "semantic_hash": ""
   },
   "supabase/migrations/20260803223000_add_project_location_metadata.sql": {
     "mtime": 1785784170.9208155,
     "ast_hash": "85822a8604af94ae905e3b42f91b4473",
+    "semantic_hash": ""
+  },
+  "src/app/api/cities/route.ts": {
+    "mtime": 1785965276.5518236,
+    "ast_hash": "fb89aa2d9435397a0863317177492533",
+    "semantic_hash": ""
+  },
+  "src/components/projects/city-combobox.tsx": {
+    "mtime": 1785965960.4317956,
+    "ast_hash": "1429c195dfdfd2f0eebc50218ddc3704",
+    "semantic_hash": ""
+  },
+  "src/components/projects/project-creation-modal.tsx": {
+    "mtime": 1785965960.1557956,
+    "ast_hash": "59159293505cdb6ba05cdd12ef1129d2",
+    "semantic_hash": ""
+  },
+  "src/components/projects/project-form.contract.test.ts": {
+    "mtime": 1785965670.6678069,
+    "ast_hash": "7316298b38a011ae0771fb1907686706",
+    "semantic_hash": ""
+  },
+  "src/components/ui/dialog.tsx": {
+    "mtime": 1785965960.0317957,
+    "ast_hash": "27837723d5747fbb660d1df28954ea77",
+    "semantic_hash": ""
+  },
+  "src/lib/city-provider.test.ts": {
+    "mtime": 1785965722.8558044,
+    "ast_hash": "dea86b47ef4e36a04d78d0d9d9a7a211",
+    "semantic_hash": ""
+  },
+  "src/lib/city-provider.ts": {
+    "mtime": 1785965722.7358043,
+    "ast_hash": "5bf7ce48d9c6cf1b23ec9a105dd94f9d",
+    "semantic_hash": ""
+  },
+  "src/lib/countries.ts": {
+    "mtime": 1785965201.8718266,
+    "ast_hash": "07d61273b5e1277b20f60dce28d9123f",
+    "semantic_hash": ""
+  },
+  "src/lib/geonames.ts": {
+    "mtime": 1785965722.6158044,
+    "ast_hash": "cf0f10f9303fd7e6b9a2f7b7e9b3c8a8",
+    "semantic_hash": ""
+  },
+  "src/lib/project-dialog.test.ts": {
+    "mtime": 1785965670.239807,
+    "ast_hash": "31122c7c267bd2b25852cfafe21b9dab",
+    "semantic_hash": ""
+  },
+  "src/lib/project-dialog.ts": {
+    "mtime": 1785965669.379807,
+    "ast_hash": "aa918ab32c9359d3b159c22251450703",
+    "semantic_hash": ""
+  },
+  "src/lib/structured-project-metadata-migration.test.ts": {
+    "mtime": 1785965975.2357948,
+    "ast_hash": "103fff6a31796f1daf254edad60cf595",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260805212420_structured_project_metadata.sql": {
+    "mtime": 1785965932.0117967,
+    "ast_hash": "18088c9241d61b291f26c8891f68cf6e",
     "semantic_hash": ""
   }
 }

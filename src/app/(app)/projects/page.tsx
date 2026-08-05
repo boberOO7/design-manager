@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectCreationModal } from "@/components/projects/project-creation-modal";
 import { ProjectList } from "@/components/projects/project-list";
 import { ProjectListControls } from "@/components/projects/project-list-controls";
 import { PageHeader } from "@/components/shared/page-header";
@@ -8,6 +9,7 @@ import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getAccessibleProjectsWithTasks } from "@/data/queries/project-progress";
 import { filterAndSortProjects, getPresentedProjects, getProjectListEmptyState, getProjectListFilters, hasActiveProjectListFilters } from "@/lib/project-list-presentation";
+import { getKyivDateOnly } from "@/lib/validation/project";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -27,7 +29,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const emptyState = getProjectListEmptyState(filters);
 
   return <div className="space-y-6">
-    <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <Button asChild><Link href="/projects/new">{t("newProject")}</Link></Button> : undefined} />
+    <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <ProjectCreationModal defaultStartDate={getKyivDateOnly()} /> : undefined} />
     {result.error ? <EmptyState compact title="Projects could not be loaded." description="Please try again later." className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : result.projects.length === 0 ? <EmptyState compact title="No projects are available in your access scope yet." /> : <>
       <ProjectListControls filters={filters} />
       {projects.length ? <ProjectList projects={projects} /> : <EmptyState compact title={emptyState.title} description="Adjust or reset the filters to see your accessible projects." action={emptyState.canReset ? <Button asChild variant="outline"><Link href="/projects">Reset filters</Link></Button> : undefined} />}

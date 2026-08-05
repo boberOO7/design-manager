@@ -12,6 +12,8 @@ import { calculateProjectProgress, getProjectHealth, getProjectHealthLabel, isPr
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle, getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { getTaskPriorityLabel } from "@/lib/tasks";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
+import { getCountryName } from "@/lib/countries";
+import { isProjectTypeKey } from "@/lib/validation/project";
 import type { ProjectTask } from "@/types/tasks";
 
 export type ProjectContextProject = {
@@ -20,6 +22,7 @@ export type ProjectContextProject = {
   project_code: string | null;
   project_type: string | null;
   city: string | null;
+  country_code: string;
   client_name: string | null;
   due_date: string | null;
   priority: string;
@@ -39,6 +42,7 @@ export function ProjectContextBand({ archiveAction, canManage, isArchived, proje
   const t = useTranslations("Workspace");
   const common = useTranslations("Common");
   const projectMessages = useTranslations("Projects");
+  const projectTypes = useTranslations("ProjectTypes");
   const locale = useLocale();
   const { status } = useProjectLifecycle();
   const progress = calculateProjectProgress(tasks, undefined, {
@@ -75,8 +79,8 @@ export function ProjectContextBand({ archiveAction, canManage, isArchived, proje
     </div>
 
     <dl className="mt-4 grid gap-x-4 gap-y-3 border-t border-[var(--ui-border)] pt-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-      <Metadata label={t("projectType")} value={project.project_type ?? common("notAvailable")} />
-      <Metadata label={t("city")} value={project.city ?? common("notAvailable")} />
+      <Metadata label={t("projectType")} value={project.project_type ? (isProjectTypeKey(project.project_type) ? projectTypes(project.project_type) : project.project_type) : common("notAvailable")} />
+      <Metadata label={t("city")} value={[project.city, getCountryName(project.country_code, locale)].filter(Boolean).join(", ")} />
       <Metadata label={t("totalArea")} value={`${formatNumber(project.total_area_m2, locale)} m²`} />
       <Metadata label={t("startDate")} value={formatDateOnly(project.start_date, locale)} />
     </dl>
