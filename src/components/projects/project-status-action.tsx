@@ -31,7 +31,7 @@ export function ProjectStatusAction({
   pendingLabel: string;
 }) {
   return (
-    <form
+    <form autoComplete="off"
       action={action}
       onSubmit={(event) => {
         if (confirmMessage && !window.confirm(confirmMessage)) {

@@ -26,7 +26,7 @@ export function RemoveProjectMemberButton({
 
   return (
     <div className="space-y-2">
-      <form
+      <form autoComplete="off"
         action={formAction}
         onSubmit={(event) => {
           if (!window.confirm(t("removeMember", { name: memberName }))) {

@@ -36,6 +36,7 @@ export async function updateProject(
   if (
     !project ||
     project.studio_id !== membership.studio_id ||
+    project.status === "completed" ||
     project.status === "archived" ||
     project.archived_at
   ) {
@@ -102,7 +103,7 @@ export async function updateProject(
   }
 
   revalidateProjectRoutes(project.id);
-  redirect(`/projects/${project.id}`);
+  return { projectId: project.id };
 }
 
 export async function archiveProject(projectId: string): Promise<void> {

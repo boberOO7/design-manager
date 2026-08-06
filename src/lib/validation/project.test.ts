@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editProjectSchema, getKyivDateOnly, projectSchema } from "./project";
+import { editProjectSchema, getKyivDateOnly, getProjectFormInput, projectSchema } from "./project";
 
 const project = {
   name: "Apartment renovation",
@@ -33,5 +33,13 @@ describe("project form metadata", () => {
 
   it("uses the Europe/Kyiv calendar day for new planned starts", () => {
     expect(getKyivDateOnly(new Date("2026-08-05T21:30:00.000Z"))).toBe("2026-08-06");
+  });
+
+  it("maps browser-safe project field names back to canonical values", () => {
+    const formData = new FormData();
+    formData.set("project_name", project.name);
+    formData.set("city", project.city);
+    expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city });
+    expect(getProjectFormInput(formData)).not.toHaveProperty("project_name");
   });
 });

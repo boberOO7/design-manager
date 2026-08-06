@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { ProjectLifecycleControls } from "@/components/projects/project-lifecycle-controls";
+import { ProjectEditModal } from "@/components/projects/project-edit-modal";
+import type { ProjectFormAction } from "@/components/projects/project-form";
 import { ProjectProgressSettings } from "@/components/projects/project-progress-settings";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
@@ -13,7 +14,7 @@ import { getPriorityBadgeStyle, getProjectHealthBadgeStyle, getProjectLifecycleB
 import { getTaskPriorityLabel } from "@/lib/tasks";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
-import { isProjectTypeKey } from "@/lib/validation/project";
+import { isProjectPriority, isProjectTypeKey } from "@/lib/validation/project";
 import type { ProjectTask } from "@/types/tasks";
 
 export type ProjectContextProject = {
@@ -24,6 +25,7 @@ export type ProjectContextProject = {
   city: string | null;
   country_code: string;
   client_name: string | null;
+  description: string | null;
   due_date: string | null;
   priority: string;
   progress_method: string;
@@ -31,13 +33,14 @@ export type ProjectContextProject = {
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, canManage, isArchived, project, restoreAction, tasks }: {
+export function ProjectContextBand({ archiveAction, canManage, isArchived, project, restoreAction, tasks, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   canManage: boolean;
   isArchived: boolean;
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
   tasks: ProjectTask[];
+  updateAction: ProjectFormAction;
 }) {
   const t = useTranslations("Workspace");
   const common = useTranslations("Common");
@@ -68,7 +71,7 @@ export function ProjectContextBand({ archiveAction, canManage, isArchived, proje
         </div>
         {metadata ? <p className="mt-1 text-sm font-medium text-[var(--ui-text-secondary)]">{metadata}</p> : null}
       </div>
-      {canManage ? <ProjectContextActions archiveAction={archiveAction} isArchived={isArchived} projectId={project.id} projectName={project.name} restoreAction={restoreAction} status={status} /> : null}
+      {canManage ? <ProjectContextActions archiveAction={archiveAction} isArchived={isArchived} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} /> : null}
     </div>
 
     <div className="mt-5 grid gap-3 border-t border-[var(--ui-border)] pt-4 lg:grid-cols-[minmax(15rem,1.35fr)_minmax(11rem,0.9fr)_minmax(11rem,0.9fr)_minmax(12rem,1fr)]">
@@ -90,9 +93,9 @@ export function ProjectContextBand({ archiveAction, canManage, isArchived, proje
   </section>;
 }
 
-function ProjectContextActions({ archiveAction, isArchived, projectId, projectName, restoreAction, status }: { archiveAction: (formData: FormData) => Promise<void>; isArchived: boolean; projectId: string; projectName: string; restoreAction: (formData: FormData) => Promise<void>; status: string }) {
+function ProjectContextActions({ archiveAction, isArchived, project, restoreAction, status, updateAction }: { archiveAction: (formData: FormData) => Promise<void>; isArchived: boolean; project: ProjectContextProject; restoreAction: (formData: FormData) => Promise<void>; status: string; updateAction: ProjectFormAction }) {
   const t = useTranslations("ProjectWorkspace");
-  return <div className="flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">{isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : <><ProjectLifecycleControls projectId={projectId} />{status !== "completed" ? <Button asChild size="sm" variant="outline"><Link href={`/projects/${projectId}/edit`}>{t("edit")}</Link></Button> : null}<details className="relative"><summary aria-label={t("moreActions")} className="flex size-8 cursor-pointer list-none items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><MoreHorizontal className="size-4" aria-hidden="true" /></summary><div role="menu" className="absolute right-0 z-20 mt-2 w-36 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: projectName })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div></details></>}</div>;
+  return <div className="flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">{isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : <><ProjectLifecycleControls projectId={project.id} />{status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, country_code: project.country_code, city: project.city ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}<details className="relative"><summary aria-label={t("moreActions")} className="flex size-8 cursor-pointer list-none items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><MoreHorizontal className="size-4" aria-hidden="true" /></summary><div role="menu" className="absolute right-0 z-20 mt-2 w-36 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: project.name })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div></details></>}</div>;
 }
 
 function ProgressSummary({ progress, projectName }: { progress: ReturnType<typeof calculateProjectProgress>; projectName: string }) {

@@ -330,7 +330,7 @@ function EventForm({ data, item, initialDate, onClose, onSaved }: { data: Calend
       setError(submissionError instanceof Error && submissionError.message === "Invalid all-day date range" ? t("invalidDateRange") : t("eventSaveFailed"));
     } finally { setPending(false); }
   }
-  return <DetailPanel title={item ? t("editEventTitle") : t("addEventTitle")} eyebrow={t("eventForm")} onClose={requestClose}><div className="space-y-4" aria-busy={pending}>
+  return <DetailPanel title={item ? t("editEventTitle") : t("addEventTitle")} eyebrow={t("eventForm")} onClose={requestClose}><form autoComplete="off" className="space-y-4" aria-busy={pending} onSubmit={(event) => event.preventDefault()}>
     <FormField label={t("titleLabel")} error={fieldErrors.title}><input className={fieldClass} value={values.title} onChange={(event) => setValues({ ...values, title: event.target.value })} /></FormField>
     <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("type")} error={fieldErrors.eventType}><Select value={values.eventType} onValueChange={(eventType) => setValues({ ...values, eventType: eventType as CalendarEventType, attendeeIds: [] })}>{CALENDAR_EVENT_TYPES.map((type) => <SelectItem key={type} value={type}>{t(eventTypeKey[type])}</SelectItem>)}</Select></FormField><FormField label={t("project")} optional error={fieldErrors.projectId}><Select value={values.projectId} onValueChange={(projectId) => setValues({ ...values, projectId, attendeeIds: [] })}><SelectItem value="">{t("studioWide")}</SelectItem>{data.projects.map((project) => <SelectItem key={project.id} value={project.id} disabled={project.status === "completed"}>{project.name}{project.status === "completed" ? ` (${t("completedReopen")})` : ""}</SelectItem>)}</Select></FormField></div>
     <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.allDay} onChange={(event) => setValues({ ...values, allDay: event.target.checked })} />{t("allDayEvent")}</label>
@@ -341,7 +341,7 @@ function EventForm({ data, item, initialDate, onClose, onSaved }: { data: Calend
     <FormField label={t("descriptionLabel")}><textarea className={textareaClassName} rows={5} value={values.description} onChange={(event) => setValues({ ...values, description: event.target.value })} /></FormField>
     {error ? <p role="alert" className="rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
     <div className="sticky bottom-0 flex justify-end gap-2 border-t border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] py-4"><Button variant="outline" disabled={pending} onClick={requestClose}>{t("cancel")}</Button><Button disabled={pending} onClick={() => void submit()}>{pending ? t("saving") : t("saveEvent")}</Button></div>
-  </div></DetailPanel>;
+  </form></DetailPanel>;
 }
 
 function TimeOffForm({ data, initialDate, onClose, onSaved }: { data: CalendarPageData; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "time_off_request_admin" }>) => void }) {
@@ -363,7 +363,7 @@ function TimeOffForm({ data, initialDate, onClose, onSaved }: { data: CalendarPa
     } catch { setError(t("requestCreateFailed")); }
     finally { setPending(false); }
   }
-  return <DetailPanel title={calendar("requestTimeOffTitle")} eyebrow={t("privateRequest")} onClose={requestClose}><div className="space-y-4" aria-busy={pending}>
+  return <DetailPanel title={calendar("requestTimeOffTitle")} eyebrow={t("privateRequest")} onClose={requestClose}><form autoComplete="off" className="space-y-4" aria-busy={pending} onSubmit={(event) => event.preventDefault()}>
     <Input label={t("requestType")} error={fieldErrors.requestType}><Select value={values.requestType} onValueChange={(requestType) => setValues({ ...values, requestType: requestType as TimeOffRequestType })}>{TIME_OFF_REQUEST_TYPES.map((type) => <SelectItem key={type} value={type}>{t(timeOffRequestTypeKey[type])}</SelectItem>)}</Select></Input>
     <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.allDay} onChange={(event) => setValues({ ...values, allDay: event.target.checked, endDate: event.target.checked ? values.endDate : values.startDate })} />{t("allDay")}</label>
     <div className="grid gap-4 sm:grid-cols-2"><Input label={t("startDate")}><input type="date" className={fieldClass} value={values.startDate} onChange={(event) => setValues({ ...values, startDate: event.target.value, endDate: values.allDay ? values.endDate : event.target.value })} /></Input><Input label={t("endDate")} error={fieldErrors.endDate}><input type="date" className={fieldClass} min={values.startDate} value={values.endDate} disabled={!values.allDay} onChange={(event) => setValues({ ...values, endDate: event.target.value })} /></Input></div>
@@ -371,7 +371,7 @@ function TimeOffForm({ data, initialDate, onClose, onSaved }: { data: CalendarPa
     <Input label={t("privateNote")}><textarea className={textareaClassName} rows={5} value={values.privateNote} onChange={(event) => setValues({ ...values, privateNote: event.target.value })} /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("visibleNote")}</span></Input>
     {error ? <p role="alert" className="rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
     <div className="sticky bottom-0 flex justify-end gap-2 border-t border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] py-4"><Button variant="outline" disabled={pending} onClick={requestClose}>{t("cancel")}</Button><Button disabled={pending} onClick={() => void submit()}>{pending ? t("submitting") : t("submit")}</Button></div>
-  </div></DetailPanel>;
+  </form></DetailPanel>;
 }
 
 function Input({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) { return <FormField label={label} error={error}>{children}</FormField>; }

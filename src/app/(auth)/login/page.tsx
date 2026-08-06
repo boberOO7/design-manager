@@ -57,12 +57,12 @@ export default function LoginPage() {
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
             <span className="mb-2 flex items-center gap-2"><Mail size={16} /> Email</span>
-            <input {...register("email")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
+            <input type="email" autoComplete="email" {...register("email")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
             {errors.email ? <p className="mt-1 text-sm text-[var(--ui-danger-text)]">{errors.email.message}</p> : null}
           </label>
           <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
             <span className="mb-2 flex items-center gap-2"><LockKeyhole size={16} /> Password</span>
-            <input type="password" {...register("password")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
+            <input type="password" autoComplete="current-password" {...register("password")} className="mt-1 w-full rounded-xl border border-[var(--ui-border)] px-3 py-2 text-sm focus:border-[var(--ui-focus)] focus:outline-none" />
             {errors.password ? <p className="mt-1 text-sm text-[var(--ui-danger-text)]">{errors.password.message}</p> : null}
           </label>
           {error && <p className="text-sm text-[var(--ui-danger-text)]">{error}</p>}

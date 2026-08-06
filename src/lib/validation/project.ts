@@ -74,14 +74,14 @@ export type ProjectFormActionState = {
   projectId?: string;
 };
 
-function getOptionalString(formData: FormData, field: ProjectFormField): string | undefined {
+function getOptionalString(formData: FormData, field: string): string | undefined {
   const value = formData.get(field);
   return typeof value === "string" ? value : undefined;
 }
 
 export function getProjectFormInput(formData: FormData) {
   return {
-    name: getOptionalString(formData, "name"),
+    name: getOptionalString(formData, "project_name"),
     project_type: getOptionalString(formData, "project_type"),
     country_code: getOptionalString(formData, "country_code"),
     city: getOptionalString(formData, "city"),

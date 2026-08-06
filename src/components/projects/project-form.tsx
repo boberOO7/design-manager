@@ -23,7 +23,7 @@ export type ProjectFormDefaults = {
   total_area_m2?: number;
 };
 
-type ProjectFormAction = (state: ProjectFormActionState, formData: FormData) => Promise<ProjectFormActionState>;
+export type ProjectFormAction = (state: ProjectFormActionState, formData: FormData) => Promise<ProjectFormActionState>;
 
 const inputClassName = "mt-2 h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none transition-colors placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus:ring-[var(--ui-danger-text)]";
 
@@ -83,7 +83,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
 
   const fields = <div className="grid gap-4 md:grid-cols-2">
     <Field className="md:col-span-2" error={fieldError("name")} id="name" label={t("projectName")} required>
-      <input data-dialog-initial-focus={mode === "create" ? "" : undefined} name="name" required defaultValue={defaultValues.name} className={inputClassName} autoComplete="off" {...errorAttributes("name")} />
+      <input data-dialog-initial-focus name="project_name" required defaultValue={defaultValues.name} className={inputClassName} autoComplete="off" {...errorAttributes("name")} />
     </Field>
 
     <Field error={fieldError("project_type")} id="project_type" label={t("projectType")}>
@@ -95,7 +95,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("client_name")} id="client_name" label={t("clientName")}>
-      <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="organization" {...errorAttributes("client_name")} />
+      <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="off" {...errorAttributes("client_name")} />
     </Field>
 
     <Field error={fieldError("country_code")} id="country_code" label={t("country")} required>
@@ -105,11 +105,12 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("city")} id="city" label={t("city")}>
-      <CityCombobox countryCode={countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city" value={city} onValueChange={(value) => { setCity(value); markDirty(); }} />
+      <CityCombobox countryCode={countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={city} onValueChange={(value) => { setCity(value); markDirty(); }} />
+      <input type="hidden" name="city" value={city} />
     </Field>
 
     <Field error={fieldError("total_area_m2")} id="total_area_m2" label={t("totalArea")} required>
-      <input name="total_area_m2" type="number" inputMode="decimal" required min="0.01" step="0.01" defaultValue={defaultValues.total_area_m2} className={inputClassName} {...errorAttributes("total_area_m2")} />
+      <input name="total_area_m2" type="number" inputMode="decimal" required min="0.01" step="0.01" defaultValue={defaultValues.total_area_m2} className={inputClassName} autoComplete="off" {...errorAttributes("total_area_m2")} />
     </Field>
 
     <Field error={fieldError("priority")} id="priority" label={t("priority")}>
@@ -119,19 +120,19 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("start_date")} id="start_date" label={t("plannedStartDate")} required>
-      <input name="start_date" type="date" required defaultValue={defaultValues.start_date} className={inputClassName} {...errorAttributes("start_date")} />
+      <input name="start_date" type="date" required defaultValue={defaultValues.start_date} className={inputClassName} autoComplete="off" {...errorAttributes("start_date")} />
     </Field>
 
     <Field error={fieldError("due_date")} id="due_date" label={t("dueDate")}>
-      <input name="due_date" type="date" defaultValue={defaultValues.due_date} className={inputClassName} {...errorAttributes("due_date")} />
+      <input name="due_date" type="date" defaultValue={defaultValues.due_date} className={inputClassName} autoComplete="off" {...errorAttributes("due_date")} />
     </Field>
 
     <Field className="md:col-span-2" error={fieldError("description")} id="description" label={t("description")}>
-      <textarea name="description" defaultValue={defaultValues.description} className={`${inputClassName} min-h-24 resize-y py-2.5`} {...errorAttributes("description")} />
+      <textarea name="description" defaultValue={defaultValues.description} className={`${inputClassName} min-h-24 resize-y py-2.5`} autoComplete="off" {...errorAttributes("description")} />
     </Field>
   </div>;
 
-  return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} action={formAction} noValidate onInput={markDirty} onSubmit={(event) => { if (isPending) event.preventDefault(); }}>
+  return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} action={formAction} autoComplete="off" noValidate onInput={markDirty} onSubmit={(event) => { if (isPending) event.preventDefault(); }}>
     <div className={cn(layout === "modal" ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6" : undefined)}>{fields}
       <p aria-live="polite" className={countryResetMessage ? "mt-3 text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{countryResetMessage}</p>
       {state.formError ? <div role="alert" className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{state.formError}</div> : null}

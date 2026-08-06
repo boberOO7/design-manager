@@ -5,6 +5,7 @@ import { Check, LoaderCircle, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CitySearchResult } from "@/lib/city-provider";
+import { shouldOpenCitySuggestions, shouldSearchCity } from "@/lib/city-combobox";
 
 type SearchState = "idle" | "loading" | "ready" | "error";
 
@@ -21,6 +22,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
   const listboxId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const skipSearchValueRef = useRef<string | null>(null);
+  const userEditedRef = useRef(false);
   const [inputNode, setInputNode] = useState<HTMLInputElement | null>(null);
   const [results, setResults] = useState<CitySearchResult[]>([]);
   const [status, setStatus] = useState<SearchState>("idle");
@@ -34,7 +36,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
       skipSearchValueRef.current = null;
       return;
     }
-    if (!countryCode || !query) return;
+    if (!shouldSearchCity({ countryCode, query, userEdited: userEditedRef.current })) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -65,6 +67,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
 
   function choose(result: CitySearchResult) {
     skipSearchValueRef.current = result.name;
+    userEditedRef.current = false;
     onValueChange(result.name);
     setOpen(false);
     setResults([]);
@@ -109,11 +112,12 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
           aria-describedby={describedBy}
           aria-expanded={open}
           aria-invalid={invalid || undefined}
-          autoComplete="address-level2"
+          autoComplete="off"
           className="h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-10 text-sm text-[var(--ui-text)] outline-none transition-colors placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)]"
           name={name}
           onChange={(event) => {
             const nextValue = event.target.value;
+            userEditedRef.current = true;
             if (!nextValue.trim()) {
               setResults([]);
               setStatus("idle");
@@ -121,7 +125,9 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
             }
             onValueChange(nextValue);
           }}
-          onFocus={() => { if (value.trim()) setOpen(true); }}
+          onFocus={() => {
+            if (shouldOpenCitySuggestions({ query: value, status, userEdited: userEditedRef.current })) setOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={t("placeholder")}
           role="combobox"

@@ -71,6 +71,7 @@ export function InviteEmployeeForm() {
           id={panelId}
           ref={formRef}
           action={formAction}
+          autoComplete="off"
           className="mt-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4 sm:p-5"
           noValidate
         >
@@ -86,7 +87,7 @@ export function InviteEmployeeForm() {
                   name="email"
                   type="email"
                   required
-                  autoComplete="email"
+                  autoComplete="off"
                   className={inputClassName}
                   {...errorAttributes("email")}
                 />
@@ -102,7 +103,7 @@ export function InviteEmployeeForm() {
                 <input
                   name="full_name"
                   required
-                  autoComplete="name"
+                  autoComplete="off"
                   className={inputClassName}
                   {...errorAttributes("full_name")}
                 />

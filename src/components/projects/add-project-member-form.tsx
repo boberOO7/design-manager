@@ -32,7 +32,7 @@ export function AddProjectMemberForm({
   }
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form action={formAction} autoComplete="off" className="space-y-3">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">
           {t("studioMember")}

@@ -17,7 +17,7 @@ import { getCountryName } from "@/lib/countries";
 import { isProjectTypeKey } from "@/lib/validation/project";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
-import { archiveProject, restoreProject } from "./actions";
+import { archiveProject, restoreProject, updateProject } from "./actions";
 
 export const metadata: Metadata = { title: "Project Workspace | StudioFlow" };
 
@@ -46,10 +46,11 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const assignableStudioMembers = view === "team" && canManage ? await getAssignableStudioMembers(project, projectMembers.map((member) => member.user_id)) : [];
   const archiveAction = archiveProject.bind(null, project.id);
   const restoreAction = restoreProject.bind(null, project.id);
+  const updateAction = updateProject.bind(null, project.id);
   const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
   const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link key={item.id} href={item.id === "board" ? `/projects/${project.id}` : `/projects/${project.id}?view=${item.id}`} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
-  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={project} restoreAction={restoreAction} tasks={tasks} templates={templates} /> : <><ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={tasks} />{navigation}{view === "details" ? <ProjectDetails locale={locale} project={project} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
+  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={project} restoreAction={restoreAction} tasks={tasks} templates={templates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={tasks} updateAction={updateAction} />{navigation}{view === "details" ? <ProjectDetails locale={locale} project={project} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
 }
 
 async function ProjectDetails({ locale, project }: { locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {

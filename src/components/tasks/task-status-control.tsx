@@ -15,7 +15,7 @@ export function TaskStatusControl({ taskId, status }: { taskId: string; status: 
   const isExtraStatus = status === "cancelled";
 
   return (
-    <form action={formAction} className="mt-3 border-t border-[var(--ui-border-subtle)] pt-3">
+    <form action={formAction} autoComplete="off" className="mt-3 border-t border-[var(--ui-border-subtle)] pt-3">
       <input type="hidden" name="task_id" value={taskId} />
       <label className="sr-only" htmlFor={`task-status-${taskId}`}>{t("taskStatus")}</label>
       <div className="flex gap-2">

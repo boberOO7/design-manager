@@ -67,12 +67,12 @@ export function AddTaskDialog({
           </div>
           <Button type="button" size="sm" variant="ghost" onClick={() => dialogRef.current?.close()} aria-label={t("closeAddTask")}>{t("cancel")}</Button>
         </div>
-        <form ref={formRef} action={formAction} onSubmit={(event) => { if (hasSubmittedRef.current) event.preventDefault(); else hasSubmittedRef.current = true; }} className="space-y-4 p-5">
+        <form ref={formRef} action={formAction} autoComplete="off" onSubmit={(event) => { if (hasSubmittedRef.current) event.preventDefault(); else hasSubmittedRef.current = true; }} className="space-y-4 p-5">
           <FormField label={t("title")} error={state.fieldErrors?.title ? validation("correctFields") : undefined}>
-            <Input name="title" required maxLength={200} disabled={isPending} />
+            <Input name="title" required maxLength={200} disabled={isPending} autoComplete="off" />
           </FormField>
           <FormField label={t("description")} optional error={state.fieldErrors?.description ? validation("correctFields") : undefined}>
-            <Textarea name="description" rows={3} maxLength={5000} disabled={isPending} />
+            <Textarea name="description" rows={3} maxLength={5000} disabled={isPending} autoComplete="off" />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("assignee")} error={state.fieldErrors?.assignee_id ? validation("correctFields") : undefined}>
@@ -88,10 +88,10 @@ export function AddTaskDialog({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("dueDate")} optional error={state.fieldErrors?.due_date ? validation("correctFields") : undefined}>
-              <Input type="date" name="due_date" disabled={isPending} />
+              <Input type="date" name="due_date" disabled={isPending} autoComplete="off" />
             </FormField>
             <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
-              <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} aria-describedby="completed-area-help" />
+              <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} autoComplete="off" aria-describedby="completed-area-help" />
               <p id="completed-area-help" className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{t("taskAreaHelp")}</p>
             </FormField>
           </div>

@@ -30,8 +30,18 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     if (!isOpen) return;
     const previousOverflow = document.body.style.overflow;
     const { initial: initialFocusElement, returnTo: returnFocusElement } = getFocusElements();
+    const panel = panelRef.current;
     document.body.style.overflow = "hidden";
     initialFocusElement?.focus();
+
+    function suppressOperationalAutofill() {
+      panel?.querySelectorAll("input, textarea").forEach((field) => {
+        if (!field.hasAttribute("autocomplete")) field.setAttribute("autocomplete", "off");
+      });
+    }
+    suppressOperationalAutofill();
+    const autofillObserver = new MutationObserver(suppressOperationalAutofill);
+    if (panel) autofillObserver.observe(panel, { childList: true, subtree: true });
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -40,10 +50,10 @@ export function Drawer({ children, className, description, focusKey, initialFocu
         return;
       }
       if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector));
-      const target = getDrawerTabFocusTarget({ activeElement: document.activeElement, focusable, shiftKey: event.shiftKey, panel });
+      const currentPanel = panelRef.current;
+      if (!currentPanel) return;
+      const focusable = Array.from(currentPanel.querySelectorAll<HTMLElement>(focusableSelector));
+      const target = getDrawerTabFocusTarget({ activeElement: document.activeElement, focusable, shiftKey: event.shiftKey, panel: currentPanel });
       if (target) {
         event.preventDefault();
         target.focus();
@@ -54,6 +64,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      autofillObserver.disconnect();
       returnFocusElement?.focus();
     };
   }, [focusKey, isOpen]);
