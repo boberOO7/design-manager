@@ -9,11 +9,12 @@ import { shouldOpenCitySuggestions, shouldSearchCity } from "@/lib/city-combobox
 
 type SearchState = "idle" | "loading" | "ready" | "error";
 
-export function CityCombobox({ countryCode, describedBy, invalid, name, onValueChange, value }: {
+export function CityCombobox({ countryCode, describedBy, invalid, name, onGeoNamesIdChange, onValueChange, value }: {
   countryCode: string;
   describedBy?: string;
   invalid?: boolean;
   name: string;
+  onGeoNamesIdChange: (id: number | undefined) => void;
   onValueChange: (value: string) => void;
   value: string;
 }) {
@@ -68,6 +69,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
   function choose(result: CitySearchResult) {
     skipSearchValueRef.current = result.name;
     userEditedRef.current = false;
+    onGeoNamesIdChange(result.id);
     onValueChange(result.name);
     setOpen(false);
     setResults([]);
@@ -118,6 +120,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onValueC
           onChange={(event) => {
             const nextValue = event.target.value;
             userEditedRef.current = true;
+            onGeoNamesIdChange(undefined);
             if (!nextValue.trim()) {
               setResults([]);
               setStatus("idle");

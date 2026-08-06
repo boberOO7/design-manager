@@ -12,7 +12,7 @@ const editActionPath = new URL("../../app/(app)/projects/[projectId]/actions.ts"
 describe("compact project creation contract", () => {
   it("uses one shared ordered form and omits manual project code entry", async () => {
     const source = await readFile(formPath, "utf8");
-    const fields = ["project_name", "project_type", "client_name", "country_code", "city_search", "city", "total_area_m2", "priority", "start_date", "due_date", "description"];
+    const fields = ["project_name", "project_type", "client_name", "country_code", "city_search", "city", "city_geonames_id", "total_area_m2", "priority", "start_date", "due_date", "description"];
     const positions = fields.map((field) => source.indexOf(`name=\"${field}\"`));
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -40,7 +40,7 @@ describe("compact project creation contract", () => {
     expect(sharedModal).toContain("getProjectDialogCloseIntent(isDirty, reason)");
     expect(editAction).toContain("revalidateProjectRoutes(project.id);\n  return { projectId: project.id };");
     expect(editAction).toContain('project.status === "completed"');
-    for (const field of ["name", "project_type", "country_code", "city", "client_name", "description", "total_area_m2", "priority", "start_date", "due_date"]) {
+    for (const field of ["name", "project_type", "country_code", "city", "city_geonames_id", "client_name", "description", "total_area_m2", "priority", "start_date", "due_date"]) {
       expect(context).toContain(`${field}: project.${field}`);
     }
   });
@@ -50,5 +50,13 @@ describe("compact project creation contract", () => {
     expect(source).toContain("<input data-dialog-initial-focus name=\"project_name\"");
     expect(source).toContain('autoComplete="off" noValidate');
     expect(source).not.toContain('mode === "create" ? "" : undefined');
+  });
+
+  it("keeps a GeoNames id separate from the browser-visible city search value", async () => {
+    const source = await readFile(formPath, "utf8");
+    expect(source).toContain('name="city_search"');
+    expect(source).toContain('<input type="hidden" name="city" value={city} />');
+    expect(source).toContain('<input type="hidden" name="city_geonames_id" value={cityGeoNamesId ?? ""} />');
+    expect(source).toContain("setCityGeoNamesId(undefined);");
   });
 });

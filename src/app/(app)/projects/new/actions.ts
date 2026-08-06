@@ -46,6 +46,7 @@ export async function createProject(
       project_type: project.project_type,
       country_code: project.country_code,
       city: project.city || null,
+      city_geonames_id: project.city_geonames_id ?? null,
       client_name: project.client_name || null,
       description: project.description || null,
       total_area_m2: project.total_area_m2,

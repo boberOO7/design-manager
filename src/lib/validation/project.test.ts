@@ -6,6 +6,7 @@ const project = {
   project_type: "residential",
   country_code: "UA",
   city: "Kyiv",
+  city_geonames_id: 703448,
   client_name: "Olena K.",
   description: "",
   total_area_m2: 96,
@@ -24,6 +25,7 @@ describe("project form metadata", () => {
     expect(projectSchema.safeParse({ ...project, project_type: "Residential" }).success).toBe(false);
     expect(projectSchema.safeParse({ ...project, country_code: "ZZ" }).success).toBe(false);
     expect(projectSchema.safeParse({ ...project, city: "x".repeat(101) }).success).toBe(false);
+    expect(projectSchema.safeParse({ ...project, city_geonames_id: "not-an-id" }).success).toBe(false);
   });
 
   it("accepts a null project type but requires a country", () => {
@@ -39,7 +41,8 @@ describe("project form metadata", () => {
     const formData = new FormData();
     formData.set("project_name", project.name);
     formData.set("city", project.city);
-    expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city });
+    formData.set("city_geonames_id", String(project.city_geonames_id));
+    expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city, city_geonames_id: String(project.city_geonames_id) });
     expect(getProjectFormInput(formData)).not.toHaveProperty("project_name");
   });
 });

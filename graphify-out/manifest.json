@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/actions.ts": {
-    "mtime": 1785971870.6115487,
-    "ast_hash": "cfab86ecd87a64e4a9ce2566640eb788",
+    "mtime": 1786038866.5161602,
+    "ast_hash": "e2dd4529965076f931dd84358ffdf87c",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/edit/page.tsx": {
@@ -260,8 +260,8 @@
     "semantic_hash": "390151c0f09bbf8265554ffc7ead1b38"
   },
   "src/app/(app)/projects/[projectId]/page.tsx": {
-    "mtime": 1785971870.4515488,
-    "ast_hash": "a5011c8f95ac2f29eba2fb8419887667",
+    "mtime": 1786038911.636158,
+    "ast_hash": "f69fc0c8a5422d0e9e9f33dfb92b2022",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/actions.ts": {
-    "mtime": 1785965173.7678277,
-    "ast_hash": "f8f6f01edbc6e78a46f6d18f347197d6",
+    "mtime": 1786038866.3521602,
+    "ast_hash": "13d1f7e0f9b96d564cb81060e9df265d",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/page.tsx": {
@@ -450,13 +450,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1785972173.8475351,
-    "ast_hash": "a17ecd35fb396bea855c7322d6cbdd8f",
+    "mtime": 1786038911.500158,
+    "ast_hash": "0fd7e5b3e23d6e13d62428def8398f41",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1786035566.180329,
-    "ast_hash": "15811a955f239a0b5faf033f419c165e",
+    "mtime": 1786038866.0001602,
+    "ast_hash": "ebf326e19e6aa5a73a38059ebc0377e9",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -655,8 +655,8 @@
     "semantic_hash": "fa930b73c5b394459efb78fad5d64401"
   },
   "src/data/queries/project-by-id.ts": {
-    "mtime": 1785965409.0558178,
-    "ast_hash": "ab26ab54886378bb66804448076b78b4",
+    "mtime": 1786038866.69616,
+    "ast_hash": "47fdecb1ac1de58ee6d219affe363759",
     "semantic_hash": ""
   },
   "src/data/queries/project-members.ts": {
@@ -940,8 +940,8 @@
     "semantic_hash": "9843fb0e820742b2b5c9338b370ff224"
   },
   "src/lib/validation/project.ts": {
-    "mtime": 1786035566.296329,
-    "ast_hash": "75a5a6ae7f0540d548b3ca6a26fd99b4",
+    "mtime": 1786038866.1801603,
+    "ast_hash": "1066c5b6df502443987d2c551d69b898",
     "semantic_hash": ""
   },
   "src/lib/validation/set-password.test.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1785965153.1198287,
-    "ast_hash": "d7a27a35282954d2beac32bf391dc8bf",
+    "mtime": 1786038866.88016,
+    "ast_hash": "2628ec726c90e32320dde34fddab8000",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1835,8 +1835,8 @@
     "semantic_hash": ""
   },
   "src/lib/validation/project.test.ts": {
-    "mtime": 1786035566.5243292,
-    "ast_hash": "f6e7b43fc31eac0855295a960ada1efe",
+    "mtime": 1786038956.3121552,
+    "ast_hash": "cc08aff8715a53e6c017371cac7c098a",
     "semantic_hash": ""
   },
   "supabase/migrations/20260803223000_add_project_location_metadata.sql": {
@@ -1850,8 +1850,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/city-combobox.tsx": {
-    "mtime": 1785972121.3155367,
-    "ast_hash": "fa9df9c74f6db61f3e64a8d61fe9d7bd",
+    "mtime": 1786038865.8441603,
+    "ast_hash": "4a886881cb159e473ce720d647d0a0a8",
     "semantic_hash": ""
   },
   "src/components/projects/project-creation-modal.tsx": {
@@ -1860,8 +1860,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-form.contract.test.ts": {
-    "mtime": 1786035566.4163291,
-    "ast_hash": "7d50dd5d1acce23609733621715600b9",
+    "mtime": 1786038956.4241552,
+    "ast_hash": "c7fbaf8177c0f47c28d512daba205152",
     "semantic_hash": ""
   },
   "src/components/ui/dialog.tsx": {
@@ -1870,13 +1870,13 @@
     "semantic_hash": ""
   },
   "src/lib/city-provider.test.ts": {
-    "mtime": 1785965722.8558044,
-    "ast_hash": "dea86b47ef4e36a04d78d0d9d9a7a211",
+    "mtime": 1786038994.6201532,
+    "ast_hash": "75e2071c4028586d36f8c98ba617080b",
     "semantic_hash": ""
   },
   "src/lib/city-provider.ts": {
-    "mtime": 1785965722.7358043,
-    "ast_hash": "5bf7ce48d9c6cf1b23ec9a105dd94f9d",
+    "mtime": 1786038994.4841533,
+    "ast_hash": "8e9c11685b5e1baa8f66e007b3316e3a",
     "semantic_hash": ""
   },
   "src/lib/countries.ts": {
@@ -1885,8 +1885,8 @@
     "semantic_hash": ""
   },
   "src/lib/geonames.ts": {
-    "mtime": 1785965722.6158044,
-    "ast_hash": "cf0f10f9303fd7e6b9a2f7b7e9b3c8a8",
+    "mtime": 1786038994.3481534,
+    "ast_hash": "deed0c3b21a0864955ca28f43edf85f5",
     "semantic_hash": ""
   },
   "src/lib/project-dialog.test.ts": {
@@ -1937,6 +1937,21 @@
   "src/lib/operational-autocomplete.test.ts": {
     "mtime": 1786035594.3563285,
     "ast_hash": "ca38d12ce7a9bb59e2072c5cb22ccbfd",
+    "semantic_hash": ""
+  },
+  "src/lib/project-city-geonames-migration.test.ts": {
+    "mtime": 1786038956.6881554,
+    "ast_hash": "f6e97325bf169a9ddf35545ca3d853f1",
+    "semantic_hash": ""
+  },
+  "src/lib/project-city-geonames-mutation.test.ts": {
+    "mtime": 1786038963.524155,
+    "ast_hash": "f6623768cbb9a2c21a79d8a3bca51d11",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260806175022_add_project_city_geonames_id.sql": {
+    "mtime": 1786038911.780158,
+    "ast_hash": "8571003c6ea8c4cb6eefd26c31db2c4c",
     "semantic_hash": ""
   }
 }

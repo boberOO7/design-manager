@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 export type ProjectFormDefaults = {
   city?: string;
+  city_geonames_id?: number;
   client_name?: string;
   country_code?: string;
   description?: string;
@@ -47,6 +48,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const [projectType, setProjectType] = useState(defaultValues.project_type ?? "");
   const [countryCode, setCountryCode] = useState(defaultValues.country_code ?? "UA");
   const [city, setCity] = useState(defaultValues.city ?? "");
+  const [cityGeoNamesId, setCityGeoNamesId] = useState(defaultValues.city_geonames_id);
   const [countryResetMessage, setCountryResetMessage] = useState("");
   const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
   const legacyProjectType = projectType && !isProjectTypeKey(projectType) ? projectType : null;
@@ -74,6 +76,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   function changeCountry(nextCountryCode: string) {
     if (nextCountryCode === countryCode) return;
     setCountryCode(nextCountryCode);
+    setCityGeoNamesId(undefined);
     if (city) {
       setCity("");
       setCountryResetMessage(t("cityCleared"));
@@ -105,8 +108,9 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("city")} id="city" label={t("city")}>
-      <CityCombobox countryCode={countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={city} onValueChange={(value) => { setCity(value); markDirty(); }} />
+      <CityCombobox countryCode={countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={city} onGeoNamesIdChange={setCityGeoNamesId} onValueChange={(value) => { setCity(value); markDirty(); }} />
       <input type="hidden" name="city" value={city} />
+      <input type="hidden" name="city_geonames_id" value={cityGeoNamesId ?? ""} />
     </Field>
 
     <Field error={fieldError("total_area_m2")} id="total_area_m2" label={t("totalArea")} required>

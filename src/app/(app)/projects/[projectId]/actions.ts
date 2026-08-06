@@ -85,6 +85,7 @@ export async function updateProject(
       ...(preserveLegacyProjectType ? {} : { project_type: values.project_type }),
       country_code: values.country_code,
       city: values.city || null,
+      city_geonames_id: values.city_geonames_id ?? null,
       client_name: values.client_name || null,
       description: values.description || null,
       total_area_m2: values.total_area_m2,

@@ -335,6 +335,7 @@ export type Database = {
           archived_at: string | null
           client_name: string | null
           city: string | null
+          city_geonames_id: number | null
           country_code: string
           completed_at: string | null
           created_at: string
@@ -357,6 +358,7 @@ export type Database = {
           archived_at?: string | null
           client_name?: string | null
           city?: string | null
+          city_geonames_id?: number | null
           country_code?: string
           completed_at?: string | null
           created_at?: string
@@ -379,6 +381,7 @@ export type Database = {
           archived_at?: string | null
           client_name?: string | null
           city?: string | null
+          city_geonames_id?: number | null
           country_code?: string
           completed_at?: string | null
           created_at?: string

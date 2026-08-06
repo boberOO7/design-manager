@@ -34,6 +34,7 @@ const projectFields = {
   project_type: z.preprocess((value) => value === "" ? null : value, z.enum(PROJECT_TYPE_KEYS).nullable()),
   country_code: z.string().trim().refine(isCountryCode, "Choose a valid country"),
   city: z.string().trim().max(100, "City is too long").optional(),
+  city_geonames_id: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional()),
   client_name: z.string().trim().max(200, "Client name is too long").optional(),
   description: z.string().trim().max(5000, "Description is too long").optional(),
   total_area_m2: z.coerce
@@ -85,6 +86,7 @@ export function getProjectFormInput(formData: FormData) {
     project_type: getOptionalString(formData, "project_type"),
     country_code: getOptionalString(formData, "country_code"),
     city: getOptionalString(formData, "city"),
+    city_geonames_id: getOptionalString(formData, "city_geonames_id"),
     client_name: getOptionalString(formData, "client_name"),
     description: getOptionalString(formData, "description"),
     total_area_m2: getOptionalString(formData, "total_area_m2"),
