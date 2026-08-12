@@ -55,7 +55,7 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, email, avatar_url, job_title, system_role, is_active, created_at, updated_at"
+      "id, full_name, email, avatar_url, country_code, city, city_geonames_id, job_title, system_role, is_active, created_at, updated_at"
     )
     .eq("id", userId)
     .single();

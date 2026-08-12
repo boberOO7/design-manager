@@ -43,7 +43,14 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
     <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <MobileNavigation profile={profile} />
-        <ProfileAvatarEditor avatarUrl={profile.avatar_url} fullName={profile.full_name} userId={profile.id} />
+        <ProfileAvatarEditor
+          avatarUrl={profile.avatar_url}
+          city={profile.city}
+          cityGeoNamesId={profile.city_geonames_id}
+          countryCode={profile.country_code}
+          fullName={profile.full_name}
+          userId={profile.id}
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{profile.full_name}</p>
           <p className="truncate text-xs text-[var(--ui-text-muted)]">{roleKey ? roles(roleKey) : profile.job_title}</p>

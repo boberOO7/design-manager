@@ -9,7 +9,7 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type StudioMemberRow = Database["public"]["Tables"]["studio_members"]["Row"];
 
 export type TeamMember = Pick<StudioMemberRow, "is_active"> &
-  Pick<ProfileRow, "id" | "full_name" | "job_title" | "avatar_url"> & {
+  Pick<ProfileRow, "id" | "full_name" | "job_title" | "avatar_url" | "country_code" | "city" | "city_geonames_id"> & {
     system_role: SystemRole;
   };
 
@@ -24,7 +24,7 @@ export async function getCurrentStudioTeam(): Promise<TeamMember[]> {
   const { data, error } = await supabase
     .from("studio_members")
     .select(
-      "is_active, system_role, profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url)",
+      "is_active, system_role, profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, country_code, city, city_geonames_id)",
     )
     .eq("studio_id", membership.studio_id)
     .eq("is_active", true);
@@ -45,6 +45,9 @@ export async function getCurrentStudioTeam(): Promise<TeamMember[]> {
       full_name: member.profile.full_name,
       job_title: member.profile.job_title,
       avatar_url: member.profile.avatar_url,
+      country_code: member.profile.country_code,
+      city: member.profile.city,
+      city_geonames_id: member.profile.city_geonames_id,
       system_role: member.system_role,
       is_active: member.is_active,
     };

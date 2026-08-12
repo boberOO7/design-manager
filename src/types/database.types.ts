@@ -88,6 +88,9 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
+          city_geonames_id: number | null
+          country_code: string | null
           created_at: string
           email: string
           full_name: string
@@ -99,6 +102,9 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
+          city_geonames_id?: number | null
+          country_code?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -110,6 +116,9 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
+          city_geonames_id?: number | null
+          country_code?: string | null
           created_at?: string
           email?: string
           full_name?: string
@@ -655,6 +664,14 @@ export type Database = {
       update_my_avatar: {
         Args: { p_avatar_path: string | null }
         Returns: string | null
+      }
+      update_my_profile_location: {
+        Args: {
+          p_city: string | null
+          p_city_geonames_id: number | null
+          p_country_code: string | null
+        }
+        Returns: undefined
       }
     }
     Enums: {

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const sizeClassName = {
   board: "size-5 text-[9px]",
+  boardCard: "size-7 text-[11px]",
   header: "size-11 text-xs",
   profile: "size-16 text-base",
 } as const;

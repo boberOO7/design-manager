@@ -12,6 +12,9 @@ export interface Profile {
   full_name: string;
   email: string;
   avatar_url?: string;
+  country_code?: string | null;
+  city?: string | null;
+  city_geonames_id?: number | null;
   job_title: string;
   system_role: SystemRole;
   is_active: boolean;
