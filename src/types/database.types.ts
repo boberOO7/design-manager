@@ -652,6 +652,10 @@ export type Database = {
           label: string; start_date: string; start_time: string | null; user_id: string
         }[]
       }
+      update_my_avatar: {
+        Args: { p_avatar_path: string | null }
+        Returns: string | null
+      }
     }
     Enums: {
       calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "other"

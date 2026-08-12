@@ -5,19 +5,11 @@ import { getCurrentStudioTeam } from "@/data/queries/team";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export const metadata: Metadata = {
   title: "Team | StudioFlow",
 };
-
-function getInitials(fullName: string) {
-  return fullName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 export default async function TeamPage() {
   const [t, roles, teamMembers, adminMembership] = await Promise.all([
@@ -58,21 +50,7 @@ export default async function TeamPage() {
             {teamMembers.map((member) => (
               <article key={member.id} className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-sm">
                 <div className="flex items-start gap-4">
-                  {member.avatar_url ? (
-                    <span
-                      aria-label={t("avatar", { name: member.full_name })}
-                      role="img"
-                      className="h-12 w-12 shrink-0 rounded-full bg-[var(--ui-surface-strong)] bg-cover bg-center"
-                      style={{ backgroundImage: `url(${member.avatar_url})` }}
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-sm font-semibold text-[var(--ui-action-primary-text)]"
-                    >
-                      {getInitials(member.full_name)}
-                    </span>
-                  )}
+                  <UserAvatar className="size-12 text-sm" imageUrl={member.avatar_url} name={member.full_name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-[var(--ui-text)]">{member.full_name}</p>
                     {member.job_title ? (

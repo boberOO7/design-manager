@@ -120,7 +120,7 @@ function TaskCardContent({
       </div>
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs leading-4">
         <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
-          <UserAvatar name={task.assignee?.full_name} decorative />
+          <UserAvatar imageUrl={task.assignee?.avatar_url} name={task.assignee?.full_name} decorative />
           <span className="truncate">{task.assignee?.full_name ?? t("unassigned")}</span>
         </div>
         {progress ? <span className="ui-numeric whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"

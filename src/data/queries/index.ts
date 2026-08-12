@@ -200,7 +200,17 @@ export async function getLeaderboardOverviewData(): Promise<{ current: Productiv
     getLeaderboardForMonth(membership.studio_id, 0),
     getLeaderboardForMonth(membership.studio_id, -1),
   ]);
-  return { current, previous };
+  const contributorIds = [...new Set([...current, ...previous].map((entry) => entry.user_id))];
+  if (contributorIds.length === 0) return { current, previous };
+  const supabase = await createClient();
+  const { data: contributors, error } = await supabase
+    .from("profiles")
+    .select("id, avatar_url")
+    .in("id", contributorIds);
+  if (error || !contributors) throw new Error("Unable to load contributor avatars.", { cause: error });
+  const avatarByContributorId = new Map(contributors.map((contributor) => [contributor.id, contributor.avatar_url]));
+  const attachAvatars = (entries: ProductivityLeaderboardEntry[]) => entries.map((entry) => ({ ...entry, avatar_url: avatarByContributorId.get(entry.user_id) ?? null }));
+  return { current: attachAvatars(current), previous: attachAvatars(previous) };
 }
 
 export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { getUserInitials } from "@/lib/user-avatar";
+import { getAvatarImageUrl, getUserInitials } from "@/lib/user-avatar";
 import { cn } from "@/lib/utils";
 
 const sizeClassName = {
   board: "size-5 text-[9px]",
   header: "size-11 text-xs",
+  profile: "size-16 text-base",
 } as const;
 
 type UserAvatarProps = {
@@ -24,10 +25,10 @@ export function UserAvatar({
   name,
   size = "board",
 }: UserAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const resolvedImageUrl = imageUrl?.trim();
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const resolvedImageUrl = getAvatarImageUrl(imageUrl);
   const initials = getUserInitials(name);
-  const hasImage = Boolean(resolvedImageUrl) && !imageFailed;
+  const hasImage = Boolean(resolvedImageUrl) && failedImageUrl !== resolvedImageUrl;
   const accessibleName = name?.trim();
 
   return (
@@ -47,7 +48,9 @@ export function UserAvatar({
         <img
           alt=""
           className="size-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => {
+            if (resolvedImageUrl) setFailedImageUrl(resolvedImageUrl);
+          }}
           src={resolvedImageUrl}
         />
       ) : initials}

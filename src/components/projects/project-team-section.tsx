@@ -2,19 +2,11 @@ import { AddProjectMemberForm } from "@/components/projects/add-project-member-f
 import { RemoveProjectMemberButton } from "@/components/projects/remove-project-member-button";
 import { getTranslations } from "next-intl/server";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type {
   AssignableStudioMember,
   ProjectMemberWithProfile,
 } from "@/data/queries/project-members";
-
-function getInitials(fullName: string): string {
-  return fullName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-}
 
 export async function ProjectTeamSection({
   assignableMembers,
@@ -56,9 +48,7 @@ export async function ProjectTeamSection({
           {members.map((member) => (
             <div key={member.id} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-sm font-semibold text-[var(--ui-action-primary-text)]" aria-hidden="true">
-                  {getInitials(member.profile.full_name)}
-                </div>
+                <UserAvatar className="size-10 text-sm" imageUrl={member.profile.avatar_url} name={member.profile.full_name} decorative />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-[var(--ui-text)]">{member.profile.full_name}</p>
                   {member.profile.job_title ? <p className="truncate text-sm text-[var(--ui-text-muted)]">{(() => { const roleKey = getCanonicalRoleTranslationKey(member.profile.job_title); return roleKey ? roles(roleKey) : member.profile.job_title; })()}</p> : null}

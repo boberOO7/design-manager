@@ -19,6 +19,7 @@ export type TaskStatus = TaskRow["status"] & (typeof TASK_STATUS_VALUES)[number]
 export type TaskPriority = TaskRow["priority"] & (typeof TASK_PRIORITY_VALUES)[number];
 
 type ProfileSummary = {
+  avatar_url?: string | null;
   id: string;
   full_name: string;
   job_title: string;

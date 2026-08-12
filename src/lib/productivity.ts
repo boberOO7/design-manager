@@ -9,6 +9,7 @@ export type ProductivityAttribution = {
 };
 
 export type ProductivityLeaderboardEntry = {
+  avatar_url?: string | null;
   rank: number;
   user_id: string;
   full_name: string;

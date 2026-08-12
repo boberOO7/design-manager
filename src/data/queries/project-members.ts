@@ -11,7 +11,7 @@ export type ProjectMemberWithProfile = Pick<
   ProjectMemberRow,
   "id" | "project_id" | "user_id" | "assigned_at"
 > & {
-  profile: Pick<ProfileRow, "id" | "full_name" | "job_title" | "is_active">;
+  profile: Pick<ProfileRow, "id" | "full_name" | "job_title" | "is_active" | "avatar_url">;
 };
 
 export type AssignableStudioMember = Pick<
@@ -29,7 +29,7 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
   const { data, error } = await supabase
     .from("project_members")
     .select(
-      "id, project_id, user_id, assigned_at, profile:profiles!project_members_user_id_fkey!inner(id, full_name, job_title, is_active)",
+      "id, project_id, user_id, assigned_at, profile:profiles!project_members_user_id_fkey!inner(id, full_name, job_title, is_active, avatar_url)",
     )
     .eq("project_id", projectId)
     .eq("is_active", true);
