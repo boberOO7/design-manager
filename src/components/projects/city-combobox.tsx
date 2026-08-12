@@ -6,10 +6,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CitySearchResult } from "@/lib/city-provider";
 import { shouldOpenCitySuggestions, shouldSearchCity } from "@/lib/city-combobox";
+import { cn } from "@/lib/utils";
 
 type SearchState = "idle" | "loading" | "ready" | "error";
 
-export function CityCombobox({ countryCode, describedBy, invalid, name, onGeoNamesIdChange, onValueChange, value }: {
+export function CityCombobox({ className, countryCode, describedBy, invalid, name, onGeoNamesIdChange, onValueChange, value }: {
+  className?: string;
   countryCode: string;
   describedBy?: string;
   invalid?: boolean;
@@ -104,7 +106,7 @@ export function CityCombobox({ countryCode, describedBy, invalid, name, onGeoNam
 
   return <PopoverPrimitive.Root modal={false} open={Boolean(countryCode && value.trim()) && open} onOpenChange={setOpen}>
     <PopoverPrimitive.Anchor asChild>
-      <div className="relative mt-2">
+      <div className={cn("relative mt-2", className)}>
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
         <input
           ref={(node) => { inputRef.current = node; setInputNode(node); }}

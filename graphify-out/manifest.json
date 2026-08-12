@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/team/page.tsx": {
-    "mtime": 1786568952.32146,
-    "ast_hash": "a17b6c4ce56fa817985cd51e7964bc83",
+    "mtime": 1786572622.4064026,
+    "ast_hash": "88c9f779aadddc47d5a46c94b6300607",
     "semantic_hash": ""
   },
   "src/app/(auth)/forgot-password/actions.ts": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786568904.8492417,
-    "ast_hash": "7b7290b2a95938e196c874ed57f1c78b",
+    "mtime": 1786572658.1184902,
+    "ast_hash": "92c24929215774b638d02b8d5795d9f6",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786568904.9572425,
-    "ast_hash": "6bb0649523d967fd53498fa5dfa3b499",
+    "mtime": 1786572658.2704904,
+    "ast_hash": "501dab7548e0982a4cef0fcda1e33707",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1820,18 +1820,18 @@
     "semantic_hash": ""
   },
   "src/components/ui/user-avatar.tsx": {
-    "mtime": 1786568117.588481,
-    "ast_hash": "0f65f34ef61ca7cc1793116aa00c70b8",
+    "mtime": 1786572622.130402,
+    "ast_hash": "9ca32c01bbc173645079205cc1544931",
     "semantic_hash": ""
   },
   "src/lib/user-avatar.test.ts": {
-    "mtime": 1786561553.8089433,
-    "ast_hash": "da27f97fdcdc8c5c0abe551d238a5070",
+    "mtime": 1786573459.0163105,
+    "ast_hash": "c4093fc96bc74e28753545f306cd9b2b",
     "semantic_hash": ""
   },
   "src/lib/user-avatar.ts": {
-    "mtime": 1786561160.7770064,
-    "ast_hash": "d0d54be7fc3535883447d84cafb5fb29",
+    "mtime": 1786573458.74031,
+    "ast_hash": "df89f77c45a51c8d3da63699efbd9de5",
     "semantic_hash": ""
   },
   "src/lib/validation/project.test.ts": {
@@ -1850,8 +1850,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/city-combobox.tsx": {
-    "mtime": 1786038865.8441603,
-    "ast_hash": "4a886881cb159e473ce720d647d0a0a8",
+    "mtime": 1786569627.392589,
+    "ast_hash": "95ea6095fe5e1cddf69012871a2313fe",
     "semantic_hash": ""
   },
   "src/components/projects/project-creation-modal.tsx": {
@@ -1865,8 +1865,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/dialog.tsx": {
-    "mtime": 1785965960.0317957,
-    "ast_hash": "27837723d5747fbb660d1df28954ea77",
+    "mtime": 1786573354.5240855,
+    "ast_hash": "4d78ba2fdc520ec631253036da76d632",
     "semantic_hash": ""
   },
   "src/lib/city-provider.test.ts": {
@@ -1955,13 +1955,13 @@
     "semantic_hash": ""
   },
   "src/components/layout/profile-avatar-editor.tsx": {
-    "mtime": 1786568867.8130178,
-    "ast_hash": "3a3b8ccb87d6a45072be51331b05c48a",
+    "mtime": 1786573672.872768,
+    "ast_hash": "d3be99854a932a76b5b88551b6473162",
     "semantic_hash": ""
   },
   "src/lib/avatar-storage-migration.test.ts": {
-    "mtime": 1786561161.1170063,
-    "ast_hash": "91825d10027d19173b771f2b7b8930c1",
+    "mtime": 1786573673.0167682,
+    "ast_hash": "821bb6a874f3982892576e143ca01e3f",
     "semantic_hash": ""
   },
   "supabase/migrations/20260812185810_profile_avatars.sql": {
@@ -1975,8 +1975,53 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260812210630_profile_location.sql": {
-    "mtime": 1786568816.316707,
-    "ast_hash": "66b54bcc383f1b44dcfe012c12e36217",
+    "mtime": 1786569277.8709638,
+    "ast_hash": "cef7e03502674c74a5261950c438eddd",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/team/team-directory-presentation.test.ts": {
+    "mtime": 1786572672.6185255,
+    "ast_hash": "1993b849487420a296fcbdab8d3e04f7",
+    "semantic_hash": ""
+  },
+  "src/components/layout/profile-avatar-editor.contract.test.ts": {
+    "mtime": 1786573689.9408038,
+    "ast_hash": "d0ed1cd945684e125c91d4e56484eb57",
+    "semantic_hash": ""
+  },
+  "src/components/layout/avatar-crop-step.contract.test.ts": {
+    "mtime": 1786573386.824155,
+    "ast_hash": "985bf6299879b75521ef7c12cff5cf65",
+    "semantic_hash": ""
+  },
+  "src/components/layout/avatar-crop-step.tsx": {
+    "mtime": 1786573354.720086,
+    "ast_hash": "6d6d0319100fe98d657d3eeefc70d332",
+    "semantic_hash": ""
+  },
+  "src/components/team/team-member-card.contract.test.ts": {
+    "mtime": 1786573386.7001548,
+    "ast_hash": "921e0b8da149c96f99230f61b8dd8fe6",
+    "semantic_hash": ""
+  },
+  "src/components/team/team-member-card.tsx": {
+    "mtime": 1786573355.0560868,
+    "ast_hash": "6a8f8d472855b9b87631e24e7f9fed84",
+    "semantic_hash": ""
+  },
+  "src/lib/avatar-storage-cleanup.test.ts": {
+    "mtime": 1786573673.1447685,
+    "ast_hash": "f520a9790c15920e3cce67adaadaa699",
+    "semantic_hash": ""
+  },
+  "src/lib/avatar-storage-cleanup.ts": {
+    "mtime": 1786573672.7447677,
+    "ast_hash": "d272223277edc612f03b03d1fcc48839",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260812222709_avatars_select_own_folder.sql": {
+    "mtime": 1786573672.6327674,
+    "ast_hash": "01cc007c7bcc326b6d066e82540ddea5",
     "semantic_hash": ""
   }
 }

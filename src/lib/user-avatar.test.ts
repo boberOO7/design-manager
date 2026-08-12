@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAvatarFileValidationError, getAvatarImageUrl, getUserInitials, isAvatarObjectPath } from "./user-avatar";
+import { getAvatarFileValidationError, getAvatarImageUrl, getAvatarOriginalPath, getUserInitials, isAvatarObjectPath } from "./user-avatar";
 
 describe("getUserInitials", () => {
   it("uses the first and last name initials after normalizing spaces", () => {
@@ -28,5 +28,11 @@ describe("avatar upload helpers", () => {
     expect(isAvatarObjectPath("user-id/image.webp")).toBe(true);
     expect(isAvatarObjectPath("user-id/nested/image.webp")).toBe(false);
     expect(getAvatarImageUrl("https://example.com/avatar.png")).toBe("https://example.com/avatar.png");
+  });
+
+  it("derives the original image path only for controlled avatar paths", () => {
+    expect(getAvatarOriginalPath("user-id/image.avatar.webp")).toBe("user-id/image.avatar.webp.original");
+    expect(getAvatarOriginalPath("user-id/image.webp")).toBeUndefined();
+    expect(getAvatarOriginalPath("https://example.com/avatar.png")).toBeUndefined();
   });
 });

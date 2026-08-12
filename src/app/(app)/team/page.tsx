@@ -9,8 +9,7 @@ import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import { getLocalizedCityName } from "@/lib/city-provider";
 import { getCountryName, isCountryCode } from "@/lib/countries";
 import { defaultLocale, isAppLocale } from "@/i18n/config";
-import { UserAvatar } from "@/components/ui/user-avatar";
-import { MapPin } from "lucide-react";
+import { TeamMemberCard } from "@/components/team/team-member-card";
 
 export const metadata: Metadata = {
   title: "Team | StudioFlow",
@@ -62,31 +61,9 @@ export default async function TeamPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 justify-items-start gap-4 sm:grid-cols-[repeat(auto-fill,minmax(16.25rem,18.75rem))]">
             {directoryMembers.map((member) => (
-              <article key={member.id} className="flex h-full flex-col rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 shadow-sm sm:p-5">
-                <div className="flex items-center gap-4">
-                  <UserAvatar imageUrl={member.avatar_url} name={member.full_name} size="profile" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-[var(--ui-text)]">{member.full_name}</p>
-                    {member.job_title ? (
-                      <p className="mt-1 truncate text-sm text-[var(--ui-text-muted)]">{(() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })()}</p>
-                    ) : (
-                      <p className="mt-1 text-sm text-[var(--ui-text-subtle)]">{t("jobTitleUnavailable")}</p>
-                    )}
-                  </div>
-                </div>
-                {member.location ? <p className="mt-4 flex min-w-0 items-center gap-2 text-sm text-[var(--ui-text-muted)]"><MapPin aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate">{member.location}</span></p> : null}
-                <div className="mt-4 flex items-center justify-between border-t border-[var(--ui-border-subtle)] pt-3">
-                  <span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--ui-text-secondary)]">
-                    {member.system_role === "admin" ? roles("administrator") : t("employee")}
-                  </span>
-                  <span className={`flex items-center gap-1.5 text-xs font-medium ${member.is_active ? "text-[var(--ui-success-text)]" : "text-[var(--ui-text-muted)]"}`}>
-                    <span className={`size-1.5 rounded-full ${member.is_active ? "bg-[var(--ui-success-text)]" : "bg-[var(--ui-text-subtle)]"}`} />
-                    {member.is_active ? t("active") : t("inactive")}
-                  </span>
-                </div>
-              </article>
+              <TeamMemberCard avatarUrl={member.avatar_url} fullName={member.full_name} isActive={member.is_active} jobTitle={member.job_title ? (() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })() : null} key={member.id} location={member.location} roleLabel={member.system_role === "admin" ? roles("administrator") : t("employee")} />
             ))}
           </div>
         )}

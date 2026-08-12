@@ -34,6 +34,10 @@ export function isAvatarObjectPath(value: string | null | undefined): value is s
   return segments.length === 2 && segments.every(Boolean);
 }
 
+export function getAvatarOriginalPath(value: string | null | undefined): string | undefined {
+  return isAvatarObjectPath(value) && value.split("/")[1]?.includes(".avatar.") ? `${value}.original` : undefined;
+}
+
 export function getAvatarImageUrl(value: string | null | undefined): string | undefined {
   const trimmedValue = value?.trim();
   if (!trimmedValue) return undefined;
@@ -42,4 +46,8 @@ export function getAvatarImageUrl(value: string | null | undefined): string | un
   return supabaseUrl && isAvatarObjectPath(trimmedValue)
     ? `${supabaseUrl}/storage/v1/object/public/${AVATAR_BUCKET}/${trimmedValue.split("/").map(encodeURIComponent).join("/")}`
     : trimmedValue;
+}
+
+export function getAvatarOriginalImageUrl(value: string | null | undefined): string | undefined {
+  return getAvatarImageUrl(getAvatarOriginalPath(value));
 }
