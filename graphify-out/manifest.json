@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1786038911.500158,
-    "ast_hash": "0fd7e5b3e23d6e13d62428def8398f41",
+    "mtime": 1786636115.4839082,
+    "ast_hash": "fdda6b8e466cbe3d4f12736c2fbc2369",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
@@ -1580,8 +1580,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-progress-settings.tsx": {
-    "mtime": 1785784344.8487654,
-    "ast_hash": "e54509516c1207ef7d61f7398806c765",
+    "mtime": 1786635506.792028,
+    "ast_hash": "381f3b5fbff8bb81ff1e3e1183de05b2",
     "semantic_hash": ""
   },
   "src/data/mutations/project-progress-settings.ts": {
@@ -2590,7 +2590,7 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260813143000_per_task_studio_member_removal.sql": {
-    "mtime": 1786623022.69048,
+    "mtime": 1786634895.6241484,
     "ast_hash": "2e6d04bcfa6ded8986d5cc802a3a3c83",
     "semantic_hash": ""
   },
