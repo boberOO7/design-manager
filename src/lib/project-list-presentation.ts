@@ -34,7 +34,7 @@ export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[
   progress: ProjectProgress;
 };
 
-const defaultFilters: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational" };
+const defaultFilters: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "name" };
 const healthOrder: Record<ProjectHealth, number> = { overdue: 0, needs_attention: 1, deadline_soon: 2, on_track: 3, completed: 4 };
 
 function isOneOf<T extends readonly string[]>(value: string | string[] | undefined, options: T): value is T[number] {
@@ -86,7 +86,7 @@ export function filterAndSortProjects<T extends { name: string; priority: string
 }
 
 export function hasActiveProjectListFilters(filters: ProjectListFilters): boolean {
-  return filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "operational";
+  return filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "name";
 }
 
 export function getProjectListEmptyState(filters: ProjectListFilters): { canReset: boolean; title: string } {

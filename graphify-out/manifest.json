@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1785972003.9595432,
-    "ast_hash": "e5741ba3d004ac1a473b1d16243f632f",
+    "mtime": 1786628701.1893647,
+    "ast_hash": "041e00581a4f8cfc53b8209312ded9be",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1786038866.0001602,
-    "ast_hash": "ebf326e19e6aa5a73a38059ebc0377e9",
+    "mtime": 1786628774.3533506,
+    "ast_hash": "3305a2aa5e953fd352ada95225496e33",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -470,13 +470,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-list-controls.tsx": {
-    "mtime": 1785779533.1661508,
-    "ast_hash": "67d2fa55793d1392c5311f46186a26d5",
+    "mtime": 1786633937.692336,
+    "ast_hash": "c9ae801f9a3deac0ed2ef15da1f894b5",
     "semantic_hash": ""
   },
   "src/components/projects/project-list.tsx": {
-    "mtime": 1785753900.2455313,
-    "ast_hash": "6633a4a02d841c06842275f18b107942",
+    "mtime": 1786633287.7084632,
+    "ast_hash": "b04fde299782085c3cc97008590c006e",
     "semantic_hash": ""
   },
   "src/components/projects/project-status-action.tsx": {
@@ -510,13 +510,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1785971918.8955467,
-    "ast_hash": "6d325f2ff582b8b52b1facde756565f2",
+    "mtime": 1786628732.297359,
+    "ast_hash": "71effa4216fa3b853957d064e7828c24",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
-    "mtime": 1785752225.1580133,
-    "ast_hash": "4dc1bd159b71dd55dcbb94e2d2271d8a",
+    "mtime": 1786629734.7491612,
+    "ast_hash": "2bbbb65f412cee47788c686463e9b8b5",
     "semantic_hash": ""
   },
   "src/components/tasks/my-tasks-list.tsx": {
@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1786618904.739288,
-    "ast_hash": "ee36f94f815c4a96177fe59ba4645797",
+    "mtime": 1786628660.5413725,
+    "ast_hash": "a955fe171a7cff80e2b52f96fde1af8c",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -805,13 +805,13 @@
     "semantic_hash": "8892b97e936267a838bbd9cba9d06bd8"
   },
   "src/lib/project-list-presentation.test.ts": {
-    "mtime": 1785715087.6082728,
-    "ast_hash": "a80368a1f18b6a3a786b29b006cfd5da",
+    "mtime": 1786633938.016336,
+    "ast_hash": "3366d0c7b8bcca28c9f0bd9401c80ff0",
     "semantic_hash": ""
   },
   "src/lib/project-list-presentation.ts": {
-    "mtime": 1785763159.6308653,
-    "ast_hash": "2befc920f9a1ff6c47981d1697f60cd4",
+    "mtime": 1786633937.844336,
+    "ast_hash": "f3d86817861243e8a32f43fefbabfb7e",
     "semantic_hash": ""
   },
   "src/lib/project-progress.test.ts": {
@@ -1795,8 +1795,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-list-controls.test.ts": {
-    "mtime": 1785779519.4181547,
-    "ast_hash": "2e2a86517a32a04752458ba87830bfe1",
+    "mtime": 1786633945.8163345,
+    "ast_hash": "f4316643cd9fa441dee033856986358d",
     "semantic_hash": ""
   },
   "src/components/ui/select.test.ts": {
@@ -2812,6 +2812,11 @@
   "src/components/team/studio-member-lifecycle-controls.contract.test.ts": {
     "mtime": 1786627394.77762,
     "ast_hash": "d83d7d3a354e2221d3bc821532c51cc8",
+    "semantic_hash": ""
+  },
+  "src/components/ui/date-picker.tsx": {
+    "mtime": 1786628731.985359,
+    "ast_hash": "c00344db30bbc184b4d678b9dc589ada",
     "semantic_hash": ""
   }
 }

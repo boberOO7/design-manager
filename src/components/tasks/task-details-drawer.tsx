@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Drawer } from "@/components/ui/drawer";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
@@ -337,7 +338,7 @@ export function TaskDetailsDrawer({
                   </Select>
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("dueDate")}
-                  <input autoComplete="off" type="date" value={values.due_date} disabled={isSaving} onChange={(event) => setValues({ ...values, due_date: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+                  <DatePicker value={values.due_date} disabled={isSaving} locale={locale} onValueChange={(due_date) => setValues({ ...values, due_date })} />
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("taskArea")} <span className="font-normal text-[var(--ui-text-muted)]">({t("optionalArea")})</span>
                   <input autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />

@@ -25,6 +25,7 @@ describe("Projects filter localization", () => {
     expect(PROJECT_LIST_SORTS).toEqual(["operational", "deadline", "name", "health", "progress"]);
     expect(source).toContain('useTranslations("Projects")');
     expect(source).toContain('useTranslations("Priority")');
+    expect(source).toContain('useTranslations("Calendar")');
     expect(source).toContain("PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option]");
     expect(source).not.toContain('planned: "Planned"');
   });
@@ -41,7 +42,8 @@ describe("Projects filter localization", () => {
     const source = await readFile(controlsPath, "utf8");
 
     expect(source.match(/width="content"/g)).toHaveLength(1);
-    expect(source).toContain("flex flex-wrap items-end gap-3");
+    expect(source).toContain("<fieldset");
+    expect(source).toContain('calendar("filters")');
     expect(source).not.toContain("min-w-32");
   });
 });

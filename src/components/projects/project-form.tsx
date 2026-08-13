@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
 import { getCountryOptions } from "@/lib/countries";
 import { isProjectTypeKey, PROJECT_TYPE_KEYS, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
@@ -71,6 +72,9 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     "aria-describedby": fieldError(field) ? `${field}-error` : undefined,
     "aria-invalid": fieldError(field) ? (true as const) : undefined,
   });
+  const dateErrorAttributes = (field: ProjectFormField) => ({
+    "aria-describedby": fieldError(field) ? `${field}-error` : undefined,
+  });
   const markDirty = () => onDirtyChange?.(true);
 
   function changeCountry(nextCountryCode: string) {
@@ -124,11 +128,11 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("start_date")} id="start_date" label={t("plannedStartDate")} required>
-      <input name="start_date" type="date" required defaultValue={defaultValues.start_date} className={inputClassName} autoComplete="off" {...errorAttributes("start_date")} />
+      <DatePicker name="start_date" defaultValue={defaultValues.start_date} locale={locale} className="mt-2" invalid={Boolean(fieldError("start_date"))} {...dateErrorAttributes("start_date")} />
     </Field>
 
     <Field error={fieldError("due_date")} id="due_date" label={t("dueDate")}>
-      <input name="due_date" type="date" defaultValue={defaultValues.due_date} className={inputClassName} autoComplete="off" {...errorAttributes("due_date")} />
+      <DatePicker name="due_date" defaultValue={defaultValues.due_date} locale={locale} className="mt-2" invalid={Boolean(fieldError("due_date"))} {...dateErrorAttributes("due_date")} />
     </Field>
 
     <Field className="md:col-span-2" error={fieldError("description")} id="description" label={t("description")}>

@@ -8,6 +8,7 @@ import { PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LI
 
 export function ProjectListControls({ filters }: { filters: ProjectListFilters }) {
   const t = useTranslations("Projects");
+  const calendar = useTranslations("Calendar");
   const priority = useTranslations("Priority");
   const router = useRouter();
 
@@ -20,7 +21,7 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
     if (lifecycle !== "all") params.set("lifecycle", lifecycle);
     if (health !== "all") params.set("health", health);
     if (priority !== "all") params.set("priority", priority);
-    if (sort !== "operational") params.set("sort", sort);
+    if (sort !== "name") params.set("sort", sort);
     const query = params.toString();
     router.replace(query ? `/projects?${query}` : "/projects");
   }
@@ -29,12 +30,14 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
     router.replace("/projects");
   }
 
-  return <div className="flex flex-wrap items-end gap-3 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3">
-    <FilterSelect label={t("lifecycle")} value={filters.lifecycle} options={PROJECT_LIST_LIFECYCLE_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option])} onChange={(value) => update("lifecycle", value)} />
-    <FilterSelect label={t("health")} value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_HEALTH_LABEL_KEYS[option])} onChange={(value) => update("health", value)} />
-    <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
+  return <div className="flex flex-wrap items-end gap-4 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3">
+    <fieldset className="grid gap-1.5"><legend className="text-xs font-semibold text-[var(--ui-text-secondary)]">{calendar("filters")}</legend><div className="flex flex-wrap items-end gap-3">
+      <FilterSelect label={t("lifecycle")} value={filters.lifecycle} options={PROJECT_LIST_LIFECYCLE_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option])} onChange={(value) => update("lifecycle", value)} />
+      <FilterSelect label={t("health")} value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_HEALTH_LABEL_KEYS[option])} onChange={(value) => update("health", value)} />
+      <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
+    </div></fieldset>
     <FilterSelect label={t("sortBy")} value={filters.sort} options={PROJECT_LIST_SORTS} getOptionLabel={(option) => t(PROJECT_LIST_SORT_LABEL_KEYS[option])} onChange={(value) => update("sort", value)} />
-    {(filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "operational") ? <Button type="button" variant="ghost" onClick={reset}>{t("resetFilters")}</Button> : null}
+    {(filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "name") ? <Button type="button" variant="ghost" onClick={reset}>{t("resetFilters")}</Button> : null}
   </div>;
 }
 

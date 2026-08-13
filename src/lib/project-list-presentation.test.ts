@@ -46,7 +46,7 @@ describe("project list presentation", () => {
 
   it("uses valid URL-backed filter defaults", () => {
     expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" });
-    expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual(operational);
+    expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual({ ...operational, sort: "name" });
   });
 
   it("selects a resettable compact empty state when filters return no projects", () => {

@@ -2,9 +2,10 @@
 
 import { Trash2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { createProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
@@ -26,6 +27,7 @@ export function AddTaskDialog({
   templates: StudioChecklistTemplate[];
 }) {
   const t = useTranslations("Tasks");
+  const locale = useLocale();
   const priority = useTranslations("Priority");
   const checklist = useTranslations("Checklists");
   const templatesT = useTranslations("Templates");
@@ -88,7 +90,7 @@ export function AddTaskDialog({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("dueDate")} optional error={state.fieldErrors?.due_date ? validation("correctFields") : undefined}>
-              <Input type="date" name="due_date" disabled={isPending} autoComplete="off" />
+              <DatePicker name="due_date" disabled={isPending} locale={locale} invalid={Boolean(state.fieldErrors?.due_date)} />
             </FormField>
             <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
               <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} autoComplete="off" aria-describedby="completed-area-help" />
