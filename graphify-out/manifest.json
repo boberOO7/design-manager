@@ -2025,8 +2025,8 @@
     "semantic_hash": ""
   },
   "src/components/team/studio-member-lifecycle-controls.tsx": {
-    "mtime": 1786618835.2713017,
-    "ast_hash": "f4a0f36e6e4dd581d386a47f194c7803",
+    "mtime": 1786627387.9776213,
+    "ast_hash": "f9371c919abffda6288edb2a22875c93",
     "semantic_hash": ""
   },
   "src/components/team/team-directory.tsx": {
@@ -2807,6 +2807,11 @@
   ".agents/skills/impeccable/reference/visualize.md": {
     "mtime": 1786617109.4756413,
     "ast_hash": "90131b62b0905d478f46fea25734d572",
+    "semantic_hash": ""
+  },
+  "src/components/team/studio-member-lifecycle-controls.contract.test.ts": {
+    "mtime": 1786627394.77762,
+    "ast_hash": "d83d7d3a354e2221d3bc821532c51cc8",
     "semantic_hash": ""
   }
 }
