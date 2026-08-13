@@ -431,6 +431,8 @@ export type Database = {
           id: string
           is_active: boolean
           joined_at: string
+          removed_at: string | null
+          removed_by: string | null
           studio_id: string
           system_role: string
           user_id: string
@@ -439,6 +441,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           joined_at?: string
+          removed_at?: string | null
+          removed_by?: string | null
           studio_id: string
           system_role?: string
           user_id: string
@@ -447,6 +451,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           joined_at?: string
+          removed_at?: string | null
+          removed_by?: string | null
           studio_id?: string
           system_role?: string
           user_id?: string
@@ -660,6 +666,18 @@ export type Database = {
           all_day: boolean; employee_name: string; end_date: string; end_time: string | null; id: string;
           label: string; start_date: string; start_time: string | null; user_id: string
         }[]
+      }
+      get_studio_member_removal_impact: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      remove_studio_member: {
+        Args: { p_reassignment_user_id?: string | null; p_user_id: string }
+        Returns: undefined
+      }
+      restore_studio_member: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       update_my_avatar: {
         Args: { p_avatar_path: string | null }

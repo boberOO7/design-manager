@@ -6,24 +6,29 @@ import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getAvatarOriginalImageUrl } from "@/lib/user-avatar";
+import { StudioMemberLifecycleControls } from "@/components/team/studio-member-lifecycle-controls";
 
 type TeamMemberCardProps = {
   avatarUrl: string | null;
   fullName: string;
   isActive: boolean;
+  isAdmin: boolean;
   jobTitle: string | null;
   location: string | null;
+  removedAt: string | null;
   roleLabel: string;
+  userId: string;
 };
 
-export function TeamMemberCard({ avatarUrl, fullName, isActive, jobTitle, location, roleLabel }: TeamMemberCardProps) {
+export function TeamMemberCard({ avatarUrl, fullName, isActive, isAdmin, jobTitle, location, removedAt, roleLabel, userId }: TeamMemberCardProps) {
   const t = useTranslations("Team");
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [hasFailedImage, setHasFailedImage] = useState(false);
   const imageUrl = getAvatarOriginalImageUrl(avatarUrl);
   const canViewAvatar = Boolean(imageUrl) && !hasFailedImage;
 
-  return <article className="flex w-full max-w-[18.75rem] flex-col items-center rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 pb-4 pt-5 text-center">
+  return <article className={`relative flex w-full max-w-[18.75rem] flex-col items-center rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 pb-4 pt-5 text-center ${isActive ? "" : "opacity-75"}`}>
+    {isAdmin ? <StudioMemberLifecycleControls isFormer={!isActive} name={fullName} userId={userId} /> : null}
     {canViewAvatar ? <button aria-label={t("viewAvatar", { name: fullName })} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" onClick={() => setIsAvatarOpen(true)} type="button">
       <UserAvatar className="ring-4 ring-[var(--ui-surface)] transition-opacity hover:opacity-85" decorative imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />
     </button> : <UserAvatar className="ring-4 ring-[var(--ui-surface)]" imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />}
@@ -35,9 +40,10 @@ export function TeamMemberCard({ avatarUrl, fullName, isActive, jobTitle, locati
         <span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 font-medium text-[var(--ui-text-secondary)]">{roleLabel}</span>
         <span className={`flex items-center gap-1.5 font-medium ${isActive ? "text-[var(--ui-success-text)]" : "text-[var(--ui-text-muted)]"}`}>
           <span className={`size-1.5 rounded-full ${isActive ? "bg-[var(--ui-success-text)]" : "bg-[var(--ui-text-subtle)]"}`} />
-          {isActive ? t("active") : t("inactive")}
+          {isActive ? t("active") : t("former")}
         </span>
       </div>
+      {!isActive && removedAt ? <p className="mt-2 text-xs text-[var(--ui-text-muted)]">{t("removedOn", { date: new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(removedAt)) })}</p> : null}
     </div>
     <Dialog ariaLabel={t("avatar", { name: fullName })} className="max-w-[min(92vw,48rem)] border-0 bg-transparent shadow-none sm:h-[min(92dvh,48rem)]" closeLabel={t("closeAvatar")} hideHeader isOpen={isAvatarOpen} onRequestClose={() => setIsAvatarOpen(false)}>
       <div className="relative flex min-h-0 flex-1 items-center justify-center">

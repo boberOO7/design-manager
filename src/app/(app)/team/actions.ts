@@ -13,6 +13,9 @@ import {
 } from "@/lib/validation/employee-invitation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { getStudioMemberActionInput, studioMemberActionSchema, type StudioMemberActionState } from "@/lib/validation/team-membership";
+import { z } from "zod";
 
 function isExistingAuthUserError(code: string | undefined): boolean {
   return code === "email_exists" || code === "user_already_exists";
@@ -146,4 +149,30 @@ export async function inviteEmployee(
 
   revalidatePath("/team");
   return { success: `Invitation sent to ${invitation.email}.` };
+}
+
+export async function removeStudioMember(_previousState: StudioMemberActionState, formData: FormData): Promise<StudioMemberActionState> {
+  const membership = await getActiveStudioMembership();
+  if (!membership || membership.system_role !== "admin") return { formError: "Only active studio administrators can remove employees." };
+  const parsed = studioMemberActionSchema.safeParse(getStudioMemberActionInput(formData));
+  if (!parsed.success || parsed.data.userId === membership.authenticatedUserId) return { formError: "This member cannot be removed." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_studio_member", { p_user_id: parsed.data.userId, p_reassignment_user_id: parsed.data.reassignmentUserId });
+  if (error) {
+    console.error("Unable to remove studio member", error);
+    return { formError: "The member could not be removed. Review open work and try again." };
+  }
+  revalidatePath("/team"); revalidatePath("/dashboard"); revalidatePath("/projects"); revalidatePath("/my-tasks");
+  return { success: "removed" };
+}
+
+export async function restoreStudioMember(_previousState: StudioMemberActionState, formData: FormData): Promise<StudioMemberActionState> {
+  const membership = await getActiveStudioMembership();
+  const userId = formData.get("user_id");
+  if (!membership || membership.system_role !== "admin" || typeof userId !== "string" || !z.string().uuid().safeParse(userId).success) return { formError: "Only active studio administrators can restore employees." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restore_studio_member", { p_user_id: userId });
+  if (error) { console.error("Unable to restore studio member", error); return { formError: "The member could not be restored. Please try again." }; }
+  revalidatePath("/team"); revalidatePath("/dashboard"); revalidatePath("/projects");
+  return { success: "restored" };
 }
