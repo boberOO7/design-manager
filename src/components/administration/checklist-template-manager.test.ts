@@ -27,8 +27,13 @@ describe("checklist template manager persistence", () => {
     expect(source).toContain('t("reorderHelp")');
   });
 
-  it("renders a full-width row overlay and aligned template controls", async () => {
+  it("renders a structured template summary alongside the existing compact editor controls", async () => {
     const source = await readFile(managerPath, "utf8");
+    expect(source).toContain('className="space-y-4"');
+    expect(source).toContain('t("stages", { count: template.stages.length })');
+    expect(source).toContain('t("totalWeight", { weight: getChecklistTemplateWeight(template) })');
+    expect(source).toContain('t("archived")');
+    expect(source).not.toContain('t("templateSummary"');
     expect(source).toContain("StageRowOverlay");
     expect(source).toContain("w-[min(30rem,calc(100vw-2rem))]");
     expect(source).toContain("grid-cols-[2.75rem_minmax(0,1fr)_4.5rem_2.75rem]");

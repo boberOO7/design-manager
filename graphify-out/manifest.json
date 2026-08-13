@@ -1655,8 +1655,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/checklist-template-manager.tsx": {
-    "mtime": 1785775759.3032393,
-    "ast_hash": "4576c26ca5148cec58fa9aca95df7371",
+    "mtime": 1786627847.8015323,
+    "ast_hash": "3acfe2b9e11c1d8bac3fa238a1a720ff",
     "semantic_hash": ""
   },
   "src/data/queries/checklist-templates.ts": {
@@ -1685,8 +1685,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/checklist-template-manager.test.ts": {
-    "mtime": 1785758441.1402233,
-    "ast_hash": "7eef07d945545b5c640bd996a53c4a8a",
+    "mtime": 1786627847.9935322,
+    "ast_hash": "9d47f38e9e23fa1f627371b0027a1e0a",
     "semantic_hash": ""
   },
   "src/components/brand/studioflow-mark.tsx": {
