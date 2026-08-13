@@ -8,6 +8,8 @@ export type ProductivityAttribution = {
   source_type: "task" | "project_fallback";
 };
 
+export type CompletedProductivityAttribution = ProductivityAttribution & { completed_at: string };
+
 export type ProductivityLeaderboardEntry = {
   avatar_url?: string | null;
   rank: number;
@@ -25,6 +27,7 @@ export const LEADERBOARD_BONUS_BY_RANK = {
 } as const;
 
 export type LeaderboardBonusPercent = (typeof LEADERBOARD_BONUS_BY_RANK)[keyof typeof LEADERBOARD_BONUS_BY_RANK] | 0;
+export type LeaderboardPeriod = "month" | "quarter" | "year";
 
 export function getLeaderboardBonusPercent(rank: number): LeaderboardBonusPercent {
   return rank in LEADERBOARD_BONUS_BY_RANK
@@ -72,6 +75,58 @@ export function getKyivMonthBounds(now = new Date(), monthOffset = 0): { start: 
   const nextMonth = nextDate.getUTCMonth() + 1;
   const wall = (targetYear: number, targetMonth: number) => `${targetYear}-${String(targetMonth).padStart(2, "0")}-01T00:00`;
   return { start: zonedWallTimeToIso(wall(startYear, startMonth)), end: zonedWallTimeToIso(wall(nextYear, nextMonth)) };
+}
+
+export function isLeaderboardPeriod(value: string | undefined): value is LeaderboardPeriod {
+  return value === "month" || value === "quarter" || value === "year";
+}
+
+export function getKyivPeriodBounds(period: LeaderboardPeriod, now = new Date(), periodOffset = 0): { start: string; end: string } {
+  if (period === "month") return getKyivMonthBounds(now, periodOffset);
+
+  const { year, month } = kyivParts(now);
+  const startDate = period === "quarter"
+    ? new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3 + periodOffset * 3, 1))
+    : new Date(Date.UTC(year + periodOffset, 0, 1));
+  const endDate = period === "quarter"
+    ? new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 3, 1))
+    : new Date(Date.UTC(startDate.getUTCFullYear() + 1, 0, 1));
+  const wall = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01T00:00`;
+  return { start: zonedWallTimeToIso(wall(startDate)), end: zonedWallTimeToIso(wall(endDate)) };
+}
+
+export function getKyivPeriodLabel(period: LeaderboardPeriod, locale: string, now = new Date(), periodOffset = 0): string {
+  const { year, month } = kyivParts(now);
+  if (period === "month") {
+    const date = new Date(Date.UTC(year, month - 1 + periodOffset, 1));
+    return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+  }
+  if (period === "quarter") {
+    const date = new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3 + periodOffset * 3, 1));
+    return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+  }
+  return String(year + periodOffset);
+}
+
+export function getKyivPeriodRangeLabel(period: LeaderboardPeriod, locale: string, now = new Date()): string {
+  const { year, month } = kyivParts(now);
+  const start = period === "month"
+    ? new Date(Date.UTC(year, month - 1, 1))
+    : period === "quarter"
+      ? new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3, 1))
+      : new Date(Date.UTC(year, 0, 1));
+  const end = period === "month"
+    ? new Date(Date.UTC(year, month, 0))
+    : period === "quarter"
+      ? new Date(Date.UTC(year, start.getUTCMonth() + 3, 0))
+      : new Date(Date.UTC(year, 11, 31));
+  const formatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return `${formatter.format(start)} – ${formatter.format(end)}`;
+}
+
+export function filterProductivityAttributionsForPeriod(attributions: CompletedProductivityAttribution[], period: LeaderboardPeriod, now = new Date(), periodOffset = 0): ProductivityAttribution[] {
+  const bounds = getKyivPeriodBounds(period, now, periodOffset);
+  return attributions.filter((attribution) => attribution.completed_at >= bounds.start && attribution.completed_at < bounds.end);
 }
 
 export function getLeaderboardTotals(entries: ProductivityLeaderboardEntry[]): { completed_area_m2: number; completed_tasks: number } {

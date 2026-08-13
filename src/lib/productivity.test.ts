@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCompleteAttributedTask, getKyivMonthBounds, getLeaderboardBonusPercent, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardBonusPercent, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
 
 describe("monthly productivity projection", () => {
   it("uses Europe/Kyiv month boundaries across a DST month", () => {
@@ -14,6 +14,26 @@ describe("monthly productivity projection", () => {
       start: "2026-02-28T22:00:00.000Z",
       end: "2026-03-31T21:00:00.000Z",
     });
+  });
+
+  it("uses Kyiv quarter boundaries across a year transition", () => {
+    expect(getKyivPeriodBounds("quarter", new Date("2026-01-01T00:30:00.000Z"))).toEqual({
+      start: "2025-12-31T22:00:00.000Z",
+      end: "2026-03-31T21:00:00.000Z",
+    });
+    expect(getKyivPeriodBounds("quarter", new Date("2026-01-01T00:30:00.000Z"), -1)).toEqual({
+      start: "2025-09-30T21:00:00.000Z",
+      end: "2025-12-31T22:00:00.000Z",
+    });
+  });
+
+  it("uses Kyiv year boundaries and period labels for a year transition", () => {
+    const now = new Date("2026-01-01T00:30:00.000Z");
+    expect(getKyivPeriodBounds("year", now)).toEqual({ start: "2025-12-31T22:00:00.000Z", end: "2026-12-31T22:00:00.000Z" });
+    expect(getKyivPeriodBounds("year", now, -1)).toEqual({ start: "2024-12-31T22:00:00.000Z", end: "2025-12-31T22:00:00.000Z" });
+    expect(getKyivPeriodLabel("quarter", "en", now)).toBe("Q1 2026");
+    expect(getKyivPeriodLabel("quarter", "en", now, -1)).toBe("Q4 2025");
+    expect(getKyivPeriodLabel("year", "en", now, -1)).toBe("2025");
   });
 
   it("credits task area to its completion assignee and project fallback to each contributor", () => {
@@ -33,6 +53,33 @@ describe("monthly productivity projection", () => {
       { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 10, source_type: "task" },
       { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 10, source_type: "task" },
     ])).toMatchObject([{ rank: 1, full_name: "Ari" }, { rank: 1, full_name: "Bea" }]);
+  });
+
+  it("aggregates completed tasks and project fallback credit in one selected period", () => {
+    const entries = projectProductivityLeaderboard([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 80, source_type: "task" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 20, source_type: "task" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 95, source_type: "project_fallback" },
+    ]);
+    expect(entries.map(({ user_id, completed_area_m2, completed_tasks }) => ({ user_id, completed_area_m2, completed_tasks }))).toEqual([
+      { user_id: "a", completed_area_m2: 100, completed_tasks: 2 },
+      { user_id: "b", completed_area_m2: 95, completed_tasks: 0 },
+    ]);
+    expect(getLeaderboardTotals(entries)).toEqual({ completed_area_m2: 195, completed_tasks: 2 });
+  });
+
+  it("keeps task and project credit in their completed Kyiv months before ranking", () => {
+    const march = new Date("2026-03-16T12:00:00.000Z");
+    const current = filterProductivityAttributionsForPeriod([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 20, source_type: "task", completed_at: "2026-03-01T00:00:00.000Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 100, source_type: "project_fallback", completed_at: "2026-02-28T21:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 30, source_type: "task", completed_at: "2026-03-31T20:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 40, source_type: "task", completed_at: "2026-03-31T21:00:00.000Z" },
+    ], "month", march);
+    expect(projectProductivityLeaderboard(current)).toMatchObject([
+      { user_id: "b", completed_area_m2: 30, completed_tasks: 1 },
+      { user_id: "a", completed_area_m2: 20, completed_tasks: 1 },
+    ]);
   });
 
   it("credits a 500 m² fallback project to both genuine architect and designer contributors", () => {

@@ -17,7 +17,7 @@ import type {
   TaskSummary,
 } from "@/types";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
-import { getKyivMonthBounds, projectProductivityLeaderboard, type ProductivityAttribution, type ProductivityLeaderboardEntry } from "@/lib/productivity";
+import { filterProductivityAttributionsForPeriod, getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
 
 export type DataMode = "mock" | "supabase";
 
@@ -178,27 +178,27 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
   return getEmployeeWorkload();
 }
 
-async function getLeaderboardForMonth(studioId: string, monthOffset: number): Promise<ProductivityLeaderboardEntry[]> {
-  const bounds = getKyivMonthBounds(undefined, monthOffset);
+async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number): Promise<ProductivityLeaderboardEntry[]> {
+  const bounds = getKyivPeriodBounds(period, undefined, periodOffset);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("productivity_attributions")
-    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type")
+    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")
     .eq("studio_id", studioId)
     .is("voided_at", null)
     .gte("completed_at", bounds.start)
     .lt("completed_at", bounds.end)
-    .overrideTypes<ProductivityAttribution[], { merge: false }>();
-  if (error || !data) throw new Error("Unable to load monthly productivity.", { cause: error });
-  return projectProductivityLeaderboard(data);
+    .overrideTypes<CompletedProductivityAttribution[], { merge: false }>();
+  if (error || !data) throw new Error("Unable to load productivity.", { cause: error });
+  return projectProductivityLeaderboard(filterProductivityAttributionsForPeriod(data, period));
 }
 
-export async function getLeaderboardOverviewData(): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[] }> {
+export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[] }> {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
   if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [] };
   const [current, previous] = await Promise.all([
-    getLeaderboardForMonth(membership.studio_id, 0),
-    getLeaderboardForMonth(membership.studio_id, -1),
+    getLeaderboardForPeriod(membership.studio_id, period, 0),
+    getLeaderboardForPeriod(membership.studio_id, period, -1),
   ]);
   const contributorIds = [...new Set([...current, ...previous].map((entry) => entry.user_id))];
   if (contributorIds.length === 0) return { current, previous };

@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1786561473.9649549,
-    "ast_hash": "d742badf217c51509bdb5e6b7f867c30",
+    "mtime": 1786657876.6840227,
+    "ast_hash": "34e4ef885aa209ad2b75a0763a540545",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/index.ts": {
-    "mtime": 1786568816.6647089,
-    "ast_hash": "17274ba4c002d12cb6fe74d863d18ab5",
+    "mtime": 1786657926.2876015,
+    "ast_hash": "83e18f8cec6a1442ef90911bd589aa8e",
     "semantic_hash": ""
   },
   "src/data/queries/notifications.ts": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": ""
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1785715087.6082728,
-    "ast_hash": "9117db676c9b9f138ee6bbdede3702f8",
+    "mtime": 1786657926.4516,
+    "ast_hash": "38ba6c73cc0ff5820c8591ec5bcf1480",
     "semantic_hash": ""
   },
   "src/lib/productivity.ts": {
-    "mtime": 1786561380.6609702,
-    "ast_hash": "bfe4b08d3ece3e49c6c18da987970790",
+    "mtime": 1786657926.1276028,
+    "ast_hash": "cea80db78b25d75bd4bb93391b2a7b71",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120000_productivity_attribution.sql": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786618863.083296,
-    "ast_hash": "88268634aca905da0ede83607cc884ed",
+    "mtime": 1786657876.860021,
+    "ast_hash": "4f2f41f0866824751ff8b89fdc8da053",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786618863.083296,
-    "ast_hash": "0f3e8c5eac826a6616aab494630d2a02",
+    "mtime": 1786657877.0480194,
+    "ast_hash": "556bd48415a7504a488e939ebd97b0f9",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2817,6 +2817,11 @@
   "src/components/ui/date-picker.tsx": {
     "mtime": 1786628731.985359,
     "ast_hash": "c00344db30bbc184b4d678b9dc589ada",
+    "semantic_hash": ""
+  },
+  "src/components/leaderboard/leaderboard-period-switcher.tsx": {
+    "mtime": 1786657776.656872,
+    "ast_hash": "18aed74cc5ee8d69b9b53a642c213402",
     "semantic_hash": ""
   }
 }
