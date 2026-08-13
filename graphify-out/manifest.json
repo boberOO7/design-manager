@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1786657876.6840227,
-    "ast_hash": "34e4ef885aa209ad2b75a0763a540545",
+    "mtime": 1786658487.7231784,
+    "ast_hash": "4e5612346eef10dbad4c0f49ef8eb5a6",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786657876.860021,
-    "ast_hash": "4f2f41f0866824751ff8b89fdc8da053",
+    "mtime": 1786657970.9552221,
+    "ast_hash": "d12845ef7faf80a1a8e5e3514c585517",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786657877.0480194,
-    "ast_hash": "556bd48415a7504a488e939ebd97b0f9",
+    "mtime": 1786657970.959222,
+    "ast_hash": "c5d6889969120acd13218eda2ecd3ad0",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
