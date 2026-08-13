@@ -112,7 +112,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   }
 
   for (const task of taskDeadlinesResult.data ?? []) {
-    if (!task.due_date) continue;
+    if (!task.due_date || !task.assignee_id) continue;
     items.push({
       source: "task_deadline", key: `task_deadline:${task.id}`, id: task.id,
       title: task.title, startDate: task.due_date, endDate: task.due_date, allDay: true,

@@ -2,16 +2,22 @@ import { z } from "zod";
 
 export const studioMemberActionSchema = z.object({
   userId: z.string().uuid(),
-  reassignmentUserId: z.string().uuid().nullable(),
+  allowUnassigned: z.boolean(),
+  reassignments: z.array(z.object({ taskId: z.string().uuid(), assigneeId: z.string().uuid() })).max(500),
 });
 
 export type StudioMemberActionState = { formError?: string; success?: "removed" | "restored" };
 
 export function getStudioMemberActionInput(formData: FormData) {
   const userId = formData.get("user_id");
-  const reassignmentUserId = formData.get("reassignment_user_id");
+  const rawReassignments = formData.get("reassignments");
+  let reassignments: unknown = [];
+  if (typeof rawReassignments === "string" && rawReassignments) {
+    try { reassignments = JSON.parse(rawReassignments); } catch { reassignments = null; }
+  }
   return {
     userId: typeof userId === "string" ? userId : undefined,
-    reassignmentUserId: typeof reassignmentUserId === "string" && reassignmentUserId ? reassignmentUserId : null,
+    allowUnassigned: formData.get("allow_unassigned") === "true",
+    reassignments,
   };
 }

@@ -157,7 +157,11 @@ export async function removeStudioMember(_previousState: StudioMemberActionState
   const parsed = studioMemberActionSchema.safeParse(getStudioMemberActionInput(formData));
   if (!parsed.success || parsed.data.userId === membership.authenticatedUserId) return { formError: "This member cannot be removed." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("remove_studio_member", { p_user_id: parsed.data.userId, p_reassignment_user_id: parsed.data.reassignmentUserId });
+  const { error } = await supabase.rpc("remove_studio_member", {
+    p_user_id: parsed.data.userId,
+    p_allow_unassigned: parsed.data.allowUnassigned,
+    p_reassignments: parsed.data.reassignments,
+  });
   if (error) {
     console.error("Unable to remove studio member", error);
     return { formError: "The member could not be removed. Review open work and try again." };

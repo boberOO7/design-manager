@@ -497,7 +497,7 @@ export type Database = {
       }
       tasks: {
         Row: {
-          assignee_id: string
+          assignee_id: string | null
           completed_at: string | null
           completed_area_m2: number | null
           created_at: string
@@ -515,7 +515,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assignee_id: string
+          assignee_id?: string | null
           completed_at?: string | null
           completed_area_m2?: number | null
           created_at?: string
@@ -533,7 +533,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assignee_id?: string
+          assignee_id?: string | null
           completed_at?: string | null
           completed_area_m2?: number | null
           created_at?: string
@@ -672,7 +672,7 @@ export type Database = {
         Returns: Json
       }
       remove_studio_member: {
-        Args: { p_reassignment_user_id?: string | null; p_user_id: string }
+        Args: { p_allow_unassigned?: boolean; p_reassignments?: Json; p_user_id: string }
         Returns: undefined
       }
       restore_studio_member: {
