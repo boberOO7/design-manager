@@ -48,6 +48,50 @@ export type Database = {
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      contractors: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractors_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_template_items: {
         Row: { created_at: string; id: string; position: number; template_id: string; title: string; updated_at: string; weight: number }
         Insert: { created_at?: string; id?: string; position: number; template_id: string; title: string; updated_at?: string; weight: number }
