@@ -430,13 +430,13 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-sidebar.tsx": {
-    "mtime": 1786715774.9267344,
-    "ast_hash": "b75d12feff788a201f2383ff2835a561",
+    "mtime": 1786719635.6301396,
+    "ast_hash": "70a3a057614a4bda602da342201823fd",
     "semantic_hash": ""
   },
   "src/components/layout/mobile-navigation.tsx": {
-    "mtime": 1786715775.0347345,
-    "ast_hash": "65b4158f2c9aa5e6f45732b6ee80bb1f",
+    "mtime": 1786719635.8141396,
+    "ast_hash": "c4449bf3cb724364840f45b22457c720",
     "semantic_hash": ""
   },
   "src/components/layout/notification-bell.tsx": {
@@ -585,8 +585,8 @@
     "semantic_hash": "c32e8fdf0c13b65e23c0b047448b5587"
   },
   "src/constants/navigation.ts": {
-    "mtime": 1786715774.8027346,
-    "ast_hash": "1e7ab3346d4a882381541028ad964de8",
+    "mtime": 1786719635.4501395,
+    "ast_hash": "912801cb03d08251b91968fbba1f4578",
     "semantic_hash": ""
   },
   "src/data/mock/index.ts": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786657970.9552221,
-    "ast_hash": "d12845ef7faf80a1a8e5e3514c585517",
+    "mtime": 1786719915.5100935,
+    "ast_hash": "004b7cb12de90188a517737405253b8d",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786657970.959222,
-    "ast_hash": "c5d6889969120acd13218eda2ecd3ad0",
+    "mtime": 1786719915.5100935,
+    "ast_hash": "3ce518e6193c64efdc0f59da86021622",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2840,18 +2840,18 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/actions.ts": {
-    "mtime": 1786715683.2427487,
-    "ast_hash": "55ce30b3bb658ba99e14fb179452181a",
+    "mtime": 1786719635.0621397,
+    "ast_hash": "70a726f6140b7d170d8014a616bc8b08",
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/page.tsx": {
-    "mtime": 1786715761.3747365,
-    "ast_hash": "9d650373df1eea4737c52b2f5a6eb73e",
+    "mtime": 1786719635.2621396,
+    "ast_hash": "9136244c02da797939efe1684e475c40",
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1786717001.9865463,
-    "ast_hash": "72f873e354bd59874f137f22a7dbbb5d",
+    "mtime": 1786719735.290122,
+    "ast_hash": "9300eae64e37eb0d8c42e1661d2a996c",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
@@ -2860,8 +2860,8 @@
     "semantic_hash": ""
   },
   "src/lib/validation/contractor.ts": {
-    "mtime": 1786715682.950749,
-    "ast_hash": "d06c5c6fe9d452dfc33d519c4b2f6968",
+    "mtime": 1786719634.8861396,
+    "ast_hash": "75ea23ab25dd1e9a49330b75bd7431cb",
     "semantic_hash": ""
   },
   "supabase/migrations/20260814120100_add_contractors.sql": {
@@ -2870,8 +2870,18 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-category-combobox.tsx": {
-    "mtime": 1786717009.662545,
-    "ast_hash": "f64aa3ec8e59dd28cf45aa1babf28252",
+    "mtime": 1786719908.386095,
+    "ast_hash": "89a04054dfa69d4fc21691148eaa8391",
+    "semantic_hash": ""
+  },
+  "src/lib/ukrainian-phone.test.ts": {
+    "mtime": 1786719889.5900927,
+    "ast_hash": "1fd3f55197e80244aad573a9ed31f6af",
+    "semantic_hash": ""
+  },
+  "src/lib/ukrainian-phone.ts": {
+    "mtime": 1786719272.4661949,
+    "ast_hash": "ac032da702e7ec29a311b2b362a4529c",
     "semantic_hash": ""
   }
 }

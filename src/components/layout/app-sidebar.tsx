@@ -37,7 +37,7 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           return (
             <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-[var(--ui-radius-control)] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]")}>
               <Icon size={18} />
-              <span>{item.href === "/contractors" ? item.label : t(item.messageKey)}</span>
+              <span>{t(item.messageKey)}</span>
             </Link>
           );
         })}

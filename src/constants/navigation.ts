@@ -18,7 +18,7 @@ export const navigationItems = [
   { href: "/my-tasks", label: "My Tasks", messageKey: "myTasks", adminOnly: false },
   { href: "/calendar", label: "Calendar", messageKey: "calendar", adminOnly: false },
   { href: "/team", label: "Team", messageKey: "team", adminOnly: false },
-  { href: "/contractors", label: "Підрядники", messageKey: "contractors", adminOnly: false },
+  { href: "/contractors", label: "Contractors", messageKey: "contractors", adminOnly: false },
   { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
   { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: false },
   { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },

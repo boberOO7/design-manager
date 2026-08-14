@@ -1,19 +1,39 @@
 import { z } from "zod";
+import { normalizeUkrainianPhone } from "@/lib/ukrainian-phone";
 
-const optionalText = (maximum: number, message: string) => z.string().trim().max(maximum, message).optional();
+export type ContractorValidationMessages = {
+  categoryRequired: string;
+  categoryTooLong: string;
+  nameRequired: string;
+  nameTooLong: string;
+  websiteTooLong: string;
+  websiteInvalid: string;
+  phoneTooLong: string;
+  phoneInvalid: string;
+  descriptionTooLong: string;
+};
 
-export const contractorSchema = z.object({
-  category: z.string().trim().min(1, "Вкажіть категорію").max(100, "Категорія занадто довга"),
-  name: z.string().trim().min(1, "Уведіть назву фірми").max(200, "Назва занадто довга"),
-  website_url: optionalText(500, "Посилання занадто довге").refine(
+export function createContractorSchema(messages: ContractorValidationMessages) {
+  const optionalText = (maximum: number, message: string) => z.string().trim().max(maximum, message).optional();
+  return z.object({
+  category: z.string().trim().min(1, messages.categoryRequired).max(100, messages.categoryTooLong),
+  name: z.string().trim().min(1, messages.nameRequired).max(200, messages.nameTooLong),
+  website_url: optionalText(500, messages.websiteTooLong).refine(
     (value) => !value || /^https?:\/\//i.test(value),
-    "Уведіть повне посилання з http:// або https://",
+    messages.websiteInvalid,
   ),
-  phone: optionalText(100, "Телефон занадто довгий"),
-  description: optionalText(1000, "Опис занадто довгий"),
-}).strict();
+  phone: z.string().trim().max(32, messages.phoneTooLong).optional().transform((value, context) => {
+    if (!value) return undefined;
+    const phone = normalizeUkrainianPhone(value);
+    if (phone) return phone;
+    context.addIssue({ code: "custom", message: messages.phoneInvalid });
+    return z.NEVER;
+  }),
+  description: optionalText(1000, messages.descriptionTooLong),
+  }).strict();
+}
 
-export type ContractorFormValues = z.infer<typeof contractorSchema>;
+export type ContractorFormValues = z.infer<ReturnType<typeof createContractorSchema>>;
 export type ContractorFormField = keyof ContractorFormValues;
 
 export type ContractorFormActionState = {
