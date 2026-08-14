@@ -2,10 +2,11 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const controlsPath = new URL("./studio-member-lifecycle-controls.tsx", import.meta.url);
+const reassignmentPath = new URL("./open-work-reassignment.tsx", import.meta.url);
 
 describe("Studio member removal controls", () => {
   it("uses StudioFlow select and destructive-action primitives for the removal form", async () => {
-    const source = await readFile(controlsPath, "utf8");
+    const source = `${await readFile(controlsPath, "utf8")}\n${await readFile(reassignmentPath, "utf8")}`;
     expect(source).toContain('import { Select, SelectItem } from "@/components/ui/select"');
     expect(source).toContain('sm:grid-cols-[minmax(0,1fr)_22rem]');
     expect(source).toContain('sm:grid-cols-[minmax(0,1fr)_auto]');

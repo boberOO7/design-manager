@@ -14,7 +14,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
 }
 
 export function FormField({ children, className, error, label, optional = false }: { children: ReactNode; className?: string; error?: string; label: ReactNode; optional?: boolean }) {
-  return <label className={cn("grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]", className)}>
+  return <label className={cn("grid self-start gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]", className)}>
     <span>{label}{optional ? <span className="ml-1 font-normal text-[var(--ui-text-muted)]">(optional)</span> : null}</span>
     {children}
     {error ? <span className="text-sm text-[var(--ui-danger-text)]">{error}</span> : null}

@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Drawer } from "@/components/ui/drawer";
+import { Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
@@ -318,11 +319,11 @@ export function TaskDetailsDrawer({
           {isEditing ? (
             <div className="space-y-5">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("title")}
-                <input autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+                <Input autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} />
                 {fieldErrors.title ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("description")}
-                <textarea autoComplete="off" value={values.description} rows={6} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} className="rounded-xl border border-[var(--ui-border)] px-3 py-2 leading-6 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+                <Textarea autoComplete="off" value={values.description} rows={6} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
                 {fieldErrors.description ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("assignee")}
@@ -341,12 +342,12 @@ export function TaskDetailsDrawer({
                   <DatePicker value={values.due_date} disabled={isSaving} locale={locale} onValueChange={(due_date) => setValues({ ...values, due_date })} />
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("taskArea")} <span className="font-normal text-[var(--ui-text-muted)]">({t("optionalArea")})</span>
-                  <input autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+                  <Input autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} />
                   <span className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{t("taskAreaEditHelp")}</span>
                   {fieldErrors.completed_area_m2 ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("progressWeight")}
-                  <input autoComplete="off" type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} className="h-10 rounded-xl border border-[var(--ui-border)] px-3 outline-none focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+                  <Input autoComplete="off" type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} />
                   <span className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{t("progressWeightHelp")}</span>
                   {fieldErrors.progress_weight ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
                 </label>

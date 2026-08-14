@@ -59,6 +59,7 @@ export async function ProjectTeamSection({
                   assignmentId={member.id}
                   memberName={member.profile.full_name}
                   projectId={projectId}
+                  userId={member.profile.id}
                 />
               ) : null}
             </div>

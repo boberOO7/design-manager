@@ -6,12 +6,14 @@ import { getProjectById } from "@/data/queries/project-by-id";
 import { createClient } from "@/lib/supabase/server";
 import {
   addProjectMemberSchema,
-  removeProjectMemberSchema,
+  removeProjectMemberWithWorkSchema,
 } from "@/lib/validation/project-member";
+import { getStudioMemberActionInput } from "@/lib/validation/team-membership";
 import type { ProjectMemberInsert } from "@/types/project-members";
 
 export type ProjectMemberActionState = {
   formError?: string;
+  success?: "removed";
 };
 
 function getFormString(formData: FormData, field: string): string | undefined {
@@ -116,9 +118,11 @@ export async function removeProjectMember(
     return { formError: "Only active studio administrators can remove project members." };
   }
 
-  const parsed = removeProjectMemberSchema.safeParse({
+  const workInput = getStudioMemberActionInput(formData);
+  const parsed = removeProjectMemberWithWorkSchema.safeParse({
     assignmentId: getFormString(formData, "assignment_id"),
     projectId,
+    ...workInput,
   });
   if (!parsed.success) {
     return { formError: "Choose a valid project assignment." };
@@ -132,7 +136,7 @@ export async function removeProjectMember(
   const supabase = await createClient();
   const { data: assignment, error: assignmentError } = await supabase
     .from("project_members")
-    .select("id")
+    .select("id, user_id")
     .eq("id", parsed.data.assignmentId)
     .eq("project_id", project.id)
     .eq("is_active", true)
@@ -146,19 +150,20 @@ export async function removeProjectMember(
     return { formError: "The project assignment was not found or is not available." };
   }
 
-  const { data: removedAssignment, error: deleteError } = await supabase
-    .from("project_members")
-    .delete()
-    .eq("id", assignment.id)
-    .eq("project_id", project.id)
-    .select("id")
-    .maybeSingle();
+  if (assignment.user_id !== parsed.data.userId) {
+    return { formError: "The project assignment was not found or is not available." };
+  }
 
-  if (deleteError || !removedAssignment) {
-    console.error("Unable to remove project member", deleteError);
-    return { formError: "The project member could not be removed. Please try again." };
+  const { error: removalError } = await supabase.rpc("remove_project_member", {
+    p_assignment_id: assignment.id,
+    p_allow_unassigned: parsed.data.allowUnassigned,
+    p_reassignments: parsed.data.reassignments,
+  });
+  if (removalError) {
+    console.error("Unable to remove project member", removalError);
+    return { formError: "The project member could not be removed. Review open work and try again." };
   }
 
   revalidateProjectMembership(project.id);
-  return {};
+  return { success: "removed" };
 }

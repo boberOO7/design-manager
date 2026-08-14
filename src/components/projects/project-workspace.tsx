@@ -6,7 +6,6 @@ import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
 import { getProjectTaskSnapshotUpdate } from "@/lib/tasks";
-import { getProjectAttributionMode } from "@/lib/productivity";
 import type { ProjectTask } from "@/types/tasks";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import type { ProjectFormAction } from "@/components/projects/project-form";
@@ -32,13 +31,12 @@ export function ProjectWorkspace({
 }) {
   const [contextTasks, setContextTasks] = useState(tasks);
   const { status, setStatus } = useProjectLifecycle();
-  const attributionMode = getProjectAttributionMode(contextTasks);
   const handleBoardTasksChange = useCallback((nextTasks: ProjectTask[]) => {
     setContextTasks((currentTasks) => getProjectTaskSnapshotUpdate(currentTasks, nextTasks));
   }, []);
   return <>
     <ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} updateAction={updateAction} />
     {navigation}
-    <ProjectTaskBoard attributionMode={attributionMode} canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
+    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;
 }

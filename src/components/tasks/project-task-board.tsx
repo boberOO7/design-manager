@@ -35,7 +35,6 @@ import { cn, formatDateShort, formatNumber } from "@/lib/utils";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
-import type { ProjectAttributionMode } from "@/lib/productivity";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
@@ -267,7 +266,6 @@ function BoardColumn({
 
 export function ProjectTaskBoard({
   canCreate,
-  attributionMode,
   canManageTasks,
   currentUserId,
   initialTaskId,
@@ -281,7 +279,6 @@ export function ProjectTaskBoard({
   onProjectStatusChange,
 }: {
   canCreate: boolean;
-  attributionMode: ProjectAttributionMode;
   canManageTasks: boolean;
   currentUserId: string;
   initialTaskId?: string;
@@ -466,7 +463,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        {canCreate ? <AddTaskDialog attributionMode={attributionMode} members={members} projectId={projectId} templates={templates} /> : null}
+        {canCreate ? <AddTaskDialog members={members} projectId={projectId} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>

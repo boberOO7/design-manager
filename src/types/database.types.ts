@@ -671,8 +671,16 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_project_member_removal_impact: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
       remove_studio_member: {
         Args: { p_allow_unassigned?: boolean; p_reassignments?: Json; p_user_id: string }
+        Returns: undefined
+      }
+      remove_project_member: {
+        Args: { p_allow_unassigned: boolean; p_assignment_id: string; p_reassignments: Json }
         Returns: undefined
       }
       restore_studio_member: {

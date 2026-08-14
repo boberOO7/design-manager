@@ -11,19 +11,16 @@ import { Select, SelectItem } from "@/components/ui/select";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
-import type { ProjectAttributionMode } from "@/lib/productivity";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
 export function AddTaskDialog({
   members,
   projectId,
-  attributionMode,
   templates,
 }: {
   members: AssignableProjectMember[];
   projectId: string;
-  attributionMode: ProjectAttributionMode;
   templates: StudioChecklistTemplate[];
 }) {
   const t = useTranslations("Tasks");
@@ -97,7 +94,6 @@ export function AddTaskDialog({
               <p id="completed-area-help" className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{t("taskAreaHelp")}</p>
             </FormField>
           </div>
-          <p className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs leading-5 text-[var(--ui-text-secondary)]">{attributionMode === "task_level" ? t("taskAttribution") : t("projectAttribution")}</p>
           <section aria-labelledby="checklist-template-heading" className="border-t border-[var(--ui-border-subtle)] pt-4">
             <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 id="checklist-template-heading" className="text-sm font-medium text-[var(--ui-text)]">{templatesT("checklistTemplate")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{templatesT("optionalStages")}</p></div></div>
             <label className="mt-3 grid gap-1 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sr-only">{templatesT("checklistTemplate")}</span><Select value={templateId} disabled={isPending} onValueChange={(nextTemplateId) => { if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm(templatesT("changingConfirm"))) return; const nextTemplate = templates.find((template) => template.id === nextTemplateId); setTemplateId(nextTemplateId); setChecklistItems(cloneChecklistTemplateStages(nextTemplate)); setIsCustomizerOpen(false); }}><SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</Select></label>
