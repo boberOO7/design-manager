@@ -1,7 +1,7 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getCurrentUserProfile } from "@/data/queries";
-import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -9,7 +9,8 @@ import { getTranslations } from "next-intl/server";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const studio = await getActiveStudioMembership();
+  const access = await resolveActiveStudioMembership();
+  const studio = access.status === "ACTIVE_STUDIO" ? access.membership : null;
   const productTitle = "StudioFlow";
 
   return {
@@ -20,21 +21,24 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [t, studio] = await Promise.all([getTranslations("Common"), getActiveStudioMembership()]);
-  // Obtain the real profile once on the server
-  let profile = null;
-  try {
-    profile = await getCurrentUserProfile();
-  } catch (error) {
-    // If profile fetch fails, redirect to login
-    console.error("Failed to fetch user profile:", error);
+  const [t, access] = await Promise.all([getTranslations("Common"), resolveActiveStudioMembership()]);
+
+  if (access.status === "UNAUTHENTICATED") {
     redirect("/login");
   }
 
-  // Redirect if no authenticated user exists
-  if (!profile) {
-    redirect("/login");
+  if (access.status === "NO_ACTIVE_STUDIO") {
+    redirect("/access-unavailable");
   }
+
+  if (access.status === "MULTIPLE_ACTIVE_STUDIOS") {
+    throw new Error("Authenticated user has multiple active studio memberships.");
+  }
+
+  const profile = await getCurrentUserProfile();
+  if (!profile) throw new Error("Authenticated user with active studio membership is missing a Profile.");
+
+  const studio = access.membership;
 
   return (
     <div className="flex min-h-screen bg-[var(--ui-page)] text-[var(--ui-text)]">

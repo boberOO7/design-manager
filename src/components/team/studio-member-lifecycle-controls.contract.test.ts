@@ -16,4 +16,13 @@ describe("Studio member removal controls", () => {
     expect(source).toContain('bg-[var(--ui-action-danger)]');
     expect(source).toContain('disabled:bg-[var(--ui-surface-muted)]');
   });
+
+  it("uses the shared overflow menu for former-member restore access", async () => {
+    const source = await readFile(controlsPath, "utf8");
+    expect(source).not.toContain('if (isFormer) return');
+    expect(source).toContain('isFormer ? <form action={action}>');
+    expect(source).toContain('t("restoreAccess")');
+    expect(source).toContain('disabled={pending} type="submit"');
+    expect(source).toContain('aria-label={t("memberActions", { name })}');
+  });
 });

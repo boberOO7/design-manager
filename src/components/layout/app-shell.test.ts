@@ -56,8 +56,15 @@ describe("application shell cleanup", () => {
       readFile(dashboardPath, "utf8"),
     ]);
 
-    expect(layout).toContain("getActiveStudioMembership");
+    expect(layout).toContain("resolveActiveStudioMembership");
     expect(layout).toContain("%s · ${studio.studioName} · ${productTitle}");
     expect(dashboard).toContain('return { title: t("metadata") }');
+  });
+
+  it("centralizes active-studio access routing at the authenticated layout boundary", async () => {
+    const layout = await readFile(layoutPath, "utf8");
+    expect(layout).toContain('access.status === "UNAUTHENTICATED"');
+    expect(layout).toContain('redirect("/access-unavailable")');
+    expect(layout).toContain('access.status === "MULTIPLE_ACTIVE_STUDIOS"');
   });
 });

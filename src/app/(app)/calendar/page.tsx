@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 import { getCalendarData } from "@/data/queries/calendar";
 import { getCalendarRange, instantToDateOnly } from "@/lib/calendar";
@@ -22,7 +21,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const date = validDate(typeof params.date === "string" ? params.date : undefined);
   const range = getCalendarRange(view, date);
   const data = await getCalendarData(range);
-  if (!data) redirect("/login");
+  if (!data) throw new Error("Calendar data is unavailable for the active studio.");
 
   return <CalendarWorkspace key={`${view}:${date}`} initialData={data} initialView={view} initialDate={date} searchParams={params} />;
 }
