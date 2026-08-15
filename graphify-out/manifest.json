@@ -190,8 +190,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786751083.958367,
-    "ast_hash": "c1db8ba95e265094f5937514f469c2d6",
+    "mtime": 1786755794.3886065,
+    "ast_hash": "2e66ed16b1aca291b46da2de7e54b5d8",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -2885,8 +2885,8 @@
     "semantic_hash": ""
   },
   "scripts/bootstrap-studio.ts": {
-    "mtime": 1786751264.6727507,
-    "ast_hash": "babfed0ae7d518d2e723e9e2ee464a3f",
+    "mtime": 1786755868.2814271,
+    "ast_hash": "eda75f9b410163440987d0f4e00507b1",
     "semantic_hash": ""
   },
   "src/lib/supabase/admin-client.ts": {
@@ -2922,6 +2922,11 @@
   "src/data/queries/current-user-profile.test.ts": {
     "mtime": 1786752897.2114336,
     "ast_hash": "9359c7882463b5a90425ca9600ebcd9e",
+    "semantic_hash": ""
+  },
+  "supabase/templates/invite.html": {
+    "mtime": 1786753364.995548,
+    "ast_hash": "8916591d8c758dcc30106a57defe9c2e",
     "semantic_hash": ""
   }
 }
