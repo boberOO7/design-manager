@@ -5,9 +5,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Administration | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Administration");
+  return { title: t("title") };
+}
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ request?: string | string[] }> }) {
   const t = await getTranslations("Administration");

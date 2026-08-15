@@ -4,8 +4,12 @@ import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 import { getCalendarData } from "@/data/queries/calendar";
 import { getCalendarRange, instantToDateOnly } from "@/lib/calendar";
 import type { CalendarView } from "@/types/calendar";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = { title: "Calendar | StudioFlow" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Navigation");
+  return { title: t("calendar") };
+}
 
 function validDate(value: string | undefined): string {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : instantToDateOnly(new Date().toISOString());

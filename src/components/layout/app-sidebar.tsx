@@ -9,7 +9,7 @@ import type { Profile } from "@/types";
 import { cn } from "@/lib/utils";
 import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 
-export function AppSidebar({ profile }: { profile: Profile | null }) {
+export function AppSidebar({ profile, studioName }: { profile: Profile | null; studioName: string | null }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
   // Filter navigation items based on real system_role
@@ -23,14 +23,13 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           aria-label={t("home")}
           className="flex min-w-0 items-center gap-3 rounded-[var(--ui-radius-control)] text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
         >
-          <StudioFlowMark className="h-6" />
+          <StudioFlowMark className="h-7 text-[var(--ui-text)]" />
           <span className="min-w-0">
-            <span className="block text-sm font-semibold">StudioFlow</span>
-            <span className="block text-xs text-[var(--ui-text-muted)]">{t("tagline")}</span>
+            <span className="block truncate text-sm font-semibold">{studioName ?? t("studioFallback")}</span>
           </span>
         </Link>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav aria-label={t("main")} className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {items.map((item) => {
           const Icon = navigationIcons[item.href];
           const active = isNavigationItemActive(pathname, item.href);
@@ -42,6 +41,9 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
           );
         })}
       </nav>
+      <p className="shrink-0 border-t border-[var(--ui-border)] px-5 py-3 text-xs text-[var(--ui-text-muted)]">
+        {t("poweredBy", { product: "StudioFlow" })}
+      </p>
     </aside>
   );
 }

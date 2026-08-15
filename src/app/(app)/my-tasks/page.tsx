@@ -5,9 +5,10 @@ import { getMyTasks } from "@/data/queries/tasks";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "My Tasks | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Tasks");
+  return { title: t("myTasks") };
+}
 
 export default async function MyTasksPage() {
   const t = await getTranslations("Tasks");

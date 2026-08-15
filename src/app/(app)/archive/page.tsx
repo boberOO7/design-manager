@@ -10,9 +10,10 @@ import { restoreProject } from "@/app/(app)/projects/[projectId]/actions";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Archive | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Archive");
+  return { title: t("title") };
+}
 
 export default async function ArchivePage() {
   const t = await getTranslations("Archive");

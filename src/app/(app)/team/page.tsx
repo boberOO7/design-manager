@@ -11,9 +11,10 @@ import { getCountryName, isCountryCode } from "@/lib/countries";
 import { defaultLocale, isAppLocale } from "@/i18n/config";
 import { TeamDirectory } from "@/components/team/team-directory";
 
-export const metadata: Metadata = {
-  title: "Team | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Team");
+  return { title: t("title") };
+}
 
 export default async function TeamPage() {
   const [t, roles, locale, adminMembership] = await Promise.all([

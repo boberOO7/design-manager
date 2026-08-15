@@ -13,7 +13,10 @@ import { getKyivDateOnly } from "@/lib/validation/project";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = { title: "Projects | StudioFlow" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Projects");
+  return { title: t("title") };
+}
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const t = await getTranslations("Projects");

@@ -5,6 +5,7 @@ const headerPath = new URL("./app-header.tsx", import.meta.url);
 const sidebarPath = new URL("./app-sidebar.tsx", import.meta.url);
 const controlPath = new URL("./shell-control.tsx", import.meta.url);
 const dashboardPath = new URL("../../app/(app)/dashboard/page.tsx", import.meta.url);
+const layoutPath = new URL("../../app/(app)/layout.tsx", import.meta.url);
 const stylesPath = new URL("../../app/globals.css", import.meta.url);
 
 describe("application shell cleanup", () => {
@@ -27,6 +28,12 @@ describe("application shell cleanup", () => {
     expect(sidebar).not.toContain("collapsed");
     expect(sidebar).not.toContain("PanelLeft");
     expect(sidebar).toContain("w-72");
+    expect(sidebar).toContain("studioName");
+    expect(sidebar).toContain("StudioFlowMark");
+    expect(sidebar).not.toContain("toLocaleUpperCase");
+    expect(sidebar).toContain('t("poweredBy", { product: "StudioFlow" })');
+    expect(sidebar).not.toContain('t("tagline")');
+    expect(sidebar).toContain("overflow-y-auto");
     expect(dashboard).not.toContain("Welcome back, ${dashboard.profile.full_name}");
   });
 
@@ -41,5 +48,16 @@ describe("application shell cleanup", () => {
     expect(sidebar).toContain("h-[var(--ui-shell-header-height)]");
     expect(header).toContain("border-b border-[var(--ui-border)]");
     expect(sidebar).toContain("border-b border-[var(--ui-border)]");
+  });
+
+  it("derives authenticated page titles from the active studio context", async () => {
+    const [layout, dashboard] = await Promise.all([
+      readFile(layoutPath, "utf8"),
+      readFile(dashboardPath, "utf8"),
+    ]);
+
+    expect(layout).toContain("getActiveStudioMembership");
+    expect(layout).toContain("%s · ${studio.studioName} · ${productTitle}");
+    expect(dashboard).toContain('return { title: t("metadata") }');
   });
 });

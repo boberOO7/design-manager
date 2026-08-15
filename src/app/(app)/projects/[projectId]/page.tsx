@@ -21,7 +21,10 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { archiveProject, restoreProject, updateProject } from "./actions";
 
-export const metadata: Metadata = { title: "Project Workspace | StudioFlow" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ProjectWorkspace");
+  return { title: t("board") };
+}
 
 type ProjectView = "board" | "details" | "team" | "activity";
 

@@ -7,9 +7,10 @@ import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LeaderboardPeriodSwitcher } from "@/components/leaderboard/leaderboard-period-switcher";
 
-export const metadata: Metadata = {
-  title: "Leaderboard | StudioFlow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Leaderboard");
+  return { title: t("productivity") };
+}
 
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const requestedPeriod = (await searchParams).period;
