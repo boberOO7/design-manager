@@ -190,8 +190,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1785777612.398704,
-    "ast_hash": "46cc94e08debf2c2b1ef1f3f0431d5da",
+    "mtime": 1786751083.958367,
+    "ast_hash": "c1db8ba95e265094f5937514f469c2d6",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -615,9 +615,9 @@
     "semantic_hash": "a99d38678ec011d50c4c0fe74f7b4357"
   },
   "src/data/queries/active-studio-membership.ts": {
-    "mtime": 1785715087.5802727,
-    "ast_hash": "cfce49dd01a48298d7aec53153a59b4e",
-    "semantic_hash": "cfce49dd01a48298d7aec53153a59b4e"
+    "mtime": 1786752841.9104474,
+    "ast_hash": "b352026bf10140a87f965efb82ec5c26",
+    "semantic_hash": ""
   },
   "src/data/queries/administration.ts": {
     "mtime": 1785715087.5802727,
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/index.ts": {
-    "mtime": 1786657926.2876015,
-    "ast_hash": "83e18f8cec6a1442ef90911bd589aa8e",
+    "mtime": 1786752841.7544398,
+    "ast_hash": "807acb93050f271718bf4da33264fd08",
     "semantic_hash": ""
   },
   "src/data/queries/notifications.ts": {
@@ -835,9 +835,9 @@
     "semantic_hash": ""
   },
   "src/lib/supabase/admin.ts": {
-    "mtime": 1785715087.5962727,
-    "ast_hash": "05eb9a5a3d21c3fb7f6c8cf72b391e1c",
-    "semantic_hash": "05eb9a5a3d21c3fb7f6c8cf72b391e1c"
+    "mtime": 1786751083.5623527,
+    "ast_hash": "65e9fa57490d6a053d4c9187632bd710",
+    "semantic_hash": ""
   },
   "src/lib/supabase/client.ts": {
     "mtime": 1785715087.5962727,
@@ -845,9 +845,9 @@
     "semantic_hash": "45dc9f23cbf860ec746242343f56ddea"
   },
   "src/lib/supabase/proxy.ts": {
-    "mtime": 1785715087.5962727,
-    "ast_hash": "27e1b8547e7f98920ffc849a5b6d4ae2",
-    "semantic_hash": "27e1b8547e7f98920ffc849a5b6d4ae2"
+    "mtime": 1786752842.0824559,
+    "ast_hash": "a84a584bd3185ff3d1138cda6e7d2841",
+    "semantic_hash": ""
   },
   "src/lib/supabase/server.ts": {
     "mtime": 1785715087.5962727,
@@ -965,9 +965,9 @@
     "semantic_hash": ""
   },
   "src/proxy.ts": {
-    "mtime": 1785715087.5562727,
-    "ast_hash": "9da2aff46e8da102ff8a9bcbe4a74cbb",
-    "semantic_hash": "9da2aff46e8da102ff8a9bcbe4a74cbb"
+    "mtime": 1786752842.2904658,
+    "ast_hash": "3874c34f90d4823a36a74021609a44b3",
+    "semantic_hash": ""
   },
   "src/types/calendar.ts": {
     "mtime": 1785715087.5762727,
@@ -1450,8 +1450,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785965550.3958118,
-    "ast_hash": "8a27bcbba213295a0cdc3f6a45a55c57",
+    "mtime": 1786751242.6371849,
+    "ast_hash": "431bdb9f2ff1d6320082658e88b76536",
     "semantic_hash": ""
   },
   "docs/decisions.md": {
@@ -1470,8 +1470,8 @@
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
-    "mtime": 1785777843.4906387,
-    "ast_hash": "8cfc6ada6554c6b0380b9dfb1e14b517",
+    "mtime": 1786751174.587621,
+    "ast_hash": "496175db165e4f16ec5a022535c54390",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -2882,6 +2882,46 @@
   "src/lib/ukrainian-phone.ts": {
     "mtime": 1786719272.4661949,
     "ast_hash": "ac032da702e7ec29a311b2b362a4529c",
+    "semantic_hash": ""
+  },
+  "scripts/bootstrap-studio.ts": {
+    "mtime": 1786751264.6727507,
+    "ast_hash": "babfed0ae7d518d2e723e9e2ee464a3f",
+    "semantic_hash": ""
+  },
+  "src/lib/supabase/admin-client.ts": {
+    "mtime": 1786751083.430348,
+    "ast_hash": "07cee0c443ade8c001e202bd4e3d74ea",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260814222319_grant_base_select_privileges.sql": {
+    "mtime": 1786746249.7695522,
+    "ast_hash": "9fe3fed90be9cfc87953f9f097183748",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260814224204_grant_dashboard_read_privileges.sql": {
+    "mtime": 1786747347.7779603,
+    "ast_hash": "71f86b205e37b0cd0287f62f6e0b0640",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260814224603_grant_project_members_read_privileges.sql": {
+    "mtime": 1786747716.0616384,
+    "ast_hash": "b876ba8c191be54dba134512b662fab3",
+    "semantic_hash": ""
+  },
+  "supabase/snippets/Untitled query 834.sql": {
+    "mtime": 1786746968.484444,
+    "ast_hash": "ced52fe567978cc01dd26d20dda981b5",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260815120000_grant_bootstrap_service_role_privileges.sql": {
+    "mtime": 1786751374.4309497,
+    "ast_hash": "f6e29e9bd1f915cf1dcbdbbbf64b7bd8",
+    "semantic_hash": ""
+  },
+  "src/data/queries/current-user-profile.test.ts": {
+    "mtime": 1786752897.2114336,
+    "ast_hash": "9359c7882463b5a90425ca9600ebcd9e",
     "semantic_hash": ""
   }
 }

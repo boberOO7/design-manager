@@ -26,6 +26,17 @@ GEONAMES_USERNAME=your_geonames_username
 
 Keep this variable server-only. Do not rename it with a `NEXT_PUBLIC_` prefix. The application sends city searches through `/api/cities`, where requests are country-scoped and briefly cached.
 
+### Bootstrap a new studio
+
+Use the interactive bootstrap command once for a new studio and its first administrator. It loads `.env.local` by default; pass an explicit environment file for a production target. The command prints the target Supabase URL and requires a deliberate confirmation before writes.
+
+```bash
+pnpm bootstrap-studio
+pnpm bootstrap-studio -- --env-file .secrets/production.env
+```
+
+The environment file must provide `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY`. Keep production files under `.secrets/`, which is ignored by Git.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

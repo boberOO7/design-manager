@@ -14,10 +14,10 @@ export type ActiveStudioMembership = Pick<
 
 export async function getActiveStudioMembership(): Promise<ActiveStudioMembership | null> {
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-  const userId = claimsData?.claims.sub;
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
 
-  if (claimsError || !userId) {
+  if (userError || !userId) {
     return null;
   }
 

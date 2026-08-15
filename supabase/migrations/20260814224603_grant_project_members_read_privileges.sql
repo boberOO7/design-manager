@@ -1,0 +1,1 @@
+grant select on table public.project_members to authenticated;

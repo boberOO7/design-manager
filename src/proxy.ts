@@ -21,7 +21,5 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  await updateSession(request);
-  
-  return NextResponse.next();
+  return updateSession(request);
 }

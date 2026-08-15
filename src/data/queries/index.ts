@@ -37,17 +37,13 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
 
   const supabase = await createClient();
 
-  // Verify authentication using getClaims()
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  // getUser() verifies the session with Supabase Auth instead of trusting JWT
+  // claims alone. A deleted Auth user can otherwise retain a locally valid JWT
+  // until it expires (for example, after a local database reset).
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = userData.user;
 
-  if (claimsError || !claimsData) {
-    return null;
-  }
-
-  // Extract authenticated user ID from claims
-  const userId = claimsData.claims.sub;
-
-  if (!userId) {
+  if (userError || !user) {
     return null;
   }
 
@@ -57,18 +53,19 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
     .select(
       "id, full_name, email, avatar_url, country_code, city, city_geonames_id, job_title, system_role, is_active, created_at, updated_at"
     )
-    .eq("id", userId)
-    .single();
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (profileError) {
-    // Profile record not found - throw clear error with Supabase error message
-    throw new Error(
-      `Authenticated user exists but profile record is missing for user ID: ${userId}. Error: ${profileError.message}`
-    );
+    throw new Error(`Unable to load the authenticated user's profile for user ID: ${user.id}.`, { cause: profileError });
+  }
+
+  if (!profile) {
+    throw new Error(`Authenticated Auth user is missing its required profile record for user ID: ${user.id}.`);
   }
 
   if (profile.system_role !== "admin" && profile.system_role !== "employee") {
-    throw new Error(`Profile has an unsupported system role for user ID: ${userId}.`);
+    throw new Error(`Profile has an unsupported system role for user ID: ${user.id}.`);
   }
 
   return {
