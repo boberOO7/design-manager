@@ -97,7 +97,7 @@ export function ContractorDirectory({ contractors: initialContractors, isAdmin }
             </tr>)}
           </tbody>
         </table>
-      </div> : <EmptyState title={contractors.length ? t("empty.filteredTitle") : t("empty.title")} description={contractors.length ? t("empty.filteredDescription") : t("empty.description")} action={!contractors.length ? <Button type="button" onClick={openCreate}><Plus className="size-4" aria-hidden="true" />{t("add")}</Button> : undefined} className="m-4" />}
+      </div> : <EmptyState title={contractors.length ? t("empty.filteredTitle") : t("empty.title")} description={contractors.length ? t("empty.filteredDescription") : t("empty.description")} className="m-4" />}
     </div>
 
     <ContractorFormDialog key={`${formMode}-${selected?.id ?? "new"}`} categories={categories} contractor={formMode === "edit" ? selected : null} isOpen={formMode !== null} mode={formMode ?? "create"} onClose={() => setFormMode(null)} onSuccess={() => { setFormMode(null); router.refresh(); }} />
