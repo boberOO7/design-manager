@@ -20,20 +20,7 @@ export type ProductivityLeaderboardEntry = {
   completed_tasks: number;
 };
 
-export const LEADERBOARD_BONUS_BY_RANK = {
-  1: 15,
-  2: 10,
-  3: 5,
-} as const;
-
-export type LeaderboardBonusPercent = (typeof LEADERBOARD_BONUS_BY_RANK)[keyof typeof LEADERBOARD_BONUS_BY_RANK] | 0;
 export type LeaderboardPeriod = "month" | "quarter" | "year";
-
-export function getLeaderboardBonusPercent(rank: number): LeaderboardBonusPercent {
-  return rank in LEADERBOARD_BONUS_BY_RANK
-    ? LEADERBOARD_BONUS_BY_RANK[rank as keyof typeof LEADERBOARD_BONUS_BY_RANK]
-    : 0;
-}
 
 export type ProjectAttributionMode = "project_fallback" | "task_level";
 

@@ -3,6 +3,7 @@ import type { TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 import { timeOffRequestTypeKey } from "@/lib/time-off-labels";
 import type { SystemRole } from "@/types";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
+import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 
 
 export type AdministrationRequest = {
@@ -29,6 +30,7 @@ export type AdministrationRequest = {
 
 export type AdministrationModel = {
   checklistTemplates: StudioChecklistTemplate[];
+  leaderboardBonusConfig: LeaderboardBonusConfig;
   studioId: string;
   today: string;
   upcomingEnd: string;

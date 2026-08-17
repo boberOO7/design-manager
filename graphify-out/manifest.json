@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1786791726.7214627,
-    "ast_hash": "f1c7092ae6e27e2fbf67693d0110781c",
+    "mtime": 1786987767.7942488,
+    "ast_hash": "0f839499f10d0912c4d7d6673f151927",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -390,8 +390,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/administration-workspace.tsx": {
-    "mtime": 1786977923.7186985,
-    "ast_hash": "1d13e9983ed3bc35a5d2bf3c0a0cec86",
+    "mtime": 1786987716.66578,
+    "ast_hash": "f10859c2dc75f191eff81dd4d503bfc0",
     "semantic_hash": ""
   },
   "src/components/auth/forgot-password-form.tsx": {
@@ -610,9 +610,9 @@
     "semantic_hash": ""
   },
   "src/data/queries/active-studio-admin.ts": {
-    "mtime": 1785715087.5842729,
-    "ast_hash": "a99d38678ec011d50c4c0fe74f7b4357",
-    "semantic_hash": "a99d38678ec011d50c4c0fe74f7b4357"
+    "mtime": 1786987622.1449223,
+    "ast_hash": "348aa70106704e16240df25eb1e3e77d",
+    "semantic_hash": ""
   },
   "src/data/queries/active-studio-membership.ts": {
     "mtime": 1786986173.9606538,
@@ -620,8 +620,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/administration.ts": {
-    "mtime": 1786977148.4921315,
-    "ast_hash": "0cde95eed5b6e4d612012ee4893c79a7",
+    "mtime": 1786987662.2452698,
+    "ast_hash": "bd9abdf085c658d468d26f92e7c5585c",
     "semantic_hash": ""
   },
   "src/data/queries/archived-projects.ts": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/index.ts": {
-    "mtime": 1786752841.7544398,
-    "ast_hash": "807acb93050f271718bf4da33264fd08",
+    "mtime": 1786987661.7932513,
+    "ast_hash": "ebc0eb2e63b9d113a4ad06bb5efefd6f",
     "semantic_hash": ""
   },
   "src/data/queries/notifications.ts": {
@@ -680,13 +680,13 @@
     "semantic_hash": ""
   },
   "src/lib/administration.test.ts": {
-    "mtime": 1786977300.0784843,
-    "ast_hash": "e0320eee5b1700f03a8e28cbb8b86306",
+    "mtime": 1786987676.5218527,
+    "ast_hash": "14efe0cef44a2c69c06e2274ef83609d",
     "semantic_hash": ""
   },
   "src/lib/administration.ts": {
-    "mtime": 1786977148.3281243,
-    "ast_hash": "3bc2a1dc385235a7370bc95f6fc9a339",
+    "mtime": 1786987662.0012598,
+    "ast_hash": "a3f798f808fdc920c17c633339acde2c",
     "semantic_hash": ""
   },
   "src/lib/auth/confirmation-url.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1786977273.0533116,
-    "ast_hash": "e52b928672382f9189b25a8a33f7500b",
+    "mtime": 1786987676.4018478,
+    "ast_hash": "d363ff47a5f000871dd3e38425fd9c73",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": ""
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1786657926.4516,
-    "ast_hash": "38ba6c73cc0ff5820c8591ec5bcf1480",
+    "mtime": 1786987815.3981075,
+    "ast_hash": "3a416b0bef7943682b1b350c4dde8e3a",
     "semantic_hash": ""
   },
   "src/lib/productivity.ts": {
-    "mtime": 1786657926.1276028,
-    "ast_hash": "cea80db78b25d75bd4bb93391b2a7b71",
+    "mtime": 1786987661.6292446,
+    "ast_hash": "3bef9d27f3344ee312f34eebd52792f2",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120000_productivity_attribution.sql": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786977355.9033015,
-    "ast_hash": "bcaea84b5443a62fa3c19b62dfdf8e68",
+    "mtime": 1786987933.9642873,
+    "ast_hash": "bbcb53f44124e5393185ee82f0212517",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786977355.9033015,
-    "ast_hash": "fcd30c7e68443402cd2c8edf85372740",
+    "mtime": 1786987933.9642873,
+    "ast_hash": "f24a67a67951c9d3d1e62aea045fa9f6",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2972,6 +2972,26 @@
   "src/lib/supabase/proxy.test.ts": {
     "mtime": 1786986189.167984,
     "ast_hash": "ce07f2c4a1fe2039f334f56c36363d40",
+    "semantic_hash": ""
+  },
+  "src/components/administration/leaderboard-bonus-settings.tsx": {
+    "mtime": 1786987716.5337758,
+    "ast_hash": "7acec8943b054415ad5680fa67ff872d",
+    "semantic_hash": ""
+  },
+  "src/data/queries/leaderboard-bonus-rules.ts": {
+    "mtime": 1786987661.5012395,
+    "ast_hash": "7cf29892175c2c4d35f2bd8f76049d20",
+    "semantic_hash": ""
+  },
+  "src/lib/leaderboard-bonus-rules.ts": {
+    "mtime": 1786987661.3812346,
+    "ast_hash": "eba418ec42d99e3b199c1797ecea362a",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260817172631_leaderboard_bonus_rules.sql": {
+    "mtime": 1786988582.5021708,
+    "ast_hash": "5f0b3a0671f0cf86cc2e533626eee622",
     "semantic_hash": ""
   }
 }

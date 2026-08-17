@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getCurrentUserProfile } from "@/data/queries";
 import {
   getActiveStudioMembership,
   type ActiveStudioMembership,
@@ -8,18 +7,8 @@ import {
 
 export async function getActiveStudioAdmin(): Promise<ActiveStudioMembership | null> {
   try {
-    const profile = await getCurrentUserProfile();
-
-    if (!profile || !profile.is_active || profile.system_role !== "admin") {
-      return null;
-    }
-
     const membership = await getActiveStudioMembership();
-    if (
-      !membership ||
-      membership.authenticatedUserId !== profile.id ||
-      membership.system_role !== "admin"
-    ) {
+    if (!membership || membership.system_role !== "admin") {
       return null;
     }
 

@@ -383,6 +383,32 @@ export type Database = {
           { foreignKeyName: "productivity_attributions_studio_id_fkey", columns: ["studio_id"], isOneToOne: false, referencedRelation: "studios", referencedColumns: ["id"] },
         ]
       }
+      leaderboard_bonus_rules: {
+        Row: {
+          bonus_percent: number
+          created_at: string
+          place: number
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          bonus_percent: number
+          created_at?: string
+          place: number
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          bonus_percent?: number
+          created_at?: string
+          place?: number
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "leaderboard_bonus_rules_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       projects: {
         Row: {
           archived_at: string | null
@@ -522,18 +548,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          leaderboard_bonuses_enabled: boolean
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          leaderboard_bonuses_enabled?: boolean
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          leaderboard_bonuses_enabled?: boolean
           name?: string
           updated_at?: string
         }
@@ -728,6 +757,10 @@ export type Database = {
       save_checklist_template: {
         Args: { p_name: string; p_stages: Json; p_studio_id: string; p_template_id: string | null }
         Returns: string
+      }
+      save_leaderboard_bonus_rules: {
+        Args: { p_enabled: boolean; p_rules: Json; p_studio_id: string }
+        Returns: undefined
       }
       set_checklist_template_archived: {
         Args: { p_archived: boolean; p_template_id: string }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardBonusPercent, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { getLeaderboardBonusPercent } from "./leaderboard-bonus-rules";
 
 describe("monthly productivity projection", () => {
   it("uses Europe/Kyiv month boundaries across a DST month", () => {
@@ -109,11 +110,14 @@ describe("monthly productivity projection", () => {
     expect(isEligibleProjectFallbackContributor({ hasActiveProjectMembership: false, hasActiveStudioMembership: true, hasActiveProfile: true })).toBe(false);
   });
 
-  it("maps only the top three shared ranks to bonus eligibility", () => {
-    expect(getLeaderboardBonusPercent(1)).toBe(15);
-    expect(getLeaderboardBonusPercent(2)).toBe(10);
-    expect(getLeaderboardBonusPercent(3)).toBe(5);
-    expect(getLeaderboardBonusPercent(4)).toBe(0);
+  it("maps configured places to bonus eligibility", () => {
+    const config = { enabled: true, rules: [{ place: 1, bonusPercent: 15 }, { place: 2, bonusPercent: 10 }, { place: 3, bonusPercent: 5 }, { place: 4, bonusPercent: 2.5 }] };
+    expect(getLeaderboardBonusPercent(1, config)).toBe(15);
+    expect(getLeaderboardBonusPercent(2, config)).toBe(10);
+    expect(getLeaderboardBonusPercent(3, config)).toBe(5);
+    expect(getLeaderboardBonusPercent(4, config)).toBe(2.5);
+    expect(getLeaderboardBonusPercent(5, config)).toBe(0);
+    expect(getLeaderboardBonusPercent(1, { ...config, enabled: false })).toBe(0);
   });
 
   it("gives tied leaders the same bonus and keeps empty months healthy", () => {
@@ -122,7 +126,8 @@ describe("monthly productivity projection", () => {
       { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 20, source_type: "task" },
       { contributor_id: "c", contributor_name: "Cam", contributor_job_title: "Visualizer", credited_area_m2: 10, source_type: "task" },
     ]);
-    expect(entries.map((entry) => [entry.rank, getLeaderboardBonusPercent(entry.rank)])).toEqual([[1, 15], [1, 15], [3, 5]]);
+    const config = { enabled: true, rules: [{ place: 1, bonusPercent: 15 }, { place: 2, bonusPercent: 10 }, { place: 3, bonusPercent: 5 }] };
+    expect(entries.map((entry) => [entry.rank, getLeaderboardBonusPercent(entry.rank, config)])).toEqual([[1, 15], [1, 15], [3, 5]]);
     expect(getLeaderboardTotals([])).toEqual({ completed_area_m2: 0, completed_tasks: 0 });
   });
 });

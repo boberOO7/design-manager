@@ -4,7 +4,7 @@ import { applyAdministrationDecision, canReceiveAdministrationModel, getRequired
 function request(overrides: Partial<AdministrationRequest> = {}): AdministrationRequest {
   return { id: "r1", employeeName: "Avery", employeeRole: "Designer", requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: null, reviewNote: null, status: "pending", createdAt: "2026-07-20T09:00:00.000Z", reviewedAt: null, cancelledAt: null, reviewerName: null, approvalCount: 0, requiredApprovalCount: 2, hasCurrentAdminApproved: false, ...overrides };
 }
-function model(): AdministrationModel { return { studioId: "studio-1", checklistTemplates: [], today: "2026-07-28", upcomingEnd: getUpcomingEndDate("2026-07-28"), pendingRequests: [request()], upcomingAbsences: [], recentDecisions: [], team: { activeMembers: 4, administrators: 1, inactiveMembers: 2 } }; }
+function model(): AdministrationModel { return { studioId: "studio-1", checklistTemplates: [], leaderboardBonusConfig: { enabled: true, rules: [{ place: 1, bonusPercent: 15 }] }, today: "2026-07-28", upcomingEnd: getUpcomingEndDate("2026-07-28"), pendingRequests: [request()], upcomingAbsences: [], recentDecisions: [], team: { activeMembers: 4, administrators: 1, inactiveMembers: 2 } }; }
 
 describe("Administration time-off logic", () => {
   it("sorts only pending requests oldest first", () => {

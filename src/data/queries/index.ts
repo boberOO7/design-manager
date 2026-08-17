@@ -17,6 +17,8 @@ import type {
   TaskSummary,
 } from "@/types";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonus-rules";
+import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { filterProductivityAttributionsForPeriod, getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
 
 export type DataMode = "mock" | "supabase";
@@ -190,15 +192,16 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
   return projectProductivityLeaderboard(filterProductivityAttributionsForPeriod(data, period));
 }
 
-export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[] }> {
+export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[]; bonusConfig: LeaderboardBonusConfig }> {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
-  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [] };
-  const [current, previous] = await Promise.all([
+  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
+  const [current, previous, bonusConfig] = await Promise.all([
     getLeaderboardForPeriod(membership.studio_id, period, 0),
     getLeaderboardForPeriod(membership.studio_id, period, -1),
+    getStudioLeaderboardBonusConfig(membership.studio_id),
   ]);
   const contributorIds = [...new Set([...current, ...previous].map((entry) => entry.user_id))];
-  if (contributorIds.length === 0) return { current, previous };
+  if (contributorIds.length === 0) return { current, previous, bonusConfig };
   const supabase = await createClient();
   const { data: contributors, error } = await supabase
     .from("profiles")
@@ -207,7 +210,7 @@ export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "mo
   if (error || !contributors) throw new Error("Unable to load contributor avatars.", { cause: error });
   const avatarByContributorId = new Map(contributors.map((contributor) => [contributor.id, contributor.avatar_url]));
   const attachAvatars = (entries: ProductivityLeaderboardEntry[]) => entries.map((entry) => ({ ...entry, avatar_url: avatarByContributorId.get(entry.user_id) ?? null }));
-  return { current: attachAvatars(current), previous: attachAvatars(previous) };
+  return { current: attachAvatars(current), previous: attachAvatars(previous), bonusConfig };
 }
 
 export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {
