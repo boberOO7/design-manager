@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { getActivityMemberId } from "@/lib/project-activity";
 import type { Json } from "@/types/database.types";
 
 export type ProjectActivity = {
@@ -12,6 +13,7 @@ export type ProjectActivity = {
   entity_id: string | null;
   entity_type: string;
   actor: { avatar_url: string | null; full_name: string } | null;
+  member: { full_name: string } | null;
 };
 
 export async function getProjectActivity(projectId: string): Promise<ProjectActivity[]> {
@@ -27,5 +29,22 @@ export async function getProjectActivity(projectId: string): Promise<ProjectActi
   if (error || !data) {
     throw new Error(`Unable to load activity for project ${projectId}.`, { cause: error });
   }
-  return data;
+  const memberIds = [...new Set(data.map((activity) => getActivityMemberId(activity.changes)).filter((id): id is string => id !== null))];
+  if (memberIds.length === 0) return data.map((activity) => ({ ...activity, member: null }));
+
+  const { data: members, error: membersError } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", memberIds)
+    .overrideTypes<Array<{ id: string; full_name: string }>, { merge: false }>();
+
+  if (membersError || !members) {
+    throw new Error(`Unable to load activity members for project ${projectId}.`, { cause: membersError });
+  }
+
+  const membersById = new Map(members.map((member) => [member.id, member]));
+  return data.map((activity) => ({
+    ...activity,
+    member: membersById.get(getActivityMemberId(activity.changes) ?? "") ?? null,
+  }));
 }

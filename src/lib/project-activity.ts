@@ -11,6 +11,11 @@ export function isActivityChange(value: Json | undefined): value is ActivityChan
   return value !== undefined && isActivityChanges(value) && "from" in value && "to" in value;
 }
 
+export function getActivityMemberId(changes: Json): string | null {
+  if (!isActivityChanges(changes) || typeof changes.member_id !== "string") return null;
+  return changes.member_id;
+}
+
 export function getActivitySummary(actionType: string, changes: Json): string {
   if (actionType === "task_created") return "created a task";
   if (actionType === "project_archived") return "archived the project";

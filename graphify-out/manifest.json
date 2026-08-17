@@ -1500,13 +1500,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-activity-section.tsx": {
-    "mtime": 1785756185.6528735,
-    "ast_hash": "d81444a37ed4677eae1905fb2624f68b",
+    "mtime": 1787001528.1025693,
+    "ast_hash": "29fbdef9139bd474557fe7064816672d",
     "semantic_hash": ""
   },
   "src/data/queries/project-activity.ts": {
-    "mtime": 1785715087.5802727,
-    "ast_hash": "6e3ebe801ddeb858efa75bc303028330",
+    "mtime": 1787001503.7834103,
+    "ast_hash": "ee2ba9c3e94e6a3115f6cc7d34b423dc",
     "semantic_hash": ""
   },
   "src/lib/project-activity-migration.test.ts": {
@@ -1515,13 +1515,13 @@
     "semantic_hash": ""
   },
   "src/lib/project-activity.test.ts": {
-    "mtime": 1785715087.600273,
-    "ast_hash": "a720c364fa3e1acc71af97c6373c2789",
+    "mtime": 1787001504.1034265,
+    "ast_hash": "690d94d506b23845c54a6d8ed95bd000",
     "semantic_hash": ""
   },
   "src/lib/project-activity.ts": {
-    "mtime": 1785756205.772868,
-    "ast_hash": "1610bee590b29256a66892b4494d8f88",
+    "mtime": 1787001503.635403,
+    "ast_hash": "0565a5e74ac24522ed4d21d467ab437a",
     "semantic_hash": ""
   },
   "supabase/migrations/20260729200758_project_activity_history.sql": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1786989243.093109,
-    "ast_hash": "d582ffc4eb7882e3b11c6c5d79b64750",
+    "mtime": 1787001520.850202,
+    "ast_hash": "b272c78e4bc3174b69a75de274a1135b",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1786989243.093109,
-    "ast_hash": "5f4bc444d325a7d4b7b107d5257cc915",
+    "mtime": 1787001520.990209,
+    "ast_hash": "04559e5061999b6c62ce22a6bc7bc456",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
