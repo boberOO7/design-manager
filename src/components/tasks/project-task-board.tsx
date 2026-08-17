@@ -423,7 +423,6 @@ export function ProjectTaskBoard({
     if (!task || pendingTaskIdsRef.current.has(task.id)) return;
     const targetStatus = getTaskStatusForDrop(task.status, targetColumnId);
     if (!targetStatus) return;
-    if (targetStatus === "review" && !window.confirm(t("confirmClientReview"))) return;
     const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
     if (!targetLabel) return;
 
