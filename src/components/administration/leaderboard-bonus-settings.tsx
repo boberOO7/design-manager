@@ -10,7 +10,7 @@ import { MAX_LEADERBOARD_BONUS_PLACES, type LeaderboardBonusConfig, type Leaderb
 
 const DEFAULT_BONUS_PERCENT = 0;
 
-export function LeaderboardBonusSettings({ studioId, initialConfig }: { studioId: string; initialConfig: LeaderboardBonusConfig }) {
+export function LeaderboardBonusSettings({ studioId, initialConfig, onSaved }: { studioId: string; initialConfig: LeaderboardBonusConfig; onSaved?: () => void }) {
   const t = useTranslations("Administration");
   const [enabled, setEnabled] = useState(initialConfig.enabled);
   const [rules, setRules] = useState(initialConfig.rules);
@@ -35,6 +35,7 @@ export function LeaderboardBonusSettings({ studioId, initialConfig }: { studioId
     setError("");
     const { error: saveError } = await createClient().rpc("save_leaderboard_bonus_rules", { p_studio_id: studioId, p_enabled: enabled, p_rules: rules });
     if (saveError) setError(t("leaderboardBonusSaveFailed"));
+    else if (onSaved) onSaved();
     else window.location.reload();
     setIsSaving(false);
   }
