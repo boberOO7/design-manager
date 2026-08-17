@@ -9,6 +9,11 @@ export type SemanticBadgeStyle = {
   variant: "neutral" | "info" | "warning" | "danger" | "success" | "violet" | "muted";
 };
 
+export type TaskStatusColumnStyle = {
+  bodyClassName: string;
+  headerClassName: string;
+};
+
 const styles = {
   neutral: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]", variant: "neutral" },
   info: { className: "border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]", variant: "info" },
@@ -41,6 +46,25 @@ export function getTaskStatusBadgeStyle(status: TaskStatus | string): SemanticBa
     case "completed": return badge("Done", "success");
     case "cancelled": return badge("Cancelled", "muted");
     default: return badge("Unknown", "neutral");
+  }
+}
+
+export function getTaskStatusCountBadgeClassName(status: TaskStatus | string, count: number): string {
+  return `${getTaskStatusBadgeStyle(status).className}${count === 0 ? " opacity-60" : ""}`;
+}
+
+export function getTaskStatusColumnStyle(status: TaskStatus | string): TaskStatusColumnStyle {
+  const headerClassName = getTaskStatusBadgeStyle(status).className;
+  switch (status) {
+    case "in_progress":
+      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-info-surface)_45%,var(--ui-surface-muted))]" };
+    case "review":
+      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-violet-surface)_45%,var(--ui-surface-muted))]" };
+    case "completed":
+      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-success-surface)_45%,var(--ui-surface-muted))]" };
+    case "todo":
+    default:
+      return { headerClassName, bodyClassName: "bg-[var(--ui-surface-muted)]" };
   }
 }
 

@@ -4,6 +4,8 @@ import {
   getProjectHealthBadgeStyle,
   getProjectLifecycleBadgeStyle,
   getTaskStatusBadgeStyle,
+  getTaskStatusColumnStyle,
+  getTaskStatusCountBadgeClassName,
   getTimeOffStatusBadgeStyle,
 } from "./semantic-styles";
 
@@ -16,6 +18,18 @@ describe("semantic badge styles", () => {
     const styles = ["todo", "in_progress", "review", "completed", "cancelled"].map(getTaskStatusBadgeStyle);
     expect(styles.map((style) => style.variant)).toEqual(["neutral", "info", "violet", "success", "muted"]);
     expect(styles.map((style) => style.label)).not.toContain("in_progress");
+  });
+
+  it("derives board-column tints from the same task-status semantic tokens", () => {
+    expect(getTaskStatusColumnStyle("todo").headerClassName).toBe(getTaskStatusBadgeStyle("todo").className);
+    expect(getTaskStatusColumnStyle("in_progress").bodyClassName).toContain("--ui-info-surface");
+    expect(getTaskStatusColumnStyle("review").bodyClassName).toContain("--ui-violet-surface");
+    expect(getTaskStatusColumnStyle("completed").bodyClassName).toContain("--ui-success-surface");
+  });
+
+  it("keeps nonzero board counts status-accented and zero counts muted", () => {
+    expect(getTaskStatusCountBadgeClassName("review", 3)).toBe(getTaskStatusBadgeStyle("review").className);
+    expect(getTaskStatusCountBadgeClassName("review", 0)).toBe(`${getTaskStatusBadgeStyle("review").className} opacity-60`);
   });
 
   it("maps project lifecycle and health independently", () => {

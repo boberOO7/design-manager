@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787001872.0416892,
-    "ast_hash": "cb4a070f35048c3ffde73a7ef137ee20",
+    "mtime": 1787003989.9504938,
+    "ast_hash": "384b4f23a74f6007aa8df2b62bc7532b",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -825,13 +825,13 @@
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.test.ts": {
-    "mtime": 1785782878.2891886,
-    "ast_hash": "5446058973f98248d10b82ceb1a938d7",
+    "mtime": 1787003990.154505,
+    "ast_hash": "39709e742321ed7afe0d88130b6902a9",
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.ts": {
-    "mtime": 1785782877.9971888,
-    "ast_hash": "a200a193e5b77081fb26fec78e49e994",
+    "mtime": 1787003989.794485,
+    "ast_hash": "b363ce157de5bf3b148f8bf9e088d932",
     "semantic_hash": ""
   },
   "src/lib/supabase/admin.ts": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787001520.850202,
-    "ast_hash": "b272c78e4bc3174b69a75de274a1135b",
+    "mtime": 1787002442.443816,
+    "ast_hash": "2e205ad884ddba01cad3e96d0e50b0c1",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787001520.990209,
-    "ast_hash": "04559e5061999b6c62ce22a6bc7bc456",
+    "mtime": 1787002442.443816,
+    "ast_hash": "4b076e24158fb4dc9f414f02b8e38c40",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -3007,6 +3007,11 @@
   "supabase/migrations/20260817204341_allow_unassigned_project_tasks.sql": {
     "mtime": 1786999485.6912296,
     "ast_hash": "5b0849b7c601d3eb6b0dfd1b4df1459b",
+    "semantic_hash": ""
+  },
+  "src/components/tasks/project-task-board.localization.test.ts": {
+    "mtime": 1787002968.3908794,
+    "ast_hash": "7e1b5b640b23d9c597e6ad6e14594e40",
     "semantic_hash": ""
   }
 }
