@@ -52,7 +52,19 @@ describe("dashboard calculations", () => {
     expect(items.map((item) => item.id)).toEqual(["p1", "p2"]); expect(items[0].overdueCount).toBe(1);
   });
   it("aggregates team workload without duplicating tasks", () => {
-    const workload = getTeamWorkload([{ id: "u1", full_name: "A", job_title: "Designer" }, { id: "u2", full_name: "B", job_title: "Designer" }], [task({ id: "a", due_date: "2026-07-20" }), task({ id: "b", status: "in_progress" }), task({ id: "c", assignee_id: "u2" })], today);
-    expect(workload).toEqual([{ id: "u1", full_name: "A", job_title: "Designer", openTaskCount: 2, inProgressCount: 1, overdueCount: 1 }, { id: "u2", full_name: "B", job_title: "Designer", openTaskCount: 1, inProgressCount: 0, overdueCount: 0 }]);
+    const workload = getTeamWorkload(
+      [{ id: "u1", full_name: "A", job_title: "Designer" }, { id: "u2", full_name: "B", job_title: "Designer" }],
+      [
+        task({ id: "a", due_date: "2026-07-20" }),
+        task({ id: "b", status: "in_progress", priority: "urgent" }),
+        task({ id: "c", status: "review", assignee_id: "u2" }),
+        task({ id: "done", status: "completed", priority: "urgent", assignee_id: "u2" }),
+      ],
+      today,
+    );
+    expect(workload).toEqual([
+      { id: "u1", full_name: "A", job_title: "Designer", openTaskCount: 2, todoCount: 1, inProgressCount: 1, reviewCount: 0, urgentCount: 1, overdueCount: 1 },
+      { id: "u2", full_name: "B", job_title: "Designer", openTaskCount: 1, todoCount: 0, inProgressCount: 0, reviewCount: 1, urgentCount: 0, overdueCount: 0 },
+    ]);
   });
 });

@@ -127,11 +127,15 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
 export function getTeamWorkload(members: DashboardMember[], tasks: DashboardTask[], today: string) {
   return members.map((member) => {
     const assigned = tasks.filter((task) => task.assignee_id === member.id);
+    const active = assigned.filter(isOpenTask);
     return {
       ...member,
-      openTaskCount: assigned.filter(isOpenTask).length,
-      inProgressCount: assigned.filter((task) => task.status === "in_progress" || task.status === "review").length,
-      overdueCount: assigned.filter((task) => isTaskOverdue(task, today)).length,
+      openTaskCount: active.length,
+      todoCount: active.filter((task) => task.status === "todo").length,
+      inProgressCount: active.filter((task) => task.status === "in_progress").length,
+      reviewCount: active.filter((task) => task.status === "review").length,
+      urgentCount: active.filter((task) => task.priority === "urgent").length,
+      overdueCount: active.filter((task) => isTaskOverdue(task, today)).length,
     };
   }).sort((left, right) => right.overdueCount - left.overdueCount || right.openTaskCount - left.openTaskCount || left.full_name.localeCompare(right.full_name));
 }
