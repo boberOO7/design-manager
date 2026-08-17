@@ -9,16 +9,15 @@ import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/c
 import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import type { Profile } from "@/types";
 
 const mobileNavigationId = "mobile-application-navigation";
 
-export function MobileNavigation({ profile }: { profile: Profile | null }) {
+export function MobileNavigation({ systemRole }: { systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const items = getNavigationItems(profile);
+  const items = getNavigationItems(systemRole);
 
   return <>
     <button

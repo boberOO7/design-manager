@@ -5,15 +5,13 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { StudioFlowMark } from "@/components/brand/studioflow-mark";
-import type { Profile } from "@/types";
 import { cn } from "@/lib/utils";
 import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 
-export function AppSidebar({ profile, studioName }: { profile: Profile | null; studioName: string | null }) {
+export function AppSidebar({ studioName, systemRole }: { studioName: string | null; systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
-  // Filter navigation items based on real system_role
-  const items = useMemo(() => getNavigationItems(profile), [profile]);
+  const items = useMemo(() => getNavigationItems(systemRole), [systemRole]);
 
   return (
     <aside className="hidden w-72 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] lg:flex lg:flex-col">

@@ -10,7 +10,6 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import type { Profile } from "@/types";
 
 export const navigationItems = [
   { href: "/dashboard", label: "Dashboard", messageKey: "dashboard", adminOnly: false },
@@ -20,7 +19,7 @@ export const navigationItems = [
   { href: "/team", label: "Team", messageKey: "team", adminOnly: false },
   { href: "/contractors", label: "Contractors", messageKey: "contractors", adminOnly: false },
   { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
-  { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: false },
+  { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: true },
   { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },
 ] as const;
 
@@ -39,9 +38,8 @@ export const navigationIcons: Record<NavigationItem["href"], LucideIcon> = {
 };
 
 /** The single role-aware navigation source for desktop and mobile application chrome. */
-export function getNavigationItems(profile: Profile | null): NavigationItem[] {
-  if (!profile) return [...navigationItems];
-  return navigationItems.filter((item) => !item.adminOnly || profile.system_role === "admin");
+export function getNavigationItems(systemRole: string | null): NavigationItem[] {
+  return navigationItems.filter((item) => !item.adminOnly || systemRole === "admin");
 }
 
 export function isNavigationItemActive(pathname: string, href: NavigationItem["href"]): boolean {

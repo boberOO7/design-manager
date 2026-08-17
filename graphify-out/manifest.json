@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/archive/page.tsx": {
-    "mtime": 1786804527.561606,
-    "ast_hash": "287512f09272b5e8451d954ac6d42d5b",
+    "mtime": 1786976075.709474,
+    "ast_hash": "8718ebcb59a737d1e4d384a033c198d0",
     "semantic_hash": ""
   },
   "src/app/(app)/calendar/page.tsx": {
@@ -230,8 +230,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
-    "mtime": 1786801770.5299585,
-    "ast_hash": "51b932c20908b40921369e81daba9cd1",
+    "mtime": 1786976075.5534694,
+    "ast_hash": "6d15358a0deeaed1ec00d00c91606a19",
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-header.tsx": {
-    "mtime": 1786568816.8087099,
-    "ast_hash": "e30d23092b5608576bd55e152404ce87",
+    "mtime": 1786976108.4166741,
+    "ast_hash": "b3b9a81a3e6e6d77c7bd703123ea4c20",
     "semantic_hash": ""
   },
   "src/components/layout/app-layout.tsx": {
@@ -430,13 +430,13 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-sidebar.tsx": {
-    "mtime": 1786796262.389425,
-    "ast_hash": "c7a2527ccea67b86e81bfd84c2894a7e",
+    "mtime": 1786976108.1366618,
+    "ast_hash": "150e8e886b8e4d66aecae78b382bea54",
     "semantic_hash": ""
   },
   "src/components/layout/mobile-navigation.tsx": {
-    "mtime": 1786719635.8141396,
-    "ast_hash": "c4449bf3cb724364840f45b22457c720",
+    "mtime": 1786976108.2806683,
+    "ast_hash": "b4e7680af75ebb7ea843c9a4800e72b5",
     "semantic_hash": ""
   },
   "src/components/layout/notification-bell.tsx": {
@@ -580,13 +580,13 @@
     "semantic_hash": "ac1e3f37e092c50482a63c5a329dba41"
   },
   "src/constants/navigation.test.ts": {
-    "mtime": 1785715087.5562727,
-    "ast_hash": "c32e8fdf0c13b65e23c0b047448b5587",
-    "semantic_hash": "c32e8fdf0c13b65e23c0b047448b5587"
+    "mtime": 1786976108.54868,
+    "ast_hash": "a2b77a6635c61e5d132e87cdbd1e4515",
+    "semantic_hash": ""
   },
   "src/constants/navigation.ts": {
-    "mtime": 1786719635.4501395,
-    "ast_hash": "912801cb03d08251b91968fbba1f4578",
+    "mtime": 1786976108.0046558,
+    "ast_hash": "c706ff71fc10f4d6feaea39149dd3368",
     "semantic_hash": ""
   },
   "src/data/mock/index.ts": {
@@ -2952,6 +2952,11 @@
   "src/data/queries/active-studio-membership.contract.test.ts": {
     "mtime": 1786801771.0539768,
     "ast_hash": "5fbaf810e05b87e77663982a5c740a99",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/archive/page.test.ts": {
+    "mtime": 1786976076.029483,
+    "ast_hash": "b67bcbbce9a7f0af0266729853fc06ae",
     "semantic_hash": ""
   }
 }

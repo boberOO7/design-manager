@@ -2,13 +2,13 @@ import Link from "next/link";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getArchivedProjects } from "@/data/queries/archived-projects";
 import { formatDate } from "@/lib/utils";
 import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { restoreProject } from "@/app/(app)/projects/[projectId]/actions";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,25 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ArchivePage() {
-  const t = await getTranslations("Archive");
-  const locale = await getLocale();
-  const profile = await getCurrentUserProfile();
-
-  if (!profile) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title={t("title")} description={t("loginDescription")} />
-        <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-6 text-center">
-          <p className="text-sm text-[var(--ui-text-secondary)]">{t("loginRequired")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const [result, membership] = await Promise.all([
-    getArchivedProjects(),
-    profile.is_active ? getActiveStudioMembership() : Promise.resolve(null),
-  ]);
+  const [t, locale, membership] = await Promise.all([getTranslations("Archive"), getLocale(), getActiveStudioMembership()]);
+  if (!membership || membership.system_role !== "admin") redirect("/dashboard");
+  const result = await getArchivedProjects();
 
   return (
     <div className="space-y-6">
@@ -49,8 +33,7 @@ export default async function ArchivePage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {result.projects.map((project) => {
-            const canRestore =
-              membership?.system_role === "admin" && membership.studio_id === project.studio_id;
+            const canRestore = membership.studio_id === project.studio_id;
             const lifecycleStyle = getProjectLifecycleBadgeStyle(project.status);
 
             return (

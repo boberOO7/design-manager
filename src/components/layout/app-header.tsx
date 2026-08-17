@@ -10,7 +10,7 @@ import { getNotificationData } from "@/data/queries/notifications";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { Profile } from "@/types";
 
-export async function AppHeader({ profile }: { profile: Profile | null }) {
+export async function AppHeader({ profile, systemRole }: { profile: Profile | null; systemRole: string }) {
   const [t, roles] = await Promise.all([
     getTranslations("Account"),
     getTranslations("Roles"),
@@ -19,7 +19,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
     return (
       <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
-          <MobileNavigation profile={profile} />
+          <MobileNavigation systemRole={systemRole} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{t("guest")}</p>
             <p className="truncate text-xs text-[var(--ui-text-muted)]">{t("pleaseLogIn")}</p>
@@ -42,7 +42,7 @@ export async function AppHeader({ profile }: { profile: Profile | null }) {
   return (
     <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
-        <MobileNavigation profile={profile} />
+        <MobileNavigation systemRole={systemRole} />
         <ProfileAvatarEditor
           avatarUrl={profile.avatar_url}
           city={profile.city}
