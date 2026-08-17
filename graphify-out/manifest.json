@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1786989224.2814665,
-    "ast_hash": "da23892067e31b7bddae445f132423a5",
+    "mtime": 1787008467.2884037,
+    "ast_hash": "acb6a5734e4693157c58d890735c9466",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -505,8 +505,8 @@
     "semantic_hash": ""
   },
   "src/components/shared/page-header.tsx": {
-    "mtime": 1785715287.0482607,
-    "ast_hash": "e799387fd1f29fbb45b3ed3720b8ba08",
+    "mtime": 1787008467.1603985,
+    "ast_hash": "6787cfb47e6e9a0ea15054e0fdb730bb",
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.tsx": {
