@@ -45,6 +45,9 @@
   --ui-warning-border: #b27d2a;
   --ui-warning-accent: #d97706;
   --ui-warning-text: #92400e;
+  --ui-urgent-surface: #ffedd5;
+  --ui-urgent-border: #c2410c;
+  --ui-urgent-text: #9a3412;
   --ui-danger-surface: #fee2e2;
   --ui-danger-border: #dc2626;
   --ui-danger-text: #991b1b;
@@ -105,6 +108,9 @@
   --ui-warning-border: #d97706;
   --ui-warning-accent: #f59e0b;
   --ui-warning-text: #fcd34d;
+  --ui-urgent-surface: #431407;
+  --ui-urgent-border: #ea580c;
+  --ui-urgent-text: #fdba74;
   --ui-danger-surface: #4c1115;
   --ui-danger-border: #e05252;
   --ui-danger-text: #fca5a5;

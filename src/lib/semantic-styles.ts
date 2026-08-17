@@ -6,7 +6,7 @@ import type { ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 export type SemanticBadgeStyle = {
   className: string;
   label: string;
-  variant: "neutral" | "info" | "warning" | "danger" | "success" | "violet" | "muted";
+  variant: "neutral" | "info" | "warning" | "urgent" | "danger" | "success" | "violet" | "muted";
 };
 
 export type TaskStatusColumnStyle = {
@@ -18,6 +18,7 @@ const styles = {
   neutral: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]", variant: "neutral" },
   info: { className: "border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]", variant: "info" },
   warning: { className: "border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]", variant: "warning" },
+  urgent: { className: "border border-[var(--ui-urgent-border)] bg-[var(--ui-urgent-surface)] text-[var(--ui-urgent-text)]", variant: "urgent" },
   danger: { className: "border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]", variant: "danger" },
   success: { className: "border border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]", variant: "success" },
   violet: { className: "border border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)]", variant: "violet" },
@@ -33,7 +34,7 @@ export function getPriorityBadgeStyle(priority: TaskPriority | string): Semantic
     case "low": return badge("Low", "neutral");
     case "normal": return badge("Normal", "info");
     case "high": return badge("High", "warning");
-    case "urgent": return badge("Urgent", "danger");
+    case "urgent": return badge("Urgent", "urgent");
     default: return badge("Unknown", "neutral");
   }
 }

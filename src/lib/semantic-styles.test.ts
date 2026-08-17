@@ -10,8 +10,8 @@ import {
 } from "./semantic-styles";
 
 describe("semantic badge styles", () => {
-  it("maps priorities from neutral low through blue normal, amber high, and red urgent", () => {
-    expect(["low", "normal", "high", "urgent"].map((value) => getPriorityBadgeStyle(value).variant)).toEqual(["neutral", "info", "warning", "danger"]);
+  it("maps priorities from neutral low through blue normal, amber high, and warm urgent", () => {
+    expect(["low", "normal", "high", "urgent"].map((value) => getPriorityBadgeStyle(value).variant)).toEqual(["neutral", "info", "warning", "urgent"]);
   });
 
   it("maps every task status and keeps user-facing labels", () => {

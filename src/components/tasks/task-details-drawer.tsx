@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
@@ -358,7 +359,7 @@ export function TaskDetailsDrawer({
                   </FormField>
                   <FormField label={t("priority")}>
                     <Select value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
-                      {TASK_PRIORITY_VALUES.map((priority) => <SelectItem key={priority} value={priority}>{priorityT(priority)}</SelectItem>)}
+                      {TASK_PRIORITY_VALUES.map((priority) => taskPrioritySelectItem(priority, priorityT(priority)))}
                     </Select>
                   </FormField>
                   <FormField label={t("dueDate")} optional error={fieldErrors.due_date ? validation("correctFields") : undefined}>
@@ -366,7 +367,7 @@ export function TaskDetailsDrawer({
                   </FormField>
                   <FormField label={t("status")}>
                     <Select value={values.status} disabled={isSaving} onValueChange={(status) => setValues({ ...values, status })}>
-                      {BOARD_COLUMNS.map((column) => <SelectItem key={column.id} value={column.status}>{statusLabel(column.status)}</SelectItem>)}
+                      {BOARD_COLUMNS.map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
                     </Select>
                   </FormField>
                 </div>
@@ -436,8 +437,8 @@ export function TaskDetailsDrawer({
               {!canManageTasks && canUpdateStatus ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--ui-text)]">{t("updateStatus")}
                   <Select value={task.status} disabled={isSaving} onValueChange={(status) => void saveEmployeeStatus(status)} className="font-normal">
-                    <SelectItem value={task.status}>{statusLabel(task.status)}</SelectItem>
-                    {BOARD_COLUMNS.filter((column) => column.status !== task.status).map((column) => <SelectItem key={column.id} value={column.status}>{statusLabel(column.status)}</SelectItem>)}
+                    {taskStatusSelectItem(task.status, statusLabel(task.status))}
+                    {BOARD_COLUMNS.filter((column) => column.status !== task.status).map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
                   </Select>
                 </label>
               </section> : null}

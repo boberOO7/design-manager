@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { taskPrioritySelectItem } from "@/components/tasks/task-select-presentation";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
@@ -82,7 +83,7 @@ export function AddTaskDialog({
             </FormField>
             <FormField label={t("priority")}>
               <Select name="priority" defaultValue="normal" disabled={isPending}>
-                {TASK_PRIORITY_VALUES.map((value) => <SelectItem key={value} value={value}>{priority(value)}</SelectItem>)}
+                {TASK_PRIORITY_VALUES.map((value) => taskPrioritySelectItem(value, priority(value)))}
               </Select>
             </FormField>
           </div>

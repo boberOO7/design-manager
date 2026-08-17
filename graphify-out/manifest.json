@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1786999484.8192043,
-    "ast_hash": "878f0b31d79615a4c189fa6c97f0fa1a",
+    "mtime": 1787007543.2528627,
+    "ast_hash": "f5201b69c8e8175a5b4b2da91583b5a6",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
@@ -530,13 +530,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1787006342.1054466,
-    "ast_hash": "c8cd1c12839e65d3eac4396ed383e8be",
+    "mtime": 1787007543.3928685,
+    "ast_hash": "c7298536cf3efa8081f84a6781700da1",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
-    "mtime": 1785971918.7595468,
-    "ast_hash": "60b5e7eb5cfdb790edf7042a16251523",
+    "mtime": 1787007543.5488749,
+    "ast_hash": "9015e8e56ff1d8521e729fc55aa82934",
     "semantic_hash": ""
   },
   "src/components/team/invite-employee-form.tsx": {
@@ -825,13 +825,13 @@
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.test.ts": {
-    "mtime": 1787003990.154505,
-    "ast_hash": "39709e742321ed7afe0d88130b6902a9",
+    "mtime": 1787006962.9621692,
+    "ast_hash": "4b0e633354310c716801083b4954fa16",
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.ts": {
-    "mtime": 1787003989.794485,
-    "ast_hash": "b363ce157de5bf3b148f8bf9e088d932",
+    "mtime": 1787006962.806163,
+    "ast_hash": "a7583e81d18154d0f7172145a36feeb1",
     "semantic_hash": ""
   },
   "src/lib/supabase/admin.ts": {
@@ -3012,6 +3012,11 @@
   "src/components/tasks/project-task-board.localization.test.ts": {
     "mtime": 1787002968.3908794,
     "ast_hash": "7e1b5b640b23d9c597e6ad6e14594e40",
+    "semantic_hash": ""
+  },
+  "src/components/tasks/task-select-presentation.tsx": {
+    "mtime": 1787007856.9333978,
+    "ast_hash": "0487dff037023c2a8f1b5cc8205f992e",
     "semantic_hash": ""
   }
 }
