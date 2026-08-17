@@ -317,14 +317,14 @@ export function TaskDetailsDrawer({
         tabIndex={-1}
         className="flex h-dvh flex-col bg-[var(--ui-surface)] text-[var(--ui-text)] outline-none"
       >
-        <header className="sticky top-0 z-10 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] px-5 py-4 shadow-sm">
+        <header className="sticky top-0 z-10 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] px-5 py-3 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-text-subtle)]">{t("taskDetails")}</p>
               <h2 id="task-details-title" className="mt-1 text-xl font-semibold leading-6 text-[var(--ui-text)]">{task.title}</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{statusLabel(task.status)}</span>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{statusLabel(task.status)}</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
               </div>
             </div>
             <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={requestClose} aria-label={t("closeTaskDetails")} className="size-9 shrink-0 p-0">
@@ -332,25 +332,25 @@ export function TaskDetailsDrawer({
             </Button>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
-          {successMessage ? <p role="status" className="mb-5 rounded-xl bg-[var(--ui-success-surface)] px-3 py-2 text-sm text-[var(--ui-success-text)]">{successMessage}</p> : null}
-          {formError ? <p role="alert" className="mb-5 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{t("updateFailed")}</p> : null}
+        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {successMessage ? <p role="status" className="mb-3 rounded-xl bg-[var(--ui-success-surface)] px-3 py-2 text-sm text-[var(--ui-success-text)]">{successMessage}</p> : null}
+          {formError ? <p role="alert" className="mb-3 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{t("updateFailed")}</p> : null}
           {isEditing ? (
-            <div className="space-y-7">
+            <div className="space-y-5">
               <section aria-labelledby="task-edit-main-information">
                 <h3 id="task-edit-main-information" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
-                <div className="mt-3 space-y-4">
+                <div className="mt-2 space-y-3">
                   <FormField label={t("title")} error={fieldErrors.title ? validation("correctFields") : undefined}>
                     <Input autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} />
                   </FormField>
                   <FormField label={t("description")} optional error={fieldErrors.description ? validation("correctFields") : undefined}>
-                    <Textarea autoComplete="off" value={values.description} rows={3} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
+                    <Textarea autoComplete="off" value={values.description} rows={2} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
                   </FormField>
                 </div>
               </section>
-              <section aria-labelledby="task-edit-planning" className="border-t border-[var(--ui-border-subtle)] pt-5">
+              <section aria-labelledby="task-edit-planning" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-planning" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskDetails")}</h3>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   <FormField label={t("assignee")} optional error={fieldErrors.assignee_id ? validation("correctFields") : undefined}>
                     <Select value={values.assignee_id ?? ""} disabled={isSaving} onValueChange={(assigneeId) => setValues({ ...values, assignee_id: assigneeId || null })}>
                       <SelectItem value="">{t("unassigned")}</SelectItem>
@@ -372,33 +372,33 @@ export function TaskDetailsDrawer({
                   </FormField>
                 </div>
               </section>
-              <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-5">
+              <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <FormField label={t("taskArea")} optional error={fieldErrors.completed_area_m2 ? validation("correctFields") : undefined}>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <FormField className="gap-1" label={t("taskArea")} optional error={fieldErrors.completed_area_m2 ? validation("correctFields") : undefined}>
                     <Input autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} />
                     <p className="text-xs font-normal leading-4 text-[var(--ui-text-muted)]">{t("taskAreaEditHelp")}</p>
                   </FormField>
-                  <FormField label={t("progressWeight")} error={fieldErrors.progress_weight ? validation("correctFields") : undefined}>
+                  <FormField className="gap-1" label={t("progressWeight")} error={fieldErrors.progress_weight ? validation("correctFields") : undefined}>
                     <Input autoComplete="off" type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} />
                     <p className="text-xs font-normal leading-4 text-[var(--ui-text-muted)]">{t("progressWeightHelp")}</p>
                   </FormField>
                 </div>
               </section>
-              <section aria-labelledby="task-edit-checklist" className="border-t border-[var(--ui-border-subtle)] pt-5">
+              <section aria-labelledby="task-edit-checklist" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <div><h3 id="task-edit-checklist" className="text-sm font-semibold text-[var(--ui-text)]">{checklistT("checklist")}</h3><p className="mt-1 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("description")}</p></div>
-                {canEditWork ? <div className="mt-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-3">
-                  <FormField label={templatesT("checklistTemplate")}>
+                {canEditWork ? <div className="mt-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5">
+                  <FormField className="gap-1 text-xs" label={templatesT("checklistTemplate")}>
                     <Select value={selectedChecklistTemplateId} disabled={isSaving || isApplyingChecklistTemplate} onValueChange={setSelectedChecklistTemplateId}>
                       <SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>
                       {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
                     </Select>
                   </FormField>
-                  {selectedChecklistTemplate ? <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs leading-4 text-[var(--ui-text-muted)]">{templatesT("stages", { count: selectedChecklistTemplate.stages.length })} · {templatesT("totalWeight", { weight: selectedChecklistTemplate.stages.reduce((total, stage) => total + stage.weight, 0) })}</p><Button type="button" size="sm" disabled={isSaving || isApplyingChecklistTemplate || selectedChecklistTemplate.stages.length === 0} onClick={() => void appendChecklistTemplate()}><Plus className="size-4" aria-hidden="true" />{checklistT("add")}</Button></div> : null}
+                  {selectedChecklistTemplate ? <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs leading-4 text-[var(--ui-text-muted)]">{templatesT("stages", { count: selectedChecklistTemplate.stages.length })} · {templatesT("totalWeight", { weight: selectedChecklistTemplate.stages.reduce((total, stage) => total + stage.weight, 0) })}</p><Button type="button" size="sm" disabled={isSaving || isApplyingChecklistTemplate || selectedChecklistTemplate.stages.length === 0} onClick={() => void appendChecklistTemplate()}><Plus className="size-4" aria-hidden="true" />{checklistT("add")}</Button></div> : null}
                 </div> : null}
-                {checklistSnapshot.error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
-                {checklistSnapshot.items.length ? <ul className="mt-3 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-3 rounded-xl border border-dashed border-[var(--ui-border-strong)] p-4 text-sm text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
-                {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-3 grid gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-3 sm:grid-cols-[minmax(0,1fr)_6rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("newItem")}<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("weight")}<Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={isSaving || isApplyingChecklistTemplate || !newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> {checklistT("add")}</Button></form> : null}
+                {checklistSnapshot.error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
+                {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
+                {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-2 grid gap-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("newItem")}<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("weight")}<Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={isSaving || isApplyingChecklistTemplate || !newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> {checklistT("add")}</Button></form> : null}
               </section>
             </div>
           ) : (
@@ -445,7 +445,7 @@ export function TaskDetailsDrawer({
             </div>
           )}
         </main>
-        {canEdit ? <footer className="sticky bottom-0 flex flex-col gap-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-sticky)]">
+        {canEdit ? <footer className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 py-3 shadow-[var(--ui-shadow-sticky)]">
           {showDiscardPrompt ? <div className="rounded-xl bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]">{t("unsavedChanges")}
             <div className="mt-2 flex justify-end gap-2"><Button type="button" size="sm" variant="outline" disabled={isSaving} onClick={discardChangesAndClose}>{t("discardChanges")}</Button><Button type="button" size="sm" disabled={isSaving} onClick={() => void saveTaskDetails()}>{t("saveChanges")}</Button></div>
           </div> : null}

@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1787007543.3928685,
-    "ast_hash": "c7298536cf3efa8081f84a6781700da1",
+    "mtime": 1787008176.3386369,
+    "ast_hash": "97ccbc5ce71869653e4d28c14b483237",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
