@@ -230,8 +230,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
-    "mtime": 1786976075.5534694,
-    "ast_hash": "6d15358a0deeaed1ec00d00c91606a19",
+    "mtime": 1786986174.1726632,
+    "ast_hash": "2ebf47b26ce6b36e073e8a6fa87d5cc2",
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
@@ -615,8 +615,8 @@
     "semantic_hash": "a99d38678ec011d50c4c0fe74f7b4357"
   },
   "src/data/queries/active-studio-membership.ts": {
-    "mtime": 1786801770.4179544,
-    "ast_hash": "9ad25bd68b7f94b912c14637676c46b6",
+    "mtime": 1786986173.9606538,
+    "ast_hash": "41c724200406fd1f3fb119892f3ab90e",
     "semantic_hash": ""
   },
   "src/data/queries/administration.ts": {
@@ -845,8 +845,8 @@
     "semantic_hash": "45dc9f23cbf860ec746242343f56ddea"
   },
   "src/lib/supabase/proxy.ts": {
-    "mtime": 1786752842.0824559,
-    "ast_hash": "a84a584bd3185ff3d1138cda6e7d2841",
+    "mtime": 1786986173.828648,
+    "ast_hash": "0390b45d0831018dfbe1f50387b635f8",
     "semantic_hash": ""
   },
   "src/lib/supabase/server.ts": {
@@ -965,8 +965,8 @@
     "semantic_hash": ""
   },
   "src/proxy.ts": {
-    "mtime": 1786752842.2904658,
-    "ast_hash": "3874c34f90d4823a36a74021609a44b3",
+    "mtime": 1786986189.0479789,
+    "ast_hash": "f45c9926af659008ea4529f821acb83d",
     "semantic_hash": ""
   },
   "src/types/calendar.ts": {
@@ -2945,13 +2945,13 @@
     "semantic_hash": ""
   },
   "src/app/access-unavailable/page.tsx": {
-    "mtime": 1786801770.8219686,
-    "ast_hash": "bdc44495faa41cf50057536e0ab8f3de",
+    "mtime": 1786986174.3646715,
+    "ast_hash": "b679c6a23e52748e8ae9b094590654c5",
     "semantic_hash": ""
   },
   "src/data/queries/active-studio-membership.contract.test.ts": {
-    "mtime": 1786801771.0539768,
-    "ast_hash": "5fbaf810e05b87e77663982a5c740a99",
+    "mtime": 1786986174.5406792,
+    "ast_hash": "69ee7974a75507f7e03b202384951ac3",
     "semantic_hash": ""
   },
   "src/app/(app)/archive/page.test.ts": {
@@ -2967,6 +2967,11 @@
   "supabase/migrations/20260817143113_time_off_multi_admin_approvals.sql": {
     "mtime": 1786977923.570692,
     "ast_hash": "cd6565dd68fd92bc305d07e2669adbe9",
+    "semantic_hash": ""
+  },
+  "src/lib/supabase/proxy.test.ts": {
+    "mtime": 1786986189.167984,
+    "ast_hash": "ce07f2c4a1fe2039f334f56c36363d40",
     "semantic_hash": ""
   }
 }

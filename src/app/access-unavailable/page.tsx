@@ -17,7 +17,7 @@ export default async function AccessUnavailablePage() {
     getTranslations("AccessUnavailable"),
   ]);
 
-  if (access.status === "UNAUTHENTICATED") redirect("/login");
+  if (access.status === "UNAUTHENTICATED" || access.status === "AUTH_ERROR") redirect("/login");
   if (access.status === "ACTIVE_STUDIO") redirect("/dashboard");
   if (access.status === "MULTIPLE_ACTIVE_STUDIOS") {
     throw new Error("Authenticated user has multiple active studio memberships.");

@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const [t, access] = await Promise.all([getTranslations("Common"), resolveActiveStudioMembership()]);
 
-  if (access.status === "UNAUTHENTICATED") {
+  if (access.status === "UNAUTHENTICATED" || access.status === "AUTH_ERROR") {
     redirect("/login");
   }
 

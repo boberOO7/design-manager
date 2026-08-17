@@ -16,6 +16,7 @@ export type ActiveStudioMembership = Pick<
 
 export type ActiveStudioMembershipResolution =
   | { status: "UNAUTHENTICATED" }
+  | { status: "AUTH_ERROR"; cause: unknown }
   | { status: "NO_ACTIVE_STUDIO"; authenticatedUserId: string; email: string | null }
   | { status: "ACTIVE_STUDIO"; membership: ActiveStudioMembership; email: string | null }
   | { status: "MULTIPLE_ACTIVE_STUDIOS"; authenticatedUserId: string; email: string | null };
@@ -29,7 +30,11 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
   const { data: userData, error: userError } = await supabase.auth.getUser();
   const user = userData.user;
 
-  if (userError || !user) {
+  if (userError) {
+    return { status: "AUTH_ERROR", cause: userError };
+  }
+
+  if (!user) {
     return { status: "UNAUTHENTICATED" };
   }
 

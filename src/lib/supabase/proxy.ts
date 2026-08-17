@@ -21,13 +21,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // This network-backed check both refreshes valid sessions and distinguishes a
-  // stale JWT from a current Auth user. The cookie adapter above ensures any
-  // refreshed or cleared cookies are sent back to the browser.
-  const { data, error } = await supabase.auth.getUser();
-  if (!data.user && error && error.status && error.status >= 400 && error.status < 500) {
-    await supabase.auth.signOut({ scope: "local" });
-  }
+  // Keep this immediately after createServerClient. getClaims() validates and
+  // refreshes the token; setAll() then makes its replacement visible both to
+  // this request's Server Components and to the browser response.
+  //
+  // Auth failures deliberately do not redirect here. The app boundary handles
+  // them separately from authenticated users with no active studio membership.
+  await supabase.auth.getClaims();
 
   return response;
 }
