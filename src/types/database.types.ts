@@ -687,11 +687,40 @@ export type Database = {
           { foreignKeyName: "time_off_requests_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
         ]
       }
+      time_off_request_approvals: {
+        Row: {
+          admin_user_id: string
+          approved_at: string
+          request_id: string
+        }
+        Insert: {
+          admin_user_id: string
+          approved_at?: string
+          request_id: string
+        }
+        Update: {
+          admin_user_id?: string
+          approved_at?: string
+          request_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "time_off_request_approvals_admin_user_id_fkey"; columns: ["admin_user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "time_off_request_approvals_request_id_fkey"; columns: ["request_id"]; isOneToOne: false; referencedRelation: "time_off_requests"; referencedColumns: ["id"] },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      approve_time_off_request: {
+        Args: { p_request_id: string; p_review_note?: string | null }
+        Returns: {
+          approval_count: number
+          required_approval_count: number
+          status: Database["public"]["Enums"]["time_off_request_status"]
+        }[]
+      }
       create_task_with_checklist: {
         Args: { p_checklist_items?: Json; p_task: Json }
         Returns: string

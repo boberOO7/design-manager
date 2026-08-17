@@ -94,7 +94,7 @@ describe("time-off stabilization migration contract", () => {
     expect(calendar).toContain('const timeOff = useTranslations("TimeOff")');
     expect(administration).toContain('const timeOff = useTranslations("TimeOff")');
     expect(calendar).toContain('catch { setError(timeOff("requestUpdateFailed")); }');
-    expect(administration).toContain('catch { setError(timeOff("requestUpdateFailed")); }');
+    expect(administration).toContain('caught instanceof Error ? caught.message : timeOff("requestUpdateFailed")');
     expect(englishMessages).toContain('"requestUpdateFailed":"The request could not be updated. Please try again."');
     expect(ukrainianMessages).toContain('"requestUpdateFailed":"Не вдалося оновити запит. Спробуйте ще раз."');
     expect(administration).toContain("const [reviewNote, setReviewNote]");

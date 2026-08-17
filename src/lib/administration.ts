@@ -22,6 +22,9 @@ export type AdministrationRequest = {
   reviewedAt: string | null;
   cancelledAt: string | null;
   reviewerName: string | null;
+  approvalCount: number;
+  requiredApprovalCount: number;
+  hasCurrentAdminApproved: boolean;
 };
 
 export type AdministrationModel = {
@@ -41,6 +44,10 @@ export function getTimeOffRequestTypeLabel(requestType: TimeOffRequestType): (ty
 
 export function canReceiveAdministrationModel(role: SystemRole): boolean {
   return role === "admin";
+}
+
+export function getRequiredTimeOffApprovalCount(requestType: TimeOffRequestType): number {
+  return requestType === "vacation" ? 2 : 1;
 }
 
 export function getUpcomingEndDate(today: string): string {

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedTimeOffRequest } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
@@ -11,15 +10,7 @@ type Context = { params: Promise<{ requestId: string }> };
 export async function PATCH(request: Request, context: Context) {
   const membership = await getActiveStudioMembership();
   if (!membership) return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
-  const profile = await getCurrentUserProfile();
-  if (
-    !profile
-    || !profile.is_active
-    || profile.id !== membership.authenticatedUserId
-    || profile.system_role !== membership.system_role
-  ) {
-    return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
-  }
+  if (membership.system_role !== "admin" && membership.system_role !== "employee") return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
   const { requestId } = await context.params;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
@@ -29,6 +20,21 @@ export async function PATCH(request: Request, context: Context) {
   const supabase = await createClient();
   const { data: existing, error: readError } = await supabase.from("time_off_requests").select("id, user_id, status").eq("id", requestId).eq("studio_id", membership.studio_id).maybeSingle();
   if (readError || !existing) return NextResponse.json({ success: false, formError: "The request was not found." }, { status: 404 });
+
+  if (parsed.data.action === "approve") {
+    if (membership.system_role !== "admin") return NextResponse.json({ success: false, formError: "This time-off action is not allowed." }, { status: 403 });
+    const { data: approval, error: approvalError } = await supabase.rpc("approve_time_off_request", {
+      p_request_id: requestId,
+      p_review_note: parsed.data.reviewNote,
+    });
+    if (approvalError || !approval?.[0]) {
+      return NextResponse.json({ success: false, formError: approvalError?.message ?? "The request could not be approved." }, { status: 400 });
+    }
+    const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
+    if (!item) return NextResponse.json({ success: true, item: null, removedKey: null, requiresRefresh: true });
+    return NextResponse.json({ success: true, item, removedKey: null, approvalCount: approval[0].approval_count, requiredApprovalCount: approval[0].required_approval_count, hasCurrentAdminApproved: true });
+  }
+
   const update = deriveTimeOffUpdate({
     action: parsed.data.action,
     actorId: membership.authenticatedUserId,
@@ -54,7 +60,6 @@ export async function PATCH(request: Request, context: Context) {
       error: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint, context: postgresContext, where: postgresWhere } : null,
       transition: {
         authenticatedUserId: membership.authenticatedUserId,
-        membershipUserId: profile.id,
         studioId: membership.studio_id,
         studioRole: membership.system_role,
         requestId,
