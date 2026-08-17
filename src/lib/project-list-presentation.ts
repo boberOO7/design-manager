@@ -89,10 +89,10 @@ export function hasActiveProjectListFilters(filters: ProjectListFilters): boolea
   return filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "name";
 }
 
-export function getProjectListEmptyState(filters: ProjectListFilters): { canReset: boolean; title: string } {
+export function getProjectListEmptyState(filters: ProjectListFilters): { canReset: boolean; titleKey: "emptyFilteredActive" | "emptyFiltered" } {
   return {
     canReset: hasActiveProjectListFilters(filters),
-    title: filters.lifecycle === "active" ? "No active projects." : "No projects match these filters.",
+    titleKey: filters.lifecycle === "active" ? "emptyFilteredActive" : "emptyFiltered",
   };
 }
 

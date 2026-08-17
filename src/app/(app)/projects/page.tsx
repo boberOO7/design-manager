@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const t = await getTranslations("Projects");
   const [profile, params] = await Promise.all([getCurrentUserProfile(), searchParams]);
-  if (!profile) return <div className="space-y-6"><PageHeader title="Projects" description="Please log in to view projects." /><EmptyState compact title="You must be logged in to view projects." /></div>;
+  if (!profile) return <div className="space-y-6"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState title={t("loginRequired")} /></div>;
 
   const [result, membership] = await Promise.all([
     getAccessibleProjectsWithTasks(),
@@ -33,9 +33,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   return <div className="space-y-6">
     <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <ProjectCreationModal defaultStartDate={getKyivDateOnly()} /> : undefined} />
-    {result.error ? <EmptyState compact title="Projects could not be loaded." description="Please try again later." className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : result.projects.length === 0 ? <EmptyState compact title="No projects are available in your access scope yet." /> : <>
+    {result.error ? <EmptyState title={t("loadTitle")} description={t("loadDescription")} className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : result.projects.length === 0 ? <EmptyState title={t("empty")} description={t("emptyDescription")} /> : <>
       <ProjectListControls filters={filters} />
-      {projects.length ? <ProjectList projects={projects} /> : <EmptyState compact title={emptyState.title} description="Adjust or reset the filters to see your accessible projects." action={emptyState.canReset ? <Button asChild variant="outline"><Link href="/projects">Reset filters</Link></Button> : undefined} />}
+      {projects.length ? <ProjectList projects={projects} /> : <EmptyState title={t(emptyState.titleKey)} description={t("emptyFilteredDescription")} action={emptyState.canReset ? <Button asChild variant="outline"><Link href="/projects">{t("resetFilters")}</Link></Button> : undefined} />}
       {hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">Showing {projects.length} of {result.projects.length} accessible projects.</p> : null}
     </>}
   </div>;

@@ -49,8 +49,8 @@ describe("project list presentation", () => {
     expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual({ ...operational, sort: "name" });
   });
 
-  it("selects a resettable compact empty state when filters return no projects", () => {
-    expect(getProjectListEmptyState({ ...operational, health: "overdue" })).toEqual({ title: "No projects match these filters.", canReset: true });
-    expect(getProjectListEmptyState({ ...operational, lifecycle: "active" })).toEqual({ title: "No active projects.", canReset: true });
+  it("selects a resettable localized empty state when filters return no projects", () => {
+    expect(getProjectListEmptyState({ ...operational, health: "overdue" })).toEqual({ titleKey: "emptyFiltered", canReset: true });
+    expect(getProjectListEmptyState({ ...operational, lifecycle: "active" })).toEqual({ titleKey: "emptyFilteredActive", canReset: true });
   });
 });

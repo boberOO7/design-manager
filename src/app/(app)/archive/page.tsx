@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getArchivedProjects } from "@/data/queries/archived-projects";
@@ -44,9 +45,7 @@ export default async function ArchivePage() {
           <p className="text-sm text-[var(--ui-danger-text)]">{t("loadFailed")}</p>
         </div>
       ) : result.projects.length === 0 ? (
-        <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-6 text-center">
-          <p className="text-sm text-[var(--ui-text-secondary)]">{t("empty")}</p>
-        </div>
+        <EmptyState title={t("empty")} description={t("emptyDescription")} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {result.projects.map((project) => {

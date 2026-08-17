@@ -101,6 +101,7 @@ function loadEnvironment(envFile: string): void {
     // The selected file is the source of truth. Do not accidentally bootstrap a
     // shell's previously selected project when --env-file was supplied.
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SITE_URL;
     delete process.env.SUPABASE_SECRET_KEY;
     loadEnvFile(absolutePath);
   } catch {
@@ -110,10 +111,14 @@ function loadEnvironment(envFile: string): void {
     );
   }
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SITE_URL ||
+    !process.env.SUPABASE_SECRET_KEY
+  ) {
     throw new BootstrapError(
       "environment",
-      "The selected environment file must define NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.",
+      "The selected environment file must define NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SITE_URL, and SUPABASE_SECRET_KEY.",
     );
   }
 }
@@ -129,6 +134,22 @@ function getTargetUrl(): URL {
     throw new BootstrapError(
       "environment",
       "NEXT_PUBLIC_SUPABASE_URL must be a valid http(s) URL.",
+    );
+  }
+}
+
+function getInviteRedirectTo(): string {
+  try {
+    const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL!);
+    if (siteUrl.protocol !== "http:" && siteUrl.protocol !== "https:") {
+      throw new Error();
+    }
+
+    return `${siteUrl.toString().replace(/\/+$/, "")}/auth/confirm`;
+  } catch {
+    throw new BootstrapError(
+      "environment",
+      "NEXT_PUBLIC_SITE_URL must be a valid http(s) URL.",
     );
   }
 }
@@ -615,6 +636,7 @@ async function createStudio(
 async function getOrInviteMember(
   admin: AdminClient,
   state: MemberPreflight,
+  redirectTo: string,
 ): Promise<AuthUser> {
   if (state.authUser) return state.authUser;
 
@@ -625,6 +647,7 @@ async function getOrInviteMember(
         full_name: state.member.fullName,
         job_title: state.member.jobTitle,
       },
+      redirectTo,
     },
   );
 
@@ -696,11 +719,12 @@ async function provisionInitialTeam(
   admin: AdminClient,
   studioId: string,
   state: Preflight,
+  redirectTo: string,
 ): Promise<CompletedMember[]> {
   const completed: CompletedMember[] = [];
 
   for (const memberState of state.members) {
-    const authUser = await getOrInviteMember(admin, memberState);
+    const authUser = await getOrInviteMember(admin, memberState, redirectTo);
     await provisionProfile(admin, memberState.member, authUser.id);
     await provisionMembership(admin, studioId, memberState, authUser.id);
 
@@ -719,6 +743,7 @@ async function main(): Promise<void> {
   loadEnvironment(envFile);
 
   const target = getTargetUrl();
+  const inviteRedirectTo = getInviteRedirectTo();
   const values = await askForInput();
   if (!values) return;
 
@@ -736,7 +761,12 @@ async function main(): Promise<void> {
   if (!(await confirm(target, values, state))) return;
 
   const studioId = await createStudio(admin, values, state);
-  const completedMembers = await provisionInitialTeam(admin, studioId, state);
+  const completedMembers = await provisionInitialTeam(
+    admin,
+    studioId,
+    state,
+    inviteRedirectTo,
+  );
 
   note(
     [
