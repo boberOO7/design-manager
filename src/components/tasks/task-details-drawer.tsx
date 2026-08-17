@@ -327,7 +327,8 @@ export function TaskDetailsDrawer({
                 {fieldErrors.description ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("assignee")}
-                <Select value={values.assignee_id ?? undefined} disabled={isSaving} onValueChange={(assigneeId) => setValues({ ...values, assignee_id: assigneeId })}>
+                <Select value={values.assignee_id ?? ""} disabled={isSaving} onValueChange={(assigneeId) => setValues({ ...values, assignee_id: assigneeId || null })}>
+                  <SelectItem value="">{t("unassigned")}</SelectItem>
                   {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
                 </Select>
                 {fieldErrors.assignee_id ? <span className="text-[var(--ui-danger-text)]">{validation("correctFields")}</span> : null}

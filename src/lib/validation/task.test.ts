@@ -18,6 +18,11 @@ describe("task creation validation", () => {
     expect(result.title).toBe("Prepare lighting plan");
   });
 
+  it("accepts an empty assignee as an unassigned task", () => {
+    expect(taskCreationSchema.parse({ ...validTask, assignee_id: "" }).assignee_id).toBeNull();
+    expect(taskCreationSchema.parse({ ...validTask, assignee_id: undefined }).assignee_id).toBeNull();
+  });
+
   it("rejects a missing task title", () => {
     const result = taskCreationSchema.safeParse({ ...validTask, title: "   " });
     expect(result.success).toBe(false);
@@ -88,6 +93,11 @@ describe("task editing validation", () => {
     expect(parsed.title).toBe("Update lighting plan");
     expect(parsed.description).toBe("Confirm the final fixture schedule.");
     expect(taskEditSchema.safeParse({ ...validEdit, title: "  " }).success).toBe(false);
+  });
+
+  it("allows an existing assignee to be cleared", () => {
+    expect(taskEditSchema.parse({ ...validEdit, assignee_id: "" }).assignee_id).toBeNull();
+    expect(taskEditSchema.parse({ ...validEdit, assignee_id: null }).assignee_id).toBeNull();
   });
 
   it("accepts Client review and rejects invalid priority, weight, and dates", () => {

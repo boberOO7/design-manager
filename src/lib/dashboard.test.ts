@@ -67,4 +67,12 @@ describe("dashboard calculations", () => {
       { id: "u2", full_name: "B", job_title: "Designer", openTaskCount: 1, todoCount: 0, inProgressCount: 0, reviewCount: 1, urgentCount: 0, overdueCount: 0 },
     ]);
   });
+  it("excludes unassigned work from individual workload metrics", () => {
+    const workload = getTeamWorkload(
+      [{ id: "u1", full_name: "A", job_title: "Designer" }],
+      [task({ assignee_id: null, priority: "urgent", due_date: "2026-07-20" })],
+      today,
+    );
+    expect(workload[0]).toMatchObject({ openTaskCount: 0, urgentCount: 0, overdueCount: 0 });
+  });
 });

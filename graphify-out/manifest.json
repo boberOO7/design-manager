@@ -265,8 +265,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
-    "mtime": 1785715087.5922728,
-    "ast_hash": "41943e4a9dfed9d0401917e517c67db9",
+    "mtime": 1786999484.4271932,
+    "ast_hash": "a022d2ca8adae256950de8645a570ee3",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/actions.ts": {
@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1786661141.8628097,
-    "ast_hash": "454f4fcc54c285fb3da62454a4afc892",
+    "mtime": 1786999484.8192043,
+    "ast_hash": "878f0b31d79615a4c189fa6c97f0fa1a",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1786660253.0058317,
-    "ast_hash": "b7115bd9b52bab59d839d19e47e34db1",
+    "mtime": 1786999484.9912095,
+    "ast_hash": "402bf61878b34bb422eedd361af3c7b4",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-edit.ts": {
-    "mtime": 1785715087.5842729,
-    "ast_hash": "77369272d42bc90ca6cd0eaaa117a467",
+    "mtime": 1786999484.6431992,
+    "ast_hash": "6bfa1de7096f43bf1a224105b84fb223",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.ts": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "src/lib/dashboard.test.ts": {
-    "mtime": 1786975382.483562,
-    "ast_hash": "d3db4f70b2cc8de5716b9b405f2aab1c",
+    "mtime": 1786999485.3792207,
+    "ast_hash": "bf4c9e870f281f858f536a2e1a05e985",
     "semantic_hash": ""
   },
   "src/lib/dashboard.ts": {
@@ -955,13 +955,13 @@
     "semantic_hash": "977ff5c5a9214dc7c923a1b648427687"
   },
   "src/lib/validation/task.test.ts": {
-    "mtime": 1785715087.6042728,
-    "ast_hash": "75e9c69aca551bcd999656d0e554f4b1",
+    "mtime": 1786999485.183215,
+    "ast_hash": "4bb62fabc1f8144618a0779953bc7e71",
     "semantic_hash": ""
   },
   "src/lib/validation/task.ts": {
-    "mtime": 1785715087.6042728,
-    "ast_hash": "295880f4d5a960abfedaf6c9f33a62a0",
+    "mtime": 1786999484.2591882,
+    "ast_hash": "94733c5806fae03921dcf4c6cd447ebb",
     "semantic_hash": ""
   },
   "src/proxy.ts": {
@@ -1605,8 +1605,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1785763035.3349016,
-    "ast_hash": "91477d0d308187bff28da375b0c053b6",
+    "mtime": 1786999517.2674675,
+    "ast_hash": "97b37678d99326d67ebf516266feedfe",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.test.ts": {
-    "mtime": 1785757065.2606208,
-    "ast_hash": "9bb54359cc6b3069bd62581dd2d59679",
+    "mtime": 1786999517.1514642,
+    "ast_hash": "9437d55e0c10de4bf191b83d07e5c5b0",
     "semantic_hash": ""
   },
   "src/lib/task-checklist-template-migration.test.ts": {
@@ -2997,6 +2997,16 @@
   "src/components/leaderboard/leaderboard-bonus-menu.tsx": {
     "mtime": 1786989224.1094592,
     "ast_hash": "7cfdec5cd503cb32c0981dbe2e04b17e",
+    "semantic_hash": ""
+  },
+  "src/lib/task-unassigned-migration.test.ts": {
+    "mtime": 1786999485.5552258,
+    "ast_hash": "473fe00515ce99ff55af9b4522975390",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260817204341_allow_unassigned_project_tasks.sql": {
+    "mtime": 1786999485.6912296,
+    "ast_hash": "5b0849b7c601d3eb6b0dfd1b4df1459b",
     "semantic_hash": ""
   }
 }

@@ -35,11 +35,13 @@ export async function updateTaskDetailsMutation(
     return { success: false, formError: "Complete every checklist item before moving this task to Client review or Done." };
   }
 
-  const members = await getAssignableProjectMembers(
-    authorization.task.project_id,
-    authorization.task.project.studio_id,
-  );
-  if (!members.some((member) => member.id === parsed.data.assignee_id)) {
+  const members = parsed.data.assignee_id === null
+    ? []
+    : await getAssignableProjectMembers(
+      authorization.task.project_id,
+      authorization.task.project.studio_id,
+    );
+  if (parsed.data.assignee_id !== null && !members.some((member) => member.id === parsed.data.assignee_id)) {
     return {
       success: false,
       formError: "Please correct the highlighted fields.",

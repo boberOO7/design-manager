@@ -61,8 +61,10 @@ export async function createProjectTask(
     return { formError: "The project was not found or is not available for new tasks." };
   }
 
-  const projectMembers = await getAssignableProjectMembers(project.id, project.studio_id);
-  if (!projectMembers.some((member) => member.id === parsed.data.assignee_id)) {
+  const projectMembers = parsed.data.assignee_id === null
+    ? []
+    : await getAssignableProjectMembers(project.id, project.studio_id);
+  if (parsed.data.assignee_id !== null && !projectMembers.some((member) => member.id === parsed.data.assignee_id)) {
     return { fieldErrors: { assignee_id: "Choose an active member of this project." } };
   }
   if (project.progress_method === "area" && parsed.data.completed_area_m2 !== undefined) {

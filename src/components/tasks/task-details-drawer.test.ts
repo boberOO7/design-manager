@@ -38,4 +38,12 @@ describe("task checklist drawer contract", () => {
     expect(itemRow).toContain('t("savingItem")');
     expect(itemRow).toContain('step="1"');
   });
+
+  it("lets administrators clear the assignee and shows an unassigned task safely", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    expect(source).toContain('value={values.assignee_id ?? ""}');
+    expect(source).toContain('assignee_id: assigneeId || null');
+    expect(source).toContain('<SelectItem value="">{t("unassigned")}</SelectItem>');
+    expect(source).toContain('task.assignee?.full_name ?? t("unassigned")');
+  });
 });

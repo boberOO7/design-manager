@@ -24,4 +24,12 @@ describe("task creation checklist template contract", () => {
     expect(source).toContain("event.preventDefault()");
     expect(source).toContain("else hasSubmittedRef.current = true");
   });
+
+  it("keeps assignment optional with the localized unassigned option", async () => {
+    const source = await readFile(dialogPath, "utf8");
+    expect(source).toContain('label={t("assignee")} optional');
+    expect(source).toContain('<SelectItem value="">{t("unassigned")}</SelectItem>');
+    expect(source).not.toContain('name="assignee_id" required');
+    expect(source).not.toContain("disabled={isPending || members.length === 0}");
+  });
 });

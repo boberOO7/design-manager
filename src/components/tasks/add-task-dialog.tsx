@@ -74,8 +74,9 @@ export function AddTaskDialog({
             <Textarea name="description" rows={3} maxLength={5000} disabled={isPending} autoComplete="off" />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t("assignee")} error={state.fieldErrors?.assignee_id ? validation("correctFields") : undefined}>
-              <Select name="assignee_id" required placeholder={t("selectProjectMember")} disabled={isPending || members.length === 0}>
+            <FormField label={t("assignee")} optional error={state.fieldErrors?.assignee_id ? validation("correctFields") : undefined}>
+              <Select name="assignee_id" defaultValue="" placeholder={t("selectProjectMember")} disabled={isPending}>
+                <SelectItem value="">{t("unassigned")}</SelectItem>
                 {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
               </Select>
             </FormField>
@@ -101,11 +102,10 @@ export function AddTaskDialog({
             {selectedTemplate ? <div className="mt-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 py-2.5"><div className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 text-sm font-medium text-[var(--ui-text)]">{selectedTemplate.name} <span className="font-normal text-[var(--ui-text-muted)]">· {templatesT("stages", { count: checklistItems.length })} · {templatesT("totalWeight", { weight: totalWeight })}</span>{isCustomized ? <span className="ml-2 text-xs font-medium text-[var(--ui-warning-text)]">{templatesT("customized")}</span> : null}</p><Button type="button" size="sm" variant="outline" disabled={isPending} aria-expanded={isCustomizerOpen} onClick={() => setIsCustomizerOpen((open) => !open)}>{isCustomizerOpen ? templatesT("collapse") : templatesT("customize")}</Button></div>{isCustomizerOpen ? <ul className="mt-3 divide-y divide-[var(--ui-border)] border-y border-[var(--ui-border)]">{checklistItems.map((item, index) => <li key={item.id} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><label className="min-w-0 flex-1"><span className="sr-only">{templatesT("itemTitle")}</span><Input value={item.title} maxLength={200} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, title: event.target.value } : candidate))} /></label><label className="flex w-20 items-center gap-1 text-xs text-[var(--ui-text-muted)]"><span className="sr-only">{templatesT("itemWeight")}</span><Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={item.weight} disabled={isPending} onChange={(event) => setChecklistItems((current) => current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, weight: Number(event.target.value) } : candidate))} /><span aria-hidden="true">{checklist("weightAbbreviation")}</span></label><Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => setChecklistItems((current) => current.filter((_, candidateIndex) => candidateIndex !== index))} className="size-11 shrink-0 p-0 text-[var(--ui-danger-text)]" aria-label={templatesT("remove", { title: item.title })}><Trash2 className="size-4" aria-hidden="true" /></Button></li>)}</ul> : null}</div> : null}
             {state.fieldErrors?.checklist_items ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{validation("invalidChecklistItem")}</p> : null}
           </section>
-          {members.length === 0 ? <p role="alert" className="rounded-xl bg-[var(--ui-warning-surface)] p-3 text-sm text-[var(--ui-warning-text)]">{t("noMembers")}</p> : null}
           {state.formError ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{validation("correctFields")}</p> : null}
           <div className="sticky bottom-0 -mx-5 flex justify-end gap-3 border-t border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] px-5 pt-4 pb-1">
             <Button type="button" variant="outline" onClick={() => dialogRef.current?.close()} disabled={isPending}>{t("cancel")}</Button>
-            <Button type="submit" disabled={isPending || members.length === 0}>{isPending ? t("creating") : t("createTask")}</Button>
+            <Button type="submit" disabled={isPending}>{isPending ? t("creating") : t("createTask")}</Button>
           </div>
         </form>
       </dialog>

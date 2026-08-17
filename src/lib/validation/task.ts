@@ -16,6 +16,11 @@ const optionalCompletedAreaSchema = z.preprocess(
   z.coerce.number().finite("Enter a valid area").positive("Area must be greater than zero").max(1_000_000, "Area is too large").optional(),
 );
 
+const optionalAssigneeSchema = z.preprocess(
+  (value) => value === "" || value === undefined ? null : value,
+  z.uuid("Choose a valid project member").nullable(),
+);
+
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistTemplateItemsSchema = z.preprocess(
@@ -32,7 +37,7 @@ export const taskCreationSchema = z.object({
     (value) => value === "" ? undefined : value,
     z.string().trim().max(5000, "Description is too long").optional(),
   ),
-  assignee_id: z.uuid("Choose a valid project member"),
+  assignee_id: optionalAssigneeSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
@@ -54,7 +59,7 @@ export const taskEditSchema = z.object({
     (value) => value === "" ? undefined : value,
     z.string().trim().max(5000, "Description is too long").optional(),
   ),
-  assignee_id: z.uuid("Choose a valid project member"),
+  assignee_id: optionalAssigneeSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
