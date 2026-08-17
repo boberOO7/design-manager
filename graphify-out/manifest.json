@@ -390,8 +390,8 @@
     "semantic_hash": ""
   },
   "src/components/administration/administration-workspace.tsx": {
-    "mtime": 1786987716.66578,
-    "ast_hash": "f10859c2dc75f191eff81dd4d503bfc0",
+    "mtime": 1787005717.8445253,
+    "ast_hash": "1d13e9983ed3bc35a5d2bf3c0a0cec86",
     "semantic_hash": ""
   },
   "src/components/auth/forgot-password-form.tsx": {
@@ -525,13 +525,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787003989.9504938,
-    "ast_hash": "384b4f23a74f6007aa8df2b62bc7532b",
+    "mtime": 1787006211.5919347,
+    "ast_hash": "61e9d8bf42076e340ddb52611473e988",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1786999484.9912095,
-    "ast_hash": "402bf61878b34bb422eedd361af3c7b4",
+    "mtime": 1787006342.1054466,
+    "ast_hash": "c8cd1c12839e65d3eac4396ed383e8be",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {

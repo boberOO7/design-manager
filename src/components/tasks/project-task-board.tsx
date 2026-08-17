@@ -512,6 +512,7 @@ export function ProjectTaskBoard({
         onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}
         task={selectedTask}
+        templates={templates}
       /> : null}
     </section>
   );
