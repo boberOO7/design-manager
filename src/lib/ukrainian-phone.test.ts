@@ -4,6 +4,7 @@ import { createContractorSchema } from "./validation/contractor";
 
 const contractorSchema = createContractorSchema({
   categoryRequired: "Enter a category.", categoryTooLong: "The category is too long.",
+  subcategoryTooLong: "The subcategory is too long.",
   nameRequired: "Enter a company name.", nameTooLong: "The company name is too long.",
   websiteTooLong: "The link is too long.", websiteInvalid: "Enter a complete link.",
   phoneTooLong: "The phone number is too long.", phoneInvalid: "Enter the full phone number.",

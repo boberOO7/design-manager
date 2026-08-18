@@ -4,6 +4,7 @@ import { normalizeUkrainianPhone } from "@/lib/ukrainian-phone";
 export type ContractorValidationMessages = {
   categoryRequired: string;
   categoryTooLong: string;
+  subcategoryTooLong: string;
   nameRequired: string;
   nameTooLong: string;
   websiteTooLong: string;
@@ -17,6 +18,7 @@ export function createContractorSchema(messages: ContractorValidationMessages) {
   const optionalText = (maximum: number, message: string) => z.string().trim().max(maximum, message).optional();
   return z.object({
   category: z.string().trim().min(1, messages.categoryRequired).max(100, messages.categoryTooLong),
+  subcategory: optionalText(100, messages.subcategoryTooLong),
   name: z.string().trim().min(1, messages.nameRequired).max(200, messages.nameTooLong),
   website_url: optionalText(500, messages.websiteTooLong).refine(
     (value) => !value || /^https?:\/\//i.test(value),
@@ -50,6 +52,7 @@ function getString(formData: FormData, field: string): string | undefined {
 export function getContractorFormInput(formData: FormData) {
   return {
     category: getString(formData, "category"),
+    subcategory: getString(formData, "subcategory"),
     name: getString(formData, "name"),
     website_url: getString(formData, "website_url"),
     phone: getString(formData, "phone"),

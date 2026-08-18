@@ -5,14 +5,15 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createContractor, deleteContractor, updateContractor, updateContractorCategoryColor } from "@/app/(app)/contractors/actions";
-import { ContractorCategoryCombobox, getUniqueContractorCategories } from "@/components/contractors/contractor-category-combobox";
-import type { Contractor } from "@/data/queries/contractors";
+import { ContractorCategoryCombobox, ContractorSubcategoryCombobox, getUniqueContractorCategories } from "@/components/contractors/contractor-category-combobox";
+import type { Contractor, ContractorCategory } from "@/data/queries/contractors";
 import { Button } from "@/components/ui/button";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { formatUkrainianPhone } from "@/lib/ukrainian-phone";
+import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories } from "@/lib/contractor-subcategory-presentation";
 import { contractorCategoryColorKeys, getContractorCategoryBadgeClassName, getContractorCategoryColorLabel, type ContractorCategoryColorKey } from "@/lib/contractor-category-colors";
 import { useLocale } from "next-intl";
 import type { ContractorFormActionState, ContractorFormField } from "@/lib/validation/contractor";
@@ -21,14 +22,16 @@ const initialState: ContractorFormActionState = {};
 
 type ContractorAction = (state: ContractorFormActionState, formData: FormData) => Promise<ContractorFormActionState>;
 
-export function ContractorDirectory({ contractors: initialContractors, isAdmin }: { contractors: Contractor[]; isAdmin: boolean }) {
+export function ContractorDirectory({ categories: initialCategories, contractors: initialContractors, isAdmin }: { categories: ContractorCategory[]; contractors: Contractor[]; isAdmin: boolean }) {
   const t = useTranslations("Contractors");
   const locale = useLocale();
   const router = useRouter();
   const [colorOverrides, setColorOverrides] = useState<Record<string, ContractorCategoryColorKey>>({});
+  const categories = useMemo(() => getUniqueContractorCategories(initialCategories.map((category) => ({ ...category, colorKey: colorOverrides[category.id] ?? category.colorKey }))), [colorOverrides, initialCategories]);
   const contractors = useMemo(() => initialContractors.map((contractor) => ({ ...contractor, category: { ...contractor.category, colorKey: colorOverrides[contractor.category.id] ?? contractor.category.colorKey } })), [colorOverrides, initialContractors]);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
   const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [selected, setSelected] = useState<Contractor | null>(null);
   const [deleting, setDeleting] = useState<Contractor | null>(null);
@@ -38,14 +41,16 @@ export function ContractorDirectory({ contractors: initialContractors, isAdmin }
   const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
   const [colorError, setColorError] = useState("");
 
-  const categories = useMemo(() => getUniqueContractorCategories(contractors.map((contractor) => contractor.category)), [contractors]);
+  const selectedFilterSubcategories = getContractorSubcategories(categories, categoryId);
   const visible = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return contractors.filter((contractor) =>
-      (!category || contractor.category.name === category)
-      && (!normalized || contractor.name.toLocaleLowerCase().includes(normalized)),
-    );
-  }, [category, contractors, query]);
+    return filterContractors(contractors, { categoryId, subcategoryId, query });
+  }, [categoryId, contractors, query, subcategoryId]);
+
+  function changeCategoryFilter(nextCategoryId: string) {
+    const next = changeContractorCategoryFilter(nextCategoryId);
+    setCategoryId(next.categoryId);
+    setSubcategoryId(next.subcategoryId);
+  }
 
   function openCreate() {
     setSelected(null);
@@ -84,16 +89,20 @@ export function ContractorDirectory({ contractors: initialContractors, isAdmin }
   return <>
     <div className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
       <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] lg:min-w-[34rem]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] lg:min-w-[34rem] xl:grid-cols-[minmax(16rem,1fr)_12rem_12rem] xl:min-w-[46rem]">
           <label className="relative block">
             <span className="sr-only">{t("searchLabel")}</span>
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
             <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder={t("searchPlaceholder")} type="search" />
           </label>
-          <Select aria-label={t("columns.category")} value={category} onValueChange={setCategory} placeholder={t("allCategories")}>
+          <Select aria-label={t("columns.category")} value={categoryId} onValueChange={changeCategoryFilter} placeholder={t("allCategories")}>
             <SelectItem className="min-h-12 py-2.5" value="">{t("allCategories")}</SelectItem>
-            {categories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.name}><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span></SelectItem>)}
+            {categories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span></SelectItem>)}
           </Select>
+          {categoryId ? <Select aria-label={t("form.subcategory")} value={subcategoryId} onValueChange={setSubcategoryId} placeholder={t("allSubcategories")}>
+            <SelectItem className="min-h-12 py-2.5" value="">{t("allSubcategories")}</SelectItem>
+            {selectedFilterSubcategories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}>{item.name}</SelectItem>)}
+          </Select> : null}
         </div>
         <div className="flex shrink-0 gap-2">{isAdmin ? <Button type="button" variant="outline" onClick={() => { setColorError(""); setManagingColors(true); }}><Palette className="size-4" aria-hidden="true" />{t("columns.category")}</Button> : null}<Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button></div>
       </div>
@@ -106,7 +115,7 @@ export function ContractorDirectory({ contractors: initialContractors, isAdmin }
           <tbody className="divide-y divide-[var(--ui-border)]">
             {visible.map((contractor) => <tr key={contractor.id} className="align-top transition-colors hover:bg-[var(--ui-surface-subtle)]">
               <td className="px-4 py-3 font-medium text-[var(--ui-text)]">{contractor.name}</td>
-              <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(contractor.category.colorKey)}`}>{contractor.category.name}</span></td>
+              <td className="px-4 py-3"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(contractor.category.colorKey)}`}>{contractor.category.name}</span>{contractor.subcategory ? <span className="text-sm text-[var(--ui-text-secondary)]">{contractor.subcategory.name}</span> : null}</div></td>
               <td className="px-4 py-3 text-[var(--ui-text-secondary)]">{formatUkrainianPhone(contractor.phone) || "—"}</td>
               <td className="px-4 py-3">{contractor.website_url ? <a href={contractor.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-[var(--ui-info-text)] underline underline-offset-4"><span className="max-w-40 truncate">{t("openLink")}</span><ExternalLink className="size-3.5" aria-hidden="true" /></a> : <span className="text-[var(--ui-text-muted)]">—</span>}</td>
               <td className="max-w-sm px-4 py-3 text-[var(--ui-text-secondary)]"><p className="line-clamp-2" title={contractor.description ?? undefined}>{contractor.description || "—"}</p></td>
@@ -141,15 +150,23 @@ function ContractorForm({ action, categories, contractor, mode, onCancel, onSucc
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(action, initialState);
   const [category, setCategory] = useState(contractor?.category.name ?? "");
+  const [subcategory, setSubcategory] = useState(contractor?.subcategory?.name ?? "");
   const [phone, setPhone] = useState(() => formatUkrainianPhone(contractor?.phone));
   const selectedCategory = categories.find((item) => item.name.toLocaleLowerCase() === category.trim().toLocaleLowerCase());
+  const subcategories = selectedCategory?.subcategories ?? [];
+  function changeCategory(nextCategory: string) {
+    setCategory(nextCategory);
+    setSubcategory("");
+  }
   useEffect(() => { if (state.contractorId) { formRef.current?.reset(); onSuccess(); } }, [onSuccess, state.contractorId]);
   useEffect(() => { if (state.fieldErrors) formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus({ preventScroll: true }); }, [state.fieldErrors]);
   const error = (field: ContractorFormField) => state.fieldErrors?.[field];
   const errorProps = (field: ContractorFormField) => ({ "aria-invalid": error(field) ? true : undefined, "aria-describedby": error(field) ? `${field}-error` : undefined });
   return <form ref={formRef} action={formAction} className="min-h-0 overflow-y-auto p-4 sm:p-6"><div className="grid gap-4 sm:grid-cols-2">
-    <FormField label={t("form.category")} error={error("category")}><div className="grid gap-2"><ContractorCategoryCombobox categories={categories} value={category} onValueChange={setCategory} {...errorProps("category")} />{selectedCategory ? <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(selectedCategory.colorKey)}`}>{selectedCategory.name}</span> : null}</div></FormField>
+    <FormField label={t("form.category")} error={error("category")}><div className="grid gap-2"><ContractorCategoryCombobox categories={categories} value={category} onValueChange={changeCategory} {...errorProps("category")} />{selectedCategory ? <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(selectedCategory.colorKey)}`}>{selectedCategory.name}</span> : null}</div></FormField>
+    <FormField label={<>{t("form.subcategory")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("subcategory")}><ContractorSubcategoryCombobox disabled={!category.trim()} subcategories={subcategories} value={subcategory} onValueChange={setSubcategory} {...errorProps("subcategory")} /></FormField>
     <FormField label={t("form.companyName")} error={error("name")}><Input required name="name" defaultValue={contractor?.name} {...errorProps("name")} /></FormField>
+    <div className="hidden sm:block" />
     <FormField className="sm:col-span-2" label={<>{t("form.website")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("website_url")}><Input type="url" name="website_url" defaultValue={contractor?.website_url ?? ""} placeholder="https://" {...errorProps("website_url")} /></FormField>
     <FormField label={<>{t("form.phone")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("phone")}><Input autoComplete="tel" inputMode="tel" name="phone" onChange={(event) => setPhone(formatUkrainianPhone(event.target.value))} placeholder="+380 (XX) XXX-XX-XX" type="tel" value={phone} {...errorProps("phone")} /></FormField>
     <div className="hidden sm:block" />

@@ -57,6 +57,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          subcategory_id: string | null
           updated_at: string
           website_url: string | null
         }
@@ -68,6 +69,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          subcategory_id?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -79,6 +81,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          subcategory_id?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -97,6 +100,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contractors_subcategory_category_fkey"
+            columns: ["subcategory_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "contractor_subcategories"
+            referencedColumns: ["id", "category_id"]
+          },
         ]
       }
       contractor_categories: {
@@ -105,6 +115,14 @@ export type Database = {
         Update: { color_key?: string; created_at?: string; id?: string; name?: string; studio_id?: string; updated_at?: string }
         Relationships: [
           { foreignKeyName: "contractor_categories_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
+      contractor_subcategories: {
+        Row: { category_id: string; created_at: string; id: string; name: string }
+        Insert: { category_id: string; created_at?: string; id?: string; name: string }
+        Update: { category_id?: string; created_at?: string; id?: string; name?: string }
+        Relationships: [
+          { foreignKeyName: "contractor_subcategories_category_id_fkey"; columns: ["category_id"]; isOneToOne: false; referencedRelation: "contractor_categories"; referencedColumns: ["id"] },
         ]
       }
       checklist_template_items: {
@@ -759,6 +777,10 @@ export type Database = {
     Functions: {
       resolve_contractor_category: {
         Args: { p_name: string }
+        Returns: string
+      }
+      resolve_contractor_subcategory: {
+        Args: { p_category_id: string; p_name: string }
         Returns: string
       }
       update_contractor_category_color: {

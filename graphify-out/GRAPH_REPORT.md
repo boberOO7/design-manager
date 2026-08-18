@@ -1,23 +1,23 @@
 # Graph Report - design-manager  (2026-08-18)
 
 ## Corpus Check
-- 595 files · ~593,586 words
+- 600 files · ~595,133 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6894 nodes · 14329 edges · 395 communities (325 shown, 70 thin omitted)
+- 6915 nodes · 14375 edges · 390 communities (318 shown, 72 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 171 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `280dca63`
+- Built from commit: `faff4e00`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - createClient
 - search
-- button.tsx
+- add-task-dialog.tsx
 - impeccable-paths.mjs
 - slide_search_core.py
 - live-browser.js
@@ -25,7 +25,7 @@
 - queries/dashboard.ts
 - lib/calendar.ts
 - spacing
-- project-context-band.tsx
+- user-avatar.tsx
 - initGlobalBar
 - project-task-board.tsx
 - TestTailwindConfigGenerator
@@ -35,20 +35,20 @@
 - html-token-validator.py
 - collectVisualContrastCandidates
 - gray
-- contractors/actions.ts
+- getActiveStudioMembership
 - types/calendar.ts
 - BM25
 - Tailwind CSS Utility Reference
 - doctor.mjs
 - DesignSystemGenerator
 - devDependencies
-- mountSvelteComponentVariant
+- checkHtmlPatterns
 - live.mjs
 - generate-slide.py
 - TailwindConfigGenerator
 - color
 - main
-- profile-avatar-editor.tsx
+- button.tsx
 - team/actions.ts
 - Brand Guidelines v1.0
 - fetch-background.py
@@ -69,7 +69,7 @@
 - connectSSE
 - team/page.tsx
 - insert-ui.mjs
-- handleGo
+- applyEditing
 - .add_components
 - design-tokens-starter.json
 - modern-screenshot.umd.js
@@ -77,7 +77,7 @@
 - test_tailwind_config_gen.py
 - inject-brand-context.cjs
 - embed-tokens.cjs
-- duration
+- primitive
 - patch
 - search
 - logo/generate.py
@@ -104,9 +104,9 @@
 - validate_data.py
 - test_sync_brand_to_tokens.py
 - main
-- getCanonicalRoleTranslationKey
+- app-header.tsx
 - Canvas Design System
-- readProjectPatternGroups
+- task-progress.ts
 - Form & Input Components
 - Tailwind CSS Responsive Design
 - injected/index.mjs
@@ -115,9 +115,9 @@
 - app-layout.tsx
 - calendar-migration.test.ts
 - .test_add_components_dry_run
-- detect-html.mjs
+- inline-ignores.mjs
 - lib/project-progress.ts
-- lib/project-lifecycle.ts
+- project-context-band.tsx
 - .test_add_components_no_components
 - .test_recommend_plugins
 - .test_recommend_plugins_nextjs
@@ -216,7 +216,7 @@
 - graphify reference: commit hook and native CLAUDE.md integration
 - graphify reference: incremental update and cluster-only
 - README.md
-- theme-switch.tsx
+- color
 - detect-antipatterns-browser.js
 - checklist-template-manager.test.ts
 - graphify reference: GitHub clone and cross-repo merge
@@ -226,7 +226,7 @@
 - extraction-spec.md
 - productivity-migration.test.ts
 - project-activity-migration.test.ts
-- template-extensions.mjs
+- calendar-event-form.ts
 - project-city-geonames-migration.test.ts
 - project-form.contract.test.ts
 - task-details-drawer.test.ts
@@ -239,12 +239,12 @@
 - bootstrap-studio.ts
 - calendar-workspace.localization.test.ts
 - radius
-- constants.mjs
-- checkHtmlPatterns
+- checkElementDesignSystemDOM
+- 50
 - bolder.md
 - staleness-notice.mjs
 - Android platform
-- applyDeferredSvelteComponentAccepts
+- city-combobox.tsx
 - Impeccable Finish Reviewer
 - confirm/route.ts
 - operational-autocomplete.test.ts
@@ -267,53 +267,53 @@
 - hook-admin.mjs
 - detect-text.mjs
 - manual-apply.mjs
-- layout.md
+- typeset.md
 - design-parser.mjs
 - detect-antipatterns.mjs
-- iOS platform
+- date-picker.tsx
 - live-accept.mjs
 - live-poll.mjs
 - generate-image.mjs
 - live-wrap.mjs
-- parseAnyColor
+- scanCssTextForPulsingDot
 - leaderboard/page.tsx
 - contractor-directory.tsx
 - live.md
 - live-manual-edit-evidence.mjs
-- target-args.mjs
+- readProjectPatternGroups
 - live-copy-edit-agent.mjs
 - impeccable/SKILL.md
-- parseRgb
+- parseAnyColor
 - roots.mjs
-- sm
+- $type
 - Responsive Design
 - runHook
 - handleManualEditActivity
 - event-validation.mjs
 - manual-edit-routes.mjs
 - svelte-ast.mjs
-- xl
+- padding-y
 - onboard.md
 - tag-strategy.mjs
-- detect-url.mjs
+- detect-html.mjs
 - collectBrowserFindings
-- time-off-request.ts
+- [requestId]/route.ts
 - The Toolkit
-- checkQuality
+- HEADING_TAGS
 - studio-member-lifecycle-controls.contract.test.ts
-- 16
+- 1. THE THREE DIALS (Core Configuration)
 - live-inject.mjs
 - destructive
 - onAnnotDown
 - task-unassigned-migration.test.ts
 - tanstack-adapter.mjs
 - sampleCssBackground
-- Impeccable Documenter
+- test_shadcn_add.py
 - sveltekit-adapter.mjs
 - animate.md
 - Handle `generate`
 - context-signals.mjs
-- 8
+- .test_check_shadcn_config_exists
 - set-password/actions.ts
 - serve-question.mjs
 - Appendix B - Canonical Sources (read these before reinventing)
@@ -321,13 +321,13 @@
 - critique-storage.mjs
 - detect-utils.mjs
 - frameworks/index.mjs
-- lg
+- .test_get_installed_components_empty
 - cip/generate.py
 - Impeccable Asset Producer
 - optimize.md
-- checkElementGptBorderShadowDOM
-- checkHeroEyebrow
-- Scan mode (approach C: auto-extract, then confirm descriptive language)
+- checkQuality
+- .test_get_installed_components_with_files
+- document.md
 - radius
 - StaticElement
 - pin.mjs
@@ -351,7 +351,7 @@
 - 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)
 - CORE DIRECTIVE: AWWWARDS-LEVEL DESIGN ENGINEERING
 - Init flow
-- .test_add_components_no_config
+- contractor-subcategories-migration.test.ts
 - access-unavailable.contract.test.ts
 - hook.mjs
 - BM25
@@ -368,7 +368,7 @@
 - 11. REDESIGN PROTOCOL
 - 3. DEFAULT ARCHITECTURE & CONVENTIONS
 - 6. PERFORMANCE & ACCESSIBILITY GUARDRAILS
-- .test_list_installed_no_config
+- 800
 - Generate Report
 - Cognitive Load Assessment
 - project-member-removal-migration.test.ts
@@ -376,7 +376,6 @@
 - @hookform/resolvers
 - expandScanTargets
 - page.test.ts
-- .test_init_dry_run
 - 12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)
 - 5. CONTEXT-AWARE PROACTIVITY
 - 8. DARK MODE PROTOCOL
@@ -387,11 +386,7 @@
 - 7. DIAL DEFINITIONS (Technical Reference)
 - Heuristics Scoring Guide
 - detect.mjs
-- none
 - checkElementRadialSpotlightDOM
-- padding-x
-- 1
-- 3
 - studio-member-removal-migration.test.ts
 - package.json
 - clsx
@@ -405,7 +400,7 @@
 - secondary-foreground
 
 ## God Nodes (most connected - your core abstractions)
-1. `createClient()` - 95 edges
+1. `createClient()` - 96 edges
 2. `TailwindConfigGenerator` - 58 edges
 3. `el()` - 51 edges
 4. `cn()` - 50 edges
@@ -431,23 +426,23 @@
 ## Import Cycles
 - None detected.
 
-## Communities (395 total, 70 thin omitted)
+## Communities (390 total, 72 thin omitted)
 
 ### Community 0 - "createClient"
-Cohesion: 0.08
-Nodes (53): Context, DELETE(), PATCH(), Context, PATCH(), CalendarSupabaseClient, getVerifiedTimeOffMembership(), POST() (+45 more)
+Cohesion: 0.09
+Nodes (50): Context, DELETE(), PATCH(), PATCH(), PATCH(), PATCH(), updateContractorCategoryColor(), ContractorsPage() (+42 more)
 
 ### Community 1 - "search"
 Cohesion: 0.12
 Nodes (24): detect_domain(), get_cip_brief(), _load_csv(), Load CSV and return list of dicts, Core search function using BM25, Auto-detect the most relevant domain from query, Main search function with auto-domain detection, Search across all domains and combine results (+16 more)
 
-### Community 2 - "button.tsx"
-Cohesion: 0.11
-Nodes (27): ChecklistTemplateManager(), createStage(), Draft, SortableStageRow(), stageKeyboardSensor, stagePointerSensor, stageSensors, TemplateEditor() (+19 more)
+### Community 2 - "add-task-dialog.tsx"
+Cohesion: 0.10
+Nodes (28): Admin(), ChecklistTemplateManager(), createStage(), Draft, stageKeyboardSensor, stagePointerSensor, stageSensors, TemplateEditor() (+20 more)
 
 ### Community 3 - "impeccable-paths.mjs"
-Cohesion: 0.21
-Nodes (18): resolveProjectRoot(), firstExisting(), getDesignSidecarCandidates(), getDesignSidecarPath(), getImpeccableDir(), getLegacyLiveAnnotationsDir(), getLegacyLiveServerPath(), getLegacyLiveSessionsDir() (+10 more)
+Cohesion: 0.23
+Nodes (17): resolveProjectRoot(), firstExisting(), getDesignSidecarCandidates(), getDesignSidecarPath(), getImpeccableDir(), getLegacyLiveAnnotationsDir(), getLegacyLiveServerPath(), getLegacyLiveSessionsDir() (+9 more)
 
 ### Community 4 - "slide_search_core.py"
 Cohesion: 0.09
@@ -455,35 +450,35 @@ Nodes (36): format_context(), format_result(), main(), Format a single search re
 
 ### Community 5 - "live-browser.js"
 Cohesion: 0.03
-Nodes (141): addManualContextText(), applyGlobalBarLabelState(), applyParamValue(), applyPlaceholderSizingStyles(), averageRgb01(), bindEditBadgeProxy(), bufferToBase64(), buildCollapsible() (+133 more)
+Nodes (140): acceptedDomAlreadyClean(), applyGlobalBarLabelState(), applyOriginalAttrsToSvelteAnchor(), applyPlaceholderSizingStyles(), averageRgb01(), bindEditBadgeProxy(), bufferToBase64(), buildCollapsible() (+132 more)
 
 ### Community 6 - "queries/index.ts"
 Cohesion: 0.05
-Nodes (53): dashboardMetrics, employeeWorkload, getAccessibleProjects(), getDashboardMetrics(), getEmployeeWorkload(), getMyTasks(), getProjectAreaProgress(), getProjectById() (+45 more)
+Nodes (49): dashboardMetrics, employeeWorkload, getAccessibleProjects(), getDashboardMetrics(), getEmployeeWorkload(), getMyTasks(), getProjectAreaProgress(), getProjectById() (+41 more)
 
 ### Community 7 - "queries/dashboard.ts"
-Cohesion: 0.14
-Nodes (34): AdminDashboard, DashboardData, DashboardDeadline, DashboardProjectRow, DashboardTaskForDrawer, DashboardTaskRow, EmployeeDashboard, getDashboard() (+26 more)
+Cohesion: 0.13
+Nodes (36): DashboardPage(), AdminDashboard, DashboardData, DashboardDeadline, DashboardProjectRow, DashboardTaskForDrawer, DashboardTaskRow, EmployeeDashboard (+28 more)
 
 ### Community 8 - "lib/calendar.ts"
-Cohesion: 0.10
-Nodes (32): calendarItemTimestamp(), CalendarTimeOffTitleLabels, canAttendCalendarEvent(), compareCanonical(), deduplicateCalendarItems(), DEFAULT_CALENDAR_FILTERS, getCurrentWeekTimePosition(), getKyivDateTime() (+24 more)
+Cohesion: 0.09
+Nodes (41): AgendaView(), CalendarWorkspace(), WeekView(), calendarItemTimestamp(), CalendarTimeOffTitleLabels, canAttendCalendarEvent(), compareCanonical(), DEFAULT_CALENDAR_FILTERS (+33 more)
 
 ### Community 9 - "spacing"
-Cohesion: 0.09
-Nodes (22): $type, $value, $type, $value, $type, $value, $type, $value (+14 more)
+Cohesion: 0.06
+Nodes (34): $type, $value, $type, $value, $type, $value, $type, $value (+26 more)
 
-### Community 10 - "project-context-band.tsx"
-Cohesion: 0.10
-Nodes (21): ProjectDetails(), DeadlineSummary(), ProjectContextActions(), ProjectContextBand(), ProjectEditModal(), Field(), ProjectFormModal(), ProjectForm() (+13 more)
+### Community 10 - "user-avatar.tsx"
+Cohesion: 0.13
+Nodes (22): ProfileAvatarEditor(), Member, TeamDirectory(), TeamMemberCard(), TeamMemberCardProps, getSegmentedControlItemProps(), SegmentedControl(), SegmentedControlItem (+14 more)
 
 ### Community 11 - "initGlobalBar"
 Cohesion: 0.12
-Nodes (32): agentHasWorkInFlight(), agentStatusText(), barPaletteForTheme(), brandMarkSvg(), buildDesignHeader(), buildParamsPanel(), designPanelCss(), detectPageTheme() (+24 more)
+Nodes (33): agentHasWorkInFlight(), agentStatusText(), barPaletteForTheme(), brandMarkSvg(), buildDesignHeader(), cursorForInsertAxis(), designPanelCss(), detectPageTheme() (+25 more)
 
 ### Community 12 - "project-task-board.tsx"
 Cohesion: 0.09
-Nodes (41): ProjectContextProject, ProjectWorkspace(), BoardColumn(), DraggableTaskCard(), getColumnDropId(), getColumnIdFromDropTarget(), interactiveSelector, keyboardSensor (+33 more)
+Nodes (38): ProjectContextProject, ProjectWorkspace(), BoardColumn(), DraggableTaskCard(), getColumnDropId(), getColumnIdFromDropTarget(), interactiveSelector, keyboardSensor (+30 more)
 
 ### Community 13 - "TestTailwindConfigGenerator"
 Cohesion: 0.07
@@ -498,28 +493,28 @@ Cohesion: 0.07
 Nodes (28): dom, dom.iterable, esnext, **/*.mts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules (+20 more)
 
 ### Community 16 - "project.ts"
-Cohesion: 0.16
-Nodes (16): createProject(), dateSchema, EditProjectFormValues, editProjectSchema, getKyivDateOnly(), getOptionalString(), getProjectFormInput(), PROJECT_TYPE_KEYS (+8 more)
+Cohesion: 0.18
+Nodes (14): createProject(), dateSchema, EditProjectFormValues, editProjectSchema, getOptionalString(), getProjectFormInput(), projectFields, ProjectFormActionState (+6 more)
 
 ### Community 17 - "html-token-validator.py"
 Cohesion: 0.14
 Nodes (24): get_context(), is_allowed_exception(), is_allowed_rgba(), is_inside_block(), load_css_variables(), main(), print_result(), print_summary() (+16 more)
 
 ### Community 18 - "collectVisualContrastCandidates"
-Cohesion: 0.13
-Nodes (20): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), analyzeVisualContrast(), analyzeVisualContrastCandidate(), clearOverlays(), collectVisualContrastCandidates(), collectVisualContrastReasons() (+12 more)
+Cohesion: 0.09
+Nodes (29): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), analyzeVisualContrast(), analyzeVisualContrastCandidate(), blendRgba(), buildSelectorSegment(), clampByte() (+21 more)
 
 ### Community 19 - "gray"
-Cohesion: 0.05
-Nodes (53): $type, $value, $type, $value, $type, $value, $type, $value (+45 more)
+Cohesion: 0.11
+Nodes (19): $type, $value, $type, $value, $type, $value, $type, $value (+11 more)
 
-### Community 20 - "contractors/actions.ts"
-Cohesion: 0.18
-Nodes (19): createContractor(), deleteContractor(), getContractorValues(), nullable(), parseForm(), updateContractor(), updateContractorCategoryColor(), formatUkrainianPhone() (+11 more)
+### Community 20 - "getActiveStudioMembership"
+Cohesion: 0.12
+Nodes (23): AccessUnavailablePage(), POST(), createContractor(), deleteContractor(), getContractorValues(), nullable(), parseForm(), resolveContractorClassification() (+15 more)
 
 ### Community 21 - "types/calendar.ts"
-Cohesion: 0.11
-Nodes (31): CalendarPage(), validDate(), EventForm(), CalendarQueryInput, getCalendarData(), CalendarEventFormValues, createCalendarEventFormValues(), getAllDayEventBounds() (+23 more)
+Cohesion: 0.14
+Nodes (22): CalendarPage(), validDate(), CalendarQueryInput, getCalendarData(), getNormalizedCalendarEvent(), deduplicateCalendarItems(), getInclusiveAllDayEndDate(), instantToDateOnly() (+14 more)
 
 ### Community 22 - "BM25"
 Cohesion: 0.12
@@ -541,13 +536,13 @@ Nodes (10): DesignSystemGenerator, Find matching reasoning rule for a category.,
 Cohesion: 0.09
 Nodes (23): eslint, eslint-config-next, devDependencies, eslint, eslint-config-next, supabase, tailwindcss, @tailwindcss/postcss (+15 more)
 
-### Community 27 - "mountSvelteComponentVariant"
-Cohesion: 0.11
-Nodes (26): acceptedDomAlreadyClean(), applyOriginalAttrsToSvelteAnchor(), clearMountErrorCard(), commitAcceptedSvelteComponentToDom(), componentModuleCandidates(), describeMountFailure(), detectDevServerBase(), ensureAcceptedDomClean() (+18 more)
+### Community 27 - "checkHtmlPatterns"
+Cohesion: 0.13
+Nodes (27): ANIMATION_VALUE_KEYWORDS, buildHtmlPatternCorpora(), checkHtmlPatterns(), collectCssCustomProps(), collectMarqueeKeyframes(), collectPulseKeyframes(), cssLengthToPx(), cssTextHasDarkRootBg() (+19 more)
 
 ### Community 28 - "live.mjs"
-Cohesion: 0.18
-Nodes (20): __dirname, ensureServerRunning(), globToRegex(), globToRegex(), resolveFiles(), acceptInstructions(), bootInstructions(), deferredWrapperInstructions() (+12 more)
+Cohesion: 0.15
+Nodes (22): parseTargetOptions(), parseTargetPath(), TargetArgError, __dirname, ensureServerRunning(), globToRegex(), acceptInstructions(), bootInstructions() (+14 more)
 
 ### Community 29 - "generate-slide.py"
 Cohesion: 0.15
@@ -565,13 +560,13 @@ Nodes (19): $type, $value, background, foreground, muted-foreground, primary, pr
 Cohesion: 0.11
 Nodes (10): main(), Add custom font families. Args: fonts: Dict of font_type: [font_names] e.g.,…, Add custom spacing values. Args: spacing: Dict of name: value e.g., {'18':…, Add custom breakpoints. Args: breakpoints: Dict of name: width e.g., {'3xl':…, Add plugin requirements. Args: plugins: List of plugin names e.g.,…, Get plugin recommendations based on configuration. Returns: List of recommended…, Generate configuration file content. Returns: Configuration file as string, Write configuration to file. Returns: Tuple of (success, message) (+2 more)
 
-### Community 33 - "profile-avatar-editor.tsx"
+### Community 33 - "button.tsx"
 Cohesion: 0.06
-Nodes (44): ProjectMemberActionState, LoginPage(), AvatarCropStep(), ImageDimensions, loadImageDimensions(), readFileAsDataUrl(), ProfileAvatarEditor(), ProfileAvatarEditorProps (+36 more)
+Nodes (45): react, react, ProjectMemberActionState, LoginPage(), AvatarCropStep(), ImageDimensions, loadImageDimensions(), readFileAsDataUrl() (+37 more)
 
 ### Community 34 - "team/actions.ts"
 Cohesion: 0.12
-Nodes (22): inviteEmployee(), isExistingAuthUserError(), removeStudioMember(), InviteEmployeeForm(), getAuthConfirmationUrl(), createAdminClient(), EmployeeInvitationActionState, EmployeeInvitationField (+14 more)
+Nodes (25): addProjectMember(), getFormString(), removeProjectMember(), revalidateProjectMembership(), inviteEmployee(), isExistingAuthUserError(), removeStudioMember(), InviteEmployeeForm() (+17 more)
 
 ### Community 35 - "Brand Guidelines v1.0"
 Cohesion: 0.05
@@ -582,16 +577,16 @@ Cohesion: 0.17
 Nodes (17): generate_css_for_background(), get_background_image(), get_curated_images(), get_overlay_css(), get_pexels_search_url(), load_backgrounds_config(), load_brand_colors(), main() (+9 more)
 
 ### Community 37 - "dashboard/page.tsx"
-Cohesion: 0.11
-Nodes (29): ArchivePage(), Admin(), Availability(), DashboardPage(), Deadlines(), Employee(), DashboardTaskList(), MyTasksList() (+21 more)
+Cohesion: 0.10
+Nodes (30): ArchivePage(), Deadlines(), Employee(), PageHeader(), DashboardTaskList(), MyTasksList(), sections, TaskDetailsDrawer() (+22 more)
 
 ### Community 38 - "task.ts"
-Cohesion: 0.07
-Nodes (50): DELETE(), PATCH(), POST(), PATCH(), PATCH(), PATCH(), revalidateMyTasks(), updateTaskStatus() (+42 more)
+Cohesion: 0.09
+Nodes (28): PATCH(), revalidateMyTasks(), updateTaskStatus(), TaskEditMutationResult, TaskStatusMutationResult, toTaskStatusActionState(), checklistItemCreateSchema, checklistItemUpdateSchema (+20 more)
 
 ### Community 39 - "calendar-workspace.tsx"
-Cohesion: 0.10
-Nodes (40): AgendaView(), CalendarPill(), CalendarWorkspace(), dateLabel(), DayDetails(), Drawer, eventTypeKey, isCalendarItem() (+32 more)
+Cohesion: 0.12
+Nodes (29): CalendarPill(), dateLabel(), DayDetails(), Drawer, eventTypeKey, isCalendarItem(), isMutationResult(), ItemPanel() (+21 more)
 
 ### Community 40 - "card"
 Cohesion: 0.20
@@ -599,7 +594,7 @@ Nodes (12): $type, $value, bg, bg, padding, shadow, card, bg (+4 more)
 
 ### Community 41 - "TestShadcnInstaller"
 Cohesion: 0.12
-Nodes (10): Test ShadcnInstaller class., Test adding all components without config., Test adding all components in dry run mode., Create temporary project structure., Test listing installed components when none exist., Test listing installed components when they exist., Test checking for existing shadcn config., Test getting installed components without config. (+2 more)
+Nodes (10): Test ShadcnInstaller class., Test adding all components without config., Test adding all components in dry run mode., Create temporary project structure., Test listing installed components when none exist., Test listing installed components when they exist., Test initialization with default project root., Test initialization with custom project root. (+2 more)
 
 ### Community 42 - "BM25"
 Cohesion: 0.10
@@ -618,12 +613,12 @@ Cohesion: 0.20
 Nodes (15): apply_color(), apply_viewbox_size(), extract_svgs(), generate_batch(), generate_icon(), generate_sizes(), load_env(), main() (+7 more)
 
 ### Community 46 - "fontSize"
-Cohesion: 0.12
-Nodes (16): $type, $value, $type, $value, $type, $value, $type, $value (+8 more)
+Cohesion: 0.11
+Nodes (20): $type, $value, $type, $value, $type, $value, $type, $value (+12 more)
 
 ### Community 47 - "context.mjs"
-Cohesion: 0.07
-Nodes (52): appendAutonomyCounterDirective(), appendImageGenDirective(), appendImageToolsDirective(), appendSubagentAuthorizationDirective(), appendSurfaceBriefContext(), buildMissingTargetDirective(), buildResolvedContextDirective(), buildTargetSelectionDirective() (+44 more)
+Cohesion: 0.06
+Nodes (61): appendAutonomyCounterDirective(), appendImageGenDirective(), appendImageToolsDirective(), appendSubagentAuthorizationDirective(), appendSurfaceBriefContext(), buildMissingTargetDirective(), buildResolvedContextDirective(), buildTargetSelectionDirective() (+53 more)
 
 ### Community 48 - "extract-colors.cjs"
 Cohesion: 0.22
@@ -635,27 +630,27 @@ Nodes (13): checkManifest(), formatBytes(), formatOutput(), fs, main(), parseFil
 
 ### Community 50 - "ShadcnInstaller"
 Cohesion: 0.14
-Nodes (8): Handle shadcn/ui component installation., ShadcnInstaller, Test adding components that are already installed., Test initialization with default project root., Test initialization with custom project root., Test checking for non-existent shadcn config., Test getting installed components when none exist., Test getting installed components when files exist.
+Nodes (8): Handle shadcn/ui component installation., ShadcnInstaller, Test adding components without shadcn config., Test adding components that are already installed., Test listing installed components without config., Test initialization with dry run mode., Test checking for non-existent shadcn config., Test getting installed components without config.
 
 ### Community 51 - "connectSSE"
-Cohesion: 0.07
-Nodes (67): applyParamDefaults(), applyPlaceholderDimensions(), applySavedSessionMeta(), clampVariantIndex(), clearHandled(), clearSession(), closedClipPath(), completeParameterPublication() (+59 more)
+Cohesion: 0.06
+Nodes (74): applyParamDefaults(), applyParamValue(), applySavedSessionMeta(), buildParamsPanel(), clampVariantIndex(), clearHandled(), clearSession(), closedClipPath() (+66 more)
 
 ### Community 52 - "team/page.tsx"
-Cohesion: 0.13
-Nodes (27): GET(), TeamPage(), getCurrentStudioTeam(), AppLocale, isAppLocale(), locales, resolveLocale(), GeoNamesPlace (+19 more)
+Cohesion: 0.12
+Nodes (29): GET(), ProjectDetails(), TeamPage(), getCurrentStudioTeam(), AppLocale, isAppLocale(), locales, resolveLocale() (+21 more)
 
 ### Community 53 - "insert-ui.mjs"
 Cohesion: 0.11
 Nodes (10): canCreateInsert(), clampPlaceholderSize(), computeInsertPosition(), groupSiblingRows(), hitSiblingInsertGap(), horizontalOverlap(), insertCreateDisabledReason(), insertLineCoords() (+2 more)
 
-### Community 54 - "handleGo"
-Cohesion: 0.07
-Nodes (41): applyEditing(), buildInsertPlaceholderSnapshotFromDom(), buildLocatorForLeaf(), buildPickedAnchorSnapshot(), canRestoreManualEditElement(), captureAndEmit(), checkpointPayload(), copyEditContainerContext() (+33 more)
+### Community 54 - "applyEditing"
+Cohesion: 0.09
+Nodes (32): addManualContextText(), applyEditing(), buildLocatorForLeaf(), canRestoreManualEditElement(), contextElementForManualEdit(), copyEditContainerContext(), copyEditLeafContext(), cssIdent() (+24 more)
 
 ### Community 55 - ".add_components"
-Cohesion: 0.17
-Nodes (8): main(), Add all available shadcn/ui components. Args: overwrite: If True, overwrite…, List installed components. Returns: Tuple of (success, message with component…, Check if shadcn is initialized in project. Returns: True if components.json…, Get list of already installed components. Returns: List of installed component…, Read shadcn version from project package.json; fall back to a pinned default., Add shadcn/ui components. Args: components: List of component names to add…, Tests for shadcn_add.py
+Cohesion: 0.22
+Nodes (7): main(), Add all available shadcn/ui components. Args: overwrite: If True, overwrite…, List installed components. Returns: Tuple of (success, message with component…, Check if shadcn is initialized in project. Returns: True if components.json…, Get list of already installed components. Returns: List of installed component…, Read shadcn version from project package.json; fall back to a pinned default., Add shadcn/ui components. Args: components: List of component names to add…
 
 ### Community 56 - "design-tokens-starter.json"
 Cohesion: 0.15
@@ -666,8 +661,8 @@ Cohesion: 0.07
 Nodes (63): extensions, formatReport(), fs, getFiles(), main(), parseArgs(), path, patterns (+55 more)
 
 ### Community 58 - "parseAnyColor"
-Cohesion: 0.11
-Nodes (39): checkBorders(), checkColors(), checkElementAIPaletteDOM(), checkElementBorders(), checkElementBordersDOM(), checkElementColors(), checkElementColorsDOM(), checkElementGlowDOM() (+31 more)
+Cohesion: 0.09
+Nodes (47): checkBorders(), checkColors(), checkCreamPalette(), checkElementAIPaletteDOM(), checkElementBorders(), checkElementBordersDOM(), checkElementColors(), checkElementColorsDOM() (+39 more)
 
 ### Community 59 - "test_tailwind_config_gen.py"
 Cohesion: 0.20
@@ -681,9 +676,9 @@ Nodes (10): extractColorsFromTable(), extractCoreAttributes(), extractHexColors(
 Cohesion: 0.20
 Nodes (9): args, extractTokens(), fs, minimal, MINIMAL_TOKENS, path, projectRoot, tokensPath (+1 more)
 
-### Community 62 - "duration"
-Cohesion: 0.20
-Nodes (10): fast, normal, slow, $type, $value, $type, $value, duration (+2 more)
+### Community 62 - "primitive"
+Cohesion: 0.18
+Nodes (11): fast, normal, slow, $type, $value, $type, $value, primitive (+3 more)
 
 ### Community 63 - "patch"
 Cohesion: 0.18
@@ -702,8 +697,8 @@ Cohesion: 0.36
 Nodes (9): flattenTokens(), fs, generateCSS(), generateTailwind(), main(), parseArgs(), path, resolveReference() (+1 more)
 
 ### Community 67 - "setLiveState"
-Cohesion: 0.11
-Nodes (57): abandonForeignSession(), abortSvelteComponentInjection(), cancelEditing(), cancelEditingToPicking(), cancelInsertConfigure(), cleanup(), cleanupAcceptedSession(), clearAnnotations() (+49 more)
+Cohesion: 0.08
+Nodes (73): abandonForeignSession(), abortSvelteComponentInjection(), buildInsertPlaceholderSnapshotFromDom(), buildPickedAnchorSnapshot(), cancelEditing(), cancelEditingToPicking(), cancelInsertConfigure(), captureAndEmit() (+65 more)
 
 ### Community 68 - "._base_config"
 Cohesion: 0.22
@@ -726,16 +721,16 @@ Cohesion: 0.22
 Nodes (7): foundation, insertPolicyFix, migration, migrationNames, migrations, migrationsDirectory, notificationShapeFix
 
 ### Community 73 - "resolveLiveInjectionAnchor"
-Cohesion: 0.22
-Nodes (15): buildSvelteExpressionTextMap(), buildSveltePropValuesFromLiveElement(), buildSveltePropValuesV2(), cloneWithoutElements(), collectTextNodes(), collectVisibleTexts(), cssEscapeIdent(), elementMatchesOriginalMarkup() (+7 more)
+Cohesion: 0.16
+Nodes (19): buildSvelteExpressionTextMap(), buildSveltePropValuesFromLiveElement(), buildSveltePropValuesV2(), cloneWithoutElements(), collectTextNodes(), collectVisibleTexts(), cssEscapeIdent(), elementMatchesOriginalMarkup() (+11 more)
 
 ### Community 74 - "._generate_javascript"
 Cohesion: 0.29
 Nodes (4): Generate TypeScript configuration., Generate JavaScript configuration., Format plugins array for config. Validates each plugin name against a strict…, Add indentation to JSON string.
 
 ### Community 75 - "lib/administration.ts"
-Cohesion: 0.25
-Nodes (15): AdminPage(), getAdministrationData(), AdministrationModel, AdministrationRequest, applyAdministrationDecision(), canReceiveAdministrationModel(), effectiveDecisionTime(), getRequiredTimeOffApprovalCount() (+7 more)
+Cohesion: 0.23
+Nodes (16): AdminPage(), AdministrationWorkspace(), getAdministrationData(), AdministrationModel, AdministrationRequest, applyAdministrationDecision(), canReceiveAdministrationModel(), effectiveDecisionTime() (+8 more)
 
 ### Community 76 - "theme-switch.test.ts"
 Cohesion: 0.40
@@ -746,12 +741,12 @@ Cohesion: 0.43
 Nodes (3): detect_domain(), Auto-detect the most relevant domain from query. Matches are weighted by…, TestDomainDetection
 
 ### Community 78 - "task-details-drawer.tsx"
-Cohesion: 0.08
-Nodes (33): ChecklistItemRow(), makeFormValues(), TaskEditResponse, TaskWorkResponse, getStatusTone(), priorityTone, statusTone, taskStatusSelectItem() (+25 more)
+Cohesion: 0.07
+Nodes (35): ChecklistItemRow(), makeFormValues(), TaskEditResponse, TaskWorkResponse, getStatusTone(), priorityTone, statusTone, taskStatusSelectItem() (+27 more)
 
 ### Community 79 - "discoverTargetCandidates"
-Cohesion: 0.14
-Nodes (22): directChildDirs(), discoverRootsForPattern(), discoverTargetCandidates(), expandSimplePattern(), findTargetExample(), hasFallbackWorkspaceChildren(), isCandidateProjectRoot(), isExcludedByWorkspacePattern() (+14 more)
+Cohesion: 0.18
+Nodes (18): directChildDirs(), discoverRootsForPattern(), discoverTargetCandidates(), expandSimplePattern(), findTargetExample(), hasFallbackWorkspaceChildren(), isExcludedByWorkspacePattern(), isIgnoredWorkspaceDiscoveryDir() (+10 more)
 
 ### Community 81 - "staleness-deep.mjs"
 Cohesion: 0.18
@@ -773,17 +768,17 @@ Nodes (35): Banner Design (Built-in), Banner: Design Rules, Banner: Quick Size R
 Cohesion: 0.83
 Nodes (3): _check_file(), main(), _read_rows()
 
-### Community 89 - "getCanonicalRoleTranslationKey"
-Cohesion: 0.10
-Nodes (27): AccessUnavailablePage(), AppLayout(), generateMetadata(), SignOutButton(), AppHeader(), LanguageSelector(), iconFor(), NotificationBell() (+19 more)
+### Community 89 - "app-header.tsx"
+Cohesion: 0.09
+Nodes (29): geistMono, geistSans, viewport, SignOutButton(), LanguageSelector(), iconFor(), NotificationBell(), relativeTime() (+21 more)
 
 ### Community 90 - "Canvas Design System"
 Cohesion: 0.06
 Nodes (35): 1. Visual Communication First, 2. Minimal Text Integration, 3. Expert Craftsmanship, 4. Systematic Patterns, Analog Meditation, Approach, Canvas Boundaries, Canvas Design System (+27 more)
 
-### Community 91 - "readProjectPatternGroups"
-Cohesion: 0.17
-Nodes (15): appendDetectorFallback(), automaticHookMode(), hookEnabledAt(), parseYamlFlowList(), readImpeccableProjectRoots(), readJson(), readLernaWorkspaces(), readPackageWorkspaces() (+7 more)
+### Community 91 - "task-progress.ts"
+Cohesion: 0.26
+Nodes (12): DELETE(), PATCH(), POST(), PATCH(), authorizeChecklistEdit(), createChecklistItem(), deleteChecklistItem(), loadUpdatedTask() (+4 more)
 
 ### Community 92 - "Form & Input Components"
 Cohesion: 0.06
@@ -801,21 +796,21 @@ Nodes (68): addBrowserFindings(), addVisualContrastFindings(), addVisualContrast
 Cohesion: 0.50
 Nodes (3): createActionPath, editActionPath, projectQueryPath
 
-### Community 100 - "detect-html.mjs"
-Cohesion: 0.11
-Nodes (27): collectStaticCssText(), checkStaticPageTypography(), detectHtml(), STATIC_ELEMENT_RULES, checkCreamPalette(), checkElementGlow(), checkElementOversizedH1(), checkElementQuality() (+19 more)
+### Community 100 - "inline-ignores.mjs"
+Cohesion: 0.40
+Nodes (9): addRules(), applyInlineIgnores(), getSet(), hasDirectives(), isInlineIgnored(), normalizeRule(), parseInlineIgnores(), parseRuleList() (+1 more)
 
 ### Community 101 - "lib/project-progress.ts"
 Cohesion: 0.05
 Nodes (61): ProjectsPage(), ProjectCreationModal(), ProjectListControls(), controlsPath, healthKeys, PrioritySignal(), ProjectDesktopRow(), ProjectItem (+53 more)
 
-### Community 102 - "lib/project-lifecycle.ts"
-Cohesion: 0.14
-Nodes (23): PATCH(), LifecycleContext, ProjectLifecycleProvider(), useProjectLifecycle(), ProjectLifecycleControls(), ProjectLifecycleMutationResult, updateProjectLifecycleStatus(), canUpdateProjectMetadata() (+15 more)
+### Community 102 - "project-context-band.tsx"
+Cohesion: 0.08
+Nodes (33): PATCH(), DeadlineSummary(), ProjectContextActions(), ProjectContextBand(), ProjectEditModal(), LifecycleContext, ProjectLifecycleProvider(), useProjectLifecycle() (+25 more)
 
 ### Community 114 - "design-system.mjs"
 Cohesion: 0.07
-Nodes (67): addClampEndpoints(), addColorObject(), addDesignColor(), addFontSizeStep(), addRoundedScale(), addRoundedToken(), addSidecarColors(), addSidecarRadii() (+59 more)
+Nodes (66): addClampEndpoints(), addColorObject(), addDesignColor(), addFontSizeStep(), addRoundedScale(), addRoundedToken(), addSidecarColors(), addSidecarRadii() (+58 more)
 
 ### Community 115 - "app-shell.test.ts"
 Cohesion: 0.29
@@ -826,8 +821,8 @@ Cohesion: 0.06
 Nodes (64): assembleLiveBrowserScript(), assertLiveBrowserScriptParts(), LIVE_BROWSER_SCRIPT_PARTS, readLiveBrowserScriptParts(), resolveLiveBrowserScriptParts(), eventPriority(), selectAvailablePendingEvent(), acknowledgePendingEvent() (+56 more)
 
 ### Community 119 - "cn"
-Cohesion: 0.10
-Nodes (24): StudioFlowMark(), DashboardSection(), MetricStrip(), metricToneClasses, OperationalSurface(), AppSidebar(), MobileNavigation(), ShellControlProps (+16 more)
+Cohesion: 0.15
+Nodes (18): SortableStageRow(), StudioFlowMark(), DashboardSection(), MetricStrip(), metricToneClasses, OperationalSurface(), AppSidebar(), MobileNavigation() (+10 more)
 
 ### Community 121 - "css-cascade.mjs"
 Cohesion: 0.08
@@ -1087,7 +1082,7 @@ Nodes (4): Brand Guidelines Template, Document Structure, Extractable Fields, Us
 
 ### Community 194 - "administration-workspace.tsx"
 Cohesion: 0.24
-Nodes (12): AdministrationWorkspace(), AvailabilityRow(), DecisionRow(), PendingRequestRow(), RequestDrawer(), typeKey(), formatAdministrationDateRange(), getTimeOffStatusBadgeStyle() (+4 more)
+Nodes (12): Availability(), AvailabilityRow(), DecisionRow(), PendingRequestRow(), RequestDrawer(), typeKey(), formatAdministrationDateRange(), getTimeOffStatusBadgeStyle() (+4 more)
 
 ### Community 195 - "Common Rules for Professional UI"
 Cohesion: 0.40
@@ -1099,7 +1094,7 @@ Nodes (5): Example Workflow, Step 1: Analyze Requirements, Step 2: Generate Desi
 
 ### Community 197 - "input"
 Cohesion: 0.29
-Nodes (8): padding-y, input, $type, $value, focus-ring, padding-y, $type, $value
+Nodes (8): padding-x, input, $type, $value, focus-ring, padding-x, $type, $value
 
 ### Community 198 - "StudioFlow"
 Cohesion: 0.50
@@ -1121,17 +1116,17 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 Cohesion: 0.33
 Nodes (5): Bootstrap a new studio, Deploy on Vercel, Environment, Getting Started, Learn More
 
-### Community 205 - "theme-switch.tsx"
-Cohesion: 0.18
-Nodes (14): geistMono, geistSans, viewport, applyTheme(), getServerThemeSnapshot(), getThemeSnapshot(), subscribeToTheme(), syncThemeColor() (+6 more)
+### Community 205 - "color"
+Cohesion: 0.15
+Nodes (21): $type, $value, $type, $value, 500, 600, blue, green (+13 more)
 
 ### Community 206 - "detect-antipatterns-browser.js"
 Cohesion: 0.06
-Nodes (56): browserColorsClose(), browserDesignSystemConfig(), browserHasDirectText(), browserPrimaryFont(), browserRadiusTokens(), browserSampleText(), buildSelectorSegment(), checkBrowserDesignSystemSources() (+48 more)
+Nodes (51): checkClippedOverflow(), checkCreamPalette(), checkElementClippedOverflow(), checkElementClippedOverflowDOM(), checkElementItalicSerif(), checkElementItalicSerifDOM(), checkElementOversizedH1(), checkElementOversizedH1DOM() (+43 more)
 
-### Community 216 - "template-extensions.mjs"
-Cohesion: 0.19
-Nodes (13): extensionCache, LIVE_TEMPLATE_EXTENSIONS, matchesTemplateExtension(), mergeExtensions(), normalizeExtensionEntries(), readLiveTemplateExtensions(), resolveLiveTemplateExtensions(), safeReadJson() (+5 more)
+### Community 216 - "calendar-event-form.ts"
+Cohesion: 0.23
+Nodes (11): EventForm(), CalendarEventFormValues, createCalendarEventFormValues(), getAllDayEventBounds(), splitWallDateTime(), baseValues, toCalendarEventMutationPayload(), instantToWallInput() (+3 more)
 
 ### Community 218 - "project-form.contract.test.ts"
 Cohesion: 0.25
@@ -1146,20 +1141,20 @@ Cohesion: 0.47
 Nodes (6): applyPatchText(), envProjectDir(), looksLikeApplyPatch(), normalizeGitHubEvent(), normalizeHookEvent(), parseGitHubToolArgs()
 
 ### Community 226 - "bootstrap-studio.ts"
-Cohesion: 0.10
-Nodes (36): AdminClient, askForInput(), askForMember(), askForText(), AuthUser, BootstrapError, BootstrapInput, bootstrapInputSchema (+28 more)
+Cohesion: 0.09
+Nodes (37): AdminClient, askForInput(), askForMember(), askForText(), AuthUser, BootstrapError, BootstrapInput, bootstrapInputSchema (+29 more)
 
 ### Community 228 - "radius"
 Cohesion: 0.60
 Nodes (5): radius, radius, radius, $type, $value
 
-### Community 229 - "constants.mjs"
+### Community 229 - "checkElementDesignSystemDOM"
 Cohesion: 0.15
-Nodes (14): checkPageTypography(), checkTypography(), isBrandFontOnOwnDomain(), firstOverusedGoogleFont(), checkPageTypography(), checkTypography(), BRAND_FONT_DOMAINS, GITHUB_DOMAINS (+6 more)
+Nodes (13): browserColorsClose(), browserDesignSystemConfig(), browserHasDirectText(), browserPrimaryFont(), browserRadiusTokens(), browserSampleText(), checkBrowserDesignSystemSources(), checkElementDesignSystemDOM() (+5 more)
 
-### Community 230 - "checkHtmlPatterns"
-Cohesion: 0.13
-Nodes (27): ANIMATION_VALUE_KEYWORDS, buildHtmlPatternCorpora(), checkHtmlPatterns(), collectCssCustomProps(), collectMarqueeKeyframes(), collectPulseKeyframes(), cssLengthToPx(), cssTextHasDarkRootBg() (+19 more)
+### Community 230 - "50"
+Cohesion: 0.67
+Nodes (4): $type, $value, 50, 50
 
 ### Community 231 - "bolder.md"
 Cohesion: 0.33
@@ -1173,9 +1168,9 @@ Nodes (10): appendStalenessDirective(), projectRootsDiagnostic(), buildStaleness
 Cohesion: 0.29
 Nodes (7): Android platform, Color & theming, Components & motion, Layout & structure, The Android slop test, Touch targets, Typography
 
-### Community 234 - "applyDeferredSvelteComponentAccepts"
-Cohesion: 0.24
-Nodes (10): applyLegacyDeferredAcceptsOnStartup(), applyDeferredSvelteComponentAccepts(), bumpSvelteComponentPreviewRevision(), componentSessionDir(), deferredAcceptsPath(), findSvelteComponentManifest(), manifestPathForSession(), readDeferredAccepts() (+2 more)
+### Community 234 - "city-combobox.tsx"
+Cohesion: 0.42
+Nodes (6): CityCombobox(), isCityResult(), SearchState, shouldOpenCitySuggestions(), shouldSearchCity(), CitySearchResult
 
 ### Community 235 - "Impeccable Finish Reviewer"
 Cohesion: 0.29
@@ -1194,16 +1189,16 @@ Cohesion: 0.33
 Nodes (6): Constraints, Failure modes, Flow, $impeccable hooks, Intentional findings, Routing
 
 ### Community 243 - "forgot-password/actions.ts"
-Cohesion: 0.32
-Nodes (6): requestPasswordRecovery(), ForgotPasswordForm(), getPasswordRecoveryInput(), PasswordRecoveryActionState, PasswordRecoveryField, passwordRecoverySchema
+Cohesion: 0.27
+Nodes (7): requestPasswordRecovery(), ForgotPasswordForm(), getAuthConfirmationUrl(), getPasswordRecoveryInput(), PasswordRecoveryActionState, PasswordRecoveryField, passwordRecoverySchema
 
 ### Community 245 - "hook-lib.mjs"
 Cohesion: 0.07
 Nodes (54): ADVISORY_RULES, applyConfigSource(), applyDetectorConfigSource(), canonicalPathCache, clampByte(), clampGroupedToBudget(), clampToBudget(), cleanIgnoreValueDisplay() (+46 more)
 
 ### Community 247 - "svelte-component.mjs"
-Cohesion: 0.08
-Nodes (60): bakeParamValues(), collectAllSelectors(), collectSelectorsFromNodes(), collectUnusedSelectors(), escapeRegExp(), formatBody(), isToggleOn(), normalizeSelector() (+52 more)
+Cohesion: 0.06
+Nodes (76): bakeParamValues(), collectAllSelectors(), collectSelectorsFromNodes(), collectUnusedSelectors(), escapeRegExp(), formatBody(), isToggleOn(), normalizeSelector() (+68 more)
 
 ### Community 249 - "el"
 Cohesion: 0.07
@@ -1215,7 +1210,7 @@ Nodes (48): API_BASE, API_TIMEOUT_MS, apiBudgetMs(), dealCompositions(), driveSe
 
 ### Community 251 - "initPageChat"
 Cohesion: 0.08
-Nodes (50): armPageChatForTyping(), attachSteerFocusDebug(), attachSteerFocusGuard(), buildSteerProcessingDots(), buildSteerQueueHint(), clearSteerAwaitTimer(), clearSteerFocusRecoverTimer(), collapsePageChat() (+42 more)
+Nodes (54): armPageChatForTyping(), attachSteerFocusDebug(), attachSteerFocusGuard(), buildSteerProcessingDots(), buildSteerQueueHint(), clearSteerAwaitTimer(), clearSteerFocusRecoverTimer(), collapsePageChat() (+46 more)
 
 ### Community 252 - "impeccable-config.mjs"
 Cohesion: 0.10
@@ -1234,32 +1229,32 @@ Cohesion: 0.12
 Nodes (44): ACTIONS, addIgnoreFile(), addIgnoreRule(), addIgnoreValue(), DETECTOR_CONFIG_KEYS, detectorSection(), fileHasImpeccableHookMarker(), HOOK_MANIFEST_TARGETS (+36 more)
 
 ### Community 256 - "detect-text.mjs"
-Cohesion: 0.09
-Nodes (37): blankCssComments(), BLOCK_BRACE_PREFIX_KEYWORDS, CSS_IN_JS_EXTENSIONS, detectText(), extFromFilePath(), extractCSSinJS(), extractStyleBlocks(), findCSSinJSTemplates() (+29 more)
+Cohesion: 0.07
+Nodes (44): blankCssComments(), BLOCK_BRACE_PREFIX_KEYWORDS, CSS_IN_JS_EXTENSIONS, detectText(), extFromFilePath(), extractCSSinJS(), extractStyleBlocks(), findCSSinJSTemplates() (+36 more)
 
 ### Community 257 - "manual-apply.mjs"
 Cohesion: 0.10
 Nodes (36): addOpToManualApplyChunk(), APPLY_EVENT_HARD_TIMEOUT_MS, APPLY_EVENT_SOFT_DEADLINE_MS, buildManualApplyAgentAction(), clearManualApplyTransaction(), collectManualApplyFiles(), compactManualApplyBatch(), compactManualApplyCandidates() (+28 more)
 
-### Community 258 - "layout.md"
-Cohesion: 0.06
-Nodes (33): Adaptation Strategies, Assess Adaptation Challenge, Implement & Verify, Orientation & foldables, Phone → Tablet (iPad / large screens), Platform → platform (iOS ↔ Android), Web → native (porting a website or web app), 1. Accessibility (VoiceOver / TalkBack) (+25 more)
+### Community 258 - "typeset.md"
+Cohesion: 0.05
+Nodes (35): Adaptation Strategies, Assess Adaptation Challenge, Implement & Verify, Orientation & foldables, Phone → Tablet (iPad / large screens), Platform → platform (iOS ↔ Android), Web → native (porting a website or web app), 1. Accessibility (VoiceOver / TalkBack) (+27 more)
 
 ### Community 259 - "design-parser.mjs"
 Cohesion: 0.13
 Nodes (39): assessCoverage(), buildColor(), CANONICAL_SECTIONS, collectBullets(), collectColorValues(), collectParagraphs(), detectFormat(), extractColors() (+31 more)
 
 ### Community 260 - "detect-antipatterns.mjs"
-Cohesion: 0.13
-Nodes (35): confirm(), detectCli(), dim(), fileUrlToLocalPath(), formatAdvisorySection(), formatFindings(), formatFindingsBody(), formatFindingSummary() (+27 more)
+Cohesion: 0.12
+Nodes (36): confirm(), detectCli(), dim(), fileUrlToLocalPath(), formatAdvisorySection(), formatFindings(), formatFindingsBody(), formatFindingSummary() (+28 more)
 
-### Community 261 - "iOS platform"
-Cohesion: 0.25
-Nodes (8): Color & materials, Components & controls, iOS platform, Layout & structure, Motion, The iOS slop test, Touch targets, Typography
+### Community 261 - "date-picker.tsx"
+Cohesion: 0.43
+Nodes (7): DatePicker(), DatePickerProps, labels(), monthDates(), parseDate(), startOfMonday(), toDateOnly()
 
 ### Community 262 - "live-accept.mjs"
-Cohesion: 0.12
-Nodes (38): acceptCli(), acceptReceiptPath(), argVal(), buildAcceptedWrappedSource(), buildCarbonizeReplacement(), decodeHtmlAttr(), deindentContent(), detectCommentSyntax() (+30 more)
+Cohesion: 0.08
+Nodes (51): extensionCache, LIVE_TEMPLATE_EXTENSIONS, matchesTemplateExtension(), mergeExtensions(), normalizeExtensionEntries(), readLiveTemplateExtensions(), resolveLiveTemplateExtensions(), safeReadJson() (+43 more)
 
 ### Community 263 - "live-poll.mjs"
 Cohesion: 0.16
@@ -1270,20 +1265,20 @@ Cohesion: 0.08
 Nodes (30): detectCsp(), INLINE_HEADER_SIGNALS, LAYOUT_EXTS, MONOREPO_HELPER_SIGNALS, NUXT_ROUTE_RULES_SIGNALS, NUXT_SECURITY_SIGNALS, SCAN_EXTS, SKIP_DIRS (+22 more)
 
 ### Community 265 - "live-wrap.mjs"
-Cohesion: 0.11
-Nodes (42): hasGeneratedHeader(), HEADER_MARKERS, isGeneratedFile(), isGitIgnored(), resolveSourceTraits(), argVal(), buildInsertWrapperLines(), computeInsertLine() (+34 more)
+Cohesion: 0.12
+Nodes (38): hasGeneratedHeader(), HEADER_MARKERS, isGeneratedFile(), isGitIgnored(), resolveSourceTraits(), argVal(), buildInsertWrapperLines(), computeInsertLine() (+30 more)
 
-### Community 266 - "parseAnyColor"
-Cohesion: 0.10
-Nodes (37): buildHtmlPatternCorpora(), checkElementHeroEyebrow(), checkHtmlPatterns(), collectCssCustomProps(), collectMarqueeKeyframes(), collectPulseKeyframes(), cssLengthToPx(), cssTextHasDarkRootBg() (+29 more)
+### Community 266 - "scanCssTextForPulsingDot"
+Cohesion: 0.14
+Nodes (26): buildHtmlPatternCorpora(), checkHtmlPatterns(), collectCssCustomProps(), collectMarqueeKeyframes(), collectPulseKeyframes(), cssLengthToPx(), cssTextHasDarkRootBg(), extractShadowLengths() (+18 more)
 
 ### Community 267 - "leaderboard/page.tsx"
-Cohesion: 0.14
-Nodes (27): BonusBadge(), formatArea(), LeaderboardPage(), MyTasksPage(), LeaderboardBonusMenu(), LeaderboardPeriodSwitcher(), getCurrentUserProfile, getLeaderboardForPeriod() (+19 more)
+Cohesion: 0.12
+Nodes (30): BonusBadge(), formatArea(), LeaderboardPage(), LeaderboardBonusSettings(), LeaderboardBonusMenu(), LeaderboardPeriodSwitcher(), getLeaderboardData(), getLeaderboardForPeriod() (+22 more)
 
 ### Community 268 - "contractor-directory.tsx"
-Cohesion: 0.07
-Nodes (37): react, react, ContractorsPage(), ContractorCategoryCombobox(), getUniqueContractorCategories(), ContractorAction, ContractorDirectory(), ContractorForm() (+29 more)
+Cohesion: 0.08
+Nodes (40): ClassificationOption, ContractorCategoryCombobox(), ContractorSubcategoryCombobox(), CreatableClassificationCombobox(), getUniqueContractorCategories(), getUniqueContractorSubcategories(), uniqueOptions(), ContractorAction (+32 more)
 
 ### Community 269 - "live.md"
 Cohesion: 0.06
@@ -1293,29 +1288,29 @@ Nodes (29): Apply at system scale, Audit before choosing, Choose a strategy, Con
 Cohesion: 0.16
 Nodes (26): analyzeSourceHint(), buildCandidatesForOp(), buildContextHintsByRef(), buildManualEditEvidence(), collectSearchFiles(), countOps(), decodeBasicHtml(), escapeRegExp() (+18 more)
 
-### Community 271 - "target-args.mjs"
-Cohesion: 0.36
-Nodes (5): parseCliOptions(), parseTargetOptions(), parseTargetPath(), TargetArgError, resolveLiveTarget()
+### Community 271 - "readProjectPatternGroups"
+Cohesion: 0.24
+Nodes (11): appendDetectorFallback(), automaticHookMode(), hookEnabledAt(), readImpeccableProjectRoots(), readJson(), readLernaWorkspaces(), readPackageWorkspaces(), readProjectPatternGroups() (+3 more)
 
 ### Community 272 - "live-copy-edit-agent.mjs"
 Cohesion: 0.14
 Nodes (31): applyMockWrites(), buildCopyEditBatchPrompt(), checkFrameworkSourceSyntax(), chooseCopyEditAgent(), COMMAND_AUTH_CACHE, commandAuthed(), commandExists(), compactBatchForPrompt() (+23 more)
 
 ### Community 273 - "impeccable/SKILL.md"
-Cohesion: 0.09
-Nodes (19): Craft (deprecated alias), Craft floor, Refuse, Verify, Pitfalls, Seed mode, Step 1: Route through new-work's workshop, Step 2: Write seed DESIGN.md (+11 more)
+Cohesion: 0.08
+Nodes (19): Craft (deprecated alias), Craft floor, Refuse, Verify, Impeccable Documenter, Input Contract, Output Contract, Workflow (+11 more)
 
-### Community 274 - "parseRgb"
-Cohesion: 0.15
-Nodes (29): checkColors(), checkElementAIPaletteDOM(), checkElementColors(), checkElementColorsDOM(), checkElementGlow(), checkElementGlowDOM(), checkElementHoverContrast(), checkElementIconTile() (+21 more)
+### Community 274 - "parseAnyColor"
+Cohesion: 0.12
+Nodes (35): checkColors(), checkElementAIPaletteDOM(), checkElementColors(), checkElementColorsDOM(), checkElementGlow(), checkElementGlowDOM(), checkElementHoverContrast(), checkGlow() (+27 more)
 
 ### Community 275 - "roots.mjs"
 Cohesion: 0.16
 Nodes (27): CANDIDATE_SCAN_IGNORED, consumeTargetArg(), CONTEXT_FALLBACK_DIRS, DESIGN_NAMES, DEV_CONFIG_MARKERS, discoverAppCandidates(), enterLiveRoot(), exists() (+19 more)
 
-### Community 276 - "sm"
+### Community 276 - "$type"
 Cohesion: 0.60
-Nodes (5): sm, sm, sm, $type, $value
+Nodes (5): $type, $value, 700, 700, 700
 
 ### Community 277 - "Responsive Design"
 Cohesion: 0.08
@@ -1338,12 +1333,12 @@ Cohesion: 0.19
 Nodes (19): args, cwd, pageUrlFilter, remaining, compactManualLogText(), summarizeManualApplyFailures(), summarizeManualDiagnostics(), summarizeManualLogFile() (+11 more)
 
 ### Community 282 - "svelte-ast.mjs"
-Cohesion: 0.19
-Nodes (23): Analysis, analyzeAttributes(), analyzeFragment(), analyzeNode(), analyzeSvelteMarkup(), applyReplacements(), buildPropsScriptV2(), classifyEachKey() (+15 more)
+Cohesion: 0.21
+Nodes (21): Analysis, analyzeAttributes(), analyzeFragment(), analyzeNode(), analyzeSvelteMarkup(), applyReplacements(), classifyEachKey(), classifyRoots() (+13 more)
 
-### Community 283 - "xl"
+### Community 283 - "padding-y"
 Cohesion: 0.67
-Nodes (4): xl, xl, $type, $value
+Nodes (4): padding-y, padding-y, $type, $value
 
 ### Community 284 - "onboard.md"
 Cohesion: 0.09
@@ -1353,53 +1348,49 @@ Nodes (22): Assess Onboarding Needs, Context Over Ceremony, Contextual Help, Des
 Cohesion: 0.23
 Nodes (15): appendOriginToDirective(), buildTagBlock(), commentClose(), commentOpen(), detectLineEnding(), findCspMetaTags(), getAttr(), insertTag() (+7 more)
 
-### Community 286 - "detect-url.mjs"
-Cohesion: 0.20
-Nodes (20): createBrowserDetector(), detectUrl(), launchBrowser(), measureContentHiddenAfterReveal(), runVisualContrastFallback(), serializeDesignSystemForBrowser(), captureVisualContrastCandidate(), compareScreenshotContrast() (+12 more)
+### Community 286 - "detect-html.mjs"
+Cohesion: 0.11
+Nodes (35): mergeDesignSystemFindings(), createBrowserDetector(), detectUrl(), launchBrowser(), measureContentHiddenAfterReveal(), runVisualContrastFallback(), serializeDesignSystemForBrowser(), runRegexMatchers() (+27 more)
 
 ### Community 287 - "collectBrowserFindings"
-Cohesion: 0.11
-Nodes (29): browserFindingsFromMap(), checkBorders(), checkCreamPalette(), checkEdgeFlushCardsDOM(), checkElementBlinkingCursorDOM(), checkElementBorders(), checkElementBordersDOM(), checkElementPseudoStripeDOM() (+21 more)
+Cohesion: 0.15
+Nodes (22): browserFindingsFromMap(), checkBorders(), checkEdgeFlushCardsDOM(), checkElementBlinkingCursorDOM(), checkElementBorders(), checkElementBordersDOM(), checkElementPseudoStripeDOM(), checkElementTextOverflowDOM() (+14 more)
 
-### Community 288 - "time-off-request.ts"
-Cohesion: 0.31
-Nodes (7): canTransitionTimeOff(), deriveTimeOffUpdate(), base, TimeOffAction, TimeOffActorRole, TimeOffUpdate, timeOffUpdateFields()
+### Community 288 - "[requestId]/route.ts"
+Cohesion: 0.18
+Nodes (15): Context, PATCH(), CalendarSupabaseClient, getVerifiedTimeOffMembership(), POST(), VerifiedTimeOffMembership, getNormalizedTimeOffRequest(), canTransitionTimeOff() (+7 more)
 
 ### Community 289 - "The Toolkit"
 Cohesion: 0.10
 Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, For data-heavy interfaces, For functional UI, For performance-critical UI, For visual/marketing surfaces, Implement with Discipline, Interact with the device (+12 more)
 
-### Community 290 - "checkQuality"
-Cohesion: 0.09
-Nodes (31): checkElementOversizedH1(), checkElementOversizedH1DOM(), checkElementQuality(), checkElementQualityDOM(), checkKickerAboveHeading(), checkKickerAboveHeadingDOM(), checkKickerAboveHeadingFromDoc(), checkNumberedSectionLabels() (+23 more)
+### Community 290 - "HEADING_TAGS"
+Cohesion: 0.12
+Nodes (25): checkElementHeroEyebrow(), checkElementHeroEyebrowDOM(), checkElementIconTile(), checkElementIconTileDOM(), checkElementQualityDOM(), checkHeroEyebrow(), checkIconTile(), checkKickerAboveHeading() (+17 more)
 
-### Community 292 - "16"
-Cohesion: 0.67
-Nodes (3): $type, $value, 16
+### Community 292 - "1. THE THREE DIALS (Core Configuration)"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 293 - "live-inject.mjs"
-Cohesion: 0.16
-Nodes (20): getLegacyLiveConfigPath(), resolveLiveConfigPath(), describeInjectArtifacts(), frameworkIgnorePatterns(), resolveFramework(), applyNuxtLiveAdapter(), buildNuxtPlugin(), detectNuxtProject() (+12 more)
+Cohesion: 0.15
+Nodes (22): getLegacyLiveConfigPath(), resolveLiveConfigPath(), describeInjectArtifacts(), frameworkIgnorePatterns(), resolveFramework(), applyNuxtLiveAdapter(), buildNuxtPlugin(), detectNuxtProject() (+14 more)
 
 ### Community 294 - "destructive"
 Cohesion: 0.67
 Nodes (3): destructive, $type, $value
 
 ### Community 295 - "onAnnotDown"
-Cohesion: 0.24
-Nodes (15): beginEditPin(), buildAnnotationsForCapture(), buildPinElement(), cancelEditingPin(), finalizeEditingPin(), initAnnotOverlay(), localCoords(), onAnnotDown() (+7 more)
+Cohesion: 0.18
+Nodes (19): applyPlaceholderDimensions(), beginEditPin(), buildAnnotationsForCapture(), buildPinElement(), cancelEditingPin(), finalizeEditingPin(), initAnnotOverlay(), localCoords() (+11 more)
 
 ### Community 297 - "tanstack-adapter.mjs"
 Cohesion: 0.23
 Nodes (15): applyTanStackLiveAdapter(), buildTanStackLiveRootComponent(), detectTanStackStartProject(), escapeRegExp(), findRootRouteFile(), insertAfterLastImport(), isManagedComponent(), packageHasTanStackStart() (+7 more)
 
 ### Community 298 - "sampleCssBackground"
-Cohesion: 0.20
-Nodes (15): blendRgba(), clampByte(), firstCssUrl(), getLayerValue(), loadVisualContrastImage(), parseObjectPosition(), parsePositionPair(), parsePositionToken() (+7 more)
-
-### Community 299 - "Impeccable Documenter"
-Cohesion: 0.40
-Nodes (4): Impeccable Documenter, Input Contract, Output Contract, Workflow
+Cohesion: 0.22
+Nodes (14): firstCssUrl(), getLayerValue(), loadVisualContrastImage(), parseObjectPosition(), parsePositionPair(), parsePositionToken(), pickWorstContrastColor(), pointToImageSource() (+6 more)
 
 ### Community 300 - "sveltekit-adapter.mjs"
 Cohesion: 0.24
@@ -1416,10 +1407,6 @@ Nodes (16): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load th
 ### Community 303 - "context-signals.mjs"
 Cohesion: 0.23
 Nodes (14): extractPlatform(), loadContext(), cli(), COMMON_DEV_PORTS, devServerSignals(), gatherSignals(), gitSignals(), hasCode() (+6 more)
-
-### Community 304 - "8"
-Cohesion: 0.67
-Nodes (3): $type, $value, 8
 
 ### Community 305 - "set-password/actions.ts"
 Cohesion: 0.31
@@ -1449,10 +1436,6 @@ Nodes (13): astro, detectAstroProject(), fileExists(), findConfigFile(), firstEx
 Cohesion: 0.17
 Nodes (11): COMMENT_SYNTAXES, FRAMEWORKS, INJECT_KINDS, PATCH_UNDOERS, PREVIEW_MODES, SOURCE_TRAIT_DEFAULTS, STYLE_MODES, nuxt (+3 more)
 
-### Community 312 - "lg"
-Cohesion: 0.60
-Nodes (5): lg, $type, $value, lg, lg
-
 ### Community 313 - "cip/generate.py"
 Cohesion: 0.23
 Nodes (13): build_cip_prompt(), check_logo_required(), generate_cip_set(), generate_with_nano_banana(), load_env(), load_logo_image(), main(), Generate image using Gemini Nano Banana (native image generation) Supports two… (+5 more)
@@ -1465,21 +1448,17 @@ Nodes (12): Core Rule, Decision Sketches, Impeccable Asset Producer, Input Contr
 Cohesion: 0.14
 Nodes (13): Animation Performance, Assess Performance Issues, Core Web Vitals Optimization, Cumulative Layout Shift (CLS < 0.1), Interaction to Next Paint (INP < 200ms), Largest Contentful Paint (LCP < 2.5s), Loading Performance, Network Optimization (+5 more)
 
-### Community 316 - "checkElementGptBorderShadowDOM"
-Cohesion: 0.38
-Nodes (7): borderColorsFromStyle(), borderWidthsFromStyle(), checkElementGptBorderShadow(), checkElementGptBorderShadowDOM(), checkGptThinBorderWideShadow(), shadowLayerAlpha(), shadowMaxBlurPx()
-
-### Community 317 - "checkHeroEyebrow"
-Cohesion: 0.40
-Nodes (5): checkElementHeroEyebrowDOM(), checkHeroEyebrow(), domAccentDashPseudo(), isAccentColor(), isNumberedSectionLabelCandidate()
-
-### Community 318 - "Scan mode (approach C: auto-extract, then confirm descriptive language)"
+### Community 316 - "checkQuality"
 Cohesion: 0.15
-Nodes (13): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 2b: Stage the frontmatter, Step 3: Ask the user for qualitative language (+5 more)
+Nodes (17): borderColorsFromStyle(), borderWidthsFromStyle(), checkElementGptBorderShadow(), checkElementGptBorderShadowDOM(), checkGptThinBorderWideShadow(), checkQuality(), colorsNearlyMatch(), cssColorAlpha() (+9 more)
+
+### Community 318 - "document.md"
+Cohesion: 0.08
+Nodes (23): Component translation rules, Narrative mapping, Pitfalls, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Seed mode, Step 1: Find the design assets, Step 1: Route through new-work's workshop (+15 more)
 
 ### Community 319 - "radius"
-Cohesion: 0.19
-Nodes (14): $type, $value, $type, $value, $type, $value, primitive, radius (+6 more)
+Cohesion: 0.11
+Nodes (27): $type, $value, lg, sm, $type, $value, $type, $value (+19 more)
 
 ### Community 321 - "pin.mjs"
 Cohesion: 0.23
@@ -1498,8 +1477,8 @@ Cohesion: 0.17
 Nodes (11): Accessibility Resilience, Assess Hardening Needs, Edge Cases & Boundary Conditions, Error Handling, Hardening Dimensions, Input Validation & Sanitization, Internationalization (i18n), Performance Resilience (+3 more)
 
 ### Community 325 - "database.types.ts"
-Cohesion: 0.11
-Nodes (27): ActivityRow(), initials(), ProjectActivitySection(), getProjectActivity(), ProjectActivity, ActivityChange, ActivityChanges, formatActivityValue() (+19 more)
+Cohesion: 0.12
+Nodes (26): ActivityRow(), initials(), ProjectActivitySection(), ProjectActivity, ActivityChange, ActivityChanges, formatActivityValue(), formatRelativeTime() (+18 more)
 
 ### Community 326 - "ui-core.mjs"
 Cohesion: 0.23
@@ -1510,12 +1489,12 @@ Cohesion: 0.36
 Nodes (11): clearInjectJournal(), healArtifact(), healInjectJournal(), injectJournalPath(), insideProject(), normalizeRel(), pruneEmptyDirs(), readIfPresent() (+3 more)
 
 ### Community 328 - "generation-preflight.mjs"
-Cohesion: 0.35
-Nodes (9): buildGenerationPreflight(), compactError(), execFileAsync, insertTarget(), normalizeTarget(), replaceTarget(), runGenerationPreflight(), sourceResolutionCache (+1 more)
+Cohesion: 0.30
+Nodes (10): buildGenerationPreflight(), compactError(), execFileAsync, insertTarget(), normalizeTarget(), replaceTarget(), runGenerationPreflight(), sourceResolutionCache (+2 more)
 
 ### Community 329 - "tasteskill: Anti-Slop Frontend Skill"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 330 - "clarify.md"
 Cohesion: 0.18
@@ -1609,6 +1588,10 @@ Nodes (7): 3.A Stack, 3.B State, 3.C Icons, 3.D Emoji Policy, 3. DEFAULT ARCHITE
 Cohesion: 0.29
 Nodes (7): 6.A Hardware Acceleration, 6.B Reduced Motion (mandatory), 6.C Dark Mode (mandatory for any consumer-facing page), 6.D Core Web Vitals Targets, 6.E DOM Cost, 6.F Z-Index Restraint, 6. PERFORMANCE & ACCESSIBILITY GUARDRAILS
 
+### Community 359 - "800"
+Cohesion: 0.67
+Nodes (4): $type, $value, 800, 800
+
 ### Community 360 - "Generate Report"
 Cohesion: 0.29
 Nodes (7): Audit Health Score, Detailed Findings by Severity, Executive Summary, Generate Report, Patterns & Systemic Issues, Platform Conformance Verdict, Positive Findings
@@ -1638,16 +1621,16 @@ Cohesion: 0.40
 Nodes (5): 8.A Token Strategy (pick one, stick to it), 8.B Do Not Prescribe Specific Colors Here, 8.C Default Mode, 8.D Test in Both Modes Before Finishing, 8. DARK MODE PROTOCOL
 
 ### Community 371 - "SAFE_TAGS"
-Cohesion: 0.20
-Nodes (12): checkElementMotion(), checkElementMotionDOM(), checkLayout(), checkMotion(), checkPageLayout(), isCardLike(), isCardLikeDOM(), isCardLikeFromProps() (+4 more)
+Cohesion: 0.22
+Nodes (11): checkElementMotion(), checkElementMotionDOM(), checkLayout(), checkMotion(), checkPageLayout(), isCardLike(), isCardLikeDOM(), isCardLikeFromProps() (+3 more)
 
 ### Community 372 - "$type"
 Cohesion: 0.60
 Nodes (5): $type, $value, border, border, border
 
 ### Community 373 - "validation/calendar.ts"
-Cohesion: 0.14
-Nodes (19): CalendarSupabaseClient, getVerifiedActiveAdminMembership(), POST(), getNormalizedCalendarEvent(), CalendarEventInsertPayload, createCalendarEventInsertPayload(), eventInput, membership (+11 more)
+Cohesion: 0.15
+Nodes (18): CalendarSupabaseClient, getVerifiedActiveAdminMembership(), POST(), CalendarEventInsertPayload, createCalendarEventInsertPayload(), eventInput, membership, VerifiedCalendarEventAdminMembership (+10 more)
 
 ### Community 374 - "source-lock.mjs"
 Cohesion: 0.50
@@ -1665,25 +1648,9 @@ Nodes (4): Heuristics Scoring Guide, Issue Severity (P0–P3), Reference Materia
 Cohesion: 0.50
 Nodes (3): candidates, detectorPath, __dirname
 
-### Community 378 - "none"
-Cohesion: 0.67
-Nodes (4): $type, $value, none, none
-
 ### Community 379 - "checkElementRadialSpotlightDOM"
 Cohesion: 0.67
 Nodes (4): checkElementRadialSpotlight(), checkElementRadialSpotlightDOM(), elementGradientValue(), spotlightLabel()
-
-### Community 380 - "padding-x"
-Cohesion: 0.67
-Nodes (4): padding-x, padding-x, $type, $value
-
-### Community 381 - "1"
-Cohesion: 0.67
-Nodes (3): $type, $value, 1
-
-### Community 382 - "3"
-Cohesion: 0.67
-Nodes (3): $type, $value, 3
 
 ### Community 384 - "package.json"
 Cohesion: 0.50
@@ -1706,24 +1673,24 @@ Cohesion: 0.67
 Nodes (3): secondary-foreground, $type, $value
 
 ## Knowledge Gaps
-- **1995 isolated node(s):** `fs`, `path`, `fs`, `path`, `fs` (+1990 more)
+- **2002 isolated node(s):** `fs`, `path`, `fs`, `path`, `fs` (+1997 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **70 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **72 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `el()` connect `el` to `setLiveState`, `detect-html.mjs`, `constants.mjs`, `live-browser.js`, `mountSvelteComponentVariant`, `initGlobalBar`, `checks.mjs`, `detect-antipatterns-browser.js`, `design-system.mjs`, `SAFE_TAGS`, `collectVisualContrastCandidates`, `css-cascade.mjs`, `svelte-ast.mjs`, `initPageChat`, `injected/index.mjs`, `collectBrowserFindings`?**
-  _High betweenness centrality (0.099) - this node is a cross-community bridge._
+- **Why does `el()` connect `el` to `detect-text.mjs`, `setLiveState`, `live-browser.js`, `initGlobalBar`, `checks.mjs`, `detect-antipatterns-browser.js`, `design-system.mjs`, `SAFE_TAGS`, `collectVisualContrastCandidates`, `connectSSE`, `css-cascade.mjs`, `svelte-ast.mjs`, `initPageChat`, `detect-html.mjs`, `injected/index.mjs`, `collectBrowserFindings`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+- **Why does `handleKeyDown()` connect `setLiveState` to `button.tsx`, `live-browser.js`, `dashboard/page.tsx`, `initGlobalBar`, `connectSSE`, `cn`, `el`, `initPageChat`?**
+  _High betweenness centrality (0.079) - this node is a cross-community bridge._
 - **Why does `restoreSvelteMarkup()` connect `svelte-ast.mjs` to `svelte-component.mjs`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
-- **Why does `handleKeyDown()` connect `setLiveState` to `profile-avatar-editor.tsx`, `live-browser.js`, `dashboard/page.tsx`, `initGlobalBar`, `connectSSE`, `cn`, `el`?**
-  _High betweenness centrality (0.073) - this node is a cross-community bridge._
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `TailwindConfigGenerator` (e.g. with `TestGeneratedConfigIsValidJs` and `TestTailwindConfigGenerator`) actually correct?**
   _`TailwindConfigGenerator` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 23 inferred relationships involving `el()` (e.g. with `collectVisualContrastCandidates()` and `renderBrowserFindings()`) actually correct?**
   _`el()` has 23 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `fs`, `path`, `fs` to the rest of the system?**
-  _1995 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _2002 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `createClient` be split into smaller, more focused modules?**
-  _Cohesion score 0.08035087719298245 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08567774936061381 - nodes in this community are weakly interconnected._

@@ -12,6 +12,7 @@ async function parseForm(formData: FormData): Promise<ContractorFormActionState 
   const t = await getTranslations("Contractors");
   const parsed = createContractorSchema({
     categoryRequired: t("validation.categoryRequired"), categoryTooLong: t("validation.categoryTooLong"),
+    subcategoryTooLong: t("validation.subcategoryTooLong"),
     nameRequired: t("validation.nameRequired"), nameTooLong: t("validation.nameTooLong"),
     websiteTooLong: t("validation.websiteTooLong"), websiteInvalid: t("validation.websiteInvalid"),
     phoneTooLong: t("validation.phoneTooLong"), phoneInvalid: t("validation.phoneInvalid"),
@@ -40,6 +41,17 @@ function getContractorValues(values: ContractorFormValues) {
   };
 }
 
+async function resolveContractorClassification(values: ContractorFormValues) {
+  const supabase = await createClient();
+  const { data: categoryId, error: categoryError } = await supabase.rpc("resolve_contractor_category", { p_name: values.category });
+  if (categoryError || !categoryId) return { error: categoryError ?? new Error("Missing contractor category") };
+  if (!values.subcategory) return { categoryId, subcategoryId: null };
+
+  const { data: subcategoryId, error: subcategoryError } = await supabase.rpc("resolve_contractor_subcategory", { p_category_id: categoryId, p_name: values.subcategory });
+  if (subcategoryError || !subcategoryId) return { error: subcategoryError ?? new Error("Missing contractor subcategory") };
+  return { categoryId, subcategoryId };
+}
+
 export async function createContractor(
   _previousState: ContractorFormActionState,
   formData: FormData,
@@ -49,16 +61,17 @@ export async function createContractor(
   const parsed = await parseForm(formData);
   if (!("values" in parsed)) return parsed;
 
-  const supabase = await createClient();
-  const { data: categoryId, error: categoryError } = await supabase.rpc("resolve_contractor_category", { p_name: parsed.values.category });
-  if (categoryError || !categoryId) {
-    console.error("Unable to resolve contractor category", categoryError);
+  const classification = await resolveContractorClassification(parsed.values);
+  if ("error" in classification) {
+    console.error("Unable to resolve contractor classification", classification.error);
     return { formError: t("errors.createFailed") };
   }
+  const supabase = await createClient();
   const contractorValues = getContractorValues(parsed.values);
   const { data, error } = await supabase.from("contractors").insert({
     ...contractorValues,
-    category_id: categoryId,
+    category_id: classification.categoryId,
+    subcategory_id: classification.subcategoryId,
     created_by: membership.authenticatedUserId,
   }).select("id").single();
 
@@ -80,16 +93,17 @@ export async function updateContractor(
   const parsed = await parseForm(formData);
   if (!("values" in parsed)) return parsed;
 
-  const supabase = await createClient();
-  const { data: categoryId, error: categoryError } = await supabase.rpc("resolve_contractor_category", { p_name: parsed.values.category });
-  if (categoryError || !categoryId) {
-    console.error("Unable to resolve contractor category", categoryError);
+  const classification = await resolveContractorClassification(parsed.values);
+  if ("error" in classification) {
+    console.error("Unable to resolve contractor classification", classification.error);
     return { formError: t("errors.updateFailed") };
   }
+  const supabase = await createClient();
   const contractorValues = getContractorValues(parsed.values);
   const { data, error } = await supabase.from("contractors").update({
     ...contractorValues,
-    category_id: categoryId,
+    category_id: classification.categoryId,
+    subcategory_id: classification.subcategoryId,
   }).eq("id", contractorId).select("id").maybeSingle();
   if (error || !data) {
     console.error("Unable to update contractor", error);

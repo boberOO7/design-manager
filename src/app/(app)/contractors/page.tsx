@@ -12,6 +12,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ContractorsPage() {
-  const [{ contractors, error }, adminMembership, t] = await Promise.all([getContractors(), getActiveStudioAdmin(), getTranslations("Contractors")]);
-  return <div className="space-y-8"><PageHeader title={t("title")} description={t("description")} />{error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <ContractorDirectory contractors={contractors} isAdmin={Boolean(adminMembership)} />}</div>;
+  const [{ categories, contractors, error }, adminMembership, t] = await Promise.all([getContractors(), getActiveStudioAdmin(), getTranslations("Contractors")]);
+  return <div className="space-y-8"><PageHeader title={t("title")} description={t("description")} />{error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <ContractorDirectory categories={categories} contractors={contractors} isAdmin={Boolean(adminMembership)} />}</div>;
 }
