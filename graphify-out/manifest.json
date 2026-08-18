@@ -2840,18 +2840,18 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/actions.ts": {
-    "mtime": 1787035926.1329515,
-    "ast_hash": "23a8b42c3fc216977a7f8e433c004348",
+    "mtime": 1787039376.8129427,
+    "ast_hash": "9074041f6ada5766af82d8c61f30bf86",
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/page.tsx": {
-    "mtime": 1787035979.3669229,
-    "ast_hash": "2f7c3200c3ad9b2cdc0a3bd995d03b19",
+    "mtime": 1787039376.9689493,
+    "ast_hash": "fbe97b5630adb365157d0d248027d2dd",
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1787039111.9403758,
-    "ast_hash": "9e3ac452b01ebefd35909eea0f958515",
+    "mtime": 1787039377.128956,
+    "ast_hash": "063dd0421d724dbc69d5125007d459d5",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
@@ -3062,6 +3062,21 @@
   "supabase/migrations/20260818140000_add_contractor_subcategories.sql": {
     "mtime": 1787035925.7489252,
     "ast_hash": "542f65f8bfb1ab723ded20d7d2d0072c",
+    "semantic_hash": ""
+  },
+  "src/components/contractors/contractor-permissions.contract.test.ts": {
+    "mtime": 1787039395.9017856,
+    "ast_hash": "c6a2e44669450007a4d2f5150f2ee711",
+    "semantic_hash": ""
+  },
+  "src/lib/contractor-update-permissions-migration.test.ts": {
+    "mtime": 1787046782.1744492,
+    "ast_hash": "0e94ab305021e519b73fd23874982333",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818150000_allow_active_members_to_update_contractors.sql": {
+    "mtime": 1787046782.0504441,
+    "ast_hash": "b8591fcb5e232035a2e81a2b78b02f51",
     "semantic_hash": ""
   }
 }

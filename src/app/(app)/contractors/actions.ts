@@ -88,8 +88,8 @@ export async function updateContractor(
   _previousState: ContractorFormActionState,
   formData: FormData,
 ): Promise<ContractorFormActionState> {
-  const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
-  if (!admin) return { formError: t("errors.updatePermission") };
+  const [membership, t] = await Promise.all([getActiveStudioMembership(), getTranslations("Contractors")]);
+  if (!membership) return { formError: t("errors.updatePermission") };
   const parsed = await parseForm(formData);
   if (!("values" in parsed)) return parsed;
 
