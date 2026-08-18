@@ -95,7 +95,9 @@ export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
   const overallPercent = task.status === "in_progress"
     ? productionPercent * 0.8
-    : task.status === "review"
+    : task.status === "internal_review"
+      ? productionPercent * 0.8
+      : task.status === "review"
       ? 80
       : task.status === "completed"
         ? 100

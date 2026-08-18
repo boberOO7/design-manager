@@ -5,8 +5,10 @@ import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getProjectTaskById, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
+import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { canCompleteAttributedTask } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
+import { isTaskStage } from "@/lib/task-stages";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
@@ -76,6 +78,8 @@ export async function updateTaskStatusMutation(
     }
   }
 
+  const stageColumns = await getProjectStageColumns(authorization.task.project_id);
+  if (!isTaskStage(authorization.task.stage) || !stageColumns[authorization.task.stage].includes(parsed.data.status)) return { success: false, formError: "Choose a status enabled for this task stage." };
   const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -9,6 +9,7 @@ export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_ite
 export const TASK_STATUS_VALUES = [
   "todo",
   "in_progress",
+  "internal_review",
   "review",
   "completed",
   "cancelled",

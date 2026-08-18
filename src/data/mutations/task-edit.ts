@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTaskById, getProjectTasks } from "@/data/queries/tasks";
+import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
 import { taskEditSchema } from "@/lib/validation/task";
@@ -30,6 +31,8 @@ export async function updateTaskDetailsMutation(
   if (!authorization.isStudioAdmin) {
     return { success: false, formError: "Only active studio administrators can edit task details." };
   }
+  const stageColumns = await getProjectStageColumns(authorization.task.project_id);
+  if (!stageColumns[parsed.data.stage].includes(parsed.data.status)) return { success: false, formError: "Choose a status enabled for the destination stage.", fieldErrors: { status: "Choose a status enabled for the destination stage." } };
   if ((parsed.data.status === "review" || parsed.data.status === "completed")
     && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
     return { success: false, formError: "Complete every checklist item before moving this task to Client review or Done." };

@@ -13,12 +13,13 @@ import { taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
-import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus } from "@/lib/tasks";
+import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus, isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
+import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -38,7 +39,17 @@ function isTaskWorkResponse(value: unknown): value is TaskWorkResponse {
   return typeof value === "object" && value !== null && "success" in value;
 }
 
-function makeFormValues(task: ProjectTask) {
+function makeFormValues(task: ProjectTask): {
+  title: string;
+  description: string;
+  assignee_id: string | null;
+  priority: ProjectTask["priority"];
+  stage: ProjectTask["stage"];
+  due_date: string;
+  completed_area_m2: string;
+  progress_weight: string;
+  status: WritableTaskStatus;
+} {
   return {
     title: task.title,
     description: task.description ?? "",
@@ -48,9 +59,7 @@ function makeFormValues(task: ProjectTask) {
     due_date: task.due_date ?? "",
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
     progress_weight: task.progress_weight.toString(),
-    status: task.status === "cancelled"
-        ? "completed"
-        : task.status,
+    status: isWritableTaskStatus(task.status) ? task.status : "completed",
   };
 }
 
@@ -63,6 +72,7 @@ export function TaskDetailsDrawer({
   onTaskUpdated,
   onProjectStatusUpdated,
   project,
+  stageColumns,
   task,
   templates = [],
 }: {
@@ -74,6 +84,7 @@ export function TaskDetailsDrawer({
   onTaskUpdated: (task: ProjectTask) => void;
   onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
   project?: { id: string; name: string };
+  stageColumns?: ProjectStageColumns;
   task: ProjectTask;
   templates?: StudioChecklistTemplate[];
 }) {
@@ -111,6 +122,8 @@ export function TaskDetailsDrawer({
   const [isApplyingChecklistTemplate, setIsApplyingChecklistTemplate] = useState(false);
   const statusLabel = (status: ProjectTask["status"]) => statusT(status === "in_progress" ? "inProgress" : status);
   const selectedChecklistTemplate = templates.find((template) => template.id === selectedChecklistTemplateId);
+  const enabledStatuses = stageColumns?.[values.stage] ?? BOARD_COLUMNS.map((column) => column.status);
+  const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
 
   const canEdit = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
   const canUpdateStatus = !isProjectReadOnly
@@ -366,7 +379,7 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                   <FormField label={t("stage")}>
-                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues({ ...values, stage }); }}>
+                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage, status: stageColumns?.[stage].includes(current.status) ? current.status : stageColumns?.[stage][0] ?? "todo" })); }}>
                       {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
                     </Select>
                   </FormField>
@@ -374,8 +387,8 @@ export function TaskDetailsDrawer({
                     <DatePicker value={values.due_date} disabled={isSaving} locale={locale} invalid={Boolean(fieldErrors.due_date)} onValueChange={(due_date) => setValues({ ...values, due_date })} />
                   </FormField>
                   <FormField label={t("status")}>
-                    <Select value={values.status} disabled={isSaving} onValueChange={(status) => setValues({ ...values, status })}>
-                      {BOARD_COLUMNS.map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
+                    <Select value={values.status} disabled={isSaving} onValueChange={(status) => { if (isWritableTaskStatus(status)) setValues({ ...values, status }); }}>
+                      {BOARD_COLUMNS.filter((column) => enabledStatuses.includes(column.status)).map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
                     </Select>
                   </FormField>
                 </div>
@@ -447,7 +460,7 @@ export function TaskDetailsDrawer({
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--ui-text)]">{t("updateStatus")}
                   <Select value={task.status} disabled={isSaving} onValueChange={(status) => void saveEmployeeStatus(status)} className="font-normal">
                     {taskStatusSelectItem(task.status, statusLabel(task.status))}
-                    {BOARD_COLUMNS.filter((column) => column.status !== task.status).map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
+                    {BOARD_COLUMNS.filter((column) => column.status !== task.status && enabledTaskStatuses.includes(column.status)).map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
                   </Select>
                 </label>
               </section> : null}

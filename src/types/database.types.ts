@@ -683,6 +683,12 @@ export type Database = {
           },
         ]
       }
+      project_task_stage_columns: {
+        Row: { project_id: string; stage: string; enabled_statuses: string[]; updated_at: string }
+        Insert: { project_id: string; stage: string; enabled_statuses?: string[]; updated_at?: string }
+        Update: { enabled_statuses?: string[]; updated_at?: string }
+        Relationships: [{ foreignKeyName: "project_task_stage_columns_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] }]
+      }
       task_checklist_items: {
         Row: {
           created_at: string

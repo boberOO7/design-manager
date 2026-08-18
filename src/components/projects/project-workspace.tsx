@@ -9,9 +9,10 @@ import { getProjectTaskSnapshotUpdate } from "@/lib/tasks";
 import type { ProjectTask } from "@/types/tasks";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import type { ProjectFormAction } from "@/components/projects/project-form";
+import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 
 export function ProjectWorkspace({
-  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, tasks, templates, updateAction,
+  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, stageColumns, tasks, templates, updateAction,
 }: {
   archiveAction: (formData: FormData) => Promise<void>;
   canCreate: boolean;
@@ -25,6 +26,7 @@ export function ProjectWorkspace({
   navigation: ReactNode;
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
+  stageColumns: ProjectStageColumns;
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
   updateAction: ProjectFormAction;
@@ -37,6 +39,6 @@ export function ProjectWorkspace({
   return <>
     <ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} updateAction={updateAction} />
     {navigation}
-    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
+    <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} stageColumns={stageColumns} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;
 }

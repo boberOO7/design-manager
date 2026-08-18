@@ -41,6 +41,7 @@ export const taskCreationSchema = z.object({
   assignee_id: optionalAssigneeSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   stage: z.enum(TASK_STAGES),
+  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
   checklist_items: checklistTemplateItemsSchema,
@@ -48,11 +49,11 @@ export const taskCreationSchema = z.object({
 
 export const taskStatusUpdateSchema = z.object({
   task_id: z.uuid("Choose a valid task"),
-  status: z.enum(["todo", "in_progress", "review", "completed"]),
+  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
 });
 
 export const taskStatusPayloadSchema = z.object({
-  status: z.enum(["todo", "in_progress", "review", "completed"]),
+  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
 }).strict();
 
 export const taskEditSchema = z.object({
@@ -67,7 +68,7 @@ export const taskEditSchema = z.object({
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: progressWeightSchema,
   stage: z.enum(TASK_STAGES),
-  status: z.enum(["todo", "in_progress", "review", "completed"]),
+  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
 }).strict();
 
 export const taskProductionProgressSchema = z.object({
@@ -115,6 +116,7 @@ export function getTaskCreationInput(formData: FormData) {
     assignee_id: getFormString(formData, "assignee_id"),
     priority: getFormString(formData, "priority"),
     stage: getFormString(formData, "stage"),
+    status: getFormString(formData, "status"),
     due_date: getFormString(formData, "due_date"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
     checklist_items: getFormString(formData, "checklist_items"),

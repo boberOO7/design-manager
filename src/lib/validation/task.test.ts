@@ -9,6 +9,7 @@ const validTask = {
   assignee_id: "123e4567-e89b-12d3-a456-426614174000",
   priority: "normal",
   stage: "stage_1",
+  status: "todo",
   due_date: "",
   completed_area_m2: "",
 };

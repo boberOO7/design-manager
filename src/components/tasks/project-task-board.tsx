@@ -10,7 +10,8 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/react";
-import { ChevronDown, GripVertical, LoaderCircle, Plus } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
@@ -38,6 +39,8 @@ import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
+import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
+import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
 const interactiveSelector = [
@@ -293,6 +296,7 @@ export function ProjectTaskBoard({
   members,
   projectId,
   projectStatus,
+  stageColumns,
   tasks,
   templates,
   onTasksChange,
@@ -306,6 +310,7 @@ export function ProjectTaskBoard({
   members: AssignableProjectMember[];
   projectId: string;
   projectStatus: ProjectLifecycleStatus;
+  stageColumns: ProjectStageColumns;
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
   onTasksChange?: (tasks: ProjectTask[]) => void;
@@ -314,6 +319,8 @@ export function ProjectTaskBoard({
   const t = useTranslations("Tasks");
   const statusLabels = useTranslations("Status");
   const stageLabels = useTranslations("TaskStages");
+  const locale = useLocale();
+  const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -321,6 +328,8 @@ export function ProjectTaskBoard({
   const [boardError, setBoardError] = useState<string | null>(null);
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
+  const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
+  const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
@@ -518,7 +527,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} templates={templates} /> : null}
+        {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} stageColumns={localStageColumns} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
@@ -528,6 +537,7 @@ export function ProjectTaskBoard({
             const isExpanded = expandedStages[stage];
             const taskCount = groupsByStage[stage].todo.length
               + groupsByStage[stage]["in-progress"].length
+              + groupsByStage[stage]["internal-review"].length
               + groupsByStage[stage]["client-review"].length
               + groupsByStage[stage].done.length;
             return (
@@ -546,6 +556,7 @@ export function ProjectTaskBoard({
                   {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
+                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
@@ -560,7 +571,7 @@ export function ProjectTaskBoard({
                 <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
                   <div className="min-h-0 overflow-hidden">
                     <div className="grid grid-cols-1 gap-4 border-t border-[var(--ui-border-subtle)] p-3 md:grid-cols-2 xl:grid-cols-4">
-                      {BOARD_COLUMNS.map((column) => (
+                      {BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status)).map((column) => (
                         <BoardColumn
                           key={column.id}
                           activeTask={activeTask}
@@ -588,6 +599,7 @@ export function ProjectTaskBoard({
           {() => activeTask ? <TaskCardContent task={activeTask} isOverlay showGrip /> : null}
         </DragOverlay>
       </DragDropProvider>
+      {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
       {selectedTask ? <TaskDetailsDrawer
         key={selectedTask.id}
         canManageTasks={canManageTasks}
@@ -597,6 +609,7 @@ export function ProjectTaskBoard({
         onClose={() => setSelectedTaskId(null)}
         onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}
+        stageColumns={localStageColumns}
         task={selectedTask}
         templates={templates}
       /> : null}

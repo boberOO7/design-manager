@@ -13,6 +13,9 @@ import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
+import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
+import { BOARD_COLUMNS, isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
+import { taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
@@ -24,16 +27,19 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   members: AssignableProjectMember[];
   defaultStage?: TaskStage;
   projectId: string;
+  stageColumns?: ProjectStageColumns;
   templates: StudioChecklistTemplate[];
 }>(function AddTaskDialog({
   members,
   defaultStage = "stage_1",
   projectId,
   templates,
+  stageColumns,
 }, ref) {
   const t = useTranslations("Tasks");
   const locale = useLocale();
   const priority = useTranslations("Priority");
+  const statusT = useTranslations("Status");
   const stages = useTranslations("TaskStages");
   const checklist = useTranslations("Checklists");
   const templatesT = useTranslations("Templates");
@@ -49,6 +55,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const [checklistItems, setChecklistItems] = useState<ChecklistTemplateStage[]>([]);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<TaskStage>(defaultStage);
+  const [selectedStatus, setSelectedStatus] = useState<WritableTaskStatus>(stageColumns?.[defaultStage][0] ?? "todo");
   const selectedTemplate = templates.find((template) => template.id === templateId);
   const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(selectedTemplate, checklistItems);
   const totalWeight = getChecklistTemplateWeight({ stages: checklistItems });
@@ -64,6 +71,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   function openDialog(stage = defaultStage) {
     formRef.current?.reset();
     setSelectedStage(stage);
+    setSelectedStatus(stageColumns?.[stage][0] ?? "todo");
     setTemplateId("");
     setChecklistItems([]);
     setIsCustomizerOpen(false);
@@ -108,8 +116,13 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
             </FormField>
           </div>
           <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
-            <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) setSelectedStage(stage); }}>
+            <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) { setSelectedStage(stage); setSelectedStatus(stageColumns?.[stage][0] ?? "todo"); } }}>
               {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
+            </Select>
+          </FormField>
+          <FormField label={t("status")} error={state.fieldErrors?.status ? validation("correctFields") : undefined}>
+            <Select name="status" value={selectedStatus} disabled={isPending} onValueChange={(status) => { if (isWritableTaskStatus(status)) setSelectedStatus(status); }}>
+              {(stageColumns?.[selectedStage] ?? BOARD_COLUMNS.map((column) => column.status)).map((status) => taskStatusSelectItem(status, statusT(status === "in_progress" ? "inProgress" : status)))}
             </Select>
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">

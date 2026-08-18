@@ -6,6 +6,7 @@ import { updateTaskStatusMutation } from "@/data/mutations/task-status";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTasks } from "@/data/queries/tasks";
+import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { toTaskStatusActionState } from "@/lib/task-status-mutation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -45,6 +46,7 @@ export async function createProjectTask(
       assignee_id: flattened.assignee_id?.[0],
       priority: flattened.priority?.[0],
       stage: flattened.stage?.[0],
+      status: flattened.status?.[0],
       due_date: flattened.due_date?.[0],
       completed_area_m2: flattened.completed_area_m2?.[0],
       checklist_items: flattened.checklist_items?.[0],
@@ -61,6 +63,8 @@ export async function createProjectTask(
   ) {
     return { formError: "The project was not found or is not available for new tasks." };
   }
+  const stageColumns = await getProjectStageColumns(project.id);
+  if (!stageColumns[parsed.data.stage].includes(parsed.data.status)) return { fieldErrors: { status: "Choose a status enabled for this stage." } };
 
   const projectMembers = parsed.data.assignee_id === null
     ? []
@@ -82,6 +86,7 @@ export async function createProjectTask(
     description: parsed.data.description ?? null,
     priority: parsed.data.priority,
     stage: parsed.data.stage,
+    status: parsed.data.status,
     assignee_id: parsed.data.assignee_id,
     due_date: parsed.data.due_date ?? null,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,

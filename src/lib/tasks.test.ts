@@ -54,12 +54,13 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
 }
 
 describe("task Board status mapping", () => {
-  it("renders the four-stage workflow in operational order", () => {
-    expect(BOARD_COLUMNS.map((column) => [column.label, column.status])).toEqual([["To do", "todo"], ["In progress", "in_progress"], ["Client review", "review"], ["Done", "completed"]]);
+  it("renders the five-status workflow in operational order", () => {
+    expect(BOARD_COLUMNS.map((column) => [column.label, column.status])).toEqual([["To do", "todo"], ["In progress", "in_progress"], ["Internal review", "internal_review"], ["Client review", "review"], ["Done", "completed"]]);
   });
-  it("maps Board columns to the four writable database statuses", () => {
+  it("maps Board columns to the five writable database statuses", () => {
     expect(getWritableStatusForBoardColumn("todo")).toBe("todo");
     expect(getWritableStatusForBoardColumn("in-progress")).toBe("in_progress");
+    expect(getWritableStatusForBoardColumn("internal-review")).toBe("internal_review");
     expect(getWritableStatusForBoardColumn("client-review")).toBe("review");
     expect(getWritableStatusForBoardColumn("done")).toBe("completed");
   });
@@ -67,6 +68,7 @@ describe("task Board status mapping", () => {
   it("maps every database status into exactly one display column", () => {
     expect(getBoardColumn("todo")).toBe("todo");
     expect(getBoardColumn("in_progress")).toBe("in-progress");
+    expect(getBoardColumn("internal_review")).toBe("internal-review");
     expect(getBoardColumn("review")).toBe("client-review");
     expect(getBoardColumn("completed")).toBe("done");
     expect(getBoardColumn("cancelled")).toBe("done");
@@ -75,6 +77,7 @@ describe("task Board status mapping", () => {
   it.each([
     ["todo", "todo"],
     ["in_progress", "in-progress"],
+    ["internal_review", "internal-review"],
     ["review", "client-review"],
     ["completed", "done"],
     ["cancelled", "done"],

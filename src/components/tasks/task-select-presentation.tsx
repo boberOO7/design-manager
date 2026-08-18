@@ -12,6 +12,7 @@ const priorityTone = {
 const statusTone = {
   todo: "text-[var(--ui-neutral-text)]",
   in_progress: "text-[var(--ui-info-text)]",
+  internal_review: "text-[var(--ui-info-text)]",
   review: "text-[var(--ui-violet-text)]",
   completed: "text-[var(--ui-success-text)]",
   cancelled: "text-[var(--ui-text-muted)]",
@@ -29,6 +30,7 @@ function getStatusTone(status: TaskStatus | string) {
   switch (status) {
     case "todo": return statusTone.todo;
     case "in_progress": return statusTone.in_progress;
+    case "internal_review": return statusTone.internal_review;
     case "review": return statusTone.review;
     case "completed": return statusTone.completed;
     default: return statusTone.cancelled;

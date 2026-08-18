@@ -24,6 +24,7 @@ const styles = {
   danger: { className: "border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]", variant: "danger" },
   success: { className: "border border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]", variant: "success" },
   violet: { className: "border border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)]", variant: "violet" },
+  teal: { className: "border border-[var(--ui-info-border)] bg-[color-mix(in_srgb,var(--ui-info-surface)_72%,var(--ui-success-surface))] text-[var(--ui-info-text)]", variant: "info" },
   muted: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] text-[var(--ui-text-muted)]", variant: "muted" },
 } as const;
 
@@ -45,6 +46,7 @@ export function getTaskStatusBadgeStyle(status: TaskStatus | string): SemanticBa
   switch (status) {
     case "todo": return badge("To do", "neutral");
     case "in_progress": return badge("In progress", "info");
+    case "internal_review": return badge("Internal review", "teal");
     case "review": return badge("Client review", "violet");
     case "completed": return badge("Done", "success");
     case "cancelled": return badge("Cancelled", "muted");
@@ -65,6 +67,8 @@ export function getTaskStatusColumnStyle(status: TaskStatus | string): TaskStatu
       };
     case "in_progress":
       return { headerClassName: styles.info.className, countBadgeClassName: styles.info.className };
+    case "internal_review":
+      return { headerClassName: styles.teal.className, countBadgeClassName: styles.teal.className };
     case "review":
       return { headerClassName: styles.violet.className, countBadgeClassName: styles.violet.className };
     case "completed":
