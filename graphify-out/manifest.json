@@ -230,8 +230,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
-    "mtime": 1786986174.1726632,
-    "ast_hash": "2ebf47b26ce6b36e073e8a6fa87d5cc2",
+    "mtime": 1787061311.7142484,
+    "ast_hash": "9dbcbf9e20aa0e248e98bb6731c9d7fc",
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
@@ -430,8 +430,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-sidebar.tsx": {
-    "mtime": 1786976108.1366618,
-    "ast_hash": "150e8e886b8e4d66aecae78b382bea54",
+    "mtime": 1787061285.5136473,
+    "ast_hash": "e21d6c1d8c93d06f6eca7cb040edc837",
     "semantic_hash": ""
   },
   "src/components/layout/mobile-navigation.tsx": {
@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-shell.test.ts": {
-    "mtime": 1786801770.9299724,
-    "ast_hash": "f322d1ea2dd9658252e59566f4248644",
+    "mtime": 1787061285.6416538,
+    "ast_hash": "4bfa4660a42af191a35c24bb9600144e",
     "semantic_hash": ""
   },
   "src/components/layout/shell-control.tsx": {
@@ -3072,6 +3072,16 @@
   "supabase/migrations/20260818150000_allow_active_members_to_update_contractors.sql": {
     "mtime": 1787046782.0504441,
     "ast_hash": "b8591fcb5e232035a2e81a2b78b02f51",
+    "semantic_hash": ""
+  },
+  "src/components/brand/space-logo-full.tsx": {
+    "mtime": 1787060592.1362603,
+    "ast_hash": "0f87e53ebab4aa97fc7ff8cd4895ccc2",
+    "semantic_hash": ""
+  },
+  "public/space-logo-full-theme.svg": {
+    "mtime": 1787060410.0199594,
+    "ast_hash": "231c2f9f6479aa5c805f7c1a0fe21c18",
     "semantic_hash": ""
   }
 }

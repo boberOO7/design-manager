@@ -20,16 +20,25 @@ describe("application shell cleanup", () => {
     expect(header).toContain("ThemeSwitch");
   });
 
-  it("keeps desktop navigation persistent and removes repeated Dashboard identity", async () => {
+  it("keeps desktop navigation persistent with automatic compact and expanded states", async () => {
     const [sidebar, dashboard] = await Promise.all([
       readFile(sidebarPath, "utf8"),
       readFile(dashboardPath, "utf8"),
     ]);
-    expect(sidebar).not.toContain("collapsed");
     expect(sidebar).not.toContain("PanelLeft");
     expect(sidebar).toContain("w-72");
-    expect(sidebar).toContain("studioName");
+    expect(sidebar).toContain("w-20");
+    expect(sidebar).toContain("--sidebar-width");
+    expect(sidebar).toContain("duration-[320ms]");
+    expect(sidebar).toContain("left-[23px]");
+    expect(sidebar).toContain("onPointerEnter");
+    expect(sidebar).toContain("onPointerLeave");
+    expect(sidebar).toContain("onFocusCapture");
+    expect(sidebar).toContain("onBlurCapture");
+    expect(sidebar).not.toContain("studioName");
     expect(sidebar).toContain("StudioFlowMark");
+    expect(sidebar).toContain("SpaceLogoFull");
+    expect(sidebar).toContain('title={t(item.messageKey)}');
     expect(sidebar).not.toContain("toLocaleUpperCase");
     expect(sidebar).toContain('t("poweredBy", { product: "StudioFlow" })');
     expect(sidebar).not.toContain('t("tagline")');
