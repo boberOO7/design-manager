@@ -13,10 +13,11 @@ function contractor(overrides: Partial<Contractor>): Contractor {
 }
 
 describe("contractor subcategory presentation", () => {
-  it("exposes only the selected category's subcategories and resets a dependent filter", () => {
+  it("exposes a category's subcategories or the studio-wide options, resetting only incompatible filters", () => {
     expect(getContractorSubcategories(categories, "electrical").map((item) => item.id)).toEqual(["lighting", "low-voltage"]);
-    expect(getContractorSubcategories(categories, "")).toEqual([]);
-    expect(changeContractorCategoryFilter("plumbing")).toEqual({ categoryId: "plumbing", subcategoryId: "" });
+    expect(getContractorSubcategories(categories, "").map((item) => item.id)).toEqual(["heating", "lighting", "low-voltage"]);
+    expect(changeContractorCategoryFilter(categories, "plumbing", "lighting")).toEqual({ categoryId: "plumbing", subcategoryId: "" });
+    expect(changeContractorCategoryFilter(categories, "", "lighting")).toEqual({ categoryId: "", subcategoryId: "lighting" });
   });
 
   it("keeps category-only contractors visible and narrows only by a matching subcategory", () => {
@@ -25,9 +26,13 @@ describe("contractor subcategory presentation", () => {
     expect(filterContractors(contractors, { categoryId: "electrical", subcategoryId: "lighting", query: "" }).map((item) => item.id)).toEqual(["lighting"]);
   });
 
-  it("renders a selected subcategory as muted text rather than a category-color badge", async () => {
+  it("renders subcategory as its own neutral table column", async () => {
     const directoryPath = new URL("../components/contractors/contractor-directory.tsx", import.meta.url);
     const source = await readFile(directoryPath, "utf8");
-    expect(source).toContain('contractor.subcategory ? <span className="text-sm text-[var(--ui-text-secondary)]">');
+    expect(source).toContain('t("columns.subcategory")');
+    expect(source).toContain('border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-muted)]');
+    expect(source).toContain('<span className="text-[var(--ui-text-muted)]">—</span>');
+    expect(source).not.toContain('aria-hidden="true" className="text-xs leading-none text-[var(--ui-text-muted)]">›</span>');
+    expect(source).toContain('text-xs font-normal leading-5 text-[var(--ui-text-secondary)]" title={contractor.subcategory.name}');
   });
 });

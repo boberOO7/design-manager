@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Palette, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, Palette, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -40,6 +40,12 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   const [managingColors, setManagingColors] = useState(false);
   const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
   const [colorError, setColorError] = useState("");
+  const [copiedContractorId, setCopiedContractorId] = useState<string | null>(null);
+  const copiedPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copiedPhoneTimeoutRef.current) clearTimeout(copiedPhoneTimeoutRef.current);
+  }, []);
 
   const selectedFilterSubcategories = getContractorSubcategories(categories, categoryId);
   const visible = useMemo(() => {
@@ -47,7 +53,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   }, [categoryId, contractors, query, subcategoryId]);
 
   function changeCategoryFilter(nextCategoryId: string) {
-    const next = changeContractorCategoryFilter(nextCategoryId);
+    const next = changeContractorCategoryFilter(categories, nextCategoryId, subcategoryId);
     setCategoryId(next.categoryId);
     setSubcategoryId(next.subcategoryId);
   }
@@ -86,10 +92,21 @@ export function ContractorDirectory({ categories: initialCategories, contractors
     router.refresh();
   }
 
+  async function copyContractorPhone(contractorId: string, phone: string) {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setCopiedContractorId(contractorId);
+      if (copiedPhoneTimeoutRef.current) clearTimeout(copiedPhoneTimeoutRef.current);
+      copiedPhoneTimeoutRef.current = setTimeout(() => setCopiedContractorId(null), 1800);
+    } catch (error) {
+      console.error("Unable to copy contractor phone", error);
+    }
+  }
+
   return <>
     <div className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
       <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] lg:min-w-[34rem] xl:grid-cols-[minmax(16rem,1fr)_12rem_12rem] xl:min-w-[46rem]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] lg:min-w-[46rem] lg:grid-cols-[minmax(16rem,1fr)_12rem_12rem]">
           <label className="relative block">
             <span className="sr-only">{t("searchLabel")}</span>
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
@@ -99,27 +116,28 @@ export function ContractorDirectory({ categories: initialCategories, contractors
             <SelectItem className="min-h-12 py-2.5" value="">{t("allCategories")}</SelectItem>
             {categories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span></SelectItem>)}
           </Select>
-          {categoryId ? <Select aria-label={t("form.subcategory")} value={subcategoryId} onValueChange={setSubcategoryId} placeholder={t("allSubcategories")}>
+          <Select aria-label={t("columns.subcategory")} value={subcategoryId} onValueChange={setSubcategoryId} placeholder={t("allSubcategories")}>
             <SelectItem className="min-h-12 py-2.5" value="">{t("allSubcategories")}</SelectItem>
             {selectedFilterSubcategories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}>{item.name}</SelectItem>)}
-          </Select> : null}
+          </Select>
         </div>
         <div className="flex shrink-0 gap-2">{isAdmin ? <Button type="button" variant="outline" onClick={() => { setColorError(""); setManagingColors(true); }}><Palette className="size-4" aria-hidden="true" />{t("columns.category")}</Button> : null}<Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button></div>
       </div>
 
       {visible.length ? <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] text-xs font-medium uppercase tracking-wide text-[var(--ui-text-muted)]">
-            <tr><th className="px-4 py-3">{t("columns.name")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.phone")}</th><th className="px-4 py-3">{t("columns.link")}</th><th className="px-4 py-3">{t("columns.description")}</th>{isAdmin ? <th className="px-4 py-3 text-right"><span className="sr-only">{t("actions")}</span></th> : null}</tr>
+        <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs font-medium uppercase tracking-wide text-[var(--ui-text-muted)]">
+            <tr><th className="px-4 py-3">{t("columns.name")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.subcategory")}</th><th className="px-4 py-3">{t("columns.phone")}</th><th className="px-4 py-3">{t("columns.link")}</th><th className="px-4 py-3">{t("columns.description")}</th>{isAdmin ? <th className="px-4 py-3 text-right"><span className="sr-only">{t("actions")}</span></th> : null}</tr>
           </thead>
           <tbody className="divide-y divide-[var(--ui-border)]">
-            {visible.map((contractor) => <tr key={contractor.id} className="align-top transition-colors hover:bg-[var(--ui-surface-subtle)]">
-              <td className="px-4 py-3 font-medium text-[var(--ui-text)]">{contractor.name}</td>
-              <td className="px-4 py-3"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(contractor.category.colorKey)}`}>{contractor.category.name}</span>{contractor.subcategory ? <span className="text-sm text-[var(--ui-text-secondary)]">{contractor.subcategory.name}</span> : null}</div></td>
-              <td className="px-4 py-3 text-[var(--ui-text-secondary)]">{formatUkrainianPhone(contractor.phone) || "—"}</td>
-              <td className="px-4 py-3">{contractor.website_url ? <a href={contractor.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-[var(--ui-info-text)] underline underline-offset-4"><span className="max-w-40 truncate">{t("openLink")}</span><ExternalLink className="size-3.5" aria-hidden="true" /></a> : <span className="text-[var(--ui-text-muted)]">—</span>}</td>
-              <td className="max-w-sm px-4 py-3 text-[var(--ui-text-secondary)]"><p className="line-clamp-2" title={contractor.description ?? undefined}>{contractor.description || "—"}</p></td>
-              {isAdmin ? <td className="px-4 py-2"><div className="flex justify-end gap-1"><Button type="button" variant="ghost" size="sm" aria-label={t("editAria", { name: contractor.name })} onClick={() => openEdit(contractor)}><Pencil className="size-4" aria-hidden="true" />{t("edit")}</Button><Button type="button" variant="ghost" size="sm" aria-label={t("deleteAria", { name: contractor.name })} className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => { setDeleteError(""); setDeleting(contractor); }}><Trash2 className="size-4" aria-hidden="true" />{t("delete")}</Button></div></td> : null}
+            {visible.map((contractor) => <tr key={contractor.id} className="align-middle transition-colors hover:bg-[var(--ui-surface-subtle)]">
+              <td className="align-middle px-4 py-3 font-medium text-[var(--ui-text)]">{contractor.name}</td>
+              <td className="align-middle px-4 py-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(contractor.category.colorKey)}`}>{contractor.category.name}</span></td>
+              <td className="align-middle px-4 py-3">{contractor.subcategory ? <span className="inline-flex max-w-44 truncate rounded-full border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal leading-5 text-[var(--ui-text-secondary)]" title={contractor.subcategory.name}>{contractor.subcategory.name}</span> : <span className="text-[var(--ui-text-muted)]">—</span>}</td>
+              <td className="align-middle px-4 py-3 text-[var(--ui-text-secondary)]">{contractor.phone ? <div className="relative inline-flex items-center gap-1.5"><span>{formatUkrainianPhone(contractor.phone)}</span><button type="button" aria-label={copiedContractorId === contractor.id ? t("phoneCopied") : t("copyPhone", { phone: formatUkrainianPhone(contractor.phone) })} className="inline-flex size-7 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" onClick={() => { if (contractor.phone) void copyContractorPhone(contractor.id, contractor.phone); }}>{copiedContractorId === contractor.id ? <Check aria-hidden="true" className="size-3.5 text-[var(--ui-success-text)]" /> : <Copy aria-hidden="true" className="size-3.5" />}</button>{copiedContractorId === contractor.id ? <span role="status" className="absolute left-full top-1/2 ml-1 -translate-y-1/2 whitespace-nowrap text-xs font-medium text-[var(--ui-success-text)]">{t("phoneCopied")}</span> : null}</div> : "—"}</td>
+              <td className="align-middle px-4 py-3">{contractor.website_url ? <a href={contractor.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-[var(--ui-info-text)] underline underline-offset-4"><span className="max-w-40 truncate">{t("openLink")}</span><ExternalLink className="size-3.5" aria-hidden="true" /></a> : <span className="text-[var(--ui-text-muted)]">—</span>}</td>
+              <td className="align-middle max-w-sm px-4 py-3 text-[var(--ui-text-secondary)]"><p className="line-clamp-2" title={contractor.description ?? undefined}>{contractor.description || "—"}</p></td>
+              {isAdmin ? <td className="align-middle px-4 py-2"><div className="flex justify-end gap-1"><Button type="button" variant="ghost" size="sm" aria-label={t("editAria", { name: contractor.name })} onClick={() => openEdit(contractor)}><Pencil className="size-4" aria-hidden="true" />{t("edit")}</Button><Button type="button" variant="ghost" size="sm" aria-label={t("deleteAria", { name: contractor.name })} className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => { setDeleteError(""); setDeleting(contractor); }}><Trash2 className="size-4" aria-hidden="true" />{t("delete")}</Button></div></td> : null}
             </tr>)}
           </tbody>
         </table>

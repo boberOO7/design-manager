@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787036232.003235,
-    "ast_hash": "db5616f04c3e7417d6fc004621ab1516",
+    "mtime": 1787038387.3647237,
+    "ast_hash": "a8e442a9ce25b571eaa2587960889536",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787036232.003235,
-    "ast_hash": "9971733515e63b3b286607dee60b5c44",
+    "mtime": 1787038387.3647237,
+    "ast_hash": "a34464414115b62622dcdc903172ef69",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2850,8 +2850,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1787036189.4087925,
-    "ast_hash": "95b31a257cd018f0a71e4f9b2e9fea39",
+    "mtime": 1787039111.9403758,
+    "ast_hash": "9e3ac452b01ebefd35909eea0f958515",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
@@ -3045,13 +3045,13 @@
     "semantic_hash": ""
   },
   "src/lib/contractor-subcategory-presentation.test.ts": {
-    "mtime": 1787036272.6160874,
-    "ast_hash": "aa06b16c4d382c1e3c10715a20f48a0e",
+    "mtime": 1787037940.20372,
+    "ast_hash": "26e22084949f67947b64f21845d58224",
     "semantic_hash": ""
   },
   "src/lib/contractor-subcategory-presentation.ts": {
-    "mtime": 1787036189.2687838,
-    "ast_hash": "810b542bd18290f55b4fb5d971d3229a",
+    "mtime": 1787037911.4461827,
+    "ast_hash": "231419c18873bdb42c6f3f5979767ade",
     "semantic_hash": ""
   },
   "src/lib/validation/contractor.test.ts": {
