@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/add-task-dialog.tsx": {
-    "mtime": 1787063058.0606012,
-    "ast_hash": "42e70ad2e85b34a28227e92576f2ed35",
+    "mtime": 1787065826.8166187,
+    "ast_hash": "8c1b31e48b2fa3e6db1a335d8b9a1e37",
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787063326.0098405,
-    "ast_hash": "e97f2e9aa66d3767092ebfb77df1b3cc",
+    "mtime": 1787065837.7520452,
+    "ast_hash": "c860b440d1ef73a5d9f35638f64574a5",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {

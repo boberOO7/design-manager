@@ -13,7 +13,7 @@ import {
 import { ChevronDown, GripVertical, LoaderCircle, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
+import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
@@ -321,7 +321,6 @@ export function ProjectTaskBoard({
   const [boardError, setBoardError] = useState<string | null>(null);
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
-  const [requestedCreationStage, setRequestedCreationStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
@@ -330,6 +329,7 @@ export function ProjectTaskBoard({
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
   const onTasksChangeRef = useRef(onTasksChange);
+  const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
   const stageLayoutKey = `project-task-board:stages:${projectId}:${currentUserId}`;
 
   useLayoutEffect(() => {
@@ -518,7 +518,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        {canCreate ? <AddTaskDialog members={members} onRequestedStageHandled={() => setRequestedCreationStage(null)} projectId={projectId} requestedStage={requestedCreationStage} templates={templates} /> : null}
+        {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
@@ -543,7 +543,7 @@ export function ProjectTaskBoard({
                     {stageLabels(stage)}
                   </button>
                   <span className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
-                  {canCreate ? <button type="button" onClick={() => setRequestedCreationStage(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
+                  {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
                   <button

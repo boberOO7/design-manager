@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { createProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
@@ -16,21 +16,21 @@ import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
-export function AddTaskDialog({
-  members,
-  defaultStage = "stage_1",
-  requestedStage,
-  onRequestedStageHandled,
-  projectId,
-  templates,
-}: {
+export type AddTaskDialogHandle = {
+  open: (stage?: TaskStage) => void;
+};
+
+export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   members: AssignableProjectMember[];
   defaultStage?: TaskStage;
-  requestedStage?: TaskStage | null;
-  onRequestedStageHandled?: () => void;
   projectId: string;
   templates: StudioChecklistTemplate[];
-}) {
+}>(function AddTaskDialog({
+  members,
+  defaultStage = "stage_1",
+  projectId,
+  templates,
+}, ref) {
   const t = useTranslations("Tasks");
   const locale = useLocale();
   const priority = useTranslations("Priority");
@@ -70,11 +70,7 @@ export function AddTaskDialog({
     dialogRef.current?.showModal();
   }
 
-  useEffect(() => {
-    if (!requestedStage) return;
-    openDialog(requestedStage);
-    onRequestedStageHandled?.();
-  }, [onRequestedStageHandled, requestedStage]);
+  useImperativeHandle(ref, () => ({ open: openDialog }));
 
   return (
     <>
@@ -141,4 +137,4 @@ export function AddTaskDialog({
       </dialog>
     </>
   );
-}
+});
