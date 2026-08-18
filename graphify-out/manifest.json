@@ -3100,13 +3100,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/stage-columns-dialog.tsx": {
-    "mtime": 1787067109.7232227,
-    "ast_hash": "8a23ba966bb770068747e0acf1aee77d",
+    "mtime": 1787069092.5074081,
+    "ast_hash": "945b13dd2591a226b19e4c7a365303b7",
     "semantic_hash": ""
   },
   "src/data/mutations/project-stage-columns.ts": {
-    "mtime": 1787067207.0260894,
-    "ast_hash": "8accc297ab18495d4a9188f91b56bb2c",
+    "mtime": 1787069073.3642213,
+    "ast_hash": "ed1f4d8d1a8efc437c67060bc1d6b2b6",
     "semantic_hash": ""
   },
   "src/data/queries/project-stage-columns.ts": {
@@ -3117,6 +3117,11 @@
   "supabase/migrations/20260818170000_project_stage_columns_and_internal_review.sql": {
     "mtime": 1787068500.105636,
     "ast_hash": "0cc8d68bf084dbd74682dc61101e1d09",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818171500_fix_project_stage_columns_check_privileges.sql": {
+    "mtime": 1787069057.8605938,
+    "ast_hash": "c90949cfa6a89c20dd950e00d8956727",
     "semantic_hash": ""
   }
 }
