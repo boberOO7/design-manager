@@ -10,9 +10,11 @@ export type SemanticBadgeStyle = {
 };
 
 export type TaskStatusColumnStyle = {
-  bodyClassName: string;
+  countBadgeClassName: string;
   headerClassName: string;
 };
+
+const todoBorderColorClassName = "border-[color-mix(in_srgb,var(--ui-border-strong)_70%,var(--ui-text-muted))]";
 
 const styles = {
   neutral: { className: "border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]", variant: "neutral" },
@@ -51,21 +53,26 @@ export function getTaskStatusBadgeStyle(status: TaskStatus | string): SemanticBa
 }
 
 export function getTaskStatusCountBadgeClassName(status: TaskStatus | string, count: number): string {
-  return `${getTaskStatusBadgeStyle(status).className}${count === 0 ? " opacity-60" : ""}`;
+  return `${getTaskStatusColumnStyle(status).countBadgeClassName}${count === 0 ? " opacity-60" : ""}`;
 }
 
 export function getTaskStatusColumnStyle(status: TaskStatus | string): TaskStatusColumnStyle {
-  const headerClassName = getTaskStatusBadgeStyle(status).className;
   switch (status) {
-    case "in_progress":
-      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-info-surface)_45%,var(--ui-surface-muted))]" };
-    case "review":
-      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-violet-surface)_45%,var(--ui-surface-muted))]" };
-    case "completed":
-      return { headerClassName, bodyClassName: "bg-[color-mix(in_srgb,var(--ui-success-surface)_45%,var(--ui-surface-muted))]" };
     case "todo":
+      return {
+        headerClassName: `${todoBorderColorClassName} bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]`,
+        countBadgeClassName: `border ${todoBorderColorClassName} bg-[var(--ui-surface)] text-[var(--ui-text-secondary)]`,
+      };
+    case "in_progress":
+      return { headerClassName: styles.info.className, countBadgeClassName: styles.info.className };
+    case "review":
+      return { headerClassName: styles.violet.className, countBadgeClassName: styles.violet.className };
+    case "completed":
+      return { headerClassName: styles.success.className, countBadgeClassName: styles.success.className };
+    case "cancelled":
+      return { headerClassName: styles.muted.className, countBadgeClassName: styles.muted.className };
     default:
-      return { headerClassName, bodyClassName: "bg-[var(--ui-surface-muted)]" };
+      return { headerClassName: styles.neutral.className, countBadgeClassName: styles.neutral.className };
   }
 }
 

@@ -20,16 +20,18 @@ describe("semantic badge styles", () => {
     expect(styles.map((style) => style.label)).not.toContain("in_progress");
   });
 
-  it("derives board-column tints from the same task-status semantic tokens", () => {
-    expect(getTaskStatusColumnStyle("todo").headerClassName).toBe(getTaskStatusBadgeStyle("todo").className);
-    expect(getTaskStatusColumnStyle("in_progress").bodyClassName).toContain("--ui-info-surface");
-    expect(getTaskStatusColumnStyle("review").bodyClassName).toContain("--ui-violet-surface");
-    expect(getTaskStatusColumnStyle("completed").bodyClassName).toContain("--ui-success-surface");
+  it("uses colored headers with a stronger neutral Todo header", () => {
+    expect(getTaskStatusColumnStyle("todo").headerClassName).toBe("border-[color-mix(in_srgb,var(--ui-border-strong)_70%,var(--ui-text-muted))] bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]");
+    expect(getTaskStatusColumnStyle("todo").countBadgeClassName).toBe("border border-[color-mix(in_srgb,var(--ui-border-strong)_70%,var(--ui-text-muted))] bg-[var(--ui-surface)] text-[var(--ui-text-secondary)]");
+    expect(getTaskStatusColumnStyle("in_progress").headerClassName).toBe(getTaskStatusBadgeStyle("in_progress").className);
+    expect(getTaskStatusColumnStyle("review").headerClassName).toBe(getTaskStatusBadgeStyle("review").className);
+    expect(getTaskStatusColumnStyle("completed").headerClassName).toBe(getTaskStatusBadgeStyle("completed").className);
   });
 
   it("keeps nonzero board counts status-accented and zero counts muted", () => {
-    expect(getTaskStatusCountBadgeClassName("review", 3)).toBe(getTaskStatusBadgeStyle("review").className);
-    expect(getTaskStatusCountBadgeClassName("review", 0)).toBe(`${getTaskStatusBadgeStyle("review").className} opacity-60`);
+    expect(getTaskStatusCountBadgeClassName("todo", 3)).toBe(getTaskStatusColumnStyle("todo").countBadgeClassName);
+    expect(getTaskStatusCountBadgeClassName("review", 3)).toBe(getTaskStatusColumnStyle("review").countBadgeClassName);
+    expect(getTaskStatusCountBadgeClassName("review", 0)).toBe(`${getTaskStatusColumnStyle("review").countBadgeClassName} opacity-60`);
   });
 
   it("maps project lifecycle and health independently", () => {

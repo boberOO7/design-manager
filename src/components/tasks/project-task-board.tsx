@@ -194,6 +194,22 @@ function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId
   );
 }
 
+function StatusColumnHeader({ columnId, label, status, taskCount }: {
+  columnId: BoardColumnId;
+  label: string;
+  status: WritableTaskStatus;
+  taskCount: number;
+}) {
+  const columnStyle = getTaskStatusColumnStyle(status);
+
+  return (
+    <div className={cn("mb-2 flex items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
+      <h3 id={`column-${columnId}`} className="text-sm font-semibold">{label}</h3>
+      <span className={cn("ui-numeric rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
+    </div>
+  );
+}
+
 function BoardColumn({
   activeTask,
   canManageTasks,
@@ -202,7 +218,6 @@ function BoardColumn({
   isProjectReadOnly,
   label,
   status,
-  tintColumns,
   onOpenTask,
   pendingTaskIds,
   shouldSuppressOpen,
@@ -215,7 +230,6 @@ function BoardColumn({
   isProjectReadOnly: boolean;
   label: string;
   status: WritableTaskStatus;
-  tintColumns: boolean;
   onOpenTask: (taskId: string) => void;
   pendingTaskIds: Set<string>;
   shouldSuppressOpen: () => boolean;
@@ -232,8 +246,6 @@ function BoardColumn({
     accept: "project-task",
   });
   const isHighlighted = acceptsActiveTask && isDropTarget;
-  const columnStyle = getTaskStatusColumnStyle(status);
-
   return (
     <section
       ref={ref}
@@ -242,13 +254,10 @@ function BoardColumn({
         "flex min-h-72 min-w-0 flex-col rounded-xl border p-3 transition-[border-color,background-color,box-shadow]",
         isHighlighted
           ? "border-[var(--ui-focus)] bg-[var(--ui-surface-strong)] ring-2 ring-[var(--ui-focus)] shadow-md"
-          : cn("border-[var(--ui-border)]", tintColumns ? columnStyle.bodyClassName : "bg-[var(--ui-surface-muted)]"),
+          : "border-[var(--ui-border)] bg-[var(--ui-surface-muted)]",
       )}
     >
-      <div className={cn("mb-2 flex items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
-        <h3 id={`column-${columnId}`} className="text-sm font-semibold">{label}</h3>
-        <span className={cn("ui-numeric rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, tasks.length))}>{tasks.length}</span>
-      </div>
+      <StatusColumnHeader columnId={columnId} label={label} status={status} taskCount={tasks.length} />
       {isHighlighted ? <p className="mb-2 rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 py-1.5 text-center text-xs font-medium leading-4 text-[var(--ui-text-secondary)]">{t("releaseToMove", { status: label })}</p> : null}
       <div className="flex flex-1 flex-col gap-2">
         {tasks.length === 0 ? (
@@ -303,7 +312,6 @@ export function ProjectTaskBoard({
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
-  const [tintColumns, setTintColumns] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
@@ -468,13 +476,7 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div role="group" aria-label={t("boardColorMode")} className="inline-flex rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] p-1">
-            <button type="button" aria-pressed={!tintColumns} onClick={() => setTintColumns(false)} className={cn("min-h-9 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", !tintColumns ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text-secondary)]")}>{t("boardHeadersOnly")}</button>
-            <button type="button" aria-pressed={tintColumns} onClick={() => setTintColumns(true)} className={cn("min-h-9 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", tintColumns ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text-secondary)]")}>{t("boardTintColumns")}</button>
-          </div>
-          {canCreate ? <AddTaskDialog members={members} projectId={projectId} templates={templates} /> : null}
-        </div>
+        {canCreate ? <AddTaskDialog members={members} projectId={projectId} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
@@ -494,7 +496,6 @@ export function ProjectTaskBoard({
               shouldSuppressOpen={() => suppressCardOpenRef.current}
               status={column.status}
               tasks={groups[column.id]}
-              tintColumns={tintColumns}
             />
           ))}
         </div>
