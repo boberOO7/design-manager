@@ -209,8 +209,8 @@ function StatusColumnHeader({ columnId, label, status, taskCount }: {
   const columnStyle = getTaskStatusColumnStyle(status);
 
   return (
-    <div className={cn("mb-2 flex items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
-      <h3 id={`column-${columnId}`} className="text-sm font-semibold">{label}</h3>
+    <div className={cn("mb-2 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
+      <h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3>
       <span className={cn("ui-numeric rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
     </div>
   );
@@ -535,6 +535,7 @@ export function ProjectTaskBoard({
         <div className="space-y-3">
           {TASK_STAGES.map((stage) => {
             const isExpanded = expandedStages[stage];
+            const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status));
             const taskCount = groupsByStage[stage].todo.length
               + groupsByStage[stage]["in-progress"].length
               + groupsByStage[stage]["internal-review"].length
@@ -570,8 +571,9 @@ export function ProjectTaskBoard({
                 </div>
                 <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
                   <div className="min-h-0 overflow-hidden">
-                    <div className="grid grid-cols-1 gap-4 border-t border-[var(--ui-border-subtle)] p-3 md:grid-cols-2 xl:grid-cols-4">
-                      {BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status)).map((column) => (
+                    <div className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3">
+                      <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
+                      {enabledColumns.map((column) => (
                         <BoardColumn
                           key={column.id}
                           activeTask={activeTask}
@@ -588,6 +590,7 @@ export function ProjectTaskBoard({
                           tasks={groupsByStage[stage][column.id]}
                         />
                       ))}
+                      </div>
                     </div>
                   </div>
                 </div>
