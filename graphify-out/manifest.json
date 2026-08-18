@@ -975,8 +975,8 @@
     "semantic_hash": "c90ce271c67181aa19b276f189789cb1"
   },
   "src/types/database.types.ts": {
-    "mtime": 1786987676.4018478,
-    "ast_hash": "d363ff47a5f000871dd3e38425fd9c73",
+    "mtime": 1787010055.413638,
+    "ast_hash": "391e287a3d8a95adeea59f1e4cf30fb3",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -2840,8 +2840,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/actions.ts": {
-    "mtime": 1786719635.0621397,
-    "ast_hash": "70a726f6140b7d170d8014a616bc8b08",
+    "mtime": 1787010055.541643,
+    "ast_hash": "7601176002f7a1ab51fe4b7db33d9f5c",
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/page.tsx": {
@@ -2850,13 +2850,13 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1786802587.5359583,
-    "ast_hash": "55690b9c8d4fbc11c7769e32f0e7cee0",
+    "mtime": 1787011004.1546273,
+    "ast_hash": "d5617dade93fc15320259c0c8fb32674",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
-    "mtime": 1786715683.058749,
-    "ast_hash": "d4febb5aa2cfd307b2c457734cdcfaf6",
+    "mtime": 1787008878.130115,
+    "ast_hash": "e5dcd0cb3963f6fda065c4136a403182",
     "semantic_hash": ""
   },
   "src/lib/validation/contractor.ts": {
@@ -2870,8 +2870,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-category-combobox.tsx": {
-    "mtime": 1786719908.386095,
-    "ast_hash": "89a04054dfa69d4fc21691148eaa8391",
+    "mtime": 1787010768.7439876,
+    "ast_hash": "7d0aef2dc5e6ede7c1733ce71819bd6f",
     "semantic_hash": ""
   },
   "src/lib/ukrainian-phone.test.ts": {
@@ -3017,6 +3017,26 @@
   "src/components/tasks/task-select-presentation.tsx": {
     "mtime": 1787007856.9333978,
     "ast_hash": "0487dff037023c2a8f1b5cc8205f992e",
+    "semantic_hash": ""
+  },
+  "src/lib/contractor-category-colors.test.ts": {
+    "mtime": 1787010079.1979022,
+    "ast_hash": "d348e97e84f8286323cb5203f7a73df6",
+    "semantic_hash": ""
+  },
+  "src/lib/contractor-category-colors.ts": {
+    "mtime": 1787010021.8281152,
+    "ast_hash": "bea3e896cca1af341aec8e9467e07d06",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818120000_add_contractor_category_colors.sql": {
+    "mtime": 1787009520.3811862,
+    "ast_hash": "4e8e5ebbadf8ca5009ccf150c7764a29",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818130000_refine_contractor_category_colors.sql": {
+    "mtime": 1787010326.98736,
+    "ast_hash": "b3436c6656cf3ebea3fe9b4525717561",
     "semantic_hash": ""
   }
 }

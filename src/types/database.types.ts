@@ -50,7 +50,7 @@ export type Database = {
       }
       contractors: {
         Row: {
-          category: string
+          category_id: string
           created_at: string
           created_by: string
           description: string | null
@@ -61,7 +61,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
-          category: string
+          category_id: string
           created_at?: string
           created_by: string
           description?: string | null
@@ -72,7 +72,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
-          category?: string
+          category_id?: string
           created_at?: string
           created_by?: string
           description?: string | null
@@ -84,12 +84,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "contractors_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "contractor_categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contractors_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      contractor_categories: {
+        Row: { color_key: string; created_at: string; id: string; name: string; studio_id: string; updated_at: string }
+        Insert: { color_key: string; created_at?: string; id?: string; name: string; studio_id: string; updated_at?: string }
+        Update: { color_key?: string; created_at?: string; id?: string; name?: string; studio_id?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "contractor_categories_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
       checklist_template_items: {
@@ -742,6 +757,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      resolve_contractor_category: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      update_contractor_category_color: {
+        Args: { p_category_id: string; p_color_key: string }
+        Returns: undefined
+      }
       approve_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string | null }
         Returns: {

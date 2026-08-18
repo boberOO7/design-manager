@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
+import { isContractorCategoryColorKey } from "@/lib/contractor-category-colors";
 import { createContractorSchema, getContractorFormInput, type ContractorFormActionState, type ContractorFormField, type ContractorFormValues } from "@/lib/validation/contractor";
 
 async function parseForm(formData: FormData): Promise<ContractorFormActionState | { values: ContractorFormValues }> {
@@ -30,6 +31,15 @@ function nullable(value: string | undefined) {
   return value || null;
 }
 
+function getContractorValues(values: ContractorFormValues) {
+  return {
+    name: values.name,
+    website_url: nullable(values.website_url),
+    phone: nullable(values.phone),
+    description: nullable(values.description),
+  };
+}
+
 export async function createContractor(
   _previousState: ContractorFormActionState,
   formData: FormData,
@@ -40,11 +50,15 @@ export async function createContractor(
   if (!("values" in parsed)) return parsed;
 
   const supabase = await createClient();
+  const { data: categoryId, error: categoryError } = await supabase.rpc("resolve_contractor_category", { p_name: parsed.values.category });
+  if (categoryError || !categoryId) {
+    console.error("Unable to resolve contractor category", categoryError);
+    return { formError: t("errors.createFailed") };
+  }
+  const contractorValues = getContractorValues(parsed.values);
   const { data, error } = await supabase.from("contractors").insert({
-    ...parsed.values,
-    website_url: nullable(parsed.values.website_url),
-    phone: nullable(parsed.values.phone),
-    description: nullable(parsed.values.description),
+    ...contractorValues,
+    category_id: categoryId,
     created_by: membership.authenticatedUserId,
   }).select("id").single();
 
@@ -67,11 +81,15 @@ export async function updateContractor(
   if (!("values" in parsed)) return parsed;
 
   const supabase = await createClient();
+  const { data: categoryId, error: categoryError } = await supabase.rpc("resolve_contractor_category", { p_name: parsed.values.category });
+  if (categoryError || !categoryId) {
+    console.error("Unable to resolve contractor category", categoryError);
+    return { formError: t("errors.updateFailed") };
+  }
+  const contractorValues = getContractorValues(parsed.values);
   const { data, error } = await supabase.from("contractors").update({
-    ...parsed.values,
-    website_url: nullable(parsed.values.website_url),
-    phone: nullable(parsed.values.phone),
-    description: nullable(parsed.values.description),
+    ...contractorValues,
+    category_id: categoryId,
   }).eq("id", contractorId).select("id").maybeSingle();
   if (error || !data) {
     console.error("Unable to update contractor", error);
@@ -89,6 +107,19 @@ export async function deleteContractor(contractorId: string): Promise<{ error?: 
   if (error) {
     console.error("Unable to delete contractor", error);
     return { error: t("errors.deleteFailed") };
+  }
+  revalidatePath("/contractors");
+  return {};
+}
+
+export async function updateContractorCategoryColor(categoryId: string, colorKey: string): Promise<{ error?: string }> {
+  const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
+  if (!admin || !isContractorCategoryColorKey(colorKey)) return { error: t("errors.updateFailed") };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_contractor_category_color", { p_category_id: categoryId, p_color_key: colorKey });
+  if (error) {
+    console.error("Unable to update contractor category color", error);
+    return { error: t("errors.updateFailed") };
   }
   revalidatePath("/contractors");
   return {};
