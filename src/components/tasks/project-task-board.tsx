@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus } from "lucide-react";
+import { Check, ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
@@ -96,11 +96,13 @@ function isSuccessfulTaskStatusResponse(value: unknown): value is { success: tru
 }
 
 function TaskCardContent({
+  compact = false,
   isOverlay = false,
   isPending = false,
   showGrip = false,
   task,
 }: {
+  compact?: boolean;
   isOverlay?: boolean;
   isPending?: boolean;
   showGrip?: boolean;
@@ -115,24 +117,33 @@ function TaskCardContent({
   const progress = getBoardTaskProgressSummary(task);
 
   return (
-    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3", isOverlay && "scale-[1.02] shadow-xl")}>
+    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl")}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
           {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
-          <h4 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]" title={task.title}>{task.title}</h4>
+          <h4 className={cn("min-w-0 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]", !compact && "line-clamp-2")} title={compact ? undefined : task.title}>{task.title}</h4>
         </div>
         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-4 ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
       </div>
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs leading-4">
+      <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] text-xs leading-4", compact ? "mt-1.5 items-center gap-1.5" : "mt-2 items-start gap-2")}>
         <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
           <UserAvatar imageUrl={task.assignee?.avatar_url} name={task.assignee?.full_name} size="boardCard" decorative />
           <span className="truncate">{task.assignee?.full_name ?? t("unassigned")}</span>
+          {compact && progress ? <span className="ui-numeric shrink-0 whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
+            ? card("checklistProgress", { completed: progress.completed, total: progress.total, percent: formatNumber(progress.percent, locale) })
+            : card("manualProgress", { percent: formatNumber(progress.percent, locale) })}</span> : null}
         </div>
-        {progress ? <span className="ui-numeric whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
+        {!compact && progress ? <span className="ui-numeric whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
           ? card("checklistProgress", { completed: progress.completed, total: progress.total, percent: formatNumber(progress.percent, locale) })
           : card("manualProgress", { percent: formatNumber(progress.percent, locale) })}</span> : null}
+        {compact ? <div className="flex shrink-0 items-center justify-end gap-1.5 text-[var(--ui-text-muted)]">
+          <span className="whitespace-nowrap">{task.due_date ? t("due", { date: formatDateShort(task.due_date, locale) }) : t("noDueDate")}</span>
+          {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
+          {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
+          {isPending ? <LoaderCircle className="size-3 animate-spin text-[var(--ui-info-text)]" aria-label={t("saving")} /> : null}
+        </div> : null}
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--ui-border-subtle)] pt-2 text-xs leading-4 text-[var(--ui-text-muted)]">
+      {!compact ? <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--ui-border-subtle)] pt-2 text-xs leading-4 text-[var(--ui-text-muted)]">
         {task.due_date ? <span>{t("due", { date: formatDateShort(task.due_date, locale) })}</span> : <span>{t("noDueDate")}</span>}
         {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
         {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
@@ -141,17 +152,19 @@ function TaskCardContent({
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> {t("saving")}
           </span>
         ) : null}
-      </div>
+      </div> : null}
     </div>
   );
 }
 
 function DraggableTaskCard({
+  compact,
   isPending,
   onOpen,
   shouldSuppressOpen,
   task,
 }: {
+  compact: boolean;
   isPending: boolean;
   onOpen: (taskId: string) => void;
   shouldSuppressOpen: () => boolean;
@@ -186,16 +199,16 @@ function DraggableTaskCard({
       )}
       style={{ touchAction: "pan-x pan-y" }}
     >
-      <TaskCardContent task={task} isPending={isPending} showGrip />
+      <TaskCardContent compact={compact} task={task} isPending={isPending} showGrip />
     </button>
   );
 }
 
-function ReadOnlyTaskCard({ task, onOpen }: { task: ProjectTask; onOpen: (taskId: string) => void }) {
+function ReadOnlyTaskCard({ compact, task, onOpen }: { compact: boolean; task: ProjectTask; onOpen: (taskId: string) => void }) {
   const t = useTranslations("Tasks");
   return (
     <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
-      <TaskCardContent task={task} />
+      <TaskCardContent compact={compact} task={task} />
     </button>
   );
 }
@@ -219,6 +232,7 @@ function StatusColumnHeader({ columnId, label, status, taskCount }: {
 function BoardColumn({
   activeTask,
   canManageTasks,
+  compactCards,
   columnId,
   currentUserId,
   isProjectReadOnly,
@@ -232,6 +246,7 @@ function BoardColumn({
 }: {
   activeTask: ProjectTask | null;
   canManageTasks: boolean;
+  compactCards: boolean;
   columnId: BoardColumnId;
   currentUserId: string;
   isProjectReadOnly: boolean;
@@ -279,8 +294,8 @@ function BoardColumn({
             isProjectReadOnly,
           });
           return canDrag
-            ? <DraggableTaskCard key={task.id} task={task} isPending={pendingTaskIds.has(task.id)} onOpen={onOpenTask} shouldSuppressOpen={shouldSuppressOpen} />
-            : <ReadOnlyTaskCard key={task.id} task={task} onOpen={onOpenTask} />;
+            ? <DraggableTaskCard key={task.id} compact={compactCards} task={task} isPending={pendingTaskIds.has(task.id)} onOpen={onOpenTask} shouldSuppressOpen={shouldSuppressOpen} />
+            : <ReadOnlyTaskCard key={task.id} compact={compactCards} task={task} onOpen={onOpenTask} />;
         })}
       </div>
     </section>
@@ -321,6 +336,8 @@ export function ProjectTaskBoard({
   const stageLabels = useTranslations("TaskStages");
   const locale = useLocale();
   const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
+  const boardActions = locale === "uk" ? "Дії дошки" : "Board actions";
+  const compactTaskCards = locale === "uk" ? "Компактні картки" : "Compact task cards";
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -340,6 +357,9 @@ export function ProjectTaskBoard({
   const onTasksChangeRef = useRef(onTasksChange);
   const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
   const stageLayoutKey = `project-task-board:stages:${projectId}:${currentUserId}`;
+  const compactCardsKey = `project-task-board:compact-cards:${currentUserId}`;
+  const [compactCards, setCompactCards] = useState(false);
+  const [compactCardsReady, setCompactCardsReady] = useState(false);
 
   useLayoutEffect(() => {
     try {
@@ -367,6 +387,21 @@ export function ProjectTaskBoard({
     if (!stageLayoutReady) return;
     window.localStorage.setItem(stageLayoutKey, JSON.stringify(expandedStages));
   }, [expandedStages, stageLayoutKey, stageLayoutReady]);
+
+  useLayoutEffect(() => {
+    try {
+      const storedCompactCards = window.localStorage.getItem(compactCardsKey) === "compact";
+      window.queueMicrotask(() => setCompactCards(storedCompactCards));
+    } catch {
+      // Local presentation preferences must not prevent the board from rendering.
+    }
+    window.queueMicrotask(() => setCompactCardsReady(true));
+  }, [compactCardsKey]);
+
+  useEffect(() => {
+    if (!compactCardsReady) return;
+    window.localStorage.setItem(compactCardsKey, compactCards ? "compact" : "default");
+  }, [compactCards, compactCardsKey, compactCardsReady]);
 
   useEffect(() => {
     onTasksChangeRef.current = onTasksChange;
@@ -527,7 +562,24 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} stageColumns={localStageColumns} templates={templates} /> : null}
+        <div className="flex items-center gap-2">
+          {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} stageColumns={localStageColumns} templates={templates} /> : null}
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button type="button" className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={boardActions}>
+                <Ellipsis className="size-4" aria-hidden="true" />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content align="end" sideOffset={6} className="z-50 min-w-52 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]">
+                <button type="button" role="menuitemcheckbox" aria-checked={compactCards} onClick={() => setCompactCards((current) => !current)} className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
+                  <Check className={cn("size-4 shrink-0", compactCards ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />
+                  {compactTaskCards}
+                </button>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        </div>
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
@@ -578,6 +630,7 @@ export function ProjectTaskBoard({
                           key={column.id}
                           activeTask={activeTask}
                           canManageTasks={canManageTasks}
+                          compactCards={compactCards}
                           columnId={column.id}
                           currentUserId={currentUserId}
                           isProjectReadOnly={isProjectReadOnly}
@@ -599,7 +652,7 @@ export function ProjectTaskBoard({
           })}
         </div>
         <DragOverlay dropAnimation={null}>
-          {() => activeTask ? <TaskCardContent task={activeTask} isOverlay showGrip /> : null}
+          {() => activeTask ? <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip /> : null}
         </DragOverlay>
       </DragDropProvider>
       {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
