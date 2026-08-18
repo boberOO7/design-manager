@@ -17,7 +17,7 @@ import { getLocalizedCityName } from "@/lib/city-provider";
 import { isAppLocale } from "@/i18n/config";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
-import { isProjectTypeKey } from "@/lib/validation/project";
+import { getProjectTypeDisplayName } from "@/lib/validation/project";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { archiveProject, restoreProject, updateProject } from "./actions";
@@ -66,7 +66,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
 
 async function ProjectDetails({ locale, project }: { locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
   const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
-  const typeLabel = project.project_type ? (isProjectTypeKey(project.project_type) ? projectTypes(project.project_type) : project.project_type) : null;
+  const typeLabel = getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes);
   const items = [
     { label: form("projectCode"), value: project.project_code },
     { label: form("projectType"), value: typeLabel },

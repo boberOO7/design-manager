@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
 import { getCountryOptions } from "@/lib/countries";
-import { isProjectTypeKey, PROJECT_TYPE_KEYS, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
+import { PROJECT_TYPE_KEYS, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
 import { cn } from "@/lib/utils";
 
 export type ProjectFormDefaults = {
@@ -21,6 +21,7 @@ export type ProjectFormDefaults = {
   name?: string;
   priority?: "low" | "normal" | "high" | "urgent";
   project_type?: string;
+  project_type_custom?: string;
   start_date?: string;
   total_area_m2?: number;
 };
@@ -47,12 +48,12 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState<ProjectFormActionState, FormData>(action, {});
   const [projectType, setProjectType] = useState(defaultValues.project_type ?? "");
+  const [projectTypeCustom, setProjectTypeCustom] = useState(defaultValues.project_type_custom ?? "");
   const [countryCode, setCountryCode] = useState(defaultValues.country_code ?? "UA");
   const [city, setCity] = useState(defaultValues.city ?? "");
   const [cityGeoNamesId, setCityGeoNamesId] = useState(defaultValues.city_geonames_id);
   const [countryResetMessage, setCountryResetMessage] = useState("");
   const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
-  const legacyProjectType = projectType && !isProjectTypeKey(projectType) ? projectType : null;
 
   useEffect(() => {
     if (state.projectId) onSuccess?.(state.projectId);
@@ -94,12 +95,15 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("project_type")} id="project_type" label={t("projectType")}>
-      <Select name="project_type" value={projectType} onValueChange={(value) => { setProjectType(value); markDirty(); }} className="mt-2" {...errorAttributes("project_type")}>
+      <Select name="project_type" value={projectType} onValueChange={(value) => { setProjectType(value); if (value !== "other") setProjectTypeCustom(""); markDirty(); }} className="mt-2" {...errorAttributes("project_type")}>
         <SelectItem value="">{t("notSpecified")}</SelectItem>
-        {legacyProjectType ? <SelectItem value={legacyProjectType} textValue={legacyProjectType}>{legacyProjectType}</SelectItem> : null}
         {PROJECT_TYPE_KEYS.map((key) => <SelectItem key={key} value={key}>{projectTypes(key)}</SelectItem>)}
       </Select>
     </Field>
+
+    {projectType === "other" ? <Field error={fieldError("project_type_custom")} id="project_type_custom" label={t("projectTypeCustom")}>
+      <input name="project_type_custom" value={projectTypeCustom} onChange={(event) => { setProjectTypeCustom(event.target.value); markDirty(); }} className={inputClassName} autoComplete="off" {...errorAttributes("project_type_custom")} />
+    </Field> : null}
 
     <Field error={fieldError("client_name")} id="client_name" label={t("clientName")}>
       <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="off" {...errorAttributes("client_name")} />

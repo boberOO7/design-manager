@@ -4,14 +4,10 @@ import { isCountryCode } from "@/lib/countries";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export const PROJECT_TYPE_KEYS = [
-  "residential",
+  "private",
   "commercial",
-  "office",
-  "retail",
-  "hospitality",
-  "public",
-  "industrial",
-  "mixed_use",
+  "horeca",
+  "medical",
   "other",
 ] as const;
 
@@ -19,6 +15,16 @@ export type ProjectTypeKey = (typeof PROJECT_TYPE_KEYS)[number];
 
 export function isProjectTypeKey(value: string | null | undefined): value is ProjectTypeKey {
   return PROJECT_TYPE_KEYS.some((key) => key === value);
+}
+
+export function getProjectTypeDisplayName(
+  projectType: string | null | undefined,
+  projectTypeCustom: string | null | undefined,
+  getCanonicalLabel: (key: ProjectTypeKey) => string,
+): string | null {
+  if (!projectType) return null;
+  if (projectType === "other" && projectTypeCustom?.trim()) return projectTypeCustom;
+  return isProjectTypeKey(projectType) ? getCanonicalLabel(projectType) : projectType;
 }
 const dateSchema = z.string().refine(
   (value) => {
@@ -32,6 +38,7 @@ const dateSchema = z.string().refine(
 const projectFields = {
   name: z.string().trim().min(1, "Project name is required").max(200, "Project name is too long"),
   project_type: z.preprocess((value) => value === "" ? null : value, z.enum(PROJECT_TYPE_KEYS).nullable()),
+  project_type_custom: z.preprocess((value) => value === "" ? undefined : value, z.string().trim().max(100, "Custom project type is too long").optional()),
   country_code: z.string().trim().refine(isCountryCode, "Choose a valid country"),
   city: z.string().trim().max(100, "City is too long").optional(),
   city_geonames_id: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional()),
@@ -84,6 +91,7 @@ export function getProjectFormInput(formData: FormData) {
   return {
     name: getOptionalString(formData, "project_name"),
     project_type: getOptionalString(formData, "project_type"),
+    project_type_custom: getOptionalString(formData, "project_type_custom"),
     country_code: getOptionalString(formData, "country_code"),
     city: getOptionalString(formData, "city"),
     city_geonames_id: getOptionalString(formData, "city_geonames_id"),

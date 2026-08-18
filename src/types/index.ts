@@ -1,10 +1,11 @@
 import type { ProjectMemberRow } from "@/types/project-members";
+import type { TaskStage, TaskStatus as CanonicalTaskStatus } from "@/types/tasks";
 
 export type SystemRole = "admin" | "employee";
 export type ProjectStatus = "planned" | "active" | "paused" | "completed" | "archived";
 export type ProjectPriority = "low" | "normal" | "high" | "urgent";
 export type ProjectProgressMethod = "equal" | "area" | "weighted";
-export type TaskStatus = "todo" | "in_progress" | "review" | "completed" | "cancelled";
+export type TaskStatus = CanonicalTaskStatus;
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 
 export interface Profile {
@@ -28,6 +29,7 @@ export interface Project {
   name: string;
   project_code?: string | null;
   project_type?: string | null;
+  project_type_custom?: string | null;
   city?: string | null;
   client_name?: string | null;
   description?: string | null;
@@ -50,6 +52,7 @@ export interface Task {
   project_id: string;
   title: string;
   description?: string | null;
+  stage: TaskStage;
   status: TaskStatus;
   priority: TaskPriority;
   assignee_id: string;

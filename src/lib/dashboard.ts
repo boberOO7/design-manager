@@ -1,7 +1,8 @@
-import { isTaskFinished, isTaskOverdue } from "./tasks";
+import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
 import type { MyTask } from "../types/tasks";
 import type { ProjectLifecycleStatus } from "./project-lifecycle";
 import { calculateProjectProgress, isProjectProgressMethod } from "./project-progress";
+import { isTaskStage } from "./task-stages";
 
 export type DashboardTask = MyTask;
 
@@ -17,6 +18,13 @@ export type DashboardProject = {
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string; avatar_url?: string | null };
+
+export function isDashboardTask(task: { project: DashboardTask["project"]; priority: string; stage: string; status: string }): task is DashboardTask {
+  return Boolean(task.project)
+    && isTaskStatus(task.status)
+    && isTaskPriority(task.priority)
+    && isTaskStage(task.stage);
+}
 
 export function getTodayDate(now = new Date()): string {
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
@@ -63,7 +71,7 @@ export function isEmployeeTaskNeedsAttention(task: EmployeeAttentionTask, today:
     || task.priority === "urgent"
     || task.priority === "high"
     || task.status === "in_progress"
-    || task.status === "review";
+    || isTaskInReview(task.status);
 }
 
 function attentionRank(task: DashboardTask, today: string): number {
@@ -85,7 +93,7 @@ function needsAttentionRank(task: EmployeeAttentionTask, today: string): number 
   if (task.due_date === today) return 1;
   if (task.priority === "urgent") return 2;
   if (task.priority === "high") return 3;
-  if (task.status === "in_progress" || task.status === "review") return 4;
+  if (task.status === "in_progress" || isTaskInReview(task.status)) return 4;
   return 5;
 }
 
@@ -133,7 +141,7 @@ export function getTeamWorkload(members: DashboardMember[], tasks: DashboardTask
       openTaskCount: active.length,
       todoCount: active.filter((task) => task.status === "todo").length,
       inProgressCount: active.filter((task) => task.status === "in_progress").length,
-      reviewCount: active.filter((task) => task.status === "review").length,
+      reviewCount: active.filter((task) => isTaskInReview(task.status)).length,
       urgentCount: active.filter((task) => task.priority === "urgent").length,
       overdueCount: active.filter((task) => isTaskOverdue(task, today)).length,
     };

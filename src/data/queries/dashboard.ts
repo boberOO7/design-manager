@@ -3,9 +3,9 @@ import "server-only";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getCurrentUserProfile } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, getTodayDate, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject, type DashboardTask } from "@/lib/dashboard";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, getTodayDate, isDashboardTask, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject, type DashboardTask } from "@/lib/dashboard";
 import { calculateProjectProgress, isProjectProgressMethod } from "@/lib/project-progress";
-import { isTaskOverdue } from "@/lib/tasks";
+import { isTaskInReview, isTaskOverdue } from "@/lib/tasks";
 import type { MyTask } from "@/types/tasks";
 
 type DashboardTaskRow = DashboardTask;
@@ -29,12 +29,6 @@ function makeDeadlines(tasks: DashboardTask[], projects: DashboardProject[], tod
     ...tasks.filter((task) => isOpenTask(task) && task.due_date && task.due_date >= today && task.due_date <= limit).map((task) => ({ id: task.id, kind: "task" as const, title: task.title, dueDate: task.due_date!, project: task.project })),
     ...projects.filter((project) => project.due_date && project.due_date >= today && project.due_date <= limit).map((project) => ({ id: project.id, kind: "project" as const, title: project.name, dueDate: project.due_date! })),
   ].sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title)).slice(0, 10);
-}
-
-function isDashboardTask(task: DashboardTaskRow): task is DashboardTask {
-  return Boolean(task.project)
-    && (task.status === "todo" || task.status === "in_progress" || task.status === "review" || task.status === "completed" || task.status === "cancelled")
-    && (task.priority === "low" || task.priority === "normal" || task.priority === "high" || task.priority === "urgent");
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
@@ -61,5 +55,5 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const personalTasks = tasks.filter((task) => task.assignee_id === profile.id);
   const taskByProject = new Map<string, DashboardTask[]>();
   for (const task of personalTasks) taskByProject.set(task.project_id, [...(taskByProject.get(task.project_id) ?? []), task]);
-  return { kind: "employee", profile, metrics: { overdue: personalTasks.filter((task) => isTaskOverdue(task, today)).length, dueToday: countDueToday(personalTasks, today), inProgress: personalTasks.filter((task) => task.status === "in_progress" || task.status === "review").length, upcoming: countUpcomingSevenDays(personalTasks, today) }, needsAttention: getEmployeeTasksNeedingAttention(personalTasks, today).slice(0, 8).map(toDrawerTask), projects: projects.map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, { method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal", designScopeAreaM2: project.total_area_m2 }); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || task.status === "review").length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), hasMoreProjects: projects.length > 6, deadlines: makeDeadlines(personalTasks, projects, today) };
+  return { kind: "employee", profile, metrics: { overdue: personalTasks.filter((task) => isTaskOverdue(task, today)).length, dueToday: countDueToday(personalTasks, today), inProgress: personalTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, upcoming: countUpcomingSevenDays(personalTasks, today) }, needsAttention: getEmployeeTasksNeedingAttention(personalTasks, today).slice(0, 8).map(toDrawerTask), projects: projects.map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, { method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal", designScopeAreaM2: project.total_area_m2 }); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), hasMoreProjects: projects.length > 6, deadlines: makeDeadlines(personalTasks, projects, today) };
 }

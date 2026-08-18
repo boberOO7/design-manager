@@ -1,4 +1,4 @@
-import type { MyTask, ProjectTask, TaskPriority, TaskStatus } from "../types/tasks";
+import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES, type MyTask, type ProjectTask, type TaskPriority, type TaskStatus } from "../types/tasks";
 
 export type BoardColumnId = "todo" | "in-progress" | "internal-review" | "client-review" | "done";
 export type MyTaskGroupId = "overdue" | "today" | "upcoming" | "completed";
@@ -44,12 +44,15 @@ const WRITABLE_STATUS_BY_COLUMN: Record<BoardColumnId, WritableTaskStatus> = {
 };
 
 export function isTaskStatus(value: string): value is TaskStatus {
-  return value === "todo"
-    || value === "in_progress"
-    || value === "internal_review"
-    || value === "review"
-    || value === "completed"
-    || value === "cancelled";
+  return TASK_STATUS_VALUES.some((status) => status === value);
+}
+
+export function isTaskPriority(value: string): value is TaskPriority {
+  return TASK_PRIORITY_VALUES.some((priority) => priority === value);
+}
+
+export function isTaskInReview(status: string): boolean {
+  return status === "internal_review" || status === "review";
 }
 
 export function getTaskStatusLabel(status: string): string {

@@ -14,7 +14,7 @@ export async function getProjectById(projectId: string): Promise<ProjectDetails 
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, studio_id, name, project_code, project_type, country_code, city, city_geonames_id, client_name, description, total_area_m2, progress_method, status, priority, start_date, due_date, completed_at, archived_at, created_by, created_at, updated_at",
+      "id, studio_id, name, project_code, project_type, project_type_custom, country_code, city, city_geonames_id, client_name, description, total_area_m2, progress_method, status, priority, start_date, due_date, completed_at, archived_at, created_by, created_at, updated_at",
     )
     .eq("id", projectId)
     .maybeSingle();

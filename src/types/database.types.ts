@@ -460,6 +460,7 @@ export type Database = {
           progress_method: string
           project_code: string | null
           project_type: string | null
+          project_type_custom: string | null
           start_date: string
           status: string
           studio_id: string
@@ -483,6 +484,7 @@ export type Database = {
           progress_method?: string
           project_code?: string | null
           project_type?: string | null
+          project_type_custom?: string | null
           start_date: string
           status?: string
           studio_id: string
@@ -506,6 +508,7 @@ export type Database = {
           progress_method?: string
           project_code?: string | null
           project_type?: string | null
+          project_type_custom?: string | null
           start_date?: string
           status?: string
           studio_id?: string

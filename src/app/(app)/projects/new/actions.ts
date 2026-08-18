@@ -44,6 +44,7 @@ export async function createProject(
       created_by: membership.authenticatedUserId,
       name: project.name,
       project_type: project.project_type,
+      project_type_custom: project.project_type === "other" ? project.project_type_custom ?? null : null,
       country_code: project.country_code,
       city: project.city || null,
       city_geonames_id: project.city_geonames_id ?? null,

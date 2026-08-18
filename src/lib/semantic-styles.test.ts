@@ -15,8 +15,8 @@ describe("semantic badge styles", () => {
   });
 
   it("maps every task status and keeps user-facing labels", () => {
-    const styles = ["todo", "in_progress", "review", "completed", "cancelled"].map(getTaskStatusBadgeStyle);
-    expect(styles.map((style) => style.variant)).toEqual(["neutral", "info", "violet", "success", "muted"]);
+    const styles = ["todo", "in_progress", "internal_review", "review", "completed", "cancelled"].map(getTaskStatusBadgeStyle);
+    expect(styles.map((style) => style.variant)).toEqual(["neutral", "info", "info", "violet", "success", "muted"]);
     expect(styles.map((style) => style.label)).not.toContain("in_progress");
   });
 
