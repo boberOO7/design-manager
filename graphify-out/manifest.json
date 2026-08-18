@@ -3115,8 +3115,8 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260818170000_project_stage_columns_and_internal_review.sql": {
-    "mtime": 1787067565.66489,
-    "ast_hash": "c1ddf92a66f11bcb38f1c5586b676c70",
+    "mtime": 1787068500.105636,
+    "ast_hash": "0cc8d68bf084dbd74682dc61101e1d09",
     "semantic_hash": ""
   }
 }

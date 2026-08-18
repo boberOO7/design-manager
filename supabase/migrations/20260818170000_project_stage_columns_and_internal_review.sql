@@ -1,6 +1,6 @@
-create or replace function private.are_distinct_text_array(values text[])
+create or replace function private.are_distinct_text_array(p_values text[])
 returns boolean language sql immutable set search_path = '' as $$
-  select cardinality(values) = (select count(distinct value) from unnest(values) as value);
+  select cardinality(p_values) = (select count(distinct item) from unnest(p_values) as entry(item));
 $$;
 revoke execute on function private.are_distinct_text_array(text[]) from public, anon, authenticated;
 
