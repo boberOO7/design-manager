@@ -26,6 +26,7 @@ function task(items: TaskChecklistItem[] = [item("first")]): ProjectTask {
     production_completion: 0,
     progress_weight: 1,
     project_id: "223e4567-e89b-12d3-a456-426614174000",
+    stage: "stage_1",
     status: "in_progress",
     title: "Task",
   };

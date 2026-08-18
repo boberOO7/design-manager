@@ -615,6 +615,7 @@ export type Database = {
           production_completion: number
           progress_weight: number
           project_id: string
+          stage: string
           start_date: string | null
           status: string
           title: string
@@ -633,6 +634,7 @@ export type Database = {
           production_completion?: number
           progress_weight?: number
           project_id: string
+          stage?: string
           start_date?: string | null
           status?: string
           title: string
@@ -651,6 +653,7 @@ export type Database = {
           production_completion?: number
           progress_weight?: number
           project_id?: string
+          stage?: string
           start_date?: string | null
           status?: string
           title?: string

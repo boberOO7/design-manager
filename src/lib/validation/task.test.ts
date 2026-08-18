@@ -8,6 +8,7 @@ const validTask = {
   description: "",
   assignee_id: "123e4567-e89b-12d3-a456-426614174000",
   priority: "normal",
+  stage: "stage_1",
   due_date: "",
   completed_area_m2: "",
 };
@@ -33,6 +34,11 @@ describe("task creation validation", () => {
       expect(taskCreationSchema.safeParse({ ...validTask, priority }).success).toBe(true);
     }
     expect(taskCreationSchema.safeParse({ ...validTask, priority: "medium" }).success).toBe(false);
+  });
+
+  it("accepts only one of the four persisted project stages", () => {
+    expect(taskCreationSchema.safeParse({ ...validTask, stage: "stage_4" }).success).toBe(true);
+    expect(taskCreationSchema.safeParse({ ...validTask, stage: "stage_5" }).success).toBe(false);
   });
 
   it("accepts optional positive task area and rejects zero or negative values", () => {
@@ -82,6 +88,7 @@ describe("task editing validation", () => {
     description: "  Confirm the final fixture schedule.  ",
     assignee_id: validTask.assignee_id,
     priority: "high",
+    stage: "stage_2",
     due_date: "2026-08-01",
     completed_area_m2: "70",
     progress_weight: "2.5",

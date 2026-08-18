@@ -10,8 +10,8 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/react";
-import { GripVertical, LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, GripVertical, LoaderCircle, Plus } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
@@ -37,6 +37,7 @@ import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
 const interactiveSelector = [
@@ -65,16 +66,18 @@ const pointerSensor = PointerSensor.configure({
 const keyboardSensor = KeyboardSensor.configure({ offset: 320 });
 const sensors = [pointerSensor, keyboardSensor];
 
-function getColumnDropId(columnId: BoardColumnId): string {
-  return `${COLUMN_DROP_ID_PREFIX}${columnId}`;
+function getColumnDropId(stage: TaskStage, columnId: BoardColumnId): string {
+  return `${COLUMN_DROP_ID_PREFIX}${stage}:${columnId}`;
 }
 
-function getColumnIdFromDropTarget(id: string | number | undefined): BoardColumnId | null {
+function getDropTarget(id: string | number | undefined): { stage: TaskStage; columnId: BoardColumnId } | null {
   if (id === undefined) return null;
   const value = String(id);
   if (!value.startsWith(COLUMN_DROP_ID_PREFIX)) return null;
-  const columnId = value.slice(COLUMN_DROP_ID_PREFIX.length);
-  return isBoardColumnId(columnId) ? columnId : null;
+  const [stage, columnId] = value.slice(COLUMN_DROP_ID_PREFIX.length).split(":");
+  return isTaskStage(stage) && isBoardColumnId(columnId)
+    ? { stage, columnId }
+    : null;
 }
 
 function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string; task: ProjectTask } {
@@ -218,6 +221,7 @@ function BoardColumn({
   isProjectReadOnly,
   label,
   status,
+  stage,
   onOpenTask,
   pendingTaskIds,
   shouldSuppressOpen,
@@ -230,6 +234,7 @@ function BoardColumn({
   isProjectReadOnly: boolean;
   label: string;
   status: WritableTaskStatus;
+  stage: TaskStage;
   onOpenTask: (taskId: string) => void;
   pendingTaskIds: Set<string>;
   shouldSuppressOpen: () => boolean;
@@ -237,11 +242,12 @@ function BoardColumn({
 }) {
   const t = useTranslations("Tasks");
   const acceptsActiveTask = activeTask !== null
+    && activeTask.stage === stage
     && getTaskStatusForDrop(activeTask.status, columnId) !== null;
   const { isDropTarget, ref } = useDroppable({
-    id: getColumnDropId(columnId),
+    id: getColumnDropId(stage, columnId),
     disabled: activeTask !== null && !acceptsActiveTask,
-    data: { columnId },
+    data: { columnId, stage },
     type: "task-column",
     accept: "project-task",
   });
@@ -307,11 +313,15 @@ export function ProjectTaskBoard({
 }) {
   const t = useTranslations("Tasks");
   const statusLabels = useTranslations("Status");
+  const stageLabels = useTranslations("TaskStages");
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
+  const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
+  const [stageLayoutReady, setStageLayoutReady] = useState(false);
+  const [requestedCreationStage, setRequestedCreationStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
@@ -320,6 +330,34 @@ export function ProjectTaskBoard({
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
   const onTasksChangeRef = useRef(onTasksChange);
+  const stageLayoutKey = `project-task-board:stages:${projectId}:${currentUserId}`;
+
+  useLayoutEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(stageLayoutKey);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (typeof parsed === "object" && parsed !== null) {
+          window.queueMicrotask(() => {
+            setExpandedStages((defaults) => TASK_STAGES.reduce<Record<TaskStage, boolean>>((next, stage) => ({
+              ...next,
+              [stage]: typeof (parsed as Record<string, unknown>)[stage] === "boolean"
+                ? (parsed as Record<string, boolean>)[stage]
+                : defaults[stage],
+            }), {} as Record<TaskStage, boolean>));
+          });
+        }
+      }
+    } catch {
+      // A malformed preference is safely replaced by the default layout.
+    }
+    window.queueMicrotask(() => setStageLayoutReady(true));
+  }, [stageLayoutKey]);
+
+  useEffect(() => {
+    if (!stageLayoutReady) return;
+    window.localStorage.setItem(stageLayoutKey, JSON.stringify(expandedStages));
+  }, [expandedStages, stageLayoutKey, stageLayoutReady]);
 
   useEffect(() => {
     onTasksChangeRef.current = onTasksChange;
@@ -346,7 +384,10 @@ export function ProjectTaskBoard({
     });
   }, [tasks]);
 
-  const groups = groupTasksByBoardColumn(localTasks);
+  const groupsByStage = TASK_STAGES.reduce<Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>>((groups, stage) => ({
+    ...groups,
+    [stage]: groupTasksByBoardColumn(localTasks.filter((task) => task.stage === stage)),
+  }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -428,14 +469,15 @@ export function ProjectTaskBoard({
 
   function handleDragEnd(event: DragEndEvent) {
     const taskId = event.operation.source?.id;
-    const targetColumnId = getColumnIdFromDropTarget(event.operation.target?.id);
+    const target = getDropTarget(event.operation.target?.id);
     setActiveTaskId(null);
     window.setTimeout(() => { suppressCardOpenRef.current = false; }, 0);
-    if (event.canceled || taskId === undefined || !targetColumnId) return;
+    if (event.canceled || taskId === undefined || !target) return;
 
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
     if (!task || pendingTaskIdsRef.current.has(task.id)) return;
-    const targetStatus = getTaskStatusForDrop(task.status, targetColumnId);
+    if (task.stage !== target.stage) return;
+    const targetStatus = getTaskStatusForDrop(task.status, target.columnId);
     if (!targetStatus) return;
     const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
     if (!targetLabel) return;
@@ -476,28 +518,71 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        {canCreate ? <AddTaskDialog members={members} projectId={projectId} templates={templates} /> : null}
+        {canCreate ? <AddTaskDialog members={members} onRequestedStageHandled={() => setRequestedCreationStage(null)} projectId={projectId} requestedStage={requestedCreationStage} templates={templates} /> : null}
       </div>
       {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {BOARD_COLUMNS.map((column) => (
-            <BoardColumn
-              key={column.id}
-              activeTask={activeTask}
-              canManageTasks={canManageTasks}
-              columnId={column.id}
-              currentUserId={currentUserId}
-              isProjectReadOnly={isProjectReadOnly}
-              label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
-              onOpenTask={setSelectedTaskId}
-              pendingTaskIds={pendingTaskIds}
-              shouldSuppressOpen={() => suppressCardOpenRef.current}
-              status={column.status}
-              tasks={groups[column.id]}
-            />
-          ))}
+        <div className="space-y-3">
+          {TASK_STAGES.map((stage) => {
+            const isExpanded = expandedStages[stage];
+            const taskCount = groupsByStage[stage].todo.length
+              + groupsByStage[stage]["in-progress"].length
+              + groupsByStage[stage]["client-review"].length
+              + groupsByStage[stage].done.length;
+            return (
+              <section key={stage} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
+                <div className="flex min-h-12 items-center gap-2 rounded-xl px-4">
+                  <button
+                    type="button"
+                    aria-controls={`project-stage-${stage}`}
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }))}
+                    className="min-w-0 flex-1 py-3 text-left font-semibold text-[var(--ui-text)] outline-none transition-colors hover:text-[var(--ui-text-secondary)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-inset"
+                  >
+                    {stageLabels(stage)}
+                  </button>
+                  <span className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
+                  {canCreate ? <button type="button" onClick={() => setRequestedCreationStage(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
+                    <Plus className="size-4" aria-hidden="true" />
+                  </button> : null}
+                  <button
+                    type="button"
+                    aria-controls={`project-stage-${stage}`}
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }))}
+                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
+                    aria-label={stageLabels(stage)}
+                  >
+                    <ChevronDown className={cn("size-4 transition-transform duration-200", isExpanded && "rotate-180")} aria-hidden="true" />
+                  </button>
+                </div>
+                <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                  <div className="min-h-0 overflow-hidden">
+                    <div className="grid grid-cols-1 gap-4 border-t border-[var(--ui-border-subtle)] p-3 md:grid-cols-2 xl:grid-cols-4">
+                      {BOARD_COLUMNS.map((column) => (
+                        <BoardColumn
+                          key={column.id}
+                          activeTask={activeTask}
+                          canManageTasks={canManageTasks}
+                          columnId={column.id}
+                          currentUserId={currentUserId}
+                          isProjectReadOnly={isProjectReadOnly}
+                          label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
+                          onOpenTask={setSelectedTaskId}
+                          pendingTaskIds={pendingTaskIds}
+                          shouldSuppressOpen={() => suppressCardOpenRef.current}
+                          stage={stage}
+                          status={column.status}
+                          tasks={groupsByStage[stage][column.id]}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            );
+          })}
         </div>
         <DragOverlay dropAnimation={null}>
           {() => activeTask ? <TaskCardContent task={activeTask} isOverlay showGrip /> : null}

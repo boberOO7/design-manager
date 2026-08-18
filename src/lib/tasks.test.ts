@@ -28,6 +28,7 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     description: null,
     status: "todo",
     priority: "normal",
+    stage: "stage_1",
     assignee_id: "123e4567-e89b-12d3-a456-426614174002",
     due_date: null,
     completed_at: null,

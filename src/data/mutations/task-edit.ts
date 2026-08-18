@@ -57,7 +57,7 @@ export async function updateTaskDetailsMutation(
     }
   }
 
-  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "progress_weight" | "status"> = {
+  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "progress_weight" | "stage" | "status"> = {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     assignee_id: parsed.data.assignee_id,
@@ -65,6 +65,7 @@ export async function updateTaskDetailsMutation(
     due_date: parsed.data.due_date ?? null,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
     progress_weight: parsed.data.progress_weight,
+    stage: parsed.data.stage,
     status: parsed.data.status,
   };
   const supabase = await createClient();

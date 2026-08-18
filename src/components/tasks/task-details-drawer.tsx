@@ -18,6 +18,7 @@ import { calculateTaskProgress } from "@/lib/project-progress";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
+import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -43,6 +44,7 @@ function makeFormValues(task: ProjectTask) {
     description: task.description ?? "",
     assignee_id: task.assignee_id,
     priority: task.priority,
+    stage: task.stage,
     due_date: task.due_date ?? "",
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
     progress_weight: task.progress_weight.toString(),
@@ -80,6 +82,7 @@ export function TaskDetailsDrawer({
   const templatesT = useTranslations("Templates");
   const statusT = useTranslations("Status");
   const priorityT = useTranslations("Priority");
+  const stagesT = useTranslations("TaskStages");
   const validation = useTranslations("Validation");
   const roles = useTranslations("Roles");
   const roleLabel = (value: string) => { const roleKey = getCanonicalRoleTranslationKey(value); return roleKey ? roles(roleKey) : value; };
@@ -362,6 +365,11 @@ export function TaskDetailsDrawer({
                       {TASK_PRIORITY_VALUES.map((priority) => taskPrioritySelectItem(priority, priorityT(priority)))}
                     </Select>
                   </FormField>
+                  <FormField label={t("stage")}>
+                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues({ ...values, stage }); }}>
+                      {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
+                    </Select>
+                  </FormField>
                   <FormField label={t("dueDate")} optional error={fieldErrors.due_date ? validation("correctFields") : undefined}>
                     <DatePicker value={values.due_date} disabled={isSaving} locale={locale} invalid={Boolean(fieldErrors.due_date)} onValueChange={(due_date) => setValues({ ...values, due_date })} />
                   </FormField>
@@ -424,6 +432,7 @@ export function TaskDetailsDrawer({
                 <dl className="mt-4 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
                   <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.assignee?.full_name ?? t("unassigned")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{statusLabel(task.status)}</dd></div>
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("dueDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.due_date ? formatDate(task.due_date, locale) : t("noDueDate")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.creator?.full_name ?? t("unknown")}</dd></div>

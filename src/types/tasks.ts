@@ -1,4 +1,5 @@
 import type { Database } from "@/types/database.types";
+import type { TaskStage } from "@/lib/task-stages";
 
 export type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
@@ -17,6 +18,7 @@ export const TASK_PRIORITY_VALUES = ["low", "normal", "high", "urgent"] as const
 
 export type TaskStatus = TaskRow["status"] & (typeof TASK_STATUS_VALUES)[number];
 export type TaskPriority = TaskRow["priority"] & (typeof TASK_PRIORITY_VALUES)[number];
+export type { TaskStage } from "@/lib/task-stages";
 
 type ProfileSummary = {
   avatar_url?: string | null;
@@ -41,6 +43,7 @@ export type ProjectTask = Pick<
   | "production_completion"
   | "progress_weight"
 > & {
+  stage: TaskStage;
   completed_area_m2: TaskRow["completed_area_m2"];
   checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;

@@ -12,21 +12,29 @@ import { taskPrioritySelectItem } from "@/components/tasks/task-select-presentat
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
+import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
 export function AddTaskDialog({
   members,
+  defaultStage = "stage_1",
+  requestedStage,
+  onRequestedStageHandled,
   projectId,
   templates,
 }: {
   members: AssignableProjectMember[];
+  defaultStage?: TaskStage;
+  requestedStage?: TaskStage | null;
+  onRequestedStageHandled?: () => void;
   projectId: string;
   templates: StudioChecklistTemplate[];
 }) {
   const t = useTranslations("Tasks");
   const locale = useLocale();
   const priority = useTranslations("Priority");
+  const stages = useTranslations("TaskStages");
   const checklist = useTranslations("Checklists");
   const templatesT = useTranslations("Templates");
   const validation = useTranslations("Validation");
@@ -40,6 +48,7 @@ export function AddTaskDialog({
   const [templateId, setTemplateId] = useState("");
   const [checklistItems, setChecklistItems] = useState<ChecklistTemplateStage[]>([]);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<TaskStage>(defaultStage);
   const selectedTemplate = templates.find((template) => template.id === templateId);
   const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(selectedTemplate, checklistItems);
   const totalWeight = getChecklistTemplateWeight({ stages: checklistItems });
@@ -52,9 +61,24 @@ export function AddTaskDialog({
     if (state.success || state.formError || state.fieldErrors) hasSubmittedRef.current = false;
   }, [state]);
 
+  function openDialog(stage = defaultStage) {
+    formRef.current?.reset();
+    setSelectedStage(stage);
+    setTemplateId("");
+    setChecklistItems([]);
+    setIsCustomizerOpen(false);
+    dialogRef.current?.showModal();
+  }
+
+  useEffect(() => {
+    if (!requestedStage) return;
+    openDialog(requestedStage);
+    onRequestedStageHandled?.();
+  }, [onRequestedStageHandled, requestedStage]);
+
   return (
     <>
-      <Button size="sm" onClick={() => { setTemplateId(""); setChecklistItems([]); setIsCustomizerOpen(false); dialogRef.current?.showModal(); }}>{t("addTask")}</Button>
+      <Button size="sm" onClick={() => openDialog()}>{t("addTask")}</Button>
       <dialog
         ref={dialogRef}
         aria-labelledby="add-task-title"
@@ -87,6 +111,11 @@ export function AddTaskDialog({
               </Select>
             </FormField>
           </div>
+          <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
+            <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) setSelectedStage(stage); }}>
+              {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
+            </Select>
+          </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("dueDate")} optional error={state.fieldErrors?.due_date ? validation("correctFields") : undefined}>
               <DatePicker name="due_date" disabled={isPending} locale={locale} invalid={Boolean(state.fieldErrors?.due_date)} />

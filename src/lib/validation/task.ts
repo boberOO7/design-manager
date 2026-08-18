@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
+import { TASK_STAGES } from "@/lib/task-stages";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const optionalDateSchema = z.preprocess(
@@ -39,6 +40,7 @@ export const taskCreationSchema = z.object({
   ),
   assignee_id: optionalAssigneeSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
+  stage: z.enum(TASK_STAGES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
   checklist_items: checklistTemplateItemsSchema,
@@ -64,6 +66,7 @@ export const taskEditSchema = z.object({
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: progressWeightSchema,
+  stage: z.enum(TASK_STAGES),
   status: z.enum(["todo", "in_progress", "review", "completed"]),
 }).strict();
 
@@ -111,6 +114,7 @@ export function getTaskCreationInput(formData: FormData) {
     description: getFormString(formData, "description"),
     assignee_id: getFormString(formData, "assignee_id"),
     priority: getFormString(formData, "priority"),
+    stage: getFormString(formData, "stage"),
     due_date: getFormString(formData, "due_date"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
     checklist_items: getFormString(formData, "checklist_items"),
