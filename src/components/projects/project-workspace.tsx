@@ -37,7 +37,7 @@ export function ProjectWorkspace({
     setContextTasks((currentTasks) => getProjectTaskSnapshotUpdate(currentTasks, nextTasks));
   }, []);
   return <>
-    <ProjectContextBand archiveAction={archiveAction} canManage={canManage} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} updateAction={updateAction} />
+    <ProjectContextBand archiveAction={archiveAction} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} project={project} restoreAction={restoreAction} tasks={contextTasks} updateAction={updateAction} />
     {navigation}
     <ProjectTaskBoard canCreate={canCreate && status !== "completed"} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly || status === "completed"} members={members} projectId={project.id} projectStatus={status} stageColumns={stageColumns} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
   </>;

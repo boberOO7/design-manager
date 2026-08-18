@@ -260,8 +260,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/page.tsx": {
-    "mtime": 1787066714.419389,
-    "ast_hash": "af38531d871c662a3996413cc561f4e0",
+    "mtime": 1787073625.3744678,
+    "ast_hash": "0b81ed308cb164ca1e244c6653e7f40a",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1786656650.0206554,
-    "ast_hash": "a4026adcf80d6b983dfaa41b8fbd0368",
+    "mtime": 1787075062.6676714,
+    "ast_hash": "7e6761e42ad8d49c914a04ec7710eee1",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
@@ -490,8 +490,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-workspace.tsx": {
-    "mtime": 1787066714.563396,
-    "ast_hash": "fad48b95f236a4770361944f680040a8",
+    "mtime": 1787073625.2264652,
+    "ast_hash": "db35ac367222cda1ac2cda16ce0d8b05",
     "semantic_hash": ""
   },
   "src/components/projects/remove-project-member-button.tsx": {
