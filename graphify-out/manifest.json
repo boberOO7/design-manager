@@ -860,13 +860,13 @@
     "semantic_hash": ""
   },
   "src/lib/tasks.test.ts": {
-    "mtime": 1787066894.4670765,
-    "ast_hash": "54729c3713007f218d84423c0ba09e49",
+    "mtime": 1787080324.5344284,
+    "ast_hash": "4aa03e7190da96c21037471989bd4785",
     "semantic_hash": ""
   },
   "src/lib/tasks.ts": {
-    "mtime": 1787067050.3380501,
-    "ast_hash": "4c995e5ca9840fbfd7d1dc4b608ee8c7",
+    "mtime": 1787080360.3036923,
+    "ast_hash": "50a824a95c251fb063ddb73fe72ffb25",
     "semantic_hash": ""
   },
   "src/lib/time-off-request-client.test.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1785965831.6598003,
-    "ast_hash": "2d7feadae162b0c70b4b5dafc7a1b27c",
+    "mtime": 1787080324.7184365,
+    "ast_hash": "2453a15506ba32ec66f3405ff95b8b4c",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -3110,8 +3110,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/project-stage-columns.ts": {
-    "mtime": 1787067050.4980574,
-    "ast_hash": "4639dcd94135b24f4440fdba8c5c249b",
+    "mtime": 1787080324.3024182,
+    "ast_hash": "121712539c908be00991bd75e87ac933",
     "semantic_hash": ""
   },
   "supabase/migrations/20260818170000_project_stage_columns_and_internal_review.sql": {
@@ -3122,6 +3122,11 @@
   "supabase/migrations/20260818171500_fix_project_stage_columns_check_privileges.sql": {
     "mtime": 1787069057.8605938,
     "ast_hash": "c90949cfa6a89c20dd950e00d8956727",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818173000_default_all_project_stage_columns.sql": {
+    "mtime": 1787080324.870443,
+    "ast_hash": "9a9a9380b54d1f23dff37d057a8b5131",
     "semantic_hash": ""
   }
 }

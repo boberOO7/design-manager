@@ -3,7 +3,8 @@ import type { MyTask, ProjectTask, TaskPriority, TaskStatus } from "../types/tas
 export type BoardColumnId = "todo" | "in-progress" | "internal-review" | "client-review" | "done";
 export type MyTaskGroupId = "overdue" | "today" | "upcoming" | "completed";
 export type WritableTaskStatus = TaskStatus & ("todo" | "in_progress" | "internal_review" | "review" | "completed");
-export const WRITABLE_TASK_STATUS_VALUES = ["todo", "in_progress", "internal_review", "review", "completed"] as const;
+export const DEFAULT_STAGE_COLUMN_STATUSES = ["todo", "in_progress", "internal_review", "review", "completed"] as const satisfies readonly WritableTaskStatus[];
+export const WRITABLE_TASK_STATUS_VALUES = DEFAULT_STAGE_COLUMN_STATUSES;
 
 export function isWritableTaskStatus(status: string): status is (typeof WRITABLE_TASK_STATUS_VALUES)[number] {
   return status === "todo"

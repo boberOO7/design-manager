@@ -189,8 +189,8 @@
 
 - The project Board is the primary project workspace, with Details and Team as
   compact secondary views on the existing project route.
-- Project tasks use a four-column workflow: To do, In progress, Client review,
-  and Done. The existing `review` database status is the Client review column;
+- Project tasks use a five-column workflow: To do, In progress, Internal review,
+  Client review, and Done. The existing `review` database status is the Client review column;
   cancelled tasks remain visible in Done without changing stored status. Task
   cancellation is not an exposed mutation for either administrators or assigned
   employees; this milestone does not add a cancellation workflow.

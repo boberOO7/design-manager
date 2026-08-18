@@ -17,6 +17,7 @@ import {
   mergeProjectTask,
   shouldOpenTaskDrawer,
   BOARD_COLUMNS,
+  DEFAULT_STAGE_COLUMN_STATUSES,
 } from "./tasks";
 import type { MyTask, ProjectTask } from "../types/tasks";
 
@@ -56,6 +57,7 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
 describe("task Board status mapping", () => {
   it("renders the five-status workflow in operational order", () => {
     expect(BOARD_COLUMNS.map((column) => [column.label, column.status])).toEqual([["To do", "todo"], ["In progress", "in_progress"], ["Internal review", "internal_review"], ["Client review", "review"], ["Done", "completed"]]);
+    expect(DEFAULT_STAGE_COLUMN_STATUSES).toEqual(BOARD_COLUMNS.map((column) => column.status));
   });
   it("maps Board columns to the five writable database statuses", () => {
     expect(getWritableStatusForBoardColumn("todo")).toBe("todo");
