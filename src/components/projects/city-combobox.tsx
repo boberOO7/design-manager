@@ -138,7 +138,7 @@ export function CityCombobox({ className, countryCode, describedBy, invalid, nam
           role="combobox"
           value={value}
         />
-        {status === "loading" ? <LoaderCircle aria-hidden="true" className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-[var(--ui-text-muted)] motion-reduce:animate-none" /> : null}
+        {status === "loading" ? <LoaderCircle aria-hidden="true" className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-[var(--ui-text-muted)]" /> : null}
       </div>
     </PopoverPrimitive.Anchor>
     <PopoverPrimitive.Portal container={portalContainer}>

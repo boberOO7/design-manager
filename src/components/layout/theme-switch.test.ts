@@ -23,7 +23,8 @@ describe("theme switch contract", () => {
     ]);
     expect(styles).toContain("transition: transform 200ms ease-out, opacity 200ms ease-out");
     expect(styles).toContain(".theme-switch__icon");
-    expect(styles).toContain("transition: none");
+    expect(styles).toContain(':root[data-motion="off"] .theme-switch__icon');
+    expect(styles).toContain(':root[data-motion="system"] .theme-switch__icon');
     expect(source).toContain("size-11");
     expect(shellControl).toContain("focus-visible:ring-2");
   });
@@ -35,6 +36,8 @@ describe("theme switch contract", () => {
     ]);
     expect(layout).toContain("suppressHydrationWarning");
     expect(layout).toContain("themeBootstrapScript");
+    expect(layout).toContain("motionBootstrapScript");
+    expect(layout).toContain('data-motion="on"');
     expect(layout).toContain('colorScheme: "light dark"');
     expect(styles).toContain(':root[data-theme="dark"]');
     expect(styles).toContain("color-scheme: dark");

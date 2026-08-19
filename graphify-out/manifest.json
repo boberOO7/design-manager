@@ -375,8 +375,8 @@
     "semantic_hash": ""
   },
   "src/app/layout.tsx": {
-    "mtime": 1785752123.2580428,
-    "ast_hash": "f4e568027fc00d7c7445f0c14dd64a3b",
+    "mtime": 1787145105.8378503,
+    "ast_hash": "0e4519b706ec6f87807917fb6bd5ef3d",
     "semantic_hash": ""
   },
   "src/app/page.tsx": {
@@ -430,8 +430,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-sidebar.tsx": {
-    "mtime": 1787061285.5136473,
-    "ast_hash": "e21d6c1d8c93d06f6eca7cb040edc837",
+    "mtime": 1787144008.3527298,
+    "ast_hash": "a0610954a7aa9f7d1caac033eccf30be",
     "semantic_hash": ""
   },
   "src/components/layout/mobile-navigation.tsx": {
@@ -1705,8 +1705,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/theme-switch.test.ts": {
-    "mtime": 1785752449.34595,
-    "ast_hash": "5c8f86d9b30d1800d9492b8bfc790011",
+    "mtime": 1787145106.1298664,
+    "ast_hash": "b4a8a4fa027139df34905b61a22c91f2",
     "semantic_hash": ""
   },
   "src/components/layout/theme-switch.tsx": {
@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-shell.test.ts": {
-    "mtime": 1787061285.6416538,
-    "ast_hash": "4bfa4660a42af191a35c24bb9600144e",
+    "mtime": 1787144008.506872,
+    "ast_hash": "5268c7e2d114a0e3b8f307b863fec1c9",
     "semantic_hash": ""
   },
   "src/components/layout/shell-control.tsx": {
@@ -1850,8 +1850,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/city-combobox.tsx": {
-    "mtime": 1786569627.392589,
-    "ast_hash": "95ea6095fe5e1cddf69012871a2313fe",
+    "mtime": 1787145144.279292,
+    "ast_hash": "b39d23b526e275ee0b53dfd220445289",
     "semantic_hash": ""
   },
   "src/components/projects/project-creation-modal.tsx": {
@@ -3152,6 +3152,16 @@
   "supabase/migrations/20260818193000_add_admin_task_deletion.sql": {
     "mtime": 1787141606.7981672,
     "ast_hash": "310615d448074440e935e69a9b406233",
+    "semantic_hash": ""
+  },
+  "src/lib/motion.test.ts": {
+    "mtime": 1787145105.7058432,
+    "ast_hash": "19b4d451b782e15d570e14fc400dc0bf",
+    "semantic_hash": ""
+  },
+  "src/lib/motion.ts": {
+    "mtime": 1787145105.5818365,
+    "ast_hash": "78a949f1fb563a4056bb232d64e2244d",
     "semantic_hash": ""
   }
 }

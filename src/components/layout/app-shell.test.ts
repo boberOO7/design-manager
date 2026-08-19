@@ -26,10 +26,11 @@ describe("application shell cleanup", () => {
       readFile(dashboardPath, "utf8"),
     ]);
     expect(sidebar).not.toContain("PanelLeft");
-    expect(sidebar).toContain("w-72");
-    expect(sidebar).toContain("w-20");
+    expect(sidebar).toContain('isExpanded ? "18rem" : "5rem"');
     expect(sidebar).toContain("--sidebar-width");
+    expect(sidebar).toContain("transition-[width]");
     expect(sidebar).toContain("duration-[320ms]");
+    expect(sidebar).not.toContain("motion-reduce:transition-none");
     expect(sidebar).toContain("left-[23px]");
     expect(sidebar).toContain("onPointerEnter");
     expect(sidebar).toContain("onPointerLeave");
