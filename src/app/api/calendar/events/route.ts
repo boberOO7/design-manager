@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, requiresRefresh: true }, { status: 201 });
   }
 
-  const { data: event, error } = await supabase.from("calendar_events").insert(payload);
+  const { data: event, error } = await supabase.from("calendar_events").insert(payload).select("id").single();
   if (error) {
     console.error("calendar_events insert and select error", {
       code: error.code,
