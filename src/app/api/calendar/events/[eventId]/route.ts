@@ -17,6 +17,8 @@ export async function PATCH(request: Request, context: Context) {
 
   const supabase = await createClient();
   const value = parsed.data;
+  const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id").eq("id", eventId).eq("studio_id", admin.studio_id).is("cancelled_at", null).maybeSingle();
+  if (existingEventError || !existingEvent) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
   const { data, error } = await supabase.from("calendar_events").update({
     title: value.title, event_type: value.eventType, project_id: value.projectId,
     starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay,
@@ -24,20 +26,20 @@ export async function PATCH(request: Request, context: Context) {
   }).eq("id", eventId).eq("studio_id", admin.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 
-  const attendeeIds = [...new Set(value.attendeeIds)];
-  const { data: existingAttendees, error: attendeesReadError } = await supabase.from("calendar_event_attendees").select("user_id").eq("event_id", eventId);
-  if (attendeesReadError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(attendeesReadError) }, { status: 400 });
-  const existingIds = new Set((existingAttendees ?? []).map((attendee) => attendee.user_id));
-  const nextIds = new Set(attendeeIds);
+  const inviteeIds = [...new Set(value.attendeeIds)].filter((userId) => userId !== existingEvent.organizer_id);
+  const { data: existingInvites, error: invitesReadError } = await supabase.from("calendar_event_invites").select("user_id").eq("event_id", eventId);
+  if (invitesReadError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(invitesReadError) }, { status: 400 });
+  const existingIds = new Set((existingInvites ?? []).map((invite) => invite.user_id));
+  const nextIds = new Set(inviteeIds);
   const removedIds = [...existingIds].filter((id) => !nextIds.has(id));
-  const addedIds = attendeeIds.filter((id) => !existingIds.has(id));
+  const addedIds = inviteeIds.filter((id) => !existingIds.has(id));
   if (removedIds.length > 0) {
-    const { error: deleteError } = await supabase.from("calendar_event_attendees").delete().eq("event_id", eventId).in("user_id", removedIds);
+    const { error: deleteError } = await supabase.from("calendar_event_invites").delete().eq("event_id", eventId).in("user_id", removedIds);
     if (deleteError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(deleteError) }, { status: 400 });
   }
   if (addedIds.length > 0) {
-    const { error: attendeeError } = await supabase.from("calendar_event_attendees").insert(addedIds.map((userId) => ({ event_id: eventId, user_id: userId })));
-    if (attendeeError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(attendeeError) }, { status: 400 });
+    const { error: inviteError } = await supabase.from("calendar_event_invites").insert(addedIds.map((userId) => ({ event_id: eventId, user_id: userId, invited_by: admin.authenticatedUserId })));
+    if (inviteError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(inviteError) }, { status: 400 });
   }
 
   const item = await getNormalizedCalendarEvent(eventId, admin.authenticatedUserId);

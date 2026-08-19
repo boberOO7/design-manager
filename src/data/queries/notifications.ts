@@ -6,7 +6,7 @@ import type { Database } from "@/types/database.types";
 
 type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 
-export type NotificationItem = Pick<NotificationRow, "id" | "notification_type" | "title" | "body" | "href" | "read_at" | "created_at"> & {
+export type NotificationItem = Pick<NotificationRow, "id" | "notification_type" | "title" | "body" | "href" | "metadata" | "read_at" | "created_at"> & {
   actorName: string | null;
 };
 
@@ -17,7 +17,7 @@ export async function getNotificationData(): Promise<NotificationData> {
   if (!membership) return { items: [], unreadCount: 0 };
   const supabase = await createClient();
   const [itemsResult, unreadResult] = await Promise.all([
-    supabase.from("notifications").select("id, notification_type, title, body, href, read_at, created_at, actor:profiles!notifications_actor_id_fkey(full_name)").eq("recipient_id", membership.authenticatedUserId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("notifications").select("id, notification_type, title, body, href, metadata, read_at, created_at, actor:profiles!notifications_actor_id_fkey(full_name)").eq("recipient_id", membership.authenticatedUserId).order("created_at", { ascending: false }).limit(30),
     supabase.from("notifications").select("id", { count: "exact", head: true }).eq("recipient_id", membership.authenticatedUserId).is("read_at", null),
   ]);
   if (itemsResult.error || unreadResult.error) {

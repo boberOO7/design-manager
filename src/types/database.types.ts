@@ -23,27 +23,38 @@ export type Database = {
           { foreignKeyName: "calendar_event_attendees_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
         ]
       }
+      calendar_event_invites: {
+        Row: { created_at: string; event_id: string; id: string; invited_by: string; responded_at: string | null; status: Database["public"]["Enums"]["calendar_event_invitation_status"]; updated_at: string; user_id: string }
+        Insert: { created_at?: string; event_id: string; id?: string; invited_by: string; responded_at?: string | null; status?: Database["public"]["Enums"]["calendar_event_invitation_status"]; updated_at?: string; user_id: string }
+        Update: { created_at?: string; event_id?: string; id?: string; invited_by?: string; responded_at?: string | null; status?: Database["public"]["Enums"]["calendar_event_invitation_status"]; updated_at?: string; user_id?: string }
+        Relationships: [
+          { foreignKeyName: "calendar_event_invites_event_id_fkey"; columns: ["event_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_event_invites_invited_by_fkey"; columns: ["invited_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_event_invites_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
           description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id: string; location: string | null; meeting_url: string | null; project_id: string | null;
+          id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null;
           starts_at: string; studio_id: string; title: string; updated_at: string
         }
         Insert: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
           description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; project_id?: string | null;
+          id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null;
           starts_at: string; studio_id: string; title: string; updated_at?: string
         }
         Update: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
           description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; project_id?: string | null;
+          id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null;
           starts_at?: string; studio_id?: string; title?: string; updated_at?: string
         }
         Relationships: [
           { foreignKeyName: "calendar_events_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_events_organizer_id_fkey"; columns: ["organizer_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
@@ -864,7 +875,8 @@ export type Database = {
       }
     }
     Enums: {
-      calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "other"
+      calendar_event_invitation_status: "pending" | "accepted" | "declined"
+      calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "business_trip" | "other"
       notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_updated" | "calendar_event_cancelled"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
       time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
@@ -995,7 +1007,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      calendar_event_type: ["meeting", "client_presentation", "site_visit", "internal_review", "other"],
+      calendar_event_invitation_status: ["pending", "accepted", "declined"],
+      calendar_event_type: ["meeting", "client_presentation", "site_visit", "internal_review", "business_trip", "other"],
       notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_updated", "calendar_event_cancelled"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
       time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],

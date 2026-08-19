@@ -11,12 +11,12 @@ describe("Calendar event form localization contract", () => {
     expect(source).toContain('item ? t("editEventTitle") : t("addEventTitle")');
     expect(source).toContain('CALENDAR_EVENT_TYPES.map((type)');
     expect(source).toContain('t(eventTypeKey[type])');
-    expect(source).toContain('roles(roleKey)');
+    expect(source).toContain('<InviteePicker');
     expect(source).not.toContain('title={item ? "Edit event" : "Add event"}');
   });
 
   it("keeps English and Ukrainian event-form keys in parity", () => {
-    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "attendees", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed"] as const;
+    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed"] as const;
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();

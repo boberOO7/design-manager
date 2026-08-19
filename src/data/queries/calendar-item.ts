@@ -3,24 +3,24 @@ import "server-only";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { instantToDateOnly, normalizePrivateTimeOff } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
-import type { CalendarItem, CalendarPerson, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
+import type { CalendarItem, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
 export async function getNormalizedCalendarEvent(eventId: string, currentUserId: string): Promise<Extract<CalendarItem, { source: "calendar_event" }> | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, created_by, project:projects!calendar_events_project_id_fkey(id, name), attendees:calendar_event_attendees(user_id, profile:profiles!calendar_event_attendees_user_id_fkey(id, full_name, job_title))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("id", eventId)
     .is("cancelled_at", null)
     .maybeSingle();
   if (error || !data) return null;
-  const attendees: CalendarPerson[] = data.attendees.map((attendee) => ({ ...attendee.profile, projectIds: [] }));
+  const invitees = data.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
   return {
     source: "calendar_event", key: `calendar_event:${data.id}`, id: data.id, title: data.title,
     startDate: instantToDateOnly(data.starts_at), endDate: data.all_day ? getInclusiveAllDayEndDate(data.ends_at) : instantToDateOnly(data.ends_at), allDay: data.all_day,
-    projectId: data.project_id, personIds: [...new Set([...attendees.map((person) => person.id), data.created_by, ...(data.project_id === null ? [currentUserId] : [])])],
+    projectId: data.project_id, personIds: [...new Set([...invitees.map((person) => person.id), data.organizer_id, ...(data.project_id === null ? [currentUserId] : [])])],
     eventType: data.event_type, startsAt: data.starts_at, endsAt: data.ends_at, description: data.description,
-    location: data.location, meetingUrl: data.meeting_url, project: data.project, attendees,
+    location: data.location, meetingUrl: data.meeting_url, project: data.project, organizer: { ...data.organizer, projectIds: [] }, invitees,
   };
 }
 

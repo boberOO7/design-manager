@@ -89,12 +89,12 @@ export async function POST(request: Request) {
   }
   if (error || !event) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 
-  const attendeeIds = [...new Set(value.attendeeIds)];
-  if (attendeeIds.length > 0) {
-    const { error: attendeeError } = await supabase.from("calendar_event_attendees").insert(attendeeIds.map((userId) => ({ event_id: event.id, user_id: userId })));
-    if (attendeeError) {
+  const inviteeIds = [...new Set(value.attendeeIds)].filter((userId) => userId !== authenticatedUser.id);
+  if (inviteeIds.length > 0) {
+    const { error: inviteError } = await supabase.from("calendar_event_invites").insert(inviteeIds.map((userId) => ({ event_id: event.id, user_id: userId, invited_by: authenticatedUser.id })));
+    if (inviteError) {
       await supabase.from("calendar_events").update({ cancelled_at: new Date().toISOString() }).eq("id", event.id);
-      return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(attendeeError) }, { status: 400 });
+      return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(inviteError) }, { status: 400 });
     }
   }
 

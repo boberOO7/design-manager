@@ -53,7 +53,7 @@ export function createCalendarEventFormValues(
     endDate: item?.allDay ? item.endDate : end.date,
     startTime: start.time,
     endTime: end.time,
-    attendeeIds: item?.attendees.map((person) => person.id) ?? [],
+    attendeeIds: item?.invitees.map((person) => person.id) ?? [],
     location: item?.location ?? "",
     meetingUrl: item?.meetingUrl ?? "",
     description: item?.description ?? "",

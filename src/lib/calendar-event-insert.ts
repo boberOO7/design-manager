@@ -19,6 +19,7 @@ export type CalendarEventInsertPayload = {
   location: string | null;
   meeting_url: string | null;
   created_by: string;
+  organizer_id: string;
 };
 
 export function verifyCalendarEventAdminMembership(
@@ -58,5 +59,6 @@ export function createCalendarEventInsertPayload(
     location: input.location,
     meeting_url: input.meetingUrl,
     created_by: authenticatedUserId,
+    organizer_id: authenticatedUserId,
   };
 }

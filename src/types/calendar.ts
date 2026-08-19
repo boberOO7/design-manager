@@ -1,16 +1,19 @@
 import type { Database } from "@/types/database.types";
 
-export const CALENDAR_EVENT_TYPES = ["meeting", "client_presentation", "site_visit", "internal_review", "other"] as const;
+export const CALENDAR_EVENT_TYPES = ["meeting", "client_presentation", "site_visit", "internal_review", "business_trip", "other"] as const;
+export const CALENDAR_EVENT_INVITATION_STATUSES = ["pending", "accepted", "declined"] as const;
 export const TIME_OFF_REQUEST_TYPES = ["vacation", "day_off", "medical_appointment", "sick_leave", "other"] as const;
 export const TIME_OFF_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
 
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
+export type CalendarEventInvitationStatus = (typeof CALENDAR_EVENT_INVITATION_STATUSES)[number];
 export type TimeOffRequestType = (typeof TIME_OFF_REQUEST_TYPES)[number];
 export type TimeOffStatus = (typeof TIME_OFF_STATUSES)[number];
 export type CalendarView = "month" | "week" | "agenda";
 
 export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status">;
-export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title"> & { projectIds: string[] };
+export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[] };
+export type CalendarEventInvitee = CalendarPerson & { inviteId: string; status: CalendarEventInvitationStatus };
 
 type CalendarBase = {
   key: string;
@@ -38,7 +41,8 @@ export type CalendarItem =
       location: string | null;
       meetingUrl: string | null;
       project: { id: string; name: string } | null;
-      attendees: CalendarPerson[];
+      organizer: CalendarPerson;
+      invitees: CalendarEventInvitee[];
     })
   | (CalendarBase & {
       source: "project_deadline";

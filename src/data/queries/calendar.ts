@@ -47,7 +47,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const eventsPromise = supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, created_by, project:projects!calendar_events_project_id_fkey(id, name), attendees:calendar_event_attendees(user_id, profile:profiles!calendar_event_attendees_user_id_fkey(id, full_name, job_title))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("studio_id", membership.studio_id)
     .is("cancelled_at", null)
     .lt("starts_at", rangeEndExclusive)
@@ -64,7 +64,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const peoplePromise = supabase
     .from("studio_members")
-    .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, assignments:project_members(project_id, is_active))")
+    .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, assignments:project_members(project_id, is_active))")
     .eq("studio_id", membership.studio_id)
     .eq("is_active", true);
 
@@ -97,6 +97,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     id: membershipRow.profile.id,
     full_name: membershipRow.profile.full_name,
     job_title: membershipRow.profile.job_title,
+    avatar_url: membershipRow.profile.avatar_url,
     projectIds: membershipRow.profile.assignments.filter((assignment) => assignment.is_active).map((assignment) => assignment.project_id),
   })).sort((a, b) => a.full_name.localeCompare(b.full_name));
   const items: CalendarItem[] = [];
@@ -126,8 +127,8 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   }
 
   for (const event of eventsResult.data ?? []) {
-    const attendees: CalendarPerson[] = event.attendees.map((attendee) => ({ ...attendee.profile, projectIds: [] }));
-    const personIds = [...attendees.map((attendee) => attendee.id), event.created_by];
+    const invitees = event.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
+    const personIds = [...invitees.map((invitee) => invitee.id), event.organizer_id];
     if (event.project_id === null) personIds.push(membership.authenticatedUserId);
     items.push({
       source: "calendar_event", key: `calendar_event:${event.id}`, id: event.id,
@@ -135,7 +136,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       allDay: event.all_day, projectId: event.project_id, personIds: [...new Set(personIds)],
       eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
       description: event.description, location: event.location, meetingUrl: event.meeting_url,
-      project: event.project, attendees,
+      project: event.project, organizer: { ...event.organizer, projectIds: [] }, invitees,
     });
   }
 
