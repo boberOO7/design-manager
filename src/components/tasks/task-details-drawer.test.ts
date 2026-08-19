@@ -12,6 +12,9 @@ describe("task checklist drawer contract", () => {
     expect(source).toContain('title={t("taskDetails")}');
     expect(source).toContain('{t("taskDetails")}</p>');
     expect(source).toContain('aria-label={t("closeTaskDetails")}');
+    expect(source).toContain("isOpen={isOpen}");
+    expect(source).toContain("onExited={onExited}");
+    expect(source).not.toContain("const [isDrawerOpen");
     expect(source).not.toContain(">TASK DETAILS<");
     expect(en.Tasks.taskDetails).toBe("Task details");
     expect(uk.Tasks.taskDetails).toBe("Деталі завдання");

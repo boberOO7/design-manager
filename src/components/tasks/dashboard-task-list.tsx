@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -20,7 +20,24 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
   const locale = useLocale();
   const [items, setItems] = useState(tasks);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const isTaskDrawerOpenRef = useRef(false);
   const selectedTask = selectedTaskId ? items.find((task) => task.id === selectedTaskId) ?? null : null;
+
+  function openTaskDrawer(taskId: string) {
+    isTaskDrawerOpenRef.current = true;
+    setSelectedTaskId(taskId);
+    setIsTaskDrawerOpen(true);
+  }
+
+  function closeTaskDrawer() {
+    isTaskDrawerOpenRef.current = false;
+    setIsTaskDrawerOpen(false);
+  }
+
+  function clearExitedTask() {
+    if (!isTaskDrawerOpenRef.current) setSelectedTaskId(null);
+  }
 
   function updateTask(updatedTask: ProjectTask) {
     setItems((current) => {
@@ -41,7 +58,7 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
           <button
             type="button"
             aria-label={`${task.title}. ${t("openTaskDetails")}`}
-            onClick={() => setSelectedTaskId(task.id)}
+            onClick={() => openTaskDrawer(task.id)}
             className="absolute inset-0 z-0 cursor-pointer rounded-xl transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] active:bg-[var(--ui-surface-subtle)]"
           />
           <div className="pointer-events-none relative z-10 grid gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -53,6 +70,6 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
       })}
       </ul> : null}
     </div>
-    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={false} members={[]} onClose={() => setSelectedTaskId(null)} onTaskUpdated={updateTask} project={selectedTask.project} task={selectedTask} /> : null}
+    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isOpen={isTaskDrawerOpen} isProjectReadOnly={false} members={[]} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} project={selectedTask.project} task={selectedTask} /> : null}
   </>;
 }

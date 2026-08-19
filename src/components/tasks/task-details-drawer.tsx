@@ -70,8 +70,10 @@ export function TaskDetailsDrawer({
   canManageTasks,
   currentUserId,
   isProjectReadOnly,
+  isOpen,
   members,
   onClose,
+  onExited,
   onTaskDeleted,
   onTaskUpdated,
   onProjectStatusUpdated,
@@ -83,8 +85,10 @@ export function TaskDetailsDrawer({
   canManageTasks: boolean;
   currentUserId: string;
   isProjectReadOnly: boolean;
+  isOpen: boolean;
   members: AssignableProjectMember[];
   onClose: () => void;
+  onExited: () => void;
   onTaskDeleted?: (taskId: string) => void;
   onTaskUpdated: (task: ProjectTask) => void;
   onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
@@ -354,7 +358,7 @@ export function TaskDetailsDrawer({
   }
 
   return (
-    <Drawer isOpen onClose={() => { if (!isDeleteDialogOpen) requestClose(); }} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[34rem]">
+    <Drawer isOpen={isOpen} onClose={() => { if (!isDeleteDialogOpen) requestClose(); }} onExited={onExited} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[34rem]">
       <div
         ref={panelRef}
         tabIndex={-1}

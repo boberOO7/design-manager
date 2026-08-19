@@ -515,23 +515,23 @@
     "semantic_hash": ""
   },
   "src/components/tasks/dashboard-task-list.tsx": {
-    "mtime": 1786629734.7491612,
-    "ast_hash": "2bbbb65f412cee47788c686463e9b8b5",
+    "mtime": 1787148054.704909,
+    "ast_hash": "8de75d553bf2ff789534a25198d9e07c",
     "semantic_hash": ""
   },
   "src/components/tasks/my-tasks-list.tsx": {
-    "mtime": 1785753925.6655247,
-    "ast_hash": "f95f1834df638a8a30612f11a271dfe8",
+    "mtime": 1787148054.888917,
+    "ast_hash": "692ec0f872dcc1cf1daf2438511011b7",
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787141531.9047596,
-    "ast_hash": "0b77e579a5aafa487e0a898fefdf99bf",
+    "mtime": 1787148070.453135,
+    "ast_hash": "59d6d5710c4223c1bc304d8214864c3c",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1787141687.1352618,
-    "ast_hash": "5ab116b3da2c14c475b3b4a4d2a3c9cd",
+    "mtime": 1787148054.5489023,
+    "ast_hash": "884298e4dd5628d8e55d660937ac8bcc",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -550,8 +550,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.tsx": {
-    "mtime": 1785972173.6955352,
-    "ast_hash": "fc1c35182ded2bcc70bc866ef2c227bb",
+    "mtime": 1787147060.659129,
+    "ast_hash": "d57494013849a881d83313ccd14984c6",
     "semantic_hash": ""
   },
   "src/components/ui/empty-state.tsx": {
@@ -1530,8 +1530,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.test.ts": {
-    "mtime": 1785715087.5722728,
-    "ast_hash": "d52bcd05d875d3f33d147e2ed67e0cb2",
+    "mtime": 1787146953.17401,
+    "ast_hash": "8b1df94a44bae87dfac7fdf810de7e4c",
     "semantic_hash": ""
   },
   "src/components/ui/form-field.test.ts": {
@@ -1605,8 +1605,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1787141607.2501876,
-    "ast_hash": "bdb37b44aaa704d47e8ff3acc5e9073f",
+    "mtime": 1787148086.8258257,
+    "ast_hash": "47d34cacd36f085127c97e321aff18b6",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -3162,6 +3162,11 @@
   "src/lib/motion.ts": {
     "mtime": 1787145105.5818365,
     "ast_hash": "78a949f1fb563a4056bb232d64e2244d",
+    "semantic_hash": ""
+  },
+  "src/components/tasks/task-drawer-reopen.test.ts": {
+    "mtime": 1787148086.9618316,
+    "ast_hash": "467ebd9cc41b93bef01914e148a755ae",
     "semantic_hash": ""
   }
 }

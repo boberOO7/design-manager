@@ -1,5 +1,8 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { getDrawerTabFocusTarget } from "./drawer";
+
+const drawerPath = new URL("./drawer.tsx", import.meta.url);
 
 function focusable() {
   return { focus: () => undefined } as unknown as HTMLElement;
@@ -12,6 +15,16 @@ describe("Drawer focus trap", () => {
     const panel = focusable();
 
     expect(getDrawerTabFocusTarget({ activeElement: last, focusable: [first, last], shiftKey: false, panel })).toBe(first);
+  });
+
+  it("keeps drawers mounted for synchronized panel and backdrop exit motion", async () => {
+    const source = await readFile(drawerPath, "utf8");
+
+    expect(source).toContain("transition-opacity duration-[320ms]");
+    expect(source).toContain("transition-transform duration-[320ms]");
+    expect(source).toContain("translate-x-full");
+    expect(source).toContain("onTransitionEnd={handlePanelTransitionEnd}");
+    expect(source).toContain("onExited?: () => void");
   });
 
   it("wraps Shift+Tab from the first control to the final control", () => {

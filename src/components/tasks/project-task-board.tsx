@@ -348,6 +348,8 @@ export function ProjectTaskBoard({
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
   const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
+  const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(() => tasks.some((task) => task.id === initialTaskId));
+  const isTaskDrawerOpenRef = useRef(tasks.some((task) => task.id === initialTaskId));
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());
@@ -438,6 +440,21 @@ export function ProjectTaskBoard({
   const selectedTask = selectedTaskId
     ? localTasks.find((task) => task.id === selectedTaskId) ?? null
     : null;
+
+  function openTaskDrawer(taskId: string) {
+    isTaskDrawerOpenRef.current = true;
+    setSelectedTaskId(taskId);
+    setIsTaskDrawerOpen(true);
+  }
+
+  function closeTaskDrawer() {
+    isTaskDrawerOpenRef.current = false;
+    setIsTaskDrawerOpen(false);
+  }
+
+  function clearExitedTask() {
+    if (!isTaskDrawerOpenRef.current) setSelectedTaskId(null);
+  }
 
   function setTaskPending(taskId: string, pending: boolean) {
     const nextPendingTaskIds = new Set(pendingTaskIdsRef.current);
@@ -642,7 +659,7 @@ export function ProjectTaskBoard({
                           currentUserId={currentUserId}
                           isProjectReadOnly={isProjectReadOnly}
                           label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
-                          onOpenTask={setSelectedTaskId}
+                          onOpenTask={openTaskDrawer}
                           pendingTaskIds={pendingTaskIds}
                           shouldSuppressOpen={() => suppressCardOpenRef.current}
                           stage={stage}
@@ -667,9 +684,11 @@ export function ProjectTaskBoard({
         key={selectedTask.id}
         canManageTasks={canManageTasks}
         currentUserId={currentUserId}
+        isOpen={isTaskDrawerOpen}
         isProjectReadOnly={isProjectReadOnly}
         members={members}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={closeTaskDrawer}
+        onExited={clearExitedTask}
         onTaskDeleted={removeLocalTask}
         onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}

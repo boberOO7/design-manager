@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { groupMyTasks, mergeProjectTask, type MyTaskGroupId } from "@/lib/tasks";
@@ -23,8 +23,25 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
   const locale = useLocale();
   const [tasks, setTasks] = useState(initialTasks);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const isTaskDrawerOpenRef = useRef(false);
   const groups = groupMyTasks(tasks);
   const selectedTask = selectedTaskId ? tasks.find((task) => task.id === selectedTaskId) ?? null : null;
+
+  function openTaskDrawer(taskId: string) {
+    isTaskDrawerOpenRef.current = true;
+    setSelectedTaskId(taskId);
+    setIsTaskDrawerOpen(true);
+  }
+
+  function closeTaskDrawer() {
+    isTaskDrawerOpenRef.current = false;
+    setIsTaskDrawerOpen(false);
+  }
+
+  function clearExitedTask() {
+    if (!isTaskDrawerOpenRef.current) setSelectedTaskId(null);
+  }
 
   function updateTask(updatedTask: ProjectTask) {
     setTasks((currentTasks) => mergeProjectTask(currentTasks, updatedTask));
@@ -48,11 +65,11 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
                   key={task.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedTaskId(task.id)}
+                  onClick={() => openTaskDrawer(task.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      setSelectedTaskId(task.id);
+                      openTaskDrawer(task.id);
                     }
                   }}
                   className="cursor-pointer rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 shadow-sm outline-none transition hover:border-[var(--ui-border-strong)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2"
@@ -80,7 +97,9 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
         currentUserId={currentUserId}
         isProjectReadOnly={selectedTask.project.status === "completed" || selectedTask.project.status === "archived" || selectedTask.project.archived_at !== null}
         members={[]}
-        onClose={() => setSelectedTaskId(null)}
+        isOpen={isTaskDrawerOpen}
+        onClose={closeTaskDrawer}
+        onExited={clearExitedTask}
         onTaskUpdated={updateTask}
         project={selectedTask.project}
         task={selectedTask}

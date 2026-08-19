@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
-import { useEffect, useEffectEvent, useId, useRef } from "react";
+import type { ReactNode, RefObject, TransitionEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
@@ -15,10 +15,13 @@ export function getDrawerTabFocusTarget({ activeElement, focusable, shiftKey, pa
   return null;
 }
 
-export function Drawer({ children, className, description, focusKey, initialFocusRef, isOpen, onClose, returnFocusRef, side = "right", title }: { children: ReactNode; className?: string; description?: string; focusKey?: string | number; initialFocusRef?: RefObject<HTMLElement | null>; isOpen: boolean; onClose: () => void; returnFocusRef?: RefObject<HTMLElement | null>; side?: "left" | "right"; title: string }) {
+export function Drawer({ children, className, description, focusKey, initialFocusRef, isOpen, onClose, onExited, returnFocusRef, side = "right", title }: { children: ReactNode; className?: string; description?: string; focusKey?: string | number; initialFocusRef?: RefObject<HTMLElement | null>; isOpen: boolean; onClose: () => void; onExited?: () => void; returnFocusRef?: RefObject<HTMLElement | null>; side?: "left" | "right"; title: string }) {
   const panelRef = useRef<HTMLElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const [isVisible, setIsVisible] = useState(false);
+  const isClosingRef = useRef(false);
+  const hasExitedRef = useRef(false);
   const requestClose = useEffectEvent(onClose);
   const getFocusElements = useEffectEvent(() => ({
     initial: initialFocusRef?.current ?? panelRef.current,
@@ -69,9 +72,35 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     };
   }, [focusKey, isOpen]);
 
-  if (!isOpen) return null;
-  return <div className="fixed inset-0 z-50 bg-[var(--ui-overlay)]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none", side === "left" ? "left-0 rounded-r-[var(--ui-radius-drawer)]" : "right-0 rounded-l-[var(--ui-radius-drawer)]", className)}>
+  useEffect(() => {
+    if (isOpen) {
+      isClosingRef.current = false;
+      hasExitedRef.current = false;
+      const frame = window.requestAnimationFrame(() => setIsVisible(true));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    if (!isVisible && !isClosingRef.current) {
+      const frame = window.requestAnimationFrame(() => {
+        if (hasExitedRef.current) return;
+        hasExitedRef.current = true;
+        onExited?.();
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+    isClosingRef.current = true;
+    const frame = window.requestAnimationFrame(() => setIsVisible(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen, isVisible, onExited]);
+
+  function handlePanelTransitionEnd(event: TransitionEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget || event.propertyName !== "transform" || isOpen) return;
+    if (hasExitedRef.current) return;
+    hasExitedRef.current = true;
+    onExited?.();
+  }
+
+  return <div aria-hidden={!isOpen} inert={!isOpen} className={cn("fixed inset-0 z-50 bg-[var(--ui-overlay)] transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isVisible ? "opacity-100" : "pointer-events-none opacity-0")} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-hidden={!isOpen} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} onTransitionEnd={handlePanelTransitionEnd} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none transition-transform duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", side === "left" ? (isVisible ? "left-0 translate-x-0 rounded-r-[var(--ui-radius-drawer)]" : "left-0 -translate-x-full rounded-r-[var(--ui-radius-drawer)]") : (isVisible ? "right-0 translate-x-0 rounded-l-[var(--ui-radius-drawer)]" : "right-0 translate-x-full rounded-l-[var(--ui-radius-drawer)]"), className)}>
       <h2 id={titleId} className="sr-only">{title}</h2>
       {description ? <p id={descriptionId} className="sr-only">{description}</p> : null}
       {children}
