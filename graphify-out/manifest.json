@@ -2930,8 +2930,8 @@
     "semantic_hash": ""
   },
   "src/lib/public-table-privileges-migration.test.ts": {
-    "mtime": 1786795264.1588109,
-    "ast_hash": "a936931655646c13acaa0f01db57a39c",
+    "mtime": 1787138518.3254533,
+    "ast_hash": "d108a2adfecccee27fafb835e4b52438",
     "semantic_hash": ""
   },
   "supabase/migrations/20260815130000_audit_public_table_privileges.sql": {
@@ -3137,6 +3137,11 @@
   "supabase/migrations/20260818180000_canonical_project_types.sql": {
     "mtime": 1787088284.351799,
     "ast_hash": "de1073371a942d6c0a00281e980d31ee",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818190000_grant_task_status_insert_privilege.sql": {
+    "mtime": 1787138518.1894572,
+    "ast_hash": "44b7aec188ccaa0ed581d1c34b82fefb",
     "semantic_hash": ""
   }
 }
