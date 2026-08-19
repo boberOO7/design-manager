@@ -555,6 +555,13 @@ export function ProjectTaskBoard({
     setLocalTasks(mergedTasks);
   }
 
+  function removeLocalTask(taskId: string) {
+    const nextTasks = localTasksRef.current.filter((task) => task.id !== taskId);
+    localTasksRef.current = nextTasks;
+    setLocalTasks(nextTasks);
+    setSelectedTaskId((selectedId) => selectedId === taskId ? null : selectedId);
+  }
+
   return (
     <section aria-labelledby="project-board-heading">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
@@ -663,6 +670,7 @@ export function ProjectTaskBoard({
         isProjectReadOnly={isProjectReadOnly}
         members={members}
         onClose={() => setSelectedTaskId(null)}
+        onTaskDeleted={removeLocalTask}
         onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}
         stageColumns={localStageColumns}

@@ -1,11 +1,14 @@
 "use client";
 
-import { Plus, Trash2, X } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { Ellipsis, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -69,6 +72,7 @@ export function TaskDetailsDrawer({
   isProjectReadOnly,
   members,
   onClose,
+  onTaskDeleted,
   onTaskUpdated,
   onProjectStatusUpdated,
   project,
@@ -81,6 +85,7 @@ export function TaskDetailsDrawer({
   isProjectReadOnly: boolean;
   members: AssignableProjectMember[];
   onClose: () => void;
+  onTaskDeleted?: (taskId: string) => void;
   onTaskUpdated: (task: ProjectTask) => void;
   onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
   project?: { id: string; name: string };
@@ -109,6 +114,8 @@ export function TaskDetailsDrawer({
   const lastSubmittedChecklistRevisionRef = useRef(-1);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<TaskEditField, string>>>({});
@@ -170,6 +177,26 @@ export function TaskDetailsDrawer({
   function discardChangesAndClose() {
     if (isSaving) return;
     onClose();
+  }
+
+  async function deleteTask() {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    setFormError(null);
+    try {
+      const result = await deleteProjectTask(task.id);
+      if (!result.success) {
+        setFormError(result.formError ?? t("deleteFailed"));
+        return;
+      }
+      onTaskDeleted?.(task.id);
+      setIsDeleteDialogOpen(false);
+      onClose();
+    } catch {
+      setFormError(t("deleteFailed"));
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   async function saveTaskDetails() {
@@ -327,7 +354,7 @@ export function TaskDetailsDrawer({
   }
 
   return (
-    <Drawer isOpen onClose={requestClose} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[34rem]">
+    <Drawer isOpen onClose={() => { if (!isDeleteDialogOpen) requestClose(); }} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[34rem]">
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -343,14 +370,17 @@ export function TaskDetailsDrawer({
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
               </div>
             </div>
-            <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={requestClose} aria-label={t("closeTaskDetails")} className="size-9 shrink-0 p-0">
-              <X className="size-4" aria-hidden="true" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" disabled={isSaving || isDeleting} aria-label={t("taskActions")} className="flex size-9 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50"><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={8} className="z-[70] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setIsDeleteDialogOpen(true)} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("deleteTask")}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
+              <Button type="button" size="sm" variant="ghost" disabled={isSaving || isDeleting} onClick={requestClose} aria-label={t("closeTaskDetails")} className="size-9 p-0">
+                <X className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {successMessage ? <p role="status" className="mb-3 rounded-xl bg-[var(--ui-success-surface)] px-3 py-2 text-sm text-[var(--ui-success-text)]">{successMessage}</p> : null}
-          {formError ? <p role="alert" className="mb-3 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{t("updateFailed")}</p> : null}
+          {formError ? <p role="alert" className="mb-3 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{formError}</p> : null}
           {isEditing ? (
             <div className="space-y-5">
               <section aria-labelledby="task-edit-main-information">
@@ -475,6 +505,9 @@ export function TaskDetailsDrawer({
             {isEditing ? <><Button type="button" variant="outline" disabled={isSaving} onClick={() => { setValues(makeFormValues(task)); setIsEditing(false); setFieldErrors({}); setFormError(null); setShowDiscardPrompt(false); }}>{t("cancel")}</Button><Button type="button" disabled={isSaving} onClick={() => void saveTaskDetails()}>{isSaving ? t("saving") : t("saveChanges")}</Button></> : <Button type="button" onClick={() => setIsEditing(true)}>{t("editTask")}</Button>}
           </div>
         </footer> : null}
+        <Dialog ariaLabel={t("deleteTask")} closeDisabled={isDeleting} closeLabel={t("closeTaskDeleteConfirmation")} description={t("deleteTaskDescription", { name: task.title })} isOpen={isDeleteDialogOpen} onRequestClose={() => { if (!isDeleting) setIsDeleteDialogOpen(false); }} title={t("deleteTask")} className="max-w-md">
+          <div className="p-4 sm:p-6"><div className="flex justify-end gap-3"><Button type="button" variant="outline" disabled={isDeleting} onClick={() => setIsDeleteDialogOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={isDeleting} onClick={() => void deleteTask()} className="bg-[var(--ui-danger-text)] text-white hover:opacity-90">{isDeleting ? t("deleting") : t("deleteTask")}</Button></div></div>
+        </Dialog>
       </div>
     </Drawer>
   );

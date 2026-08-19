@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = new URL("../../supabase/migrations/20260815130000_audit_public_table_privileges.sql", import.meta.url);
 const taskStatusInsertMigrationPath = new URL("../../supabase/migrations/20260818190000_grant_task_status_insert_privilege.sql", import.meta.url);
+const taskDeleteMigrationPath = new URL("../../supabase/migrations/20260818193000_add_admin_task_deletion.sql", import.meta.url);
 
 describe("public table privilege audit migration", () => {
   it("grants authenticated reads for every public application table while keeping anon revoked", async () => {
@@ -37,6 +38,17 @@ describe("public table privilege audit migration", () => {
     expect(source).toContain("grant insert (status) on table public.tasks to authenticated;");
     expect(source).not.toMatch(/grant\s+(?:update|delete)\b/i);
     expect(source).not.toContain("to anon");
+  });
+
+  it("allows task deletion only through the authenticated, RLS-scoped admin path", async () => {
+    const source = await readFile(taskDeleteMigrationPath, "utf8");
+
+    expect(source).toContain("grant delete on table public.tasks to authenticated;");
+    expect(source).toContain('create policy "tasks_delete_for_studio_admins"');
+    expect(source).toContain("for delete");
+    expect(source).toContain("private.is_studio_admin(project.studio_id)");
+    expect(source).not.toContain("to anon");
+    expect(source).not.toMatch(/grant\s+delete\s+on\s+table\s+public\.tasks\s+to\s+anon/i);
   });
 
   it("removes inherited service-role capabilities and future Data API defaults", async () => {

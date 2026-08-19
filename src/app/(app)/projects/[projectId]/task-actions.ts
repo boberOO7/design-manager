@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { updateTaskStatusMutation } from "@/data/mutations/task-status";
+import { authorizeTaskMutation, updateTaskStatusMutation } from "@/data/mutations/task-status";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTasks } from "@/data/queries/tasks";
@@ -25,6 +25,14 @@ function revalidateTaskCreationRoutes(projectId: string) {
 
 function revalidateMyTasks() {
   revalidatePath("/my-tasks");
+}
+
+function revalidateTaskDeletionRoutes(projectId: string) {
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  revalidatePath("/leaderboard");
 }
 
 export async function createProjectTask(
@@ -113,4 +121,34 @@ export async function updateTaskStatus(
   const result = await updateTaskStatusMutation(getTaskStatusInput(formData));
   if (result.success) revalidateMyTasks();
   return toTaskStatusActionState(result);
+}
+
+export type TaskDeleteActionState = {
+  formError?: string;
+  success?: true;
+};
+
+export async function deleteProjectTask(taskId: string): Promise<TaskDeleteActionState> {
+  const authorization = await authorizeTaskMutation(taskId);
+  if (!authorization.success) return { formError: authorization.formError };
+  if (!authorization.isStudioAdmin) {
+    return { formError: "Only active studio administrators can delete tasks." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", authorization.task.id)
+    .eq("project_id", authorization.task.project_id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Unable to delete project task", error);
+    return { formError: "The task could not be deleted. Please try again." };
+  }
+
+  revalidateTaskDeletionRoutes(authorization.task.project_id);
+  return { success: true };
 }

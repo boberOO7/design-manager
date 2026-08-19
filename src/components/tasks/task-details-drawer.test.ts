@@ -46,4 +46,17 @@ describe("task checklist drawer contract", () => {
     expect(source).toContain('<SelectItem value="">{t("unassigned")}</SelectItem>');
     expect(source).toContain('task.assignee?.full_name ?? t("unassigned")');
   });
+
+  it("keeps deletion in the administrator-only overflow action and requires confirmation", async () => {
+    const source = await readFile(drawerPath, "utf8");
+
+    expect(source).toContain('{canManageTasks ? <Popover.Root>');
+    expect(source).toContain('aria-label={t("taskActions")}');
+    expect(source).toContain('onClick={() => setIsDeleteDialogOpen(true)}');
+    expect(source).toContain('<Dialog ariaLabel={t("deleteTask")}');
+    expect(source).toContain('onClick={() => void deleteTask()}');
+    expect(source).toContain('onTaskDeleted?.(task.id)');
+    expect(en.Tasks.deleteTask).toBe("Delete task");
+    expect(uk.Tasks.deleteTask).toBe("Видалити завдання");
+  });
 });

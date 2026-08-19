@@ -265,8 +265,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
-    "mtime": 1787067050.8300724,
-    "ast_hash": "5836061b4ce00bd957e756c04790a7e0",
+    "mtime": 1787141531.7047505,
+    "ast_hash": "433ac815d8db91461d2f0addf4baf7bb",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/new/actions.ts": {
@@ -525,13 +525,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787076157.5521705,
-    "ast_hash": "5f6eee4a7b02b50c6efc6a66575f4baf",
+    "mtime": 1787141531.9047596,
+    "ast_hash": "0b77e579a5aafa487e0a898fefdf99bf",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1787067193.285532,
-    "ast_hash": "abdee999fa0020202621097f3fe07fd9",
+    "mtime": 1787141687.1352618,
+    "ast_hash": "5ab116b3da2c14c475b3b4a4d2a3c9cd",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -1605,8 +1605,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1786999517.2674675,
-    "ast_hash": "97b37678d99326d67ebf516266feedfe",
+    "mtime": 1787141607.2501876,
+    "ast_hash": "bdb37b44aaa704d47e8ff3acc5e9073f",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -1735,13 +1735,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787083984.7637382,
-    "ast_hash": "dfd980fc8d26b7cfaeee71f355518856",
+    "mtime": 1787141616.9821346,
+    "ast_hash": "1b1101586295b1a25d3d39d6f8d7b286",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787083984.7637382,
-    "ast_hash": "9fb306eec0dbee1ddd16cf7776d68631",
+    "mtime": 1787141616.9821346,
+    "ast_hash": "b54ba4da2a4acad8d06dab6e8fe4b6f1",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2930,8 +2930,8 @@
     "semantic_hash": ""
   },
   "src/lib/public-table-privileges-migration.test.ts": {
-    "mtime": 1787138518.3254533,
-    "ast_hash": "d108a2adfecccee27fafb835e4b52438",
+    "mtime": 1787141606.970175,
+    "ast_hash": "ba5a962d64c0fc2f20d14644764982ac",
     "semantic_hash": ""
   },
   "supabase/migrations/20260815130000_audit_public_table_privileges.sql": {
@@ -3142,6 +3142,16 @@
   "supabase/migrations/20260818190000_grant_task_status_insert_privilege.sql": {
     "mtime": 1787138518.1894572,
     "ast_hash": "44b7aec188ccaa0ed581d1c34b82fefb",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/projects/[projectId]/task-actions.test.ts": {
+    "mtime": 1787141607.0941806,
+    "ast_hash": "61e24e923aaeecd97e1fcdb9ea6ef48d",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260818193000_add_admin_task_deletion.sql": {
+    "mtime": 1787141606.7981672,
+    "ast_hash": "310615d448074440e935e69a9b406233",
     "semantic_hash": ""
   }
 }
