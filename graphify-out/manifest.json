@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-shell.test.ts": {
-    "mtime": 1787153049.9720032,
-    "ast_hash": "87ff101bbee7202d59e5354a5b0395a4",
+    "mtime": 1787153318.023061,
+    "ast_hash": "da6193eb74e467db394278fa88addff4",
     "semantic_hash": ""
   },
   "src/components/layout/shell-control.tsx": {

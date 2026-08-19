@@ -75,6 +75,17 @@ describe("application shell cleanup", () => {
     expect(layout).toContain("lg:min-h-0 lg:overflow-y-auto");
   });
 
+  it("uses the same slimmer scrollbar treatment for every scroll container", async () => {
+    const styles = await readFile(stylesPath, "utf8");
+
+    expect(styles).toContain("--ui-scrollbar-size: 0.625rem");
+    expect(styles).toContain("html,\nbody,\n*");
+    expect(styles).toContain("scrollbar-color: var(--ui-border-strong) var(--ui-page)");
+    expect(styles).toContain("*::-webkit-scrollbar");
+    expect(styles).toContain("width: var(--ui-scrollbar-size)");
+    expect(styles).toContain("height: var(--ui-scrollbar-size)");
+  });
+
   it("derives authenticated page titles from the active studio context", async () => {
     const [layout, dashboard] = await Promise.all([
       readFile(layoutPath, "utf8"),
