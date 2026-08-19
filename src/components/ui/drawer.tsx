@@ -2,54 +2,10 @@
 
 import type { ReactNode, RefObject, TransitionEvent } from "react";
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { lockAppScroll, unlockAppScroll } from "@/components/ui/app-scroll-lock";
 import { cn } from "@/lib/utils";
 
 export const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
-
-type DrawerScrollLockSnapshot = {
-  bodyOverflow: string;
-  bodyPaddingRight: string;
-};
-
-let drawerScrollLockCount = 0;
-let drawerScrollLockSnapshot: DrawerScrollLockSnapshot | null = null;
-
-export function getScrollbarWidth(viewportWidth: number, documentWidth: number) {
-  return Math.max(0, viewportWidth - documentWidth);
-}
-
-function lockDrawerScroll() {
-  if (drawerScrollLockCount > 0) {
-    drawerScrollLockCount += 1;
-    return;
-  }
-
-  const body = document.body;
-  const documentElement = document.documentElement;
-  const scrollbarWidth = getScrollbarWidth(window.innerWidth, documentElement.clientWidth);
-  drawerScrollLockSnapshot = {
-    bodyOverflow: body.style.overflow,
-    bodyPaddingRight: body.style.paddingRight,
-  };
-
-  body.style.overflow = "hidden";
-  if (scrollbarWidth > 0) {
-    const currentPadding = Number.parseFloat(window.getComputedStyle(body).paddingRight);
-    body.style.paddingRight = `${(Number.isNaN(currentPadding) ? 0 : currentPadding) + scrollbarWidth}px`;
-  }
-  drawerScrollLockCount = 1;
-}
-
-function unlockDrawerScroll() {
-  if (drawerScrollLockCount === 0) return;
-  drawerScrollLockCount -= 1;
-  if (drawerScrollLockCount > 0 || !drawerScrollLockSnapshot) return;
-
-  const { bodyOverflow, bodyPaddingRight } = drawerScrollLockSnapshot;
-  document.body.style.overflow = bodyOverflow;
-  document.body.style.paddingRight = bodyPaddingRight;
-  drawerScrollLockSnapshot = null;
-}
 
 export function getDrawerTabFocusTarget({ activeElement, focusable, shiftKey, panel }: { activeElement: Element | null; focusable: HTMLElement[]; shiftKey: boolean; panel: HTMLElement }) {
   if (!focusable.length) return panel;
@@ -77,13 +33,13 @@ export function Drawer({ children, className, description, focusKey, initialFocu
 
   useEffect(() => {
     if (!isOpen || isDrawerScrollLockedRef.current) return;
-    lockDrawerScroll();
+    lockAppScroll();
     isDrawerScrollLockedRef.current = true;
   }, [isOpen]);
 
   useEffect(() => () => {
     if (!isDrawerScrollLockedRef.current) return;
-    unlockDrawerScroll();
+    unlockAppScroll();
     isDrawerScrollLockedRef.current = false;
   }, []);
 
@@ -131,7 +87,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     if (hasExitedRef.current) return;
     hasExitedRef.current = true;
     if (isDrawerScrollLockedRef.current) {
-      unlockDrawerScroll();
+      unlockAppScroll();
       isDrawerScrollLockedRef.current = false;
     }
     onExited?.();

@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useEffectEvent, useId, useRef } from "react";
+import { lockAppScroll, unlockAppScroll } from "@/components/ui/app-scroll-lock";
 import { focusableSelector, getDrawerTabFocusTarget } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +30,7 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
   useEffect(() => {
     if (!isOpen) return;
     const returnTo = returnFocusRef?.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockAppScroll();
     const panel = panelRef.current;
     const initialFocus = panel?.querySelector<HTMLElement>("[data-dialog-initial-focus]") ?? panel;
     initialFocus?.focus({ preventScroll: true });
@@ -53,7 +53,7 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      unlockAppScroll();
       document.removeEventListener("keydown", handleKeyDown);
       returnTo?.focus({ preventScroll: true });
     };

@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { getDrawerTabFocusTarget, getScrollbarWidth } from "./drawer";
+import { getScrollbarWidth } from "./app-scroll-lock";
+import { getDrawerTabFocusTarget } from "./drawer";
 
 const drawerPath = new URL("./drawer.tsx", import.meta.url);
+const scrollLockPath = new URL("./app-scroll-lock.ts", import.meta.url);
 
 function focusable() {
   return { focus: () => undefined } as unknown as HTMLElement;
@@ -18,7 +20,10 @@ describe("Drawer focus trap", () => {
   });
 
   it("keeps drawers mounted for synchronized panel and backdrop exit motion", async () => {
-    const source = await readFile(drawerPath, "utf8");
+    const [source, scrollLock] = await Promise.all([
+      readFile(drawerPath, "utf8"),
+      readFile(scrollLockPath, "utf8"),
+    ]);
 
     expect(source).toContain("transition-opacity duration-[320ms]");
     expect(source).toContain("transition-transform duration-[320ms]");
@@ -26,12 +31,15 @@ describe("Drawer focus trap", () => {
     expect(source).toContain("onTransitionEnd={handleExitTransition}");
     expect(source).toContain("onTransitionCancel={handleExitTransition}");
     expect(source).toContain("onExited?: () => void");
-    expect(source).toContain("function lockDrawerScroll()");
-    expect(source).toContain("getScrollbarWidth(window.innerWidth, documentElement.clientWidth)");
-    expect(source).toContain("let drawerScrollLockCount = 0;");
+    expect(source).toContain("lockAppScroll();");
     expect(source).toContain("if (isDrawerScrollLockedRef.current) {");
-    expect(source).toContain("unlockDrawerScroll();");
-    expect(source).not.toContain('documentElement.style.overflow = "hidden"');
+    expect(source).toContain("unlockAppScroll();");
+    expect(scrollLock).toContain('document.getElementById("main-content")');
+    expect(scrollLock).toContain("let appScrollLockCount = 0;");
+    expect(scrollLock).toContain('target.style.overflow = "hidden"');
+    expect(scrollLock).toContain("getScrollContainerScrollbarWidth(target)");
+    expect(scrollLock).toContain('main && window.getComputedStyle(main).overflowY !== "visible" ? main : document.body');
+    expect(scrollLock).not.toContain('documentElement.style.overflow = "hidden"');
     expect(source).toContain('aria-hidden="true" className={cn("absolute inset-0 bg-[var(--ui-overlay)] transition-opacity');
     expect(source).not.toContain('z-50 bg-[var(--ui-overlay)] transition-opacity');
   });

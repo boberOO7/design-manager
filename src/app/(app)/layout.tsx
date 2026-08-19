@@ -41,12 +41,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const studio = access.membership;
 
   return (
-    <div className="flex min-h-screen bg-[var(--ui-page)] text-[var(--ui-text)]">
+    <div className="flex min-h-screen bg-[var(--ui-page)] text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
       <a href="#main-content" className="sr-only z-[60] rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--ui-action-primary-text)] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skipToContent")}</a>
       <AppSidebar systemRole={studio.system_role} />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
         <AppHeader profile={profile} systemRole={studio.system_role} />
-        <main id="main-content" tabIndex={-1} className="flex-1 p-5 outline-none lg:p-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
       </div>
     </div>
   );

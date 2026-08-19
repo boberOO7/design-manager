@@ -66,6 +66,15 @@ describe("application shell cleanup", () => {
     expect(sidebar).toContain("border-b border-[var(--ui-border)]");
   });
 
+  it("keeps the desktop shell stationary while its main content owns vertical scrolling", async () => {
+    const layout = await readFile(layoutPath, "utf8");
+
+    expect(layout).toContain("lg:h-dvh lg:overflow-hidden");
+    expect(layout).toContain("lg:min-h-0");
+    expect(layout).toContain('id="main-content"');
+    expect(layout).toContain("lg:min-h-0 lg:overflow-y-auto");
+  });
+
   it("derives authenticated page titles from the active studio context", async () => {
     const [layout, dashboard] = await Promise.all([
       readFile(layoutPath, "utf8"),

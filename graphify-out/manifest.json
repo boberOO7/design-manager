@@ -230,8 +230,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
-    "mtime": 1787061311.7142484,
-    "ast_hash": "9dbcbf9e20aa0e248e98bb6731c9d7fc",
+    "mtime": 1787153036.6356688,
+    "ast_hash": "184c570717422e2557848b505d727789",
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
@@ -550,8 +550,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.tsx": {
-    "mtime": 1787149154.2771904,
-    "ast_hash": "2ba0e1ff392d7fe4d2d2e2f6203c0743",
+    "mtime": 1787153036.8236728,
+    "ast_hash": "2c7ccf7a755247e4780cde15c5a502eb",
     "semantic_hash": ""
   },
   "src/components/ui/empty-state.tsx": {
@@ -1530,8 +1530,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.test.ts": {
-    "mtime": 1787149154.4331973,
-    "ast_hash": "7332f02d3bd55cf16644540bb364d04d",
+    "mtime": 1787153037.5116875,
+    "ast_hash": "151139ebed974f275d72a1238ed65800",
     "semantic_hash": ""
   },
   "src/components/ui/form-field.test.ts": {
@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/app-shell.test.ts": {
-    "mtime": 1787146556.0092914,
-    "ast_hash": "019af0f71fe843646c5a96f252458856",
+    "mtime": 1787153049.9720032,
+    "ast_hash": "87ff101bbee7202d59e5354a5b0395a4",
     "semantic_hash": ""
   },
   "src/components/layout/shell-control.tsx": {
@@ -1865,8 +1865,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/dialog.tsx": {
-    "mtime": 1786573354.5240855,
-    "ast_hash": "4d78ba2fdc520ec631253036da76d632",
+    "mtime": 1787153036.9916763,
+    "ast_hash": "4ffece2d0168bd87286908ec3bba59a6",
     "semantic_hash": ""
   },
   "src/lib/city-provider.test.ts": {
@@ -3167,6 +3167,11 @@
   "src/components/tasks/task-drawer-reopen.test.ts": {
     "mtime": 1787148086.9618316,
     "ast_hash": "467ebd9cc41b93bef01914e148a755ae",
+    "semantic_hash": ""
+  },
+  "src/components/ui/app-scroll-lock.ts": {
+    "mtime": 1787153036.4996657,
+    "ast_hash": "46bbcaf756cda4ef29bc00b4c9d0422c",
     "semantic_hash": ""
   }
 }
