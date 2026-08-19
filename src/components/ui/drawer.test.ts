@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { getDrawerTabFocusTarget } from "./drawer";
+import { getDrawerTabFocusTarget, getScrollbarWidth } from "./drawer";
 
 const drawerPath = new URL("./drawer.tsx", import.meta.url);
 
@@ -23,8 +23,23 @@ describe("Drawer focus trap", () => {
     expect(source).toContain("transition-opacity duration-[320ms]");
     expect(source).toContain("transition-transform duration-[320ms]");
     expect(source).toContain("translate-x-full");
-    expect(source).toContain("onTransitionEnd={handlePanelTransitionEnd}");
+    expect(source).toContain("onTransitionEnd={handleExitTransition}");
+    expect(source).toContain("onTransitionCancel={handleExitTransition}");
     expect(source).toContain("onExited?: () => void");
+    expect(source).toContain("function lockDrawerScroll()");
+    expect(source).toContain("getScrollbarWidth(window.innerWidth, documentElement.clientWidth)");
+    expect(source).toContain("let drawerScrollLockCount = 0;");
+    expect(source).toContain("if (isDrawerScrollLockedRef.current) {");
+    expect(source).toContain("unlockDrawerScroll();");
+    expect(source).not.toContain('documentElement.style.overflow = "hidden"');
+    expect(source).toContain('aria-hidden="true" className={cn("absolute inset-0 bg-[var(--ui-overlay)] transition-opacity');
+    expect(source).not.toContain('z-50 bg-[var(--ui-overlay)] transition-opacity');
+  });
+
+  it("uses the measured viewport gutter without adding negative compensation", () => {
+    expect(getScrollbarWidth(1440, 1424)).toBe(16);
+    expect(getScrollbarWidth(1440, 1440)).toBe(0);
+    expect(getScrollbarWidth(1024, 1040)).toBe(0);
   });
 
   it("wraps Shift+Tab from the first control to the final control", () => {

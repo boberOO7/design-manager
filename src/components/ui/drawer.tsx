@@ -1,10 +1,55 @@
 "use client";
 
 import type { ReactNode, RefObject, TransitionEvent } from "react";
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+type DrawerScrollLockSnapshot = {
+  bodyOverflow: string;
+  bodyPaddingRight: string;
+};
+
+let drawerScrollLockCount = 0;
+let drawerScrollLockSnapshot: DrawerScrollLockSnapshot | null = null;
+
+export function getScrollbarWidth(viewportWidth: number, documentWidth: number) {
+  return Math.max(0, viewportWidth - documentWidth);
+}
+
+function lockDrawerScroll() {
+  if (drawerScrollLockCount > 0) {
+    drawerScrollLockCount += 1;
+    return;
+  }
+
+  const body = document.body;
+  const documentElement = document.documentElement;
+  const scrollbarWidth = getScrollbarWidth(window.innerWidth, documentElement.clientWidth);
+  drawerScrollLockSnapshot = {
+    bodyOverflow: body.style.overflow,
+    bodyPaddingRight: body.style.paddingRight,
+  };
+
+  body.style.overflow = "hidden";
+  if (scrollbarWidth > 0) {
+    const currentPadding = Number.parseFloat(window.getComputedStyle(body).paddingRight);
+    body.style.paddingRight = `${(Number.isNaN(currentPadding) ? 0 : currentPadding) + scrollbarWidth}px`;
+  }
+  drawerScrollLockCount = 1;
+}
+
+function unlockDrawerScroll() {
+  if (drawerScrollLockCount === 0) return;
+  drawerScrollLockCount -= 1;
+  if (drawerScrollLockCount > 0 || !drawerScrollLockSnapshot) return;
+
+  const { bodyOverflow, bodyPaddingRight } = drawerScrollLockSnapshot;
+  document.body.style.overflow = bodyOverflow;
+  document.body.style.paddingRight = bodyPaddingRight;
+  drawerScrollLockSnapshot = null;
+}
 
 export function getDrawerTabFocusTarget({ activeElement, focusable, shiftKey, panel }: { activeElement: Element | null; focusable: HTMLElement[]; shiftKey: boolean; panel: HTMLElement }) {
   if (!focusable.length) return panel;
@@ -22,6 +67,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
   const [isVisible, setIsVisible] = useState(false);
   const isClosingRef = useRef(false);
   const hasExitedRef = useRef(false);
+  const isDrawerScrollLockedRef = useRef(false);
   const requestClose = useEffectEvent(onClose);
   const getFocusElements = useEffectEvent(() => ({
     initial: initialFocusRef?.current ?? panelRef.current,
@@ -30,11 +76,21 @@ export function Drawer({ children, className, description, focusKey, initialFocu
   }));
 
   useEffect(() => {
+    if (!isOpen || isDrawerScrollLockedRef.current) return;
+    lockDrawerScroll();
+    isDrawerScrollLockedRef.current = true;
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    if (!isDrawerScrollLockedRef.current) return;
+    unlockDrawerScroll();
+    isDrawerScrollLockedRef.current = false;
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
     const { initial: initialFocusElement, returnTo: returnFocusElement } = getFocusElements();
     const panel = panelRef.current;
-    document.body.style.overflow = "hidden";
     initialFocusElement?.focus();
 
     function suppressOperationalAutofill() {
@@ -65,12 +121,21 @@ export function Drawer({ children, className, description, focusKey, initialFocu
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       autofillObserver.disconnect();
       returnFocusElement?.focus();
     };
   }, [focusKey, isOpen]);
+
+  const completeExit = useCallback(() => {
+    if (hasExitedRef.current) return;
+    hasExitedRef.current = true;
+    if (isDrawerScrollLockedRef.current) {
+      unlockDrawerScroll();
+      isDrawerScrollLockedRef.current = false;
+    }
+    onExited?.();
+  }, [onExited]);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,26 +146,23 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     }
     if (!isVisible && !isClosingRef.current) {
       const frame = window.requestAnimationFrame(() => {
-        if (hasExitedRef.current) return;
-        hasExitedRef.current = true;
-        onExited?.();
+        completeExit();
       });
       return () => window.cancelAnimationFrame(frame);
     }
     isClosingRef.current = true;
     const frame = window.requestAnimationFrame(() => setIsVisible(false));
     return () => window.cancelAnimationFrame(frame);
-  }, [isOpen, isVisible, onExited]);
+  }, [completeExit, isOpen, isVisible]);
 
-  function handlePanelTransitionEnd(event: TransitionEvent<HTMLElement>) {
-    if (event.target !== event.currentTarget || event.propertyName !== "transform" || isOpen) return;
-    if (hasExitedRef.current) return;
-    hasExitedRef.current = true;
-    onExited?.();
+  function handleExitTransition(event: TransitionEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget || isOpen) return;
+    completeExit();
   }
 
-  return <div aria-hidden={!isOpen} inert={!isOpen} className={cn("fixed inset-0 z-50 bg-[var(--ui-overlay)] transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isVisible ? "opacity-100" : "pointer-events-none opacity-0")} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-hidden={!isOpen} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} onTransitionEnd={handlePanelTransitionEnd} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none transition-transform duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", side === "left" ? (isVisible ? "left-0 translate-x-0 rounded-r-[var(--ui-radius-drawer)]" : "left-0 -translate-x-full rounded-r-[var(--ui-radius-drawer)]") : (isVisible ? "right-0 translate-x-0 rounded-l-[var(--ui-radius-drawer)]" : "right-0 translate-x-full rounded-l-[var(--ui-radius-drawer)]"), className)}>
+  return <div aria-hidden={!isOpen} inert={!isOpen} className={cn("fixed inset-0 z-50", !isVisible && "pointer-events-none")}>
+    <div aria-hidden="true" className={cn("absolute inset-0 bg-[var(--ui-overlay)] transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isVisible ? "opacity-100" : "opacity-0")} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} onTransitionCancel={handleExitTransition} onTransitionEnd={handleExitTransition} />
+    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-hidden={!isOpen} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} onTransitionCancel={handleExitTransition} onTransitionEnd={handleExitTransition} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none transition-transform duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", side === "left" ? (isVisible ? "left-0 translate-x-0 rounded-r-[var(--ui-radius-drawer)]" : "left-0 -translate-x-full rounded-r-[var(--ui-radius-drawer)]") : (isVisible ? "right-0 translate-x-0 rounded-l-[var(--ui-radius-drawer)]" : "right-0 translate-x-full rounded-l-[var(--ui-radius-drawer)]"), className)}>
       <h2 id={titleId} className="sr-only">{title}</h2>
       {description ? <p id={descriptionId} className="sr-only">{description}</p> : null}
       {children}

@@ -191,8 +191,8 @@ textarea {
   --tw-ring-offset-color: var(--ui-focus-offset);
 }
 
-html,
-body {
+html {
+  scrollbar-width: thin;
   scrollbar-color: var(--ui-border-strong) var(--ui-page);
 }
 
