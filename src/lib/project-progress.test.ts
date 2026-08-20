@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePersonalProgress, calculateProjectProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
+import { calculatePersonalProgress, calculateProjectProgress, calculateStageProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
 
 function task(overrides: Partial<ProjectTaskForProgress> = {}): ProjectTaskForProgress {
   return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...overrides };
@@ -63,6 +63,24 @@ describe("project task progress", () => {
     const tasks = [task({ id: "same", status: "completed" }), task({ id: "same", status: "completed" }), task({ id: "other", assignee_id: "employee-2" })];
     expect(calculateProjectProgress(tasks, "2026-07-28")).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 });
     expect(calculatePersonalProgress(tasks, "employee-1", "2026-07-28")).toEqual({ eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 });
+  });
+});
+
+describe("stage progress", () => {
+  it("derives stages one through three from completed eligible tasks and leaves empty stages at zero", () => {
+    const progress = calculateStageProgress([
+      { ...task({ id: "one-done", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "one-open" }), stage: "stage_1" },
+      { ...task({ id: "two-cancelled", status: "cancelled" }), stage: "stage_2" },
+      { ...task({ id: "two-done", status: "completed" }), stage: "stage_2" },
+      { ...task({ id: "four-done", status: "completed" }), stage: "stage_4" },
+    ]);
+
+    expect(progress).toEqual({
+      stage_1: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 },
+      stage_2: { eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 },
+      stage_3: { eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: 0 },
+    });
   });
 });
 

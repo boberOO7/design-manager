@@ -38,6 +38,7 @@ import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { calculateStageProgress } from "@/lib/project-progress";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
@@ -434,6 +435,7 @@ export function ProjectTaskBoard({
     ...groups,
     [stage]: groupTasksByBoardColumn(localTasks.filter((task) => task.stage === stage)),
   }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>);
+  const stageProgress = calculateStageProgress(localTasks);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -617,6 +619,7 @@ export function ProjectTaskBoard({
               + groupsByStage[stage]["internal-review"].length
               + groupsByStage[stage]["client-review"].length
               + groupsByStage[stage].done.length;
+            const progress = stage === "stage_4" ? null : stageProgress[stage];
             return (
               <section key={stage} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
                 <div className="flex min-h-12 items-center gap-2 rounded-xl px-4">
@@ -629,6 +632,7 @@ export function ProjectTaskBoard({
                   >
                     {stageLabels(stage)}
                   </button>
+                  {progress ? <div className="hidden w-28 shrink-0 items-center gap-2 sm:flex lg:w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} /></div></div> : null}
                   <span className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
                   {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />

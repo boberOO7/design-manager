@@ -23,6 +23,15 @@ export type ProjectTaskForProgress = {
   checklist_items: readonly ChecklistItemForProgress[];
 };
 
+export const PROJECT_PROGRESS_STAGES = ["stage_1", "stage_2", "stage_3"] as const;
+export type ProjectProgressStage = (typeof PROJECT_PROGRESS_STAGES)[number];
+
+export type StageProgress = {
+  eligibleTaskCount: number;
+  completedTaskCount: number;
+  progressPercent: number;
+};
+
 export type TaskProgressSource = "manual" | "checklist" | "status";
 
 export type TaskProgress = {
@@ -78,6 +87,34 @@ export function isOpenProjectTask(task: Pick<ProjectTaskForProgress, "status">):
   return isProgressEligibleTask(task) && task.status !== "completed";
 }
 
+function getUniqueProjectTasks<T extends ProjectTaskForProgress>(tasks: readonly T[]): T[] {
+  const seenIds = new Set<string>();
+  return tasks.filter((task) => {
+    if (seenIds.has(task.id)) return false;
+    seenIds.add(task.id);
+    return true;
+  });
+}
+
+function calculateCompletionProgress<T extends ProjectTaskForProgress>(tasks: readonly T[]): StageProgress {
+  const eligibleTasks = getUniqueProjectTasks(tasks).filter(isProgressEligibleTask);
+  const completedTaskCount = eligibleTasks.filter((task) => task.status === "completed").length;
+  return {
+    eligibleTaskCount: eligibleTasks.length,
+    completedTaskCount,
+    progressPercent: eligibleTasks.length === 0 ? 0 : roundProgressPercent((completedTaskCount / eligibleTasks.length) * 100),
+  };
+}
+
+export function calculateStageProgress<T extends ProjectTaskForProgress & { stage: string }>(
+  tasks: readonly T[],
+): Record<ProjectProgressStage, StageProgress> {
+  return PROJECT_PROGRESS_STAGES.reduce<Record<ProjectProgressStage, StageProgress>>((progressByStage, stage) => ({
+    ...progressByStage,
+    [stage]: calculateCompletionProgress(tasks.filter((task) => task.stage === stage)),
+  }), {} as Record<ProjectProgressStage, StageProgress>);
+}
+
 function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
 }
@@ -119,12 +156,7 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
   today = getTodayDateOnly(),
   options: { method?: ProjectProgressMethod; designScopeAreaM2?: number | null } = {},
 ): ProjectProgress {
-  const seenIds = new Set<string>();
-  const uniqueTasks = tasks.filter((task) => {
-    if (seenIds.has(task.id)) return false;
-    seenIds.add(task.id);
-    return true;
-  });
+  const uniqueTasks = getUniqueProjectTasks(tasks);
   const eligible = uniqueTasks.filter(isProgressEligibleTask);
   const open = eligible.filter(isOpenProjectTask);
   const completedTaskCount = eligible.filter((task) => task.status === "completed").length;
