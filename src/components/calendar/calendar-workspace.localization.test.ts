@@ -16,11 +16,26 @@ describe("Calendar event form localization contract", () => {
   });
 
   it("keeps English and Ukrainian event-form keys in parity", () => {
-    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed"] as const;
+    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed"] as const;
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
     }
+  });
+
+  it("keeps the invitation response label localized", () => {
+    expect(en.Calendar.yourResponse).toBe("Your response");
+    expect(uk.Calendar.yourResponse).toBe("Ваша відповідь");
+  });
+});
+
+describe("calendar detail drawer lifecycle", () => {
+  it("keeps the selected drawer mounted until the shared Drawer exit completes", () => {
+    expect(source).toContain('const [isDrawerOpen, setIsDrawerOpen]');
+    expect(source).toContain("function clearExitedDrawer()");
+    expect(source).toContain("onExited={clearExitedDrawer}");
+    expect(source).toContain("isOpen={isOpen}");
+    expect(source).toContain("onExited={onExited}");
   });
 });
 
