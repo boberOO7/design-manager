@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   createCalendarEventInsertPayload,
-  verifyCalendarEventAdminMembership,
-  type VerifiedCalendarEventAdminMembership,
+  verifyCalendarEventMembership,
+  type VerifiedCalendarEventMembership,
 } from "./calendar-event-insert";
 import { calendarEventSchema } from "./validation/calendar";
 
 const authenticatedUserId = "123e4567-e89b-12d3-a456-426614174000";
 const studioId = "123e4567-e89b-12d3-a456-426614174001";
 
-const membership: VerifiedCalendarEventAdminMembership = {
+const membership: VerifiedCalendarEventMembership = {
   userId: authenticatedUserId,
   studioId,
   systemRole: "admin",
@@ -48,9 +48,9 @@ describe("Calendar event insert authority", () => {
     expect(payload).toMatchObject({ project_id: null, studio_id: studioId });
   });
 
-  it("rejects inactive, employee, and mismatched administrator memberships before insert", () => {
-    expect(verifyCalendarEventAdminMembership({ ...membership, isActive: false }, authenticatedUserId)).toBeNull();
-    expect(verifyCalendarEventAdminMembership({ ...membership, systemRole: "employee" }, authenticatedUserId)).toBeNull();
-    expect(verifyCalendarEventAdminMembership({ ...membership, userId: "123e4567-e89b-12d3-a456-426614174002" }, authenticatedUserId)).toBeNull();
+  it("accepts an active employee membership and rejects inactive or mismatched memberships", () => {
+    expect(verifyCalendarEventMembership({ ...membership, isActive: false }, authenticatedUserId)).toBeNull();
+    expect(verifyCalendarEventMembership({ ...membership, systemRole: "employee" }, authenticatedUserId)).toMatchObject({ systemRole: "employee" });
+    expect(verifyCalendarEventMembership({ ...membership, userId: "123e4567-e89b-12d3-a456-426614174002" }, authenticatedUserId)).toBeNull();
   });
 });

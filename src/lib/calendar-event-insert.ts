@@ -1,6 +1,6 @@
 import type { CalendarEventInput } from "./validation/calendar";
 
-export type VerifiedCalendarEventAdminMembership = {
+export type VerifiedCalendarEventMembership = {
   userId: string;
   studioId: string;
   systemRole: "admin" | "employee";
@@ -22,13 +22,12 @@ export type CalendarEventInsertPayload = {
   organizer_id: string;
 };
 
-export function verifyCalendarEventAdminMembership(
-  membership: VerifiedCalendarEventAdminMembership,
+export function verifyCalendarEventMembership(
+  membership: VerifiedCalendarEventMembership,
   authenticatedUserId: string,
-): VerifiedCalendarEventAdminMembership | null {
+): VerifiedCalendarEventMembership | null {
   if (
     membership.userId !== authenticatedUserId
-    || membership.systemRole !== "admin"
     || !membership.isActive
   ) {
     return null;
@@ -40,11 +39,11 @@ export function verifyCalendarEventAdminMembership(
 export function createCalendarEventInsertPayload(
   input: CalendarEventInput,
   authenticatedUserId: string,
-  membership: VerifiedCalendarEventAdminMembership,
+  membership: VerifiedCalendarEventMembership,
 ): CalendarEventInsertPayload {
-  const verifiedMembership = verifyCalendarEventAdminMembership(membership, authenticatedUserId);
+  const verifiedMembership = verifyCalendarEventMembership(membership, authenticatedUserId);
   if (!verifiedMembership) {
-    throw new Error("The authenticated user does not have an active administrator membership.");
+    throw new Error("The authenticated user does not have an active studio membership.");
   }
 
   return {

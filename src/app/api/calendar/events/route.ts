@@ -1,34 +1,9 @@
 import { NextResponse } from "next/server";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
-import { createCalendarEventInsertPayload, verifyCalendarEventAdminMembership } from "@/lib/calendar-event-insert";
+import { createCalendarEventInsertPayload } from "@/lib/calendar-event-insert";
 import { createClient } from "@/lib/supabase/server";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
-import type { Database } from "@/types/database.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-type CalendarSupabaseClient = SupabaseClient<Database>;
-
-async function getVerifiedActiveAdminMembership(supabase: CalendarSupabaseClient, authenticatedUserId: string) {
-  const { data, error } = await supabase
-    .from("studio_members")
-    .select("user_id, studio_id, system_role, is_active")
-    .eq("user_id", authenticatedUserId)
-    .eq("is_active", true)
-    .eq("system_role", "admin")
-    .limit(2);
-
-  if (error || !data || data.length !== 1) return null;
-
-  const membership = data[0];
-  if (membership.system_role !== "admin") return null;
-
-  return verifyCalendarEventAdminMembership({
-    userId: membership.user_id,
-    studioId: membership.studio_id,
-    systemRole: membership.system_role,
-    isActive: membership.is_active,
-  }, authenticatedUserId);
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -36,8 +11,12 @@ export async function POST(request: Request) {
   const authenticatedUser = userData.user;
   if (userError || !authenticatedUser) return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
 
-  const membership = await getVerifiedActiveAdminMembership(supabase, authenticatedUser.id);
-  if (!membership) return NextResponse.json({ success: false, formError: "Administrator access is required." }, { status: 403 });
+  const activeMembership = await getActiveStudioMembership();
+  if (
+    !activeMembership
+    || activeMembership.authenticatedUserId !== authenticatedUser.id
+    || (activeMembership.system_role !== "admin" && activeMembership.system_role !== "employee")
+  ) return NextResponse.json({ success: false, formError: "An active studio membership is required." }, { status: 403 });
 
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
@@ -45,7 +24,12 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
   const value = parsed.data;
-  const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, membership);
+  const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, {
+    userId: activeMembership.authenticatedUserId,
+    studioId: activeMembership.studio_id,
+    systemRole: activeMembership.system_role,
+    isActive: true,
+  });
 
   const { data: eventId, error } = await supabase.rpc("create_calendar_event_with_invites", {
     p_studio_id: payload.studio_id,

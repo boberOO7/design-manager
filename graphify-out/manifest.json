@@ -320,13 +320,13 @@
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/[eventId]/route.ts": {
-    "mtime": 1787166488.6379514,
-    "ast_hash": "910a2b2f24af4fd33ac51d3f79e928ee",
+    "mtime": 1787256956.8384604,
+    "ast_hash": "656946d03e242b8b6506af2187f3ba2e",
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/route.ts": {
-    "mtime": 1787233792.0637906,
-    "ast_hash": "6a3784d9db831e9a196c950a1d1c8848",
+    "mtime": 1787257054.5360427,
+    "ast_hash": "4efec716b13d1df86120b4f2f6e104e2",
     "semantic_hash": ""
   },
   "src/app/api/calendar/time-off/[requestId]/route.ts": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787233343.5841086,
-    "ast_hash": "4723b8cc1e146c719c893fea2ab83d6d",
+    "mtime": 1787257005.040941,
+    "ast_hash": "6bbe8d73097e0bce9b803c6e9634d27e",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -725,13 +725,13 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.test.ts": {
-    "mtime": 1785715087.600273,
-    "ast_hash": "eff35c4897d29fd3ae03abb19148f5fe",
-    "semantic_hash": "eff35c4897d29fd3ae03abb19148f5fe"
+    "mtime": 1787257034.4896233,
+    "ast_hash": "0c993c41dcaabc58415173204eb29046",
+    "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.ts": {
-    "mtime": 1787166127.117775,
-    "ast_hash": "5a58afbb269bc0b482b4cb2424c77a1a",
+    "mtime": 1787256956.4584417,
+    "ast_hash": "a0157b8e3d5156cc83aa23e9cdb86b6f",
     "semantic_hash": ""
   },
   "src/lib/calendar-fixes-migration.test.ts": {
@@ -3200,8 +3200,8 @@
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/route.test.ts": {
-    "mtime": 1787247031.1085587,
-    "ast_hash": "a216b8455963f351c7c7a401a8f56c8d",
+    "mtime": 1787257034.6096308,
+    "ast_hash": "d134ed91bea7e8b195555681fdbeba28",
     "semantic_hash": ""
   },
   "supabase/migrations/20260820120000_create_calendar_event_with_invites.sql": {
@@ -3212,6 +3212,16 @@
   "supabase/migrations/20260820130000_fix_calendar_event_insert_policy.sql": {
     "mtime": 1787247030.9525626,
     "ast_hash": "656b27e10d7777a794112f6c35e5f1b7",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260820140000_calendar_event_organizer_authorization.sql": {
+    "mtime": 1787257004.788925,
+    "ast_hash": "b6df69132181c4b422299865c7e37cdc",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260820150000_fix_calendar_event_returning_visibility.sql": {
+    "mtime": 1787258844.1235242,
+    "ast_hash": "23aee5d120070dde419b6d1257f40117",
     "semantic_hash": ""
   }
 }
