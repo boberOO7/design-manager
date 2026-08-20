@@ -46,58 +46,30 @@ export async function POST(request: Request) {
 
   const value = parsed.data;
   const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, membership);
-  const plainInsertDiagnostic = process.env.NODE_ENV === "development";
 
-  console.info("calendar_events insert diagnostic", {
-    authenticatedUserId: authenticatedUser.id,
-    membershipUserId: membership.userId,
-    membershipStudioId: membership.studioId,
-    membershipSystemRole: membership.systemRole,
-    membershipIsActive: membership.isActive,
-    insertCreatedBy: payload.created_by,
-    insertStudioId: payload.studio_id,
-    insertProjectId: payload.project_id,
-    eventType: payload.event_type,
-    usesSelectAfterInsert: !plainInsertDiagnostic,
-    authenticatedUserMatchesInsertCreatedBy: authenticatedUser.id === payload.created_by,
-    membershipStudioMatchesInsertStudio: membership.studioId === payload.studio_id,
+  const { data: eventId, error } = await supabase.rpc("create_calendar_event_with_invites", {
+    p_studio_id: payload.studio_id,
+    p_project_id: payload.project_id,
+    p_title: payload.title,
+    p_description: payload.description,
+    p_event_type: payload.event_type,
+    p_starts_at: payload.starts_at,
+    p_ends_at: payload.ends_at,
+    p_all_day: payload.all_day,
+    p_location: payload.location,
+    p_meeting_url: payload.meeting_url,
+    p_attendee_ids: value.attendeeIds,
   });
-
-  if (plainInsertDiagnostic) {
-    const { error } = await supabase.from("calendar_events").insert(payload);
-    if (error) {
-      console.error("calendar_events plain insert diagnostic error", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
-      return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, requiresRefresh: true }, { status: 201 });
-  }
-
-  const { data: event, error } = await supabase.from("calendar_events").insert(payload).select("id").single();
-  if (error) {
-    console.error("calendar_events insert and select error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
+  if (error || !eventId) {
+    console.error("calendar event and invitation creation error", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
     });
-  }
-  if (error || !event) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
-
-  const inviteeIds = [...new Set(value.attendeeIds)].filter((userId) => userId !== authenticatedUser.id);
-  if (inviteeIds.length > 0) {
-    const { error: inviteError } = await supabase.from("calendar_event_invites").insert(inviteeIds.map((userId) => ({ event_id: event.id, user_id: userId, invited_by: authenticatedUser.id })));
-    if (inviteError) {
-      await supabase.from("calendar_events").update({ cancelled_at: new Date().toISOString() }).eq("id", event.id);
-      return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(inviteError) }, { status: 400 });
-    }
+    return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
   }
 
-  const item = await getNormalizedCalendarEvent(event.id, authenticatedUser.id);
+  const item = await getNormalizedCalendarEvent(eventId, authenticatedUser.id);
   return item ? NextResponse.json({ success: true, item }, { status: 201 }) : NextResponse.json({ success: false, formError: "The event was created but could not be reloaded." }, { status: 500 });
 }

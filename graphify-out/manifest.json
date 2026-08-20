@@ -325,8 +325,8 @@
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/route.ts": {
-    "mtime": 1787166228.9775314,
-    "ast_hash": "4aa7273cadb12944761fe7ca77d9e537",
+    "mtime": 1787233792.0637906,
+    "ast_hash": "6a3784d9db831e9a196c950a1d1c8848",
     "semantic_hash": ""
   },
   "src/app/api/calendar/time-off/[requestId]/route.ts": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787231776.0576844,
-    "ast_hash": "cea2437d89762b55683778f025b33ba2",
+    "mtime": 1787233343.5841086,
+    "ast_hash": "4723b8cc1e146c719c893fea2ab83d6d",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -715,9 +715,9 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-form.test.ts": {
-    "mtime": 1785715087.6082728,
-    "ast_hash": "2b0d9974971f0409344fe0a3bb159cd7",
-    "semantic_hash": "2b0d9974971f0409344fe0a3bb159cd7"
+    "mtime": 1787233842.775625,
+    "ast_hash": "6d0d62040090f2c7a03aadf6f484dfa6",
+    "semantic_hash": ""
   },
   "src/lib/calendar-event-form.ts": {
     "mtime": 1787166126.9657671,
@@ -905,9 +905,9 @@
     "semantic_hash": "cf70f69bc3d30fd23c243b06bb8ee36c"
   },
   "src/lib/validation/calendar.ts": {
-    "mtime": 1785715087.6042728,
-    "ast_hash": "30d4f82b59cff3a509f20900dd8b9e69",
-    "semantic_hash": "30d4f82b59cff3a509f20900dd8b9e69"
+    "mtime": 1787233842.6396172,
+    "ast_hash": "3680cd7ce5851d27b7953b2f34d02d39",
+    "semantic_hash": ""
   },
   "src/lib/validation/employee-invitation.test.ts": {
     "mtime": 1785715087.6042728,
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1787166185.8030627,
-    "ast_hash": "1a6b3123b583bfd07abd99c3b60666e4",
+    "mtime": 1787233779.5632703,
+    "ast_hash": "0b5b877f53baaa6663903f2bf10bcdf1",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -3190,13 +3190,23 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.invitee-picker.test.tsx": {
-    "mtime": 1787231791.1843374,
-    "ast_hash": "d7dd53a35b0202f28cbfc32b9c09ba4d",
+    "mtime": 1787233349.2043314,
+    "ast_hash": "e79747f33cdbb966c1cc8c45babeee63",
     "semantic_hash": ""
   },
   "src/components/ui/form-field.test.tsx": {
     "mtime": 1787231776.501705,
     "ast_hash": "2a13e62feda7a4956bd50a0990756f7a",
+    "semantic_hash": ""
+  },
+  "src/app/api/calendar/events/route.test.ts": {
+    "mtime": 1787233852.3620327,
+    "ast_hash": "ac807ac3d8e88a0163d5258ce5875ec4",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260820120000_create_calendar_event_with_invites.sql": {
+    "mtime": 1787233852.2281115,
+    "ast_hash": "32bdb7a1417eb133f6548fa685c08beb",
     "semantic_hash": ""
   }
 }

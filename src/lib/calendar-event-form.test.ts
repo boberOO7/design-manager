@@ -63,6 +63,11 @@ describe("Calendar event and time-off payload validation", () => {
     expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("client_presentation");
   });
 
+  it("includes selected invitee IDs in the create-event payload", () => {
+    const attendeeIds = ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002"];
+    expect(toCalendarEventMutationPayload({ ...baseValues, attendeeIds }).attendeeIds).toEqual(attendeeIds);
+  });
+
   it("rejects browser-supplied time-off user IDs", () => {
     expect(timeOffRequestSchema.safeParse({ requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, privateNote: "", userId: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
   });

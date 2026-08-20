@@ -62,7 +62,7 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
   if (error?.code === "22P02" || message.includes("event_type")) {
     return { formError: "Choose a supported event type.", fieldErrors: { eventType: "Unsupported event type." } };
   }
-  if (message.includes("Attendee") || message.includes("attendee") || message.includes("project members")) {
+  if (message.includes("Attendee") || message.includes("attendee") || message.includes("Invitee") || message.includes("invitee") || message.includes("project members") || message.includes("active studio member")) {
     return { formError: "One or more attendees are not valid for this event.", fieldErrors: { attendeeIds: "Choose active eligible attendees." } };
   }
   if (message.includes("project") || message.includes("Project") || message.includes("Events on completed or archived")) {

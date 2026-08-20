@@ -798,6 +798,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_calendar_event_with_invites: {
+        Args: {
+          p_all_day: boolean
+          p_attendee_ids?: string[]
+          p_description: string | null
+          p_ends_at: string
+          p_event_type: Database["public"]["Enums"]["calendar_event_type"]
+          p_location: string | null
+          p_meeting_url: string | null
+          p_project_id: string | null
+          p_starts_at: string
+          p_studio_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       resolve_contractor_category: {
         Args: { p_name: string }
         Returns: string

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +21,8 @@ vi.mock("@/components/ui/user-avatar", () => ({
 }));
 
 import { InviteePicker } from "./calendar-workspace";
+
+const globalStyles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
 
 describe("InviteePicker DOM contract", () => {
   const people: CalendarPerson[] = [
@@ -45,6 +48,8 @@ describe("InviteePicker DOM contract", () => {
     expect(markup).toContain('data-invitee-search="true"');
     expect(markup).toContain('focus-within:ring-2');
     expect(markup).toMatch(/<input[^>]*focus-visible:outline-none[^>]*focus-visible:ring-0[^>]*>/);
+    expect(markup).toMatch(/<input[^>]*style="border:0;box-shadow:none;outline:none"[^>]*>/);
+    expect(globalStyles).toContain(":where(:focus-visible)");
   });
 
   it("keeps the popover ownership on the visible trigger button", () => {
