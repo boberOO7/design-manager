@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787170613.7879255,
-    "ast_hash": "8c06c2f2e8f64281f80952bff52e51db",
+    "mtime": 1787231776.0576844,
+    "ast_hash": "cea2437d89762b55683778f025b33ba2",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -560,8 +560,8 @@
     "semantic_hash": "ae9dbe520d2b938aebdbeef2f51afa23"
   },
   "src/components/ui/form-field.tsx": {
-    "mtime": 1786661141.69881,
-    "ast_hash": "e14ed12b27f91cb990794fbd57cdc6f8",
+    "mtime": 1787231775.9176779,
+    "ast_hash": "b27c7e8462aa3f1337eca519d0bdd531",
     "semantic_hash": ""
   },
   "src/components/ui/panel.tsx": {
@@ -3180,13 +3180,23 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260819110000_calendar_event_invitations.sql": {
-    "mtime": 1787172965.403892,
-    "ast_hash": "853748829e415e4abf51dae41329e4ce",
+    "mtime": 1787173087.737874,
+    "ast_hash": "60118ef7415f9c244f2d958d8c17a848",
     "semantic_hash": ""
   },
   "supabase/snippets/Untitled query 358.sql": {
     "mtime": 1787164782.2637293,
     "ast_hash": "5aebf2ae6975fa05956414ccec1e7533",
+    "semantic_hash": ""
+  },
+  "src/components/calendar/calendar-workspace.invitee-picker.test.tsx": {
+    "mtime": 1787231791.1843374,
+    "ast_hash": "d7dd53a35b0202f28cbfc32b9c09ba4d",
+    "semantic_hash": ""
+  },
+  "src/components/ui/form-field.test.tsx": {
+    "mtime": 1787231776.501705,
+    "ast_hash": "2a13e62feda7a4956bd50a0990756f7a",
     "semantic_hash": ""
   }
 }
