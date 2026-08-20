@@ -3200,13 +3200,18 @@
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/route.test.ts": {
-    "mtime": 1787233852.3620327,
-    "ast_hash": "ac807ac3d8e88a0163d5258ce5875ec4",
+    "mtime": 1787247031.1085587,
+    "ast_hash": "a216b8455963f351c7c7a401a8f56c8d",
     "semantic_hash": ""
   },
   "supabase/migrations/20260820120000_create_calendar_event_with_invites.sql": {
     "mtime": 1787233852.2281115,
     "ast_hash": "32bdb7a1417eb133f6548fa685c08beb",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260820130000_fix_calendar_event_insert_policy.sql": {
+    "mtime": 1787247030.9525626,
+    "ast_hash": "656b27e10d7777a794112f6c35e5f1b7",
     "semantic_hash": ""
   }
 }
