@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1787325408.877765,
-    "ast_hash": "b7ef13f4160e10d32ae1a282366e55c3",
+    "mtime": 1787333807.8081992,
+    "ast_hash": "c794c76a185316a9cabf4305e53dcca2",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -3250,13 +3250,13 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/templates/page.tsx": {
-    "mtime": 1787318453.4092956,
-    "ast_hash": "7d335342f3fb16335cceb9dfd8a6d70f",
+    "mtime": 1787333715.8510182,
+    "ast_hash": "c0381455e5e9f42a54d5a24380a133d3",
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.tsx": {
-    "mtime": 1787325543.9378524,
-    "ast_hash": "2aef4059e52c64f6d86d7337ad39106a",
+    "mtime": 1787333708.1445394,
+    "ast_hash": "5118d0a21ac1c06b80f518db514ef6b4",
     "semantic_hash": ""
   },
   "src/data/queries/project-templates.ts": {
