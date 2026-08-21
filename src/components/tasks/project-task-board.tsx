@@ -33,7 +33,7 @@ import {
   type WritableTaskStatus,
 } from "@/lib/tasks";
 import { cn, formatDateShort, formatNumber } from "@/lib/utils";
-import { getPriorityBadgeStyle, getTaskStatusBadgeStyle, getTaskStatusColumnStyle, getTaskStatusCountBadgeClassName } from "@/lib/semantic-styles";
+import { getPriorityBadgeStyle, getTaskStatusBadgeStyle, getTaskStatusBulkDragStyle, getTaskStatusColumnStyle, getTaskStatusCountBadgeClassName } from "@/lib/semantic-styles";
 import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
@@ -229,12 +229,14 @@ function ReadOnlyTaskCard({ compact, task, onOpen }: { compact: boolean; task: P
   );
 }
 
-function BulkColumnDragHandle({ columnId, disabled, label, stage, taskIds }: { columnId: BoardColumnId; disabled: boolean; label: string; stage: TaskStage; taskIds: string[] }) {
+function BulkColumnDragHandle({ columnId, disabled, label, stage, status, taskIds }: { columnId: BoardColumnId; disabled: boolean; label: string; stage: TaskStage; status: WritableTaskStatus; taskIds: string[] }) {
   const locale = useLocale();
-  const handleLabel = locale === "uk" ? `Перемістити всі ${taskIds.length} задач зі статусу «${label}»` : `Move all ${taskIds.length} tasks from ${label}`;
+  const handleLabel = disabled
+    ? (locale === "uk" ? `Масове переміщення для «${label}» недоступне` : `Bulk move for ${label} is unavailable`)
+    : (locale === "uk" ? `Перемістити всі ${taskIds.length} задач зі статусу «${label}»` : `Move all ${taskIds.length} tasks from ${label}`);
+  const bulkDragStyle = getTaskStatusBulkDragStyle(status);
   const { isDragging, ref } = useDraggable({ id: `bulk-column:${stage}:${columnId}`, disabled, data: { columnId, stage, taskIds }, type: "project-task-bulk" });
-  if (disabled) return null;
-  return <button ref={ref} type="button" className={cn("inline-flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-[var(--ui-text-muted)] opacity-60 transition-[color,background-color,opacity] hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] active:cursor-grabbing", isDragging && "cursor-grabbing opacity-100")} aria-label={handleLabel} title={handleLabel} style={{ touchAction: "pan-x pan-y" }}><GripVertical className="size-4" aria-hidden="true" /></button>;
+  return <button ref={ref} type="button" disabled={disabled} className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-[color,background-color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] active:scale-95", disabled ? "cursor-not-allowed text-current opacity-35" : "cursor-grab opacity-60 hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing", !disabled && bulkDragStyle.handleClassName, isDragging && "cursor-grabbing opacity-100")} aria-label={handleLabel} title={disabled ? undefined : handleLabel} style={{ touchAction: "pan-x pan-y" }}><GripVertical className="size-4" aria-hidden="true" /></button>;
 }
 
 function StatusColumnHeader({ canBulkDrag, columnId, label, status, stage, taskIds, taskCount }: {
@@ -249,9 +251,10 @@ function StatusColumnHeader({ canBulkDrag, columnId, label, status, stage, taskI
   const columnStyle = getTaskStatusColumnStyle(status);
 
   return (
-    <div className={cn("mb-2 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
-      <div className="flex min-w-0 items-center gap-1"><BulkColumnDragHandle columnId={columnId} disabled={!canBulkDrag} label={label} stage={stage} taskIds={taskIds} /><h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3></div>
-      <span className={cn("ui-numeric rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
+    <div className={cn("mb-2 grid min-h-11 min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-1.5 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
+      <BulkColumnDragHandle columnId={columnId} disabled={!canBulkDrag} label={label} stage={stage} status={status} taskIds={taskIds} />
+      <h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3>
+      <span className={cn("ui-numeric justify-self-end rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
     </div>
   );
 }
@@ -774,7 +777,14 @@ export function ProjectTaskBoard({
           })}
         </div>
         <DragOverlay dropAnimation={null}>
-          {() => activeTask ? <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip /> : activeBulkDrag ? <div className="w-56 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 shadow-xl"><p className="text-sm font-semibold text-[var(--ui-text)]">{statusLabels(BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status === "in_progress" ? "inProgress" : BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status ?? "todo")}</p><p className="mt-1 text-xs font-medium text-[var(--ui-text-muted)]">{locale === "uk" ? `Перемістити ${activeBulkDrag.taskIds.length} задач` : `Move ${activeBulkDrag.taskIds.length} tasks`}</p></div> : null}
+          {() => {
+            if (activeTask) return <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip />;
+            if (!activeBulkDrag) return null;
+            const sourceStatus = BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status ?? "todo";
+            const sourceLabel = statusLabels(sourceStatus === "in_progress" ? "inProgress" : sourceStatus);
+            const bulkDragStyle = getTaskStatusBulkDragStyle(sourceStatus);
+            return <div className={cn("w-60 rounded-xl border p-3.5 shadow-[var(--ui-shadow-popover)]", bulkDragStyle.previewClassName)}><div className="flex items-start gap-2.5"><span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-current/20 bg-[color-mix(in_srgb,currentColor_8%,transparent)]"><GripVertical className="size-4" aria-hidden="true" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold leading-5">{sourceLabel}</p><p className="mt-0.5 text-xs font-medium leading-4 opacity-80">{locale === "uk" ? `Перемістити ${activeBulkDrag.taskIds.length} задач` : `Move ${activeBulkDrag.taskIds.length} tasks`}</p></div></div></div>;
+          }}
         </DragOverlay>
       </DragDropProvider>
       {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} method={settingsStage === "stage_4" ? undefined : localStageProgressMethods[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns, method) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); if (method && settingsStage !== "stage_4") setLocalStageProgressMethods((current) => ({ ...current, [settingsStage]: method })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}

@@ -14,6 +14,11 @@ export type TaskStatusColumnStyle = {
   headerClassName: string;
 };
 
+export type TaskStatusBulkDragStyle = {
+  handleClassName: string;
+  previewClassName: string;
+};
+
 const todoBorderColorClassName = "border-[color-mix(in_srgb,var(--ui-border-strong)_70%,var(--ui-text-muted))]";
 
 const styles = {
@@ -77,6 +82,22 @@ export function getTaskStatusColumnStyle(status: TaskStatus | string): TaskStatu
       return { headerClassName: styles.muted.className, countBadgeClassName: styles.muted.className };
     default:
       return { headerClassName: styles.neutral.className, countBadgeClassName: styles.neutral.className };
+  }
+}
+
+export function getTaskStatusBulkDragStyle(status: TaskStatus | string): TaskStatusBulkDragStyle {
+  switch (status) {
+    case "in_progress":
+      return { handleClassName: "text-[var(--ui-info-text)] hover:bg-[color-mix(in_srgb,var(--ui-info-surface)_60%,var(--ui-info-text)_14%)] focus-visible:bg-[color-mix(in_srgb,var(--ui-info-surface)_60%,var(--ui-info-text)_14%)] active:bg-[color-mix(in_srgb,var(--ui-info-surface)_52%,var(--ui-info-text)_18%)]", previewClassName: styles.info.className };
+    case "internal_review":
+      return { handleClassName: "text-[var(--ui-info-text)] hover:bg-[color-mix(in_srgb,var(--ui-info-surface)_57%,var(--ui-success-surface)_33%)] focus-visible:bg-[color-mix(in_srgb,var(--ui-info-surface)_57%,var(--ui-success-surface)_33%)] active:bg-[color-mix(in_srgb,var(--ui-info-surface)_46%,var(--ui-success-surface)_42%)]", previewClassName: styles.teal.className };
+    case "review":
+      return { handleClassName: "text-[var(--ui-violet-text)] hover:bg-[color-mix(in_srgb,var(--ui-violet-surface)_60%,var(--ui-violet-text)_14%)] focus-visible:bg-[color-mix(in_srgb,var(--ui-violet-surface)_60%,var(--ui-violet-text)_14%)] active:bg-[color-mix(in_srgb,var(--ui-violet-surface)_52%,var(--ui-violet-text)_18%)]", previewClassName: styles.violet.className };
+    case "completed":
+      return { handleClassName: "text-[var(--ui-success-text)] hover:bg-[color-mix(in_srgb,var(--ui-success-surface)_60%,var(--ui-success-text)_14%)] focus-visible:bg-[color-mix(in_srgb,var(--ui-success-surface)_60%,var(--ui-success-text)_14%)] active:bg-[color-mix(in_srgb,var(--ui-success-surface)_52%,var(--ui-success-text)_18%)]", previewClassName: styles.success.className };
+    case "todo":
+    default:
+      return { handleClassName: "text-[var(--ui-text-secondary)] hover:bg-[color-mix(in_srgb,var(--ui-surface-subtle)_68%,var(--ui-text-muted)_12%)] focus-visible:bg-[color-mix(in_srgb,var(--ui-surface-subtle)_68%,var(--ui-text-muted)_12%)] active:bg-[color-mix(in_srgb,var(--ui-surface-subtle)_58%,var(--ui-text-muted)_16%)]", previewClassName: `${todoBorderColorClassName} bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]` };
   }
 }
 

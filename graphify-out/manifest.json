@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787307764.0600545,
-    "ast_hash": "5608157670cf5b112de886f763319c71",
+    "mtime": 1787308681.5249314,
+    "ast_hash": "8dd4bf637744ae8b606a9d624f87ee77",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -830,8 +830,8 @@
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.ts": {
-    "mtime": 1787066641.7857723,
-    "ast_hash": "c3d96abe02fdfb77da3c8ae67209d718",
+    "mtime": 1787308681.364924,
+    "ast_hash": "1ca8f24154949459f3381db01394c90e",
     "semantic_hash": ""
   },
   "src/lib/supabase/admin.ts": {
