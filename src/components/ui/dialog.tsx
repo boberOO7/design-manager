@@ -2,12 +2,25 @@
 
 import { X } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
-import { useEffect, useEffectEvent, useId, useRef } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { lockAppScroll, unlockAppScroll } from "@/components/ui/app-scroll-lock";
 import { focusableSelector, getDrawerTabFocusTarget } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
 export type DialogCloseReason = "escape" | "outside" | "explicit";
+
+function subscribeToPortalTarget() {
+  return () => {};
+}
+
+function getPortalTarget() {
+  return document.body;
+}
+
+function getServerPortalTarget() {
+  return null;
+}
 
 export function Dialog({ ariaLabel, children, className, closeDisabled = false, closeLabel, description, hideHeader = false, isOpen, onRequestClose, returnFocusRef, title }: {
   ariaLabel?: string;
@@ -26,9 +39,10 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
   const titleId = useId();
   const descriptionId = useId();
   const requestClose = useEffectEvent(onRequestClose);
+  const portalTarget = useSyncExternalStore(subscribeToPortalTarget, getPortalTarget, getServerPortalTarget);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !portalTarget) return;
     const returnTo = returnFocusRef?.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     lockAppScroll();
     const panel = panelRef.current;
@@ -57,10 +71,10 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
       document.removeEventListener("keydown", handleKeyDown);
       returnTo?.focus({ preventScroll: true });
     };
-  }, [isOpen, returnFocusRef]);
+  }, [isOpen, portalTarget, returnFocusRef]);
 
-  if (!isOpen) return null;
-  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ui-overlay)] p-2 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onRequestClose("outside"); }}>
+  if (!isOpen || !portalTarget) return null;
+  return createPortal(<div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ui-overlay)] p-2 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onRequestClose("outside"); }}>
     <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-label={title ? undefined : ariaLabel} aria-labelledby={title ? titleId : undefined} aria-modal="true" role="dialog" tabIndex={-1} className={cn("flex h-[calc(100dvh-1rem)] w-full max-w-[50rem] flex-col overflow-hidden rounded-[var(--ui-radius-drawer)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] shadow-2xl outline-none sm:h-auto sm:max-h-[calc(100dvh-2rem)]", className)}>
       {!hideHeader && title ? <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--ui-border)] px-4 py-3 sm:px-6 sm:py-4">
         <div className="min-w-0"><h2 id={titleId} className="text-lg font-semibold text-[var(--ui-text)]">{title}</h2>{description ? <p id={descriptionId} className="mt-1 text-sm text-[var(--ui-text-muted)]">{description}</p> : null}</div>
@@ -68,5 +82,5 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
       </header> : null}
       {children}
     </section>
-  </div>;
+  </div>, portalTarget);
 }
