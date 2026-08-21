@@ -21,7 +21,7 @@ export type AssignableStudioMember = Pick<
 
 export type AssignableProjectMember = Pick<
   ProfileRow,
-  "id" | "full_name" | "job_title"
+  "id" | "full_name" | "job_title" | "avatar_url"
 >;
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
@@ -74,6 +74,7 @@ export async function getAssignableProjectMembers(
       id: profile.id,
       full_name: profile.full_name,
       job_title: profile.job_title,
+      avatar_url: profile.avatar_url,
     }));
 }
 

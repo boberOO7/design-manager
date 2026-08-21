@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { checklistItemCreateSchema, checklistItemUpdateSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkStageAssignmentPayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -69,6 +69,12 @@ describe("task status validation", () => {
     expect(taskStatusPayloadSchema.safeParse({ status: "todo", task_id: validTask.assignee_id }).success).toBe(false);
     expect(taskStatusPayloadSchema.safeParse({ status: "cancelled" }).success).toBe(false);
     expect(taskStatusUpdateSchema.safeParse({ task_id: validTask.assignee_id, status: "cancelled" }).success).toBe(false);
+  });
+
+  it("accepts only supported bulk stage assignment scopes", () => {
+    expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "unassigned" }).success).toBe(true);
+    expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "all" }).success).toBe(true);
+    expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "selected" }).success).toBe(false);
   });
 });
 

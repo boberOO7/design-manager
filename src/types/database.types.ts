@@ -795,6 +795,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_assign_project_stage_tasks: {
+        Args: { p_assignee_id: string; p_project_id: string; p_scope: string; p_stage: string }
+        Returns: { id: string }[]
+      }
       bulk_move_project_tasks: {
         Args: { p_project_id: string; p_source_statuses: string[]; p_stage: string; p_target_status: string; p_task_ids: string[] }
         Returns: { id: string }[]

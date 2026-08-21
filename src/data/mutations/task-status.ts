@@ -10,7 +10,7 @@ import { canCompleteAttributedTask } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
-import { taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
+import { taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 type AuthorizedTask = NonNullable<Awaited<ReturnType<typeof getTaskForStatusUpdate>>>;
@@ -141,4 +141,33 @@ export async function bulkMoveTaskStatusesMutation(projectId: string, input: unk
   revalidatePath("/dashboard");
   revalidatePath("/my-tasks");
   return { projectId, projectStatus: project.status, success: true, tasks };
+}
+
+export type BulkTaskStageAssignmentMutationResult =
+  | { success: true; projectId: string; tasks: Awaited<ReturnType<typeof getProjectTasks>> }
+  | { success: false; formError: string };
+
+export async function bulkAssignTaskStageMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {
+  const parsed = taskBulkStageAssignmentPayloadSchema.safeParse(input);
+  if (!parsed.success) return { formError: "Choose a valid stage, project member, and assignment scope.", success: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bulk_assign_project_stage_tasks", {
+    p_assignee_id: parsed.data.assignee_id,
+    p_project_id: projectId,
+    p_scope: parsed.data.scope,
+    p_stage: parsed.data.stage,
+  });
+  if (error) {
+    console.error("Unable to bulk assign stage tasks", error);
+    return { formError: error.message || "The task stage could not be assigned. Please try again.", success: false };
+  }
+
+  const tasks = await getProjectTasks(projectId);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { projectId, success: true, tasks };
 }

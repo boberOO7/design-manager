@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus } from "lucide-react";
+import { Check, ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus, UserPlus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
@@ -103,6 +103,60 @@ function isSuccessfulTaskStatusResponse(value: unknown): value is { success: tru
     && "task" in value
     && typeof value.task === "object"
     && value.task !== null;
+}
+
+function isSuccessfulBulkTaskStageAssignmentResponse(value: unknown): value is { success: true; tasks: ProjectTask[] } {
+  return typeof value === "object"
+    && value !== null
+    && "success" in value
+    && value.success === true
+    && "tasks" in value
+    && Array.isArray(value.tasks);
+}
+
+type BulkAssignmentScope = "unassigned" | "all";
+
+function StageAssigneePopover({
+  currentUserId,
+  members,
+  onAssign,
+  stage,
+  tasks,
+}: {
+  currentUserId: string;
+  members: AssignableProjectMember[];
+  onAssign: (assignee: AssignableProjectMember, scope: BulkAssignmentScope, taskIds: string[]) => Promise<boolean>;
+  stage: TaskStage;
+  tasks: ProjectTask[];
+}) {
+  const locale = useLocale();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [scope, setScope] = useState<BulkAssignmentScope>("unassigned");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isUkrainian = locale === "uk";
+  const assigneeLabel = isUkrainian ? "Призначити виконавця" : "Assign assignee";
+  const selectedAssignee = members.find((member) => member.id === assigneeId) ?? null;
+  const eligibleTasks = tasks.filter((task) => task.status !== "cancelled" && (scope === "all" || task.assignee_id === null) && task.assignee_id !== assigneeId);
+  const overwrittenCount = scope === "all" ? eligibleTasks.filter((task) => task.assignee_id !== null).length : 0;
+  const filteredMembers = members.filter((member) => member.full_name.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
+  const currentMember = members.find((member) => member.id === currentUserId) ?? null;
+
+  async function submit() {
+    if (!selectedAssignee || eligibleTasks.length === 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    const succeeded = await onAssign(selectedAssignee, scope, eligibleTasks.map((task) => task.id));
+    setIsSubmitting(false);
+    if (succeeded) {
+      setOpen(false);
+      setQuery("");
+      setAssigneeId(null);
+      setScope("unassigned");
+    }
+  }
+
+  return <Popover.Root open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setQuery(""); }}><Popover.Trigger asChild><button type="button" onClick={(event) => event.stopPropagation()} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={assigneeLabel} title={assigneeLabel}><UserPlus className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} onClick={(event) => event.stopPropagation()} className="z-50 w-80 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 shadow-[var(--ui-shadow-popover)]"><div className="space-y-3"><div><p className="text-sm font-semibold text-[var(--ui-text)]">{assigneeLabel}</p><p className="mt-0.5 text-xs text-[var(--ui-text-muted)]">{isUkrainian ? "Оберіть активного учасника проєкту." : "Choose an active project member."}</p></div>{currentMember ? <button type="button" onClick={() => setAssigneeId(currentMember.id)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", assigneeId === currentMember.id ? "bg-[var(--ui-surface-strong)] text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]")}><UserAvatar decorative imageUrl={currentMember.avatar_url} name={currentMember.full_name} size="board" />{isUkrainian ? "Призначити мене" : "Assign me"}</button> : null}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isUkrainian ? "Пошук учасника" : "Search members"} aria-label={isUkrainian ? "Пошук учасника" : "Search members"} className="h-9 w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2.5 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" /><div className="max-h-40 space-y-0.5 overflow-y-auto pr-1">{filteredMembers.map((member) => <button key={member.id} type="button" onClick={() => setAssigneeId(member.id)} className={cn("flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", assigneeId === member.id ? "bg-[var(--ui-surface-strong)]" : "hover:bg-[var(--ui-surface-muted)]")}><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="board" /><span className="min-w-0"><span className="block truncate text-sm font-medium text-[var(--ui-text)]">{member.full_name}</span><span className="block truncate text-xs text-[var(--ui-text-muted)]">{member.job_title}</span></span></button>)}{filteredMembers.length === 0 ? <p className="px-2 py-3 text-center text-xs text-[var(--ui-text-muted)]">{isUkrainian ? "Учасників не знайдено." : "No members found."}</p> : null}</div><fieldset className="space-y-1.5 border-t border-[var(--ui-border-subtle)] pt-3"><legend className="text-xs font-medium text-[var(--ui-text-secondary)]">{isUkrainian ? "Застосувати до" : "Apply to"}</legend>{(["unassigned", "all"] as const).map((value) => <label key={value} className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1 text-sm text-[var(--ui-text-secondary)]"><input checked={scope === value} onChange={() => setScope(value)} name={`stage-assignment-scope-${stage}`} type="radio" className="mt-0.5 accent-[var(--ui-action-primary)]" /><span>{value === "unassigned" ? (isUkrainian ? "Лише задачі без виконавця" : "Only unassigned tasks") : (isUkrainian ? "Усі задачі етапу" : "All stage tasks")}</span></label>)}</fieldset>{scope === "all" && overwrittenCount > 0 ? <p className="text-xs leading-5 text-[var(--ui-warning-text)]">{isUkrainian ? `Буде змінено виконавця у ${overwrittenCount} задачах.` : `The assignee will change on ${overwrittenCount} tasks.`}</p> : null}<div className="flex items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] pt-3"><p className="text-xs text-[var(--ui-text-muted)]">{eligibleTasks.length > 0 ? (isUkrainian ? `${eligibleTasks.length} задач буде призначено` : `${eligibleTasks.length} tasks will be assigned`) : (isUkrainian ? "Немає доступних задач для цього вибору." : "No eligible tasks for this selection.")}</p><button type="button" disabled={!selectedAssignee || eligibleTasks.length === 0 || isSubmitting} onClick={() => void submit()} className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[var(--ui-action-primary)] px-3 text-sm font-semibold text-[var(--ui-action-primary-text)] transition-colors hover:bg-[var(--ui-action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? (isUkrainian ? "Призначення…" : "Assigning…") : (isUkrainian ? "Призначити" : "Assign")}</button></div></div></Popover.Content></Popover.Portal></Popover.Root>;
 }
 
 function isSuccessfulBulkTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string; tasks: ProjectTask[] } {
@@ -586,6 +640,41 @@ export function ProjectTaskBoard({
     }
   }
 
+  async function assignStageTasks(assignee: AssignableProjectMember, scope: BulkAssignmentScope, taskIds: string[]): Promise<boolean> {
+    const previousTasks = localTasksRef.current;
+    if (taskIds.length === 0 || taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    for (const taskId of taskIds) setTaskPending(taskId, true);
+    setBoardError(null);
+    const optimisticTasks = previousTasks.map((task) => taskIds.includes(task.id)
+      ? { ...task, assignee_id: assignee.id, assignee: { id: assignee.id, full_name: assignee.full_name, job_title: assignee.job_title, avatar_url: assignee.avatar_url } }
+      : task);
+    localTasksRef.current = optimisticTasks;
+    setLocalTasks(optimisticTasks);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-assignee`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: optimisticTasks.find((task) => task.id === taskIds[0])?.stage, assignee_id: assignee.id, scope }),
+      });
+      let result: unknown = null;
+      try { result = await response.json(); } catch { /* handled below */ }
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося призначити виконавця для задач етапу." : "The stage tasks could not be assigned.");
+      localTasksRef.current = result.tasks;
+      setLocalTasks(result.tasks);
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      setAnnouncement(locale === "uk" ? `Виконавця призначено для ${taskIds.length} задач.` : `Assignee updated for ${taskIds.length} tasks.`);
+      return true;
+    } catch (error) {
+      localTasksRef.current = previousTasks;
+      setLocalTasks(previousTasks);
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося призначити виконавця для задач етапу." : "The stage tasks could not be assigned.");
+      setBoardError(message);
+      setAnnouncement(message);
+      return false;
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const taskId = event.operation.source?.id;
     if (taskId === undefined) return;
@@ -734,10 +823,12 @@ export function ProjectTaskBoard({
                     {progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
                   </div>
                   <span onClick={(event) => event.stopPropagation()} className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
-                  {canCreate ? <button type="button" onClick={(event) => { event.stopPropagation(); addTaskDialogRef.current?.open(stage); }} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
+                  <div className="flex shrink-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                  {canManageTasks && !isProjectReadOnly ? <StageAssigneePopover currentUserId={currentUserId} members={members} onAssign={assignStageTasks} stage={stage} tasks={localTasks.filter((task) => task.stage === stage)} /> : null}
+                  {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" onClick={(event) => event.stopPropagation()} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
@@ -748,6 +839,7 @@ export function ProjectTaskBoard({
                   >
                     <ChevronDown className={cn("size-4 transition-transform duration-200", isExpanded && "rotate-180")} aria-hidden="true" />
                   </button>
+                  </div>
                 </div>
                 <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
                   <div className="min-h-0 overflow-hidden">

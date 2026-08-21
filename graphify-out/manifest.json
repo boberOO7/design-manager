@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787309561.027144,
-    "ast_hash": "5ca1d1e6282343a0d57f934f6005333e",
+    "mtime": 1787313193.7320852,
+    "ast_hash": "98844e0e8e1c101df42604e889b52100",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -605,8 +605,8 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.ts": {
-    "mtime": 1787307537.692898,
-    "ast_hash": "fb8c4852571717c27124421457df1b6b",
+    "mtime": 1787313301.790121,
+    "ast_hash": "264be128c44b002861db451781f4384d",
     "semantic_hash": ""
   },
   "src/data/queries/active-studio-admin.ts": {
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/project-members.ts": {
-    "mtime": 1786561324.9089808,
-    "ast_hash": "60f9408120a44139c9604bcdcdd4f6e8",
+    "mtime": 1787313115.0152164,
+    "ast_hash": "3194b0c62848444a8ebfd537e9476707",
     "semantic_hash": ""
   },
   "src/data/queries/project-progress.ts": {
@@ -955,13 +955,13 @@
     "semantic_hash": "977ff5c5a9214dc7c923a1b648427687"
   },
   "src/lib/validation/task.test.ts": {
-    "mtime": 1787066879.2118826,
-    "ast_hash": "ef76bd45eaf8d36d215411a445c86b26",
+    "mtime": 1787313241.7613597,
+    "ast_hash": "29cc063593fadf3465685e8ce3bf35c4",
     "semantic_hash": ""
   },
   "src/lib/validation/task.ts": {
-    "mtime": 1787307537.5328898,
-    "ast_hash": "a491c0854f941568340fa3bac67e1f27",
+    "mtime": 1787313115.163223,
+    "ast_hash": "38315562e4e9404cd8dd12e22ecc0393",
     "semantic_hash": ""
   },
   "src/proxy.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1787307537.4128835,
-    "ast_hash": "db046546ff9562d73fce1d874c2f9aa2",
+    "mtime": 1787313114.899211,
+    "ast_hash": "7e3edebf9def4201e5ecf040881aabad",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -3227,6 +3227,21 @@
   "supabase/migrations/20260821110000_bulk_task_status_moves.sql": {
     "mtime": 1787307537.2608757,
     "ast_hash": "d508f948277f1036d4e340cb4e73c87b",
+    "semantic_hash": ""
+  },
+  "src/app/api/projects/[projectId]/tasks/bulk-assignee/route.ts": {
+    "mtime": 1787313115.7272494,
+    "ast_hash": "7c33eedd20b0a67d86e19923a458f72c",
+    "semantic_hash": ""
+  },
+  "src/data/mutations/task-stage-assignment.test.ts": {
+    "mtime": 1787313241.8813653,
+    "ast_hash": "b09ca83c6abbebce76c0730f30722569",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260821120000_bulk_task_stage_assignment.sql": {
+    "mtime": 1787313279.1536024,
+    "ast_hash": "a00464e1d1e20ef4986c4c5fb8e61e8e",
     "semantic_hash": ""
   }
 }
