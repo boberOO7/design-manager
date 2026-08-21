@@ -21,5 +21,11 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain("setDragImage(ghost");
     expect(source).toContain('ghost.style.opacity = "0.98"');
     expect(source).not.toContain('value={task.stage}');
+    expect(source).toContain('priority: "normal"');
+    expect(source).toContain("tasks.map((task, order)");
+    expect(source).toContain("order={order + 1}");
+    expect(source).toContain("const firstStageIndex = next.findIndex");
+    expect(source).toContain("next.splice(firstStageIndex < 0 ? next.length : firstStageIndex, 0, newTask(stage, 0))");
+    expect(source).not.toContain('value={task.priority}');
   });
 });
