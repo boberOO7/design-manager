@@ -143,14 +143,18 @@ function ProgressSummary({ compact, progress, projectName, stageProgress }: { co
   return <div>
     <div className="flex items-end justify-between gap-4"><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><span className={`ui-numeric font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-2xl" : "text-3xl"}`}>{progress.progressPercent}%</span></div>
     <div className={`relative min-w-0 ${compact ? "mt-1.5 h-2.5" : "mt-3 h-3"}`} role="progressbar" aria-label={t("progressAria", { name: projectName, progress: progress.progressPercent })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}>
-      <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full bg-[var(--ui-progress-track)] ${compact ? "h-1.5" : "h-2"}`} />
+      <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)] ${compact ? "h-1.5" : "h-2"}`} />
       <div className={`absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)] ${compact ? "h-1.5" : "h-2"}`} style={{ width: `${progress.progressPercent}%` }} />
       {progress.progressPercent > 0 ? <span aria-hidden="true" className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)] ${compact ? "size-2.5" : "size-3"}`} style={{ left: markerOffset }} /> : null}
     </div>
     <div className={`mt-2.5 grid grid-cols-3 gap-3 ${compact ? "sm:gap-4" : "sm:gap-5"}`}>
       {Object.entries(stageProgress).map(([stage, value]) => <div key={stage} className="min-w-0">
-        <div className="flex items-baseline justify-between gap-1 text-xs text-[var(--ui-text-muted)]"><span className="truncate">{stageLabels(stage)}</span><span className="ui-numeric shrink-0 font-semibold text-[var(--ui-text-secondary)]">{value.progressPercent}%</span></div>
-        <div className="mt-1 h-1 overflow-hidden rounded-full bg-[var(--ui-progress-track)]"><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${value.progressPercent}%` }} /></div>
+        <div className="flex min-w-0 items-baseline gap-1 text-xs text-[var(--ui-text-muted)]"><span className="truncate">{stageLabels(stage)}</span><span aria-hidden="true">·</span><span className="ui-numeric shrink-0 font-semibold text-[var(--ui-text-secondary)]">{value.progressPercent}%</span></div>
+        <div className="relative mt-1.5 h-2" role="progressbar" aria-label={`${stageLabels(stage)} ${value.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value.progressPercent}>
+          <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" />
+          <div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${value.progressPercent}%` }} />
+          {value.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: value.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${value.progressPercent}%` }} /> : null}
+        </div>
       </div>)}
     </div>
   </div>;

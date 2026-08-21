@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1787262230.111967,
-    "ast_hash": "f7f552f0809a7896274b77ab54828a55",
+    "mtime": 1787263611.9653673,
+    "ast_hash": "e1ae39a8b5b82239f1621c70a3b698b1",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787262189.5277097,
-    "ast_hash": "4f85f93aa9f0fd0023ec05eeb15b65a5",
+    "mtime": 1787263527.8597076,
+    "ast_hash": "21d3f8f311b9ab2bd05c20f142c9acde",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
