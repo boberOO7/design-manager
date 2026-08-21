@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787313193.7320852,
-    "ast_hash": "98844e0e8e1c101df42604e889b52100",
+    "mtime": 1787315415.903628,
+    "ast_hash": "9f4520350bc5dd2232b26a54d4ffa260",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -3235,13 +3235,18 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-stage-assignment.test.ts": {
-    "mtime": 1787313241.8813653,
-    "ast_hash": "b09ca83c6abbebce76c0730f30722569",
+    "mtime": 1787315424.4919856,
+    "ast_hash": "19fbaddb2da1f746e7d266bb20db3d91",
     "semantic_hash": ""
   },
   "supabase/migrations/20260821120000_bulk_task_stage_assignment.sql": {
     "mtime": 1787313279.1536024,
     "ast_hash": "a00464e1d1e20ef4986c4c5fb8e61e8e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260821121000_fix_bulk_task_stage_assignment_id_ambiguity.sql": {
+    "mtime": 1787315415.7756228,
+    "ast_hash": "41d9d64835f4cdbe707ea1a476137d0f",
     "semantic_hash": ""
   }
 }

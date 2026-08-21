@@ -140,7 +140,7 @@ function StageAssigneePopover({
   const selectedAssignee = members.find((member) => member.id === assigneeId) ?? null;
   const eligibleTasks = tasks.filter((task) => task.status !== "cancelled" && (scope === "all" || task.assignee_id === null) && task.assignee_id !== assigneeId);
   const overwrittenCount = scope === "all" ? eligibleTasks.filter((task) => task.assignee_id !== null).length : 0;
-  const filteredMembers = members.filter((member) => member.full_name.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
+  const filteredMembers = members.filter((member) => member.id !== currentUserId && member.full_name.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
   const currentMember = members.find((member) => member.id === currentUserId) ?? null;
 
   async function submit() {
