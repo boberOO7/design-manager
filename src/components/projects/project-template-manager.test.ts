@@ -15,17 +15,17 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain("За замовчуванням");
   });
 
-  it("uses column placement for a task stage and creates an opaque drag image", async () => {
+  it("uses dnd-kit insertion targets and keeps template task ordering derived", async () => {
     const source = await readFile(sourcePath, "utf8");
-    expect(source).toContain("onMoveTask?.(sourceId, stage)");
-    expect(source).toContain("setDragImage(ghost");
-    expect(source).toContain('ghost.style.opacity = "0.98"');
-    expect(source).not.toContain('value={task.stage}');
+    expect(source).toContain("<DragDropProvider");
+    expect(source).toContain("<DragOverlay>");
+    expect(source).toContain("template-task-drop:");
+    expect(source).toContain("useDroppable");
+    expect(source).toContain("commitPendingTask");
     expect(source).toContain('priority: "normal"');
     expect(source).toContain("tasks.map((task, order)");
     expect(source).toContain("order={order + 1}");
-    expect(source).toContain("const firstStageIndex = next.findIndex");
-    expect(source).toContain("next.splice(firstStageIndex < 0 ? next.length : firstStageIndex, 0, newTask(stage, 0))");
+    expect(source).toContain("const lastPosition = Math.max");
     expect(source).not.toContain('value={task.priority}');
   });
 });

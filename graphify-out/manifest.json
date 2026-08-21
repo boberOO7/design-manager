@@ -3255,8 +3255,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.tsx": {
-    "mtime": 1787336853.6399984,
-    "ast_hash": "36ef84a6858c117af89aac10d23bd7ed",
+    "mtime": 1787341330.4990122,
+    "ast_hash": "78f9cb1486a3525e6b822e457ef871c7",
     "semantic_hash": ""
   },
   "src/data/queries/project-templates.ts": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.test.ts": {
-    "mtime": 1787336881.1098151,
-    "ast_hash": "43c1c447695ff3c9370f7a0d413bb195",
+    "mtime": 1787341271.8338487,
+    "ast_hash": "b702bc75e0a25936b96788784083ef8b",
     "semantic_hash": ""
   },
   "src/lib/project-template-defaults-migration.test.ts": {
