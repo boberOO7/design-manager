@@ -15,11 +15,14 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain("За замовчуванням");
   });
 
-  it("uses dnd-kit insertion targets and keeps template task ordering derived", async () => {
+  it("uses stable sortable task rows and keeps template task ordering derived", async () => {
     const source = await readFile(sourcePath, "utf8");
     expect(source).toContain("<DragDropProvider");
     expect(source).toContain("<DragOverlay>");
-    expect(source).toContain("template-task-drop:");
+    expect(source).toContain('useSortable({ id: task.id');
+    expect(source).toContain("template-task-stage:");
+    expect(source).toContain("getProjectTemplateTaskDestination");
+    expect(source).toContain("moveProjectTemplateTask");
     expect(source).toContain("useDroppable");
     expect(source).toContain("commitPendingTask");
     expect(source).toContain('priority: "normal"');

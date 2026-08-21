@@ -3255,8 +3255,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.tsx": {
-    "mtime": 1787341330.4990122,
-    "ast_hash": "78f9cb1486a3525e6b822e457ef871c7",
+    "mtime": 1787344305.2227619,
+    "ast_hash": "0551ae5e2751787a2405310da5bb3d64",
     "semantic_hash": ""
   },
   "src/data/queries/project-templates.ts": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.test.ts": {
-    "mtime": 1787341271.8338487,
-    "ast_hash": "b702bc75e0a25936b96788784083ef8b",
+    "mtime": 1787342162.8795485,
+    "ast_hash": "a70adb1256574b0f5f6a3c0392570b08",
     "semantic_hash": ""
   },
   "src/lib/project-template-defaults-migration.test.ts": {
@@ -3317,6 +3317,16 @@
   "supabase/migrations/20260821160000_normalize_project_template_task_priority.sql": {
     "mtime": 1787336815.5203214,
     "ast_hash": "c5ad2879bd3993ebff13797ffdb5efd1",
+    "semantic_hash": ""
+  },
+  "src/lib/project-template-task-order.test.ts": {
+    "mtime": 1787344248.538082,
+    "ast_hash": "7b9a0e16c967ceaf98c1bd36f517a160",
+    "semantic_hash": ""
+  },
+  "src/lib/project-template-task-order.ts": {
+    "mtime": 1787343804.6344824,
+    "ast_hash": "0ea8fcea026dafb958df291f79d67806",
     "semantic_hash": ""
   }
 }
