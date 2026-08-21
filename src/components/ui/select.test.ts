@@ -9,7 +9,7 @@ const componentPaths = [
   new URL("../projects/add-project-member-form.tsx", import.meta.url),
   new URL("../projects/project-form.tsx", import.meta.url),
   new URL("../projects/project-list-controls.tsx", import.meta.url),
-  new URL("../projects/project-progress-settings.tsx", import.meta.url),
+  new URL("../tasks/stage-columns-dialog.tsx", import.meta.url),
   new URL("../tasks/add-task-dialog.tsx", import.meta.url),
   new URL("../tasks/task-details-drawer.tsx", import.meta.url),
   new URL("../tasks/task-status-control.tsx", import.meta.url),
@@ -78,12 +78,11 @@ describe("shared Select contract", () => {
     expect(source).toContain("onInvalid={(event) =>");
   });
 
-  it("migrates standard single-value controls and retains only the documented attendee multi-select", async () => {
+  it("uses the shared Select for every listed application control", async () => {
     const sources = await Promise.all(componentPaths.map((path) => readFile(path, "utf8")));
     const nativeSelects = sources.flatMap((source) => source.match(/<select\b/g) ?? []);
 
     expect(sources.every((source) => source.includes("<Select") || !source.includes("select"))).toBe(true);
-    expect(nativeSelects).toHaveLength(1);
-    expect(sources.join("\n")).toContain("Native multi-select intentionally preserves efficient bulk attendee selection");
+    expect(nativeSelects).toHaveLength(0);
   });
 });

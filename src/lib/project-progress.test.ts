@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePersonalProgress, calculateProjectProgress, calculateStageProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
+import { calculateOverallProjectProgress, calculatePersonalProgress, calculateProjectProgress, calculateStageProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
 
 function task(overrides: Partial<ProjectTaskForProgress> = {}): ProjectTaskForProgress {
   return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...overrides };
@@ -28,29 +28,35 @@ describe("task progress", () => {
 });
 
 describe("project task progress", () => {
-  it("excludes cancelled tasks and returns null progress with no eligible tasks", () => {
-    expect(calculateProjectProgress([task({ status: "cancelled" })], "2026-07-28")).toMatchObject({ eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: null });
+  it("excludes cancelled tasks and returns zero progress with no eligible tasks", () => {
+    expect(calculateProjectProgress([task({ status: "cancelled" })], "2026-07-28")).toMatchObject({ eligibleTaskCount: 0, completedTaskCount: 0, rawProgressPercent: 0, progressPercent: 0 });
   });
 
-  it("uses equal aggregation with status progress and consistent rounded presentation", () => {
-    const progress = calculateProjectProgress([task({ id: "todo" }), task({ id: "progress", status: "in_progress", production_completion: 50 }), task({ id: "review", status: "review" }), task({ id: "done", status: "completed" }), task({ id: "cancelled", status: "cancelled" })], "2026-07-28");
-    expect(progress).toMatchObject({ eligibleTaskCount: 4, completedTaskCount: 1, openTaskCount: 3, todoTaskCount: 1, inProgressTaskCount: 1, reviewTaskCount: 1, rawProgressPercent: 55, progressPercent: 55 });
-  });
-
-  it("uses project scope as the area denominator so unallocated area remains unfinished", () => {
+  it("uses weighted stage progress for partial completion", () => {
     const progress = calculateProjectProgress([
-      task({ id: "done", status: "completed", completed_area_m2: 40 }),
-      task({ id: "review", status: "review", completed_area_m2: 20 }),
-      task({ id: "unallocated", status: "completed" }),
-    ], "2026-07-28", { method: "area", designScopeAreaM2: 100 });
-    expect(progress.rawProgressPercent).toBe(56);
-    expect(progress).toMatchObject({ progressPercent: 56, assignedAreaM2: 60, designScopeAreaM2: 100, unweightedTaskCount: 1 });
+      { ...task({ id: "one-done", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "one-open" }), stage: "stage_1" },
+    ], "2026-07-28");
+    expect(progress).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, openTaskCount: 1, rawProgressPercent: 10, progressPercent: 10 });
   });
 
-  it("uses explicit task weights only in weighted mode", () => {
-    const tasks = [task({ id: "done", status: "completed", progress_weight: 3, completed_area_m2: 1 }), task({ id: "todo", progress_weight: 1, completed_area_m2: 99 })];
-    expect(calculateProjectProgress(tasks, "2026-07-28", { method: "weighted", designScopeAreaM2: 100 }).progressPercent).toBe(75);
-    expect(calculateProjectProgress(tasks, "2026-07-28", { method: "equal", designScopeAreaM2: 100 }).progressPercent).toBe(50);
+  it("rounds the weighted overall result with the existing presentation rule", () => {
+    const progress = calculateProjectProgress([
+      { ...task({ id: "one-done", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "one-open-a" }), stage: "stage_1" },
+      { ...task({ id: "one-open-b" }), stage: "stage_1" },
+    ]);
+    expect(progress.rawProgressPercent).toBeCloseTo(6.6);
+    expect(progress.progressPercent).toBe(7);
+  });
+
+  it("uses the fixed weighted formula from stage progress", () => {
+    const progress = calculateProjectProgress([
+      { ...task({ id: "one-done", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "two-done", status: "completed" }), stage: "stage_2" },
+      { ...task({ id: "two-open" }), stage: "stage_2" },
+    ], "2026-07-28");
+    expect(progress).toMatchObject({ rawProgressPercent: 40, progressPercent: 40 });
   });
 
   it("never treats completed tasks as overdue and uses date-only due dates", () => {
@@ -60,27 +66,59 @@ describe("project task progress", () => {
   });
 
   it("deduplicates joined task rows and calculates personal contribution", () => {
-    const tasks = [task({ id: "same", status: "completed" }), task({ id: "same", status: "completed" }), task({ id: "other", assignee_id: "employee-2" })];
-    expect(calculateProjectProgress(tasks, "2026-07-28")).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 });
+    const tasks = [{ ...task({ id: "same", status: "completed" }), stage: "stage_1" }, { ...task({ id: "same", status: "completed" }), stage: "stage_1" }, { ...task({ id: "other", assignee_id: "employee-2" }), stage: "stage_1" }];
+    expect(calculateProjectProgress(tasks, "2026-07-28")).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 10 });
     expect(calculatePersonalProgress(tasks, "employee-1", "2026-07-28")).toEqual({ eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 });
   });
 });
 
 describe("stage progress", () => {
-  it("derives stages one through three from completed eligible tasks and leaves empty stages at zero", () => {
+  it("derives stage progress from canonical task progress and excludes cancelled tasks", () => {
     const progress = calculateStageProgress([
-      { ...task({ id: "one-done", status: "completed" }), stage: "stage_1" },
-      { ...task({ id: "one-open" }), stage: "stage_1" },
+      { ...task({ id: "one-review", status: "review" }), stage: "stage_1" },
       { ...task({ id: "two-cancelled", status: "cancelled" }), stage: "stage_2" },
       { ...task({ id: "two-done", status: "completed" }), stage: "stage_2" },
+      { ...task({ id: "two-review", status: "review" }), stage: "stage_2" },
       { ...task({ id: "four-done", status: "completed" }), stage: "stage_4" },
     ]);
 
     expect(progress).toEqual({
-      stage_1: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 },
-      stage_2: { eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 },
-      stage_3: { eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: 0 },
+      stage_1: { eligibleTaskCount: 1, completedTaskCount: 0, progressPercent: 80, method: "equal" },
+      stage_2: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 90, method: "equal" },
+      stage_3: { eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: 0, method: "equal" },
     });
+  });
+
+  it("uses task progress weights when a stage uses weighted aggregation", () => {
+    const progress = calculateStageProgress([
+      { ...task({ id: "done", status: "completed", progress_weight: 3 }), stage: "stage_2" },
+      { ...task({ id: "review", status: "review", progress_weight: 1 }), stage: "stage_2" },
+    ], { stage_1: "equal", stage_2: "weighted", stage_3: "equal" });
+    expect(progress.stage_2).toMatchObject({ progressPercent: 95, method: "weighted" });
+  });
+
+  it("calculates the weighted overall progress from stages one through three", () => {
+    expect(calculateOverallProjectProgress({
+      stage_1: { eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 },
+      stage_2: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 50 },
+      stage_3: { eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: 0 },
+    })).toBe(40);
+  });
+
+  it("reaches 100% only when all weighted stages are complete", () => {
+    expect(calculateProjectProgress([
+      { ...task({ id: "one", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "two", status: "completed" }), stage: "stage_2" },
+      { ...task({ id: "three", status: "completed" }), stage: "stage_3" },
+    ]).progressPercent).toBe(100);
+  });
+
+  it("never lets stage four tasks affect overall project progress", () => {
+    const progress = calculateProjectProgress([
+      { ...task({ id: "one", status: "completed" }), stage: "stage_1" },
+      ...Array.from({ length: 20 }, (_, index) => ({ ...task({ id: `four-${index}`, status: "completed" }), stage: "stage_4" })),
+    ]);
+    expect(progress.progressPercent).toBe(20);
   });
 });
 

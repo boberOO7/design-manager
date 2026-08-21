@@ -33,14 +33,15 @@
   checklist weight divided by total checklist weight; deleting the final item
   restores the stored manual fallback. Presentation rounds to the nearest whole
   percent only after aggregation while domain calculations retain precision.
-- Project progress has one explicit method: Equal weights every included task as
-  1; Area weights the existing task `completed_area_m2` allocation against the
-  project `total_area_m2` design scope so unallocated scope remains unfinished;
-  Weighted uses each task's positive explicit `progress_weight`. Area and
-  arbitrary weights are never combined in one formula.
-- `completed_area_m2` is the canonical task-area allocation for both Area
-  progress and completion-time productivity attribution. Productivity remains
-  an immutable snapshot; later task edits do not rewrite historical credit.
+- Progress flows from canonical task progress to stage progress and then to the
+  overall project result. Each of Stages 1–3 uses its own Equal, Area, or
+  Weighted aggregation method over its non-cancelled task progress; Stage 4 has
+  no progress-method setting. Overall project progress is fixed: Stage 1
+  contributes 20%, Stage 2 40%, and Stage 3 40%; Stage 4 never contributes.
+  Stage percentages and the combined result are rounded only for presentation.
+- `completed_area_m2` is the canonical task-area allocation for
+  completion-time productivity attribution. Productivity remains an immutable
+  snapshot; later task edits do not rewrite historical credit.
 - Project health is derived rather than stored, using deterministic lifecycle,
   deadline, overdue-task, and open-priority rules.
 - Employee contribution is informational task progress only, not a performance

@@ -8,10 +8,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { ProjectLifecycleControls } from "@/components/projects/project-lifecycle-controls";
 import { ProjectEditModal } from "@/components/projects/project-edit-modal";
 import type { ProjectFormAction } from "@/components/projects/project-form";
-import { ProjectProgressSettings } from "@/components/projects/project-progress-settings";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
-import { calculateProjectProgress, calculateStageProgress, getProjectHealth, getProjectHealthLabel, getTodayDateOnly, isProjectProgressMethod } from "@/lib/project-progress";
+import { calculateProjectProgress, calculateStageProgress, getProjectHealth, getProjectHealthLabel, getTodayDateOnly, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
 import { getTaskPriorityLabel } from "@/lib/tasks";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
@@ -32,18 +31,18 @@ export type ProjectContextProject = {
   description: string | null;
   due_date: string | null;
   priority: string;
-  progress_method: string;
   start_date: string;
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, canManage, currentUserId, isArchived, project, restoreAction, tasks, updateAction }: {
+export function ProjectContextBand({ archiveAction, canManage, currentUserId, isArchived, project, restoreAction, stageProgressMethods, tasks, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   canManage: boolean;
   currentUserId: string;
   isArchived: boolean;
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
+  stageProgressMethods: ProjectStageProgressMethods;
   tasks: ProjectTask[];
   updateAction: ProjectFormAction;
 }) {
@@ -55,11 +54,8 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
   const statusMessages = useTranslations("Status");
   const locale = useLocale();
   const { status } = useProjectLifecycle();
-  const progress = calculateProjectProgress(tasks, undefined, {
-    method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal",
-    designScopeAreaM2: Number(project.total_area_m2),
-  });
-  const stageProgress = calculateStageProgress(tasks);
+  const progress = calculateProjectProgress(tasks, undefined, stageProgressMethods);
+  const stageProgress = calculateStageProgress(tasks, stageProgressMethods);
   const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
   const healthStyle = getProjectHealthBadgeStyle(health.health);
   const priorityStyle = getPriorityBadgeStyle(project.priority);
@@ -99,7 +95,7 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
         <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5" : "mt-2 flex flex-wrap items-center gap-x-3 gap-y-2"}><h1 id="project-context-heading" className={`flex min-w-0 items-center gap-2 break-words font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"}`}><LifecycleDot label={statusMessages(isArchived ? "archived" : status)} status={isArchived ? "archived" : status} />{project.name}</h1>{!isArchived ? <Badge className={`font-semibold ${healthStyle.className}`} label={getProjectHealthLabel(health.health)} /> : null}<Badge className={priorityStyle.className} label={getTaskPriorityLabel(project.priority)} /></div>
         {(project.client_name || location || project.project_code) ? <div className={compact ? "mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-4 text-[var(--ui-text-muted)]" : "mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 text-[var(--ui-text-muted)]"}>{project.client_name ? <p className="flex min-w-0 items-center gap-1.5"><span aria-label={form("clientName")} title={form("clientName")}><Building2 aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /></span><span className="truncate text-[var(--ui-text-secondary)]">{project.client_name}</span></p> : null}{location ? <p className="flex min-w-0 items-center gap-1.5"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}{project.project_code ? <p className="ui-numeric text-xs font-medium text-[var(--ui-text-muted)]">{project.project_code}</p> : null}</div> : null}
       </div>
-      <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} tasks={tasks} updateAction={updateAction} />
+      <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} />
     </div>
 
     <div className={compact ? "border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5" : "grid gap-5 px-4 pb-4 sm:px-5 sm:pb-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)] lg:gap-8"}>
@@ -127,18 +123,18 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
   </section>;
 }
 
-function ProjectContextActions({ archiveAction, canManage, compact, isArchived, onToggleCompact, project, restoreAction, status, tasks, updateAction }: { archiveAction: (formData: FormData) => Promise<void>; canManage: boolean; compact: boolean; isArchived: boolean; onToggleCompact: () => void; project: ProjectContextProject; restoreAction: (formData: FormData) => Promise<void>; status: string; tasks: ProjectTask[]; updateAction: ProjectFormAction }) {
+function ProjectContextActions({ archiveAction, canManage, compact, isArchived, onToggleCompact, project, restoreAction, status, updateAction }: { archiveAction: (formData: FormData) => Promise<void>; canManage: boolean; compact: boolean; isArchived: boolean; onToggleCompact: () => void; project: ProjectContextProject; restoreAction: (formData: FormData) => Promise<void>; status: string; updateAction: ProjectFormAction }) {
   const t = useTranslations("ProjectWorkspace");
   const locale = useLocale();
   const [moreOpen, setMoreOpen] = useState(false);
   const compactViewLabel = locale === "uk" ? "Компактний вигляд" : "Compact view";
-  return <div className="flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">{canManage && isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : null}{canManage && !isArchived ? <><ProjectLifecycleControls projectId={project.id} />{status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}</> : null}<PopoverPrimitive.Root open={moreOpen} onOpenChange={setMoreOpen}><PopoverPrimitive.Trigger asChild><button type="button" aria-label={t("moreActions")} className="flex size-8 cursor-pointer items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><MoreHorizontal className="size-4" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal><PopoverPrimitive.Content align="end" sideOffset={8} collisionPadding={16} className="z-[80] w-[min(22rem,calc(100vw-2rem))] rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 shadow-[var(--ui-shadow-popover)]"><button type="button" aria-pressed={compact} onClick={onToggleCompact} className="flex min-h-10 w-full items-center justify-between gap-3 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span>{compactViewLabel}</span>{compact ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-action-primary)]" /> : null}</button>{canManage && !isArchived ? <><div className="mt-2 border-t border-[var(--ui-border)] pt-3"><ProjectProgressSettings isReadOnly={status === "completed"} project={project} tasks={tasks} /></div><div className="mt-3 border-t border-[var(--ui-border)] pt-2"><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: project.name })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div></> : null}</PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root></div>;
+  return <div className="flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">{canManage && isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : null}{canManage && !isArchived ? <><ProjectLifecycleControls projectId={project.id} />{status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}</> : null}<PopoverPrimitive.Root open={moreOpen} onOpenChange={setMoreOpen}><PopoverPrimitive.Trigger asChild><button type="button" aria-label={t("moreActions")} className="flex size-8 cursor-pointer items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><MoreHorizontal className="size-4" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal><PopoverPrimitive.Content align="end" sideOffset={8} collisionPadding={16} className="z-[80] w-[min(22rem,calc(100vw-2rem))] rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 shadow-[var(--ui-shadow-popover)]"><button type="button" aria-pressed={compact} onClick={onToggleCompact} className="flex min-h-10 w-full items-center justify-between gap-3 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span>{compactViewLabel}</span>{compact ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-action-primary)]" /> : null}</button>{canManage && !isArchived ? <div className="mt-3 border-t border-[var(--ui-border)] pt-2"><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: project.name })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div> : null}</PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root></div>;
 }
 
 function ProgressSummary({ compact, progress, projectName, stageProgress }: { compact: boolean; progress: ReturnType<typeof calculateProjectProgress>; projectName: string; stageProgress: ReturnType<typeof calculateStageProgress> }) {
   const t = useTranslations("Projects");
   const stageLabels = useTranslations("TaskStages");
-  if (progress.progressPercent === null) return <div><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><p className={compact ? "mt-0.5 text-sm text-[var(--ui-text-muted)]" : "mt-1 text-sm text-[var(--ui-text-muted)]"}>{t("noTasks")}</p></div>;
+  if (progress.eligibleTaskCount === 0) return <div><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><p className={compact ? "mt-0.5 text-sm text-[var(--ui-text-muted)]" : "mt-1 text-sm text-[var(--ui-text-muted)]"}>{t("noTasks")}</p></div>;
   const markerOffset = progress.progressPercent === 100 ? "calc(100% - 0.375rem)" : `${progress.progressPercent}%`;
   return <div>
     <div className="flex items-end justify-between gap-4"><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><span className={`ui-numeric font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-2xl" : "text-3xl"}`}>{progress.progressPercent}%</span></div>

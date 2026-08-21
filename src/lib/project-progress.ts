@@ -1,7 +1,7 @@
 export type ProjectHealth = "completed" | "overdue" | "needs_attention" | "deadline_soon" | "on_track";
-export type ProjectProgressMethod = "equal" | "area" | "weighted";
+export type StageProgressMethod = "equal" | "area" | "weighted";
 
-export function isProjectProgressMethod(value: string): value is ProjectProgressMethod {
+export function isStageProgressMethod(value: string): value is StageProgressMethod {
   return value === "equal" || value === "area" || value === "weighted";
 }
 
@@ -21,15 +21,30 @@ export type ProjectTaskForProgress = {
   production_completion: number;
   progress_weight: number;
   checklist_items: readonly ChecklistItemForProgress[];
+  stage?: string;
 };
 
 export const PROJECT_PROGRESS_STAGES = ["stage_1", "stage_2", "stage_3"] as const;
 export type ProjectProgressStage = (typeof PROJECT_PROGRESS_STAGES)[number];
+export type ProjectStageProgressMethods = Record<ProjectProgressStage, StageProgressMethod>;
+
+export const DEFAULT_PROJECT_STAGE_PROGRESS_METHODS: ProjectStageProgressMethods = {
+  stage_1: "equal",
+  stage_2: "equal",
+  stage_3: "equal",
+};
+
+export const PROJECT_PROGRESS_STAGE_WEIGHTS: Record<ProjectProgressStage, number> = {
+  stage_1: 0.2,
+  stage_2: 0.4,
+  stage_3: 0.4,
+};
 
 export type StageProgress = {
   eligibleTaskCount: number;
   completedTaskCount: number;
   progressPercent: number;
+  method?: StageProgressMethod;
 };
 
 export type TaskProgressSource = "manual" | "checklist" | "status";
@@ -55,15 +70,11 @@ export type ProjectProgress = {
   urgentOpenTaskCount: number;
   highPriorityOpenTaskCount: number;
   nearestOpenTaskDueDate: string | null;
-  progressPercent: number | null;
-  rawProgressPercent: number | null;
-  method: ProjectProgressMethod;
-  assignedAreaM2: number;
-  designScopeAreaM2: number | null;
-  unweightedTaskCount: number;
+  progressPercent: number;
+  rawProgressPercent: number;
 };
 
-export type PersonalProgress = Pick<ProjectProgress, "eligibleTaskCount" | "completedTaskCount" | "progressPercent">;
+export type PersonalProgress = Pick<ProjectProgress, "eligibleTaskCount" | "completedTaskCount"> & { progressPercent: number | null };
 
 export type ProjectHealthSummary = { health: ProjectHealth; reason: string | null };
 
@@ -96,23 +107,39 @@ function getUniqueProjectTasks<T extends ProjectTaskForProgress>(tasks: readonly
   });
 }
 
-function calculateCompletionProgress<T extends ProjectTaskForProgress>(tasks: readonly T[]): StageProgress {
+function calculateStageTaskProgress<T extends ProjectTaskForProgress>(tasks: readonly T[], method: StageProgressMethod): StageProgress {
   const eligibleTasks = getUniqueProjectTasks(tasks).filter(isProgressEligibleTask);
   const completedTaskCount = eligibleTasks.filter((task) => task.status === "completed").length;
+  const taskProgress = eligibleTasks.map((task) => ({ task, progress: calculateTaskProgress(task).overallPercent }));
+  const totalWeight = method === "equal"
+    ? taskProgress.length
+    : taskProgress.reduce((total, { task }) => total + Number(method === "weighted" ? task.progress_weight : task.completed_area_m2 ?? 0), 0);
+  const progressPercent = totalWeight > 0
+    ? taskProgress.reduce((total, { task, progress }) => total + progress * (method === "equal" ? 1 : Number(method === "weighted" ? task.progress_weight : task.completed_area_m2 ?? 0)), 0) / totalWeight
+    : 0;
   return {
     eligibleTaskCount: eligibleTasks.length,
     completedTaskCount,
-    progressPercent: eligibleTasks.length === 0 ? 0 : roundProgressPercent((completedTaskCount / eligibleTasks.length) * 100),
+    progressPercent: roundProgressPercent(progressPercent),
+    method,
   };
 }
 
-export function calculateStageProgress<T extends ProjectTaskForProgress & { stage: string }>(
+export function calculateStageProgress<T extends ProjectTaskForProgress>(
   tasks: readonly T[],
+  methods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
 ): Record<ProjectProgressStage, StageProgress> {
   return PROJECT_PROGRESS_STAGES.reduce<Record<ProjectProgressStage, StageProgress>>((progressByStage, stage) => ({
     ...progressByStage,
-    [stage]: calculateCompletionProgress(tasks.filter((task) => task.stage === stage)),
+    [stage]: calculateStageTaskProgress(tasks.filter((task) => task.stage === stage), methods[stage]),
   }), {} as Record<ProjectProgressStage, StageProgress>);
+}
+
+export function calculateOverallProjectProgress(stageProgress: Record<ProjectProgressStage, StageProgress>): number {
+  return PROJECT_PROGRESS_STAGES.reduce(
+    (total, stage) => total + stageProgress[stage].progressPercent * PROJECT_PROGRESS_STAGE_WEIGHTS[stage],
+    0,
+  );
 }
 
 function clampPercent(value: number): number {
@@ -154,33 +181,15 @@ export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status
 export function calculateProjectProgress<T extends ProjectTaskForProgress>(
   tasks: readonly T[],
   today = getTodayDateOnly(),
-  options: { method?: ProjectProgressMethod; designScopeAreaM2?: number | null } = {},
+  stageMethods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
 ): ProjectProgress {
   const uniqueTasks = getUniqueProjectTasks(tasks);
   const eligible = uniqueTasks.filter(isProgressEligibleTask);
   const open = eligible.filter(isOpenProjectTask);
   const completedTaskCount = eligible.filter((task) => task.status === "completed").length;
   const dueDates = open.flatMap((task) => task.due_date ? [task.due_date] : []);
-  const method = options.method ?? "equal";
-  const designScopeAreaM2 = options.designScopeAreaM2 ?? null;
-  const taskProgress = eligible.map((task) => ({ task, progress: calculateTaskProgress(task).overallPercent }));
-  const assignedAreaM2 = eligible.reduce((total, task) => total + Number(task.completed_area_m2 ?? 0), 0);
-  const unweightedTaskCount = eligible.filter((task) => task.completed_area_m2 === null).length;
-  let rawProgressPercent: number | null = null;
-  if (eligible.length > 0) {
-    if (method === "area") {
-      rawProgressPercent = designScopeAreaM2 !== null && designScopeAreaM2 > 0
-        ? taskProgress.reduce((total, item) => total + Number(item.task.completed_area_m2 ?? 0) * item.progress, 0) / designScopeAreaM2
-        : 0;
-    } else if (method === "weighted") {
-      const totalWeight = taskProgress.reduce((total, item) => total + Number(item.task.progress_weight), 0);
-      rawProgressPercent = totalWeight > 0
-        ? taskProgress.reduce((total, item) => total + Number(item.task.progress_weight) * item.progress, 0) / totalWeight
-        : 0;
-    } else {
-      rawProgressPercent = taskProgress.reduce((total, item) => total + item.progress, 0) / eligible.length;
-    }
-  }
+  const stageProgress = calculateStageProgress(uniqueTasks, stageMethods);
+  const rawProgressPercent = calculateOverallProjectProgress(stageProgress);
 
   return {
     eligibleTaskCount: eligible.length,
@@ -193,18 +202,23 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
     urgentOpenTaskCount: open.filter((task) => task.priority === "urgent").length,
     highPriorityOpenTaskCount: open.filter((task) => task.priority === "high").length,
     nearestOpenTaskDueDate: dueDates.sort((left, right) => left.localeCompare(right))[0] ?? null,
-    progressPercent: rawProgressPercent === null ? null : roundProgressPercent(rawProgressPercent),
+    progressPercent: roundProgressPercent(rawProgressPercent),
     rawProgressPercent,
-    method,
-    assignedAreaM2,
-    designScopeAreaM2,
-    unweightedTaskCount,
   };
 }
 
-export function calculatePersonalProgress<T extends ProjectTaskForProgress>(tasks: readonly T[], userId: string, today = getTodayDateOnly()): PersonalProgress {
-  const progress = calculateProjectProgress(tasks.filter((task) => task.assignee_id === userId), today);
-  return { eligibleTaskCount: progress.eligibleTaskCount, completedTaskCount: progress.completedTaskCount, progressPercent: progress.progressPercent };
+export function calculatePersonalProgress<T extends ProjectTaskForProgress>(tasks: readonly T[], userId: string, _today = getTodayDateOnly()): PersonalProgress {
+  void _today;
+  const eligibleTasks = getUniqueProjectTasks(tasks.filter((task) => task.assignee_id === userId)).filter(isProgressEligibleTask);
+  const completedTaskCount = eligibleTasks.filter((task) => task.status === "completed").length;
+  const rawProgressPercent = eligibleTasks.length > 0
+    ? eligibleTasks.reduce((total, task) => total + calculateTaskProgress(task).overallPercent, 0) / eligibleTasks.length
+    : null;
+  return {
+    eligibleTaskCount: eligibleTasks.length,
+    completedTaskCount,
+    progressPercent: rawProgressPercent === null ? null : roundProgressPercent(rawProgressPercent),
+  };
 }
 
 export function getProjectHealth({

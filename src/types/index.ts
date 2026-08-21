@@ -4,7 +4,6 @@ import type { TaskStage, TaskStatus as CanonicalTaskStatus } from "@/types/tasks
 export type SystemRole = "admin" | "employee";
 export type ProjectStatus = "planned" | "active" | "paused" | "completed" | "archived";
 export type ProjectPriority = "low" | "normal" | "high" | "urgent";
-export type ProjectProgressMethod = "equal" | "area" | "weighted";
 export type TaskStatus = CanonicalTaskStatus;
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 
@@ -36,7 +35,6 @@ export interface Project {
   total_area_m2: number;
   status: ProjectStatus;
   priority: ProjectPriority;
-  progress_method: ProjectProgressMethod;
   start_date: string;
   due_date?: string | null;
   completed_at?: string | null;

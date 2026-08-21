@@ -38,7 +38,7 @@ import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
-import { calculateStageProgress } from "@/lib/project-progress";
+import { calculateStageProgress, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
@@ -313,6 +313,7 @@ export function ProjectTaskBoard({
   projectId,
   projectStatus,
   stageColumns,
+  stageProgressMethods,
   tasks,
   templates,
   onTasksChange,
@@ -327,6 +328,7 @@ export function ProjectTaskBoard({
   projectId: string;
   projectStatus: ProjectLifecycleStatus;
   stageColumns: ProjectStageColumns;
+  stageProgressMethods: ProjectStageProgressMethods;
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
   onTasksChange?: (tasks: ProjectTask[]) => void;
@@ -347,6 +349,7 @@ export function ProjectTaskBoard({
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
+  const [localStageProgressMethods, setLocalStageProgressMethods] = useState(stageProgressMethods);
   const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(() => tasks.some((task) => task.id === initialTaskId));
@@ -435,7 +438,7 @@ export function ProjectTaskBoard({
     ...groups,
     [stage]: groupTasksByBoardColumn(localTasks.filter((task) => task.stage === stage)),
   }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>);
-  const stageProgress = calculateStageProgress(localTasks);
+  const stageProgress = calculateStageProgress(localTasks, localStageProgressMethods);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -685,7 +688,7 @@ export function ProjectTaskBoard({
           {() => activeTask ? <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip /> : null}
         </DragOverlay>
       </DragDropProvider>
-      {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
+      {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} method={settingsStage === "stage_4" ? undefined : localStageProgressMethods[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns, method) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); if (method && settingsStage !== "stage_4") setLocalStageProgressMethods((current) => ({ ...current, [settingsStage]: method })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
       {selectedTask ? <TaskDetailsDrawer
         key={selectedTask.id}
         canManageTasks={canManageTasks}

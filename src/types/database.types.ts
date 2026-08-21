@@ -468,7 +468,6 @@ export type Database = {
           id: string
           name: string
           priority: string
-          progress_method: string
           project_code: string | null
           project_type: string | null
           project_type_custom: string | null
@@ -492,7 +491,6 @@ export type Database = {
           id?: string
           name: string
           priority?: string
-          progress_method?: string
           project_code?: string | null
           project_type?: string | null
           project_type_custom?: string | null
@@ -516,7 +514,6 @@ export type Database = {
           id?: string
           name?: string
           priority?: string
-          progress_method?: string
           project_code?: string | null
           project_type?: string | null
           project_type_custom?: string | null
@@ -698,9 +695,9 @@ export type Database = {
         ]
       }
       project_task_stage_columns: {
-        Row: { project_id: string; stage: string; enabled_statuses: string[]; updated_at: string }
-        Insert: { project_id: string; stage: string; enabled_statuses?: string[]; updated_at?: string }
-        Update: { enabled_statuses?: string[]; updated_at?: string }
+        Row: { project_id: string; stage: string; enabled_statuses: string[]; progress_method: string; updated_at: string }
+        Insert: { project_id: string; stage: string; enabled_statuses?: string[]; progress_method?: string; updated_at?: string }
+        Update: { enabled_statuses?: string[]; progress_method?: string; updated_at?: string }
         Relationships: [{ foreignKeyName: "project_task_stage_columns_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] }]
       }
       task_checklist_items: {

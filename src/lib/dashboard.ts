@@ -1,7 +1,7 @@
 import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
 import type { MyTask } from "../types/tasks";
 import type { ProjectLifecycleStatus } from "./project-lifecycle";
-import { calculateProjectProgress, isProjectProgressMethod } from "./project-progress";
+import { calculateProjectProgress, type ProjectStageProgressMethods } from "./project-progress";
 import { isTaskStage } from "./task-stages";
 
 export type DashboardTask = MyTask;
@@ -13,8 +13,7 @@ export type DashboardProject = {
   client_name: string | null;
   due_date: string | null;
   status: ProjectLifecycleStatus;
-  progress_method: string;
-  total_area_m2: number;
+  stageProgressMethods: ProjectStageProgressMethods;
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string; avatar_url?: string | null };
@@ -115,7 +114,7 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
       ? Math.round((new Date(`${project.due_date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
       : null;
     const projectTasks = tasks.filter((task) => task.project_id === project.id);
-    const progress = calculateProjectProgress(projectTasks, today, { method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal", designScopeAreaM2: project.total_area_m2 });
+    const progress = calculateProjectProgress(projectTasks, today, project.stageProgressMethods);
     summaries.set(project.id, { ...project, openTaskCount: 0, overdueCount: 0, urgentCount: 0, deadlineDaysAway, progressPercent: progress.progressPercent });
   }
   for (const task of tasks) {

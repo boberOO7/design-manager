@@ -3,7 +3,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectTaskById, getProjectTasks } from "@/data/queries/tasks";
+import { getProjectTaskById } from "@/data/queries/tasks";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
@@ -50,14 +50,6 @@ export async function updateTaskDetailsMutation(
       formError: "Please correct the highlighted fields.",
       fieldErrors: { assignee_id: "Choose an active member of this project." },
     };
-  }
-  if (authorization.task.project.progress_method === "area") {
-    const projectTasks = await getProjectTasks(authorization.task.project_id);
-    const otherArea = projectTasks.filter((task) => task.id !== authorization.task.id && task.status !== "cancelled").reduce((total, task) => total + Number(task.completed_area_m2 ?? 0), 0);
-    const nextArea = otherArea + Number(parsed.data.completed_area_m2 ?? 0);
-    if (nextArea > authorization.task.project.total_area_m2) {
-      return { success: false, formError: "Please correct the highlighted fields.", fieldErrors: { completed_area_m2: `Task areas cannot exceed the ${authorization.task.project.total_area_m2} m² design scope.` } };
-    }
   }
 
   const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "progress_weight" | "stage" | "status"> = {

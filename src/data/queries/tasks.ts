@@ -68,7 +68,7 @@ export async function getTaskForStatusUpdate(taskId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, assignee_id, status, completed_area_m2, task_checklist_items(id, is_completed), project:projects!tasks_project_id_fkey!inner(studio_id, status, progress_method, total_area_m2)")
+    .select("id, project_id, stage, assignee_id, status, completed_area_m2, task_checklist_items(id, is_completed), project:projects!tasks_project_id_fkey!inner(studio_id, status, total_area_m2)")
     .eq("id", taskId)
     .maybeSingle();
 

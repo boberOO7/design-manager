@@ -7,8 +7,8 @@ type TestTask = Partial<ProjectTaskForProgress> & Pick<ProjectTaskForProgress, "
 function progressTask(input: TestTask): ProjectTaskForProgress {
   return { completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...input };
 }
-function project(overrides: Partial<{ id: string; name: string; priority: string; status: string; due_date: string | null; progress_method: string; total_area_m2: number; tasks: TestTask[] }> = {}) {
-  const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, progress_method: "equal", total_area_m2: 100, tasks: [] as TestTask[], ...overrides };
+function project(overrides: Partial<{ id: string; name: string; priority: string; status: string; due_date: string | null; total_area_m2: number; tasks: TestTask[] }> = {}) {
+  const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, total_area_m2: 100, tasks: [] as TestTask[], ...overrides };
   return { ...value, tasks: value.tasks.map(progressTask) };
 }
 const operational: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational" };
@@ -36,10 +36,10 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, { ...operational, priority: "low" }).map((item) => item.id)).toEqual(["paused"]);
   });
 
-  it("uses truthful no-task and progress labels, and keeps project deep links", () => {
-    const [emptyProject, activeProject] = getPresentedProjects([project(), project({ id: "progress", tasks: [{ id: "done", status: "completed", priority: "normal", due_date: null, assignee_id: null }, { id: "open", status: "todo", priority: "normal", due_date: null, assignee_id: null }] })], today);
+  it("uses truthful no-task and stage-weighted progress labels, and keeps project deep links", () => {
+    const [emptyProject, activeProject] = getPresentedProjects([project(), project({ id: "progress", tasks: [{ id: "done", status: "completed", priority: "normal", due_date: null, assignee_id: null, stage: "stage_1" }, { id: "open", status: "todo", priority: "normal", due_date: null, assignee_id: null, stage: "stage_1" }] })], today);
     expect(getProjectProgressLabel(emptyProject.progress)).toBe("No tasks yet");
-    expect(getProjectProgressLabel(activeProject.progress)).toBe("50% · 1 completed · 1 open");
+    expect(getProjectProgressLabel(activeProject.progress)).toBe("10% · 1 completed · 1 open");
     expect(getProjectHref("progress")).toBe("/projects/progress");
     expect(new Set(getPresentedProjects([project({ id: "one" }), project({ id: "two" })], today).map((item) => item.id)).size).toBe(2);
   });

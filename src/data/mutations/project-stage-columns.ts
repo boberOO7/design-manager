@@ -5,6 +5,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getProjectTasks } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
+import { isStageProgressMethod, PROJECT_PROGRESS_STAGES, type StageProgressMethod } from "@/lib/project-progress";
 import { isTaskStage } from "@/lib/task-stages";
 import { isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
 
@@ -20,11 +21,12 @@ function logStageColumnsSaveError(projectId: string, stage: string, error: { cod
   });
 }
 
-export async function updateProjectStageColumns(projectId: string, stage: string, statuses: unknown) {
+export async function updateProjectStageSettings(projectId: string, stage: string, statuses: unknown, progressMethod: unknown) {
   const enabledStatuses = Array.isArray(statuses)
     ? statuses.filter((status): status is WritableTaskStatus => typeof status === "string" && isWritableTaskStatus(status))
     : [];
-  if (!isTaskStage(stage) || !Array.isArray(statuses) || statuses.length < 1 || statuses.length > 5 || enabledStatuses.length !== statuses.length || new Set(enabledStatuses).size !== enabledStatuses.length) {
+  const hasConfigurableProgress = PROJECT_PROGRESS_STAGES.includes(stage as typeof PROJECT_PROGRESS_STAGES[number]);
+  if (!isTaskStage(stage) || !Array.isArray(statuses) || statuses.length < 1 || statuses.length > 5 || enabledStatuses.length !== statuses.length || new Set(enabledStatuses).size !== enabledStatuses.length || (hasConfigurableProgress && !isStageProgressMethod(typeof progressMethod === "string" ? progressMethod : "")) || (!hasConfigurableProgress && progressMethod !== undefined)) {
     return { success: false as const, formError: "Choose between one and five unique task statuses." };
   }
   const admin = await getActiveStudioAdmin();
@@ -34,17 +36,21 @@ export async function updateProjectStageColumns(projectId: string, stage: string
   const blocked = tasks.some((task) => task.stage === stage && isWritableTaskStatus(task.status) && !enabledStatuses.includes(task.status));
   if (blocked) return { success: false as const, errorCode: "tasks_use_disabled_statuses", formError: "Move tasks from the columns you want to disable before saving this stage." };
   const supabase = await createClient();
+  const update: { enabled_statuses: WritableTaskStatus[]; progress_method?: StageProgressMethod } = { enabled_statuses: enabledStatuses };
+  if (hasConfigurableProgress) update.progress_method = progressMethod as StageProgressMethod;
   const { data, error } = await supabase
     .from("project_task_stage_columns")
-    .update({ enabled_statuses: enabledStatuses })
+    .update(update)
     .eq("project_id", projectId)
     .eq("stage", stage)
-    .select("project_id, stage, enabled_statuses")
+    .select("project_id, stage, enabled_statuses, progress_method")
     .maybeSingle();
   if (error || !data) {
     logStageColumnsSaveError(projectId, stage, error, !data);
     return { success: false as const, errorCode: "save_failed", formError: "The stage columns could not be saved. Please try again." };
   }
   revalidatePath(`/projects/${projectId}`);
-  return { success: true as const, enabledStatuses: data.enabled_statuses.filter(isWritableTaskStatus), stage };
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  return { success: true as const, enabledStatuses: data.enabled_statuses.filter(isWritableTaskStatus), progressMethod: data.progress_method, stage };
 }

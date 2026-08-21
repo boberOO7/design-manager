@@ -1,4 +1,4 @@
-import { calculateProjectProgress, getProjectHealth, isProjectProgressMethod, type ProjectHealth, type ProjectProgress, type ProjectTaskForProgress } from "@/lib/project-progress";
+import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, getProjectHealth, type ProjectHealth, type ProjectProgress, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paused", "completed"] as const;
 export const PROJECT_LIST_HEALTH_FILTERS = ["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"] as const;
@@ -28,7 +28,7 @@ export const PROJECT_LIST_SORT_LABEL_KEYS = {
   operational: "operationalPriority", deadline: "deadline", name: "name", health: "health", progress: "progress",
 } as const satisfies Record<ProjectListFilters["sort"], "operationalPriority" | "deadline" | "name" | "health" | "progress">;
 
-export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; progress_method: string; total_area_m2: number }> = T & {
+export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }> = T & {
   health: ProjectHealth;
   healthReason: string | null;
   progress: ProjectProgress;
@@ -50,12 +50,9 @@ export function getProjectListFilters(searchParams: Record<string, string | stri
   };
 }
 
-export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; progress_method: string; total_area_m2: number }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
+export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
   return projects.map((project) => {
-    const progress = calculateProjectProgress(project.tasks, today, {
-      method: isProjectProgressMethod(project.progress_method) ? project.progress_method : "equal",
-      designScopeAreaM2: Number(project.total_area_m2),
-    });
+    const progress = calculateProjectProgress(project.tasks, today, project.stageProgressMethods ?? DEFAULT_PROJECT_STAGE_PROGRESS_METHODS);
     const health = getProjectHealth({ projectStatus: project.status, projectDueDate: project.due_date, progress, today });
     return { ...project, progress, health: health.health, healthReason: health.reason };
   });
@@ -65,7 +62,7 @@ function compareNullableDate(left: string | null, right: string | null): number 
   return (left ?? "9999-12-31").localeCompare(right ?? "9999-12-31");
 }
 
-export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; progress_method: string; total_area_m2: number; tasks: readonly ProjectTaskForProgress[] }>(projects: readonly PresentedProject<T>[], filters: ProjectListFilters): PresentedProject<T>[] {
+export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; tasks: readonly ProjectTaskForProgress[]; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly PresentedProject<T>[], filters: ProjectListFilters): PresentedProject<T>[] {
   const filtered = projects.filter((project) =>
     (filters.lifecycle === "all" || project.status === filters.lifecycle)
     && (filters.health === "all" || project.health === filters.health)
@@ -97,7 +94,7 @@ export function getProjectListEmptyState(filters: ProjectListFilters): { canRese
 }
 
 export function getProjectProgressLabel(progress: ProjectProgress): string {
-  return progress.progressPercent === null ? "No tasks yet" : `${progress.progressPercent}% · ${progress.completedTaskCount} completed · ${progress.openTaskCount} open`;
+  return progress.eligibleTaskCount === 0 ? "No tasks yet" : `${progress.progressPercent}% · ${progress.completedTaskCount} completed · ${progress.openTaskCount} open`;
 }
 
 export function getProjectHref(projectId: string): string {

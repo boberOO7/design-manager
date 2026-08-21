@@ -5,7 +5,6 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { authorizeTaskMutation, updateTaskStatusMutation } from "@/data/mutations/task-status";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectTasks } from "@/data/queries/tasks";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { toTaskStatusActionState } from "@/lib/task-status-mutation";
 import { createClient } from "@/lib/supabase/server";
@@ -79,13 +78,6 @@ export async function createProjectTask(
     : await getAssignableProjectMembers(project.id, project.studio_id);
   if (parsed.data.assignee_id !== null && !projectMembers.some((member) => member.id === parsed.data.assignee_id)) {
     return { fieldErrors: { assignee_id: "Choose an active member of this project." } };
-  }
-  if (project.progress_method === "area" && parsed.data.completed_area_m2 !== undefined) {
-    const existingTasks = await getProjectTasks(project.id);
-    const assignedArea = existingTasks.filter((task) => task.status !== "cancelled").reduce((total, task) => total + Number(task.completed_area_m2 ?? 0), 0);
-    if (assignedArea + parsed.data.completed_area_m2 > project.total_area_m2) {
-      return { formError: "Please correct the highlighted fields.", fieldErrors: { completed_area_m2: `Task areas cannot exceed the ${project.total_area_m2} m² design scope.` } };
-    }
   }
 
   const task = {
