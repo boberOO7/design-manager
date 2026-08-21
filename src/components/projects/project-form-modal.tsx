@@ -5,6 +5,8 @@ import { ProjectForm, type ProjectFormAction, type ProjectFormDefaults } from "@
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { getProjectDialogCloseIntent } from "@/lib/project-dialog";
+import type { ActiveStudioAssignee } from "@/data/queries/project-members";
+import type { ProjectTemplate } from "@/lib/project-templates";
 
 export function ProjectFormModal({
   action,
@@ -18,6 +20,8 @@ export function ProjectFormModal({
   triggerLabel,
   triggerSize,
   triggerVariant,
+  members = [],
+  templates = [],
 }: {
   action: ProjectFormAction;
   closeLabel: string;
@@ -30,6 +34,8 @@ export function ProjectFormModal({
   triggerLabel: string;
   triggerSize?: ButtonProps["size"];
   triggerVariant?: ButtonProps["variant"];
+  members?: ActiveStudioAssignee[];
+  templates?: ProjectTemplate[];
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -60,6 +66,7 @@ export function ProjectFormModal({
         action={action}
         defaultValues={defaultValues}
         layout="modal"
+        members={members}
         mode={mode}
         onCancel={() => requestClose("explicit")}
         onDirtyChange={setIsDirty}
@@ -70,6 +77,7 @@ export function ProjectFormModal({
           setIsOpen(false);
           onSuccess(projectId);
         }}
+        templates={templates}
       />
     </Dialog>
   </>;

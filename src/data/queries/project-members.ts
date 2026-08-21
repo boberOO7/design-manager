@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import type { Database } from "@/types/database.types";
 import type { ProjectMemberRow } from "@/types/project-members";
 
@@ -23,6 +24,21 @@ export type AssignableProjectMember = Pick<
   ProfileRow,
   "id" | "full_name" | "job_title" | "avatar_url"
 >;
+
+export type ActiveStudioAssignee = Pick<ProfileRow, "id" | "full_name" | "job_title" | "avatar_url">;
+
+export async function getActiveStudioAssignees(): Promise<ActiveStudioAssignee[]> {
+  const membership = await getActiveStudioMembership();
+  if (!membership) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("studio_members")
+    .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)")
+    .eq("studio_id", membership.studio_id)
+    .eq("is_active", true);
+  if (error || !data) throw new Error("Unable to load active studio members.", { cause: error });
+  return data.flatMap(({ profile }) => profile.is_active ? [{ id: profile.id, full_name: profile.full_name, job_title: profile.job_title, avatar_url: profile.avatar_url }] : []).sort((left, right) => left.full_name.localeCompare(right.full_name));
+}
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
   const supabase = await createClient();

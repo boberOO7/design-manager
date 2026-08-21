@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
+import { PROJECT_TEMPLATE_STAGES, isProjectTemplateStage } from "@/lib/project-templates";
 import {
   getProjectFormInput,
   projectSchema,
@@ -37,11 +38,11 @@ export async function createProject(
 
   const supabase = await createClient();
   const project = parsed.data;
-  const { data, error: insertError } = await supabase
-    .from("projects")
-    .insert({
+  const stageAssignees = getStageAssignees(formData);
+  if (!stageAssignees) return { formError: "Choose valid stage assignees." };
+  const { data, error: insertError } = await supabase.rpc("create_project_from_template", {
+    p_project: {
       studio_id: membership.studio_id,
-      created_by: membership.authenticatedUserId,
       name: project.name,
       project_type: project.project_type,
       project_type_custom: project.project_type === "other" ? project.project_type_custom ?? null : null,
@@ -51,13 +52,12 @@ export async function createProject(
       client_name: project.client_name || null,
       description: project.description || null,
       total_area_m2: project.total_area_m2,
-      status: "planned",
       priority: project.priority,
       start_date: project.start_date,
       due_date: project.due_date || null,
-    })
-    .select("id")
-    .single();
+    },
+    p_stage_assignees: stageAssignees,
+  });
 
   if (insertError || !data) {
     console.error("Unable to create project", insertError);
@@ -65,5 +65,15 @@ export async function createProject(
   }
 
   revalidatePath("/projects");
-  return { projectId: data.id };
+  return { projectId: data };
+}
+
+function getStageAssignees(formData: FormData): Array<{ stage: string; assignee_id: string | null }> | null {
+  const assignees: Array<{ stage: string; assignee_id: string | null }> = [];
+  for (const stage of PROJECT_TEMPLATE_STAGES) {
+    const value = formData.get(`stage_assignee_${stage}`);
+    if (typeof value !== "string") return null;
+    assignees.push({ stage, assignee_id: value || null });
+  }
+  return assignees.every((assignee) => isProjectTemplateStage(assignee.stage)) ? assignees : null;
 }

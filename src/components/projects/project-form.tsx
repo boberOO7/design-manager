@@ -10,6 +10,9 @@ import { Select, SelectItem } from "@/components/ui/select";
 import { getCountryOptions } from "@/lib/countries";
 import { PROJECT_TYPE_KEYS, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
 import { cn } from "@/lib/utils";
+import { getTemplateStageTasks, PROJECT_TEMPLATE_STAGES, type ProjectTemplate } from "@/lib/project-templates";
+import type { ActiveStudioAssignee } from "@/data/queries/project-members";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export type ProjectFormDefaults = {
   city?: string;
@@ -30,16 +33,18 @@ export type ProjectFormAction = (state: ProjectFormActionState, formData: FormDa
 
 const inputClassName = "mt-2 h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none transition-colors placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus:ring-[var(--ui-danger-text)]";
 
-export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "page", mode, onCancel, onDirtyChange, onPendingChange, onSuccess }: {
+export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "page", members = [], mode, onCancel, onDirtyChange, onPendingChange, onSuccess, templates = [] }: {
   action: ProjectFormAction;
   cancelHref?: string;
   defaultValues?: ProjectFormDefaults;
   layout?: "modal" | "page";
+  members?: ActiveStudioAssignee[];
   mode: "create" | "edit";
   onCancel?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
   onPendingChange?: (pending: boolean) => void;
   onSuccess?: (projectId: string) => void;
+  templates?: ProjectTemplate[];
 }) {
   const t = useTranslations("ProjectForm");
   const priority = useTranslations("Priority");
@@ -53,6 +58,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const [city, setCity] = useState(defaultValues.city ?? "");
   const [cityGeoNamesId, setCityGeoNamesId] = useState(defaultValues.city_geonames_id);
   const [countryResetMessage, setCountryResetMessage] = useState("");
+  const [stageAssignees, setStageAssignees] = useState<Record<string, string>>({});
   const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
 
   useEffect(() => {
@@ -95,7 +101,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("project_type")} id="project_type" label={t("projectType")}>
-      <Select name="project_type" value={projectType} onValueChange={(value) => { setProjectType(value); if (value !== "other") setProjectTypeCustom(""); markDirty(); }} className="mt-2" {...errorAttributes("project_type")}>
+      <Select name="project_type" value={projectType} onValueChange={(value) => { setProjectType(value); setStageAssignees({}); if (value !== "other") setProjectTypeCustom(""); markDirty(); }} className="mt-2" {...errorAttributes("project_type")}>
         <SelectItem value="">{t("notSpecified")}</SelectItem>
         {PROJECT_TYPE_KEYS.map((key) => <SelectItem key={key} value={key}>{projectTypes(key)}</SelectItem>)}
       </Select>
@@ -104,6 +110,8 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     {projectType === "other" ? <Field error={fieldError("project_type_custom")} id="project_type_custom" label={t("projectTypeCustom")}>
       <input name="project_type_custom" value={projectTypeCustom} onChange={(event) => { setProjectTypeCustom(event.target.value); markDirty(); }} className={inputClassName} autoComplete="off" {...errorAttributes("project_type_custom")} />
     </Field> : null}
+
+    {mode === "create" ? <TemplateSummary template={templates.find((template) => template.isActive && template.projectType === projectType) ?? null} members={members} stageAssignees={stageAssignees} onAssigneeChange={(stage, assigneeId) => { setStageAssignees((current) => ({ ...current, [stage]: assigneeId })); markDirty(); }} /> : null}
 
     <Field error={fieldError("client_name")} id="client_name" label={t("clientName")}>
       <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="off" {...errorAttributes("client_name")} />
@@ -158,4 +166,13 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
 
 function Field({ children, className, error, id, label, required = false }: { children: React.ReactNode; className?: string; error?: string; id: ProjectFormField; label: string; required?: boolean }) {
   return <label className={cn("block text-sm font-medium text-[var(--ui-text-secondary)]", className)}>{label}{required ? <span aria-hidden="true" className="text-[var(--ui-danger-text)]"> *</span> : null}{children}{error ? <p id={`${id}-error`} role="alert" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}</label>;
+}
+
+function TemplateSummary({ members, onAssigneeChange, stageAssignees, template }: { members: ActiveStudioAssignee[]; onAssigneeChange: (stage: string, assigneeId: string) => void; stageAssignees: Record<string, string>; template: ProjectTemplate | null }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!template) return <div className="md:col-span-2 rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] px-3 py-3 text-sm text-[var(--ui-text-muted)]">Для цього типу проєкту немає активного шаблону. Проєкт буде створено без згенерованих задач.</div>;
+  return <section className="md:col-span-2 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4" aria-labelledby="project-template-summary">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="project-template-summary" className="text-sm font-semibold text-[var(--ui-text)]">Шаблон: {template.name}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{template.tasks.length} задач буде створено разом із проєктом.</p></div><Button type="button" size="sm" variant="outline" onClick={() => setIsExpanded((current) => !current)} aria-expanded={isExpanded}>{isExpanded ? "Сховати структуру" : "Переглянути структуру"}</Button></div>
+    <div className="mt-4 space-y-2">{PROJECT_TEMPLATE_STAGES.map((stage, index) => { const tasks = getTemplateStageTasks(template, stage); return <div key={stage} className="grid gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center"><div><p className="text-sm font-medium text-[var(--ui-text)]">Етап {index + 1} · {tasks.length} {tasks.length === 1 ? "задача" : "задач"}</p>{isExpanded && tasks.length ? <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-[var(--ui-text-secondary)]">{tasks.map((task) => <li key={task.id}>{task.title}</li>)}</ol> : null}</div><Select name={`stage_assignee_${stage}`} value={stageAssignees[stage] ?? ""} onValueChange={(value) => onAssigneeChange(stage, value)}><SelectItem value="">Не призначено</SelectItem>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.full_name}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} />{member.full_name}</span></SelectItem>)}</Select></div>; })}</div>
+  </section>;
 }

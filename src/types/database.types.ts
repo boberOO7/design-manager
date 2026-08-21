@@ -153,6 +153,23 @@ export type Database = {
           { foreignKeyName: "checklist_templates_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      project_template_tasks: {
+        Row: { created_at: string; id: string; position: number; priority: string; stage: string; template_id: string; title: string; updated_at: string }
+        Insert: { created_at?: string; id?: string; position: number; priority?: string; stage: string; template_id: string; title: string; updated_at?: string }
+        Update: { position?: number; priority?: string; stage?: string; template_id?: string; title?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "project_template_tasks_template_id_fkey"; columns: ["template_id"]; isOneToOne: false; referencedRelation: "project_templates"; referencedColumns: ["id"] },
+        ]
+      }
+      project_templates: {
+        Row: { created_at: string; created_by: string; id: string; is_active: boolean; name: string; project_type: string; studio_id: string; updated_at: string }
+        Insert: { created_at?: string; created_by: string; id?: string; is_active?: boolean; name: string; project_type: string; studio_id: string; updated_at?: string }
+        Update: { created_by?: string; is_active?: boolean; name?: string; project_type?: string; studio_id?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "project_templates_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "project_templates_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string | null; body: string; created_at: string; entity_id: string | null;
@@ -845,6 +862,18 @@ export type Database = {
       }
       save_checklist_template: {
         Args: { p_name: string; p_stages: Json; p_studio_id: string; p_template_id: string | null }
+        Returns: string
+      }
+      save_project_template: {
+        Args: { p_is_active: boolean; p_name: string; p_project_type: string; p_studio_id: string; p_tasks: Json; p_template_id: string | null }
+        Returns: string
+      }
+      delete_project_template: {
+        Args: { p_template_id: string }
+        Returns: undefined
+      }
+      create_project_from_template: {
+        Args: { p_project: Json; p_stage_assignees?: Json }
         Returns: string
       }
       save_leaderboard_bonus_rules: {

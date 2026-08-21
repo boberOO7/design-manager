@@ -1,0 +1,88 @@
+"use client";
+
+import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form-field";
+import { Select, SelectItem } from "@/components/ui/select";
+import { createClient } from "@/lib/supabase/client";
+import { PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStage, type ProjectTemplateTask } from "@/lib/project-templates";
+import { isProjectPriority, isProjectTypeKey, PROJECT_TYPE_KEYS, type ProjectTypeKey } from "@/lib/validation/project";
+
+type DraftTask = ProjectTemplateTask & { draftId: string };
+type Draft = { id: string | null; isActive: boolean; name: string; projectType: ProjectTypeKey; tasks: DraftTask[] };
+type Mode = "preview" | "edit" | "create";
+
+function draftFrom(template: ProjectTemplate | null): Draft {
+  return template ? { id: template.id, name: template.name, projectType: template.projectType, isActive: template.isActive, tasks: template.tasks.map((task) => ({ ...task, draftId: task.id })) } : { id: null, name: "", projectType: "private", isActive: true, tasks: [] };
+}
+
+function newTask(stage: ProjectTemplateStage, position: number): DraftTask {
+  const id = crypto.randomUUID();
+  return { id, draftId: id, stage, title: "", priority: "normal", position };
+}
+
+export function ProjectTemplateManager({ initialTemplates, studioId }: { initialTemplates: ProjectTemplate[]; studioId: string }) {
+  const projectTypes = useTranslations("ProjectTypes");
+  const priority = useTranslations("Priority");
+  const [templates, setTemplates] = useState(initialTemplates);
+  const [selectedId, setSelectedId] = useState<string | null>(initialTemplates[0]?.id ?? null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [mode, setMode] = useState<Mode>("preview");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const selected = useMemo(() => templates.find((template) => template.id === selectedId) ?? null, [selectedId, templates]);
+
+  function select(templateId: string) { setSelectedId(templateId); setDraft(null); setError(""); setMode("preview"); }
+  function beginEdit() { if (selected) { setDraft(draftFrom(selected)); setError(""); setMode("edit"); } }
+  function beginCreate() { setSelectedId(null); setDraft(draftFrom(null)); setError(""); setMode("create"); }
+  function updateTask(draftId: string, patch: Partial<DraftTask>) { setDraft((current) => current ? { ...current, tasks: current.tasks.map((task) => task.draftId === draftId ? { ...task, ...patch } : task) } : current); }
+  function moveTask(sourceId: string, targetStage: ProjectTemplateStage, targetId?: string) { setDraft((current) => { if (!current) return current; const source = current.tasks.find((task) => task.draftId === sourceId); if (!source) return current; const remaining = current.tasks.filter((task) => task.draftId !== sourceId); const targetIndex = targetId ? remaining.findIndex((task) => task.draftId === targetId) : remaining.reduce((last, task, index) => task.stage === targetStage ? index + 1 : last, remaining.length); const next = [...remaining]; next.splice(targetIndex < 0 ? next.length : targetIndex, 0, { ...source, stage: targetStage }); return { ...current, tasks: next.map((task, position) => ({ ...task, position })) }; }); }
+
+  async function save() {
+    if (!draft || saving) return;
+    setSaving(true); setError("");
+    const { data, error: saveError } = await createClient().rpc("save_project_template", { p_template_id: draft.id, p_studio_id: studioId, p_name: draft.name.trim(), p_project_type: draft.projectType, p_is_active: draft.isActive, p_tasks: draft.tasks.map(({ stage, title, priority: taskPriority }) => ({ stage, title, priority: taskPriority })) });
+    if (saveError || !data) { setError(saveError?.message ?? "Не вдалося зберегти шаблон."); setSaving(false); return; }
+    const next: ProjectTemplate = { id: data, name: draft.name.trim(), projectType: draft.projectType, isActive: draft.isActive, tasks: draft.tasks.map((task, position) => ({ id: task.id, stage: task.stage, title: task.title, priority: task.priority, position })) };
+    setTemplates((current) => draft.id ? current.map((template) => template.id === data ? next : template) : [...current, next].sort((left, right) => left.name.localeCompare(right.name)));
+    setSelectedId(data); setDraft(null); setMode("preview"); setSaving(false);
+  }
+
+  async function remove(template: ProjectTemplate) {
+    if (!window.confirm(`Видалити шаблон “${template.name}”?`)) return;
+    const { error: deleteError } = await createClient().rpc("delete_project_template", { p_template_id: template.id });
+    if (deleteError) { setError(deleteError.message); return; }
+    const next = templates.filter((item) => item.id !== template.id);
+    setTemplates(next); setSelectedId(next[0]?.id ?? null); setDraft(null); setMode("preview");
+  }
+
+  return <div className="grid gap-5 xl:grid-cols-[15.5rem_minmax(0,1fr)]">
+    <aside className="self-start rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3"><div className="flex items-center justify-between gap-2 px-1 pb-3"><h2 className="text-sm font-semibold text-[var(--ui-text)]">Шаблони</h2><Button type="button" size="sm" className="size-9 p-0" onClick={beginCreate} aria-label="Створити шаблон"><Plus className="size-4" /></Button></div>{error ? <p role="alert" className="mb-2 rounded-[var(--ui-radius-control)] bg-[var(--ui-danger-surface)] px-2 py-2 text-xs text-[var(--ui-danger-text)]">{error}</p> : null}{templates.length ? <ul className="space-y-1">{templates.map((template) => <li key={template.id}><button type="button" onClick={() => select(template.id)} aria-current={selectedId === template.id ? "true" : undefined} className={`w-full rounded-[var(--ui-radius-control)] px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${selectedId === template.id && mode !== "create" ? "bg-[var(--ui-surface-muted)] text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}><span className="block truncate text-sm font-medium">{template.name}</span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{projectTypes(template.projectType)} · {template.tasks.length} задач</span></button></li>)}</ul> : <p className="px-2 py-5 text-sm text-[var(--ui-text-muted)]">Ще немає шаблонів.</p>}</aside>
+    {mode === "preview" ? <TemplatePreview template={selected} onDelete={remove} onEdit={beginEdit} projectTypeLabel={projectTypes} priorityLabel={priority} /> : draft ? <TemplateEditor draft={draft} onCancel={() => { setDraft(null); setMode("preview"); setError(""); }} onMoveTask={moveTask} onRemoveTask={(taskId) => setDraft({ ...draft, tasks: draft.tasks.filter((task) => task.draftId !== taskId) })} onUpdate={(patch) => setDraft({ ...draft, ...patch })} onUpdateTask={updateTask} onSave={() => void save()} priorityLabel={priority} projectTypeLabel={projectTypes} saving={saving} /> : null}
+  </div>;
+}
+
+function TemplatePreview({ onDelete, onEdit, priorityLabel, projectTypeLabel, template }: { onDelete: (template: ProjectTemplate) => void; onEdit: () => void; priorityLabel: (key: "low" | "normal" | "high" | "urgent") => string; projectTypeLabel: (key: ProjectTypeKey) => string; template: ProjectTemplate | null }) {
+  if (!template) return <section className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] p-6 text-sm text-[var(--ui-text-muted)]">Оберіть шаблон зі списку або створіть новий.</section>;
+  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--ui-border)] pb-4"><div><h1 className="text-xl font-semibold tracking-tight text-[var(--ui-text)]">{template.name}</h1><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--ui-text-muted)]"><span>{projectTypeLabel(template.projectType)}</span><span className="ui-numeric">{template.tasks.length} задач</span><span className={template.isActive ? "text-[var(--ui-success-text)]" : undefined}>{template.isActive ? "Активний за замовчуванням" : "Неактивний"}</span></div></div><div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 size-4" />Редагувати</Button><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-danger-text)]" onClick={() => onDelete(template)} aria-label={`Видалити ${template.name}`}><Trash2 className="size-4" /></Button></div></header><TemplateStageGrid priorityLabel={priorityLabel} tasks={template.tasks} /></section>;
+}
+
+function TemplateEditor({ draft, onCancel, onMoveTask, onRemoveTask, onSave, onUpdate, onUpdateTask, priorityLabel, projectTypeLabel, saving }: { draft: Draft; onCancel: () => void; onMoveTask: (sourceId: string, targetStage: ProjectTemplateStage, targetId?: string) => void; onRemoveTask: (taskId: string) => void; onSave: () => void; onUpdate: (patch: Partial<Draft>) => void; onUpdateTask: (taskId: string, patch: Partial<DraftTask>) => void; priorityLabel: (key: "low" | "normal" | "high" | "urgent") => string; projectTypeLabel: (key: ProjectTypeKey) => string; saving: boolean }) {
+  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--ui-border)] pb-4"><div><h1 className="text-xl font-semibold tracking-tight text-[var(--ui-text)]">{draft.id ? "Редагувати шаблон" : "Новий шаблон"}</h1><p className="mt-1 text-sm text-[var(--ui-text-muted)]">Перетягуйте задачі між етапами та змінюйте їх порядок у межах етапу.</p></div><div className="flex gap-2"><Button type="button" variant="outline" disabled={saving} onClick={onCancel}>Скасувати</Button><Button type="button" disabled={saving} onClick={onSave}>{saving ? "Збереження…" : "Зберегти"}</Button></div></header><div className="mt-5 grid gap-4 md:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">Назва<Input value={draft.name} maxLength={120} disabled={saving} onChange={(event) => onUpdate({ name: event.target.value })} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">Тип проєкту<Select value={draft.projectType} disabled={saving} onValueChange={(value) => { if (isProjectTypeKey(value)) onUpdate({ projectType: value }); }}>{PROJECT_TYPE_KEYS.map((type) => <SelectItem key={type} value={type}>{projectTypeLabel(type)}</SelectItem>)}</Select></label></div><label className="mt-4 flex min-h-11 items-center gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={draft.isActive} disabled={saving} onChange={(event) => onUpdate({ isActive: event.target.checked })} />Активний шаблон за замовчуванням</label><TemplateStageGrid editable onAddTask={(stage) => onUpdate({ tasks: [...draft.tasks, newTask(stage, draft.tasks.length)] })} onMoveTask={onMoveTask} onRemoveTask={onRemoveTask} onUpdateTask={onUpdateTask} priorityLabel={priorityLabel} tasks={draft.tasks} /></section>;
+}
+
+function TemplateStageGrid({ editable = false, onAddTask, onMoveTask, onRemoveTask, onUpdateTask, priorityLabel, tasks }: { editable?: boolean; onAddTask?: (stage: ProjectTemplateStage) => void; onMoveTask?: (sourceId: string, targetStage: ProjectTemplateStage, targetId?: string) => void; onRemoveTask?: (taskId: string) => void; onUpdateTask?: (taskId: string, patch: Partial<DraftTask>) => void; priorityLabel: (key: "low" | "normal" | "high" | "urgent") => string; tasks: Array<ProjectTemplateTask | DraftTask> }) {
+  return <div className="mt-6 grid gap-4 xl:grid-cols-4">{PROJECT_TEMPLATE_STAGES.map((stage, index) => <TemplateStageColumn key={stage} editable={editable} index={index} onAddTask={onAddTask} onMoveTask={onMoveTask} onRemoveTask={onRemoveTask} onUpdateTask={onUpdateTask} priorityLabel={priorityLabel} stage={stage} tasks={tasks.filter((task) => task.stage === stage).sort((left, right) => left.position - right.position)} />)}</div>;
+}
+
+function TemplateStageColumn({ editable, index, onAddTask, onMoveTask, onRemoveTask, onUpdateTask, priorityLabel, stage, tasks }: { editable: boolean; index: number; onAddTask?: (stage: ProjectTemplateStage) => void; onMoveTask?: (sourceId: string, targetStage: ProjectTemplateStage, targetId?: string) => void; onRemoveTask?: (taskId: string) => void; onUpdateTask?: (taskId: string, patch: Partial<DraftTask>) => void; priorityLabel: (key: "low" | "normal" | "high" | "urgent") => string; stage: ProjectTemplateStage; tasks: Array<ProjectTemplateTask | DraftTask> }) {
+  return <section onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={editable ? (event) => { const sourceId = event.dataTransfer.getData("text/plain"); if (sourceId) onMoveTask?.(sourceId, stage); } : undefined} className="min-h-44 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-3"><div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[var(--ui-text)]">Етап {index + 1}</h2><div className="flex items-center gap-1"><span className="ui-numeric text-xs text-[var(--ui-text-muted)]">{tasks.length}</span>{editable ? <Button type="button" size="sm" variant="ghost" className="size-9 p-0" onClick={() => onAddTask?.(stage)} aria-label={`Додати задачу до етапу ${index + 1}`}><Plus className="size-4" /></Button> : null}</div></div><div className="mt-3 space-y-2">{tasks.length ? tasks.map((task) => <TemplateTaskCard key={"draftId" in task ? task.draftId : task.id} editable={editable} onMoveTask={onMoveTask} onRemoveTask={onRemoveTask} onUpdateTask={onUpdateTask} priorityLabel={priorityLabel} stage={stage} task={task} />) : <p className="py-4 text-sm text-[var(--ui-text-muted)]">Немає задач</p>}</div></section>;
+}
+
+function TemplateTaskCard({ editable, onMoveTask, onRemoveTask, onUpdateTask, priorityLabel, stage, task }: { editable: boolean; onMoveTask?: (sourceId: string, targetStage: ProjectTemplateStage, targetId?: string) => void; onRemoveTask?: (taskId: string) => void; onUpdateTask?: (taskId: string, patch: Partial<DraftTask>) => void; priorityLabel: (key: "low" | "normal" | "high" | "urgent") => string; stage: ProjectTemplateStage; task: ProjectTemplateTask | DraftTask }) {
+  const taskId = "draftId" in task ? task.draftId : task.id;
+  function setDragImage(event: React.DragEvent<HTMLElement>) { const ghost = document.createElement("div"); ghost.className = "rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-sm text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"; ghost.style.width = "15rem"; ghost.style.position = "absolute"; ghost.style.top = "-9999px"; ghost.style.opacity = "0.98"; ghost.textContent = `${task.title || "Нова задача"} · ${priorityLabel(task.priority)}`; document.body.appendChild(ghost); event.dataTransfer.setDragImage(ghost, 24, 18); window.setTimeout(() => ghost.remove(), 0); }
+  return <article draggable={editable} onDragStart={editable ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", taskId); setDragImage(event); } : undefined} onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={editable ? (event) => { event.preventDefault(); event.stopPropagation(); const sourceId = event.dataTransfer.getData("text/plain"); if (sourceId) onMoveTask?.(sourceId, stage, taskId); } : undefined} className={`rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-2.5 ${editable ? "cursor-grab active:cursor-grabbing" : ""}`}><div className="flex min-w-0 items-center gap-1.5">{editable ? <GripVertical className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /> : null}{editable && "draftId" in task ? <Input aria-label="Назва задачі" value={task.title} maxLength={200} onChange={(event) => onUpdateTask?.(taskId, { title: event.target.value })} /> : <p className="min-w-0 flex-1 break-words text-sm font-medium text-[var(--ui-text)]">{task.title}</p>}{editable ? <Button type="button" size="sm" variant="ghost" className="size-9 shrink-0 p-0 text-[var(--ui-danger-text)]" onClick={() => onRemoveTask?.(taskId)} aria-label={`Видалити ${task.title || "задачу"}`}><Trash2 className="size-4" /></Button> : null}</div><div className="mt-2 flex items-center justify-between gap-2">{editable && "draftId" in task ? <Select value={task.priority} onValueChange={(value) => { if (isProjectPriority(value)) onUpdateTask?.(taskId, { priority: value }); }}><SelectItem value="low">{priorityLabel("low")}</SelectItem><SelectItem value="normal">{priorityLabel("normal")}</SelectItem><SelectItem value="high">{priorityLabel("high")}</SelectItem><SelectItem value="urgent">{priorityLabel("urgent")}</SelectItem></Select> : <span className="text-xs text-[var(--ui-text-muted)]">{priorityLabel(task.priority)}</span>}</div></article>;
+}
