@@ -496,6 +496,10 @@ export function ProjectTaskBoard({
     if (!isTaskDrawerOpenRef.current) setSelectedTaskId(null);
   }
 
+  function toggleStage(stage: TaskStage) {
+    setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }));
+  }
+
   function setTaskPending(taskId: string, pending: boolean) {
     const nextPendingTaskIds = new Set(pendingTaskIdsRef.current);
     if (pending) nextPendingTaskIds.add(taskId);
@@ -716,29 +720,29 @@ export function ProjectTaskBoard({
             const progress = stage === "stage_4" ? null : stageProgress[stage];
             return (
               <section key={stage} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
-                <div className="flex min-h-12 items-center gap-2 rounded-xl px-4">
+                <div className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-4" onClick={() => toggleStage(stage)}>
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <button
                       type="button"
                       aria-controls={`project-stage-${stage}`}
                       aria-expanded={isExpanded}
-                      onClick={() => setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }))}
+                      onClick={(event) => { event.stopPropagation(); toggleStage(stage); }}
                       className="min-w-0 shrink py-3 text-left font-semibold text-[var(--ui-text)] outline-none transition-colors hover:text-[var(--ui-text-secondary)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-inset"
                     >
                       {stageLabels(stage)}
                     </button>
                     {progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
                   </div>
-                  <span className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
-                  {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
+                  <span onClick={(event) => event.stopPropagation()} className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
+                  {canCreate ? <button type="button" onClick={(event) => { event.stopPropagation(); addTaskDialogRef.current?.open(stage); }} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" onClick={(event) => event.stopPropagation()} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
                     aria-expanded={isExpanded}
-                    onClick={() => setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }))}
+                    onClick={(event) => { event.stopPropagation(); toggleStage(stage); }}
                     className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
                     aria-label={stageLabels(stage)}
                   >

@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787308681.5249314,
-    "ast_hash": "8dd4bf637744ae8b606a9d624f87ee77",
+    "mtime": 1787309561.027144,
+    "ast_hash": "5ca1d1e6282343a0d57f934f6005333e",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
