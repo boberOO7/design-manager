@@ -10,6 +10,9 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain('type Mode = "preview" | "edit" | "create"');
     expect(source).toContain("function TemplatePreview");
     expect(source).toContain("function TemplateEditor");
+    expect(source).toContain('const [category, setCategory] = useState<TemplateCategory>("all")');
+    expect(source).toContain("PROJECT_TYPE_KEYS.map");
+    expect(source).toContain("За замовчуванням");
   });
 
   it("uses column placement for a task stage and creates an opaque drag image", async () => {

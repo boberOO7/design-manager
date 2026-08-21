@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1787322996.622172,
-    "ast_hash": "09e957616b08b05dc3f9a64ba3bee5ee",
+    "mtime": 1787325408.877765,
+    "ast_hash": "b7ef13f4160e10d32ae1a282366e55c3",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -3255,13 +3255,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.tsx": {
-    "mtime": 1787323025.06741,
-    "ast_hash": "1608092654ffe3a4f4640ddf1f5386c9",
+    "mtime": 1787325543.9378524,
+    "ast_hash": "2aef4059e52c64f6d86d7337ad39106a",
     "semantic_hash": ""
   },
   "src/data/queries/project-templates.ts": {
-    "mtime": 1787322961.1609428,
-    "ast_hash": "df79a9e34b572ad8da75fe89d5156458",
+    "mtime": 1787325408.7177587,
+    "ast_hash": "58695d8805219f715373569eb4df88b6",
     "semantic_hash": ""
   },
   "src/lib/project-templates-migration.test.ts": {
@@ -3270,8 +3270,8 @@
     "semantic_hash": ""
   },
   "src/lib/project-templates.ts": {
-    "mtime": 1787322961.012936,
-    "ast_hash": "4fe4121c15cbd0c7a7926ec843f4d74e",
+    "mtime": 1787325408.5617528,
+    "ast_hash": "f315b96b772c152036764ddc96210551",
     "semantic_hash": ""
   },
   "supabase/migrations/20260821130000_project_templates.sql": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-template-manager.test.ts": {
-    "mtime": 1787321236.7439458,
-    "ast_hash": "4e9a39384e6aa24f5fd21e4600c7fe5d",
+    "mtime": 1787325507.2371483,
+    "ast_hash": "ea8693b3b8e9f90c5d7bb12dbcd6d432",
     "semantic_hash": ""
   },
   "src/lib/project-template-defaults-migration.test.ts": {
@@ -3302,6 +3302,11 @@
   "supabase/migrations/20260821150000_harden_project_template_defaults.sql": {
     "mtime": 1787324069.1356208,
     "ast_hash": "af337e00d1ad782d10c5868a92a71271",
+    "semantic_hash": ""
+  },
+  "src/lib/project-templates.test.ts": {
+    "mtime": 1787325409.0537715,
+    "ast_hash": "24cf12880186a77f7f8c04d661060190",
     "semantic_hash": ""
   }
 }

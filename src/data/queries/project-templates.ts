@@ -9,7 +9,7 @@ export async function getStudioProjectTemplates(): Promise<ProjectTemplate[]> {
   const membership = await getActiveStudioMembership();
   if (!membership) return [];
   const supabase = await createClient();
-  const { data: templates, error: templateError } = await supabase.from("project_templates").select("id, name, project_type, is_active, is_default").eq("studio_id", membership.studio_id).order("name");
+  const { data: templates, error: templateError } = await supabase.from("project_templates").select("id, name, project_type, is_active, is_default").eq("studio_id", membership.studio_id).eq("is_active", true).order("name");
   if (templateError) throw new Error("Unable to load project templates.", { cause: templateError });
   const validTemplates = (templates ?? []).filter((template): template is typeof template & { project_type: ProjectTypeKey } => isProjectTypeKey(template.project_type));
   if (!validTemplates.length) return [];

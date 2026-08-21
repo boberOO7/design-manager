@@ -24,6 +24,18 @@ export type ProjectTemplate = {
   tasks: ProjectTemplateTask[];
 };
 
+export function getActiveProjectTemplates(templates: readonly ProjectTemplate[]) {
+  return templates.filter((template) => template.isActive);
+}
+
+export function getActiveProjectTemplatesForType(templates: readonly ProjectTemplate[], projectType: string) {
+  return getActiveProjectTemplates(templates).filter((template) => template.projectType === projectType);
+}
+
+export function getDefaultProjectTemplate(templates: readonly ProjectTemplate[], projectType: string) {
+  return getActiveProjectTemplatesForType(templates, projectType).find((template) => template.isDefault) ?? null;
+}
+
 export function getTemplateStageTasks(template: Pick<ProjectTemplate, "tasks"> | null | undefined, stage: ProjectTemplateStage) {
   return template?.tasks.filter((task) => task.stage === stage).sort((left, right) => left.position - right.position || left.id.localeCompare(right.id)) ?? [];
 }
