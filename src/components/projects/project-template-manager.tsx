@@ -11,11 +11,11 @@ import { PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStag
 import { isProjectPriority, isProjectTypeKey, PROJECT_TYPE_KEYS, type ProjectTypeKey } from "@/lib/validation/project";
 
 type DraftTask = ProjectTemplateTask & { draftId: string };
-type Draft = { id: string | null; isActive: boolean; name: string; projectType: ProjectTypeKey; tasks: DraftTask[] };
+type Draft = { id: string | null; isActive: boolean; isDefault: boolean; name: string; projectType: ProjectTypeKey; tasks: DraftTask[] };
 type Mode = "preview" | "edit" | "create";
 
 function draftFrom(template: ProjectTemplate | null): Draft {
-  return template ? { id: template.id, name: template.name, projectType: template.projectType, isActive: template.isActive, tasks: template.tasks.map((task) => ({ ...task, draftId: task.id })) } : { id: null, name: "", projectType: "private", isActive: true, tasks: [] };
+  return template ? { id: template.id, name: template.name, projectType: template.projectType, isActive: template.isActive, isDefault: template.isDefault, tasks: template.tasks.map((task) => ({ ...task, draftId: task.id })) } : { id: null, name: "", projectType: "private", isActive: true, isDefault: true, tasks: [] };
 }
 
 function newTask(stage: ProjectTemplateStage, position: number): DraftTask {
@@ -43,9 +43,9 @@ export function ProjectTemplateManager({ initialTemplates, studioId }: { initial
   async function save() {
     if (!draft || saving) return;
     setSaving(true); setError("");
-    const { data, error: saveError } = await createClient().rpc("save_project_template", { p_template_id: draft.id, p_studio_id: studioId, p_name: draft.name.trim(), p_project_type: draft.projectType, p_is_active: draft.isActive, p_tasks: draft.tasks.map(({ stage, title, priority: taskPriority }) => ({ stage, title, priority: taskPriority })) });
+    const { data, error: saveError } = await createClient().rpc("save_project_template", { p_template_id: draft.id, p_studio_id: studioId, p_name: draft.name.trim(), p_project_type: draft.projectType, p_is_active: draft.isActive, p_is_default: draft.isDefault, p_tasks: draft.tasks.map(({ stage, title, priority: taskPriority }) => ({ stage, title, priority: taskPriority })) });
     if (saveError || !data) { setError(saveError?.message ?? "Не вдалося зберегти шаблон."); setSaving(false); return; }
-    const next: ProjectTemplate = { id: data, name: draft.name.trim(), projectType: draft.projectType, isActive: draft.isActive, tasks: draft.tasks.map((task, position) => ({ id: task.id, stage: task.stage, title: task.title, priority: task.priority, position })) };
+    const next: ProjectTemplate = { id: data, name: draft.name.trim(), projectType: draft.projectType, isActive: draft.isActive, isDefault: draft.isDefault, tasks: draft.tasks.map((task, position) => ({ id: task.id, stage: task.stage, title: task.title, priority: task.priority, position })) };
     setTemplates((current) => draft.id ? current.map((template) => template.id === data ? next : template) : [...current, next].sort((left, right) => left.name.localeCompare(right.name)));
     setSelectedId(data); setDraft(null); setMode("preview"); setSaving(false);
   }

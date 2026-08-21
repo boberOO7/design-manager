@@ -20,6 +20,7 @@ export type ProjectTemplate = {
   name: string;
   projectType: ProjectTypeKey;
   isActive: boolean;
+  isDefault: boolean;
   tasks: ProjectTemplateTask[];
 };
 

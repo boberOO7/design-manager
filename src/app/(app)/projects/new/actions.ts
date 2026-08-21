@@ -57,6 +57,7 @@ export async function createProject(
       due_date: project.due_date || null,
     },
     p_stage_assignees: stageAssignees,
+    p_template_id: getSelectedTemplateId(formData),
   });
 
   if (insertError || !data) {
@@ -66,6 +67,11 @@ export async function createProject(
 
   revalidatePath("/projects");
   return { projectId: data };
+}
+
+function getSelectedTemplateId(formData: FormData): string | null {
+  const value = formData.get("project_template_id");
+  return typeof value === "string" && value ? value : null;
 }
 
 function getStageAssignees(formData: FormData): Array<{ stage: string; assignee_id: string | null }> | null {

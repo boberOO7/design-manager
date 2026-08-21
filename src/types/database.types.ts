@@ -162,9 +162,9 @@ export type Database = {
         ]
       }
       project_templates: {
-        Row: { created_at: string; created_by: string; id: string; is_active: boolean; name: string; project_type: string; studio_id: string; updated_at: string }
-        Insert: { created_at?: string; created_by: string; id?: string; is_active?: boolean; name: string; project_type: string; studio_id: string; updated_at?: string }
-        Update: { created_by?: string; is_active?: boolean; name?: string; project_type?: string; studio_id?: string; updated_at?: string }
+        Row: { created_at: string; created_by: string; id: string; is_active: boolean; is_default: boolean; name: string; project_type: string; studio_id: string; updated_at: string }
+        Insert: { created_at?: string; created_by: string; id?: string; is_active?: boolean; is_default?: boolean; name: string; project_type: string; studio_id: string; updated_at?: string }
+        Update: { created_by?: string; is_active?: boolean; is_default?: boolean; name?: string; project_type?: string; studio_id?: string; updated_at?: string }
         Relationships: [
           { foreignKeyName: "project_templates_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "project_templates_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
@@ -865,7 +865,7 @@ export type Database = {
         Returns: string
       }
       save_project_template: {
-        Args: { p_is_active: boolean; p_name: string; p_project_type: string; p_studio_id: string; p_tasks: Json; p_template_id: string | null }
+        Args: { p_is_active: boolean; p_is_default: boolean; p_name: string; p_project_type: string; p_studio_id: string; p_tasks: Json; p_template_id: string | null }
         Returns: string
       }
       delete_project_template: {
@@ -873,7 +873,7 @@ export type Database = {
         Returns: undefined
       }
       create_project_from_template: {
-        Args: { p_project: Json; p_stage_assignees?: Json }
+        Args: { p_project: Json; p_stage_assignees?: Json; p_template_id?: string | null }
         Returns: string
       }
       save_leaderboard_bonus_rules: {
