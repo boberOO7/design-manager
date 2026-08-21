@@ -795,6 +795,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_move_project_tasks: {
+        Args: { p_project_id: string; p_source_statuses: string[]; p_stage: string; p_target_status: string; p_task_ids: string[] }
+        Returns: { id: string }[]
+      }
       create_calendar_event_with_invites: {
         Args: {
           p_all_day: boolean

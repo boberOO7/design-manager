@@ -56,6 +56,13 @@ export const taskStatusPayloadSchema = z.object({
   status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
 }).strict();
 
+export const taskBulkStatusMovePayloadSchema = z.object({
+  stage: z.enum(TASK_STAGES),
+  source_statuses: z.array(z.enum(["todo", "in_progress", "internal_review", "review", "completed", "cancelled"])).min(1).max(2),
+  target_status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
+  task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
+}).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
+
 export const taskEditSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
   description: z.preprocess(

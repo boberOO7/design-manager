@@ -3,14 +3,14 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
-import { getProjectTaskById, getTaskForStatusUpdate } from "@/data/queries/tasks";
+import { getProjectTaskById, getProjectTasks, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { canCompleteAttributedTask } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
-import { taskStatusUpdateSchema } from "@/lib/validation/task";
+import { taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 type AuthorizedTask = NonNullable<Awaited<ReturnType<typeof getTaskForStatusUpdate>>>;
@@ -107,4 +107,38 @@ export async function updateTaskStatusMutation(
   const task = await getProjectTaskById(data.id);
   if (!task) return { formError: "The task status was updated, but the task could not be refreshed. Please refresh the page.", success: false };
   return { projectId: data.project_id, projectStatus: project.status, task, success: true };
+}
+
+export type BulkTaskStatusMutationResult =
+  | { success: true; projectId: string; projectStatus: string; tasks: Awaited<ReturnType<typeof getProjectTasks>> }
+  | { success: false; formError: string };
+
+export async function bulkMoveTaskStatusesMutation(projectId: string, input: unknown): Promise<BulkTaskStatusMutationResult> {
+  const parsed = taskBulkStatusMovePayloadSchema.safeParse(input);
+  if (!parsed.success) return { formError: "Choose a valid batch and destination status.", success: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bulk_move_project_tasks", {
+    p_project_id: projectId,
+    p_source_statuses: parsed.data.source_statuses,
+    p_stage: parsed.data.stage,
+    p_target_status: parsed.data.target_status,
+    p_task_ids: parsed.data.task_ids,
+  });
+  if (error) {
+    console.error("Unable to bulk update task statuses", error);
+    return { formError: error.message || "The task batch could not be moved. Please try again.", success: false };
+  }
+
+  const [{ data: project, error: projectError }, tasks] = await Promise.all([
+    supabase.from("projects").select("status").eq("id", projectId).maybeSingle(),
+    getProjectTasks(projectId),
+  ]);
+  if (projectError || !project) return { formError: "The task batch was moved, but the project could not be refreshed. Please refresh the page.", success: false };
+
+  revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { projectId, projectStatus: project.status, success: true, tasks };
 }

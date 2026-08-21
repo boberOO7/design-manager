@@ -84,6 +84,15 @@ function getDropTarget(id: string | number | undefined): { stage: TaskStage; col
     : null;
 }
 
+function appendTasksInOrder(tasks: ProjectTask[], taskIds: string[]): ProjectTask[] {
+  const taskIdSet = new Set(taskIds);
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  return [...tasks.filter((task) => !taskIdSet.has(task.id)), ...taskIds.flatMap((taskId) => {
+    const task = taskById.get(taskId);
+    return task ? [task] : [];
+  })];
+}
+
 function isSuccessfulTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string; task: ProjectTask } {
   return typeof value === "object"
     && value !== null
@@ -94,6 +103,12 @@ function isSuccessfulTaskStatusResponse(value: unknown): value is { success: tru
     && "task" in value
     && typeof value.task === "object"
     && value.task !== null;
+}
+
+function isSuccessfulBulkTaskStatusResponse(value: unknown): value is { success: true; projectStatus: string; tasks: ProjectTask[] } {
+  return typeof value === "object" && value !== null && "success" in value && value.success === true
+    && "projectStatus" in value && typeof value.projectStatus === "string"
+    && "tasks" in value && Array.isArray(value.tasks);
 }
 
 function TaskCardContent({
@@ -214,23 +229,35 @@ function ReadOnlyTaskCard({ compact, task, onOpen }: { compact: boolean; task: P
   );
 }
 
-function StatusColumnHeader({ columnId, label, status, taskCount }: {
+function BulkColumnDragHandle({ columnId, disabled, label, stage, taskIds }: { columnId: BoardColumnId; disabled: boolean; label: string; stage: TaskStage; taskIds: string[] }) {
+  const locale = useLocale();
+  const handleLabel = locale === "uk" ? `Перемістити всі ${taskIds.length} задач зі статусу «${label}»` : `Move all ${taskIds.length} tasks from ${label}`;
+  const { isDragging, ref } = useDraggable({ id: `bulk-column:${stage}:${columnId}`, disabled, data: { columnId, stage, taskIds }, type: "project-task-bulk" });
+  if (disabled) return null;
+  return <button ref={ref} type="button" className={cn("inline-flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-[var(--ui-text-muted)] opacity-60 transition-[color,background-color,opacity] hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] active:cursor-grabbing", isDragging && "cursor-grabbing opacity-100")} aria-label={handleLabel} title={handleLabel} style={{ touchAction: "pan-x pan-y" }}><GripVertical className="size-4" aria-hidden="true" /></button>;
+}
+
+function StatusColumnHeader({ canBulkDrag, columnId, label, status, stage, taskIds, taskCount }: {
+  canBulkDrag: boolean;
   columnId: BoardColumnId;
   label: string;
   status: WritableTaskStatus;
+  stage: TaskStage;
+  taskIds: string[];
   taskCount: number;
 }) {
   const columnStyle = getTaskStatusColumnStyle(status);
 
   return (
     <div className={cn("mb-2 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
-      <h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3>
+      <div className="flex min-w-0 items-center gap-1"><BulkColumnDragHandle columnId={columnId} disabled={!canBulkDrag} label={label} stage={stage} taskIds={taskIds} /><h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3></div>
       <span className={cn("ui-numeric rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
     </div>
   );
 }
 
 function BoardColumn({
+  activeBulkDrag,
   activeTask,
   canManageTasks,
   compactCards,
@@ -245,6 +272,7 @@ function BoardColumn({
   shouldSuppressOpen,
   tasks,
 }: {
+  activeBulkDrag: { columnId: BoardColumnId; stage: TaskStage; taskIds: string[] } | null;
   activeTask: ProjectTask | null;
   canManageTasks: boolean;
   compactCards: boolean;
@@ -263,14 +291,17 @@ function BoardColumn({
   const acceptsActiveTask = activeTask !== null
     && activeTask.stage === stage
     && getTaskStatusForDrop(activeTask.status, columnId) !== null;
+  const acceptsActiveBulk = activeBulkDrag !== null && activeBulkDrag.stage === stage && activeBulkDrag.columnId !== columnId;
+  const acceptsDrop = acceptsActiveTask || acceptsActiveBulk;
   const { isDropTarget, ref } = useDroppable({
     id: getColumnDropId(stage, columnId),
-    disabled: activeTask !== null && !acceptsActiveTask,
+    disabled: (activeTask !== null || activeBulkDrag !== null) && !acceptsDrop,
     data: { columnId, stage },
     type: "task-column",
-    accept: "project-task",
+    accept: ["project-task", "project-task-bulk"],
   });
-  const isHighlighted = acceptsActiveTask && isDropTarget;
+  const isHighlighted = acceptsDrop && isDropTarget;
+  const canBulkDrag = tasks.length > 0 && !isProjectReadOnly && tasks.every((task) => canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly }));
   return (
     <section
       ref={ref}
@@ -282,7 +313,7 @@ function BoardColumn({
           : "border-[var(--ui-border)] bg-[var(--ui-surface-muted)]",
       )}
     >
-      <StatusColumnHeader columnId={columnId} label={label} status={status} taskCount={tasks.length} />
+      <StatusColumnHeader canBulkDrag={canBulkDrag} columnId={columnId} label={label} status={status} stage={stage} taskIds={tasks.map((task) => task.id)} taskCount={tasks.length} />
       {isHighlighted ? <p className="mb-2 rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 py-1.5 text-center text-xs font-medium leading-4 text-[var(--ui-text-secondary)]">{t("releaseToMove", { status: label })}</p> : null}
       <div className="flex flex-1 flex-col gap-2">
         {tasks.length === 0 ? (
@@ -344,6 +375,7 @@ export function ProjectTaskBoard({
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [activeBulkDrag, setActiveBulkDrag] = useState<{ columnId: BoardColumnId; stage: TaskStage; taskIds: string[] } | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
@@ -522,9 +554,45 @@ export function ProjectTaskBoard({
     }
   }
 
+  async function persistBulkTaskMove(source: { columnId: BoardColumnId; stage: TaskStage; taskIds: string[] }, targetStatus: WritableTaskStatus, targetLabel: string, previousTasks: ProjectTask[], previousProjectStatus: ProjectLifecycleStatus) {
+    try {
+      const sourceStatuses = [...new Set(previousTasks.filter((task) => source.taskIds.includes(task.id)).map((task) => task.status))];
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage: source.stage, source_statuses: sourceStatuses, target_status: targetStatus, task_ids: source.taskIds }) });
+      let result: unknown = null;
+      try { result = await response.json(); } catch { /* handled below */ }
+      if (!response.ok || !isSuccessfulBulkTaskStatusResponse(result)) throw new Error(locale === "uk" ? "Не вдалося перемістити пакет задач." : "The task batch could not be moved.");
+      const refreshedTasks = appendTasksInOrder(result.tasks, source.taskIds);
+      localTasksRef.current = refreshedTasks;
+      setLocalTasks(refreshedTasks);
+      if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusChange?.(result.projectStatus);
+      for (const taskId of source.taskIds) setTaskPending(taskId, false);
+      setAnnouncement(locale === "uk" ? `${source.taskIds.length} задач переміщено до «${targetLabel}».` : `${source.taskIds.length} tasks moved to ${targetLabel}.`);
+    } catch (error) {
+      localTasksRef.current = previousTasks;
+      setLocalTasks(previousTasks);
+      onProjectStatusChange?.(previousProjectStatus);
+      for (const taskId of source.taskIds) setTaskPending(taskId, false);
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося перемістити пакет задач." : "The task batch could not be moved.");
+      const restoredMessage = t("statusRestored", { message });
+      setBoardError(restoredMessage);
+      setAnnouncement(restoredMessage);
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const taskId = event.operation.source?.id;
     if (taskId === undefined) return;
+    if (event.operation.source?.type === "project-task-bulk") {
+      const data = event.operation.source?.data as { columnId?: unknown; stage?: unknown; taskIds?: unknown } | undefined;
+      if (!data || !isBoardColumnId(String(data.columnId)) || !isTaskStage(String(data.stage)) || !Array.isArray(data.taskIds) || data.taskIds.some((id) => typeof id !== "string") || data.taskIds.length === 0) return;
+      const columnId = String(data.columnId);
+      const stage = String(data.stage);
+      if (!isBoardColumnId(columnId) || !isTaskStage(stage)) return;
+      setActiveBulkDrag({ columnId, stage, taskIds: data.taskIds });
+      setBoardError(null);
+      setAnnouncement(locale === "uk" ? `Переміщення ${data.taskIds.length} задач.` : `Moving ${data.taskIds.length} tasks.`);
+      return;
+    }
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
     if (!task) return;
     suppressCardOpenRef.current = true;
@@ -536,9 +604,29 @@ export function ProjectTaskBoard({
   function handleDragEnd(event: DragEndEvent) {
     const taskId = event.operation.source?.id;
     const target = getDropTarget(event.operation.target?.id);
+    const bulkSource = activeBulkDrag;
     setActiveTaskId(null);
+    setActiveBulkDrag(null);
     window.setTimeout(() => { suppressCardOpenRef.current = false; }, 0);
     if (event.canceled || taskId === undefined || !target) return;
+
+    if (event.operation.source?.type === "project-task-bulk") {
+      if (!bulkSource || bulkSource.stage !== target.stage || bulkSource.columnId === target.columnId) return;
+      const targetStatus = BOARD_COLUMNS.find((column) => column.id === target.columnId)?.status;
+      if (!targetStatus) return;
+      const previousTasks = localTasksRef.current;
+      const batchTasks = previousTasks.filter((task) => bulkSource.taskIds.includes(task.id));
+      if (batchTasks.length !== bulkSource.taskIds.length || batchTasks.some((task) => pendingTaskIdsRef.current.has(task.id))) return;
+      const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
+      for (const taskId of bulkSource.taskIds) setTaskPending(taskId, true);
+      setBoardError(null);
+      const optimisticTasks = appendTasksInOrder(batchTasks.reduce((nextTasks, task) => setProjectTaskStatus(nextTasks, task.id, targetStatus), previousTasks), bulkSource.taskIds);
+      localTasksRef.current = optimisticTasks;
+      setLocalTasks(optimisticTasks);
+      onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus));
+      void persistBulkTaskMove(bulkSource, targetStatus, targetLabel, previousTasks, projectStatus);
+      return;
+    }
 
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
     if (!task || pendingTaskIdsRef.current.has(task.id)) return;
@@ -660,6 +748,7 @@ export function ProjectTaskBoard({
                       <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
                       {enabledColumns.map((column) => (
                         <BoardColumn
+                          activeBulkDrag={activeBulkDrag}
                           key={column.id}
                           activeTask={activeTask}
                           canManageTasks={canManageTasks}
@@ -685,7 +774,7 @@ export function ProjectTaskBoard({
           })}
         </div>
         <DragOverlay dropAnimation={null}>
-          {() => activeTask ? <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip /> : null}
+          {() => activeTask ? <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip /> : activeBulkDrag ? <div className="w-56 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 shadow-xl"><p className="text-sm font-semibold text-[var(--ui-text)]">{statusLabels(BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status === "in_progress" ? "inProgress" : BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status ?? "todo")}</p><p className="mt-1 text-xs font-medium text-[var(--ui-text-muted)]">{locale === "uk" ? `Перемістити ${activeBulkDrag.taskIds.length} задач` : `Move ${activeBulkDrag.taskIds.length} tasks`}</p></div> : null}
         </DragOverlay>
       </DragDropProvider>
       {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} method={settingsStage === "stage_4" ? undefined : localStageProgressMethods[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns, method) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); if (method && settingsStage !== "stage_4") setLocalStageProgressMethods((current) => ({ ...current, [settingsStage]: method })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
