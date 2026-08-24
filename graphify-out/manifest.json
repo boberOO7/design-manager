@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/archive/page.tsx": {
-    "mtime": 1786976075.709474,
-    "ast_hash": "8718ebcb59a737d1e4d384a033c198d0",
+    "mtime": 1787584408.5207267,
+    "ast_hash": "c73fd0f5ab506f759bd616db357e2af1",
     "semantic_hash": ""
   },
   "src/app/(app)/calendar/page.tsx": {
@@ -260,8 +260,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/page.tsx": {
-    "mtime": 1787303300.9110644,
-    "ast_hash": "56408f6cacfdd62bb64d866c8b72a04d",
+    "mtime": 1787584408.3687203,
+    "ast_hash": "8f763e814f4779cd3b7f96f23e96b523",
     "semantic_hash": ""
   },
   "src/app/(app)/projects/[projectId]/task-actions.ts": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-context-band.tsx": {
-    "mtime": 1787303250.7344587,
-    "ast_hash": "7c56bf287bedf62ffec2e85c6f1a8e69",
+    "mtime": 1787584408.212714,
+    "ast_hash": "a447d31ecb16615246cd7d951ba51d61",
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
@@ -475,8 +475,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-list.tsx": {
-    "mtime": 1787302196.477283,
-    "ast_hash": "fcfd6b66547e4a3f8450cb4132e7d5c3",
+    "mtime": 1787584408.0807085,
+    "ast_hash": "427a2b82892ff65141df0a5cd8f6a297",
     "semantic_hash": ""
   },
   "src/components/projects/project-status-action.tsx": {
@@ -3337,6 +3337,11 @@
   "supabase/migrations/20260824100000_allow_unassigned_area_task_completion.sql": {
     "mtime": 1787582270.5682194,
     "ast_hash": "51989764b8e95ac1a4d4fbbdf48c817d",
+    "semantic_hash": ""
+  },
+  "src/components/projects/project-code-visibility.test.ts": {
+    "mtime": 1787584408.676733,
+    "ast_hash": "09afe3e30238fd26cb42e4751da5d91c",
     "semantic_hash": ""
   }
 }

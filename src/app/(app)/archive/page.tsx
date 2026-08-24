@@ -43,7 +43,7 @@ export default async function ArchivePage() {
                     <Link href={`/projects/${project.id}`} className="font-semibold text-[var(--ui-text)] hover:underline">
                       {project.name}
                     </Link>
-                    <p className="text-sm text-[var(--ui-text-muted)]">{project.project_code || project.client_name || t("archivedProject")}</p>
+                    <p className="text-sm text-[var(--ui-text-muted)]">{project.client_name || t("archivedProject")}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-medium ${lifecycleStyle.className}`}>{lifecycleStyle.label}</span>
                 </div>

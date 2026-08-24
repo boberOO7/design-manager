@@ -68,7 +68,6 @@ async function ProjectDetails({ locale, project }: { locale: string; project: No
   const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
   const typeLabel = getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes);
   const items = [
-    { label: form("projectCode"), value: project.project_code },
     { label: form("projectType"), value: typeLabel },
     { label: form("clientName"), value: project.client_name },
     { label: form("country"), value: getCountryName(project.country_code, locale) },
