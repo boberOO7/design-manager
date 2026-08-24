@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1787315415.903628,
-    "ast_hash": "9f4520350bc5dd2232b26a54d4ffa260",
+    "mtime": 1787592652.6302063,
+    "ast_hash": "3f8da885851204b1cd2b9b87b9545a63",
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
@@ -1785,8 +1785,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/select.test.ts": {
-    "mtime": 1787303560.8327994,
-    "ast_hash": "a07907daf575d2ad3e9b2da41c4bf300",
+    "mtime": 1787592686.9027944,
+    "ast_hash": "b12123da664b8bd3417a7ebb9c9e7298",
     "semantic_hash": ""
   },
   "src/components/ui/select.tsx": {
@@ -3085,13 +3085,13 @@
     "semantic_hash": ""
   },
   "src/components/tasks/stage-columns-dialog.tsx": {
-    "mtime": 1787303203.0434263,
-    "ast_hash": "025ea3a1ce05a242a2659ffc5676b289",
+    "mtime": 1787592652.2941916,
+    "ast_hash": "945b13dd2591a226b19e4c7a365303b7",
     "semantic_hash": ""
   },
   "src/data/mutations/project-stage-columns.ts": {
-    "mtime": 1787303641.0931127,
-    "ast_hash": "840d509bc42fd169bb25063b27b748d7",
+    "mtime": 1787592652.4661992,
+    "ast_hash": "0d94534bc0297ec563f4008ff0237c5c",
     "semantic_hash": ""
   },
   "src/data/queries/project-stage-columns.ts": {
@@ -3342,6 +3342,11 @@
   "src/components/projects/project-code-visibility.test.ts": {
     "mtime": 1787584408.676733,
     "ast_hash": "09afe3e30238fd26cb42e4751da5d91c",
+    "semantic_hash": ""
+  },
+  "src/components/tasks/stage-configuration-controls.test.ts": {
+    "mtime": 1787592679.4664667,
+    "ast_hash": "dd8077902226c125415687f47e55e707",
     "semantic_hash": ""
   }
 }

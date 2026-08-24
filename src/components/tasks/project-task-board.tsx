@@ -38,7 +38,7 @@ import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
-import { calculateStageProgress, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import { calculateStageProgress, type ProjectStageProgressMethods, type StageProgressMethod } from "@/lib/project-progress";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
@@ -112,6 +112,15 @@ function isSuccessfulBulkTaskStageAssignmentResponse(value: unknown): value is {
     && value.success === true
     && "tasks" in value
     && Array.isArray(value.tasks);
+}
+
+function isSuccessfulStageProgressMethodResponse(value: unknown): value is { success: true; progressMethod: StageProgressMethod } {
+  return typeof value === "object"
+    && value !== null
+    && "success" in value
+    && value.success === true
+    && "progressMethod" in value
+    && (value.progressMethod === "equal" || value.progressMethod === "area" || value.progressMethod === "weighted");
 }
 
 type BulkAssignmentScope = "unassigned" | "all";
@@ -427,6 +436,10 @@ export function ProjectTaskBoard({
   const stageLabels = useTranslations("TaskStages");
   const locale = useLocale();
   const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
+  const progressMethodLabel = locale === "uk" ? "Метод прогресу" : "Progress method";
+  const progressMethodOptions: Array<{ value: StageProgressMethod; label: string }> = locale === "uk"
+    ? [{ value: "equal", label: "Рівний" }, { value: "area", label: "За площею" }, { value: "weighted", label: "Зважений" }]
+    : [{ value: "equal", label: "Equal" }, { value: "area", label: "Area" }, { value: "weighted", label: "Weighted" }];
   const boardActions = locale === "uk" ? "Дії дошки" : "Board actions";
   const compactTaskCards = locale === "uk" ? "Компактні картки" : "Compact task cards";
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -440,6 +453,7 @@ export function ProjectTaskBoard({
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
   const [localStageProgressMethods, setLocalStageProgressMethods] = useState(stageProgressMethods);
   const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
+  const [savingProgressMethodStage, setSavingProgressMethodStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(() => tasks.some((task) => task.id === initialTaskId));
   const isTaskDrawerOpenRef = useRef(tasks.some((task) => task.id === initialTaskId));
@@ -675,6 +689,29 @@ export function ProjectTaskBoard({
     }
   }
 
+  async function updateStageProgressMethod(stage: Exclude<TaskStage, "stage_4">, method: StageProgressMethod) {
+    if (savingProgressMethodStage || localStageProgressMethods[stage] === method) return;
+    setSavingProgressMethodStage(stage);
+    setBoardError(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/stages/${stage}/columns`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ progress_method: method }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulStageProgressMethodResponse(result)) throw new Error(locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
+      setLocalStageProgressMethods((current) => ({ ...current, [stage]: result.progressMethod }));
+      setAnnouncement(locale === "uk" ? "Метод прогресу оновлено." : "Progress method updated.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
+      setBoardError(message);
+      setAnnouncement(message);
+    } finally {
+      setSavingProgressMethodStage(null);
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const taskId = event.operation.source?.id;
     if (taskId === undefined) return;
@@ -828,7 +865,7 @@ export function ProjectTaskBoard({
                   {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{stage !== "stage_4" ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
@@ -883,7 +920,7 @@ export function ProjectTaskBoard({
           }}
         </DragOverlay>
       </DragDropProvider>
-      {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} method={settingsStage === "stage_4" ? undefined : localStageProgressMethods[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns, method) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); if (method && settingsStage !== "stage_4") setLocalStageProgressMethods((current) => ({ ...current, [settingsStage]: method })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
+      {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
       {selectedTask ? <TaskDetailsDrawer
         key={selectedTask.id}
         canManageTasks={canManageTasks}

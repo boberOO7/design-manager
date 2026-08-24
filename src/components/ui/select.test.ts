@@ -9,7 +9,6 @@ const componentPaths = [
   new URL("../projects/add-project-member-form.tsx", import.meta.url),
   new URL("../projects/project-form.tsx", import.meta.url),
   new URL("../projects/project-list-controls.tsx", import.meta.url),
-  new URL("../tasks/stage-columns-dialog.tsx", import.meta.url),
   new URL("../tasks/add-task-dialog.tsx", import.meta.url),
   new URL("../tasks/task-details-drawer.tsx", import.meta.url),
   new URL("../tasks/task-status-control.tsx", import.meta.url),
