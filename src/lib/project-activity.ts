@@ -2,6 +2,7 @@ import type { Json } from "@/types/database.types";
 
 export type ActivityChange = { from: Json; to: Json };
 export type ActivityChanges = Record<string, Json | ActivityChange>;
+export type ActivityChangeDetails = { field: string; from: Json; to: Json };
 
 export function isActivityChanges(value: Json): value is ActivityChanges {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -11,39 +12,35 @@ export function isActivityChange(value: Json | undefined): value is ActivityChan
   return value !== undefined && isActivityChanges(value) && "from" in value && "to" in value;
 }
 
+export function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function getActivityMemberId(changes: Json): string | null {
   if (!isActivityChanges(changes) || typeof changes.member_id !== "string") return null;
   return changes.member_id;
 }
 
-export function getActivitySummary(actionType: string, changes: Json): string {
-  if (actionType === "task_created") return "created a task";
-  if (actionType === "project_archived") return "archived the project";
-  if (actionType === "project_restored") return "restored the project";
-  if (actionType === "project_member_added") return "added a project member";
-  if (actionType === "project_member_removed") return "removed a project member";
-  const values = isActivityChanges(changes) ? Object.keys(changes) : [];
-  if (actionType === "project_lifecycle_changed") return "changed the project lifecycle";
-  if (actionType === "task_updated" && values.includes("status")) return "changed a task status";
-  if (actionType === "task_updated") return "updated a task";
-  if (actionType === "project_member_updated") return "updated a project member";
-  return "updated the project";
+export function getActivityMemberIds(changes: Json): string[] {
+  if (!isActivityChanges(changes)) return [];
+  const ids = new Set<string>();
+  const memberId = getActivityMemberId(changes);
+  if (memberId) ids.add(memberId);
+  const assignee = changes.assignee_id;
+  if (isActivityChange(assignee)) {
+    if (typeof assignee.from === "string") ids.add(assignee.from);
+    if (typeof assignee.to === "string") ids.add(assignee.to);
+  } else if (typeof assignee === "string") {
+    ids.add(assignee);
+  }
+  return [...ids];
 }
 
-export function formatActivityValue(value: Json): string {
-  if (value === null) return "No date";
-  if (typeof value === "boolean") return value ? "Active" : "Inactive";
-  if (value === "review") return "Client review";
-  if (typeof value === "string") return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-  return String(value);
-}
-
-export function getActivityChangeText(changes: Json): string | null {
+export function getActivityChange(changes: Json): ActivityChangeDetails | null {
   if (!isActivityChanges(changes)) return null;
   for (const [field, value] of Object.entries(changes)) {
     if (!isActivityChange(value)) continue;
-    const label = field === "assignee_id" ? "Assignee" : field === "due_date" ? "Due date" : field === "assigned_area_m2" ? "Assigned area" : field.replaceAll("_", " ");
-    return `${label}: ${formatActivityValue(value.from)} → ${formatActivityValue(value.to)}`;
+    return { field, from: value.from, to: value.to };
   }
   return null;
 }

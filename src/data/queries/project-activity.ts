@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { getActivityMemberId } from "@/lib/project-activity";
+import { getActivityMemberIds } from "@/lib/project-activity";
 import type { Json } from "@/types/database.types";
 
 export type ProjectActivity = {
@@ -13,7 +13,8 @@ export type ProjectActivity = {
   entity_id: string | null;
   entity_type: string;
   actor: { avatar_url: string | null; full_name: string } | null;
-  member: { full_name: string } | null;
+  memberNames: Record<string, string>;
+  task: { title: string } | null;
 };
 
 export async function getProjectActivity(projectId: string): Promise<ProjectActivity[]> {
@@ -29,22 +30,31 @@ export async function getProjectActivity(projectId: string): Promise<ProjectActi
   if (error || !data) {
     throw new Error(`Unable to load activity for project ${projectId}.`, { cause: error });
   }
-  const memberIds = [...new Set(data.map((activity) => getActivityMemberId(activity.changes)).filter((id): id is string => id !== null))];
-  if (memberIds.length === 0) return data.map((activity) => ({ ...activity, member: null }));
+  const memberIds = [...new Set(data.flatMap((activity) => getActivityMemberIds(activity.changes)))];
+  const taskIds = [...new Set(data.flatMap((activity) => activity.entity_type === "task" && activity.entity_id ? [activity.entity_id] : []))];
 
-  const { data: members, error: membersError } = await supabase
-    .from("profiles")
-    .select("id, full_name")
-    .in("id", memberIds)
-    .overrideTypes<Array<{ id: string; full_name: string }>, { merge: false }>();
+  const [membersResult, tasksResult] = await Promise.all([
+    memberIds.length > 0
+      ? supabase.from("profiles").select("id, full_name").in("id", memberIds).overrideTypes<Array<{ id: string; full_name: string }>, { merge: false }>()
+      : Promise.resolve({ data: [], error: null }),
+    taskIds.length > 0
+      ? supabase.from("tasks").select("id, title").in("id", taskIds).overrideTypes<Array<{ id: string; title: string }>, { merge: false }>()
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
-  if (membersError || !members) {
-    throw new Error(`Unable to load activity members for project ${projectId}.`, { cause: membersError });
+  if (membersResult.error || !membersResult.data) {
+    throw new Error(`Unable to load activity members for project ${projectId}.`, { cause: membersResult.error });
   }
+  if (tasksResult.error || !tasksResult.data) throw new Error(`Unable to load activity tasks for project ${projectId}.`, { cause: tasksResult.error });
 
-  const membersById = new Map(members.map((member) => [member.id, member]));
+  const memberNamesById = new Map(membersResult.data.map((member) => [member.id, member.full_name]));
+  const tasksById = new Map(tasksResult.data.map((task) => [task.id, task]));
   return data.map((activity) => ({
     ...activity,
-    member: membersById.get(getActivityMemberId(activity.changes) ?? "") ?? null,
+    memberNames: Object.fromEntries(getActivityMemberIds(activity.changes).flatMap((id) => {
+      const name = memberNamesById.get(id);
+      return name ? [[id, name]] : [];
+    })),
+    task: activity.entity_type === "task" && activity.entity_id ? tasksById.get(activity.entity_id) ?? null : null,
   }));
 }

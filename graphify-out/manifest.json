@@ -1500,13 +1500,13 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-activity-section.tsx": {
-    "mtime": 1787001528.1025693,
-    "ast_hash": "29fbdef9139bd474557fe7064816672d",
+    "mtime": 1787602182.953222,
+    "ast_hash": "56209c490e9ebd2d9e4ae46091ad165a",
     "semantic_hash": ""
   },
   "src/data/queries/project-activity.ts": {
-    "mtime": 1787001503.7834103,
-    "ast_hash": "ee2ba9c3e94e6a3115f6cc7d34b423dc",
+    "mtime": 1787602182.8132164,
+    "ast_hash": "45b9773f865d9952249d6d2947d6dbaa",
     "semantic_hash": ""
   },
   "src/lib/project-activity-migration.test.ts": {
@@ -1515,13 +1515,13 @@
     "semantic_hash": ""
   },
   "src/lib/project-activity.test.ts": {
-    "mtime": 1787001504.1034265,
-    "ast_hash": "690d94d506b23845c54a6d8ed95bd000",
+    "mtime": 1787602222.8621492,
+    "ast_hash": "09f9d9f09ed58ac1c9689301f4fc57a6",
     "semantic_hash": ""
   },
   "src/lib/project-activity.ts": {
-    "mtime": 1787001503.635403,
-    "ast_hash": "0565a5e74ac24522ed4d21d467ab437a",
+    "mtime": 1787602222.7261434,
+    "ast_hash": "14b309d68688aff1b50dbd32d04d71f8",
     "semantic_hash": ""
   },
   "supabase/migrations/20260729200758_project_activity_history.sql": {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRelativeTime, getActivityChangeText, getActivityMemberId, getActivitySummary, groupActivityByLocalDate } from "./project-activity";
+import { formatRelativeTime, getActivityChange, getActivityMemberId, getActivityMemberIds, groupActivityByLocalDate, isUuid } from "./project-activity";
 
 describe("project activity presentation", () => {
   it("keeps newest-first input grouped by local calendar date", () => {
@@ -11,9 +11,8 @@ describe("project activity presentation", () => {
     expect(groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(["new", "old"]);
   });
 
-  it("renders safe old-to-new values without free-text fields", () => {
-    expect(getActivityChangeText({ status: { from: "todo", to: "in_progress" } })).toBe("status: Todo → In Progress");
-    expect(getActivitySummary("task_updated", { priority: { from: "normal", to: "high" } })).toBe("updated a task");
+  it("preserves structured old-to-new values for localized rendering", () => {
+    expect(getActivityChange({ status: { from: "todo", to: "in_progress" } })).toEqual({ field: "status", from: "todo", to: "in_progress" });
   });
 
   it("uses compact relative time alongside an exact timestamp in the UI", () => {
@@ -23,5 +22,13 @@ describe("project activity presentation", () => {
   it("extracts a member identifier only from activity member metadata", () => {
     expect(getActivityMemberId({ member_id: "cda54ad0-0000-0000-0000-000000000000" })).toBe("cda54ad0-0000-0000-0000-000000000000");
     expect(getActivityMemberId({ status: { from: "todo", to: "in_progress" } })).toBeNull();
+  });
+
+  it("collects every assignee identifier needed to resolve historical changes", () => {
+    expect(getActivityMemberIds({ assignee_id: { from: "old-member", to: "new-member" } })).toEqual(["old-member", "new-member"]);
+  });
+
+  it("recognizes identifiers that must never be rendered as activity values", () => {
+    expect(isUuid("cda54ad0-0000-4000-8000-000000000000")).toBe(true);
   });
 });
