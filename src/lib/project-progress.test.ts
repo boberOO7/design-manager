@@ -97,6 +97,21 @@ describe("stage progress", () => {
     expect(progress.stage_2).toMatchObject({ progressPercent: 95, method: "weighted" });
   });
 
+  it("includes unassigned completed area work in area progress without personal attribution", () => {
+    const tasks = [
+      { ...task({ id: "done-unassigned", status: "completed", assignee_id: null, completed_area_m2: 100 }), stage: "stage_1" },
+      { ...task({ id: "todo-unassigned", assignee_id: null, completed_area_m2: 100 }), stage: "stage_1" },
+    ];
+
+    expect(calculateStageProgress(tasks, { stage_1: "area", stage_2: "equal", stage_3: "equal" }).stage_1.progressPercent).toBe(50);
+    expect(calculateProjectProgress(tasks, "2026-07-28", { stage_1: "area", stage_2: "equal", stage_3: "equal" }).progressPercent).toBe(10);
+    expect(calculatePersonalProgress(tasks, "employee-1", "2026-07-28")).toEqual({
+      eligibleTaskCount: 0,
+      completedTaskCount: 0,
+      progressPercent: null,
+    });
+  });
+
   it("calculates the weighted overall progress from stages one through three", () => {
     expect(calculateOverallProjectProgress({
       stage_1: { eligibleTaskCount: 1, completedTaskCount: 1, progressPercent: 100 },

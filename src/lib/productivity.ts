@@ -44,7 +44,9 @@ export function canCompleteAttributedTask(input: {
   isActiveProjectMember: boolean;
 }): boolean {
   return input.completedAreaM2 === null || input.completedAreaM2 === undefined
-    || (Boolean(input.assigneeId) && input.isActiveProjectMember);
+    || input.assigneeId === null
+    || input.assigneeId === undefined
+    || input.isActiveProjectMember;
 }
 
 function kyivParts(now: Date) {

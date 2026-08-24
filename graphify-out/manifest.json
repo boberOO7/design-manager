@@ -815,8 +815,8 @@
     "semantic_hash": ""
   },
   "src/lib/project-progress.test.ts": {
-    "mtime": 1787303420.0096111,
-    "ast_hash": "5a4ab93911666f0e9877dadd5f071be6",
+    "mtime": 1787582270.1882052,
+    "ast_hash": "12b289e2cbf2e17819d4ccf82a4139fd",
     "semantic_hash": ""
   },
   "src/lib/project-progress.ts": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": ""
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1786987815.3981075,
-    "ast_hash": "3a416b0bef7943682b1b350c4dde8e3a",
+    "mtime": 1787582297.9330723,
+    "ast_hash": "1d59ec6ba81959d0ae4b97297fa4695d",
     "semantic_hash": ""
   },
   "src/lib/productivity.ts": {
-    "mtime": 1786987661.6292446,
-    "ast_hash": "3bef9d27f3344ee312f34eebd52792f2",
+    "mtime": 1787582269.916195,
+    "ast_hash": "11a220dfc0b526b9af62cf1f115bac45",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120000_productivity_attribution.sql": {
@@ -1595,8 +1595,8 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
-    "mtime": 1785715087.5882728,
-    "ast_hash": "00628be17bc823b5a666448d8c9a2e5f",
+    "mtime": 1787582298.0530772,
+    "ast_hash": "2b8bd8f0191a691b9101be09ec263a9d",
     "semantic_hash": ""
   },
   "src/lib/checklist-interaction.test.ts": {
@@ -3327,6 +3327,16 @@
   "src/lib/project-template-task-order.ts": {
     "mtime": 1787343804.6344824,
     "ast_hash": "0ea8fcea026dafb958df291f79d67806",
+    "semantic_hash": ""
+  },
+  "src/lib/unassigned-area-task-completion-migration.test.ts": {
+    "mtime": 1787582270.6922243,
+    "ast_hash": "ef936b065a155a60fbf82c4d75664137",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260824100000_allow_unassigned_area_task_completion.sql": {
+    "mtime": 1787582270.5682194,
+    "ast_hash": "51989764b8e95ac1a4d4fbbdf48c817d",
     "semantic_hash": ""
   }
 }
