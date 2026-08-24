@@ -114,7 +114,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
           </label>
           <Select aria-label={t("columns.category")} value={categoryId} onValueChange={changeCategoryFilter} placeholder={t("allCategories")}>
             <SelectItem className="min-h-12 py-2.5" value="">{t("allCategories")}</SelectItem>
-            {categories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span></SelectItem>)}
+            {categories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}><span className="block min-w-0"><span title={item.name} className={`inline-flex max-w-full min-w-0 items-center rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${getContractorCategoryBadgeClassName(item.colorKey)}`}><span className="min-w-0 truncate whitespace-nowrap">{item.name}</span></span></span></SelectItem>)}
           </Select>
           <Select aria-label={t("columns.subcategory")} value={subcategoryId} onValueChange={setSubcategoryId} placeholder={t("allSubcategories")}>
             <SelectItem className="min-h-12 py-2.5" value="">{t("allSubcategories")}</SelectItem>

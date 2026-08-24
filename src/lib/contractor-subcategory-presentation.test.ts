@@ -35,4 +35,14 @@ describe("contractor subcategory presentation", () => {
     expect(source).not.toContain('aria-hidden="true" className="text-xs leading-none text-[var(--ui-text-muted)]">›</span>');
     expect(source).toContain('text-xs font-normal leading-5 text-[var(--ui-text-secondary)]" title={contractor.subcategory.name}');
   });
+
+  it("keeps dynamic category badges contained and discoverable in the category filter", async () => {
+    const directoryPath = new URL("../components/contractors/contractor-directory.tsx", import.meta.url);
+    const source = await readFile(directoryPath, "utf8");
+
+    expect(source).toContain('className="block min-w-0"');
+    expect(source).toContain('inline-flex max-w-full min-w-0 items-center rounded-full');
+    expect(source).toContain('className="min-w-0 truncate whitespace-nowrap">{item.name}</span>');
+    expect(source).toContain('title={item.name}');
+  });
 });
