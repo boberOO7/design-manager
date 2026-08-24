@@ -54,7 +54,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script dangerouslySetInnerHTML={{ __html: motionBootstrapScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)]">
+      <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
         <NextIntlClientProvider locale={locale} messages={messages}>{children}</NextIntlClientProvider>
       </body>
     </html>

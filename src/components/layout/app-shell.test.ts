@@ -6,6 +6,7 @@ const sidebarPath = new URL("./app-sidebar.tsx", import.meta.url);
 const controlPath = new URL("./shell-control.tsx", import.meta.url);
 const dashboardPath = new URL("../../app/(app)/dashboard/page.tsx", import.meta.url);
 const layoutPath = new URL("../../app/(app)/layout.tsx", import.meta.url);
+const rootLayoutPath = new URL("../../app/layout.tsx", import.meta.url);
 const stylesPath = new URL("../../app/globals.css", import.meta.url);
 
 describe("application shell cleanup", () => {
@@ -67,12 +68,16 @@ describe("application shell cleanup", () => {
   });
 
   it("keeps the desktop shell stationary while its main content owns vertical scrolling", async () => {
-    const layout = await readFile(layoutPath, "utf8");
+    const [layout, rootLayout] = await Promise.all([
+      readFile(layoutPath, "utf8"),
+      readFile(rootLayoutPath, "utf8"),
+    ]);
 
     expect(layout).toContain("lg:h-dvh lg:overflow-hidden");
     expect(layout).toContain("lg:min-h-0");
     expect(layout).toContain('id="main-content"');
     expect(layout).toContain("lg:min-h-0 lg:overflow-y-auto");
+    expect(rootLayout).toContain("lg:h-dvh lg:overflow-hidden");
   });
 
   it("uses the same slimmer scrollbar treatment for every scroll container", async () => {
