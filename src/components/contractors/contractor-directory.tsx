@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Copy, ExternalLink, Palette, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, MoreHorizontal, Palette, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -40,6 +41,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   const [managingColors, setManagingColors] = useState(false);
   const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
   const [colorError, setColorError] = useState("");
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [copiedContractorId, setCopiedContractorId] = useState<string | null>(null);
   const copiedPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,6 +50,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   }, []);
 
   const selectedFilterSubcategories = getContractorSubcategories(categories, categoryId);
+  const manageCategoriesLabel = locale === "uk" ? "Керувати категоріями" : "Manage categories";
   const visible = useMemo(() => {
     return filterContractors(contractors, { categoryId, subcategoryId, query });
   }, [categoryId, contractors, query, subcategoryId]);
@@ -121,7 +124,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
             {selectedFilterSubcategories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}>{item.name}</SelectItem>)}
           </Select>
         </div>
-        <div className="flex shrink-0 gap-2">{isAdmin ? <Button type="button" variant="outline" onClick={() => { setColorError(""); setManagingColors(true); }}><Palette className="size-4" aria-hidden="true" />{t("columns.category")}</Button> : null}{canEdit ? <Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button> : null}</div>
+        <div className="flex shrink-0 gap-2">{canEdit ? <Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button> : null}{isAdmin ? <Popover.Root open={categoryMenuOpen} onOpenChange={setCategoryMenuOpen}><Popover.Trigger asChild><Button type="button" variant="ghost" className="size-11 shrink-0 p-0" aria-label={manageCategoriesLabel}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-52 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]"><button type="button" onClick={() => { setCategoryMenuOpen(false); setColorError(""); setManagingColors(true); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:bg-[var(--ui-surface-muted)]"><Palette className="size-4 text-[var(--ui-text-secondary)]" aria-hidden="true" />{manageCategoriesLabel}</button></Popover.Content></Popover.Portal></Popover.Root> : null}</div>
       </div>
 
       {visible.length ? <div className="overflow-x-auto">
