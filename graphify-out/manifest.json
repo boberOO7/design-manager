@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "src/app/(auth)/login/page.tsx": {
-    "mtime": 1785971918.0395467,
-    "ast_hash": "d5b315719d60cb34eb24645dc9afd689",
+    "mtime": 1787655131.8590722,
+    "ast_hash": "6999fdecadafcc60865ae07523076dcc",
     "semantic_hash": ""
   },
   "src/app/(auth)/set-password/actions.ts": {
@@ -3382,6 +3382,11 @@
   "supabase/migrations/20260825103801_stage_productivity_accounting.sql": {
     "mtime": 1787654837.9234395,
     "ast_hash": "66223cfaec0af69bcf76e95639dc070c",
+    "semantic_hash": ""
+  },
+  "src/app/(auth)/login/page.test.ts": {
+    "mtime": 1787655131.975075,
+    "ast_hash": "f3adb1108acb2490196b813ee77cbf5f",
     "semantic_hash": ""
   }
 }
