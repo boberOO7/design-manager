@@ -39,6 +39,8 @@ describe("project stage configuration migration contract", () => {
     const leaderboardQuery = await readFile(new URL("../data/queries/index.ts", import.meta.url), "utf8");
     expect(sql).toContain("add column include_in_productivity boolean not null default true");
     expect(sql).not.toContain("delete from public.productivity_attributions");
-    expect(leaderboardQuery).toContain("project.include_in_productivity");
+    expect(leaderboardQuery).toContain('select("id, include_in_productivity")');
+    expect(leaderboardQuery).toContain("excludedProjectIds");
+    expect(leaderboardQuery).not.toContain("projects!inner(include_in_productivity)");
   });
 });

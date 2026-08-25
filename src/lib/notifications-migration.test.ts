@@ -46,4 +46,10 @@ describe("notifications migration security contract", () => {
     expect(migration).toContain("and member.user_id = attendee.user_id and member.is_active");
     expect(migration).toContain("profile.id = attendee.user_id and profile.is_active");
   });
+  it("keeps paused projects from changing direct human-notification behavior and has no automated deadline generator to leak", () => {
+    expect(migration).toContain("'task_assigned'");
+    expect(migration).toContain("'task_details_changed'");
+    expect(migration).not.toMatch(/task_deadline|task_overdue|project_deadline|project_risk/);
+    expect(migration).not.toContain("cron.schedule");
+  });
 });

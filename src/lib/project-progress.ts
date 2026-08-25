@@ -233,6 +233,8 @@ export function getProjectHealth({
   today?: string;
 }): ProjectHealthSummary {
   if (projectStatus === "completed") return { health: "completed", reason: null };
+  // A pause preserves all project data but deliberately removes it from operational risk.
+  if (projectStatus === "paused") return { health: "on_track", reason: null };
   if (projectDueDate !== null && projectDueDate < today) return { health: "overdue", reason: "Project deadline passed" };
   if (progress.overdueTaskCount > 0) return { health: "needs_attention", reason: `${progress.overdueTaskCount} overdue ${progress.overdueTaskCount === 1 ? "task" : "tasks"}` };
   if (progress.urgentOpenTaskCount > 0) return { health: "needs_attention", reason: `${progress.urgentOpenTaskCount} urgent ${progress.urgentOpenTaskCount === 1 ? "task" : "tasks"}` };

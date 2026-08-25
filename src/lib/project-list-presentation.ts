@@ -71,6 +71,8 @@ export function filterAndSortProjects<T extends { name: string; priority: string
   return filtered.map((project, index) => ({ project, index })).sort((left, right) => {
     const first = left.project;
     const second = right.project;
+    const pauseGroup = Number(first.status === "paused") - Number(second.status === "paused");
+    if (pauseGroup !== 0) return pauseGroup;
     if (filters.sort === "deadline") return compareNullableDate(first.due_date, second.due_date) || left.index - right.index;
     if (filters.sort === "name") return first.name.localeCompare(second.name) || left.index - right.index;
     if (filters.sort === "health") return healthOrder[first.health] - healthOrder[second.health] || first.name.localeCompare(second.name) || left.index - right.index;

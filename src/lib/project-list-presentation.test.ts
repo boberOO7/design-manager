@@ -26,6 +26,18 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, operational).map((item) => item.id)).toEqual(["late", "risk", "soon", "same-a", "same-b", "track"]);
   });
 
+  it("always places paused projects after current work while preserving each selected sort within its group", () => {
+    const items = getPresentedProjects([
+      project({ id: "active-z", name: "Zeta", due_date: "2026-08-10" }),
+      project({ id: "paused-a", name: "Alpha", status: "paused", due_date: "2026-07-01" }),
+      project({ id: "active-a", name: "Alpha", due_date: "2026-08-01" }),
+      project({ id: "paused-z", name: "Zeta", status: "paused", due_date: "2026-07-02" }),
+    ], today);
+
+    expect(filterAndSortProjects(items, { ...operational, sort: "name" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "deadline" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
+  });
+
   it("filters lifecycle, health, and priority without changing the access-scoped source", () => {
     const items = getPresentedProjects([
       project({ id: "active", priority: "urgent", tasks: [{ id: "task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),

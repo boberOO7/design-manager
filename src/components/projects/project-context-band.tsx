@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Building2, Check, MapPin, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Building2, Check, MapPin, MoreHorizontal, Pause } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useLayoutEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -57,6 +57,7 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
   const statusMessages = useTranslations("Status");
   const locale = useLocale();
   const { status } = useProjectLifecycle();
+  const isPaused = status === "paused";
   const progress = calculateProjectProgress(tasks, undefined, stageProgressMethods);
   const stageProgress = calculateStageProgress(tasks, stageProgressMethods);
   const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
@@ -96,6 +97,7 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
           {t("backToProjects")}
         </Link>
         <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5" : "mt-2 flex flex-wrap items-center gap-x-3 gap-y-2"}><h1 id="project-context-heading" className={`flex min-w-0 items-center gap-2 break-words font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"}`}><LifecycleDot label={statusMessages(isArchived ? "archived" : status)} status={isArchived ? "archived" : status} />{project.name}</h1>{!isArchived ? <Badge className={`font-semibold ${healthStyle.className}`} label={getProjectHealthLabel(health.health)} /> : null}<Badge className={priorityStyle.className} label={getTaskPriorityLabel(project.priority)} /></div>
+        {!isArchived && status === "paused" ? <div className="mt-3 flex max-w-2xl items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] px-3 py-2.5 text-sm text-[var(--ui-info-text)]"><Pause aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><div><p className="font-semibold">{projectMessages("pausedBannerTitle")}</p><p className="mt-0.5 leading-5 text-[var(--ui-text-secondary)]">{projectMessages("pausedBannerDescription")}</p></div></div> : null}
         {(project.client_name || location) ? <div className={compact ? "mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-4 text-[var(--ui-text-muted)]" : "mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 text-[var(--ui-text-muted)]"}>{project.client_name ? <p className="flex min-w-0 items-center gap-1.5"><span aria-label={form("clientName")} title={form("clientName")}><Building2 aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /></span><span className="truncate text-[var(--ui-text-secondary)]">{project.client_name}</span></p> : null}{location ? <p className="flex min-w-0 items-center gap-1.5"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}</div> : null}
       </div>
   <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onConfigureStages={onConfigureStages} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} />
@@ -108,11 +110,11 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
           <div className={compact ? "grid grid-cols-3 divide-x divide-[var(--ui-border)] border-t border-[var(--ui-border)] pt-2 sm:border-t-0 sm:pt-0" : "mt-4 grid grid-cols-3 gap-3 sm:gap-5"}>
             <SupportingMetric compact={compact} label={projectMessages("openCount", { count: progress.openTaskCount })} value={String(progress.openTaskCount)} />
             <SupportingMetric compact={compact} label={projectMessages("completedCount", { count: progress.completedTaskCount })} value={String(progress.completedTaskCount)} />
-            <SupportingMetric compact={compact} danger={progress.overdueTaskCount > 0} label={projectMessages("overdueCount", { count: progress.overdueTaskCount })} value={String(progress.overdueTaskCount)} />
+            {!isPaused ? <SupportingMetric compact={compact} danger={progress.overdueTaskCount > 0} label={projectMessages("overdueCount", { count: progress.overdueTaskCount })} value={String(progress.overdueTaskCount)} /> : null}
           </div>
         </div>
         <div className={compact ? "border-t border-[var(--ui-border)] pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0" : "rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-4 py-3.5 sm:px-5"}>
-          <DeadlineSummary compact={compact} locale={locale} nextTaskDueDate={progress.nearestOpenTaskDueDate} overdueTaskCount={progress.overdueTaskCount} projectDueDate={project.due_date} />
+          <DeadlineSummary compact={compact} locale={locale} nextTaskDueDate={progress.nearestOpenTaskDueDate} overdueTaskCount={progress.overdueTaskCount} paused={isPaused} projectDueDate={project.due_date} />
           {health.reason && !isArchived ? <p className={compact ? "mt-1.5 text-xs leading-4 text-[var(--ui-text-secondary)]" : "mt-3 text-xs leading-5 text-[var(--ui-text-secondary)]"}>{health.reason}</p> : null}
         </div>
       </div>
@@ -160,10 +162,10 @@ function ProgressSummary({ compact, progress, projectName, stageProgress, stages
   </div>;
 }
 
-function DeadlineSummary({ compact, locale, nextTaskDueDate, overdueTaskCount, projectDueDate }: { compact: boolean; locale: string; nextTaskDueDate: string | null; overdueTaskCount: number; projectDueDate: string | null }) {
+function DeadlineSummary({ compact, locale, nextTaskDueDate, overdueTaskCount, paused, projectDueDate }: { compact: boolean; locale: string; nextTaskDueDate: string | null; overdueTaskCount: number; paused: boolean; projectDueDate: string | null }) {
   const t = useTranslations("Workspace");
-  const projectDeadlineNeedsAttention = Boolean(projectDueDate && projectDueDate <= getTodayDateOnly());
-  return <div className={compact ? "flex flex-wrap items-baseline gap-x-4 gap-y-1" : "space-y-3"}><TimelineMetric attention={projectDeadlineNeedsAttention} compact={compact} label={t("projectDeadline")} value={projectDueDate ? formatDateOnly(projectDueDate, locale) : t("noDeadline")} /><TimelineMetric attention={overdueTaskCount > 0} compact={compact} label={t("nextTaskDue")} value={nextTaskDueDate ? formatDateOnly(nextTaskDueDate, locale) : t("noOpenDueDate")} />{overdueTaskCount > 0 ? <TimelineMetric attention compact={compact} label={t("overdueTasks", { count: overdueTaskCount })} value={String(overdueTaskCount)} /> : null}</div>;
+  const projectDeadlineNeedsAttention = !paused && Boolean(projectDueDate && projectDueDate <= getTodayDateOnly());
+  return <div className={compact ? "flex flex-wrap items-baseline gap-x-4 gap-y-1" : "space-y-3"}><TimelineMetric attention={projectDeadlineNeedsAttention} compact={compact} label={t("projectDeadline")} value={projectDueDate ? formatDateOnly(projectDueDate, locale) : t("noDeadline")} /><TimelineMetric attention={!paused && overdueTaskCount > 0} compact={compact} label={t("nextTaskDue")} value={nextTaskDueDate ? formatDateOnly(nextTaskDueDate, locale) : t("noOpenDueDate")} />{!paused && overdueTaskCount > 0 ? <TimelineMetric attention compact={compact} label={t("overdueTasks", { count: overdueTaskCount })} value={String(overdueTaskCount)} /> : null}</div>;
 }
 
 function SupportingMetric({ compact = false, danger = false, label, value }: { compact?: boolean; danger?: boolean; label: string; value: string }) {

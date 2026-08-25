@@ -153,4 +153,9 @@ describe("project health precedence", () => {
     expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-08-04", progress: normal, today: "2026-07-28" }).health).toBe("deadline_soon");
     expect(getProjectHealth({ projectStatus: "active", projectDueDate: null, progress: normal, today: "2026-07-28" }).health).toBe("on_track");
   });
+  it("suppresses deadline and task risk while paused, then restores the stored risk on resume", () => {
+    const atRisk = calculateProjectProgress([task({ due_date: "2026-07-01", priority: "urgent" })], "2026-07-28");
+    expect(getProjectHealth({ projectStatus: "paused", projectDueDate: "2026-07-01", progress: atRisk, today: "2026-07-28" })).toEqual({ health: "on_track", reason: null });
+    expect(getProjectHealth({ projectStatus: "active", projectDueDate: "2026-07-01", progress: atRisk, today: "2026-07-28" }).health).toBe("overdue");
+  });
 });

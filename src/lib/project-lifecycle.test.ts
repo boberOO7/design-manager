@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canUpdateProjectMetadata, countOpenLifecycleTasks, getAutomaticProjectStatus, getLifecycleCompletedAt, getRestoredProjectStatus, hasProgressedEligibleTasks, isValidArchiveState, validateLifecycleTransition } from "./project-lifecycle";
+import { canUpdateProjectMetadata, countOpenLifecycleTasks, getAutomaticProjectStatus, getLifecycleCompletedAt, getRestoredProjectStatus, hasProgressedEligibleTasks, isOperationalProjectStatus, isValidArchiveState, OPERATIONAL_PROJECT_STATUSES, validateLifecycleTransition } from "./project-lifecycle";
 import { isWritableTaskStatus } from "./tasks";
 import { editProjectSchema } from "./validation/project";
+
+const lifecycleMutationSource = readFileSync(resolve(process.cwd(), "src/data/mutations/project-lifecycle.ts"), "utf8");
 
 describe("automatic project activation", () => {
   it("keeps planned projects planned without work or with only todo work", () => {
@@ -16,6 +20,11 @@ describe("automatic project activation", () => {
     expect(getAutomaticProjectStatus("active", "todo")).toBe("active");
     expect(getAutomaticProjectStatus("paused", "completed")).toBe("paused");
     expect(getAutomaticProjectStatus("completed", "in_progress")).toBe("completed");
+  });
+  it("defines paused work outside the operational query boundary and restores it on resume", () => {
+    expect(OPERATIONAL_PROJECT_STATUSES).toEqual(["planned", "active"]);
+    expect(isOperationalProjectStatus("paused")).toBe(false);
+    expect(isOperationalProjectStatus("active")).toBe(true);
   });
   it("restores a planned lifecycle display when an optimistic task move fails", () => {
     const previousProjectStatus = "planned";
@@ -71,6 +80,12 @@ describe("manual lifecycle transitions", () => {
     expect(getLifecycleCompletedAt({ from: "completed", to: "archived", completedAt, today: "2026-07-29" })).toBe(completedAt);
     expect(getRestoredProjectStatus(completedAt !== null)).toBe("completed");
     expect(getLifecycleCompletedAt({ from: "completed", to: "active", completedAt, today: "2026-07-29" })).toBeNull();
+  });
+  it("keeps pause separate from productivity history and task/deadline data", () => {
+    expect(getLifecycleCompletedAt({ from: "active", to: "paused", completedAt: null, today: "2026-07-29" })).toBeNull();
+    expect(lifecycleMutationSource).not.toContain("include_in_productivity");
+    expect(lifecycleMutationSource).not.toContain("due_date");
+    expect(lifecycleMutationSource).toContain('.update({ status: requestedStatus, completed_at:');
   });
   it("makes completed project metadata read-only", () => {
     expect(canUpdateProjectMetadata("completed")).toBe(false);

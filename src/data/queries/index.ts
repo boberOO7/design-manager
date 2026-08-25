@@ -180,17 +180,27 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
 async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number): Promise<ProductivityLeaderboardEntry[]> {
   const bounds = getKyivPeriodBounds(period, undefined, periodOffset);
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const [{ data: projects, error: projectsError }, { data, error }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, include_in_productivity")
+      .eq("studio_id", studioId)
+      .overrideTypes<Array<{ id: string; include_in_productivity: boolean }>, { merge: false }>(),
+    supabase
     .from("productivity_attributions")
-    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at, project:projects!inner(include_in_productivity)")
+    .select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")
     .eq("studio_id", studioId)
     .is("voided_at", null)
     .gte("completed_at", bounds.start)
     .lt("completed_at", bounds.end)
-    .eq("project.include_in_productivity", true)
-    .overrideTypes<CompletedProductivityAttribution[], { merge: false }>();
-  if (error || !data) throw new Error("Unable to load productivity.", { cause: error });
-  return projectProductivityLeaderboard(filterProductivityAttributionsForPeriod(data, period));
+    .overrideTypes<Array<CompletedProductivityAttribution & { project_id: string }>, { merge: false }>(),
+  ]);
+  if (projectsError || !projects || error || !data) {
+    console.error("Unable to load productivity.", projectsError ?? error);
+    throw new Error("Unable to load productivity.", { cause: projectsError ?? error });
+  }
+  const excludedProjectIds = new Set(projects.filter((project) => !project.include_in_productivity).map((project) => project.id));
+  return projectProductivityLeaderboard(filterProductivityAttributionsForPeriod(data.filter((attribution) => !excludedProjectIds.has(attribution.project_id)), period));
 }
 
 export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[]; bonusConfig: LeaderboardBonusConfig }> {

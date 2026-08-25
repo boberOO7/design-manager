@@ -40,7 +40,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   let overview;
   try {
     overview = await getLeaderboardOverviewData(period);
-  } catch {
+  } catch (error) {
+    console.error("Unable to load leaderboard overview", error);
     return (
       <div className="space-y-6">
         <PageHeader title={t("productivity")} description={t("loadDescription")} />

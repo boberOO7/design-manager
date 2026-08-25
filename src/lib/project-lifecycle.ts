@@ -1,5 +1,6 @@
 export const PROJECT_LIFECYCLE_STATUSES = ["planned", "active", "paused", "completed", "archived"] as const;
 export type ProjectLifecycleStatus = (typeof PROJECT_LIFECYCLE_STATUSES)[number];
+export const OPERATIONAL_PROJECT_STATUSES = ["planned", "active"] as const;
 export type ProjectLifecycleAction = "start" | "pause" | "resume" | "complete" | "reopen" | "return_to_planned";
 
 const targetByAction: Record<ProjectLifecycleAction, ProjectLifecycleStatus> = {
@@ -8,6 +9,11 @@ const targetByAction: Record<ProjectLifecycleAction, ProjectLifecycleStatus> = {
 
 export function isProjectLifecycleStatus(value: string): value is ProjectLifecycleStatus {
   return value === "planned" || value === "active" || value === "paused" || value === "completed" || value === "archived";
+}
+
+/** Projects in these states participate in day-to-day work and deadline signals. */
+export function isOperationalProjectStatus(status: string): status is (typeof OPERATIONAL_PROJECT_STATUSES)[number] {
+  return status === "planned" || status === "active";
 }
 
 export function getLifecycleTarget(action: ProjectLifecycleAction): ProjectLifecycleStatus {
