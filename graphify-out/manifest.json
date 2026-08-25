@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1787008467.2884037,
-    "ast_hash": "acb6a5734e4693157c58d890735c9466",
+    "mtime": 1787661070.9179673,
+    "ast_hash": "cff9360ea7a1d0616904f9938005af0e",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
