@@ -9,6 +9,8 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { LeaderboardPeriodSwitcher } from "@/components/leaderboard/leaderboard-period-switcher";
 import { LeaderboardBonusMenu } from "@/components/leaderboard/leaderboard-bonus-menu";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { canAccessLeaderboard } from "@/lib/leaderboard-access";
+import { redirect } from "next/navigation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Leaderboard");
@@ -35,6 +37,10 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         </div>
       </div>
     );
+  }
+
+  if (!membership || !canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })) {
+    redirect("/dashboard");
   }
 
   let overview;
@@ -67,7 +73,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <PageHeader className="flex-col items-start sm:flex-row sm:items-center" title={t("productivity")} description={t("description", { period: t(period) })} descriptionClassName="min-h-10" action={<div className="flex items-center gap-1"><LeaderboardPeriodSwitcher period={period} labels={{ month: t("month"), quarter: t("quarter"), year: t("year") }} />{membership?.system_role === "admin" ? <LeaderboardBonusMenu studioId={membership.studio_id} bonusConfig={overview.bonusConfig} /> : null}</div>} />
+      <PageHeader className="flex-col items-start sm:flex-row sm:items-center" title={t("productivity")} description={t("description", { period: t(period) })} descriptionClassName="min-h-10" action={<div className="flex items-center gap-1"><LeaderboardPeriodSwitcher period={period} labels={{ month: t("month"), quarter: t("quarter"), year: t("year") }} />{membership.system_role === "admin" ? <LeaderboardBonusMenu studioId={membership.studio_id} bonusConfig={overview.bonusConfig} leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees} /> : null}</div>} />
       <section className="grid overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)] md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)]">
         <div className="p-5 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ui-text-muted)]">{t("currentLeader", { period: t(period) })}</p>

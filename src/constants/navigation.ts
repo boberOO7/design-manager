@@ -10,6 +10,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 
 export const navigationItems = [
   { href: "/dashboard", label: "Dashboard", messageKey: "dashboard", adminOnly: false },
@@ -38,8 +39,11 @@ export const navigationIcons: Record<NavigationItem["href"], LucideIcon> = {
 };
 
 /** The single role-aware navigation source for desktop and mobile application chrome. */
-export function getNavigationItems(systemRole: string | null): NavigationItem[] {
-  return navigationItems.filter((item) => !item.adminOnly || systemRole === "admin");
+export function getNavigationItems(systemRole: string | null, leaderboardVisibleToEmployees = false): NavigationItem[] {
+  return navigationItems.filter((item) => {
+    if (item.href === "/leaderboard") return canAccessLeaderboard({ systemRole, leaderboardVisibleToEmployees });
+    return !item.adminOnly || systemRole === "admin";
+  });
 }
 
 export function isNavigationItemActive(pathname: string, href: NavigationItem["href"]): boolean {

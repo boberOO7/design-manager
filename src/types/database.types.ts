@@ -643,6 +643,7 @@ export type Database = {
           created_at: string
           id: string
           leaderboard_bonuses_enabled: boolean
+          leaderboard_visible_to_employees: boolean
           name: string
           updated_at: string
         }
@@ -650,6 +651,7 @@ export type Database = {
           created_at?: string
           id?: string
           leaderboard_bonuses_enabled?: boolean
+          leaderboard_visible_to_employees?: boolean
           name: string
           updated_at?: string
         }
@@ -657,6 +659,7 @@ export type Database = {
           created_at?: string
           id?: string
           leaderboard_bonuses_enabled?: boolean
+          leaderboard_visible_to_employees?: boolean
           name?: string
           updated_at?: string
         }
@@ -918,6 +921,10 @@ export type Database = {
       }
       save_leaderboard_bonus_rules: {
         Args: { p_enabled: boolean; p_rules: Json; p_studio_id: string }
+        Returns: undefined
+      }
+      set_leaderboard_employee_visibility: {
+        Args: { p_studio_id: string; p_visible: boolean }
         Returns: undefined
       }
       set_checklist_template_archived: {

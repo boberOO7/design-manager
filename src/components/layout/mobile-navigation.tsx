@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils";
 
 const mobileNavigationId = "mobile-application-navigation";
 
-export function MobileNavigation({ systemRole }: { systemRole: string }) {
+export function MobileNavigation({ leaderboardVisibleToEmployees, systemRole }: { leaderboardVisibleToEmployees: boolean; systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const items = getNavigationItems(systemRole);
+  const items = getNavigationItems(systemRole, leaderboardVisibleToEmployees);
 
   return <>
     <button

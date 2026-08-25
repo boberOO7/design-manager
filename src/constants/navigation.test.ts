@@ -6,12 +6,19 @@ describe("application navigation", () => {
     const items = getNavigationItems("employee");
     expect(items.some((item) => item.href === "/admin")).toBe(false);
     expect(items.some((item) => item.href === "/archive")).toBe(false);
+    expect(items.some((item) => item.href === "/leaderboard")).toBe(false);
+  });
+
+  it("shows the leaderboard to employees only when the studio enables it", () => {
+    const items = getNavigationItems("employee", true);
+    expect(items.some((item) => item.href === "/leaderboard")).toBe(true);
   });
 
   it("shows administration and archive to administrators", () => {
     const items = getNavigationItems("admin");
     expect(items.some((item) => item.href === "/admin")).toBe(true);
     expect(items.some((item) => item.href === "/archive")).toBe(true);
+    expect(items.some((item) => item.href === "/leaderboard")).toBe(true);
   });
 
   it("marks a workspace route active without matching unrelated prefixes", () => {

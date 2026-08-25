@@ -18,6 +18,7 @@ import type {
 } from "@/types";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonus-rules";
+import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { filterProductivityAttributionsForPeriod, getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
 
@@ -206,6 +207,9 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
 export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[]; bonusConfig: LeaderboardBonusConfig }> {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
   if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
+  if (!canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })) {
+    return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
+  }
   const [current, previous, bonusConfig] = await Promise.all([
     getLeaderboardForPeriod(membership.studio_id, period, 0),
     getLeaderboardForPeriod(membership.studio_id, period, -1),

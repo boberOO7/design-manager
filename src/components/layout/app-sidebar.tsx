@@ -9,10 +9,10 @@ import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { cn } from "@/lib/utils";
 import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 
-export function AppSidebar({ systemRole }: { systemRole: string }) {
+export function AppSidebar({ leaderboardVisibleToEmployees, systemRole }: { leaderboardVisibleToEmployees: boolean; systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
-  const items = useMemo(() => getNavigationItems(systemRole), [systemRole]);
+  const items = useMemo(() => getNavigationItems(systemRole, leaderboardVisibleToEmployees), [leaderboardVisibleToEmployees, systemRole]);
   const [isHovering, setIsHovering] = useState(false);
   const [hasFocusWithin, setHasFocusWithin] = useState(false);
   const pointerLeaveTimeoutRef = useRef<number | null>(null);

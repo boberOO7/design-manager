@@ -17,4 +17,9 @@ describe("leaderboard productivity query", () => {
     const source = await readFile(queryPath, "utf8");
     expect(source).toContain('console.error("Unable to load productivity.", projectsError ?? error)');
   });
+
+  it("does not load leaderboard data for employees when studio visibility is disabled", async () => {
+    const source = await readFile(queryPath, "utf8");
+    expect(source).toContain("canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })");
+  });
 });

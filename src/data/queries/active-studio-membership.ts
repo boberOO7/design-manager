@@ -11,6 +11,7 @@ export type ActiveStudioMembership = Pick<
   "studio_id" | "system_role"
 > & {
   authenticatedUserId: string;
+  leaderboardVisibleToEmployees: boolean;
   studioName: string;
 };
 
@@ -22,7 +23,7 @@ export type ActiveStudioMembershipResolution =
   | { status: "MULTIPLE_ACTIVE_STUDIOS"; authenticatedUserId: string; email: string | null };
 
 type ActiveStudioMembershipQuery = Pick<StudioMembershipRow, "studio_id" | "system_role"> & {
-  studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "name">;
+  studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "leaderboard_visible_to_employees" | "name">;
 };
 
 export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudioMembershipResolution> => {
@@ -40,7 +41,7 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
 
   const { data, error } = await supabase
     .from("studio_members")
-    .select("studio_id, system_role, studio:studios!inner(name)")
+    .select("studio_id, system_role, studio:studios!inner(name, leaderboard_visible_to_employees)")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .order("joined_at", { ascending: true })
@@ -63,7 +64,13 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
   return {
     status: "ACTIVE_STUDIO",
     email: user.email ?? null,
-    membership: { ...data[0], authenticatedUserId: user.id, studioName: data[0].studio.name },
+    membership: {
+      authenticatedUserId: user.id,
+      leaderboardVisibleToEmployees: data[0].studio.leaderboard_visible_to_employees,
+      studio_id: data[0].studio_id,
+      studioName: data[0].studio.name,
+      system_role: data[0].system_role,
+    },
   };
 });
 
