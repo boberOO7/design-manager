@@ -18,6 +18,7 @@ import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
+import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
 import {
   BOARD_COLUMNS,
   canMoveTask,
@@ -411,6 +412,7 @@ export function ProjectTaskBoard({
   projectStatus,
   stageColumns,
   stageProgressMethods,
+  stages,
   tasks,
   templates,
   onTasksChange,
@@ -426,6 +428,7 @@ export function ProjectTaskBoard({
   projectStatus: ProjectLifecycleStatus;
   stageColumns: ProjectStageColumns;
   stageProgressMethods: ProjectStageProgressMethods;
+  stages: ConfiguredProjectStage[];
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
   onTasksChange?: (tasks: ProjectTask[]) => void;
@@ -434,6 +437,7 @@ export function ProjectTaskBoard({
   const t = useTranslations("Tasks");
   const statusLabels = useTranslations("Status");
   const stageLabels = useTranslations("TaskStages");
+  const stageName = (stage: TaskStage) => stages.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage);
   const locale = useLocale();
   const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
   const progressMethodLabel = locale === "uk" ? "Метод прогресу" : "Progress method";
@@ -835,7 +839,7 @@ export function ProjectTaskBoard({
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="space-y-3">
-          {TASK_STAGES.map((stage) => {
+          {stages.filter((item) => item.isEnabled).map(({ stage }) => {
             const isExpanded = expandedStages[stage];
             const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status));
             const taskCount = groupsByStage[stage].todo.length
@@ -855,7 +859,7 @@ export function ProjectTaskBoard({
                       onClick={(event) => { event.stopPropagation(); toggleStage(stage); }}
                       className="min-w-0 shrink py-3 text-left font-semibold text-[var(--ui-text)] outline-none transition-colors hover:text-[var(--ui-text-secondary)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-inset"
                     >
-                      {stageLabels(stage)}
+                      {stageName(stage)}
                     </button>
                     {progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
                   </div>
@@ -872,7 +876,7 @@ export function ProjectTaskBoard({
                     aria-expanded={isExpanded}
                     onClick={(event) => { event.stopPropagation(); toggleStage(stage); }}
                     className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
-                    aria-label={stageLabels(stage)}
+                    aria-label={stageName(stage)}
                   >
                     <ChevronDown className={cn("size-4 transition-transform duration-200", isExpanded && "rotate-180")} aria-hidden="true" />
                   </button>

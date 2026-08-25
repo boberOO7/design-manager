@@ -68,6 +68,11 @@
   project-member, or profile foreign keys. Hard-deleting a task or project does
   not remove completed-work history; deleting a studio remains the intentional
   tenant-wide deletion boundary.
+- Project-level productivity inclusion is a live leaderboard filter. Toggling it
+  excludes or restores that project’s existing and future attribution rows in
+  monthly, quarterly, and yearly rankings without rewriting snapshots, budgets,
+  or attribution history. Stage labels, ordering, and visibility are presentation
+  configuration only; stable stage IDs remain the productivity-policy inputs.
 
 ## Project lifecycle workflow
 

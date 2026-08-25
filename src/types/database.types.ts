@@ -513,6 +513,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          include_in_productivity: boolean
           name: string
           priority: string
           project_code: string | null
@@ -536,6 +537,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          include_in_productivity?: boolean
           name: string
           priority?: string
           project_code?: string | null
@@ -559,6 +561,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          include_in_productivity?: boolean
           name?: string
           priority?: string
           project_code?: string | null
@@ -745,9 +748,9 @@ export type Database = {
         ]
       }
       project_task_stage_columns: {
-        Row: { project_id: string; stage: string; enabled_statuses: string[]; progress_method: string; updated_at: string }
-        Insert: { project_id: string; stage: string; enabled_statuses?: string[]; progress_method?: string; updated_at?: string }
-        Update: { enabled_statuses?: string[]; progress_method?: string; updated_at?: string }
+        Row: { project_id: string; stage: string; enabled_statuses: string[]; progress_method: string; display_name: string | null; is_enabled: boolean; display_order: number; updated_at: string }
+        Insert: { project_id: string; stage: string; enabled_statuses?: string[]; progress_method?: string; display_name?: string | null; is_enabled?: boolean; display_order?: number; updated_at?: string }
+        Update: { enabled_statuses?: string[]; progress_method?: string; display_name?: string | null; is_enabled?: boolean; display_order?: number; updated_at?: string }
         Relationships: [{ foreignKeyName: "project_task_stage_columns_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] }]
       }
       task_checklist_items: {
@@ -879,6 +882,10 @@ export type Database = {
       }
       update_contractor_category_color: {
         Args: { p_category_id: string; p_color_key: string }
+        Returns: undefined
+      }
+      update_project_stage_configuration: {
+        Args: { p_include_in_productivity: boolean; p_project_id: string; p_stages: Json }
         Returns: undefined
       }
       approve_time_off_request: {

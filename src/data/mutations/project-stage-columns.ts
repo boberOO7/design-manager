@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isStageProgressMethod, PROJECT_PROGRESS_STAGES, type StageProgressMethod } from "@/lib/project-progress";
 import { isTaskStage } from "@/lib/task-stages";
 import { isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
+import { validateProjectStageConfiguration } from "@/lib/project-stage-configuration";
 
 function logStageColumnsSaveError(projectId: string, stage: string, error: { code?: string; details?: string; hint?: string; message?: string } | null, missingRow = false) {
   console.error("Unable to update project stage columns", {
@@ -56,4 +57,19 @@ export async function updateProjectStageSettings(projectId: string, stage: strin
   revalidatePath("/projects");
   revalidatePath("/dashboard");
   return { success: true as const, enabledStatuses: data.enabled_statuses.filter(isWritableTaskStatus), progressMethod: data.progress_method, stage };
+}
+
+export async function updateProjectStageConfiguration(projectId: string, stages: unknown, includeInProductivity: unknown) {
+  const parsed = validateProjectStageConfiguration(stages);
+  if (!parsed || typeof includeInProductivity !== "boolean") return { success: false as const, errorCode: "invalid_configuration", formError: "Choose valid project stages." };
+  const admin = await getActiveStudioAdmin();
+  const project = await getProjectById(projectId);
+  if (!admin || !project || admin.studio_id !== project.studio_id) return { success: false as const, errorCode: "not_admin", formError: "Only active studio administrators can configure project stages." };
+  const tasks = await getProjectTasks(projectId);
+  if (parsed.some((stage) => !stage.isEnabled && tasks.some((task) => task.stage === stage.stage && task.status !== "completed" && task.status !== "cancelled"))) return { success: false as const, errorCode: "active_tasks", formError: "Move active tasks from this stage before disabling it." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_project_stage_configuration", { p_project_id: projectId, p_stages: parsed.map((stage) => ({ stage: stage.stage, display_name: stage.displayName, is_enabled: stage.isEnabled, display_order: stage.displayOrder })), p_include_in_productivity: includeInProductivity });
+  if (error) return { success: false as const, errorCode: "save_failed", formError: "The project stage configuration could not be saved. Please try again." };
+  revalidatePath(`/projects/${projectId}`); revalidatePath("/projects"); revalidatePath("/dashboard"); revalidatePath("/leaderboard");
+  return { success: true as const };
 }

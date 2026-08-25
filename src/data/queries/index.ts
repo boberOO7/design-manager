@@ -182,11 +182,12 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("productivity_attributions")
-    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")
+    .select("contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at, project:projects!inner(include_in_productivity)")
     .eq("studio_id", studioId)
     .is("voided_at", null)
     .gte("completed_at", bounds.start)
     .lt("completed_at", bounds.end)
+    .eq("project.include_in_productivity", true)
     .overrideTypes<CompletedProductivityAttribution[], { merge: false }>();
   if (error || !data) throw new Error("Unable to load productivity.", { cause: error });
   return projectProductivityLeaderboard(filterProductivityAttributionsForPeriod(data, period));
