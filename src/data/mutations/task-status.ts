@@ -6,7 +6,7 @@ import { getActiveStudioMembership } from "@/data/queries/active-studio-membersh
 import { getProjectTaskById, getProjectTasks, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
-import { canCompleteAttributedTask } from "@/lib/productivity";
+import { canCompleteAttributedTask, doesTaskCompletionRequireProductivityAttribution } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
@@ -63,18 +63,22 @@ export async function updateTaskStatusMutation(
     return { formError: "Complete every checklist item before moving this task to Done.", success: false };
   }
 
-  if (parsed.data.status === "completed" && authorization.task.completed_area_m2 !== null) {
+  if (parsed.data.status === "completed" && isTaskStage(authorization.task.stage)) {
     const activeContributors = await getAssignableProjectMembers(
       authorization.task.project_id,
       authorization.task.project.studio_id,
     );
     const isActiveProjectMember = activeContributors.some((member) => member.id === authorization.task.assignee_id);
     if (!canCompleteAttributedTask({
-      completedAreaM2: authorization.task.completed_area_m2,
+      requiresProductivityAttribution: doesTaskCompletionRequireProductivityAttribution({
+        stage: authorization.task.stage,
+        completedAreaM2: authorization.task.completed_area_m2,
+        projectAreaM2: authorization.task.project.total_area_m2,
+      }),
       assigneeId: authorization.task.assignee_id,
       isActiveProjectMember,
     })) {
-      return { formError: "This task has task area. Assign it to an active project member before marking it complete.", success: false };
+      return { formError: "Assign productivity-bearing work to an active project member before marking it complete.", success: false };
     }
   }
 

@@ -4,6 +4,7 @@ import { isValidEventRange, isValidTimeOffRange } from "@/lib/calendar";
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("").transform((value) => value || null);
 const optionalUrl = z.string().trim().max(1000).optional().default("").refine((value) => !value || /^https?:\/\//i.test(value), "Use a complete http(s) URL.").transform((value) => value || null);
+const recurrenceRule = z.object({ frequency: z.enum(["daily", "weekly", "monthly", "yearly"]), interval: z.number().int().min(1).max(99), weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]), endsOn: z.iso.date().nullable().default(null), occurrenceCount: z.number().int().min(1).max(999).nullable().default(null) }).strict().nullable().default(null);
 
 export const calendarEventSchema = z.object({
   title: z.string().trim().min(1, "Enter an event title.").max(200),
@@ -16,6 +17,9 @@ export const calendarEventSchema = z.object({
   location: optionalText(300),
   meetingUrl: optionalUrl,
   description: optionalText(5000),
+  recurrenceRule,
+  occurrenceStart: z.iso.datetime({ offset: true }).optional(),
+  scope: z.enum(["this", "series"]).optional(),
 }).strict().superRefine((value, context) => {
   if (!isValidEventRange(value.startsAt, value.endsAt)) {
     context.addIssue({ code: "custom", path: ["endsAt"], message: "Event end must be after its start." });

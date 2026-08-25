@@ -51,16 +51,17 @@
 
 - Productivity uses immutable attribution rows created by completion transitions,
   rather than `updated_at` or mutable completion dates. Reopening voids the active
-  row and recompleting creates one fresh row, so current-month totals never double
-  count.
-- A completed task with a positive `completed_area_m2` credits its completion-time
-  assignee for that exact snapshot. Later reassignment or area edits do not rewrite
-  historical credit.
-- On project completion, fallback credit is created only when no task on that
-  project has any task-level area allocation. Each active project member who is
-  also an active studio member receives the whole project area; partially allocated
-  projects receive no fallback. Contributor name and professional role are snapped
-  to preserve auditability after membership changes.
+  row and recompleting creates one fresh row from the original task productivity
+  snapshot, so current-month totals never double count or reserve stage budget twice.
+- Task productivity snapshots use stable stage IDs: Stage 1 reserves 20% and Stage
+  3 reserves 80% of the project-area snapshot in a per-project-stage budget; Stage
+  2 snapshots its task area. Stage budget allocations divide only remaining budget
+  among non-cancelled unsnapshotted tasks, preserving earlier values when tasks or
+  project area later change.
+- Whole-project fallback credit is superseded by stage productivity snapshots and
+  is no longer created. Existing fallback rows remain audit history but are voided
+  from active leaderboard totals during the stage-accounting backfill. Contributor
+  name and professional role remain snapped for auditability after membership changes.
 - The Leaderboard is a quiet current-month Europe/Kyiv productivity projection of
   active attribution rows, ordered by credited area, task count, name, then ID.
 - Attribution source and contributor identifiers are snapshots rather than task,

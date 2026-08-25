@@ -320,13 +320,13 @@
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/[eventId]/route.ts": {
-    "mtime": 1787256956.8384604,
-    "ast_hash": "656946d03e242b8b6506af2187f3ba2e",
+    "mtime": 1787604022.229599,
+    "ast_hash": "aa2901d035b60a2afaad08685c2c17c1",
     "semantic_hash": ""
   },
   "src/app/api/calendar/events/route.ts": {
-    "mtime": 1787257054.5360427,
-    "ast_hash": "4efec716b13d1df86120b4f2f6e104e2",
+    "mtime": 1787603938.7187128,
+    "ast_hash": "1d8992e84bdc4be715b89818bbc668e8",
     "semantic_hash": ""
   },
   "src/app/api/calendar/time-off/[requestId]/route.ts": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787260307.32264,
-    "ast_hash": "1f410c01cb34113b879dd289660d4485",
+    "mtime": 1787604210.6223214,
+    "ast_hash": "c1f8730ec2f7802cdfbd0ca1b0c616ca",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -605,8 +605,8 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.ts": {
-    "mtime": 1787313301.790121,
-    "ast_hash": "264be128c44b002861db451781f4384d",
+    "mtime": 1787654379.7488234,
+    "ast_hash": "defff422799ba695a0dec97d83565113",
     "semantic_hash": ""
   },
   "src/data/queries/active-studio-admin.ts": {
@@ -630,13 +630,13 @@
     "semantic_hash": "eeaae535f0ca94b8f1670ada52a5947d"
   },
   "src/data/queries/calendar-item.ts": {
-    "mtime": 1787166505.839042,
-    "ast_hash": "c1fd1ac85a2a52ea8934dac6a5e27f86",
+    "mtime": 1787604022.089595,
+    "ast_hash": "33500a6a5aacd86dd232439a3c1b0c77",
     "semantic_hash": ""
   },
   "src/data/queries/calendar.ts": {
-    "mtime": 1787166443.16488,
-    "ast_hash": "289d4a7add0559dfb189f0ceb99b4dc3",
+    "mtime": 1787604182.2179105,
+    "ast_hash": "f552396a4c2ae65d34507fc31619ae01",
     "semantic_hash": ""
   },
   "src/data/queries/dashboard.ts": {
@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-form.ts": {
-    "mtime": 1787166126.9657671,
-    "ast_hash": "b2153fa7b1deae919775845567328c0a",
+    "mtime": 1787604127.1047318,
+    "ast_hash": "b88e343bcfcb411762a6b23e5c7cef08",
     "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.test.ts": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.ts": {
-    "mtime": 1787256956.4584417,
-    "ast_hash": "a0157b8e3d5156cc83aa23e9cdb86b6f",
+    "mtime": 1787603933.3905742,
+    "ast_hash": "f6bed8b6686d3dd87336f7179154e32b",
     "semantic_hash": ""
   },
   "src/lib/calendar-fixes-migration.test.ts": {
@@ -905,8 +905,8 @@
     "semantic_hash": "cf70f69bc3d30fd23c243b06bb8ee36c"
   },
   "src/lib/validation/calendar.ts": {
-    "mtime": 1787233842.6396172,
-    "ast_hash": "3680cd7ce5851d27b7953b2f34d02d39",
+    "mtime": 1787604021.9495912,
+    "ast_hash": "6f24ff93b27f73b193ba412795010021",
     "semantic_hash": ""
   },
   "src/lib/validation/employee-invitation.test.ts": {
@@ -970,13 +970,13 @@
     "semantic_hash": ""
   },
   "src/types/calendar.ts": {
-    "mtime": 1787166126.8017597,
-    "ast_hash": "5fe37cea5ec0e212c884262bf6c7b777",
+    "mtime": 1787604126.9487274,
+    "ast_hash": "6a5ef8c6fc1eb9b20633864bce03bc69",
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1787323008.0987551,
-    "ast_hash": "a886de20c124eb239b30cf4f44f6e605",
+    "mtime": 1787654379.9808328,
+    "ast_hash": "d1b9f85499b38b5e9df8aa53868c3ba9",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1787303543.7239845,
-    "ast_hash": "ac6480246a40a228c62277df061525fe",
+    "mtime": 1787654492.1063194,
+    "ast_hash": "a3fb3f4cc6a8b80316dbecd59a7cf5fa",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": ""
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1787582297.9330723,
-    "ast_hash": "1d59ec6ba81959d0ae4b97297fa4695d",
+    "mtime": 1787654779.279117,
+    "ast_hash": "f127d07838ddbef73ce1f0214a1ab67c",
     "semantic_hash": ""
   },
   "src/lib/productivity.ts": {
-    "mtime": 1787582269.916195,
-    "ast_hash": "11a220dfc0b526b9af62cf1f115bac45",
+    "mtime": 1787654779.1231108,
+    "ast_hash": "187ade566efca8d206c86021111f0d5d",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120000_productivity_attribution.sql": {
@@ -1595,8 +1595,8 @@
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
-    "mtime": 1787582298.0530772,
-    "ast_hash": "2b8bd8f0191a691b9101be09ec263a9d",
+    "mtime": 1787654779.4151227,
+    "ast_hash": "7414d25343f353c535ed6ba420e9f8ac",
     "semantic_hash": ""
   },
   "src/lib/checklist-interaction.test.ts": {
@@ -3347,6 +3347,41 @@
   "src/components/tasks/stage-configuration-controls.test.ts": {
     "mtime": 1787592679.4664667,
     "ast_hash": "dd8077902226c125415687f47e55e707",
+    "semantic_hash": ""
+  },
+  "src/lib/calendar-recurrence.test.ts": {
+    "mtime": 1787604151.1334286,
+    "ast_hash": "cab4fc1cce9bc8b9c0d5a869fe8ca2ac",
+    "semantic_hash": ""
+  },
+  "src/lib/calendar-recurrence.ts": {
+    "mtime": 1787604127.248736,
+    "ast_hash": "59bae2ecd16e65f4f8de2bfa21d2efcf",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260824110000_calendar_event_recurrence.sql": {
+    "mtime": 1787603963.6521037,
+    "ast_hash": "9e3ad0d4d0a815871053bbcdd65f801a",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260824210226_calendar_event_recurrence_privileges.sql": {
+    "mtime": 1787605380.9421685,
+    "ast_hash": "30ca5ed3e3a2a81f9dcc0965db121771",
+    "semantic_hash": ""
+  },
+  "src/lib/productivity-stage-accounting-migration.test.ts": {
+    "mtime": 1787654779.5671291,
+    "ast_hash": "1faa3f99023b4b6ac94422135a098743",
+    "semantic_hash": ""
+  },
+  "src/lib/productivity-stage-accounting.test.ts": {
+    "mtime": 1787654423.66176,
+    "ast_hash": "2539d35a3c3aa04ecf030e1355e45ef2",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260825103801_stage_productivity_accounting.sql": {
+    "mtime": 1787654837.9234395,
+    "ast_hash": "66223cfaec0af69bcf76e95639dc070c",
     "semantic_hash": ""
   }
 }

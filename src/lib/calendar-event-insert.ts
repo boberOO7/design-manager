@@ -20,6 +20,7 @@ export type CalendarEventInsertPayload = {
   meeting_url: string | null;
   created_by: string;
   organizer_id: string;
+  recurrence_rule: CalendarEventInput["recurrenceRule"];
 };
 
 export function verifyCalendarEventMembership(
@@ -59,5 +60,6 @@ export function createCalendarEventInsertPayload(
     meeting_url: input.meetingUrl,
     created_by: authenticatedUserId,
     organizer_id: authenticatedUserId,
+    recurrence_rule: input.recurrenceRule,
   };
 }

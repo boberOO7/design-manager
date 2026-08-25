@@ -1,4 +1,38 @@
 import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
+import type { TaskStage } from "@/lib/task-stages";
+
+export const PRODUCTIVITY_STAGE_RATIOS = {
+  stage_1: 0.20,
+  stage_3: 0.80,
+} as const satisfies Partial<Record<TaskStage, number>>;
+
+export type ProductivityStageMode = "project_area_ratio" | "task_area" | "none";
+
+export function getProductivityStageMode(stage: TaskStage): ProductivityStageMode {
+  if (stage === "stage_2") return "task_area";
+  return stage in PRODUCTIVITY_STAGE_RATIOS ? "project_area_ratio" : "none";
+}
+
+export function doesTaskCompletionRequireProductivityAttribution(input: {
+  stage: TaskStage;
+  completedAreaM2: number | null | undefined;
+  projectAreaM2: number | null | undefined;
+}): boolean {
+  const mode = getProductivityStageMode(input.stage);
+  if (mode === "task_area") return Number(input.completedAreaM2 ?? 0) > 0;
+  if (mode === "project_area_ratio") return Number(input.projectAreaM2 ?? 0) > 0;
+  return false;
+}
+
+export function allocateRemainingStageBudget(input: {
+  productivityBudgetM2: number;
+  allocatedProductivityM2: number;
+  remainingEligibleUnsnapshottedTasks: number;
+}): number {
+  if (input.remainingEligibleUnsnapshottedTasks <= 0) return 0;
+  return Math.max(0, input.productivityBudgetM2 - input.allocatedProductivityM2)
+    / input.remainingEligibleUnsnapshottedTasks;
+}
 
 export type ProductivityAttribution = {
   contributor_id: string;
@@ -39,14 +73,14 @@ export function isEligibleProjectFallbackContributor(input: {
 }
 
 export function canCompleteAttributedTask(input: {
-  completedAreaM2: number | null | undefined;
+  requiresProductivityAttribution: boolean;
   assigneeId: string | null | undefined;
   isActiveProjectMember: boolean;
 }): boolean {
-  return input.completedAreaM2 === null || input.completedAreaM2 === undefined
-    || input.assigneeId === null
-    || input.assigneeId === undefined
-    || input.isActiveProjectMember;
+  return !input.requiresProductivityAttribution
+    || (input.assigneeId !== null
+      && input.assigneeId !== undefined
+      && input.isActiveProjectMember);
 }
 
 function kyivParts(now: Date) {

@@ -1,5 +1,6 @@
 import { addCalendarDays, instantToDateOnly, instantToWallInput, zonedWallTimeToIso } from "./calendar";
 import type { CalendarEventType, CalendarItem } from "../types/calendar";
+import type { RecurrenceRule } from "./calendar-recurrence";
 
 export type CalendarEventFormValues = {
   title: string;
@@ -14,6 +15,7 @@ export type CalendarEventFormValues = {
   location: string;
   meetingUrl: string;
   description: string;
+  recurrenceRule?: RecurrenceRule | null;
 };
 
 function splitWallDateTime(value: string): { date: string; time: string } {
@@ -57,6 +59,7 @@ export function createCalendarEventFormValues(
     location: item?.location ?? "",
     meetingUrl: item?.meetingUrl ?? "",
     description: item?.description ?? "",
+    recurrenceRule: item?.recurrenceRule ?? null,
   };
 }
 
@@ -78,5 +81,6 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     location: values.location,
     meetingUrl: values.meetingUrl,
     description: values.description,
+    recurrenceRule: values.recurrenceRule ?? null,
   };
 }

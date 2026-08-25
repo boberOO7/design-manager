@@ -10,6 +10,7 @@ export type CalendarEventInvitationStatus = (typeof CALENDAR_EVENT_INVITATION_ST
 export type TimeOffRequestType = (typeof TIME_OFF_REQUEST_TYPES)[number];
 export type TimeOffStatus = (typeof TIME_OFF_STATUSES)[number];
 export type CalendarView = "month" | "week" | "agenda";
+export type { RecurrenceRule } from "@/lib/calendar-recurrence";
 
 export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status">;
 export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[] };
@@ -40,6 +41,9 @@ export type CalendarItem =
       description: string | null;
       location: string | null;
       meetingUrl: string | null;
+      recurrenceRule?: import("@/lib/calendar-recurrence").RecurrenceRule | null;
+      seriesId?: string | null;
+      occurrenceStart?: string | null;
       project: { id: string; name: string } | null;
       organizer: CalendarPerson;
       invitees: CalendarEventInvitee[];

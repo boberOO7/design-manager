@@ -100,11 +100,11 @@ describe("monthly productivity projection", () => {
     expect(getProjectAttributionMode([{ completed_area_m2: null }])).toBe("project_fallback");
   });
 
-  it("allows unassigned area work while retaining the active-member guard for attributed work", () => {
-    expect(canCompleteAttributedTask({ completedAreaM2: null, assigneeId: null, isActiveProjectMember: false })).toBe(true);
-    expect(canCompleteAttributedTask({ completedAreaM2: 20, assigneeId: null, isActiveProjectMember: false })).toBe(true);
-    expect(canCompleteAttributedTask({ completedAreaM2: 20, assigneeId: "architect", isActiveProjectMember: false })).toBe(false);
-    expect(canCompleteAttributedTask({ completedAreaM2: 20, assigneeId: "architect", isActiveProjectMember: true })).toBe(true);
+  it("requires an assigned active project member for productivity-bearing work", () => {
+    expect(canCompleteAttributedTask({ requiresProductivityAttribution: false, assigneeId: null, isActiveProjectMember: false })).toBe(true);
+    expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: null, isActiveProjectMember: false })).toBe(false);
+    expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: "architect", isActiveProjectMember: false })).toBe(false);
+    expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: "architect", isActiveProjectMember: true })).toBe(true);
   });
 
   it("does not treat studio or admin access as project contribution", () => {

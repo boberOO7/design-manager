@@ -37,25 +37,26 @@ export type Database = {
         Row: {
           all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
           description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null;
+          id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
           starts_at: string; studio_id: string; title: string; updated_at: string
         }
         Insert: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
           description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null;
+          id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at: string; studio_id: string; title: string; updated_at?: string
         }
         Update: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
           description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null;
+          id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at?: string; studio_id?: string; title?: string; updated_at?: string
         }
         Relationships: [
           { foreignKeyName: "calendar_events_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_organizer_id_fkey"; columns: ["organizer_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_events_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
@@ -444,6 +445,35 @@ export type Database = {
           { foreignKeyName: "productivity_attributions_studio_id_fkey", columns: ["studio_id"], isOneToOne: false, referencedRelation: "studios", referencedColumns: ["id"] },
         ]
       }
+      project_stage_productivity_budgets: {
+        Row: {
+          allocated_productivity_m2: number
+          created_at: string
+          productivity_budget_m2: number
+          project_area_m2: number
+          project_id: string
+          stage: string
+        }
+        Insert: {
+          allocated_productivity_m2?: number
+          created_at?: string
+          productivity_budget_m2: number
+          project_area_m2: number
+          project_id: string
+          stage: string
+        }
+        Update: {
+          allocated_productivity_m2?: number
+          created_at?: string
+          productivity_budget_m2?: number
+          project_area_m2?: number
+          project_id?: string
+          stage?: string
+        }
+        Relationships: [
+          { foreignKeyName: "project_stage_productivity_budgets_project_id_fkey", columns: ["project_id"], isOneToOne: false, referencedRelation: "projects", referencedColumns: ["id"] },
+        ]
+      }
       leaderboard_bonus_rules: {
         Row: {
           bonus_percent: number
@@ -640,6 +670,7 @@ export type Database = {
           due_date: string | null
           id: string
           priority: string
+          productivity_area_m2: number | null
           production_completion: number
           progress_weight: number
           project_id: string
@@ -659,6 +690,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
+          productivity_area_m2?: number | null
           production_completion?: number
           progress_weight?: number
           project_id: string
@@ -678,6 +710,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
+          productivity_area_m2?: number | null
           production_completion?: number
           progress_weight?: number
           project_id?: string

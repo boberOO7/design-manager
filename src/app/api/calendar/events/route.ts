@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     p_location: payload.location,
     p_meeting_url: payload.meeting_url,
     p_attendee_ids: value.attendeeIds,
+    p_recurrence_rule: payload.recurrence_rule,
   });
   if (error || !eventId) {
     console.error("calendar event and invitation creation error", {
