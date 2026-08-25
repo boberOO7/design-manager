@@ -5,18 +5,20 @@ import { removeStudioMember, restoreStudioMember } from "@/app/(app)/team/action
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { OpenWorkReassignment, type MemberRemovalImpact, isMemberRemovalImpact } from "@/components/team/open-work-reassignment";
+import { StudioMemberProfileEditor } from "@/components/team/studio-member-profile-editor";
 import { createClient } from "@/lib/supabase/client";
 import { MoreHorizontal } from "lucide-react";
 import { useActionState, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StudioMemberActionState } from "@/lib/validation/team-membership";
 
-export function StudioMemberLifecycleControls({ isFormer, name, userId }: { isFormer: boolean; name: string; userId: string }) {
+export function StudioMemberLifecycleControls({ canEditProfile, isFormer, jobTitle, name, systemRole, userId }: { canEditProfile: boolean; isFormer: boolean; jobTitle: string | null; name: string; systemRole: "admin" | "employee"; userId: string }) {
   const t = useTranslations("Team");
   const locale = useLocale();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [impact, setImpact] = useState<MemberRemovalImpact | null>(null);
   const [impactError, setImpactError] = useState(false);
   const [allowUnassigned, setAllowUnassigned] = useState(false);
@@ -42,7 +44,7 @@ export function StudioMemberLifecycleControls({ isFormer, name, userId }: { isFo
   return <div className="absolute right-2 top-2">
     <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
       <Popover.Trigger asChild><button ref={triggerRef} aria-label={t("memberActions", { name })} className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" type="button"><MoreHorizontal aria-hidden="true" className="size-5" /></button></Popover.Trigger>
-      <Popover.Portal><Popover.Content align="end" className="z-[70] w-52 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()} sideOffset={6}>{isFormer ? <form action={action}><input name="user_id" type="hidden" value={userId} /><button className="flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50" disabled={pending} type="submit">{pending ? t("restoringAccess") : t("restoreAccess")}</button>{state.formError ? <p role="alert" className="px-3 pb-2 pt-1 text-xs text-[var(--ui-danger-text)]">{t("membershipActionFailed")}</p> : null}</form> : <button className="flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--ui-danger-text)] transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => void openRemoval()} type="button">{t("removeFromStudio")}</button>}</Popover.Content></Popover.Portal>
+      <Popover.Portal><Popover.Content align="end" className="z-[70] w-52 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()} sideOffset={6}>{isFormer ? <form action={action}><input name="user_id" type="hidden" value={userId} /><button className="flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50" disabled={pending} type="submit">{pending ? t("restoringAccess") : t("restoreAccess")}</button>{state.formError ? <p role="alert" className="px-3 pb-2 pt-1 text-xs text-[var(--ui-danger-text)]">{t("membershipActionFailed")}</p> : null}</form> : <>{canEditProfile ? <button className="flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { setMenuOpen(false); setProfileDialogOpen(true); }} type="button">{t("editProfile")}</button> : null}<button className="flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--ui-danger-text)] transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => void openRemoval()} type="button">{t("removeFromStudio")}</button></>}</Popover.Content></Popover.Portal>
     </Popover.Root>
     <Dialog ariaLabel={t("removeMemberTitle", { name })} closeDisabled={pending} closeLabel={t("cancel")} description={t("removeMemberDescription", { name })} isOpen={dialogOpen} onRequestClose={() => { if (!pending) setDialogOpen(false); }} returnFocusRef={triggerRef} title={t("removeMemberTitle", { name })}>
       <form action={action} className="flex min-h-0 flex-1 flex-col"><div className="min-h-0 overflow-y-auto p-4 sm:p-6"><input name="user_id" type="hidden" value={userId} /><input name="allow_unassigned" type="hidden" value={String(allowUnassigned)} /><input name="reassignments" type="hidden" value={JSON.stringify(selectedAssignments.map(([taskId, assigneeId]) => ({ taskId, assigneeId })))} />
@@ -55,5 +57,6 @@ export function StudioMemberLifecycleControls({ isFormer, name, userId }: { isFo
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6"><p className="text-xs font-medium text-[var(--ui-text-muted)]">{tasks.length > 0 ? t("removalSummary", { reassigned: reassignedCount, unassigned: unassignedCount }) : null}</p><div className="flex gap-3"><Button disabled={pending} onClick={() => setDialogOpen(false)} type="button" variant="outline">{t("cancel")}</Button><Button className="bg-[var(--ui-action-danger)] text-[var(--ui-action-primary-text)] hover:opacity-90 disabled:bg-[var(--ui-surface-muted)] disabled:text-[var(--ui-text-muted)] disabled:!opacity-100" disabled={pending || !impact || impactError || (!allowUnassigned && unresolved)} type="submit">{pending ? t("removing") : t("confirmRemove")}</Button></div></footer>
       </form>
     </Dialog>
+    {canEditProfile && profileDialogOpen ? <StudioMemberProfileEditor fullName={name} isOpen={profileDialogOpen} jobTitle={jobTitle} onRequestClose={() => setProfileDialogOpen(false)} returnFocusRef={triggerRef} systemRole={systemRole} userId={userId} /> : null}
   </div>;
 }

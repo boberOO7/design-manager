@@ -45,7 +45,7 @@ export default async function TeamPage() {
 
       {adminMembership ? <InviteEmployeeForm /> : null}
 
-      <TeamDirectory isAdmin={isAdmin} members={directoryMembers.map((member) => ({ ...member, jobTitle: member.job_title ? (() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })() : null, roleLabel: member.system_role === "admin" ? roles("administrator") : t("employee") }))} />
+      <TeamDirectory currentUserId={adminMembership?.authenticatedUserId ?? null} isAdmin={isAdmin} members={directoryMembers.map((member) => ({ ...member, editableJobTitle: member.job_title, jobTitle: member.job_title ? (() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })() : null, roleLabel: member.system_role === "admin" ? roles("administrator") : t("employee"), systemRole: member.system_role }))} />
     </div>
   );
 }

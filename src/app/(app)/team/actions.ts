@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioMemberActionInput, studioMemberActionSchema, type StudioMemberActionState } from "@/lib/validation/team-membership";
+import { getFullName, getStudioMemberProfileInput, studioMemberProfileSchema, type StudioMemberProfileActionState, type StudioMemberProfileField } from "@/lib/validation/team-member-profile";
 import { z } from "zod";
 
 function isExistingAuthUserError(code: string | undefined): boolean {
@@ -179,4 +180,39 @@ export async function restoreStudioMember(_previousState: StudioMemberActionStat
   if (error) { console.error("Unable to restore studio member", error); return { formError: "The member could not be restored. Please try again." }; }
   revalidatePath("/team"); revalidatePath("/dashboard"); revalidatePath("/projects");
   return { success: "restored" };
+}
+
+export async function updateStudioMemberProfile(_previousState: StudioMemberProfileActionState, formData: FormData): Promise<StudioMemberProfileActionState> {
+  const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
+  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id || profile.system_role !== "admin" || membership.system_role !== "admin") {
+    return { formError: "Only active studio administrators can edit team members." };
+  }
+
+  const parsed = studioMemberProfileSchema.safeParse(getStudioMemberProfileInput(formData));
+  if (!parsed.success) {
+    const fieldErrors: Partial<Record<StudioMemberProfileField, string>> = {};
+    const flattened = parsed.error.flatten().fieldErrors;
+    for (const field of ["userId", "firstName", "lastName", "jobTitle", "systemRole"] satisfies StudioMemberProfileField[]) {
+      const message = flattened[field]?.[0];
+      if (message) fieldErrors[field] = message;
+    }
+    return { formError: "Please correct the highlighted fields.", fieldErrors };
+  }
+
+  if (parsed.data.userId === profile.id) return { formError: "Administrators cannot edit their own access through this form." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_studio_member_profile", {
+    p_full_name: getFullName(parsed.data),
+    p_job_title: parsed.data.jobTitle,
+    p_system_role: parsed.data.systemRole,
+    p_user_id: parsed.data.userId,
+  });
+  if (error) {
+    console.error("Unable to update studio member profile", error);
+    return { formError: "The team member profile could not be updated. Please try again." };
+  }
+
+  revalidatePath("/team"); revalidatePath("/dashboard");
+  return { success: true };
 }

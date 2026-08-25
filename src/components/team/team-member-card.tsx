@@ -13,14 +13,17 @@ type TeamMemberCardProps = {
   fullName: string;
   isActive: boolean;
   isAdmin: boolean;
+  canEditProfile: boolean;
+  editableJobTitle: string | null;
   jobTitle: string | null;
   location: string | null;
   removedAt: string | null;
   roleLabel: string;
+  systemRole: "admin" | "employee";
   userId: string;
 };
 
-export function TeamMemberCard({ avatarUrl, fullName, isActive, isAdmin, jobTitle, location, removedAt, roleLabel, userId }: TeamMemberCardProps) {
+export function TeamMemberCard({ avatarUrl, canEditProfile, editableJobTitle, fullName, isActive, isAdmin, jobTitle, location, removedAt, roleLabel, systemRole, userId }: TeamMemberCardProps) {
   const t = useTranslations("Team");
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [hasFailedImage, setHasFailedImage] = useState(false);
@@ -28,7 +31,7 @@ export function TeamMemberCard({ avatarUrl, fullName, isActive, isAdmin, jobTitl
   const canViewAvatar = Boolean(imageUrl) && !hasFailedImage;
 
   return <article className={`relative flex w-full max-w-[18.75rem] flex-col items-center rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 pb-4 pt-5 text-center ${isActive ? "" : "opacity-75"}`}>
-    {isAdmin ? <StudioMemberLifecycleControls isFormer={!isActive} name={fullName} userId={userId} /> : null}
+    {isAdmin ? <StudioMemberLifecycleControls canEditProfile={canEditProfile} isFormer={!isActive} jobTitle={editableJobTitle} name={fullName} systemRole={systemRole} userId={userId} /> : null}
     {canViewAvatar ? <button aria-label={t("viewAvatar", { name: fullName })} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" onClick={() => setIsAvatarOpen(true)} type="button">
       <UserAvatar className="ring-4 ring-[var(--ui-surface)] transition-opacity hover:opacity-85" decorative imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />
     </button> : <UserAvatar className="ring-4 ring-[var(--ui-surface)]" imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />}
