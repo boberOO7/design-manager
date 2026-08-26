@@ -17,7 +17,7 @@ describe("task progress", () => {
     expect(calculateTaskProgress(task({ status, production_completion: 50 })).overallPercent).toBe(expected);
   });
 
-  it.each([[10, 8], [50, 40], [90, 72]])("maps %s%% manual production to %s%% overall", (production, overall) => {
+  it.each([[0, 0], [25, 17.5], [50, 35], [75, 52.5], [100, 70]])("maps %s%% manual production to %s%% overall", (production, overall) => {
     expect(calculateTaskProgress(task({ status: "in_progress", manual_progress_override: true, production_completion: production }))).toMatchObject({ source: "manual", productionPercent: production, overallPercent: overall });
   });
 
@@ -93,6 +93,12 @@ describe("stage progress", () => {
     expect(calculateStageProgress(before).stage_1.progressPercent).toBe(95);
     expect(calculateStageProgress(after).stage_1.progressPercent).toBe(85);
     expect(calculateProjectProgress(after).progressPercent).toBeLessThan(calculateProjectProgress(before).progressPercent);
+  });
+
+  it("uses the corrected manual production ceiling in stage and project aggregation", () => {
+    const tasks = [{ ...task({ id: "manual", status: "in_progress", manual_progress_override: true, production_completion: 100 }), stage: "stage_1" }];
+    expect(calculateStageProgress(tasks).stage_1.progressPercent).toBe(70);
+    expect(calculateProjectProgress(tasks).progressPercent).toBe(14);
   });
 
   it("derives stage progress from canonical task progress and excludes cancelled tasks", () => {

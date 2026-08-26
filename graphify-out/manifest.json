@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "src/lib/project-progress.test.ts": {
-    "mtime": 1787743330.4056933,
-    "ast_hash": "31989963b6733978787303f873658114",
+    "mtime": 1787757821.2545776,
+    "ast_hash": "e1c866c4633e35f036322c56db3b81ae",
     "semantic_hash": ""
   },
   "src/lib/project-progress.ts": {
-    "mtime": 1787743284.44069,
-    "ast_hash": "d42b693cc1e14baf2eb46b06328a57e4",
+    "mtime": 1787757821.1025712,
+    "ast_hash": "366153d2bd2eb771dc5f939659808f1f",
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.test.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1787743330.6697044,
-    "ast_hash": "a6309688d70ffdcce3f96fd52a76d414",
+    "mtime": 1787757821.8066006,
+    "ast_hash": "629b8ac246d3aadd62796717faa7d89d",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787739323.306089,
-    "ast_hash": "85be49c1c67b34dbd1bde6932dcc6b0d",
+    "mtime": 1787757821.4385853,
+    "ast_hash": "c81544f6d64405c9a500291ed4060907",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787739323.1100817,
-    "ast_hash": "c7b4a62f970c6dde415edb191eb1bccf",
+    "mtime": 1787757821.6305933,
+    "ast_hash": "caf7f39446ccd9da567f888d350af5dc",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {

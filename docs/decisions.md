@@ -32,8 +32,8 @@
   after refresh and applies equally to the board, form, API, and bulk moves.
 - In-progress tasks without checklist items retain their intentional manual
   production fallback. An explicit manual override is persisted separately and
-  is not overwritten by later status changes; it continues to use the existing
-  production-completion presentation. A non-empty checklist still replaces the
+  is not overwritten by later status changes; it maps production proportionally
+  into the first 70% of task progress. A non-empty checklist still replaces the
   manual production display with completed checklist weight divided by total
   checklist weight. Presentation rounds to the nearest whole percent only after
   aggregation while domain calculations retain precision.

@@ -403,7 +403,7 @@
     "statusSaved": "Task status saved.",
     "progressSaved": "Production progress saved.",
     "progress": "Progress",
-    "progressExplanation": "Production is the first 80%; client approval is the final 20%.",
+    "progressExplanation": "Production progress covers the first 70%, followed by review and completion stages.",
     "overallProgressAria": "{name} overall progress",
     "checklistSummary": "{completed, plural, =0 {No checklist items complete} one {# of {total} checklist item complete} other {# of {total} checklist items complete}} · {percent}% production",
     "productionAwaitingApproval": "Production complete · awaiting client approval",

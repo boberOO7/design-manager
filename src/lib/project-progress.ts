@@ -41,6 +41,8 @@ export const PROJECT_PROGRESS_STAGE_WEIGHTS: Record<ProjectProgressStage, number
   stage_3: 0.4,
 };
 
+export const TASK_PRODUCTION_PROGRESS_CEILING = 70;
+
 export type StageProgress = {
   eligibleTaskCount: number;
   completedTaskCount: number;
@@ -182,7 +184,7 @@ export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
   const hasManualOverride = task.status === "in_progress" && task.manual_progress_override && checklistCount === 0;
   const overallPercent = hasManualOverride
-    ? productionPercent * 0.8
+    ? productionPercent * TASK_PRODUCTION_PROGRESS_CEILING / 100
     : task.status === "in_progress"
       ? Number(task.production_completion) === 70 ? 70 : 50
       : getAutomaticTaskProgress(task.status, task.status);
