@@ -599,6 +599,9 @@
     "reorderStage": "Змінити порядок «{title}». Натисніть пробіл, потім стрілки для переміщення.",
     "removeStage": "Видалити «{title}»"
   },
+  "ProjectTemplates": {
+    "defaultTemplate": "Шаблон за замовчуванням"
+  },
   "Validation": {
     "correctFields": "Виправте виділені поля.",
     "invalidChecklistItem": "Уведіть коректний пункт чекліста."

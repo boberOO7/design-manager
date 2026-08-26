@@ -36,6 +36,23 @@ export function getDefaultProjectTemplate(templates: readonly ProjectTemplate[],
   return getActiveProjectTemplatesForType(templates, projectType).find((template) => template.isDefault) ?? null;
 }
 
+/**
+ * Mirrors the save RPC's default invariant in the optimistic template list.
+ * A template's enabled state is intentionally not derived from its default flag.
+ */
+export function mergeSavedProjectTemplate(templates: readonly ProjectTemplate[], saved: ProjectTemplate) {
+  const withoutPreviousDefault = saved.isDefault
+    ? templates.map((template) => template.id !== saved.id && template.projectType === saved.projectType && template.isDefault
+      ? { ...template, isDefault: false }
+      : template)
+    : [...templates];
+  const existingIndex = withoutPreviousDefault.findIndex((template) => template.id === saved.id);
+
+  if (existingIndex === -1) return [...withoutPreviousDefault, saved].sort((left, right) => left.name.localeCompare(right.name));
+
+  return withoutPreviousDefault.map((template) => template.id === saved.id ? saved : template);
+}
+
 export function getTemplateStageTasks(template: Pick<ProjectTemplate, "tasks"> | null | undefined, stage: ProjectTemplateStage) {
   return template?.tasks.filter((task) => task.stage === stage).sort((left, right) => left.position - right.position || left.id.localeCompare(right.id)) ?? [];
 }

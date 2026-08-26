@@ -13,6 +13,12 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain('const [category, setCategory] = useState<TemplateCategory>("all")');
     expect(source).toContain("PROJECT_TYPE_KEYS.map");
     expect(source).toContain("За замовчуванням");
+    expect(source).toContain('isDefault: false');
+    expect(source).toContain('checked={draft.isDefault}');
+    expect(source).toContain('onUpdate({ isDefault: event.target.checked })');
+    expect(source).toContain('projectTemplates("defaultTemplate")');
+    expect(source).not.toContain('checked={draft.isActive}');
+    expect(source).toContain("mergeSavedProjectTemplate(current, next)");
   });
 
   it("uses stable sortable task rows and keeps template task ordering derived", async () => {

@@ -12,6 +12,13 @@ describe("project template defaults migration", () => {
     expect(sql).toContain("where is_default");
   });
 
+  it("allows no default while keeping non-default templates active and usable", async () => {
+    const sql = await readFile(migrationPath, "utf8");
+    expect(sql).toContain("if p_is_default and not p_is_active then");
+    expect(sql).toContain("where id=p_template_id and studio_id=p_studio_id returning id into saved_template_id");
+    expect(sql).not.toContain("if not p_is_default then raise exception");
+  });
+
   it("accepts an explicitly selected active matching template atomically", async () => {
     const sql = await readFile(migrationPath, "utf8");
     expect(sql).toContain("p_template_id uuid default null");
