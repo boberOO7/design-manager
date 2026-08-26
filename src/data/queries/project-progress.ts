@@ -27,7 +27,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const ids = projects.map((project) => project.id);
   const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, production_completion, progress_weight, checklist_items:task_checklist_items(id, is_completed, weight)")
+    .select("id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, checklist_items:task_checklist_items(id, is_completed, weight)")
     .in("project_id", ids)
     .overrideTypes<Array<ProjectTaskForProgress & { project_id: string }>, { merge: false }>();
   if (tasksError || !tasks) {

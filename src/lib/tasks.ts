@@ -1,4 +1,5 @@
 import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES, type MyTask, type ProjectTask, type TaskPriority, type TaskStatus } from "../types/tasks";
+import { getAutomaticTaskProgress } from "./project-progress";
 
 export type BoardColumnId = "todo" | "in-progress" | "internal-review" | "client-review" | "done";
 export type MyTaskGroupId = "overdue" | "today" | "upcoming" | "completed";
@@ -183,9 +184,11 @@ export function getOptimisticTaskForStatus(
     return {
       ...task,
       status,
-      production_completion: 100,
       checklist_items: task.checklist_items.map((item) => ({ ...item, is_completed: true })),
     };
+  }
+  if (status === "in_progress" && !task.manual_progress_override) {
+    return { ...task, status, production_completion: getAutomaticTaskProgress(task.status, status) };
   }
   return { ...task, status };
 }
@@ -228,6 +231,7 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.created_at === right.created_at
     && left.created_by === right.created_by
     && left.completed_area_m2 === right.completed_area_m2
+    && left.manual_progress_override === right.manual_progress_override
     && left.production_completion === right.production_completion
     && left.progress_weight === right.progress_weight
     && left.checklist_items.length === right.checklist_items.length

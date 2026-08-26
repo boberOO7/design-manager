@@ -5,7 +5,7 @@ import type { ProjectTaskForProgress } from "./project-progress";
 const today = "2026-07-29";
 type TestTask = Partial<ProjectTaskForProgress> & Pick<ProjectTaskForProgress, "id" | "status" | "priority" | "due_date" | "assignee_id">;
 function progressTask(input: TestTask): ProjectTaskForProgress {
-  return { completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...input };
+  return { completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], ...input };
 }
 function project(overrides: Partial<{ id: string; name: string; priority: string; status: string; due_date: string | null; total_area_m2: number; tasks: TestTask[] }> = {}) {
   const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, total_area_m2: 100, tasks: [] as TestTask[], ...overrides };

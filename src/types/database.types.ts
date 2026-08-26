@@ -675,6 +675,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          manual_progress_override: boolean
           priority: string
           productivity_area_m2: number | null
           production_completion: number
@@ -695,6 +696,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          manual_progress_override?: boolean
           priority?: string
           productivity_area_m2?: number | null
           production_completion?: number
@@ -715,6 +717,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          manual_progress_override?: boolean
           priority?: string
           productivity_area_m2?: number | null
           production_completion?: number

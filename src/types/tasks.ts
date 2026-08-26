@@ -41,6 +41,7 @@ export type ProjectTask = Pick<
   | "due_date"
   | "completed_at"
   | "created_at"
+  | "manual_progress_override"
   | "production_completion"
   | "progress_weight"
 > & {

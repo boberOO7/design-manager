@@ -25,14 +25,18 @@
 
 ## Project task progress and health
 
-- Task progress separates production completion from client approval. To do is
-  0%, In progress is production completion × 80%, Client review is 80%, and
-  Done is 100%. Cancelled tasks are excluded from project aggregation.
-- In-progress tasks without checklist items use a stored manual production
-  percentage. A non-empty checklist replaces that percentage with completed
-  checklist weight divided by total checklist weight; deleting the final item
-  restores the stored manual fallback. Presentation rounds to the nearest whole
-  percent only after aggregation while domain calculations retain precision.
+- Automatic task progress follows the current workflow column: To do 0%,
+  In progress 50% on a first pass (70% when returned from either review or
+  Done), Internal review 80%, Client review 90%, and Done 100%. Status-derived
+  progress is persisted through the task status trigger, so it remains correct
+  after refresh and applies equally to the board, form, API, and bulk moves.
+- In-progress tasks without checklist items retain their intentional manual
+  production fallback. An explicit manual override is persisted separately and
+  is not overwritten by later status changes; it continues to use the existing
+  production-completion presentation. A non-empty checklist still replaces the
+  manual production display with completed checklist weight divided by total
+  checklist weight. Presentation rounds to the nearest whole percent only after
+  aggregation while domain calculations retain precision.
 - Progress flows from canonical task progress to stage progress and then to the
   overall project result. Each of Stages 1–3 uses its own Equal, Area, or
   Weighted aggregation method over its non-cancelled task progress; Stage 4 has

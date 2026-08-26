@@ -9,7 +9,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)")
+    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)")
     .eq("project_id", projectId)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
@@ -27,7 +27,7 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)")
+    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)")
     .eq("id", taskId)
     .maybeSingle()
     .overrideTypes<ProjectTask, { merge: false }>();
@@ -43,7 +43,7 @@ export async function getMyTasks(): Promise<MyTask[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)")
+    .select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)")
     .eq("assignee_id", profile.id)
     .neq("project.status", "paused")
     .is("project.archived_at", null)

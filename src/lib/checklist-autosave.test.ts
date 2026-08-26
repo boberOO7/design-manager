@@ -22,6 +22,7 @@ function task(items: TaskChecklistItem[] = [item("first")]): ProjectTask {
     description: null,
     due_date: null,
     id: taskId,
+    manual_progress_override: false,
     priority: "normal",
     production_completion: 0,
     progress_weight: 1,

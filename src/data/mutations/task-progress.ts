@@ -36,7 +36,7 @@ export async function updateTaskProductionProgress(taskId: string, input: unknow
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("tasks")
-    .update({ production_completion: parsed.data.production_completion })
+    .update({ production_completion: parsed.data.production_completion, manual_progress_override: true })
     .eq("id", taskId)
     .select("id")
     .maybeSingle();

@@ -18,6 +18,7 @@ export type ProjectTaskForProgress = {
   due_date: string | null;
   assignee_id: string | null;
   completed_area_m2: number | null;
+  manual_progress_override: boolean;
   production_completion: number;
   progress_weight: number;
   checklist_items: readonly ChecklistItemForProgress[];
@@ -146,33 +147,52 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
 }
 
+const AUTOMATIC_TASK_PROGRESS_BY_STATUS: Record<string, number> = {
+  todo: 0,
+  in_progress: 50,
+  internal_review: 80,
+  review: 90,
+  completed: 100,
+  cancelled: 0,
+} satisfies Record<TaskStatus, number>;
+
+/**
+ * The workflow owns automatic progress. Only a return to In progress needs
+ * context from the source status; every other destination is fixed.
+ */
+export function getAutomaticTaskProgress(previousStatus: string, targetStatus: string): number {
+  if (targetStatus === "in_progress") {
+    return previousStatus === "internal_review" || previousStatus === "review" || previousStatus === "completed"
+      ? 70
+      : 50;
+  }
+  return AUTOMATIC_TASK_PROGRESS_BY_STATUS[targetStatus] ?? 0;
+}
+
 export function roundProgressPercent(value: number): number {
   return Math.round(clampPercent(value));
 }
 
-export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status" | "production_completion" | "checklist_items">): TaskProgress {
+export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status" | "manual_progress_override" | "production_completion" | "checklist_items">): TaskProgress {
   const checklistCount = task.checklist_items.length;
   const completedChecklistCount = task.checklist_items.filter((item) => item.is_completed).length;
   const totalChecklistWeight = task.checklist_items.reduce((total, item) => total + Number(item.weight), 0);
   const completedChecklistWeight = task.checklist_items.reduce((total, item) => total + (item.is_completed ? Number(item.weight) : 0), 0);
   const checklistProduction = totalChecklistWeight > 0 ? (completedChecklistWeight / totalChecklistWeight) * 100 : 0;
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
-  const overallPercent = task.status === "in_progress"
+  const hasManualOverride = task.status === "in_progress" && task.manual_progress_override && checklistCount === 0;
+  const overallPercent = hasManualOverride
     ? productionPercent * 0.8
-    : task.status === "internal_review"
-      ? productionPercent * 0.8
-      : task.status === "review"
-      ? 80
-      : task.status === "completed"
-        ? 100
-        : 0;
+    : task.status === "in_progress"
+      ? Number(task.production_completion) === 70 ? 70 : 50
+      : getAutomaticTaskProgress(task.status, task.status);
 
   return {
     productionPercent,
     overallPercent,
     presentedProductionPercent: roundProgressPercent(productionPercent),
     presentedOverallPercent: roundProgressPercent(overallPercent),
-    source: checklistCount > 0 ? "checklist" : task.status === "in_progress" ? "manual" : "status",
+    source: hasManualOverride ? "manual" : checklistCount > 0 ? "checklist" : "status",
     completedChecklistCount,
     checklistCount,
   };
@@ -249,3 +269,4 @@ export function getProjectHealth({
 export function getProjectHealthLabel(health: ProjectHealth): string {
   return { completed: "Completed", overdue: "Overdue", needs_attention: "Needs attention", deadline_soon: "Deadline soon", on_track: "On track" }[health];
 }
+import type { TaskStatus } from "@/types/tasks";

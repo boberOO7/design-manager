@@ -1,28 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { calculateOverallProjectProgress, calculatePersonalProgress, calculateProjectProgress, calculateStageProgress, calculateTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
+import { calculateOverallProjectProgress, calculatePersonalProgress, calculateProjectProgress, calculateStageProgress, calculateTaskProgress, getAutomaticTaskProgress, getProjectHealth, type ProjectTaskForProgress } from "./project-progress";
 
 function task(overrides: Partial<ProjectTaskForProgress> = {}): ProjectTaskForProgress {
-  return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", completed_area_m2: null, production_completion: 0, progress_weight: 1, checklist_items: [], ...overrides };
+  return { id: "task-1", status: "todo", priority: "normal", due_date: null, assignee_id: "employee-1", completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], ...overrides };
 }
 
 describe("task progress", () => {
   it.each([
     ["todo", 0],
-    ["in_progress", 40],
-    ["review", 80],
+    ["in_progress", 50],
+    ["internal_review", 80],
+    ["review", 90],
     ["completed", 100],
     ["cancelled", 0],
-  ])("maps %s through the production and approval split", (status, expected) => {
+  ])("maps automatic workflow statuses to their canonical progress", (status, expected) => {
     expect(calculateTaskProgress(task({ status, production_completion: 50 })).overallPercent).toBe(expected);
   });
 
   it.each([[10, 8], [50, 40], [90, 72]])("maps %s%% manual production to %s%% overall", (production, overall) => {
-    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: production }))).toMatchObject({ source: "manual", productionPercent: production, overallPercent: overall });
+    expect(calculateTaskProgress(task({ status: "in_progress", manual_progress_override: true, production_completion: production }))).toMatchObject({ source: "manual", productionPercent: production, overallPercent: overall });
+  });
+
+  it("uses the source status only when returning to In progress", () => {
+    expect(getAutomaticTaskProgress("todo", "in_progress")).toBe(50);
+    expect(getAutomaticTaskProgress("internal_review", "in_progress")).toBe(70);
+    expect(getAutomaticTaskProgress("review", "in_progress")).toBe(70);
+    expect(getAutomaticTaskProgress("completed", "in_progress")).toBe(70);
+    expect(getAutomaticTaskProgress("review", "internal_review")).toBe(80);
+    expect(getAutomaticTaskProgress("completed", "review")).toBe(90);
+    expect(getAutomaticTaskProgress("completed", "todo")).toBe(0);
   });
 
   it("uses weighted checklist completion and ignores the manual fallback while items exist", () => {
     const progress = calculateTaskProgress(task({ status: "in_progress", production_completion: 99, checklist_items: [{ id: "a", is_completed: true, weight: 1 }, { id: "b", is_completed: false, weight: 3 }] }));
-    expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 20, completedChecklistCount: 1, checklistCount: 2 });
+    expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 50, completedChecklistCount: 1, checklistCount: 2 });
     expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 37, checklist_items: [] })).productionPercent).toBe(37);
   });
 });
@@ -73,6 +84,17 @@ describe("project task progress", () => {
 });
 
 describe("stage progress", () => {
+  it("decreases stage and project progress when workflow work is returned", () => {
+    const before = [
+      { ...task({ id: "returned", status: "review" }), stage: "stage_1" },
+      { ...task({ id: "steady", status: "completed" }), stage: "stage_1" },
+    ];
+    const after = [{ ...before[0], status: "in_progress", production_completion: 70 }, before[1]];
+    expect(calculateStageProgress(before).stage_1.progressPercent).toBe(95);
+    expect(calculateStageProgress(after).stage_1.progressPercent).toBe(85);
+    expect(calculateProjectProgress(after).progressPercent).toBeLessThan(calculateProjectProgress(before).progressPercent);
+  });
+
   it("derives stage progress from canonical task progress and excludes cancelled tasks", () => {
     const progress = calculateStageProgress([
       { ...task({ id: "one-review", status: "review" }), stage: "stage_1" },
@@ -83,8 +105,8 @@ describe("stage progress", () => {
     ]);
 
     expect(progress).toEqual({
-      stage_1: { eligibleTaskCount: 1, completedTaskCount: 0, progressPercent: 80, method: "equal" },
-      stage_2: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 90, method: "equal" },
+      stage_1: { eligibleTaskCount: 1, completedTaskCount: 0, progressPercent: 90, method: "equal" },
+      stage_2: { eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 95, method: "equal" },
       stage_3: { eligibleTaskCount: 0, completedTaskCount: 0, progressPercent: 0, method: "equal" },
     });
   });
@@ -94,7 +116,7 @@ describe("stage progress", () => {
       { ...task({ id: "done", status: "completed", progress_weight: 3 }), stage: "stage_2" },
       { ...task({ id: "review", status: "review", progress_weight: 1 }), stage: "stage_2" },
     ], { stage_1: "equal", stage_2: "weighted", stage_3: "equal" });
-    expect(progress.stage_2).toMatchObject({ progressPercent: 95, method: "weighted" });
+    expect(progress.stage_2).toMatchObject({ progressPercent: 98, method: "weighted" });
   });
 
   it("includes unassigned completed area work in area progress without personal attribution", () => {

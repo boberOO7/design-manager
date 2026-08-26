@@ -36,6 +36,7 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     created_at: "2026-07-01T09:00:00.000Z",
     created_by: "123e4567-e89b-12d3-a456-426614174003",
     completed_area_m2: null,
+    manual_progress_override: false,
     production_completion: 0,
     progress_weight: 1,
     checklist_items: [],
@@ -193,7 +194,7 @@ describe("optimistic task Board state", () => {
     const optimistic = setProjectTaskStatus(initial, "task-1", "review");
     expect(groupTasksByBoardColumn(optimistic)["client-review"]).toHaveLength(1);
     expect(optimistic[0]?.checklist_items[0]?.is_completed).toBe(true);
-    expect(optimistic[0]?.production_completion).toBe(100);
+    expect(optimistic[0]?.production_completion).toBe(0);
     const rolledBack = mergeProjectTask(optimistic, initial[0]);
     expect(groupTasksByBoardColumn(rolledBack)["in-progress"]).toHaveLength(1);
     expect(rolledBack[0].checklist_items[0]?.is_completed).toBe(false);
@@ -202,6 +203,19 @@ describe("optimistic task Board state", () => {
   it("does not change checklist data for status transitions outside Client review", () => {
     const task = makeTask({ status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] });
     expect(getOptimisticTaskForStatus(task, "completed").checklist_items[0]?.is_completed).toBe(false);
+  });
+
+  it("uses the shared workflow rule for optimistic first-pass and rework moves", () => {
+    expect(getOptimisticTaskForStatus(makeTask({ status: "todo" }), "in_progress")).toMatchObject({ status: "in_progress", production_completion: 50 });
+    for (const status of ["internal_review", "review", "completed"] as const) {
+      expect(getOptimisticTaskForStatus(makeTask({ status }), "in_progress")).toMatchObject({ status: "in_progress", production_completion: 70 });
+    }
+    expect(getOptimisticTaskForStatus(makeTask({ status: "review" }), "internal_review").production_completion).toBe(0);
+  });
+
+  it("does not replace an explicit manual override during a status move", () => {
+    const task = makeTask({ status: "review", manual_progress_override: true, production_completion: 93 });
+    expect(getOptimisticTaskForStatus(task, "in_progress")).toMatchObject({ status: "in_progress", production_completion: 93, manual_progress_override: true });
   });
 
   it("does not let stale server props overwrite a pending optimistic status", () => {
