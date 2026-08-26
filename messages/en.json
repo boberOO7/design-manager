@@ -291,6 +291,9 @@
   },
   "Projects": {
     "project": "Project",
+    "participants": "Participants",
+    "noParticipants": "No participants",
+    "moreParticipants": "{count, plural, one {# more participant} other {# more participants}}",
     "healthLifecycle": "Health & lifecycle",
     "progress": "Progress",
     "deadlineContext": "Deadline context",

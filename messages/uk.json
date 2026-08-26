@@ -291,6 +291,9 @@
   },
   "Projects": {
     "project": "Проєкт",
+    "participants": "Учасники",
+    "noParticipants": "Немає учасників",
+    "moreParticipants": "{count, plural, one {Ще # учасник} few {Ще # учасники} many {Ще # учасників} other {Ще # учасника}}",
     "healthLifecycle": "Стан і життєвий цикл",
     "progress": "Прогрес",
     "deadlineContext": "Контекст дедлайну",

@@ -9,6 +9,7 @@ const sizeClassName = {
   boardCard: "size-7 text-[11px]",
   directoryPortrait: "size-32 text-4xl",
   header: "size-11 text-xs",
+  projectList: "size-8 text-xs",
   profile: "size-16 text-base",
 } as const;
 
