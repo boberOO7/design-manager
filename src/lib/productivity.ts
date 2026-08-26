@@ -77,10 +77,8 @@ export function canCompleteAttributedTask(input: {
   assigneeId: string | null | undefined;
   isActiveProjectMember: boolean;
 }): boolean {
-  return !input.requiresProductivityAttribution
-    || (input.assigneeId !== null
-      && input.assigneeId !== undefined
-      && input.isActiveProjectMember);
+  if (!input.requiresProductivityAttribution || input.assigneeId === null || input.assigneeId === undefined) return true;
+  return input.isActiveProjectMember;
 }
 
 function kyivParts(now: Date) {

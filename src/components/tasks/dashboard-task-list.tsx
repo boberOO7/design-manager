@@ -70,6 +70,6 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
       })}
       </ul> : null}
     </div>
-    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isOpen={isTaskDrawerOpen} isProjectReadOnly={false} members={[]} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} project={selectedTask.project} task={selectedTask} /> : null}
+    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isOpen={isTaskDrawerOpen} isProjectReadOnly={false} members={[]} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
   </>;
 }

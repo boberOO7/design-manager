@@ -412,6 +412,7 @@
     "productionNotStarted": "Production has not started",
     "manualProductionCompletion": "Manual production completion",
     "manualProductionPercentage": "Manual production completion percentage",
+    "change": "Change",
     "save": "Save",
     "checklistProduction": "{percent}% production",
     "noDescription": "No description added",

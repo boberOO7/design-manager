@@ -101,7 +101,6 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
         onClose={closeTaskDrawer}
         onExited={clearExitedTask}
         onTaskUpdated={updateTask}
-        project={selectedTask.project}
         task={selectedTask}
       /> : null}
     </>

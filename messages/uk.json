@@ -412,6 +412,7 @@
     "productionNotStarted": "Виробництво ще не розпочато",
     "manualProductionCompletion": "Ручне виробниче виконання",
     "manualProductionPercentage": "Відсоток ручного виробничого виконання",
+    "change": "Змінити",
     "save": "Зберегти",
     "checklistProduction": "{percent}% виробництва",
     "noDescription": "Опис не додано",

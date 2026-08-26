@@ -12,7 +12,7 @@ describe("task status mutation contract", () => {
     expect(source).toContain("Complete every checklist item before moving this task to Done.");
   });
 
-  it("requires an assignee for productivity-bearing work while retaining the active-member check", async () => {
+  it("allows unassigned completion without attribution while retaining the active-member check for assigned work", async () => {
     const source = await readFile(mutationPath, "utf8");
 
     expect(source).toContain("canCompleteAttributedTask");
@@ -21,6 +21,7 @@ describe("task status mutation contract", () => {
     expect(source).toContain("requiresProductivityAttribution:");
     expect(source).toContain("assigneeId: authorization.task.assignee_id");
     expect(source).toContain("isActiveProjectMember");
+    expect(source).not.toContain('authorization.task.assignee_id === null');
     expect(source).toContain('const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };');
   });
 });

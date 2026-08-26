@@ -5,7 +5,7 @@ import uk from "../../../messages/uk.json";
 
 const drawerPath = new URL("./task-details-drawer.tsx", import.meta.url);
 
-describe("task checklist drawer contract", () => {
+describe("task details drawer contract", () => {
   it("connects the visible eyebrow, dialog title, and close label to canonical messages", async () => {
     const source = await readFile(drawerPath, "utf8");
 
@@ -20,26 +20,54 @@ describe("task checklist drawer contract", () => {
     expect(uk.Tasks.taskDetails).toBe("Деталі завдання");
   });
 
-  it("uses a single checklist form that submits on Enter", async () => {
+  it("keeps checklist configuration in the existing edit flow", async () => {
     const source = await readFile(drawerPath, "utf8");
-    const checklistSection = source.slice(source.indexOf('aria-labelledby="task-checklist-heading"'));
+    const editChecklistSection = source.slice(source.indexOf('aria-labelledby="task-edit-checklist"'), source.indexOf(') : ('));
+    const detailsChecklistSection = source.slice(source.indexOf('aria-labelledby="task-checklist-heading"'), source.indexOf('{task.description?.trim()'));
 
-    expect(checklistSection).toContain("<form onSubmit=");
-    expect(checklistSection).toContain('type="submit"');
-    expect(checklistSection).toContain("checklistTitleRef");
-    expect(checklistSection).toContain('step="1"');
-    expect(checklistSection).toContain('inputMode="numeric"');
+    expect(editChecklistSection).toContain("<form onSubmit=");
+    expect(editChecklistSection).toContain("checklistTitleRef");
+    expect(editChecklistSection).toContain('step="1"');
+    expect(detailsChecklistSection).not.toContain("<form onSubmit=");
+    expect(detailsChecklistSection).not.toContain('checklistT("empty")');
+    expect(detailsChecklistSection).toContain('t("checklistProgress"');
   });
 
-  it("keeps checkbox and title in one logical row without a per-item Save button", async () => {
+  it("keeps checklist execution compact and read-only in details", async () => {
     const source = await readFile(drawerPath, "utf8");
-    const itemRow = source.slice(source.indexOf("function ChecklistItemRow"));
+    const itemRow = source.slice(source.indexOf("function ChecklistItemRow"), source.indexOf("function ChecklistItemEditorRow"));
 
     expect(itemRow).toContain('type="checkbox"');
-    expect(itemRow).toContain('t("itemTitle")');
-    expect(itemRow).not.toContain('>Save<');
+    expect(itemRow).toContain("canToggle");
+    expect(itemRow).not.toContain('type="number"');
+    expect(itemRow).not.toContain('Trash2');
     expect(itemRow).toContain('t("savingItem")');
-    expect(itemRow).toContain('step="1"');
+  });
+
+  it("puts the authorized edit action in the header and removes the read-view footer action", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    const header = source.slice(source.indexOf("<header"), source.indexOf("</header>"));
+
+    expect(header).toContain("Pencil");
+    expect(header).toContain('canEdit && !isEditing');
+    expect(header).toContain('aria-label={t("editTask")}');
+    expect(header).toContain('title={t("editTask")}');
+    expect(source).toContain('canEdit && isEditing ? <footer');
+    expect(source).not.toContain(': <Button type="button" onClick={() => setIsEditing(true)}');
+    expect(en.Tasks.editTask).toBe("Edit task");
+    expect(uk.Tasks.editTask).toBe("Редагувати завдання");
+  });
+
+  it("keeps one dominant overall progress bar and reveals manual production on demand", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    const detailsView = source.slice(source.indexOf(') : (\n            <div className="space-y-6">'), source.indexOf('<section className="border-t border-[var(--ui-border-subtle)] pt-5">'));
+
+    expect(detailsView).toContain('role="progressbar"');
+    expect(detailsView).toContain('isEditingManualProgress');
+    expect(detailsView).toContain('t("change")');
+    expect(detailsView).not.toContain('t("progressExplanation")');
+    expect(en.Tasks.change).toBe("Change");
+    expect(uk.Tasks.change).toBe("Змінити");
   });
 
   it("lets administrators clear the assignee and shows an unassigned task safely", async () => {

@@ -100,9 +100,9 @@ describe("monthly productivity projection", () => {
     expect(getProjectAttributionMode([{ completed_area_m2: null }])).toBe("project_fallback");
   });
 
-  it("requires an assigned active project member for productivity-bearing work", () => {
+  it("allows unassigned work to complete without attribution while retaining the active-member guard for assigned work", () => {
     expect(canCompleteAttributedTask({ requiresProductivityAttribution: false, assigneeId: null, isActiveProjectMember: false })).toBe(true);
-    expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: null, isActiveProjectMember: false })).toBe(false);
+    expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: null, isActiveProjectMember: false })).toBe(true);
     expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: "architect", isActiveProjectMember: false })).toBe(false);
     expect(canCompleteAttributedTask({ requiresProductivityAttribution: true, assigneeId: "architect", isActiveProjectMember: true })).toBe(true);
   });

@@ -183,7 +183,8 @@ export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status
   const checklistProduction = totalChecklistWeight > 0 ? (completedChecklistWeight / totalChecklistWeight) * 100 : 0;
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
   const hasManualOverride = task.status === "in_progress" && task.manual_progress_override && checklistCount === 0;
-  const overallPercent = hasManualOverride
+  const hasProductionSource = task.status === "in_progress" && (checklistCount > 0 || hasManualOverride);
+  const overallPercent = hasProductionSource
     ? productionPercent * TASK_PRODUCTION_PROGRESS_CEILING / 100
     : task.status === "in_progress"
       ? Number(task.production_completion) === 70 ? 70 : 50

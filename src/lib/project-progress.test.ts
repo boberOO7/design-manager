@@ -31,10 +31,30 @@ describe("task progress", () => {
     expect(getAutomaticTaskProgress("completed", "todo")).toBe(0);
   });
 
+  it.each([
+    [0, 0, 0],
+    [1, 33, 23],
+    [2, 67, 47],
+    [3, 100, 70],
+  ])("maps %s/3 equally weighted checklist items to %s%% production and %s%% overall", (completed, production, overall) => {
+    const checklist_items = Array.from({ length: 3 }, (_, index) => ({ id: `${index}`, is_completed: index < completed, weight: 1 }));
+    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 50, checklist_items }))).toMatchObject({
+      source: "checklist",
+      presentedProductionPercent: production,
+      presentedOverallPercent: overall,
+      completedChecklistCount: completed,
+      checklistCount: 3,
+    });
+  });
+
   it("uses weighted checklist completion and ignores the manual fallback while items exist", () => {
     const progress = calculateTaskProgress(task({ status: "in_progress", production_completion: 99, checklist_items: [{ id: "a", is_completed: true, weight: 1 }, { id: "b", is_completed: false, weight: 3 }] }));
-    expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 50, completedChecklistCount: 1, checklistCount: 2 });
+    expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 17.5, completedChecklistCount: 1, checklistCount: 2 });
     expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 37, checklist_items: [] })).productionPercent).toBe(37);
+  });
+
+  it.each([["internal_review", 80], ["review", 90], ["completed", 100]])("lets the %s workflow checkpoint override checklist production", (status, overallPercent) => {
+    expect(calculateTaskProgress(task({ status, checklist_items: [{ id: "done", is_completed: true, weight: 1 }, { id: "open", is_completed: false, weight: 3 }] }))).toMatchObject({ productionPercent: 25, overallPercent });
   });
 });
 
@@ -99,6 +119,12 @@ describe("stage progress", () => {
     const tasks = [{ ...task({ id: "manual", status: "in_progress", manual_progress_override: true, production_completion: 100 }), stage: "stage_1" }];
     expect(calculateStageProgress(tasks).stage_1.progressPercent).toBe(70);
     expect(calculateProjectProgress(tasks).progressPercent).toBe(14);
+  });
+
+  it("aggregates checklist-derived in-progress progress through the canonical task helper", () => {
+    const tasks = [{ ...task({ status: "in_progress", checklist_items: [{ id: "done", is_completed: true, weight: 2 }, { id: "open", is_completed: false, weight: 1 }] }), stage: "stage_1" }];
+    expect(calculateStageProgress(tasks).stage_1.progressPercent).toBe(47);
+    expect(calculateProjectProgress(tasks).progressPercent).toBe(9);
   });
 
   it("derives stage progress from canonical task progress and excludes cancelled tasks", () => {
