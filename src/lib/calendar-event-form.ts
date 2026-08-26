@@ -18,6 +18,26 @@ export type CalendarEventFormValues = {
   recurrenceRule?: RecurrenceRule | null;
 };
 
+function keepTimedRangeValid(values: CalendarEventFormValues): CalendarEventFormValues {
+  if (values.allDay || values.endDate > values.startDate || values.endTime > values.startTime) return values;
+  return { ...values, endDate: addCalendarDays(values.startDate, 1) };
+}
+
+/**
+ * Keeps a same-day end date coupled to the start date until the user chooses a
+ * distinct end date. A manual end date remains intact unless it would precede
+ * the new start date.
+ */
+export function updateEventStartDate(values: CalendarEventFormValues, startDate: string, endDateLinked: boolean): CalendarEventFormValues {
+  const endDate = endDateLinked || values.endDate < startDate ? startDate : values.endDate;
+  return keepTimedRangeValid({ ...values, startDate, endDate });
+}
+
+/** Keeps a timed event valid immediately when its start time moves past its end time. */
+export function updateEventStartTime(values: CalendarEventFormValues, startTime: string): CalendarEventFormValues {
+  return keepTimedRangeValid({ ...values, startTime });
+}
+
 function splitWallDateTime(value: string): { date: string; time: string } {
   const [date, time] = value.split("T");
   if (!date || !time) throw new Error("Invalid local date and time");

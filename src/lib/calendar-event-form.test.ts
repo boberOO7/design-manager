@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getInclusiveAllDayEndDate, toCalendarEventMutationPayload, type CalendarEventFormValues } from "./calendar-event-form";
+import { getAllDayEventBounds, getInclusiveAllDayEndDate, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
@@ -19,6 +19,18 @@ const baseValues: CalendarEventFormValues = {
 };
 
 describe("Calendar event form time semantics", () => {
+  it("moves the linked end date with a changed start date while preserving the end time", () => {
+    expect(updateEventStartDate({ ...baseValues, allDay: false, endTime: "10:00" }, "2026-09-03", true)).toMatchObject({ startDate: "2026-09-03", endDate: "2026-09-03", endTime: "10:00" });
+  });
+
+  it("preserves a manually selected multi-day end date when the start date changes", () => {
+    expect(updateEventStartDate({ ...baseValues, allDay: false, endDate: "2026-09-05" }, "2026-09-03", false)).toMatchObject({ startDate: "2026-09-03", endDate: "2026-09-05" });
+  });
+
+  it("keeps timed events valid when a start time moves past the same-day end time", () => {
+    expect(updateEventStartTime({ ...baseValues, allDay: false }, "11:00")).toMatchObject({ startTime: "11:00", endDate: "2026-07-29", endTime: "10:00" });
+  });
+
   it("stores a single all-day date as a positive one-day Kyiv interval", () => {
     const bounds = getAllDayEventBounds("2026-07-28", "2026-07-28");
     expect(bounds).toEqual({ startsAt: "2026-07-27T21:00:00.000Z", endsAt: "2026-07-28T21:00:00.000Z" });
