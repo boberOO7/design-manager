@@ -269,7 +269,7 @@ function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarIt
         {allDaySegments.map((segment) => { const title = itemTitle(segment.item); return <button key={segment.segmentId} type="button" onClick={() => onItem(segment.item)} title={title} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-md"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-md"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="block truncate">{title}</span></button>; })}
       </div>
     </div>
-    <div ref={scrollRef} className="max-h-[36rem] overflow-y-auto">
+    <div ref={scrollRef} className="calendar-week-timeline max-h-[36rem] overflow-y-auto">
       <div className="grid grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]">
         <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="h-[60px] border-r border-b border-[var(--ui-border-subtle)] pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-subtle)]">{String(hour).padStart(2, "0")}:00</div>)}</div>
         {dates.map((date, dayIndex) => <div key={date} className={`relative border-r border-[var(--ui-border-subtle)] ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * WEEK_PIXELS_PER_MINUTE, backgroundImage: "repeating-linear-gradient(to bottom, transparent 0, transparent 59px, var(--ui-calendar-gridline) 60px)", backgroundSize: `100% ${60 * WEEK_PIXELS_PER_MINUTE}px` }}>
@@ -278,7 +278,7 @@ function WeekView({ anchor, items, onItem }: { anchor: string; items: CalendarIt
         </div>)}
       </div>
     </div>
-  </div></div><div aria-hidden="true" className="pointer-events-none absolute inset-y-8 right-0 hidden w-8 bg-gradient-to-l from-white to-transparent md:block" /></div>;
+  </div></div></div>;
 }
 
 function AgendaView({ start, items, onItem }: { start: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void }) {

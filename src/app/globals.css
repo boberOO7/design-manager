@@ -204,6 +204,20 @@ body,
   height: var(--ui-scrollbar-size);
 }
 
+.calendar-week-timeline {
+  scrollbar-color: var(--ui-border-strong) var(--ui-surface);
+}
+
+.calendar-week-timeline::-webkit-scrollbar-track {
+  background: var(--ui-surface);
+}
+
+.calendar-week-timeline::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ui-surface);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-border-strong);
+}
+
 ::selection {
   background: var(--ui-action-primary);
   color: var(--ui-action-primary-text);

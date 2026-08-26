@@ -16,8 +16,8 @@ function validDate(value: string | undefined): string {
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const requestedView = typeof params.view === "string" ? params.view : "month";
-  const view: CalendarView = requestedView === "week" || requestedView === "agenda" ? requestedView : "month";
+  const requestedView = typeof params.view === "string" ? params.view : "week";
+  const view: CalendarView = requestedView === "month" || requestedView === "week" || requestedView === "agenda" ? requestedView : "week";
   const date = validDate(typeof params.date === "string" ? params.date : undefined);
   const range = getCalendarRange(view, date);
   const data = await getCalendarData(range);

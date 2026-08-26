@@ -215,8 +215,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/calendar/page.tsx": {
-    "mtime": 1787166635.6721098,
-    "ast_hash": "076f9adc9b4089c377854e870303c251",
+    "mtime": 1787738617.2842453,
+    "ast_hash": "2c87eeef8c610e216bbe33362846cce9",
     "semantic_hash": ""
   },
   "src/app/(app)/dashboard/page.test.tsx": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787737903.8605118,
-    "ast_hash": "76db6c95aaa1d84cb04b3f89ebe72f84",
+    "mtime": 1787738617.4442503,
+    "ast_hash": "871bb901b321434c518a94e6f07a58f7",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -3487,6 +3487,11 @@
   "supabase/migrations/20260826100000_leaderboard_employee_visibility.sql": {
     "mtime": 1787694566.885871,
     "ast_hash": "9ff6f5cd1b8799bce86b695aba86fa6b",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/calendar/page.test.ts": {
+    "mtime": 1787738617.7362597,
+    "ast_hash": "36abc1901b5741218ee23fe757626ad7",
     "semantic_hash": ""
   }
 }
