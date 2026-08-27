@@ -12,7 +12,7 @@ import { useActionState, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StudioMemberActionState } from "@/lib/validation/team-membership";
 
-export function StudioMemberLifecycleControls({ canEditProfile, isFormer, jobTitle, name, systemRole, userId }: { canEditProfile: boolean; isFormer: boolean; jobTitle: string | null; name: string; systemRole: "admin" | "employee"; userId: string }) {
+export function StudioMemberLifecycleControls({ birthDate, canEditProfile, isFormer, jobTitle, joinedAt, name, systemRole, userId }: { birthDate: string | null; canEditProfile: boolean; isFormer: boolean; jobTitle: string | null; joinedAt: string | null; name: string; systemRole: "admin" | "employee"; userId: string }) {
   const t = useTranslations("Team");
   const locale = useLocale();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -57,6 +57,6 @@ export function StudioMemberLifecycleControls({ canEditProfile, isFormer, jobTit
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6"><p className="text-xs font-medium text-[var(--ui-text-muted)]">{tasks.length > 0 ? t("removalSummary", { reassigned: reassignedCount, unassigned: unassignedCount }) : null}</p><div className="flex gap-3"><Button disabled={pending} onClick={() => setDialogOpen(false)} type="button" variant="outline">{t("cancel")}</Button><Button className="bg-[var(--ui-action-danger)] text-[var(--ui-action-primary-text)] hover:opacity-90 disabled:bg-[var(--ui-surface-muted)] disabled:text-[var(--ui-text-muted)] disabled:!opacity-100" disabled={pending || !impact || impactError || (!allowUnassigned && unresolved)} type="submit">{pending ? t("removing") : t("confirmRemove")}</Button></div></footer>
       </form>
     </Dialog>
-    {canEditProfile && profileDialogOpen ? <StudioMemberProfileEditor fullName={name} isOpen={profileDialogOpen} jobTitle={jobTitle} onRequestClose={() => setProfileDialogOpen(false)} returnFocusRef={triggerRef} systemRole={systemRole} userId={userId} /> : null}
+    {canEditProfile && profileDialogOpen ? <StudioMemberProfileEditor birthDate={birthDate} fullName={name} isOpen={profileDialogOpen} jobTitle={jobTitle} joinedAt={joinedAt} onRequestClose={() => setProfileDialogOpen(false)} returnFocusRef={triggerRef} systemRole={systemRole} userId={userId} /> : null}
   </div>;
 }

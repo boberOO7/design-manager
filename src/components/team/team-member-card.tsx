@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, X } from "lucide-react";
+import { CakeSlice, MapPin, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/ui/dialog";
@@ -10,12 +10,15 @@ import { StudioMemberLifecycleControls } from "@/components/team/studio-member-l
 
 type TeamMemberCardProps = {
   avatarUrl: string | null;
+  birthDate: string | null;
+  birthdayLabel: string;
   fullName: string;
   isActive: boolean;
   isAdmin: boolean;
   canEditProfile: boolean;
   editableJobTitle: string | null;
   jobTitle: string | null;
+  joinedAt: string | null;
   location: string | null;
   removedAt: string | null;
   roleLabel: string;
@@ -23,7 +26,7 @@ type TeamMemberCardProps = {
   userId: string;
 };
 
-export function TeamMemberCard({ avatarUrl, canEditProfile, editableJobTitle, fullName, isActive, isAdmin, jobTitle, location, removedAt, roleLabel, systemRole, userId }: TeamMemberCardProps) {
+export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditProfile, editableJobTitle, fullName, isActive, isAdmin, jobTitle, joinedAt, location, removedAt, roleLabel, systemRole, userId }: TeamMemberCardProps) {
   const t = useTranslations("Team");
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [hasFailedImage, setHasFailedImage] = useState(false);
@@ -31,7 +34,7 @@ export function TeamMemberCard({ avatarUrl, canEditProfile, editableJobTitle, fu
   const canViewAvatar = Boolean(imageUrl) && !hasFailedImage;
 
   return <article className={`relative flex w-full max-w-[18.75rem] flex-col items-center rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 pb-4 pt-5 text-center ${isActive ? "" : "opacity-75"}`}>
-    {isAdmin ? <StudioMemberLifecycleControls canEditProfile={canEditProfile} isFormer={!isActive} jobTitle={editableJobTitle} name={fullName} systemRole={systemRole} userId={userId} /> : null}
+    {isAdmin ? <StudioMemberLifecycleControls birthDate={birthDate} canEditProfile={canEditProfile} isFormer={!isActive} jobTitle={editableJobTitle} joinedAt={joinedAt} name={fullName} systemRole={systemRole} userId={userId} /> : null}
     {canViewAvatar ? <button aria-label={t("viewAvatar", { name: fullName })} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" onClick={() => setIsAvatarOpen(true)} type="button">
       <UserAvatar className="ring-4 ring-[var(--ui-surface)] transition-opacity hover:opacity-85" decorative imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />
     </button> : <UserAvatar className="ring-4 ring-[var(--ui-surface)]" imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />}
@@ -39,6 +42,7 @@ export function TeamMemberCard({ avatarUrl, canEditProfile, editableJobTitle, fu
       <h3 className="truncate text-lg font-semibold leading-6 text-[var(--ui-text)]">{fullName}</h3>
       {jobTitle ? <p className="mt-1 truncate text-sm leading-5 text-[var(--ui-text-secondary)]">{jobTitle}</p> : <p className="mt-1 text-sm leading-5 text-[var(--ui-text-subtle)]">{t("jobTitleUnavailable")}</p>}
       {location ? <p className="mt-3 flex min-w-0 items-center justify-center gap-1.5 text-sm leading-5 text-[var(--ui-text-muted)]"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-xs leading-5 text-[var(--ui-text-muted)]"><span className="sr-only">{t("birthday")}: </span><CakeSlice aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span>{birthdayLabel}</span></p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-[var(--ui-border-subtle)] pt-3 text-xs">
         <span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 font-medium text-[var(--ui-text-secondary)]">{roleLabel}</span>
         <span className={`flex items-center gap-1.5 font-medium ${isActive ? "text-[var(--ui-success-text)]" : "text-[var(--ui-text-muted)]"}`}>

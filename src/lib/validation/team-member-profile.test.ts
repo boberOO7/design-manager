@@ -16,6 +16,8 @@ describe("team member profile validation", () => {
     form.set("lastName", "Stone");
     form.set("jobTitle", "Architect");
     form.set("systemRole", "admin");
+    form.set("joinedAt", "2024-08-24");
+    form.set("birthDate", "1998-08-24");
     expect(studioMemberProfileSchema.safeParse(getStudioMemberProfileInput(form)).success).toBe(true);
   });
 
@@ -26,6 +28,20 @@ describe("team member profile validation", () => {
     form.set("lastName", "Stone");
     form.set("jobTitle", "Architect");
     form.set("systemRole", "owner");
+    form.set("joinedAt", "");
+    form.set("birthDate", "");
     expect(studioMemberProfileSchema.safeParse(getStudioMemberProfileInput(form)).success).toBe(false);
+  });
+
+  it("allows both optional dates to be cleared", () => {
+    const form = new FormData();
+    form.set("userId", userId);
+    form.set("firstName", "Avery");
+    form.set("lastName", "Stone");
+    form.set("jobTitle", "Architect");
+    form.set("systemRole", "employee");
+    form.set("joinedAt", "");
+    form.set("birthDate", "");
+    expect(studioMemberProfileSchema.parse(getStudioMemberProfileInput(form))).toMatchObject({ joinedAt: null, birthDate: null });
   });
 });

@@ -2,6 +2,7 @@
 
 import { updateStudioMemberProfile } from "@/app/(app)/team/actions";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectItem } from "@/components/ui/select";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
@@ -14,15 +15,17 @@ import {
 } from "@/lib/validation/team-member-profile";
 import type { SystemRole } from "@/types";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useActionState, useEffect, useRef, type RefObject } from "react";
 
 const inputClassName = "mt-2 w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)]";
 
-export function StudioMemberProfileEditor({ fullName, isOpen, jobTitle, onRequestClose, returnFocusRef, systemRole, userId }: {
+export function StudioMemberProfileEditor({ birthDate, fullName, isOpen, jobTitle, joinedAt, onRequestClose, returnFocusRef, systemRole, userId }: {
+  birthDate: string | null;
   fullName: string;
   isOpen: boolean;
   jobTitle: string | null;
+  joinedAt: string | null;
   onRequestClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
   systemRole: SystemRole;
@@ -30,6 +33,7 @@ export function StudioMemberProfileEditor({ fullName, isOpen, jobTitle, onReques
 }) {
   const t = useTranslations("Team");
   const roles = useTranslations("Roles");
+  const locale = useLocale();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const hasRefreshedAfterSave = useRef(false);
@@ -48,6 +52,9 @@ export function StudioMemberProfileEditor({ fullName, isOpen, jobTitle, onReques
     "aria-describedby": fieldError(field) ? `team-profile-${field}-error` : undefined,
     "aria-invalid": fieldError(field) ? (true as const) : undefined,
   });
+  const dateErrorAttributes = (field: StudioMemberProfileField) => ({
+    "aria-describedby": fieldError(field) ? `team-profile-${field}-error` : undefined,
+  });
 
   return <Dialog closeDisabled={pending} closeLabel={t("cancel")} description={t("editTeamMemberDescription")} isOpen={isOpen} onRequestClose={() => { if (!pending) onRequestClose(); }} returnFocusRef={returnFocusRef} title={t("editTeamMember")}>
     <form ref={formRef} action={formAction} className="flex min-h-0 flex-1 flex-col" noValidate>
@@ -59,6 +66,8 @@ export function StudioMemberProfileEditor({ fullName, isOpen, jobTitle, onReques
             <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("lastName")}<input autoComplete="family-name" className={inputClassName} defaultValue={lastName} name="lastName" required {...errorAttributes("lastName")} />{fieldError("lastName") ? <p id="team-profile-lastName-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{t("correctFields")}</p> : null}</label>
             <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("profession")}<Select defaultValue={jobTitle ?? undefined} name="jobTitle" required className="mt-2" {...errorAttributes("jobTitle")} placeholder={t("selectRole")}>{PROFESSIONAL_ROLES.map((role) => <SelectItem key={role} value={role}>{roles(getCanonicalRoleTranslationKey(role) ?? "designer")}</SelectItem>)}</Select>{fieldError("jobTitle") ? <p id="team-profile-jobTitle-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{t("correctFields")}</p> : null}</label>
             <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("role")}<Select defaultValue={systemRole} name="systemRole" required className="mt-2" {...errorAttributes("systemRole")}>{STUDIO_ACCESS_ROLES.map((role) => <SelectItem key={role} value={role}>{role === "admin" ? roles("administrator") : t("employee")}</SelectItem>)}</Select>{fieldError("systemRole") ? <p id="team-profile-systemRole-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{t("correctFields")}</p> : null}</label>
+            <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("joinDate")}<DatePicker aria-label={t("joinDate")} className="mt-2" defaultValue={joinedAt ?? ""} invalid={Boolean(fieldError("joinedAt"))} locale={locale} name="joinedAt" {...dateErrorAttributes("joinedAt")} />{fieldError("joinedAt") ? <p id="team-profile-joinedAt-error" role="alert" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{t("correctFields")}</p> : null}</label>
+            <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("birthday")}<DatePicker aria-label={t("birthday")} className="mt-2" defaultValue={birthDate ?? ""} invalid={Boolean(fieldError("birthDate"))} locale={locale} name="birthDate" {...dateErrorAttributes("birthDate")} />{fieldError("birthDate") ? <p id="team-profile-birthDate-error" role="alert" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{t("correctFields")}</p> : null}</label>
           </div>
         </fieldset>
         {state.formError ? <p role="alert" className="mt-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{t("profileUpdateFailed")}</p> : null}

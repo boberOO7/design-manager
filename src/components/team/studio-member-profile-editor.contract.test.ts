@@ -9,10 +9,13 @@ describe("studio member profile editor", () => {
     const source = await readFile(editorPath, "utf8");
     expect(source).toContain('import { Dialog } from "@/components/ui/dialog"');
     expect(source).toContain('import { Select, SelectItem } from "@/components/ui/select"');
+    expect(source).toContain('import { DatePicker } from "@/components/ui/date-picker"');
     expect(source).toContain("useActionState<StudioMemberProfileActionState, FormData>");
     expect(source).toContain("router.refresh()");
     expect(source).toContain("hasRefreshedAfterSave.current");
     expect(source).toContain('name="systemRole"');
+    expect(source).toContain('name="joinedAt"');
+    expect(source).toContain('name="birthDate"');
   });
 
   it("adds Edit profile alongside the existing active-member overflow actions", async () => {

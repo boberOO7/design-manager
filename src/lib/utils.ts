@@ -40,6 +40,12 @@ export function formatDateOnly(value?: string | null, locale = "en") {
   return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Formats a database `date` as a localized day and month without exposing its year. */
+export function formatDateOnlyDayMonth(value?: string | null, locale = "en") {
+  if (!value) return "—";
+  return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long" });
+}
+
 export function getProgressPercentage(total: number, completed: number) {
   if (total <= 0) return 0;
   return Math.min(100, Math.round((completed / total) * 100));

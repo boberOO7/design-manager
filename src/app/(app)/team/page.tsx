@@ -10,6 +10,7 @@ import { getLocalizedCityName } from "@/lib/city-provider";
 import { getCountryName, isCountryCode } from "@/lib/countries";
 import { defaultLocale, isAppLocale } from "@/i18n/config";
 import { TeamDirectory } from "@/components/team/team-directory";
+import { formatDateOnlyDayMonth } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Team");
@@ -45,7 +46,7 @@ export default async function TeamPage() {
 
       {adminMembership ? <InviteEmployeeForm /> : null}
 
-      <TeamDirectory currentUserId={adminMembership?.authenticatedUserId ?? null} isAdmin={isAdmin} members={directoryMembers.map((member) => ({ ...member, editableJobTitle: member.job_title, jobTitle: member.job_title ? (() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })() : null, roleLabel: member.system_role === "admin" ? roles("administrator") : t("employee"), systemRole: member.system_role }))} />
+      <TeamDirectory currentUserId={adminMembership?.authenticatedUserId ?? null} isAdmin={isAdmin} members={directoryMembers.map((member) => ({ ...member, birthdayLabel: formatDateOnlyDayMonth(member.birth_date, appLocale), editableJobTitle: member.job_title, jobTitle: member.job_title ? (() => { const key = getCanonicalRoleTranslationKey(member.job_title); return key ? roles(key) : member.job_title; })() : null, roleLabel: member.system_role === "admin" ? roles("administrator") : t("employee"), systemRole: member.system_role }))} />
     </div>
   );
 }

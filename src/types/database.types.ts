@@ -194,6 +194,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          birth_date: string | null
           city: string | null
           city_geonames_id: number | null
           country_code: string | null
@@ -208,6 +209,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          birth_date?: string | null
           city?: string | null
           city_geonames_id?: number | null
           country_code?: string | null
@@ -222,6 +224,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          birth_date?: string | null
           city?: string | null
           city_geonames_id?: number | null
           country_code?: string | null
@@ -594,7 +597,7 @@ export type Database = {
         Row: {
           id: string
           is_active: boolean
-          joined_at: string
+          joined_at: string | null
           removed_at: string | null
           removed_by: string | null
           studio_id: string
@@ -604,7 +607,7 @@ export type Database = {
         Insert: {
           id?: string
           is_active?: boolean
-          joined_at?: string
+          joined_at?: string | null
           removed_at?: string | null
           removed_by?: string | null
           studio_id: string
@@ -614,7 +617,7 @@ export type Database = {
         Update: {
           id?: string
           is_active?: boolean
-          joined_at?: string
+          joined_at?: string | null
           removed_at?: string | null
           removed_by?: string | null
           studio_id?: string
@@ -991,7 +994,7 @@ export type Database = {
         Returns: undefined
       }
       update_studio_member_profile: {
-        Args: { p_full_name: string; p_job_title: string; p_system_role: string; p_user_id: string }
+        Args: { p_birth_date: string | null; p_full_name: string; p_job_title: string; p_joined_at: string | null; p_system_role: string; p_user_id: string }
         Returns: undefined
       }
     }

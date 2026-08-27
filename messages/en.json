@@ -822,6 +822,8 @@
     "lastName": "Last name",
     "profession": "Profession",
     "role": "Role",
+    "joinDate": "Join date",
+    "birthday": "Birthday",
     "save": "Save",
     "saving": "Saving…",
     "profileUpdateFailed": "The profile could not be updated. Please try again.",

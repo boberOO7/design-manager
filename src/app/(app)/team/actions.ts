@@ -192,7 +192,7 @@ export async function updateStudioMemberProfile(_previousState: StudioMemberProf
   if (!parsed.success) {
     const fieldErrors: Partial<Record<StudioMemberProfileField, string>> = {};
     const flattened = parsed.error.flatten().fieldErrors;
-    for (const field of ["userId", "firstName", "lastName", "jobTitle", "systemRole"] satisfies StudioMemberProfileField[]) {
+    for (const field of ["userId", "firstName", "lastName", "jobTitle", "systemRole", "joinedAt", "birthDate"] satisfies StudioMemberProfileField[]) {
       const message = flattened[field]?.[0];
       if (message) fieldErrors[field] = message;
     }
@@ -207,6 +207,8 @@ export async function updateStudioMemberProfile(_previousState: StudioMemberProf
     p_job_title: parsed.data.jobTitle,
     p_system_role: parsed.data.systemRole,
     p_user_id: parsed.data.userId,
+    p_joined_at: parsed.data.joinedAt,
+    p_birth_date: parsed.data.birthDate,
   });
   if (error) {
     console.error("Unable to update studio member profile", error);

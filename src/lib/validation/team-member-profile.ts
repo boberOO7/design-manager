@@ -4,12 +4,16 @@ import { z } from "zod";
 
 export const STUDIO_ACCESS_ROLES = ["employee", "admin"] as const satisfies readonly SystemRole[];
 
+const optionalDateSchema = z.union([z.iso.date(), z.literal("")]).transform((value) => value || null);
+
 export const studioMemberProfileSchema = z.object({
   userId: z.string().uuid(),
   firstName: z.string().trim().min(1, "First name is required").max(60, "First name is too long"),
   lastName: z.string().trim().min(1, "Last name is required").max(60, "Last name is too long"),
   jobTitle: z.enum(PROFESSIONAL_ROLES, { error: "Choose a supported profession" }),
   systemRole: z.enum(STUDIO_ACCESS_ROLES, { error: "Choose a supported access role" }),
+  joinedAt: optionalDateSchema,
+  birthDate: optionalDateSchema,
 });
 
 export type StudioMemberProfileInput = z.infer<typeof studioMemberProfileSchema>;
@@ -32,6 +36,8 @@ export function getStudioMemberProfileInput(formData: FormData) {
     lastName: getFormString(formData, "lastName"),
     jobTitle: getFormString(formData, "jobTitle"),
     systemRole: getFormString(formData, "systemRole"),
+    joinedAt: getFormString(formData, "joinedAt"),
+    birthDate: getFormString(formData, "birthDate"),
   };
 }
 
