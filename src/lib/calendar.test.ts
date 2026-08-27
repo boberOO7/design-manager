@@ -9,6 +9,14 @@ import {
 } from "./calendar";
 import type { CalendarItem } from "@/types/calendar";
 
+function birthday(): Extract<CalendarItem, { source: "birthday" }> {
+  return { source: "birthday", key: "birthday:u1:2026", id: "birthday:u1:2026", title: "Avery", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u1"], member: { userId: "u1", fullName: "Avery", avatarUrl: null } };
+}
+
+function anniversary(): Extract<CalendarItem, { source: "team_anniversary" }> {
+  return { source: "team_anniversary", key: "anniversary:m1:2026", id: "anniversary:m1:2026", title: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u2"], member: { userId: "u2", fullName: "Taylor", avatarUrl: null } };
+}
+
 function deadline(overrides: Partial<Extract<CalendarItem, { source: "project_deadline" }>> = {}): Extract<CalendarItem, { source: "project_deadline" }> {
   return { source: "project_deadline", key: "project_deadline:p1", id: "p1", title: "Project", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: "p1", personIds: ["u1"], project: { id: "p1", name: "Project", clientName: null, status: "active" }, ...overrides };
 }
@@ -132,13 +140,15 @@ describe("Month spanning layout", () => {
   it("uses one shared geometry contract for events, time off, and deadlines", () => {
     const [single] = getMonthLayoutSegments([absence("single", "Avery", "2026-07-28", "2026-07-28")], dates);
     const [spanning] = getMonthLayoutSegments([absence("spanning", "Taylor", "2026-07-28", "2026-07-30")], dates);
+    const request = normalizePrivateTimeOff({ id: "request", userId: "u3", employeeName: "Morgan", requestType: "vacation", status: "approved", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: null, reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "u3" });
+    if (!request) throw new Error("Expected approved time off request");
     const categorySegments = getMonthLayoutSegments([
       allDayEvent("2026-07-28", "2026-07-28"),
       absence("time-off", "Avery", "2026-07-28", "2026-07-28"),
-      normalizePrivateTimeOff({ id: "request", userId: "u3", employeeName: "Morgan", requestType: "vacation", status: "approved", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: null, reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "u3" }),
+      request,
       deadline(),
       task(),
-    ].filter((item): item is CalendarItem => item !== null), dates);
+    ], dates);
     expect(single).toMatchObject({ startColumn: spanning?.startColumn, columnSpan: 1 });
     expect(MONTH_EVENT_GEOMETRY).toEqual({ cellPaddingBlockStart: 8, dateHeaderHeight: 28, headerClearance: 8, horizontalInset: 8, barHeight: 20, laneGap: 2, textPaddingInline: 8, verticalPadding: 0, borderInlineStartWidth: 2, borderRadius: 6 });
     expect(MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.laneGap).toBe(22);
@@ -291,6 +301,12 @@ describe("Calendar filtering and identity", () => {
   it("filters by category, project, person, and relevance", () => {
     const items = [deadline(), task()];
     expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, taskDeadlines: true, projectId: "p1", personId: "u2", mine: true }, "u2").map((item) => item.key)).toEqual(["task_deadline:t1"]);
+  });
+  it("keeps birthday and anniversary filters independently enabled by default", () => {
+    const items = [birthday(), anniversary()];
+    expect(filterCalendarItems(items, DEFAULT_CALENDAR_FILTERS, "u1")).toHaveLength(2);
+    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, birthdays: false }, "u1").map((item) => item.source)).toEqual(["team_anniversary"]);
+    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, teamAnniversaries: false }, "u1").map((item) => item.source)).toEqual(["birthday"]);
   });
   it("uses source-qualified unique IDs and removes duplicate joined rows", () => {
     const items = deduplicateCalendarItems([deadline(), deadline(), task({ id: "p1", key: "task_deadline:p1" })]);

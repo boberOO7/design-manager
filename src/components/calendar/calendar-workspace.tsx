@@ -53,6 +53,8 @@ function itemTone(item: CalendarItem) {
   if (item.source === "calendar_event") return "border-l-[var(--ui-event-border)] bg-[var(--ui-event-surface)] text-[var(--ui-event-text)]";
   if (item.source === "project_deadline") return "border-l-[var(--ui-warning-accent)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]";
   if (item.source === "task_deadline") return "border-l-[var(--ui-info-accent)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]";
+  if (item.source === "birthday") return "border-l-[var(--ui-birthday-border)] bg-[var(--ui-birthday-surface)] text-[var(--ui-birthday-text)]";
+  if (item.source === "team_anniversary") return "border-l-[var(--ui-anniversary-border)] bg-[var(--ui-anniversary-surface)] text-[var(--ui-anniversary-text)]";
   if (item.source === "time_off_request_admin") {
     const status = getTimeOffStatusBadgeStyle(item.status).variant;
     if (status === "warning") return "border-l-[var(--ui-warning-accent)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]";
@@ -66,7 +68,7 @@ function dateLabel(date: string, options: Intl.DateTimeFormatOptions = { month: 
 function useCalendarItemTitle() {
   const t = useTranslations("Calendar");
   const common = useTranslations("Common");
-  return (item: CalendarItem) => getCalendarItemDisplayTitle(item, {
+  return (item: CalendarItem) => item.source === "birthday" ? t("birthdayEvent", { name: item.member.fullName }) : item.source === "team_anniversary" ? t("teamAnniversaryEvent", { name: item.member.fullName }) : getCalendarItemDisplayTitle(item, {
     outOfOffice: t("outOfOffice"),
     pendingRequest: t("pendingRequest"),
     rejectedRequest: t("rejectedRequest"),
@@ -74,12 +76,18 @@ function useCalendarItemTitle() {
   });
 }
 
+function useCalendarItemTypeLabel() {
+  const t = useTranslations("Calendar");
+  return (item: CalendarItem) => item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "birthday" ? t("birthdays") : item.source === "team_anniversary" ? t("teamAnniversaries") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice");
+}
+
 const monthItemPresentationClassName = "box-border min-w-0 overflow-hidden border-y-0 border-r-0 p-0 text-left text-xs font-medium leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1";
 
 function CalendarPill({ item, month = false, mobile = false, onClick }: { item: CalendarItem; month?: boolean; mobile?: boolean; onClick: () => void }) {
-  const t = useTranslations("Calendar"); const locale = useLocale();
+  const locale = useLocale();
   const itemTitle = useCalendarItemTitle();
-  const label = item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice");
+  const itemTypeLabel = useCalendarItemTypeLabel();
+  const label = itemTypeLabel(item);
   const monthGeometry = month && !mobile ? getMonthItemGeometry() : undefined;
   const monthStyle = monthGeometry ? { height: monthGeometry.height, paddingInline: monthGeometry.textPaddingInline, paddingBlock: monthGeometry.verticalPadding, borderRadius: monthGeometry.leftRadius, borderLeftWidth: monthGeometry.borderInlineStartWidth } : undefined;
   const title = itemTitle(item);
@@ -107,6 +115,8 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     projectDeadlines: param(searchParams, "projects") !== "0",
     taskDeadlines: param(searchParams, "tasks") === "1",
     timeOff: param(searchParams, "timeOff") !== "0",
+    birthdays: param(searchParams, "birthdays") !== "0",
+    teamAnniversaries: param(searchParams, "anniversaries") !== "0",
     projectId: param(searchParams, "project"), personId: param(searchParams, "person"), mine: param(searchParams, "mine") === "1",
   };
 
@@ -134,6 +144,8 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     if (!merged.projectDeadlines) nextParams.set("projects", "0");
     if (merged.taskDeadlines) nextParams.set("tasks", "1");
     if (!merged.timeOff) nextParams.set("timeOff", "0");
+    if (!merged.birthdays) nextParams.set("birthdays", "0");
+    if (!merged.teamAnniversaries) nextParams.set("anniversaries", "0");
     if (merged.projectId) nextParams.set("project", merged.projectId);
     if (merged.personId) nextParams.set("person", merged.personId);
     if (merged.mine) nextParams.set("mine", "1");
@@ -188,7 +200,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
 }
 
 function FilterBar({ data, filters, onChange }: { data: CalendarPageData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void }) {
-  const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")]];
+  const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff" | "birthdays" | "teamAnniversaries">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")], ["birthdays", t("birthdays")], ["teamAnniversaries", t("teamAnniversaries")]];
   return <div className="grid gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4 lg:grid-cols-[1.5fr_1fr_1fr_auto]">
     <div className="flex flex-wrap gap-x-4 gap-y-2">{checks.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={filters[key]} onChange={(event) => onChange({ [key]: event.target.checked })} />{label}</label>)}</div>
     <Select aria-label={t("filterProject")} value={filters.projectId} onValueChange={(projectId) => onChange({ projectId })}><SelectItem value="">{t("allProjects")}</SelectItem>{data.projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>
@@ -296,16 +308,18 @@ function DetailPanel({ isOpen, onExited, title, eyebrow, onClose, children }: { 
 function DayDetails({ items, onItem }: { date: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void }) {
   const t = useTranslations("Calendar"); const locale = useLocale();
   const itemTitle = useCalendarItemTitle();
+  const itemTypeLabel = useCalendarItemTypeLabel();
   if (!items.length) return <p className="rounded-xl border border-dashed border-[var(--ui-border-strong)] p-6 text-center text-sm text-[var(--ui-text-muted)]">{t("nothingScheduled")}</p>;
-  return <div className="space-y-2">{items.map((item) => { const label = item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice"); return <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{item.source === "calendar_event" && !item.allDay ? <p className="mt-1 text-sm">{formatCalendarTime(item.startsAt, locale)}–{formatCalendarTime(item.endsAt, locale)}</p> : null}</button>; })}</div>;
+  return <div className="space-y-2">{items.map((item) => <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="text-xs font-semibold uppercase tracking-wide opacity-70">{itemTypeLabel(item)}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{item.source === "calendar_event" && !item.allDay ? <p className="mt-1 text-sm">{formatCalendarTime(item.startsAt, locale)}–{formatCalendarTime(item.endsAt, locale)}</p> : null}</button>)}</div>;
 }
 
 function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated }: { isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarPageData; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void }) {
   const t = useTranslations("Calendar"); const locale = useLocale(); const timeOff = useTranslations("TimeOff"); const notifications = useTranslations("Notifications"); const status = useTranslations("Status"); const priority = useTranslations("Priority");
   const itemTitle = useCalendarItemTitle();
+  const itemTypeLabel = useCalendarItemTypeLabel();
   const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [reviewNote, setReviewNote] = useState("");
   const timeOffMutationInFlight = useRef(false);
-  const itemEyebrow = item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice");
+  const itemEyebrow = itemTypeLabel(item);
   async function cancelEvent() { if (item.source !== "calendar_event") return; const thisOccurrence = item.occurrenceStart && window.confirm(locale.startsWith("uk") ? "Скасувати лише цю подію? Натисніть «Скасувати» для всієї серії." : "Cancel only this event? Press Cancel to cancel the entire series."); if (!thisOccurrence && !window.confirm(t("cancelEventConfirm"))) return; setPending(true); const suffix = thisOccurrence ? `?scope=this&occurrenceStart=${encodeURIComponent(item.occurrenceStart ?? "")}` : ""; const response = await fetch(`/api/calendar/events/${encodeURIComponent(item.id)}${suffix}`, { method: "DELETE" }); setPending(false); if (response.ok) onMutated(null, item.key); else setError(t("eventCancelFailed")); }
   async function respondToInvitation(inviteId: string, invitationStatus: "accepted" | "declined") {
     setPending(true); setError("");
@@ -318,7 +332,8 @@ function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated }:
   }
   async function timeOffAction(action: "approve" | "reject" | "cancel") { if (item.source !== "time_off_request_admin" || timeOffMutationInFlight.current) return; if (action === "cancel" && !window.confirm(t("cancelRequestConfirm"))) return; timeOffMutationInFlight.current = true; setPending(true); setError(""); try { const result = await updateTimeOffRequest(item.id, action, reviewNote); if (isTimeOffMutationResult(result)) onMutated(result.item ?? null, result.removedKey ?? null); else setError(timeOff("requestUpdateFailed")); } catch { setError(timeOff("requestUpdateFailed")); } finally { timeOffMutationInFlight.current = false; setPending(false); } }
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={itemTitle(item)} eyebrow={itemEyebrow} onClose={pending ? () => undefined : onClose}>{error ? <p role="alert" className="mb-4 rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="space-y-6 text-sm">
-    <section><h3 className="font-semibold text-[var(--ui-text)]">{t("when")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.source === "calendar_event" ? `${formatCalendarDateTime(item.startsAt)} – ${formatCalendarDateTime(item.endsAt)}` : `${dateLabel(item.startDate, { month: "long", day: "numeric", year: "numeric" })}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" })}` : ""}`}</p></section>
+    <section><h3 className="font-semibold text-[var(--ui-text)]">{t("when")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.source === "calendar_event" ? `${formatCalendarDateTime(item.startsAt)} – ${formatCalendarDateTime(item.endsAt)}` : `${dateLabel(item.startDate, item.source === "birthday" || item.source === "team_anniversary" ? { month: "long", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" })}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" })}` : ""}`}</p></section>
+    {item.source === "birthday" || item.source === "team_anniversary" ? <section className="flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4"><UserAvatar decorative imageUrl={item.member.avatarUrl} name={item.member.fullName} /><div><h3 className="font-semibold text-[var(--ui-text)]">{item.member.fullName}</h3><p className="text-sm text-[var(--ui-text-secondary)]">{itemTypeLabel(item)}</p></div></section> : null}
     {item.source === "calendar_event" ? <><section><h3 className="font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap leading-6 text-[var(--ui-text-secondary)]">{item.description || t("noDescription")}</p>{item.location ? <p className="mt-3 flex gap-2"><MapPin className="size-4" aria-hidden="true" />{item.location}</p> : null}{item.meetingUrl ? <a className="mt-2 flex gap-2 underline" href={item.meetingUrl} target="_blank" rel="noreferrer"><Video className="size-4" aria-hidden="true" />{t("openMeeting")}</a> : null}</section><section><h3 className="font-semibold">{t("organizer")}</h3><div className="mt-2 flex items-center gap-2"><UserAvatar decorative imageUrl={item.organizer.avatar_url} name={item.organizer.full_name} /><span>{item.organizer.full_name}</span></div></section><section><h3 className="font-semibold">{t("invitees")}</h3>{item.invitees.length ? <ul className="mt-2 space-y-2">{item.invitees.map((invitee) => <li key={invitee.inviteId} className="flex items-center justify-between gap-3"><span className="flex min-w-0 items-center gap-2"><UserAvatar decorative imageUrl={invitee.avatar_url} name={invitee.full_name} /><span className="truncate">{invitee.full_name}</span></span><InvitationStatus status={invitee.status} /></li>)}</ul> : <p className="mt-2 text-[var(--ui-text-secondary)]">{t("noInvitees")}</p>}</section>{item.invitees.find((invitee) => invitee.id === data.currentUserId) ? <section className="border-t border-[var(--ui-border-subtle)] pt-4"><h3 className="font-semibold">{t("yourResponse")}</h3><div className="mt-3 flex gap-2">{(["accepted", "declined"] as const).map((invitationStatus) => <Button key={invitationStatus} disabled={pending || item.invitees.find((invitee) => invitee.id === data.currentUserId)?.status === invitationStatus} variant={invitationStatus === "accepted" ? "default" : "outline"} onClick={() => { const invite = item.invitees.find((invitee) => invitee.id === data.currentUserId); if (invite) void respondToInvitation(invite.inviteId, invitationStatus); }}>{notifications(invitationStatus === "accepted" ? "accept" : "decline")}</Button>)}</div></section> : null}{item.project ? <Link className="font-medium underline" href={`/projects/${item.project.id}`}>{t("openProject")} · {item.project.name}</Link> : null}{(data.isAdmin || item.organizer.id === data.currentUserId) ? <div className="flex gap-2"><Button disabled={pending} onClick={() => onEdit(item)}>{t("editEvent")}</Button><Button disabled={pending} variant="outline" onClick={() => void cancelEvent()}>{t("cancelEvent")}</Button></div> : null}</> : null}
     {item.source === "project_deadline" ? <><p className="text-[var(--ui-text-secondary)]">{item.project.clientName ?? t("projectMilestone")} · {status(item.project.status)}</p><Link className="font-medium underline" href={`/projects/${item.project.id}`}>{t("openProject")}</Link></> : null}
     {item.source === "task_deadline" ? <><p className="whitespace-pre-wrap text-[var(--ui-text-secondary)]">{item.task.description || t("taskDescription")}</p><dl className="grid grid-cols-2 gap-4"><div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd>{item.task.assigneeName}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd>{status(item.task.status)}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd>{priority(item.task.priority)}</dd></div></dl><Link className="font-medium underline" href={`/projects/${item.task.projectId}`}>{t("openTask", { project: item.task.projectName })}</Link></> : null}

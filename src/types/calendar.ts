@@ -32,6 +32,12 @@ type CalendarTimeOffSubject = {
   subjectName: string;
 };
 
+type CalendarSystemMember = {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+};
+
 export type CalendarItem =
   | (CalendarBase & {
       source: "calendar_event";
@@ -81,6 +87,14 @@ export type CalendarItem =
       reviewedBy: string | null;
       reviewedAt: string | null;
       isOwn: boolean;
+    })
+  | (CalendarBase & {
+      source: "birthday";
+      member: CalendarSystemMember;
+    })
+  | (CalendarBase & {
+      source: "team_anniversary";
+      member: CalendarSystemMember;
     });
 
 export type CalendarFilters = {
@@ -88,6 +102,8 @@ export type CalendarFilters = {
   projectDeadlines: boolean;
   taskDeadlines: boolean;
   timeOff: boolean;
+  birthdays: boolean;
+  teamAnniversaries: boolean;
   projectId: string;
   personId: string;
   mine: boolean;

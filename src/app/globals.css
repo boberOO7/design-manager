@@ -54,6 +54,12 @@
   --ui-violet-surface: #ede9fe;
   --ui-violet-border: #6d28d9;
   --ui-violet-text: #5b21b6;
+  --ui-birthday-surface: #fce7f3;
+  --ui-birthday-border: #db2777;
+  --ui-birthday-text: #9d174d;
+  --ui-anniversary-surface: #ede9fe;
+  --ui-anniversary-border: #7c3aed;
+  --ui-anniversary-text: #5b21b6;
   --ui-category-teal-surface: #ccfbf1;
   --ui-category-teal-border: #0f766e;
   --ui-category-teal-text: #115e59;
@@ -139,6 +145,12 @@
   --ui-violet-surface: #3b0764;
   --ui-violet-border: #8b5cf6;
   --ui-violet-text: #c4b5fd;
+  --ui-birthday-surface: #500724;
+  --ui-birthday-border: #f472b6;
+  --ui-birthday-text: #fbcfe8;
+  --ui-anniversary-surface: #3b0764;
+  --ui-anniversary-border: #a78bfa;
+  --ui-anniversary-text: #ddd6fe;
   --ui-category-teal-surface: #134e4a;
   --ui-category-teal-border: #2dd4bf;
   --ui-category-teal-text: #99f6e4;
