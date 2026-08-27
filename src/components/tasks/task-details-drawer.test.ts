@@ -79,6 +79,24 @@ describe("task details drawer contract", () => {
     expect(source).toContain(': t("unassigned")');
   });
 
+  it("keeps co-assignee selection compact and moves options into an accessible popover", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    const control = source.slice(source.indexOf("function CoAssigneeMultiSelect"), source.indexOf("function ChecklistItemRow"));
+
+    expect(control).toContain("Popover.Trigger");
+    expect(control).toContain("Popover.Content");
+    expect(control).toContain('type="checkbox"');
+    expect(control).toContain('>{t("addCoAssignees")}</span>');
+    expect(control).toContain('t("removeCoAssignee"');
+    expect(control).toContain("members.filter((member) => member.id !== assigneeId)");
+    expect(control).toContain("selectedMembers.slice(0, 2)");
+    expect(control).not.toContain("searchCoAssignees");
+    expect(control).not.toContain("<Search");
+    expect(control).toContain('size="boardCard"');
+    expect(en.Tasks.addCoAssignees).toBe("Add co-assignees");
+    expect(uk.Tasks.addCoAssignees).toBe("Додати співвиконавців");
+  });
+
   it("keeps deletion in the administrator-only overflow action and requires confirmation", async () => {
     const source = await readFile(drawerPath, "utf8");
 
