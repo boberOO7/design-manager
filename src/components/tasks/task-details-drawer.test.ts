@@ -75,7 +75,8 @@ describe("task details drawer contract", () => {
     expect(source).toContain('value={values.assignee_id ?? ""}');
     expect(source).toContain('assignee_id: assigneeId || null');
     expect(source).toContain('<SelectItem value="">{t("unassigned")}</SelectItem>');
-    expect(source).toContain('task.assignee?.full_name ?? t("unassigned")');
+    expect(source).toContain('task.assignee ? <>');
+    expect(source).toContain(': t("unassigned")');
   });
 
   it("keeps deletion in the administrator-only overflow action and requires confirmation", async () => {

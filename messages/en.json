@@ -388,6 +388,7 @@
     "title": "Title",
     "description": "Description",
     "assignee": "Assignee",
+    "coAssignees": "Co-assignees",
     "selectProjectMember": "Select a project member",
     "priority": "Priority",
     "dueDate": "Due date",

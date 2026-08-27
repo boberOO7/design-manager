@@ -28,6 +28,8 @@ type ProfileSummary = {
   job_title: string;
 };
 
+export type TaskCollaborator = ProfileSummary;
+
 export type ProjectTask = Pick<
   TaskRow,
   | "id"
@@ -49,6 +51,7 @@ export type ProjectTask = Pick<
   completed_area_m2: TaskRow["completed_area_m2"];
   checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;
+  collaborators?: TaskCollaborator[];
   creator: ProfileSummary | null;
 };
 

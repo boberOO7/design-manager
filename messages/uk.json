@@ -388,6 +388,7 @@
     "title": "Назва",
     "description": "Опис",
     "assignee": "Виконавець",
+    "coAssignees": "Співвиконавці",
     "selectProjectMember": "Виберіть учасника проєкту",
     "priority": "Пріоритет",
     "dueDate": "Дедлайн",

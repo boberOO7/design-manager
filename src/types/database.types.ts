@@ -753,6 +753,15 @@ export type Database = {
           },
         ]
       }
+      task_collaborators: {
+        Row: { task_id: string; user_id: string; created_at: string }
+        Insert: { task_id: string; user_id: string; created_at?: string }
+        Update: { task_id?: string; user_id?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "task_collaborators_task_id_fkey"; columns: ["task_id"]; isOneToOne: false; referencedRelation: "tasks"; referencedColumns: ["id"] },
+          { foreignKeyName: "task_collaborators_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       project_task_stage_columns: {
         Row: { project_id: string; stage: string; enabled_statuses: string[]; progress_method: string; display_name: string | null; is_enabled: boolean; display_order: number; updated_at: string }
         Insert: { project_id: string; stage: string; enabled_statuses?: string[]; progress_method?: string; display_name?: string | null; is_enabled?: boolean; display_order?: number; updated_at?: string }
@@ -905,6 +914,14 @@ export type Database = {
       create_task_with_checklist: {
         Args: { p_checklist_items?: Json; p_task: Json }
         Returns: string
+      }
+      update_task_details_with_collaborators: {
+        Args: { p_collaborator_ids?: string[]; p_task: Json; p_task_id: string }
+        Returns: undefined
+      }
+      get_personal_task_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: { task_id: string }[]
       }
       save_checklist_template: {
         Args: { p_name: string; p_stages: Json; p_studio_id: string; p_template_id: string | null }

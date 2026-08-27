@@ -21,6 +21,8 @@ const optionalAssigneeSchema = z.preprocess(
   (value) => value === "" || value === undefined ? null : value,
   z.uuid("Choose a valid project member").nullable(),
 );
+const collaboratorIdsSchema = z.array(z.uuid("Choose valid project members")).max(50).default([])
+  .refine((ids) => new Set(ids).size === ids.length, "Choose each co-assignee only once");
 
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
@@ -76,6 +78,7 @@ export const taskEditSchema = z.object({
     z.string().trim().max(5000, "Description is too long").optional(),
   ),
   assignee_id: optionalAssigneeSchema,
+  collaborator_ids: collaboratorIdsSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   due_date: optionalDateSchema,
   completed_area_m2: optionalCompletedAreaSchema,

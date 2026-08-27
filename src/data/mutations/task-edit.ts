@@ -38,13 +38,14 @@ export async function updateTaskDetailsMutation(
     return { success: false, formError: "Complete every checklist item before moving this task to Client review or Done." };
   }
 
-  const members = parsed.data.assignee_id === null
+  const members = (parsed.data.assignee_id === null && parsed.data.collaborator_ids.length === 0)
     ? []
     : await getAssignableProjectMembers(
       authorization.task.project_id,
       authorization.task.project.studio_id,
     );
-  if (parsed.data.assignee_id !== null && !members.some((member) => member.id === parsed.data.assignee_id)) {
+  const requestedPeople = [parsed.data.assignee_id, ...parsed.data.collaborator_ids].filter((id): id is string => id !== null);
+  if (requestedPeople.some((id) => !members.some((member) => member.id === id))) {
     return {
       success: false,
       formError: "Please correct the highlighted fields.",
@@ -64,14 +65,13 @@ export async function updateTaskDetailsMutation(
     status: parsed.data.status,
   };
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .update(update)
-    .eq("id", authorization.task.id)
-    .select("id")
-    .maybeSingle();
+  const { error } = await supabase.rpc("update_task_details_with_collaborators", {
+    p_task_id: authorization.task.id,
+    p_task: update,
+    p_collaborator_ids: parsed.data.collaborator_ids,
+  });
 
-  if (error || !data) {
+  if (error) {
     console.error("Unable to update task details", error);
     return { success: false, formError: "The task could not be updated. Please try again." };
   }
@@ -80,7 +80,7 @@ export async function updateTaskDetailsMutation(
   revalidatePath("/dashboard");
 
   try {
-    const task = await getProjectTaskById(data.id);
+    const task = await getProjectTaskById(authorization.task.id);
     if (!task) return { success: false, formError: "The task could not be loaded. Please refresh and try again." };
     const { data: project, error: projectError } = await supabase.from("projects").select("status").eq("id", task.project_id).maybeSingle();
     if (projectError || !project) return { success: false, formError: "The task was updated, but the project could not be refreshed. Please refresh the page." };

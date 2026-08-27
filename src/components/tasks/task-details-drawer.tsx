@@ -11,6 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
@@ -45,6 +46,7 @@ function makeFormValues(task: ProjectTask): {
   title: string;
   description: string;
   assignee_id: string | null;
+  collaborator_ids: string[];
   priority: ProjectTask["priority"];
   stage: ProjectTask["stage"];
   due_date: string;
@@ -56,6 +58,7 @@ function makeFormValues(task: ProjectTask): {
     title: task.title,
     description: task.description ?? "",
     assignee_id: task.assignee_id,
+    collaborator_ids: (task.collaborators ?? []).map((collaborator) => collaborator.id),
     priority: task.priority,
     stage: task.stage,
     due_date: task.due_date ?? "",
@@ -404,10 +407,22 @@ export function TaskDetailsDrawer({
                 <h3 id="task-edit-planning" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskDetails")}</h3>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   <FormField label={t("assignee")} optional error={fieldErrors.assignee_id ? validation("correctFields") : undefined}>
-                    <Select value={values.assignee_id ?? ""} disabled={isSaving} onValueChange={(assigneeId) => setValues({ ...values, assignee_id: assigneeId || null })}>
+                    <Select value={values.assignee_id ?? ""} disabled={isSaving} onValueChange={(assigneeId) => setValues((current) => ({ ...current, assignee_id: assigneeId || null, collaborator_ids: current.collaborator_ids.filter((id) => id !== assigneeId) }))}>
                       <SelectItem value="">{t("unassigned")}</SelectItem>
                       {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
                     </Select>
+                  </FormField>
+                  <FormField label={t("coAssignees")} optional error={fieldErrors.collaborator_ids ? validation("correctFields") : undefined}>
+                    <fieldset className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1.5">
+                      <legend className="sr-only">{t("coAssignees")}</legend>
+                      {values.collaborator_ids.length ? <div className="mb-1.5 flex flex-wrap gap-1.5 px-1 pt-1" aria-live="polite">{members.filter((member) => values.collaborator_ids.includes(member.id)).map((member) => <span key={member.id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-[var(--ui-surface-strong)] py-0.5 pl-0.5 pr-2 text-xs font-medium text-[var(--ui-text)]"><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="boardCard" /><span className="truncate">{member.full_name}</span></span>)}</div> : null}
+                      <div className="max-h-36 space-y-0.5 overflow-y-auto" role="group" aria-label={t("coAssignees")}>
+                        {members.filter((member) => member.id !== values.assignee_id).map((member) => {
+                          const checked = values.collaborator_ids.includes(member.id);
+                          return <label key={member.id} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm transition-colors hover:bg-[var(--ui-surface-subtle)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--ui-focus)]"><input type="checkbox" checked={checked} disabled={isSaving} onChange={() => setValues((current) => ({ ...current, collaborator_ids: checked ? current.collaborator_ids.filter((id) => id !== member.id) : [...current.collaborator_ids, member.id] }))} className="size-4 shrink-0 accent-[var(--ui-action-primary)]" /><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="boardCard" /><span className="min-w-0 truncate text-[var(--ui-text)]">{member.full_name}</span></label>;
+                        })}
+                      </div>
+                    </fieldset>
                   </FormField>
                   <FormField label={t("priority")}>
                     <Select value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
@@ -480,12 +495,13 @@ export function TaskDetailsDrawer({
               <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
                 <dl className="mt-4 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.assignee?.full_name ?? t("unassigned")}</dd></div>
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span>{task.assignee.full_name}</span></> : t("unassigned")}</dd></div>
+                  {(task.collaborators?.length ?? 0) > 0 ? <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1 flex -space-x-1.5" aria-label={task.collaborators?.map((collaborator) => collaborator.full_name).join(", ")}>{task.collaborators?.slice(0, 4).map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}{(task.collaborators?.length ?? 0) > 4 ? <span title={task.collaborators?.slice(4).map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{(task.collaborators?.length ?? 0) - 4}</span> : null}</dd></div> : null}
                   <div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{statusLabel(task.status)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("dueDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.due_date ? formatDate(task.due_date, locale) : t("noDueDate")}</dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.creator?.full_name ?? t("unknown")}</dd></div>
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.created_at, locale)}</dd></div>
                 </dl>
               </section>

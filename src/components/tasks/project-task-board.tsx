@@ -207,8 +207,12 @@ function TaskCardContent({
       </div>
       <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] text-xs leading-4", compact ? "mt-1.5 items-center gap-1.5" : "mt-2 items-start gap-2")}>
         <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
-          <UserAvatar imageUrl={task.assignee?.avatar_url} name={task.assignee?.full_name} size="boardCard" decorative />
-          <span className="truncate">{task.assignee?.full_name ?? t("unassigned")}</span>
+          <span className="flex shrink-0 -space-x-1.5" aria-label={[task.assignee, ...(task.collaborators ?? [])].filter(Boolean).map((person) => person!.full_name).join(", ")}>
+            {task.assignee ? <span title={task.assignee.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" decorative /></span> : null}
+            {(task.collaborators ?? []).slice(0, task.assignee ? 3 : 4).map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" decorative /></span>)}
+            {(task.collaborators?.length ?? 0) > (task.assignee ? 3 : 4) ? <span className="inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[9px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{(task.collaborators?.length ?? 0) - (task.assignee ? 3 : 4)}</span> : null}
+          </span>
+          <span className="truncate">{task.assignee?.full_name ?? task.collaborators?.[0]?.full_name ?? t("unassigned")}</span>
           {compact && progress ? <span className="ui-numeric shrink-0 whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
             ? card("checklistProgress", { completed: progress.completed, total: progress.total, percent: formatNumber(progress.percent, locale) })
             : card("manualProgress", { percent: formatNumber(progress.percent, locale) })}</span> : null}
