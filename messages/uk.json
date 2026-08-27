@@ -639,6 +639,7 @@
     "teamAnniversaries": "Річниці в команді",
     "birthdayEvent": "🎂 День народження · {name}",
     "teamAnniversaryEvent": "🎉 Річниця в команді · {name}",
+    "teamAnniversaryDuration": "{count, plural, one {# рік у команді} few {# роки у команді} many {# років у команді} other {# року у команді}}",
     "filterProject": "Фільтрувати за проєктом",
     "filterPerson": "Фільтрувати за людиною",
     "allProjects": "Усі проєкти",

@@ -14,7 +14,7 @@ function birthday(): Extract<CalendarItem, { source: "birthday" }> {
 }
 
 function anniversary(): Extract<CalendarItem, { source: "team_anniversary" }> {
-  return { source: "team_anniversary", key: "anniversary:m1:2026", id: "anniversary:m1:2026", title: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u2"], member: { userId: "u2", fullName: "Taylor", avatarUrl: null } };
+  return { source: "team_anniversary", key: "anniversary:m1:2026", id: "anniversary:m1:2026", title: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u2"], member: { userId: "u2", fullName: "Taylor", avatarUrl: null }, anniversaryYears: 2 };
 }
 
 function deadline(overrides: Partial<Extract<CalendarItem, { source: "project_deadline" }>> = {}): Extract<CalendarItem, { source: "project_deadline" }> {

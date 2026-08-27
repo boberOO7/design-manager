@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787868494.9091766,
-    "ast_hash": "5e29c0cfc01b9daf2c1243c78b477aab",
+    "mtime": 1787869329.0001247,
+    "ast_hash": "44b4f03c3c3db8e52f5c9c058ee33eb7",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -745,8 +745,8 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1787868521.6697316,
-    "ast_hash": "ae4b431894affd743acab207e37d5cf7",
+    "mtime": 1787869329.6161463,
+    "ast_hash": "800bf448097eff1d3b643e61de320cc8",
     "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
@@ -970,8 +970,8 @@
     "semantic_hash": ""
   },
   "src/types/calendar.ts": {
-    "mtime": 1787868384.2974672,
-    "ast_hash": "95dd59d4c53b5359818f19bb7111e731",
+    "mtime": 1787869328.7081144,
+    "ast_hash": "68d7961897dee2fba3f62257a4d262d4",
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787868434.8043475,
-    "ast_hash": "aa25b52613dad8bd06ed7e5bf77eb8dc",
+    "mtime": 1787869329.1561303,
+    "ast_hash": "16b39e0d2461c6f0622e5dc1c7367f5f",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787868434.9843562,
-    "ast_hash": "328b0b9e77a97ee4c9a94335dc94ae36",
+    "mtime": 1787869329.316136,
+    "ast_hash": "9622a8129f9dde4941a65cdcea73f4aa",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1765,8 +1765,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1787260361.7566857,
-    "ast_hash": "a1d6b28d938766b00662a87bd99d7baa",
+    "mtime": 1787869336.7284021,
+    "ast_hash": "6a9ce1081a49cad135f35c6b8c61c880",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {
@@ -3580,13 +3580,13 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-system-events.test.ts": {
-    "mtime": 1787868494.597163,
-    "ast_hash": "0b101a8b0915b2017b8635177c7e0fd1",
+    "mtime": 1787869370.6372972,
+    "ast_hash": "8a06483719692923d26088421d24a48b",
     "semantic_hash": ""
   },
   "src/lib/calendar-system-events.ts": {
-    "mtime": 1787868384.473475,
-    "ast_hash": "1576cbc9b0c304925459218c453d473b",
+    "mtime": 1787869328.8521194,
+    "ast_hash": "1b844504232992fe738f272dc7e2dead",
     "semantic_hash": ""
   }
 }

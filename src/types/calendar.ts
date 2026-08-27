@@ -95,6 +95,7 @@ export type CalendarItem =
   | (CalendarBase & {
       source: "team_anniversary";
       member: CalendarSystemMember;
+      anniversaryYears: number;
     });
 
 export type CalendarFilters = {

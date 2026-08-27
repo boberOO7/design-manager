@@ -26,6 +26,17 @@ describe("calendar system events", () => {
     expect(items.find((item) => item.source === "birthday")?.title).toBe("Avery Stone");
   });
 
+  it("starts team anniversaries one full year after the join date and retains completed years", () => {
+    const recentMember = { ...member, joinedAt: "2026-08-25" };
+
+    expect(buildCalendarSystemEvents([recentMember], "2026-08-25", "2026-08-25").filter((item) => item.source === "team_anniversary")).toEqual([]);
+    expect(buildCalendarSystemEvents([recentMember], "2027-08-25", "2029-08-25").filter((item) => item.source === "team_anniversary")).toEqual([
+      expect.objectContaining({ startDate: "2027-08-25", anniversaryYears: 1 }),
+      expect.objectContaining({ startDate: "2028-08-25", anniversaryYears: 2 }),
+      expect.objectContaining({ startDate: "2029-08-25", anniversaryYears: 3 }),
+    ]);
+  });
+
   it("does not generate an event when the source date is outside the visible range", () => {
     expect(buildCalendarSystemEvents([member], "2026-03-01", "2026-12-30")).toEqual([]);
   });

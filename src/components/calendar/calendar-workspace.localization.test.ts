@@ -74,3 +74,12 @@ describe("time-off calendar title localization", () => {
     expect(uk.Calendar.outOfOffice).toBe("Відсутній(-я)");
   });
 });
+
+describe("team anniversary detail localization", () => {
+  it("uses the occurrence-derived duration through next-intl plural messages", () => {
+    expect(source).toContain('t("teamAnniversaryDuration", { count: item.anniversaryYears })');
+    expect(en.Calendar.teamAnniversaryDuration).toContain("plural");
+    expect(uk.Calendar.teamAnniversaryDuration).toContain("few");
+    expect(uk.Calendar.teamAnniversaryDuration).toContain("many");
+  });
+});

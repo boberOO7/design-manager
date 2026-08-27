@@ -45,8 +45,9 @@ export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], 
       }
       const joinedDate = member.joinedAt?.slice(0, 10);
       const anniversary = joinedDate ? annualCalendarDate(joinedDate, year) : null;
-      if (anniversary && anniversary >= start && anniversary <= end) {
-        items.push({ source: "team_anniversary", key: `anniversary:${member.membershipId}:${year}`, id: `anniversary:${member.membershipId}:${year}`, title: member.fullName, startDate: anniversary, endDate: anniversary, allDay: true, projectId: null, personIds: [member.userId], member: { userId: member.userId, fullName: member.fullName, avatarUrl: member.avatarUrl } });
+      const anniversaryYears = joinedDate ? year - Number(joinedDate.slice(0, 4)) : 0;
+      if (anniversary && anniversaryYears >= 1 && anniversary >= start && anniversary <= end) {
+        items.push({ source: "team_anniversary", key: `anniversary:${member.membershipId}:${year}`, id: `anniversary:${member.membershipId}:${year}`, title: member.fullName, startDate: anniversary, endDate: anniversary, allDay: true, projectId: null, personIds: [member.userId], member: { userId: member.userId, fullName: member.fullName, avatarUrl: member.avatarUrl }, anniversaryYears });
       }
     }
   }

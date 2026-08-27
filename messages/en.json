@@ -639,6 +639,7 @@
     "teamAnniversaries": "Team anniversaries",
     "birthdayEvent": "🎂 Birthday · {name}",
     "teamAnniversaryEvent": "🎉 Team anniversary · {name}",
+    "teamAnniversaryDuration": "{count, plural, one {# year on the team} other {# years on the team}}",
     "filterProject": "Filter by project",
     "filterPerson": "Filter by person",
     "allProjects": "All projects",
