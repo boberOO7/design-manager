@@ -51,7 +51,7 @@ export type ProjectTask = Pick<
   completed_area_m2: TaskRow["completed_area_m2"];
   checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;
-  collaborators?: TaskCollaborator[];
+  collaborators: TaskCollaborator[];
   creator: ProfileSummary | null;
 };
 

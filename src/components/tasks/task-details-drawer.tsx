@@ -58,7 +58,7 @@ function makeFormValues(task: ProjectTask): {
     title: task.title,
     description: task.description ?? "",
     assignee_id: task.assignee_id,
-    collaborator_ids: (task.collaborators ?? []).map((collaborator) => collaborator.id),
+    collaborator_ids: task.collaborators.map((collaborator) => collaborator.id),
     priority: task.priority,
     stage: task.stage,
     due_date: task.due_date ?? "",
@@ -487,7 +487,7 @@ export function TaskDetailsDrawer({
                 <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
                 <dl className="mt-4 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
                   <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span>{task.assignee.full_name}</span></> : t("unassigned")}</dd></div>
-                  {(task.collaborators?.length ?? 0) > 0 ? <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1 flex -space-x-1.5" aria-label={task.collaborators?.map((collaborator) => collaborator.full_name).join(", ")}>{task.collaborators?.slice(0, 4).map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}{(task.collaborators?.length ?? 0) > 4 ? <span title={task.collaborators?.slice(4).map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{(task.collaborators?.length ?? 0) - 4}</span> : null}</dd></div> : null}
+                  {task.collaborators.length > 0 ? <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1 flex -space-x-1.5" aria-label={task.collaborators.map((collaborator) => collaborator.full_name).join(", ")}>{task.collaborators.slice(0, 4).map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}{task.collaborators.length > 4 ? <span title={task.collaborators.slice(4).map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{task.collaborators.length - 4}</span> : null}</dd></div> : null}
                   <div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{statusLabel(task.status)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>

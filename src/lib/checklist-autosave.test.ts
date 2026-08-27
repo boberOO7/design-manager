@@ -18,6 +18,7 @@ function task(items: TaskChecklistItem[] = [item("first")]): ProjectTask {
     completed_at: null,
     created_at: timestamp,
     created_by: "423e4567-e89b-12d3-a456-426614174000",
+    collaborators: [],
     creator: null,
     description: null,
     due_date: null,

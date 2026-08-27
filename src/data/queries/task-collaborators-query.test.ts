@@ -9,6 +9,8 @@ describe("personal task co-assignee queries", () => {
     const source = await readFile(tasksQueryPath, "utf8");
 
     expect(source).toContain("collaborators:task_collaborators");
+    expect(source).toContain("task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey");
+    expect(source).toContain("normalizeTaskCollaborators");
     expect(source).toContain('supabase.rpc("get_personal_task_ids")');
     expect(source).toContain('.in("id", personalTaskIds.map((row) => row.task_id))');
     expect(source).not.toContain("Promise.all(data.map");
