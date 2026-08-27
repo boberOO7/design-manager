@@ -12,6 +12,7 @@ export interface Profile {
   full_name: string;
   email: string;
   avatar_url?: string;
+  birth_date?: string | null;
   country_code?: string | null;
   city?: string | null;
   city_geonames_id?: number | null;

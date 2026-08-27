@@ -1,11 +1,12 @@
 "use client";
 
-import { Camera, LoaderCircle, MapPin, Trash2, Upload } from "lucide-react";
+import { CakeSlice, Camera, LoaderCircle, MapPin, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { AvatarCropStep } from "@/components/layout/avatar-crop-step";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -17,6 +18,7 @@ import { AVATAR_BUCKET, getAvatarFileValidationError, getAvatarOriginalPath } fr
 
 type ProfileAvatarEditorProps = {
   avatarUrl?: string;
+  birthDate?: string | null;
   city?: string | null;
   cityGeoNamesId?: number | null;
   countryCode?: string | null;
@@ -30,7 +32,7 @@ function getFileExtension(file: File): string {
   return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
 }
 
-export function ProfileAvatarEditor({ avatarUrl, city, cityGeoNamesId, countryCode: initialCountryCode, fullName, userId }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCode, fullName, userId }: ProfileAvatarEditorProps) {
   const t = useTranslations("Account");
   const locale = useLocale();
   const router = useRouter();
@@ -38,27 +40,33 @@ export function ProfileAvatarEditor({ avatarUrl, city, cityGeoNamesId, countryCo
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isSavingBirthday, setIsSavingBirthday] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
+  const [birthdayError, setBirthdayError] = useState<string | null>(null);
+  const [birthdayStatus, setBirthdayStatus] = useState<string | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(avatarUrl);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [currentCountryCode, setCurrentCountryCode] = useState(initialCountryCode ?? "UA");
   const [currentCity, setCurrentCity] = useState(city ?? "");
   const [currentCityGeoNamesId, setCurrentCityGeoNamesId] = useState<number | undefined>(cityGeoNamesId ?? undefined);
+  const [currentBirthDate, setCurrentBirthDate] = useState(birthDate ?? "");
   const displayedAvatarUrl = previewUrl ?? currentAvatarUrl;
   const countryOptions = getCountryOptions(locale);
-  const isLocationPending = isPending || isSavingLocation;
+  const isProfilePending = isPending || isSavingLocation || isSavingBirthday;
 
   function closeDialog() {
-    if (isLocationPending) return;
+    if (isProfilePending) return;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setCropFile(null);
     setError(null);
     setLocationError(null);
     setLocationStatus(null);
+    setBirthdayError(null);
+    setBirthdayStatus(null);
     setIsOpen(false);
   }
 
@@ -180,12 +188,27 @@ export function ProfileAvatarEditor({ avatarUrl, city, cityGeoNamesId, countryCo
     router.refresh();
   }
 
+  async function saveBirthday() {
+    setBirthdayError(null);
+    setBirthdayStatus(null);
+    setIsSavingBirthday(true);
+    const { error: updateError } = await createClient().rpc("update_my_profile_birthday", { p_birth_date: currentBirthDate || null });
+    if (updateError) {
+      setBirthdayError(t("birthdaySaveFailed"));
+      setIsSavingBirthday(false);
+      return;
+    }
+    setBirthdayStatus(t(currentBirthDate ? "birthdaySaved" : "birthdayCleared"));
+    setIsSavingBirthday(false);
+    router.refresh();
+  }
+
   return <>
     <button type="button" onClick={() => setIsOpen(true)} className="group relative inline-flex shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("editProfilePhoto")}>
       <UserAvatar imageUrl={currentAvatarUrl} name={fullName} size="header" decorative />
       <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"><Camera className="size-4" aria-hidden="true" /></span>
     </button>
-    <Dialog closeDisabled={isLocationPending || Boolean(cropFile)} closeLabel={t("closeProfilePhoto")} description={cropFile ? t("cropAvatarDescription") : t("profileEditorDescription")} isOpen={isOpen} onRequestClose={closeDialog} title={cropFile ? t("cropAvatar") : t("profileEditor")}>
+    <Dialog closeDisabled={isProfilePending || Boolean(cropFile)} closeLabel={t("closeProfilePhoto")} description={cropFile ? t("cropAvatarDescription") : t("profileEditorDescription")} isOpen={isOpen} onRequestClose={closeDialog} title={cropFile ? t("cropAvatar") : t("profileEditor")}>
       {cropFile ? <AvatarCropStep file={cropFile} onCancel={() => setCropFile(null)} onFailure={() => setError(t("uploadFailed"))} onConfirm={async (croppedFile, originalFile) => {
         if (await uploadPhoto(croppedFile, originalFile)) setCropFile(null);
       }} /> : <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
@@ -194,22 +217,28 @@ export function ProfileAvatarEditor({ avatarUrl, city, cityGeoNamesId, countryCo
             <UserAvatar imageUrl={displayedAvatarUrl} name={fullName} size="profile" />
             <div className="min-w-0"><h3 id="profile-photo-heading" className="font-medium text-[var(--ui-text)]">{t("profilePhoto")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("photoRequirements")}</p></div>
           </div>
-          <input ref={fileInputRef} accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={isLocationPending} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; const validationError = getAvatarFileValidationError(file); if (validationError) { setError(t(validationError)); return; } setError(null); setCropFile(file); }} type="file" />
+          <input ref={fileInputRef} accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={isProfilePending} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; const validationError = getAvatarFileValidationError(file); if (validationError) { setError(t(validationError)); return; } setError(null); setCropFile(file); }} type="file" />
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={isLocationPending} onClick={() => fileInputRef.current?.click()} type="button"><Upload className="size-4" aria-hidden="true" />{isPending ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("uploadingPhoto")}</> : currentAvatarUrl ? t("changePhoto") : t("uploadPhoto")}</Button>
-            {currentAvatarUrl ? <Button disabled={isLocationPending} onClick={() => void removePhoto()} type="button" variant="outline"><Trash2 className="size-4" aria-hidden="true" />{t("removePhoto")}</Button> : null}
+            <Button disabled={isProfilePending} onClick={() => fileInputRef.current?.click()} type="button"><Upload className="size-4" aria-hidden="true" />{isPending ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("uploadingPhoto")}</> : currentAvatarUrl ? t("changePhoto") : t("uploadPhoto")}</Button>
+            {currentAvatarUrl ? <Button disabled={isProfilePending} onClick={() => void removePhoto()} type="button" variant="outline"><Trash2 className="size-4" aria-hidden="true" />{t("removePhoto")}</Button> : null}
           </div>
           {error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
+        </section>
+        <section aria-labelledby="profile-birthday-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
+          <div className="flex items-start gap-3"><CakeSlice aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" /><h3 id="profile-birthday-heading" className="font-medium text-[var(--ui-text)]">{t("birthday")}</h3></div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-3"><DatePicker aria-label={t("birthday")} disabled={isProfilePending} locale={locale} onValueChange={setCurrentBirthDate} value={currentBirthDate} /><Button disabled={isProfilePending} onClick={() => void saveBirthday()} type="button" variant="outline">{isSavingBirthday ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("savingBirthday")}</> : t("saveBirthday")}</Button></div>
+          {birthdayError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{birthdayError}</p> : null}
+          {birthdayStatus ? <p role="status" className="mt-3 text-sm text-[var(--ui-success-text)]">{birthdayStatus}</p> : null}
         </section>
         <section aria-labelledby="profile-location-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
           <div className="flex items-start gap-3">
             <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" />
-            <div><h3 id="profile-location-heading" className="font-medium text-[var(--ui-text)]">{t("location")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("locationDescription")}</p></div>
+            <h3 id="profile-location-heading" className="font-medium text-[var(--ui-text)]">{t("location")}</h3>
           </div>
           <div aria-label={t("location")} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <label className="grid grid-rows-[auto_2.75rem] gap-2 text-sm font-medium text-[var(--ui-text)]">
               {t("country")}
-              <Select disabled={isLocationPending} onValueChange={(value) => { setCurrentCountryCode(value); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); }} placeholder={t("selectCountry")} value={currentCountryCode}>
+              <Select disabled={isProfilePending} onValueChange={(value) => { setCurrentCountryCode(value); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); }} placeholder={t("selectCountry")} value={currentCountryCode}>
                 <SelectItem value="">{t("notConfigured")}</SelectItem>
                 {countryOptions.map((country) => <SelectItem key={country.code} value={country.code}>{country.label}</SelectItem>)}
               </Select>
@@ -220,8 +249,8 @@ export function ProfileAvatarEditor({ avatarUrl, city, cityGeoNamesId, countryCo
             </label>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button disabled={isLocationPending} onClick={() => void saveLocation()} type="button" variant="outline">{isSavingLocation ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("savingLocation")}</> : t("saveLocation")}</Button>
-            {currentCountryCode || currentCity ? <Button disabled={isLocationPending} onClick={() => { setCurrentCountryCode(""); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); setLocationStatus(null); }} type="button" variant="ghost">{t("clearLocation")}</Button> : null}
+            <Button disabled={isProfilePending} onClick={() => void saveLocation()} type="button" variant="outline">{isSavingLocation ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("savingLocation")}</> : t("saveLocation")}</Button>
+            {currentCountryCode || currentCity ? <Button disabled={isProfilePending} onClick={() => { setCurrentCountryCode(""); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); setLocationStatus(null); }} type="button" variant="ghost">{t("clearLocation")}</Button> : null}
           </div>
           {locationError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{locationError}</p> : null}
           {locationStatus ? <p role="status" className="mt-3 text-sm text-[var(--ui-success-text)]">{locationStatus}</p> : null}

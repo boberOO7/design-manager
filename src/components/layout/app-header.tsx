@@ -45,6 +45,7 @@ export async function AppHeader({ leaderboardVisibleToEmployees, profile, system
         <MobileNavigation leaderboardVisibleToEmployees={leaderboardVisibleToEmployees} systemRole={systemRole} />
         <ProfileAvatarEditor
           avatarUrl={profile.avatar_url}
+          birthDate={profile.birth_date}
           city={profile.city}
           cityGeoNamesId={profile.city_geonames_id}
           countryCode={profile.country_code}
