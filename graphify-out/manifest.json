@@ -2800,8 +2800,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/date-picker.tsx": {
-    "mtime": 1786628731.985359,
-    "ast_hash": "c00344db30bbc184b4d678b9dc589ada",
+    "mtime": 1787867048.114637,
+    "ast_hash": "cf3677772e166aa2d2952f34f4f75ab7",
     "semantic_hash": ""
   },
   "src/components/leaderboard/leaderboard-period-switcher.tsx": {
@@ -3572,6 +3572,11 @@
   "supabase/migrations/20260828100000_consolidate_self_service_profile_updates.sql": {
     "mtime": 1787866254.312357,
     "ast_hash": "514c4e3893b099f37167beb5265ebbe2",
+    "semantic_hash": ""
+  },
+  "src/components/ui/date-picker.contract.test.ts": {
+    "mtime": 1787867008.3057165,
+    "ast_hash": "fcd4e059a31fde7b042fe532652a5c55",
     "semantic_hash": ""
   }
 }
