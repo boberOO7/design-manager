@@ -54,6 +54,11 @@ export type ProductivityLeaderboardEntry = {
   completed_tasks: number;
 };
 
+export type ProductivityLeaderboardMember = Pick<
+  ProductivityLeaderboardEntry,
+  "user_id" | "full_name" | "job_title" | "avatar_url"
+>;
+
 export type LeaderboardPeriod = "month" | "quarter" | "year";
 
 export type ProjectAttributionMode = "project_fallback" | "task_level";
@@ -157,10 +162,35 @@ export function getLeaderboardTotals(entries: ProductivityLeaderboardEntry[]): {
   }), { completed_area_m2: 0, completed_tasks: 0 });
 }
 
-export function projectProductivityLeaderboard(attributions: ProductivityAttribution[]): ProductivityLeaderboardEntry[] {
+export function hasQualifyingProductivity(entry: Pick<ProductivityLeaderboardEntry, "completed_area_m2" | "completed_tasks">): boolean {
+  return entry.completed_area_m2 > 0 || entry.completed_tasks > 0;
+}
+
+export function projectProductivityLeaderboard(
+  attributions: ProductivityAttribution[],
+  eligibleMembers?: ProductivityLeaderboardMember[],
+): ProductivityLeaderboardEntry[] {
   const grouped = new Map<string, Omit<ProductivityLeaderboardEntry, "rank">>();
+  for (const member of eligibleMembers ?? []) {
+    grouped.set(member.user_id, {
+      user_id: member.user_id,
+      full_name: member.full_name,
+      job_title: member.job_title,
+      avatar_url: member.avatar_url ?? null,
+      completed_area_m2: 0,
+      completed_tasks: 0,
+    });
+  }
   for (const attribution of attributions) {
-    const entry = grouped.get(attribution.contributor_id) ?? { user_id: attribution.contributor_id, full_name: attribution.contributor_name, job_title: attribution.contributor_job_title, completed_area_m2: 0, completed_tasks: 0 };
+    const existingEntry = grouped.get(attribution.contributor_id);
+    if (eligibleMembers && !existingEntry) continue;
+    const entry = existingEntry ?? {
+      user_id: attribution.contributor_id,
+      full_name: attribution.contributor_name,
+      job_title: attribution.contributor_job_title,
+      completed_area_m2: 0,
+      completed_tasks: 0,
+    };
     entry.completed_area_m2 += Number(attribution.credited_area_m2);
     if (attribution.source_type === "task") entry.completed_tasks += 1;
     grouped.set(attribution.contributor_id, entry);

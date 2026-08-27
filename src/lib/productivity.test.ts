@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardTotals, getProjectAttributionMode, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
-import { getLeaderboardBonusPercent } from "./leaderboard-bonus-rules";
+import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardTotals, getProjectAttributionMode, hasQualifyingProductivity, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { getLeaderboardBonusPercent, getLeaderboardEntryBonusPercent } from "./leaderboard-bonus-rules";
 
 describe("monthly productivity projection", () => {
   it("uses Europe/Kyiv month boundaries across a DST month", () => {
@@ -54,6 +54,23 @@ describe("monthly productivity projection", () => {
       { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 10, source_type: "task" },
       { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 10, source_type: "task" },
     ])).toMatchObject([{ rank: 1, full_name: "Ari" }, { rank: 1, full_name: "Bea" }]);
+  });
+
+  it("keeps all eligible members in a stable member-first ranking with zero metrics", () => {
+    const entries = projectProductivityLeaderboard([
+      { contributor_id: "architect-admin", contributor_name: "Ada", contributor_job_title: "Architect", credited_area_m2: 25, source_type: "task" },
+      { contributor_id: "manager", contributor_name: "Morgan", contributor_job_title: "Manager", credited_area_m2: 100, source_type: "task" },
+    ], [
+      { user_id: "architect-admin", full_name: "Ada", job_title: "Architect" },
+      { user_id: "designer", full_name: "Dani", job_title: "Designer" },
+      { user_id: "architect", full_name: "Zara", job_title: "Architect" },
+    ]);
+
+    expect(entries).toEqual([
+      { rank: 1, user_id: "architect-admin", full_name: "Ada", job_title: "Architect", avatar_url: null, completed_area_m2: 25, completed_tasks: 1 },
+      { rank: 2, user_id: "designer", full_name: "Dani", job_title: "Designer", avatar_url: null, completed_area_m2: 0, completed_tasks: 0 },
+      { rank: 2, user_id: "architect", full_name: "Zara", job_title: "Architect", avatar_url: null, completed_area_m2: 0, completed_tasks: 0 },
+    ]);
   });
 
   it("aggregates completed tasks and project fallback credit in one selected period", () => {
@@ -130,5 +147,13 @@ describe("monthly productivity projection", () => {
     const config = { enabled: true, rules: [{ place: 1, bonusPercent: 15 }, { place: 2, bonusPercent: 10 }, { place: 3, bonusPercent: 5 }] };
     expect(entries.map((entry) => [entry.rank, getLeaderboardBonusPercent(entry.rank, config)])).toEqual([[1, 15], [1, 15], [3, 5]]);
     expect(getLeaderboardTotals([])).toEqual({ completed_area_m2: 0, completed_tasks: 0 });
+  });
+
+  it("does not assign a bonus or leader status to zero-result members", () => {
+    const zeroResult = { rank: 1, completed_area_m2: 0, completed_tasks: 0 };
+    const config = { enabled: true, rules: [{ place: 1, bonusPercent: 15 }] };
+
+    expect(hasQualifyingProductivity(zeroResult)).toBe(false);
+    expect(getLeaderboardEntryBonusPercent({ rank: zeroResult.rank, completedAreaM2: zeroResult.completed_area_m2, completedTasks: zeroResult.completed_tasks }, config)).toBe(0);
   });
 });

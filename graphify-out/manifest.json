@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1787694478.9211566,
-    "ast_hash": "6abc9df1ecbd19fa3713d44ea1696a74",
+    "mtime": 1787839858.439727,
+    "ast_hash": "9153192e8675d1fd4f9f4566a946c967",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/index.ts": {
-    "mtime": 1787694478.757148,
-    "ast_hash": "0c1c766b29dbd8481f75f35cc2eea00d",
+    "mtime": 1787839818.438866,
+    "ast_hash": "948142e28f77653b07d824f19e5d8e9e",
     "semantic_hash": ""
   },
   "src/data/queries/notifications.ts": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": ""
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1787765256.0573971,
-    "ast_hash": "90055867fa2da97d8db23582109007a5",
+    "mtime": 1787839868.4446545,
+    "ast_hash": "faddc68ac8016357aaaa638091c94d32",
     "semantic_hash": ""
   },
   "src/lib/productivity.ts": {
-    "mtime": 1787765255.877398,
-    "ast_hash": "309b30881648164f423bd552657fec26",
+    "mtime": 1787839858.287721,
+    "ast_hash": "901361ab0b2bd09b6cc12465749295af",
     "semantic_hash": ""
   },
   "supabase/migrations/20260730120000_productivity_attribution.sql": {
@@ -2970,8 +2970,8 @@
     "semantic_hash": ""
   },
   "src/lib/leaderboard-bonus-rules.ts": {
-    "mtime": 1786987661.3812346,
-    "ast_hash": "eba418ec42d99e3b199c1797ecea362a",
+    "mtime": 1787839818.2348573,
+    "ast_hash": "87522eadc1ebdd721dcd9365c07e2143",
     "semantic_hash": ""
   },
   "supabase/migrations/20260817172631_leaderboard_bonus_rules.sql": {
@@ -3455,13 +3455,13 @@
     "semantic_hash": ""
   },
   "src/data/queries/leaderboard-productivity-query.test.ts": {
-    "mtime": 1787694512.5291715,
-    "ast_hash": "b9933b1918267933b9d429c206fd054b",
+    "mtime": 1787839879.2090867,
+    "ast_hash": "25e4598a900ab618d3281b4d6559ed4a",
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.test.ts": {
-    "mtime": 1787694512.2771552,
-    "ast_hash": "a91aaadf2ecd495548784efdaf26078b",
+    "mtime": 1787839858.8477442,
+    "ast_hash": "71b0eeab5ed774e18ec6e8f690f3bd87",
     "semantic_hash": ""
   },
   "src/components/leaderboard/leaderboard-bonus-menu.contract.test.ts": {

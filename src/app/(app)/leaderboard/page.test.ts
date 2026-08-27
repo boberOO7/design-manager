@@ -18,4 +18,10 @@ describe("leaderboard page access", () => {
     const source = await readFile(pagePath, "utf8");
     expect(source).toContain("leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees}");
   });
+
+  it("keeps the empty-period leader state when the ranking has only zero-result members", async () => {
+    const source = await readFile(pagePath, "utf8");
+    expect(source).toContain("overview.current.find(hasQualifyingProductivity) ?? null");
+    expect(source).toContain("overview.current.some(hasQualifyingProductivity)");
+  });
 });

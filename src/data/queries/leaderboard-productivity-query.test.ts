@@ -8,6 +8,12 @@ describe("leaderboard productivity query", () => {
     const source = await readFile(queryPath, "utf8");
 
     expect(source).toContain('select("id, include_in_productivity")');
+    expect(source).toContain('select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url)")');
+    expect(source).toContain('.eq("is_active", true)');
+    expect(source).toContain('.eq("profile.is_active", true)');
+    expect(source).toContain('.in("profile.job_title", PROFESSIONAL_ROLES)');
+    expect(source).toContain("projectProductivityLeaderboard(");
+    expect(source).toContain("eligibleMembers,");
     expect(source).toContain('select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")');
     expect(source).toContain("excludedProjectIds.has(attribution.project_id)");
     expect(source).not.toContain("projects!inner(include_in_productivity)");
@@ -15,7 +21,7 @@ describe("leaderboard productivity query", () => {
 
   it("keeps server-side failure details available for diagnostics", async () => {
     const source = await readFile(queryPath, "utf8");
-    expect(source).toContain('console.error("Unable to load productivity.", projectsError ?? error)');
+    expect(source).toContain('console.error("Unable to load productivity.", cause)');
   });
 
   it("does not load leaderboard data for employees when studio visibility is disabled", async () => {
