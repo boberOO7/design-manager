@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1787857953.281803,
-    "ast_hash": "b9ab132b6c853da4f80b112d5f67ddea",
+    "mtime": 1787866253.7803364,
+    "ast_hash": "b613b98b1e317a2db018991154c49e14",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787857968.6001315,
-    "ast_hash": "9589c09854b43c4ae1f1d6218ff2a584",
+    "mtime": 1787866253.952343,
+    "ast_hash": "f00827e569f7eccfefb3a534bb6e6349",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787857968.7601392,
-    "ast_hash": "1cb61b5db4680497acf93d7411b60705",
+    "mtime": 1787866254.1403503,
+    "ast_hash": "73ed6d2780693ff1b281d3e1930076c5",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1940,8 +1940,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/profile-avatar-editor.tsx": {
-    "mtime": 1787857953.0457916,
-    "ast_hash": "28f204b14b8bf3f044d54cfb1325ba26",
+    "mtime": 1787866253.640331,
+    "ast_hash": "197c30c2fedf695d086b4638d54f8aaa",
     "semantic_hash": ""
   },
   "src/lib/avatar-storage-migration.test.ts": {
@@ -1970,8 +1970,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/profile-avatar-editor.contract.test.ts": {
-    "mtime": 1787858000.257491,
-    "ast_hash": "7e61b40573726ee5d8373584b87c310a",
+    "mtime": 1787866282.3842695,
+    "ast_hash": "470c0d81879c8a15f96d2b7d9e75ef20",
     "semantic_hash": ""
   },
   "src/components/layout/avatar-crop-step.contract.test.ts": {
@@ -3562,6 +3562,16 @@
   "supabase/migrations/20260827124000_add_self_service_profile_birthday.sql": {
     "mtime": 1787857953.5898175,
     "ast_hash": "1653d63dfe0cf88d26c00cc5fda24fb3",
+    "semantic_hash": ""
+  },
+  "src/lib/profile-details-migration.test.ts": {
+    "mtime": 1787866282.5162747,
+    "ast_hash": "c05f9f3991268dfc017be12543f2f387",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260828100000_consolidate_self_service_profile_updates.sql": {
+    "mtime": 1787866254.312357,
+    "ast_hash": "514c4e3893b099f37167beb5265ebbe2",
     "semantic_hash": ""
   }
 }

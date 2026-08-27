@@ -32,30 +32,39 @@ function getFileExtension(file: File): string {
   return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
 }
 
-export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCode, fullName, userId }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCodeProp, fullName, userId }: ProfileAvatarEditorProps) {
   const t = useTranslations("Account");
   const locale = useLocale();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
-  const [isSavingBirthday, setIsSavingBirthday] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [locationStatus, setLocationStatus] = useState<string | null>(null);
-  const [birthdayError, setBirthdayError] = useState<string | null>(null);
-  const [birthdayStatus, setBirthdayStatus] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(avatarUrl);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
-  const [currentCountryCode, setCurrentCountryCode] = useState(initialCountryCode ?? "UA");
-  const [currentCity, setCurrentCity] = useState(city ?? "");
-  const [currentCityGeoNamesId, setCurrentCityGeoNamesId] = useState<number | undefined>(cityGeoNamesId ?? undefined);
-  const [currentBirthDate, setCurrentBirthDate] = useState(birthDate ?? "");
+  const initialCountryCode = initialCountryCodeProp ?? "UA";
+  const initialBirthDate = birthDate ?? "";
+  const initialCity = city ?? "";
+  const initialCityGeoNamesId = cityGeoNamesId ?? undefined;
+  const [currentCountryCode, setCurrentCountryCode] = useState(initialCountryCode);
+  const [currentCity, setCurrentCity] = useState(initialCity);
+  const [currentCityGeoNamesId, setCurrentCityGeoNamesId] = useState<number | undefined>(initialCityGeoNamesId);
+  const [currentBirthDate, setCurrentBirthDate] = useState(initialBirthDate);
   const displayedAvatarUrl = previewUrl ?? currentAvatarUrl;
   const countryOptions = getCountryOptions(locale);
-  const isProfilePending = isPending || isSavingLocation || isSavingBirthday;
+  const isProfilePending = isPending || isSavingProfile;
+  const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId;
+
+  function resetProfileFields() {
+    setCurrentBirthDate(initialBirthDate);
+    setCurrentCountryCode(initialCountryCode);
+    setCurrentCity(initialCity);
+    setCurrentCityGeoNamesId(initialCityGeoNamesId);
+    setProfileError(null);
+  }
 
   function closeDialog() {
     if (isProfilePending) return;
@@ -63,10 +72,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
     setPreviewUrl(null);
     setCropFile(null);
     setError(null);
-    setLocationError(null);
-    setLocationStatus(null);
-    setBirthdayError(null);
-    setBirthdayStatus(null);
+    resetProfileFields();
     setIsOpen(false);
   }
 
@@ -160,46 +166,30 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
     router.refresh();
   }
 
-  async function saveLocation() {
+  async function saveProfile() {
     const normalizedCity = currentCity.trim();
     if (normalizedCity && !isCountryCode(currentCountryCode)) {
-      setLocationError(t("locationCountryRequired"));
-      setLocationStatus(null);
+      setProfileError(t("locationCountryRequired"));
       return;
     }
 
-    setLocationError(null);
-    setLocationStatus(null);
-    setIsSavingLocation(true);
-    const { error: updateError } = await createClient().rpc("update_my_profile_location", {
+    setProfileError(null);
+    setIsSavingProfile(true);
+    const { error: updateError } = await createClient().rpc("update_my_profile_details", {
+      p_birth_date: currentBirthDate || null,
       p_city: normalizedCity || null,
       p_city_geonames_id: normalizedCity ? currentCityGeoNamesId ?? null : null,
       p_country_code: currentCountryCode || null,
     });
 
     if (updateError) {
-      setLocationError(t("locationSaveFailed"));
-      setIsSavingLocation(false);
+      setProfileError(t("profileSaveFailed"));
+      setIsSavingProfile(false);
       return;
     }
 
-    setLocationStatus(t(normalizedCity ? "locationSaved" : "locationCleared"));
-    setIsSavingLocation(false);
-    router.refresh();
-  }
-
-  async function saveBirthday() {
-    setBirthdayError(null);
-    setBirthdayStatus(null);
-    setIsSavingBirthday(true);
-    const { error: updateError } = await createClient().rpc("update_my_profile_birthday", { p_birth_date: currentBirthDate || null });
-    if (updateError) {
-      setBirthdayError(t("birthdaySaveFailed"));
-      setIsSavingBirthday(false);
-      return;
-    }
-    setBirthdayStatus(t(currentBirthDate ? "birthdaySaved" : "birthdayCleared"));
-    setIsSavingBirthday(false);
+    setIsSavingProfile(false);
+    setIsOpen(false);
     router.refresh();
   }
 
@@ -211,7 +201,8 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
     <Dialog closeDisabled={isProfilePending || Boolean(cropFile)} closeLabel={t("closeProfilePhoto")} description={cropFile ? t("cropAvatarDescription") : t("profileEditorDescription")} isOpen={isOpen} onRequestClose={closeDialog} title={cropFile ? t("cropAvatar") : t("profileEditor")}>
       {cropFile ? <AvatarCropStep file={cropFile} onCancel={() => setCropFile(null)} onFailure={() => setError(t("uploadFailed"))} onConfirm={async (croppedFile, originalFile) => {
         if (await uploadPhoto(croppedFile, originalFile)) setCropFile(null);
-      }} /> : <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
+      }} /> : <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
         <section aria-labelledby="profile-photo-heading">
           <div className="flex items-center gap-4">
             <UserAvatar imageUrl={displayedAvatarUrl} name={fullName} size="profile" />
@@ -226,9 +217,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
         </section>
         <section aria-labelledby="profile-birthday-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
           <div className="flex items-start gap-3"><CakeSlice aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" /><h3 id="profile-birthday-heading" className="font-medium text-[var(--ui-text)]">{t("birthday")}</h3></div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-3"><DatePicker aria-label={t("birthday")} disabled={isProfilePending} locale={locale} onValueChange={setCurrentBirthDate} value={currentBirthDate} /><Button disabled={isProfilePending} onClick={() => void saveBirthday()} type="button" variant="outline">{isSavingBirthday ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("savingBirthday")}</> : t("saveBirthday")}</Button></div>
-          {birthdayError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{birthdayError}</p> : null}
-          {birthdayStatus ? <p role="status" className="mt-3 text-sm text-[var(--ui-success-text)]">{birthdayStatus}</p> : null}
+          <DatePicker aria-label={t("birthday")} className="mt-4 w-full sm:w-64" disabled={isProfilePending} locale={locale} onValueChange={(value) => { setCurrentBirthDate(value); setProfileError(null); }} value={currentBirthDate} />
         </section>
         <section aria-labelledby="profile-location-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
           <div className="flex items-start gap-3">
@@ -238,23 +227,20 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
           <div aria-label={t("location")} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <label className="grid grid-rows-[auto_2.75rem] gap-2 text-sm font-medium text-[var(--ui-text)]">
               {t("country")}
-              <Select disabled={isProfilePending} onValueChange={(value) => { setCurrentCountryCode(value); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); }} placeholder={t("selectCountry")} value={currentCountryCode}>
+              <Select disabled={isProfilePending} onValueChange={(value) => { setCurrentCountryCode(value); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setProfileError(null); }} placeholder={t("selectCountry")} value={currentCountryCode}>
                 <SelectItem value="">{t("notConfigured")}</SelectItem>
                 {countryOptions.map((country) => <SelectItem key={country.code} value={country.code}>{country.label}</SelectItem>)}
               </Select>
             </label>
             <label className="grid grid-rows-[auto_2.75rem] gap-2 text-sm font-medium text-[var(--ui-text)]">
               {t("city")}
-              {isCountryCode(currentCountryCode) ? <CityCombobox className="mt-0" countryCode={currentCountryCode} name="profile-city" onGeoNamesIdChange={setCurrentCityGeoNamesId} onValueChange={setCurrentCity} value={currentCity} /> : <p className="flex h-11 items-center rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] px-3 text-sm font-normal text-[var(--ui-text-muted)]">{t("selectCountryFirst")}</p>}
+              {isCountryCode(currentCountryCode) ? <CityCombobox className="mt-0" countryCode={currentCountryCode} name="profile-city" onGeoNamesIdChange={setCurrentCityGeoNamesId} onValueChange={(value) => { setCurrentCity(value); setProfileError(null); }} value={currentCity} /> : <p className="flex h-11 items-center rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] px-3 text-sm font-normal text-[var(--ui-text-muted)]">{t("selectCountryFirst")}</p>}
             </label>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button disabled={isProfilePending} onClick={() => void saveLocation()} type="button" variant="outline">{isSavingLocation ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("savingLocation")}</> : t("saveLocation")}</Button>
-            {currentCountryCode || currentCity ? <Button disabled={isProfilePending} onClick={() => { setCurrentCountryCode(""); setCurrentCity(""); setCurrentCityGeoNamesId(undefined); setLocationError(null); setLocationStatus(null); }} type="button" variant="ghost">{t("clearLocation")}</Button> : null}
-          </div>
-          {locationError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{locationError}</p> : null}
-          {locationStatus ? <p role="status" className="mt-3 text-sm text-[var(--ui-success-text)]">{locationStatus}</p> : null}
         </section>
+        {profileError ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{profileError}</p> : null}
+        </div>
+        <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:flex-row sm:justify-end sm:px-6"><Button disabled={isProfilePending} onClick={closeDialog} type="button" variant="outline">{t("cancel")}</Button><Button aria-busy={isSavingProfile} disabled={isProfilePending || !isProfileDirty} onClick={() => void saveProfile()} type="button">{isSavingProfile ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("saving")}</> : t("save")}</Button></footer>
       </div>}
     </Dialog>
   </>;
