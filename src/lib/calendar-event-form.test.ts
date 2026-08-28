@@ -27,8 +27,22 @@ describe("Calendar event form time semantics", () => {
     expect(updateEventStartDate({ ...baseValues, allDay: false, endDate: "2026-09-05" }, "2026-09-03", false)).toMatchObject({ startDate: "2026-09-03", endDate: "2026-09-05" });
   });
 
-  it("keeps timed events valid when a start time moves past the same-day end time", () => {
-    expect(updateEventStartTime({ ...baseValues, allDay: false }, "11:00")).toMatchObject({ startTime: "11:00", endDate: "2026-07-29", endTime: "10:00" });
+  it("moves a linked end time by the existing duration when the start time changes", () => {
+    expect(updateEventStartTime({ ...baseValues, allDay: false }, "11:00", true)).toMatchObject({ startTime: "11:00", endDate: "2026-07-28", endTime: "12:00" });
+    expect(updateEventStartTime({ ...baseValues, allDay: false, startTime: "12:00", endTime: "13:00" }, "14:30", true)).toMatchObject({ startTime: "14:30", endDate: "2026-07-28", endTime: "15:30" });
+    expect(updateEventStartTime({ ...baseValues, allDay: false, startTime: "12:00", endTime: "14:00" }, "15:00", true)).toMatchObject({ startTime: "15:00", endDate: "2026-07-28", endTime: "17:00" });
+  });
+
+  it("rolls a linked end time onto the next date", () => {
+    expect(updateEventStartTime({ ...baseValues, allDay: false, startTime: "12:00", endTime: "13:00" }, "23:30", true)).toMatchObject({ startTime: "23:30", endDate: "2026-07-29", endTime: "00:30" });
+  });
+
+  it("preserves a valid manually edited end time", () => {
+    expect(updateEventStartTime({ ...baseValues, allDay: false, endTime: "16:00" }, "11:00", false)).toMatchObject({ startTime: "11:00", endDate: "2026-07-28", endTime: "16:00" });
+  });
+
+  it("repairs a manually edited end time that becomes earlier than start", () => {
+    expect(updateEventStartTime({ ...baseValues, allDay: false, endTime: "14:00" }, "15:00", false)).toMatchObject({ startTime: "15:00", endDate: "2026-07-28", endTime: "16:00" });
   });
 
   it("stores a single all-day date as a positive one-day Kyiv interval", () => {
