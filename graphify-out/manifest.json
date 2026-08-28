@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787909868.3105621,
-    "ast_hash": "61e9c66b6445069a9809d039b8d8d9aa",
+    "mtime": 1787910852.539171,
+    "ast_hash": "0676264f179c007f510a9845cd2a79d1",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -3587,6 +3587,16 @@
   "src/lib/calendar-system-events.ts": {
     "mtime": 1787869328.8521194,
     "ast_hash": "1b844504232992fe738f272dc7e2dead",
+    "semantic_hash": ""
+  },
+  "src/components/ui/time-picker.test.ts": {
+    "mtime": 1787911463.9723732,
+    "ast_hash": "f29d103bdf0ffbd766a1eea71b03c62c",
+    "semantic_hash": ""
+  },
+  "src/components/ui/time-picker.tsx": {
+    "mtime": 1787911463.8163667,
+    "ast_hash": "b400db666aff2b4ea76f220532b762c2",
     "semantic_hash": ""
   }
 }
