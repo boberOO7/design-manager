@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787922097.072342,
-    "ast_hash": "b8c2f7f78fa2b700d65083bcd051285a",
+    "mtime": 1787927828.45339,
+    "ast_hash": "e33cce70e49becf1c99ddf3944433069",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-form.ts": {
-    "mtime": 1787909868.1265535,
-    "ast_hash": "2fc8ea5e859768e005a93b8f36841202",
+    "mtime": 1787927799.5932157,
+    "ast_hash": "cb3690f297bb9daabcd8de6cba49999d",
     "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.test.ts": {
@@ -1765,8 +1765,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1787922109.4883044,
-    "ast_hash": "7f339619165481deed5cc54ba056ee20",
+    "mtime": 1787927852.2933767,
+    "ast_hash": "c2969b212ed62cf5698dc3195f774100",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {
@@ -3632,6 +3632,16 @@
   "supabase/migrations/20260828140000_add_self_service_profile_start_date.sql": {
     "mtime": 1787925756.698562,
     "ast_hash": "833a3d80c4f3cc330dcac3fe8b07549a",
+    "semantic_hash": ""
+  },
+  "src/lib/calendar-form-range.test.ts": {
+    "mtime": 1787927852.1493692,
+    "ast_hash": "20bb2f4c1fbf47f5e8a74dd017fb9882",
+    "semantic_hash": ""
+  },
+  "src/lib/calendar-form-range.ts": {
+    "mtime": 1787927799.4652097,
+    "ast_hash": "58f7ac19a57b714518a5428383d50947",
     "semantic_hash": ""
   }
 }

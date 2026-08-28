@@ -50,6 +50,10 @@ describe("time-off form localization contract", () => {
     expect(source).toContain('getCreatableTimeOffRequestTypes');
     expect(source).toContain('t(timeOffRequestTypeKey[type])');
     expect(source).toContain('calendar("requestTimeOffTitle")');
+    expect(source).toContain('updateLinkedStartDate(values, startDate, endDateLinked)');
+    expect(source).toContain('updateLinkedStartTime(values, startTime, endTimeLinked)');
+    expect(source).toContain('setEndDateLinked(false)');
+    expect(source).toContain('setEndTimeLinked(false)');
     expect(source).not.toContain('title="Request time off" eyebrow="Private request"');
   });
 
