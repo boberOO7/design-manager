@@ -8,7 +8,6 @@ function task(overrides: Partial<ProjectTaskForProgress> = {}): ProjectTaskForPr
 describe("task progress", () => {
   it.each([
     ["todo", 0],
-    ["in_progress", 50],
     ["internal_review", 80],
     ["review", 90],
     ["completed", 100],
@@ -21,14 +20,33 @@ describe("task progress", () => {
     expect(calculateTaskProgress(task({ status: "in_progress", manual_progress_override: true, production_completion: production }))).toMatchObject({ source: "manual", productionPercent: production, overallPercent: overall });
   });
 
-  it("uses the source status only when returning to In progress", () => {
-    expect(getAutomaticTaskProgress("todo", "in_progress")).toBe(50);
+  it("starts a first pass at zero and preserves the rework workflow value", () => {
+    expect(getAutomaticTaskProgress("todo", "in_progress")).toBe(0);
     expect(getAutomaticTaskProgress("internal_review", "in_progress")).toBe(70);
     expect(getAutomaticTaskProgress("review", "in_progress")).toBe(70);
     expect(getAutomaticTaskProgress("completed", "in_progress")).toBe(70);
     expect(getAutomaticTaskProgress("review", "internal_review")).toBe(80);
     expect(getAutomaticTaskProgress("completed", "review")).toBe(90);
     expect(getAutomaticTaskProgress("completed", "todo")).toBe(0);
+  });
+
+  it("derives first-pass manual production from zero without requiring an override flag", () => {
+    expect(calculateTaskProgress(task({ status: "in_progress" }))).toMatchObject({
+      source: "manual",
+      productionPercent: 0,
+      overallPercent: 0,
+    });
+  });
+
+  it("retains automatic rework at 70% while explicit manual production stays proportional", () => {
+    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 70 }))).toMatchObject({
+      source: "manual",
+      overallPercent: 70,
+    });
+    expect(calculateTaskProgress(task({ status: "in_progress", manual_progress_override: true, production_completion: 70 }))).toMatchObject({
+      source: "manual",
+      overallPercent: 49,
+    });
   });
 
   it.each([
@@ -50,7 +68,7 @@ describe("task progress", () => {
   it("uses weighted checklist completion and ignores the manual fallback while items exist", () => {
     const progress = calculateTaskProgress(task({ status: "in_progress", production_completion: 99, checklist_items: [{ id: "a", is_completed: true, weight: 1 }, { id: "b", is_completed: false, weight: 3 }] }));
     expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 17.5, completedChecklistCount: 1, checklistCount: 2 });
-    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 37, checklist_items: [] })).productionPercent).toBe(37);
+    expect(calculateTaskProgress(task({ status: "in_progress", production_completion: 37, checklist_items: [] }))).toMatchObject({ source: "manual", productionPercent: 37, overallPercent: 25.9 });
   });
 
   it.each([["internal_review", 80], ["review", 90], ["completed", 100]])("lets the %s workflow checkpoint override checklist production", (status, overallPercent) => {
@@ -59,6 +77,15 @@ describe("task progress", () => {
 });
 
 describe("project task progress", () => {
+  it("carries first-pass zero progress through stage and project aggregates", () => {
+    const progress = calculateProjectProgress([
+      task({ id: "started", status: "in_progress", stage: "stage_1" }),
+    ]);
+
+    expect(calculateStageProgress([task({ id: "started", status: "in_progress", stage: "stage_1" })]).stage_1.progressPercent).toBe(0);
+    expect(progress).toMatchObject({ rawProgressPercent: 0, progressPercent: 0 });
+  });
+
   it("excludes cancelled tasks and returns zero progress with no eligible tasks", () => {
     expect(calculateProjectProgress([task({ status: "cancelled" })], "2026-07-28")).toMatchObject({ eligibleTaskCount: 0, completedTaskCount: 0, rawProgressPercent: 0, progressPercent: 0 });
   });

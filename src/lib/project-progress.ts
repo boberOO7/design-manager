@@ -151,7 +151,7 @@ function clampPercent(value: number): number {
 
 const AUTOMATIC_TASK_PROGRESS_BY_STATUS: Record<string, number> = {
   todo: 0,
-  in_progress: 50,
+  in_progress: 0,
   internal_review: 80,
   review: 90,
   completed: 100,
@@ -159,14 +159,14 @@ const AUTOMATIC_TASK_PROGRESS_BY_STATUS: Record<string, number> = {
 } satisfies Record<TaskStatus, number>;
 
 /**
- * The workflow owns automatic progress. Only a return to In progress needs
- * context from the source status; every other destination is fixed.
+ * A first pass starts at zero. Only a return to In progress needs context
+ * from the source status; every other destination is fixed.
  */
 export function getAutomaticTaskProgress(previousStatus: string, targetStatus: string): number {
   if (targetStatus === "in_progress") {
     return previousStatus === "internal_review" || previousStatus === "review" || previousStatus === "completed"
       ? 70
-      : 50;
+      : 0;
   }
   return AUTOMATIC_TASK_PROGRESS_BY_STATUS[targetStatus] ?? 0;
 }
@@ -182,20 +182,23 @@ export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status
   const completedChecklistWeight = task.checklist_items.reduce((total, item) => total + (item.is_completed ? Number(item.weight) : 0), 0);
   const checklistProduction = totalChecklistWeight > 0 ? (completedChecklistWeight / totalChecklistWeight) * 100 : 0;
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
-  const hasManualOverride = task.status === "in_progress" && task.manual_progress_override && checklistCount === 0;
-  const hasProductionSource = task.status === "in_progress" && (checklistCount > 0 || hasManualOverride);
-  const overallPercent = hasProductionSource
+  const hasManualProduction = task.status === "in_progress" && checklistCount === 0;
+  const hasProductionSource = task.status === "in_progress" && (checklistCount > 0 || hasManualProduction);
+  const isAutomaticRework = hasManualProduction
+    && !task.manual_progress_override
+    && Number(task.production_completion) === TASK_PRODUCTION_PROGRESS_CEILING;
+  const overallPercent = isAutomaticRework
+    ? TASK_PRODUCTION_PROGRESS_CEILING
+    : hasProductionSource
     ? productionPercent * TASK_PRODUCTION_PROGRESS_CEILING / 100
-    : task.status === "in_progress"
-      ? Number(task.production_completion) === 70 ? 70 : 50
-      : getAutomaticTaskProgress(task.status, task.status);
+    : getAutomaticTaskProgress(task.status, task.status);
 
   return {
     productionPercent,
     overallPercent,
     presentedProductionPercent: roundProgressPercent(productionPercent),
     presentedOverallPercent: roundProgressPercent(overallPercent),
-    source: hasManualOverride ? "manual" : checklistCount > 0 ? "checklist" : "status",
+    source: hasManualProduction ? "manual" : checklistCount > 0 ? "checklist" : "status",
     completedChecklistCount,
     checklistCount,
   };

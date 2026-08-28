@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "src/lib/project-progress.test.ts": {
-    "mtime": 1787764755.1221488,
-    "ast_hash": "001e1539cd9c86b13b187ae35443106d",
+    "mtime": 1787914085.6662722,
+    "ast_hash": "e7cdc1ba2f3eeab642d1a6195ffefa5d",
     "semantic_hash": ""
   },
   "src/lib/project-progress.ts": {
-    "mtime": 1787764738.242252,
-    "ast_hash": "69fda0facd15c50a72aa92e7332bd44a",
+    "mtime": 1787914066.8505745,
+    "ast_hash": "b4faf64f793a85ccb1244d17b1d9e0c2",
     "semantic_hash": ""
   },
   "src/lib/semantic-styles.test.ts": {
@@ -860,8 +860,8 @@
     "semantic_hash": ""
   },
   "src/lib/tasks.test.ts": {
-    "mtime": 1787833955.514601,
-    "ast_hash": "561e195e3d246a7efa0fabcd9809c33d",
+    "mtime": 1787914067.2185855,
+    "ast_hash": "65fc68b866858afadb5893366aa5c46e",
     "semantic_hash": ""
   },
   "src/lib/tasks.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1787757821.8066006,
-    "ast_hash": "629b8ac246d3aadd62796717faa7d89d",
+    "mtime": 1787914067.5465956,
+    "ast_hash": "3372e30d5eafd14b0dddb33d7202c9f3",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1795,8 +1795,8 @@
     "semantic_hash": ""
   },
   "src/lib/task-card-presentation.test.ts": {
-    "mtime": 1787743273.4082294,
-    "ast_hash": "79a479bddd28a9167e2e994c553f355c",
+    "mtime": 1787914123.2116935,
+    "ast_hash": "0bd9a558d11308e27ce1110446f0c5fb",
     "semantic_hash": ""
   },
   "src/lib/task-card-presentation.ts": {
@@ -3495,8 +3495,8 @@
     "semantic_hash": ""
   },
   "src/lib/task-status-progress-migration.test.ts": {
-    "mtime": 1787743330.79771,
-    "ast_hash": "a3c71c507d8e4b271db0452ec1e74830",
+    "mtime": 1787914067.3785903,
+    "ast_hash": "3a9946992e35be5fbc834e5e93e7e420",
     "semantic_hash": ""
   },
   "supabase/migrations/20260826120000_task_status_derived_progress.sql": {
@@ -3597,6 +3597,11 @@
   "src/components/ui/time-picker.tsx": {
     "mtime": 1787913064.2045517,
     "ast_hash": "f9e37c58df4f893418d8a29d5d716240",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260828110000_fix_first_pass_task_progress.sql": {
+    "mtime": 1787914067.6986,
+    "ast_hash": "4720ef2e5abba952936fce08e528d236",
     "semantic_hash": ""
   }
 }

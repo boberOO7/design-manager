@@ -26,7 +26,7 @@
 ## Project task progress and health
 
 - Automatic task progress follows the current workflow column: To do 0%,
-  In progress 50% on a first pass (70% when returned from either review or
+  In progress 0% on a first pass (70% when returned from either review or
   Done), Internal review 80%, Client review 90%, and Done 100%. Status-derived
   progress is persisted through the task status trigger, so it remains correct
   after refresh and applies equally to the board, form, API, and bulk moves.

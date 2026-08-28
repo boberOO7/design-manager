@@ -23,6 +23,15 @@ describe("Board task-card progress presentation", () => {
     })).toEqual({ kind: "manual", percent: 60 });
   });
 
+  it("shows zero manual production for a newly started task", () => {
+    expect(getBoardTaskProgressSummary({
+      status: "in_progress",
+      manual_progress_override: false,
+      production_completion: 0,
+      checklist_items: [],
+    })).toEqual({ kind: "manual", percent: 0 });
+  });
+
   it.each(["todo", "review", "completed", "cancelled"])("omits predictable progress for %s tasks", (status) => {
     expect(getBoardTaskProgressSummary({
       status,

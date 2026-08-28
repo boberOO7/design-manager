@@ -207,7 +207,7 @@ describe("optimistic task Board state", () => {
   });
 
   it("uses the shared workflow rule for optimistic first-pass and rework moves", () => {
-    expect(getOptimisticTaskForStatus(makeTask({ status: "todo" }), "in_progress")).toMatchObject({ status: "in_progress", production_completion: 50 });
+    expect(getOptimisticTaskForStatus(makeTask({ status: "todo" }), "in_progress")).toMatchObject({ status: "in_progress", production_completion: 0 });
     for (const status of ["internal_review", "review", "completed"] as const) {
       expect(getOptimisticTaskForStatus(makeTask({ status }), "in_progress")).toMatchObject({ status: "in_progress", production_completion: 70 });
     }
