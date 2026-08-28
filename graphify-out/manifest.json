@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787869329.1561303,
-    "ast_hash": "16b39e0d2461c6f0622e5dc1c7367f5f",
+    "mtime": 1787915705.628695,
+    "ast_hash": "46f302c2f8083e429297d5bb450779d7",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787869329.316136,
-    "ast_hash": "9622a8129f9dde4941a65cdcea73f4aa",
+    "mtime": 1787915705.4926891,
+    "ast_hash": "e70d43dda3e80ba8cc2327a9b807ab74",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
