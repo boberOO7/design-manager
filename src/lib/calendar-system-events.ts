@@ -63,7 +63,7 @@ function rangeMonths(start: string, end: string): Array<{ year: number; month: n
   return months;
 }
 
-export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], start: string, end: string, { includeSalaryPayments = false }: { includeSalaryPayments?: boolean } = {}): CalendarItem[] {
+export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], start: string, end: string, { excludeSalaryPaymentsForUserId, includeSalaryPayments = false }: { excludeSalaryPaymentsForUserId?: string; includeSalaryPayments?: boolean } = {}): CalendarItem[] {
   const items: CalendarItem[] = [];
   for (const member of members) {
     for (const year of rangeYears(start, end)) {
@@ -79,10 +79,10 @@ export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], 
       }
     }
     const joinedDate = member.joinedAt?.slice(0, 10);
-    if (!includeSalaryPayments || !joinedDate) continue;
+    if (!includeSalaryPayments || !joinedDate || member.userId === excludeSalaryPaymentsForUserId) continue;
     for (const { year, month } of rangeMonths(start, end)) {
       const paymentDate = monthlyCalendarDate(joinedDate, year, month);
-      if (!paymentDate || paymentDate < joinedDate || paymentDate < start || paymentDate > end) continue;
+      if (!paymentDate || paymentDate <= joinedDate || paymentDate < start || paymentDate > end) continue;
       const monthKey = `${year}-${String(month).padStart(2, "0")}`;
       items.push({ source: "salary_payment", key: `salary-payment:${member.membershipId}:${monthKey}`, id: `salary-payment:${member.membershipId}:${monthKey}`, title: member.fullName, startDate: paymentDate, endDate: paymentDate, allDay: true, projectId: null, personIds: [member.userId], member: { userId: member.userId, fullName: member.fullName, avatarUrl: member.avatarUrl } });
     }

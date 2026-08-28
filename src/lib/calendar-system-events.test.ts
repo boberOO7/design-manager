@@ -55,6 +55,25 @@ describe("calendar system events", () => {
     expect(monthlyCalendarDate("2025-01-31", 2024, 2)).toBe("2024-02-29");
   });
 
+  it("starts payment reminders one full month after work starts", () => {
+    const recentMember = { ...member, joinedAt: "2026-08-25" };
+    const payments = buildCalendarSystemEvents([recentMember], "2026-08-01", "2026-10-31", { includeSalaryPayments: true })
+      .filter((item) => item.source === "salary_payment");
+
+    expect(payments).toEqual([
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-09", startDate: "2026-09-25" }),
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-10", startDate: "2026-10-25" }),
+    ]);
+  });
+
+  it("does not generate an admin's own payment reminder", () => {
+    const otherMember = { ...member, membershipId: "membership-2", userId: "user-2", fullName: "Taylor Rowe" };
+    const payments = buildCalendarSystemEvents([member, otherMember], "2026-08-01", "2026-08-31", { excludeSalaryPaymentsForUserId: "user-1", includeSalaryPayments: true })
+      .filter((item) => item.source === "salary_payment");
+
+    expect(payments).toEqual([expect.objectContaining({ id: "salary-payment:membership-2:2026-08", member: expect.objectContaining({ userId: "user-2" }) })]);
+  });
+
   it("keeps payment reminders out of the default system-event projection", () => {
     expect(buildCalendarSystemEvents([member], "2026-08-01", "2026-08-31").some((item) => item.source === "salary_payment")).toBe(false);
   });

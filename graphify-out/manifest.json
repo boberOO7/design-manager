@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "src/data/queries/calendar.ts": {
-    "mtime": 1787916490.8502533,
-    "ast_hash": "4653ea98ff71775e054a5aedeab21bbf",
+    "mtime": 1787917223.6200192,
+    "ast_hash": "de99d1aa8c9101d72bb8085cbc048b73",
     "semantic_hash": ""
   },
   "src/data/queries/dashboard.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1787916491.5822845,
-    "ast_hash": "74a9b2a62abbe97e395614447b4b3fc4",
+    "mtime": 1787916596.9329429,
+    "ast_hash": "b3c2de89f3454b81bf76094b1c53eae5",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1787916491.7742927,
-    "ast_hash": "9eb31f4141472ac66ae3ccc9e504c600",
+    "mtime": 1787916597.0569482,
+    "ast_hash": "fbea59f2ce6a7590fa38a73ac5627d6a",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -3580,13 +3580,13 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-system-events.test.ts": {
-    "mtime": 1787916556.5169036,
-    "ast_hash": "2c4fe27c85c94dd91797f7d669d55ba5",
+    "mtime": 1787917223.7720246,
+    "ast_hash": "fd58b8f53fd9113f5b4ac07b26b3d920",
     "semantic_hash": ""
   },
   "src/lib/calendar-system-events.ts": {
-    "mtime": 1787916490.6862464,
-    "ast_hash": "e394234bddfdc2fc793140fa545cb6f0",
+    "mtime": 1787917223.4560132,
+    "ast_hash": "40319832befefbde86eb64a963ef06fa",
     "semantic_hash": ""
   },
   "src/components/ui/time-picker.test.ts": {
