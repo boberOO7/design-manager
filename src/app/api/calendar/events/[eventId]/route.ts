@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
+import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 
 type Context = { params: Promise<{ eventId: string }> };
 
 export async function PATCH(request: Request, context: Context) {
   const membership = await getActiveStudioMembership();
-  if (!membership) return NextResponse.json({ success: false, formError: "An active studio membership is required." }, { status: 403 });
+  if (!membership || (membership.system_role !== "admin" && membership.system_role !== "employee")) return NextResponse.json({ success: false, formError: "An active studio membership is required." }, { status: 403 });
   const { eventId } = await context.params;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
@@ -17,8 +18,11 @@ export async function PATCH(request: Request, context: Context) {
 
   const supabase = await createClient();
   const value = parsed.data;
-  const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id, recurrence_rule").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
+  const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id, recurrence_rule, event_type").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
   if (existingEventError || !existingEvent) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
+  if (!canCreateCalendarEventType(membership.system_role, value.eventType) && value.eventType !== existingEvent.event_type) {
+    return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
+  }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
     const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });

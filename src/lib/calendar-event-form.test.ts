@@ -97,4 +97,8 @@ describe("Calendar event and time-off payload validation", () => {
   it("rejects browser-supplied time-off user IDs", () => {
     expect(timeOffRequestSchema.safeParse({ requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, privateNote: "", userId: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
   });
+
+  it("accepts a partial-day day-off request with persisted start and end times", () => {
+    expect(timeOffRequestSchema.safeParse({ requestType: "day_off", startDate: "2026-08-28", endDate: "2026-08-28", allDay: false, startTime: "14:00", endTime: "18:00", privateNote: "" }).success).toBe(true);
+  });
 });

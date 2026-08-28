@@ -379,6 +379,7 @@ describe("Calendar privacy and workflow", () => {
   });
   it("enforces attendee studio and project consistency", () => {
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s2", projectId: null, eventType: "meeting", personProjectIds: [] })).toBe(false);
+    expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s1", projectId: "p1", eventType: "interview", personProjectIds: [] })).toBe(true);
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s1", projectId: "p1", eventType: "site_visit", personProjectIds: [] })).toBe(false);
     expect(canAttendCalendarEvent({ eventStudioId: "s1", personStudioId: "s1", projectId: "p1", eventType: "site_visit", personProjectIds: ["p1"] })).toBe(true);
   });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createCalendarEventInsertPayload } from "@/lib/calendar-event-insert";
+import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { createClient } from "@/lib/supabase/server";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
   const value = parsed.data;
+  if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {
+    return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
+  }
   const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, {
     userId: activeMembership.authenticatedUserId,
     studioId: activeMembership.studio_id,

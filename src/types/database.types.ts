@@ -1008,7 +1008,7 @@ export type Database = {
     }
     Enums: {
       calendar_event_invitation_status: "pending" | "accepted" | "declined"
-      calendar_event_type: "meeting" | "client_presentation" | "site_visit" | "internal_review" | "business_trip" | "other"
+      calendar_event_type: "meeting" | "client_presentation" | "interview" | "site_visit" | "internal_review" | "business_trip" | "work_makeup" | "other"
       notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_updated" | "calendar_event_cancelled"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
       time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
@@ -1140,7 +1140,7 @@ export const Constants = {
   public: {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],
-      calendar_event_type: ["meeting", "client_presentation", "site_visit", "internal_review", "business_trip", "other"],
+      calendar_event_type: ["meeting", "client_presentation", "interview", "site_visit", "internal_review", "business_trip", "work_makeup", "other"],
       notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_updated", "calendar_event_cancelled"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
       time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],

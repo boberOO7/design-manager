@@ -37,6 +37,9 @@
   --ui-event-surface: #d9f0ff;
   --ui-event-border: #0284c7;
   --ui-event-text: #0c4a6e;
+  --ui-interview-surface: #f3e8ff;
+  --ui-interview-border: #9333ea;
+  --ui-interview-text: #6b21a8;
   --ui-success-surface: #d1fae5;
   --ui-success-border: #059669;
   --ui-success-accent: #059669;
@@ -131,6 +134,9 @@
   --ui-event-surface: #0c4a6e;
   --ui-event-border: #0ea5e9;
   --ui-event-text: #7dd3fc;
+  --ui-interview-surface: #3b0764;
+  --ui-interview-border: #c084fc;
+  --ui-interview-text: #e9d5ff;
   --ui-success-surface: #064e3b;
   --ui-success-border: #10b981;
   --ui-success-accent: #10b981;

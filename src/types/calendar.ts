@@ -1,6 +1,6 @@
 import type { Database } from "@/types/database.types";
 
-export const CALENDAR_EVENT_TYPES = ["meeting", "client_presentation", "site_visit", "internal_review", "business_trip", "other"] as const;
+export const CALENDAR_EVENT_TYPES = ["meeting", "client_presentation", "interview", "site_visit", "internal_review", "business_trip", "work_makeup", "other"] as const;
 export const CALENDAR_EVENT_INVITATION_STATUSES = ["pending", "accepted", "declined"] as const;
 export const TIME_OFF_REQUEST_TYPES = ["vacation", "day_off", "medical_appointment", "sick_leave", "other"] as const;
 export const TIME_OFF_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;

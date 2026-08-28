@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronLeft, ChevronRight, Filter, MapPin, Plus, Repeat2, Search, Video, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Filter, MapPin, Plus, Repeat2, Search, UserRoundSearch, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -23,12 +23,12 @@ import {
   removeCalendarItem, startOfMondayWeek, toDateOnly,
 } from "@/lib/calendar";
 import { createCalendarEventFormValues, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime } from "@/lib/calendar-event-form";
+import { getCreatableCalendarEventTypes, getCreatableTimeOffRequestTypes } from "@/lib/calendar-creation";
 import type { RecurrenceRule } from "@/lib/calendar-recurrence";
 import { isTimeOffMutationResult, updateTimeOffRequest } from "@/lib/time-off-request-client";
 import { getTimeOffStatusBadgeStyle } from "@/lib/semantic-styles";
 import { timeOffRequestTypeKey, timeOffStatusKey } from "@/lib/time-off-labels";
 import type { CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarView, TimeOffRequestType } from "@/types/calendar";
-import { CALENDAR_EVENT_TYPES, TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string } | { kind: "time-off-form"; date?: string } | null;
@@ -40,17 +40,20 @@ function recurrenceText(locale: string, rule: RecurrenceRule | null) {
   const names = uk ? { daily: "Щодня", weekly: "Щотижня", monthly: "Щомісяця", yearly: "Щороку" } : { daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
   return rule.interval === 1 ? names[rule.frequency] : `${uk ? "Кожні" : "Every"} ${rule.interval} ${uk ? "рази" : rule.frequency}`;
 }
-const eventTypeKey: Record<CalendarEventType, "meeting" | "presentation" | "siteVisit" | "internalReview" | "businessTrip" | "event"> = {
+const eventTypeKey: Record<CalendarEventType, "meeting" | "presentation" | "interview" | "siteVisit" | "internalReview" | "businessTrip" | "workMakeup" | "event"> = {
   meeting: "meeting",
   client_presentation: "presentation",
+  interview: "interview",
   site_visit: "siteVisit",
   internal_review: "internalReview",
   business_trip: "businessTrip",
+  work_makeup: "workMakeup",
   other: "event",
 };
 
 function param(params: SearchParams, key: string) { const value = params[key]; return typeof value === "string" ? value : ""; }
 function itemTone(item: CalendarItem) {
+  if (item.source === "calendar_event" && item.eventType === "interview") return "border-l-[var(--ui-interview-border)] bg-[var(--ui-interview-surface)] text-[var(--ui-interview-text)]";
   if (item.source === "calendar_event") return "border-l-[var(--ui-event-border)] bg-[var(--ui-event-surface)] text-[var(--ui-event-text)]";
   if (item.source === "project_deadline") return "border-l-[var(--ui-warning-accent)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]";
   if (item.source === "task_deadline") return "border-l-[var(--ui-info-accent)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]";
@@ -94,8 +97,9 @@ function CalendarPill({ item, month = false, mobile = false, onClick }: { item: 
   const monthStyle = monthGeometry ? { height: monthGeometry.height, paddingInline: monthGeometry.textPaddingInline, paddingBlock: monthGeometry.verticalPadding, borderRadius: monthGeometry.leftRadius, borderLeftWidth: monthGeometry.borderInlineStartWidth } : undefined;
   const title = itemTitle(item);
   const accessibleLabel = `${label}: ${!item.allDay && item.source === "calendar_event" ? `${formatCalendarTime(item.startsAt, locale)}, ` : ""}${title}`;
+  const interviewIcon = item.source === "calendar_event" && item.eventType === "interview" ? <UserRoundSearch aria-hidden="true" className="size-3 shrink-0" /> : null;
   return <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} aria-label={accessibleLabel} className={month ? mobile ? `box-border block min-h-8 w-full appearance-none truncate rounded-md border-l-2 px-2 text-left text-xs font-medium leading-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1 ${itemTone(item)}` : `block min-h-0 w-full appearance-none ${monthItemPresentationClassName} ${itemTone(item)}` : `min-h-10 w-full truncate rounded-md border-l-2 px-2 py-1 text-left text-xs font-medium ${itemTone(item)}`} style={monthStyle} title={accessibleLabel}>
-    <span className="sr-only">{label}: </span>{!item.allDay && item.source === "calendar_event" ? `${formatCalendarTime(item.startsAt, locale)} ` : ""}{title}
+    <span className="sr-only">{label}: </span><span className="inline-flex min-w-0 items-center gap-1">{interviewIcon}{!item.allDay && item.source === "calendar_event" ? `${formatCalendarTime(item.startsAt, locale)} ` : ""}{title}</span>
   </button>;
 }
 
@@ -315,7 +319,7 @@ function DayDetails({ items, onItem }: { date: string; items: CalendarItem[]; on
   const itemTitle = useCalendarItemTitle();
   const itemTypeLabel = useCalendarItemTypeLabel();
   if (!items.length) return <p className="rounded-xl border border-dashed border-[var(--ui-border-strong)] p-6 text-center text-sm text-[var(--ui-text-muted)]">{t("nothingScheduled")}</p>;
-  return <div className="space-y-2">{items.map((item) => <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="text-xs font-semibold uppercase tracking-wide opacity-70">{itemTypeLabel(item)}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{item.source === "calendar_event" && !item.allDay ? <p className="mt-1 text-sm">{formatCalendarTime(item.startsAt, locale)}–{formatCalendarTime(item.endsAt, locale)}</p> : null}</button>)}</div>;
+  return <div className="space-y-2">{items.map((item) => <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide opacity-70">{item.source === "calendar_event" && item.eventType === "interview" ? <UserRoundSearch aria-hidden="true" className="size-3.5" /> : null}{itemTypeLabel(item)}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{item.source === "calendar_event" && !item.allDay ? <p className="mt-1 text-sm">{formatCalendarTime(item.startsAt, locale)}–{formatCalendarTime(item.endsAt, locale)}</p> : null}</button>)}</div>;
 }
 
 function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated }: { isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarPageData; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void }) {
@@ -377,13 +381,14 @@ function RecurrenceControl({ allDayControl, locale, value, onChange }: { allDayC
 function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarPageData; item?: Extract<CalendarItem, { source: "calendar_event" }>; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void }) {
   const t = useTranslations("Calendar"); const locale = useLocale();
   const baseDate = initialDate ?? data.today;
-  const initial = createCalendarEventFormValues(item, baseDate);
+  const allowedEventTypes = getCreatableCalendarEventTypes(data.isAdmin ? "admin" : "employee");
+  const initial = { ...createCalendarEventFormValues(item, baseDate), eventType: item?.eventType ?? allowedEventTypes[0] };
   const [values, setValues] = useState(initial); const [endDateLinked, setEndDateLinked] = useState(initial.endDate === initial.startDate); const [endTimeLinked, setEndTimeLinked] = useState(true); const [scope, setScope] = useState<"this" | "series">("this"); const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); const dirty = JSON.stringify(values) !== JSON.stringify(initial);
   const organizerId = item?.organizer.id ?? data.currentUserId;
-  const appropriatePeople = (values.projectId && values.eventType !== "meeting" && values.eventType !== "client_presentation" ? data.people.filter((person) => person.projectIds.includes(values.projectId)) : data.people).filter((person) => person.id !== organizerId);
+  const appropriatePeople = (values.projectId && values.eventType !== "meeting" && values.eventType !== "client_presentation" && values.eventType !== "interview" ? data.people.filter((person) => person.projectIds.includes(values.projectId)) : data.people).filter((person) => person.id !== organizerId);
   function updateContext(patch: Partial<typeof values>) {
     const next = { ...values, ...patch };
-    const eligible = (next.projectId && next.eventType !== "meeting" && next.eventType !== "client_presentation" ? data.people.filter((person) => person.projectIds.includes(next.projectId)) : data.people).filter((person) => person.id !== organizerId);
+    const eligible = (next.projectId && next.eventType !== "meeting" && next.eventType !== "client_presentation" && next.eventType !== "interview" ? data.people.filter((person) => person.projectIds.includes(next.projectId)) : data.people).filter((person) => person.id !== organizerId);
     setValues({ ...next, attendeeIds: next.attendeeIds.filter((id) => eligible.some((person) => person.id === id)) });
   }
   function requestClose() { if (pending) return; if (!dirty || window.confirm(t("discardEvent"))) onClose(); }
@@ -413,7 +418,7 @@ function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved
   }
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={item ? t("editEventTitle") : t("addEventTitle")} eyebrow={t("eventForm")} onClose={requestClose}><form autoComplete="off" className="space-y-4" aria-busy={pending} onSubmit={(event) => event.preventDefault()}>
     <FormField label={t("titleLabel")} error={fieldErrors.title}><input className={fieldClass} value={values.title} onChange={(event) => setValues({ ...values, title: event.target.value })} /></FormField>
-    <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("type")} error={fieldErrors.eventType}><Select value={values.eventType} onValueChange={(eventType) => updateContext({ eventType: eventType as CalendarEventType })}>{CALENDAR_EVENT_TYPES.map((type) => <SelectItem key={type} value={type}>{t(eventTypeKey[type])}</SelectItem>)}</Select></FormField><FormField label={t("project")} optional error={fieldErrors.projectId}><Select placeholder={t("selectProject")} value={values.projectId || undefined} onValueChange={(projectId) => updateContext({ projectId })}>{data.projects.map((project) => <SelectItem key={project.id} value={project.id} disabled={project.status === "completed"}>{project.name}{project.status === "completed" ? ` (${t("completedReopen")})` : ""}</SelectItem>)}</Select>{values.projectId ? <button type="button" onClick={() => updateContext({ projectId: "" })} className="mt-2 text-left text-xs font-medium text-[var(--ui-text-secondary)] underline">{t("clearProject")}</button> : null}</FormField></div>
+    <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("type")} error={fieldErrors.eventType}><Select value={values.eventType} onValueChange={(eventType) => updateContext({ eventType: eventType as CalendarEventType })}>{[...new Set([...allowedEventTypes, item?.eventType].filter((type): type is CalendarEventType => Boolean(type)))].map((type) => <SelectItem key={type} value={type}>{type === "meeting" ? t(data.isAdmin ? "meetingPresentation" : "officeMeetingPresentation") : t(eventTypeKey[type])}</SelectItem>)}</Select></FormField><FormField label={t("project")} optional error={fieldErrors.projectId}><Select placeholder={t("selectProject")} value={values.projectId || undefined} onValueChange={(projectId) => updateContext({ projectId })}>{data.projects.map((project) => <SelectItem key={project.id} value={project.id} disabled={project.status === "completed"}>{project.name}{project.status === "completed" ? ` (${t("completedReopen")})` : ""}</SelectItem>)}</Select>{values.projectId ? <button type="button" onClick={() => updateContext({ projectId: "" })} className="mt-2 text-left text-xs font-medium text-[var(--ui-text-secondary)] underline">{t("clearProject")}</button> : null}</FormField></div>
     <RecurrenceControl allDayControl={<label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.allDay} onChange={(event) => setValues({ ...values, allDay: event.target.checked })} />{t("allDayEvent")}</label>} locale={locale} value={values.recurrenceRule ?? null} onChange={(recurrenceRule) => setValues({ ...values, recurrenceRule })} />
     <div className={values.allDay ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>{values.allDay ? <><FormField label={t("startDate")}><DatePicker locale={locale} value={values.startDate} onValueChange={(startDate) => setValues(updateEventStartDate(values, startDate, endDateLinked))} /></FormField><FormField label={t("endDate")} error={fieldErrors.endsAt}><DatePicker locale={locale} min={values.startDate} value={values.endDate} invalid={Boolean(fieldErrors.endsAt)} onValueChange={(endDate) => { setEndDateLinked(false); setValues({ ...values, endDate }); }} /></FormField></> : <><FormField label={t("starts")}><div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]"><DatePicker aria-label={t("startDate")} locale={locale} value={values.startDate} onValueChange={(startDate) => setValues(updateEventStartDate(values, startDate, endDateLinked))} /><TimePicker aria-label={t("startTime")} className="min-w-0" locale={locale} value={values.startTime} onValueChange={(startTime) => setValues(updateEventStartTime(values, startTime, endTimeLinked))} /></div></FormField><FormField label={t("ends")} error={fieldErrors.endsAt}><div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]"><DatePicker aria-label={t("endDate")} locale={locale} min={values.startDate} value={values.endDate} invalid={Boolean(fieldErrors.endsAt)} onValueChange={(endDate) => { setEndDateLinked(false); setValues({ ...values, endDate }); }} /><TimePicker aria-label={t("endTime")} className="min-w-0" locale={locale} value={values.endTime} onValueChange={(endTime) => { setEndTimeLinked(false); setValues({ ...values, endTime }); }} /></div></FormField></>}</div>
     {item?.occurrenceStart ? <FormField label={locale.startsWith("uk") ? "Застосувати зміни до" : "Apply changes to"}><Select value={scope} onValueChange={(nextScope) => setScope(nextScope as "this" | "series")}><SelectItem value="this">{locale.startsWith("uk") ? "Лише ця подія" : "Only this event"}</SelectItem><SelectItem value="series">{locale.startsWith("uk") ? "Уся серія" : "Entire series"}</SelectItem></Select></FormField> : null}
@@ -445,7 +450,7 @@ function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: 
     finally { setPending(false); }
   }
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={calendar("requestTimeOffTitle")} eyebrow={t("privateRequest")} onClose={requestClose}><form autoComplete="off" className="space-y-4" aria-busy={pending} onSubmit={(event) => event.preventDefault()}>
-    <Input label={t("requestType")} error={fieldErrors.requestType}><Select value={values.requestType} onValueChange={(requestType) => setValues({ ...values, requestType: requestType as TimeOffRequestType })}>{TIME_OFF_REQUEST_TYPES.map((type) => <SelectItem key={type} value={type}>{t(timeOffRequestTypeKey[type])}</SelectItem>)}</Select></Input>
+    <Input label={t("requestType")} error={fieldErrors.requestType}><Select value={values.requestType} onValueChange={(requestType) => setValues({ ...values, requestType: requestType as TimeOffRequestType })}>{getCreatableTimeOffRequestTypes(data.isAdmin ? "admin" : "employee").map((type) => <SelectItem key={type} value={type}>{t(timeOffRequestTypeKey[type])}</SelectItem>)}</Select></Input>
     <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.allDay} onChange={(event) => setValues({ ...values, allDay: event.target.checked, endDate: event.target.checked ? values.endDate : values.startDate })} />{t("allDay")}</label>
     <div className="grid gap-4 sm:grid-cols-2"><Input label={t("startDate")}><DatePicker locale={locale} value={values.startDate} onValueChange={(startDate) => setValues({ ...values, startDate, endDate: values.allDay ? values.endDate : startDate })} /></Input><Input label={t("endDate")} error={fieldErrors.endDate}><DatePicker locale={locale} min={values.startDate} value={values.endDate} disabled={!values.allDay} invalid={Boolean(fieldErrors.endDate)} onValueChange={(endDate) => setValues({ ...values, endDate })} /></Input></div>
     {!values.allDay ? <div className="grid gap-4 sm:grid-cols-2"><Input label={t("startTime")}><TimePicker locale={locale} value={values.startTime} onValueChange={(startTime) => setValues({ ...values, startTime })} /></Input><Input label={t("endTime")} error={fieldErrors.endDate}><TimePicker locale={locale} value={values.endTime} onValueChange={(endTime) => setValues({ ...values, endTime })} /></Input></div> : null}

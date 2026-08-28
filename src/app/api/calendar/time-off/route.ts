@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getNormalizedTimeOffRequest } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
 import { calendarFieldErrors, timeOffRequestSchema } from "@/lib/validation/calendar";
+import { canCreateTimeOffRequestType } from "@/lib/calendar-creation";
 import type { Database } from "@/types/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -53,6 +54,9 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
   const parsed = timeOffRequestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
+  if (!canCreateTimeOffRequestType(membership.systemRole, parsed.data.requestType)) {
+    return NextResponse.json({ success: false, fieldErrors: { requestType: "This absence type is not available for your role." } }, { status: 403 });
+  }
 
   const payload = {
     studio_id: membership.studioId, user_id: membership.authenticatedUserId, request_type: parsed.data.requestType,

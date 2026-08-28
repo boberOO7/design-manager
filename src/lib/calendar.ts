@@ -504,7 +504,7 @@ export function getCalendarItemDisplayTitle(item: CalendarItem, labels: Calendar
 
 export function canAttendCalendarEvent(input: { eventStudioId: string; personStudioId: string; projectId: string | null; eventType: CalendarEventType; personProjectIds: string[] }): boolean {
   if (input.eventStudioId !== input.personStudioId) return false;
-  if (input.projectId === null || input.eventType === "meeting" || input.eventType === "client_presentation") return true;
+  if (input.projectId === null || input.eventType === "meeting" || input.eventType === "client_presentation" || input.eventType === "interview") return true;
   return input.personProjectIds.includes(input.projectId);
 }
 
