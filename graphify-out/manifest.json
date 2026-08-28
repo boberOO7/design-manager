@@ -1985,13 +1985,13 @@
     "semantic_hash": ""
   },
   "src/components/team/team-member-card.contract.test.ts": {
-    "mtime": 1786573386.7001548,
-    "ast_hash": "921e0b8da149c96f99230f61b8dd8fe6",
+    "mtime": 1787909188.4584491,
+    "ast_hash": "9e6e321384c7aed353af0475ccf77b07",
     "semantic_hash": ""
   },
   "src/components/team/team-member-card.tsx": {
-    "mtime": 1787854647.9809422,
-    "ast_hash": "430903b84d8e30c2f7ebfc37e357f528",
+    "mtime": 1787909188.3184423,
+    "ast_hash": "8f89b87b5f5f54803328b9e801515e6d",
     "semantic_hash": ""
   },
   "src/lib/avatar-storage-cleanup.test.ts": {
