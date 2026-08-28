@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { TIME_PICKER_HOURS, TIME_PICKER_MINUTES } from "./time-picker";
+import { isTimePickerDiscreteWheel, TIME_PICKER_HOURS, TIME_PICKER_MINUTES, TIME_PICKER_ROW_HEIGHT } from "./time-picker";
 
 const globalsPath = new URL("../../app/globals.css", import.meta.url);
 
@@ -15,5 +15,16 @@ describe("TimePicker options", () => {
     expect(globals).toContain(".scrollbar-none::-webkit-scrollbar");
     expect(globals).toContain("width: 0 !important");
     expect(globals).toContain("height: 0 !important");
+  });
+
+  it("identifies traditional and Windows Chromium mouse-wheel events as discrete", () => {
+    expect(TIME_PICKER_ROW_HEIGHT).toBe(40);
+    expect(isTimePickerDiscreteWheel(100, 0)).toBe(true);
+    expect(isTimePickerDiscreteWheel(-3, 1)).toBe(true);
+  });
+
+  it("leaves continuous trackpad pixel deltas to native scrolling", () => {
+    expect(isTimePickerDiscreteWheel(15, 0)).toBe(false);
+    expect(isTimePickerDiscreteWheel(-15, 0)).toBe(false);
   });
 });
