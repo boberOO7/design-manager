@@ -83,3 +83,16 @@ describe("team anniversary detail localization", () => {
     expect(uk.Calendar.teamAnniversaryDuration).toContain("many");
   });
 });
+
+describe("admin-only salary payment reminders", () => {
+  it("uses localized payment labels and keeps the filter behind the admin data boundary", () => {
+    expect(source).toContain('item.source === "salary_payment" ? t("salaryPaymentEvent", { name: item.member.fullName })');
+    expect(source).toContain('salaryPayments: initialData.isAdmin && param(searchParams, "payments") !== "0"');
+    expect(source).toContain('if (data.isAdmin) checks.push(["salaryPayments", t("salaryPayments")])');
+    expect(source).toContain('candidate.source === "calendar_event"');
+    expect(en.Calendar.salaryPayments).toBe("Payments");
+    expect(uk.Calendar.salaryPayments).toBe("Виплати");
+    expect(en.Calendar.salaryPaymentEvent).toBe("💰 Payment · {name}");
+    expect(uk.Calendar.salaryPaymentEvent).toBe("💰 Виплата · {name}");
+  });
+});

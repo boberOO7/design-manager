@@ -113,7 +113,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   items.push(...buildCalendarSystemEvents((systemMembersResult.data ?? []).map((member) => ({
     membershipId: member.id, userId: member.user_id, fullName: member.profile.full_name,
     avatarUrl: member.profile.avatar_url, birthDate: member.profile.birth_date, joinedAt: member.joined_at,
-  })), start, end));
+  })), start, end, { includeSalaryPayments: isAdmin }));
 
   for (const project of projectDeadlinesResult.data ?? []) {
     if (!project.due_date) continue;

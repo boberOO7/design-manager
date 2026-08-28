@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annualCalendarDate, buildCalendarSystemEvents } from "./calendar-system-events";
+import { annualCalendarDate, buildCalendarSystemEvents, monthlyCalendarDate } from "./calendar-system-events";
 
 const member = {
   membershipId: "membership-1",
@@ -39,5 +39,28 @@ describe("calendar system events", () => {
 
   it("does not generate an event when the source date is outside the visible range", () => {
     expect(buildCalendarSystemEvents([member], "2026-03-01", "2026-12-30")).toEqual([]);
+  });
+
+  it("generates admin-enabled monthly payment reminders with stable IDs and month-end dates", () => {
+    const monthEndMember = { ...member, joinedAt: "2025-01-31" };
+    const items = buildCalendarSystemEvents([monthEndMember], "2026-02-01", "2026-06-30", { includeSalaryPayments: true });
+
+    expect(items.filter((item) => item.source === "salary_payment")).toEqual([
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-02", startDate: "2026-02-28", allDay: true }),
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-03", startDate: "2026-03-31", allDay: true }),
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-04", startDate: "2026-04-30", allDay: true }),
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-05", startDate: "2026-05-31", allDay: true }),
+      expect.objectContaining({ id: "salary-payment:membership-1:2026-06", startDate: "2026-06-30", allDay: true }),
+    ]);
+    expect(monthlyCalendarDate("2025-01-31", 2024, 2)).toBe("2024-02-29");
+  });
+
+  it("keeps payment reminders out of the default system-event projection", () => {
+    expect(buildCalendarSystemEvents([member], "2026-08-01", "2026-08-31").some((item) => item.source === "salary_payment")).toBe(false);
+  });
+
+  it("does not generate payment reminders for members without a work start date", () => {
+    const items = buildCalendarSystemEvents([{ ...member, joinedAt: null }], "2026-08-01", "2026-08-31", { includeSalaryPayments: true });
+    expect(items.some((item) => item.source === "salary_payment")).toBe(false);
   });
 });

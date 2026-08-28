@@ -17,6 +17,10 @@ function anniversary(): Extract<CalendarItem, { source: "team_anniversary" }> {
   return { source: "team_anniversary", key: "anniversary:m1:2026", id: "anniversary:m1:2026", title: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u2"], member: { userId: "u2", fullName: "Taylor", avatarUrl: null }, anniversaryYears: 2 };
 }
 
+function salaryPayment(): Extract<CalendarItem, { source: "salary_payment" }> {
+  return { source: "salary_payment", key: "salary-payment:m1:2026-07", id: "salary-payment:m1:2026-07", title: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: ["u2"], member: { userId: "u2", fullName: "Taylor", avatarUrl: null } };
+}
+
 function deadline(overrides: Partial<Extract<CalendarItem, { source: "project_deadline" }>> = {}): Extract<CalendarItem, { source: "project_deadline" }> {
   return { source: "project_deadline", key: "project_deadline:p1", id: "p1", title: "Project", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: "p1", personIds: ["u1"], project: { id: "p1", name: "Project", clientName: null, status: "active" }, ...overrides };
 }
@@ -302,11 +306,12 @@ describe("Calendar filtering and identity", () => {
     const items = [deadline(), task()];
     expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, taskDeadlines: true, projectId: "p1", personId: "u2", mine: true }, "u2").map((item) => item.key)).toEqual(["task_deadline:t1"]);
   });
-  it("keeps birthday and anniversary filters independently enabled by default", () => {
-    const items = [birthday(), anniversary()];
-    expect(filterCalendarItems(items, DEFAULT_CALENDAR_FILTERS, "u1")).toHaveLength(2);
-    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, birthdays: false }, "u1").map((item) => item.source)).toEqual(["team_anniversary"]);
-    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, teamAnniversaries: false }, "u1").map((item) => item.source)).toEqual(["birthday"]);
+  it("keeps birthday, anniversary, and payment filters independently enabled by default", () => {
+    const items = [birthday(), anniversary(), salaryPayment()];
+    expect(filterCalendarItems(items, DEFAULT_CALENDAR_FILTERS, "u1")).toHaveLength(3);
+    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, birthdays: false }, "u1").map((item) => item.source)).toEqual(["team_anniversary", "salary_payment"]);
+    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, teamAnniversaries: false }, "u1").map((item) => item.source)).toEqual(["birthday", "salary_payment"]);
+    expect(filterCalendarItems(items, { ...DEFAULT_CALENDAR_FILTERS, salaryPayments: false }, "u1").map((item) => item.source)).toEqual(["team_anniversary", "birthday"]);
   });
   it("uses source-qualified unique IDs and removes duplicate joined rows", () => {
     const items = deduplicateCalendarItems([deadline(), deadline(), task({ id: "p1", key: "task_deadline:p1" })]);

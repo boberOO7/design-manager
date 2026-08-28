@@ -96,6 +96,10 @@ export type CalendarItem =
       source: "team_anniversary";
       member: CalendarSystemMember;
       anniversaryYears: number;
+    })
+  | (CalendarBase & {
+      source: "salary_payment";
+      member: CalendarSystemMember;
     });
 
 export type CalendarFilters = {
@@ -105,6 +109,7 @@ export type CalendarFilters = {
   timeOff: boolean;
   birthdays: boolean;
   teamAnniversaries: boolean;
+  salaryPayments: boolean;
   projectId: string;
   personId: string;
   mine: boolean;

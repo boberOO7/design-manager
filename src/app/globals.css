@@ -60,6 +60,9 @@
   --ui-anniversary-surface: #ede9fe;
   --ui-anniversary-border: #7c3aed;
   --ui-anniversary-text: #5b21b6;
+  --ui-payment-surface: #fff7dd;
+  --ui-payment-border: #b7791f;
+  --ui-payment-text: #774b13;
   --ui-category-teal-surface: #ccfbf1;
   --ui-category-teal-border: #0f766e;
   --ui-category-teal-text: #115e59;
@@ -151,6 +154,9 @@
   --ui-anniversary-surface: #3b0764;
   --ui-anniversary-border: #a78bfa;
   --ui-anniversary-text: #ddd6fe;
+  --ui-payment-surface: #3f2a08;
+  --ui-payment-border: #f0b957;
+  --ui-payment-text: #fde68a;
   --ui-category-teal-surface: #134e4a;
   --ui-category-teal-border: #2dd4bf;
   --ui-category-teal-text: #99f6e4;
