@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <a href="#main-content" className="sr-only z-[60] rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--ui-action-primary-text)] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skipToContent")}</a>
       <AppSidebar leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} systemRole={studio.system_role} />
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
-        <AppHeader leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
+        <AppHeader joinedAt={studio.joined_at} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
         <main id="main-content" tabIndex={-1} className="flex-1 p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
       </div>
     </div>

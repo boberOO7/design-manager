@@ -1,6 +1,6 @@
 "use client";
 
-import { CakeSlice, Camera, LoaderCircle, MapPin, Trash2, Upload } from "lucide-react";
+import { CakeSlice, CalendarDays, Camera, LoaderCircle, LockKeyhole, MapPin, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -12,9 +12,11 @@ import { CityCombobox } from "@/components/projects/city-combobox";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getCountryOptions, isCountryCode } from "@/lib/countries";
+import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { removeAvatarObjects } from "@/lib/avatar-storage-cleanup";
 import { AVATAR_BUCKET, getAvatarFileValidationError, getAvatarOriginalPath } from "@/lib/user-avatar";
+import type { SystemRole } from "@/types";
 
 type ProfileAvatarEditorProps = {
   avatarUrl?: string;
@@ -23,6 +25,8 @@ type ProfileAvatarEditorProps = {
   cityGeoNamesId?: number | null;
   countryCode?: string | null;
   fullName: string;
+  joinedAt: string | null;
+  systemRole: SystemRole;
   userId: string;
 };
 
@@ -32,7 +36,7 @@ function getFileExtension(file: File): string {
   return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
 }
 
-export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCodeProp, fullName, userId }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCodeProp, fullName, joinedAt, systemRole, userId }: ProfileAvatarEditorProps) {
   const t = useTranslations("Account");
   const locale = useLocale();
   const router = useRouter();
@@ -47,19 +51,23 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
   const [cropFile, setCropFile] = useState<File | null>(null);
   const initialCountryCode = initialCountryCodeProp ?? "UA";
   const initialBirthDate = birthDate ?? "";
+  const initialJoinedAt = joinedAt ?? "";
   const initialCity = city ?? "";
   const initialCityGeoNamesId = cityGeoNamesId ?? undefined;
   const [currentCountryCode, setCurrentCountryCode] = useState(initialCountryCode);
   const [currentCity, setCurrentCity] = useState(initialCity);
   const [currentCityGeoNamesId, setCurrentCityGeoNamesId] = useState<number | undefined>(initialCityGeoNamesId);
   const [currentBirthDate, setCurrentBirthDate] = useState(initialBirthDate);
+  const [currentJoinedAt, setCurrentJoinedAt] = useState(initialJoinedAt);
   const displayedAvatarUrl = previewUrl ?? currentAvatarUrl;
   const countryOptions = getCountryOptions(locale);
   const isProfilePending = isPending || isSavingProfile;
-  const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId;
+  const canEditStartDate = systemRole === "admin";
+  const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId || (canEditStartDate && currentJoinedAt !== initialJoinedAt);
 
   function resetProfileFields() {
     setCurrentBirthDate(initialBirthDate);
+    setCurrentJoinedAt(initialJoinedAt);
     setCurrentCountryCode(initialCountryCode);
     setCurrentCity(initialCity);
     setCurrentCityGeoNamesId(initialCityGeoNamesId);
@@ -180,6 +188,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
       p_city: normalizedCity || null,
       p_city_geonames_id: normalizedCity ? currentCityGeoNamesId ?? null : null,
       p_country_code: currentCountryCode || null,
+      p_joined_at: canEditStartDate ? currentJoinedAt || null : null,
     });
 
     if (updateError) {
@@ -215,9 +224,19 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
           </div>
           {error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
         </section>
-        <section aria-labelledby="profile-birthday-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
-          <div className="flex items-start gap-3"><CakeSlice aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" /><h3 id="profile-birthday-heading" className="font-medium text-[var(--ui-text)]">{t("birthday")}</h3></div>
-          <DatePicker aria-label={t("birthday")} className="mt-4 w-full sm:w-64" disabled={isProfilePending} locale={locale} onValueChange={(value) => { setCurrentBirthDate(value); setProfileError(null); }} value={currentBirthDate} />
+        <section aria-labelledby="profile-dates-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
+          <h3 id="profile-dates-heading" className="sr-only">{t("profileDates")}</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
+            <div>
+              <div className="flex items-start gap-3"><CakeSlice aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" /><label className="font-medium text-[var(--ui-text)]">{t("birthday")}</label></div>
+              <DatePicker aria-label={t("birthday")} className="mt-4 w-full" disabled={isProfilePending} locale={locale} onValueChange={(value) => { setCurrentBirthDate(value); setProfileError(null); }} value={currentBirthDate} />
+            </div>
+            <div>
+              <div className="flex items-start gap-3"><CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" /><p className="font-medium text-[var(--ui-text)]">{t("startDate")}</p></div>
+              {canEditStartDate ? <DatePicker aria-label={t("startDate")} className="mt-4 w-full" disabled={isProfilePending} locale={locale} onValueChange={(value) => { setCurrentJoinedAt(value); setProfileError(null); }} value={currentJoinedAt} /> : <div aria-describedby="start-date-read-only-hint" className="mt-4 flex h-11 items-center gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] px-3 text-sm text-[var(--ui-text-secondary)]"><LockKeyhole aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-muted)]" /><span>{currentJoinedAt ? formatDateOnly(currentJoinedAt, locale) : "—"}</span></div>}
+              {!canEditStartDate ? <p id="start-date-read-only-hint" className="mt-2 text-xs text-[var(--ui-text-muted)]">{t("startDateManagedByAdmin")}</p> : null}
+            </div>
+          </div>
         </section>
         <section aria-labelledby="profile-location-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
           <div className="flex items-start gap-3">

@@ -2,16 +2,18 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
+import type { SystemRole } from "@/types";
 import { cache } from "react";
 
 type StudioMembershipRow = Database["public"]["Tables"]["studio_members"]["Row"];
 
-export type ActiveStudioMembership = Pick<
+export type ActiveStudioMembership = Omit<Pick<
   StudioMembershipRow,
-  "studio_id" | "system_role"
-> & {
+  "joined_at" | "studio_id" | "system_role"
+>, "system_role"> & {
   authenticatedUserId: string;
   leaderboardVisibleToEmployees: boolean;
+  system_role: SystemRole;
   studioName: string;
 };
 
@@ -22,7 +24,7 @@ export type ActiveStudioMembershipResolution =
   | { status: "ACTIVE_STUDIO"; membership: ActiveStudioMembership; email: string | null }
   | { status: "MULTIPLE_ACTIVE_STUDIOS"; authenticatedUserId: string; email: string | null };
 
-type ActiveStudioMembershipQuery = Pick<StudioMembershipRow, "studio_id" | "system_role"> & {
+type ActiveStudioMembershipQuery = Pick<StudioMembershipRow, "joined_at" | "studio_id" | "system_role"> & {
   studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "leaderboard_visible_to_employees" | "name">;
 };
 
@@ -41,7 +43,7 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
 
   const { data, error } = await supabase
     .from("studio_members")
-    .select("studio_id, system_role, studio:studios!inner(name, leaderboard_visible_to_employees)")
+    .select("studio_id, system_role, joined_at, studio:studios!inner(name, leaderboard_visible_to_employees)")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .order("joined_at", { ascending: true })
@@ -61,11 +63,16 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
     return { status: "MULTIPLE_ACTIVE_STUDIOS", authenticatedUserId: user.id, email: user.email ?? null };
   }
 
+  if (data[0].system_role !== "admin" && data[0].system_role !== "employee") {
+    throw new Error(`Active studio membership has an unsupported system role for user ID: ${user.id}.`);
+  }
+
   return {
     status: "ACTIVE_STUDIO",
     email: user.email ?? null,
     membership: {
       authenticatedUserId: user.id,
+      joined_at: data[0].joined_at,
       leaderboardVisibleToEmployees: data[0].studio.leaderboard_visible_to_employees,
       studio_id: data[0].studio_id,
       studioName: data[0].studio.name,

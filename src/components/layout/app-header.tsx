@@ -8,9 +8,9 @@ import { ProfileAvatarEditor } from "@/components/layout/profile-avatar-editor";
 import { getTranslations } from "next-intl/server";
 import { getNotificationData } from "@/data/queries/notifications";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
-import type { Profile } from "@/types";
+import type { Profile, SystemRole } from "@/types";
 
-export async function AppHeader({ leaderboardVisibleToEmployees, profile, systemRole }: { leaderboardVisibleToEmployees: boolean; profile: Profile | null; systemRole: string }) {
+export async function AppHeader({ joinedAt, leaderboardVisibleToEmployees, profile, systemRole }: { joinedAt: string | null; leaderboardVisibleToEmployees: boolean; profile: Profile | null; systemRole: SystemRole }) {
   const [t, roles] = await Promise.all([
     getTranslations("Account"),
     getTranslations("Roles"),
@@ -50,6 +50,8 @@ export async function AppHeader({ leaderboardVisibleToEmployees, profile, system
           cityGeoNamesId={profile.city_geonames_id}
           countryCode={profile.country_code}
           fullName={profile.full_name}
+          joinedAt={joinedAt}
+          systemRole={systemRole}
           userId={profile.id}
         />
         <div className="min-w-0">

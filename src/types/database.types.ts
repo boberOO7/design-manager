@@ -998,7 +998,7 @@ export type Database = {
         Returns: undefined
       }
       update_my_profile_details: {
-        Args: { p_birth_date: string | null; p_city: string | null; p_city_geonames_id: number | null; p_country_code: string | null }
+        Args: { p_birth_date: string | null; p_city: string | null; p_city_geonames_id: number | null; p_country_code: string | null; p_joined_at: string | null }
         Returns: undefined
       }
       update_studio_member_profile: {
