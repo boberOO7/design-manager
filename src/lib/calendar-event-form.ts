@@ -82,11 +82,12 @@ export function createCalendarEventFormValues(
 }
 
 export function toCalendarEventMutationPayload(values: CalendarEventFormValues) {
+  const isSameDayTimedType = values.eventType === "meeting" || values.eventType === "client_presentation" || values.eventType === "interview";
   const bounds = values.allDay
     ? getAllDayEventBounds(values.startDate, values.endDate)
     : {
       startsAt: zonedWallTimeToIso(`${values.startDate}T${values.startTime}`),
-      endsAt: zonedWallTimeToIso(`${values.endDate}T${values.endTime}`),
+      endsAt: zonedWallTimeToIso(`${isSameDayTimedType ? values.startDate : values.endDate}T${values.endTime}`),
     };
 
   return {

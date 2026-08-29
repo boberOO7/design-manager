@@ -14,7 +14,7 @@ export type CalendarView = "month" | "week" | "agenda";
 export type { RecurrenceRule } from "@/lib/calendar-recurrence";
 
 export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status" | "city" | "country_code">;
-export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[] };
+export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[]; systemRole?: "admin" | "employee" };
 export type CalendarEventInvitee = CalendarPerson & { inviteId: string; status: CalendarEventInvitationStatus };
 export type CalendarCompensation = { requiredMinutes: number; compensatedMinutes: number; remainingMinutes: number };
 export type CalendarCompensableDayOff = { id: string; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; remainingMinutes: number };

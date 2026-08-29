@@ -20,15 +20,20 @@ export async function PATCH(request: Request, context: Context) {
   const supabase = await createClient();
   let value = parsed.data.eventType === "site_visit"
     ? { ...parsed.data, assigneeId: membership.system_role === "admin" ? parsed.data.assigneeId : membership.authenticatedUserId }
+    : parsed.data.eventType === "interview"
+      ? { ...parsed.data, projectId: null, allDay: false, attendeeIds: [], participantIds: [], location: null, recurrenceRule: null, compensatesTimeOffRequestId: null, meetingMode: null }
     : parsed.data.eventType === "business_trip"
       ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: membership.system_role === "admin" ? parsed.data.participantIds : [membership.authenticatedUserId] }
     : parsed.data.eventType === "meeting" || parsed.data.eventType === "client_presentation"
-      ? { ...parsed.data, allDay: false, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
-      : parsed.data;
+      ? { ...parsed.data, allDay: false, assigneeId: null, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
+      : { ...parsed.data, assigneeId: null };
   const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id, recurrence_rule, event_type").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
   if (existingEventError || !existingEvent) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
   if (!canCreateCalendarEventType(membership.system_role, value.eventType) && value.eventType !== existingEvent.event_type) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
+  }
+  if (value.eventType === "interview" && membership.system_role !== "admin") {
+    return NextResponse.json({ success: false, fieldErrors: { eventType: "Only administrators may manage interviews." } }, { status: 403 });
   }
   if (value.eventType === "business_trip") {
     if (value.participantIds.length === 0) return NextResponse.json({ success: false, fieldErrors: { participantIds: "Choose at least one business trip participant." } }, { status: 400 });

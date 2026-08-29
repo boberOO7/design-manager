@@ -51,6 +51,16 @@ export const calendarEventSchema = z.object({
     if (normalizedMeetingMode === "offline" && value.meetingUrl) context.addIssue({ code: "custom", path: ["meetingUrl"], message: "Offline meetings cannot include a meeting link." });
     if (normalizedMeetingMode === "online" && value.location) context.addIssue({ code: "custom", path: ["location"], message: "Online meetings cannot include a location." });
   }
+  if (value.eventType === "interview") {
+    if (!value.assigneeId) context.addIssue({ code: "custom", path: ["assigneeId"], message: "Choose an interviewer." });
+    if (value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Interviews cannot be linked to a project." });
+    if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Interviews must have a start and end time." });
+    if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Interviews cannot repeat." });
+    if (value.attendeeIds.length > 0) context.addIssue({ code: "custom", path: ["attendeeIds"], message: "Interviews do not use invitations." });
+    if (value.participantIds.length > 0) context.addIssue({ code: "custom", path: ["participantIds"], message: "Interviews do not use participants." });
+    if (value.location) context.addIssue({ code: "custom", path: ["location"], message: "Interviews do not use a location." });
+    if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Interviews must start and end on the same local calendar day." });
+  }
   if (value.eventType === "business_trip") {
     if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the business trip." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Business trips cannot repeat." });
@@ -105,6 +115,9 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
   }
   if (message.includes("Business trip participant") || message.includes("Business trips require at least one participant")) {
     return { formError: "Choose at least one active project member for the business trip.", fieldErrors: { participantIds: "Choose active project members who are going on the trip." } };
+  }
+  if (message.includes("Interview interviewer") || message.includes("Interviews require one interviewer")) {
+    return { formError: "Choose an active studio administrator to conduct the interview.", fieldErrors: { assigneeId: "Choose an active studio administrator." } };
   }
   if (message.includes("Attendee") || message.includes("attendee") || message.includes("Invitee") || message.includes("invitee") || message.includes("project members") || message.includes("active studio member")) {
     return { formError: "One or more attendees are not valid for this event.", fieldErrors: { attendeeIds: "Choose active eligible attendees." } };

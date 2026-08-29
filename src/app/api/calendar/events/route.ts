@@ -27,11 +27,13 @@ export async function POST(request: Request) {
 
   let value = parsed.data.eventType === "site_visit"
     ? { ...parsed.data, assigneeId: activeMembership.system_role === "admin" ? parsed.data.assigneeId : activeMembership.authenticatedUserId }
+    : parsed.data.eventType === "interview"
+      ? { ...parsed.data, projectId: null, allDay: false, attendeeIds: [], participantIds: [], location: null, recurrenceRule: null, compensatesTimeOffRequestId: null, meetingMode: null }
     : parsed.data.eventType === "business_trip"
       ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: activeMembership.system_role === "admin" ? parsed.data.participantIds : [activeMembership.authenticatedUserId] }
     : parsed.data.eventType === "meeting" || parsed.data.eventType === "client_presentation"
-      ? { ...parsed.data, allDay: false, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
-      : parsed.data;
+      ? { ...parsed.data, allDay: false, assigneeId: null, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
+      : { ...parsed.data, assigneeId: null };
   if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
   }

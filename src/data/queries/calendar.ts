@@ -65,7 +65,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const peoplePromise = supabase
     .from("studio_members")
-    .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, assignments:project_members(project_id, is_active))")
+    .select("system_role, profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, assignments:project_members(project_id, is_active))")
     .eq("studio_id", membership.studio_id)
     .eq("is_active", true);
 
@@ -120,6 +120,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     job_title: membershipRow.profile.job_title,
     avatar_url: membershipRow.profile.avatar_url,
     projectIds: membershipRow.profile.assignments.filter((assignment) => assignment.is_active).map((assignment) => assignment.project_id),
+    systemRole: membershipRow.system_role === "admin" ? ("admin" as const) : ("employee" as const),
   })).sort((a, b) => a.full_name.localeCompare(b.full_name));
   const items: CalendarItem[] = [];
 

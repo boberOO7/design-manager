@@ -6,6 +6,7 @@ const route = readFileSync(resolve(process.cwd(), "src/app/api/calendar/events/r
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260820120000_create_calendar_event_with_invites.sql"), "utf8");
 const organizerAuthorizationMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260820140000_calendar_event_organizer_authorization.sql"), "utf8");
 const meetingModeMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260829180000_add_meeting_presentation_mode.sql"), "utf8");
+const interviewMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260829220311_specialize_interview_calendar_events.sql"), "utf8");
 const eventDetailsQuery = readFileSync(resolve(process.cwd(), "src/data/queries/calendar-item.ts"), "utf8");
 
 describe("Calendar event creation persistence contract", () => {
@@ -52,5 +53,12 @@ describe("Calendar event creation persistence contract", () => {
   it("passes the explicit meeting mode to the current RPC, whose persistence normalizes non-meetings to null", () => {
     expect(route).toContain("p_meeting_mode: payload.meeting_mode");
     expect(meetingModeMigration).toContain("case when p_event_type in ('meeting', 'client_presentation') then coalesce(p_meeting_mode, 'offline') else null end");
+  });
+
+  it("keeps interviews out of the invitation flow while persisting the selected interviewer as an assignee", () => {
+    expect(route).toContain('parsed.data.eventType === "interview"');
+    expect(route).toContain('attendeeIds: [], participantIds: [], location: null');
+    expect(interviewMigration).toContain("elsif p_event_type not in ('site_visit', 'interview') then");
+    expect(interviewMigration).toContain("if event_row.event_type = 'interview' then raise exception 'Interviews do not use invitations'; end if;");
   });
 });
