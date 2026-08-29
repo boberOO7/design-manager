@@ -18,11 +18,18 @@ export const calendarEventSchema = z.object({
   meetingUrl: optionalUrl,
   description: optionalText(5000),
   recurrenceRule,
+  compensatesTimeOffRequestId: z.string().uuid().nullable().optional().default(null),
   occurrenceStart: z.iso.datetime({ offset: true }).optional(),
   scope: z.enum(["this", "series"]).optional(),
 }).strict().superRefine((value, context) => {
   if (!isValidEventRange(value.startsAt, value.endsAt)) {
     context.addIssue({ code: "custom", path: ["endsAt"], message: "Event end must be after its start." });
+  }
+  if (value.compensatesTimeOffRequestId && value.eventType !== "work_makeup") {
+    context.addIssue({ code: "custom", path: ["compensatesTimeOffRequestId"], message: "Only work makeup events can compensate time off." });
+  }
+  if (value.compensatesTimeOffRequestId && value.recurrenceRule) {
+    context.addIssue({ code: "custom", path: ["compensatesTimeOffRequestId"], message: "A linked work makeup event cannot repeat." });
   }
 });
 

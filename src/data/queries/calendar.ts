@@ -6,7 +6,8 @@ import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalize
 import { buildCalendarSystemEvents } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
 import { createClient } from "@/lib/supabase/server";
-import type { CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
+import { getDayOffCompensation } from "@/lib/time-off-compensation";
+import type { CalendarCompensableDayOff, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
 type CalendarQueryInput = { start: string; end: string };
 
@@ -49,7 +50,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const eventsPromise = supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, recurrence_rule, series_id, occurrence_start, cancelled_at, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, recurrence_rule, series_id, occurrence_start, cancelled_at, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("studio_id", membership.studio_id)
     .or(`and(series_id.is.null,cancelled_at.is.null,recurrence_rule.not.is.null),and(series_id.is.null,cancelled_at.is.null,recurrence_rule.is.null,starts_at.lt.${rangeEndExclusive},ends_at.gt.${rangeStartInstant}),and(series_id.not.is.null,occurrence_start.gte.${rangeStartInstant},occurrence_start.lt.${rangeEndExclusive})`)
     .order("starts_at");
@@ -82,8 +83,9 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       range_start: start,
       range_end: end,
     });
+  const ownApprovedDayOffsPromise = supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId).eq("request_type", "day_off").eq("status", "approved");
 
-  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, coworkerResult] = await Promise.all([
+  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, coworkerResult, ownApprovedDayOffsResult] = await Promise.all([
     projectsPromise,
     projectDeadlinesPromise,
     taskDeadlinesPromise,
@@ -92,15 +94,26 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     peoplePromise,
     systemMembersPromise,
     coworkerPromise,
+    ownApprovedDayOffsPromise,
   ]);
 
-  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, coworkerResult.error].filter(Boolean);
+  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, coworkerResult.error, ownApprovedDayOffsResult.error].filter(Boolean);
   if (errors.length > 0) {
     console.error("Unable to load Calendar data", errors);
     throw new Error("Unable to load Calendar data.");
   }
 
   const projects: CalendarProject[] = projectsResult.data ?? [];
+  const detailDayOffs = (timeOffResult.data ?? []).filter((request) => request.request_type === "day_off" && request.status === "approved");
+  const linkedRequestIds = (eventsResult.data ?? []).map((event) => event.compensates_time_off_request_id).filter((id): id is string => id !== null);
+  const linkedDayOffsResult = linkedRequestIds.length ? await supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").in("id", linkedRequestIds).eq("request_type", "day_off").eq("status", "approved") : { data: [], error: null };
+  if (linkedDayOffsResult.error) throw new Error("Unable to load linked day-off details.");
+  const compensationRequestIds = [...new Set([...detailDayOffs, ...(ownApprovedDayOffsResult.data ?? []), ...(linkedDayOffsResult.data ?? [])].map((request) => request.id))];
+  const compensationEventsResult = compensationRequestIds.length ? await supabase.from("calendar_events").select("id, starts_at, ends_at, all_day, cancelled_at, compensates_time_off_request_id").eq("studio_id", membership.studio_id).eq("event_type", "work_makeup").in("compensates_time_off_request_id", compensationRequestIds) : { data: [], error: null };
+  if (compensationEventsResult.error) throw new Error("Unable to load day-off compensation.");
+  const compensationFor = (request: { id: string; start_date: string; end_date: string; start_time: string | null; end_time: string | null; all_day: boolean }) => getDayOffCompensation({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day }, (compensationEventsResult.data ?? []).filter((event) => event.compensates_time_off_request_id === request.id).map((event) => ({ id: event.id, startsAt: event.starts_at, endsAt: event.ends_at, allDay: event.all_day, cancelledAt: event.cancelled_at, compensatesTimeOffRequestId: event.compensates_time_off_request_id })));
+  const compensableDayOffs: CalendarCompensableDayOff[] = (ownApprovedDayOffsResult.data ?? []).map((request) => ({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day, remainingMinutes: compensationFor(request).remainingMinutes })).filter((request) => request.remainingMinutes > 0);
+  const linkedDayOffById = new Map((linkedDayOffsResult.data ?? []).map((request) => [request.id, { id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day, remainingMinutes: compensationFor(request).remainingMinutes }]));
   const people: CalendarPerson[] = (peopleResult.data ?? []).map((membershipRow) => ({
     id: membershipRow.profile.id,
     full_name: membershipRow.profile.full_name,
@@ -153,6 +166,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
       description: event.description, location: event.location, meetingUrl: event.meeting_url,
       recurrenceRule: parseRecurrenceRule(event.recurrence_rule), seriesId: null, occurrenceStart: null,
+      compensatesTimeOffRequestId: event.compensates_time_off_request_id, compensationDayOff: event.compensates_time_off_request_id ? linkedDayOffById.get(event.compensates_time_off_request_id) ?? null : null,
       project: event.project, organizer: { ...event.organizer, projectIds: [] }, invitees,
     };
     const rule = baseItem.recurrenceRule;
@@ -163,7 +177,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       if (override?.cancelled_at) continue;
       if (override) {
         const overrideInvitees = override.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
-        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, invitees: overrideInvitees });
+        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, invitees: overrideInvitees });
       } else items.push({ ...baseItem, key: `calendar_event:${event.id}:${originalStart}`, id: event.id, startsAt: bounds.startsAt, endsAt: bounds.endsAt, startDate: instantToDateOnly(bounds.startsAt), endDate: event.all_day ? getInclusiveAllDayEndDate(bounds.endsAt) : instantToDateOnly(bounds.endsAt), seriesId: event.id, occurrenceStart: originalStart });
     }
   }
@@ -177,7 +191,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       reviewNote: request.review_note, reviewedBy: request.reviewed_by, reviewedAt: request.reviewed_at,
       currentUserId: membership.authenticatedUserId,
     });
-    if (item) items.push(item);
+    if (item) items.push({ ...item, compensation: request.request_type === "day_off" && request.status === "approved" ? compensationFor(request) : null });
   }
 
   for (const availability of coworkerResult.data ?? []) {
@@ -195,5 +209,6 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     pendingCount: isAdmin ? items.filter((item) => item.source === "time_off_request_admin" && item.status === "pending").length : 0,
     rangeStart: start, rangeEnd: end,
     today: instantToDateOnly(new Date().toISOString()),
+    compensableDayOffs,
   };
 }

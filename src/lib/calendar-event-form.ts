@@ -17,6 +17,7 @@ export type CalendarEventFormValues = {
   meetingUrl: string;
   description: string;
   recurrenceRule?: RecurrenceRule | null;
+  compensatesTimeOffRequestId?: string;
 };
 
 export function updateEventStartDate(values: CalendarEventFormValues, startDate: string, endDateLinked: boolean): CalendarEventFormValues {
@@ -69,6 +70,7 @@ export function createCalendarEventFormValues(
     meetingUrl: item?.meetingUrl ?? "",
     description: item?.description ?? "",
     recurrenceRule: item?.recurrenceRule ?? null,
+    compensatesTimeOffRequestId: item?.compensatesTimeOffRequestId ?? "",
   };
 }
 
@@ -91,5 +93,6 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     meetingUrl: values.meetingUrl,
     description: values.description,
     recurrenceRule: values.recurrenceRule ?? null,
+    compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
   };
 }

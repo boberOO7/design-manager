@@ -15,6 +15,8 @@ export type { RecurrenceRule } from "@/lib/calendar-recurrence";
 export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status">;
 export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[] };
 export type CalendarEventInvitee = CalendarPerson & { inviteId: string; status: CalendarEventInvitationStatus };
+export type CalendarCompensation = { requiredMinutes: number; compensatedMinutes: number; remainingMinutes: number };
+export type CalendarCompensableDayOff = { id: string; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; remainingMinutes: number };
 
 type CalendarBase = {
   key: string;
@@ -50,6 +52,8 @@ export type CalendarItem =
       recurrenceRule?: import("@/lib/calendar-recurrence").RecurrenceRule | null;
       seriesId?: string | null;
       occurrenceStart?: string | null;
+      compensatesTimeOffRequestId?: string | null;
+      compensationDayOff?: CalendarCompensableDayOff | null;
       project: { id: string; name: string } | null;
       organizer: CalendarPerson;
       invitees: CalendarEventInvitee[];
@@ -87,6 +91,7 @@ export type CalendarItem =
       reviewedBy: string | null;
       reviewedAt: string | null;
       isOwn: boolean;
+      compensation?: CalendarCompensation | null;
     })
   | (CalendarBase & {
       source: "birthday";
@@ -125,4 +130,5 @@ export type CalendarPageData = {
   rangeStart: string;
   rangeEnd: string;
   today: string;
+  compensableDayOffs: CalendarCompensableDayOff[];
 };

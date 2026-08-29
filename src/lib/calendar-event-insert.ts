@@ -21,6 +21,7 @@ export type CalendarEventInsertPayload = {
   created_by: string;
   organizer_id: string;
   recurrence_rule: CalendarEventInput["recurrenceRule"];
+  compensates_time_off_request_id: string | null;
 };
 
 export function verifyCalendarEventMembership(
@@ -61,5 +62,6 @@ export function createCalendarEventInsertPayload(
     created_by: authenticatedUserId,
     organizer_id: authenticatedUserId,
     recurrence_rule: input.recurrenceRule,
+    compensates_time_off_request_id: input.compensatesTimeOffRequestId,
   };
 }

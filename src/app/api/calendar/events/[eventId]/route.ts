@@ -24,7 +24,7 @@ export async function PATCH(request: Request, context: Context) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
   }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
-    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
+    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, compensates_time_off_request_id: value.compensatesTimeOffRequestId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });
     const item = await getNormalizedCalendarEvent(override.id, membership.authenticatedUserId);
     return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, context: Context) {
   const { data, error } = await supabase.from("calendar_events").update({
     title: value.title, event_type: value.eventType, project_id: value.projectId,
     starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay,
-    location: value.location, meeting_url: value.meetingUrl, description: value.description, recurrence_rule: value.recurrenceRule,
+    location: value.location, meeting_url: value.meetingUrl, description: value.description, recurrence_rule: value.recurrenceRule, compensates_time_off_request_id: value.compensatesTimeOffRequestId,
   }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 

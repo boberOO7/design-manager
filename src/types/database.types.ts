@@ -36,24 +36,25 @@ export type Database = {
       calendar_events: {
         Row: {
           all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
-          description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
+          compensates_time_off_request_id: string | null; description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
           id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
           starts_at: string; studio_id: string; title: string; updated_at: string
         }
         Insert: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
-          description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
+          compensates_time_off_request_id?: string | null; description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
           id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at: string; studio_id: string; title: string; updated_at?: string
         }
         Update: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
-          description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
+          compensates_time_off_request_id?: string | null; description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
           id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at?: string; studio_id?: string; title?: string; updated_at?: string
         }
         Relationships: [
           { foreignKeyName: "calendar_events_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_events_compensates_time_off_request_id_fkey"; columns: ["compensates_time_off_request_id"]; isOneToOne: false; referencedRelation: "time_off_requests"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_organizer_id_fkey"; columns: ["organizer_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
