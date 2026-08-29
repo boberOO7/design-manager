@@ -1,5 +1,6 @@
-import { addCalendarDays, instantToDateOnly, instantToWallInput, zonedWallTimeToIso } from "./calendar";
+import { addCalendarDays, instantToDateOnly, instantToWallInput, parseDateOnly, zonedWallTimeToIso } from "./calendar";
 import { updateLinkedStartDate, updateLinkedStartTime } from "./calendar-form-range";
+import { getWorkMakeupMinutes } from "./time-off-compensation";
 import type { CalendarEventType, CalendarItem } from "../types/calendar";
 import type { RecurrenceRule } from "./calendar-recurrence";
 
@@ -95,4 +96,21 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     recurrenceRule: values.recurrenceRule ?? null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
   };
+}
+
+export function getWorkMakeupTitle(
+  values: CalendarEventFormValues,
+  locale: string,
+  dayOff?: { startDate: string; remainingMinutes: number; previousContributionMinutes?: number } | null,
+): string {
+  if (!dayOff) return locale.startsWith("uk") ? "Відпрацювання" : "Work makeup";
+
+  const payload = toCalendarEventMutationPayload(values);
+  const compensatedMinutes = getWorkMakeupMinutes({ startsAt: payload.startsAt, endsAt: payload.endsAt, allDay: payload.allDay });
+  const remainingMinutes = dayOff.remainingMinutes + (dayOff.previousContributionMinutes ?? 0);
+  const partial = compensatedMinutes < remainingMinutes;
+  const date = new Intl.DateTimeFormat(locale, { year: "numeric", month: "long", day: "numeric" }).format(parseDateOnly(dayOff.startDate));
+
+  if (locale.startsWith("uk")) return `${partial ? "Часткове відпрацювання" : "Відпрацювання"} за ${date}`;
+  return `${partial ? "Partial work makeup" : "Work makeup"} for ${date}`;
 }

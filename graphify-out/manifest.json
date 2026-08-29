@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1787945937.9736037,
-    "ast_hash": "a8c1392b6b6de28d2fb11c2d24d30006",
+    "mtime": 1788003202.3619678,
+    "ast_hash": "1232e283158b5280c8ec406442ea009a",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -630,8 +630,8 @@
     "semantic_hash": "eeaae535f0ca94b8f1670ada52a5947d"
   },
   "src/data/queries/calendar-item.ts": {
-    "mtime": 1787945623.882937,
-    "ast_hash": "c9e75bbc7f2a3ebde84c7f82f28c3c1c",
+    "mtime": 1787945970.0934935,
+    "ast_hash": "0788d659251fc7c61652e5a4def214b7",
     "semantic_hash": ""
   },
   "src/data/queries/calendar.ts": {
@@ -715,13 +715,13 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-event-form.test.ts": {
-    "mtime": 1787921493.7807066,
-    "ast_hash": "d72438230e3ab69fc67ece84a702b7dc",
+    "mtime": 1788003186.3612084,
+    "ast_hash": "ecee0ca3581dc151dc0baa2f382337be",
     "semantic_hash": ""
   },
   "src/lib/calendar-event-form.ts": {
-    "mtime": 1787945774.6831272,
-    "ast_hash": "8bf27d4f744b632faf84100c7dcd542a",
+    "mtime": 1788003186.0411947,
+    "ast_hash": "ff2c51973b71d3c7890a34673a0da39d",
     "semantic_hash": ""
   },
   "src/lib/calendar-event-insert.test.ts": {
@@ -3645,8 +3645,8 @@
     "semantic_hash": ""
   },
   "src/lib/time-off-compensation.test.ts": {
-    "mtime": 1787945813.547093,
-    "ast_hash": "d84bfe5540b5c1d7e0cf717a3c6249fd",
+    "mtime": 1787945988.9385462,
+    "ast_hash": "c7849e6d7e439e8c1e44b8e3c38b3b6c",
     "semantic_hash": ""
   },
   "src/lib/time-off-compensation.ts": {

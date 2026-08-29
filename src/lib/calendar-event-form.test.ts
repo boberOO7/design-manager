@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getInclusiveAllDayEndDate, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { getAllDayEventBounds, getInclusiveAllDayEndDate, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
@@ -87,6 +87,13 @@ describe("Calendar event and time-off payload validation", () => {
 
   it("submits Presentation as client_presentation", () => {
     expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("client_presentation");
+  });
+
+  it("derives localized work makeup titles from the compensation duration", () => {
+    const values: CalendarEventFormValues = { ...baseValues, eventType: "work_makeup", allDay: false, startTime: "18:00", endTime: "20:00" };
+    expect(getWorkMakeupTitle(values, "en", { startDate: "2026-08-28", remainingMinutes: 120 })).toBe("Work makeup for August 28, 2026");
+    expect(getWorkMakeupTitle({ ...values, endTime: "19:00" }, "uk", { startDate: "2026-08-28", remainingMinutes: 120 })).toBe("Часткове відпрацювання за 28 серпня 2026 р.");
+    expect(getWorkMakeupTitle(values, "en")).toBe("Work makeup");
   });
 
   it("includes selected invitee IDs in the create-event payload", () => {
