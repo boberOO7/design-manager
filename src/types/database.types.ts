@@ -62,6 +62,15 @@ export type Database = {
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      studio_days_off: {
+        Row: { created_at: string; created_by: string; date: string; id: string; name: string; note: string | null; studio_id: string }
+        Insert: { created_at?: string; created_by: string; date: string; id?: string; name: string; note?: string | null; studio_id: string }
+        Update: { created_at?: string; created_by?: string; date?: string; id?: string; name?: string; note?: string | null; studio_id?: string }
+        Relationships: [
+          { foreignKeyName: "studio_days_off_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "studio_days_off_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+        ]
+      }
       calendar_event_participants: {
         Row: { assigned_by: string; created_at: string; event_id: string; user_id: string }
         Insert: { assigned_by: string; created_at?: string; event_id: string; user_id: string }

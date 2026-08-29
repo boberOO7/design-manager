@@ -76,6 +76,12 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     .eq("is_active", true)
     .eq("profile.is_active", true);
 
+  const studioDaysOffPromise = supabase
+    .from("studio_days_off")
+    .select("id, date, name, note")
+    .eq("studio_id", membership.studio_id)
+    .order("date");
+
   const coworkerPromise = isAdmin
     ? Promise.resolve({ data: [], error: null })
     : supabase.rpc("get_calendar_coworker_availability", {
@@ -85,7 +91,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     });
   const ownApprovedDayOffsPromise = supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId).eq("request_type", "day_off").eq("status", "approved");
 
-  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, coworkerResult, ownApprovedDayOffsResult] = await Promise.all([
+  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult] = await Promise.all([
     projectsPromise,
     projectDeadlinesPromise,
     taskDeadlinesPromise,
@@ -93,11 +99,12 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     timeOffPromise,
     peoplePromise,
     systemMembersPromise,
+    studioDaysOffPromise,
     coworkerPromise,
     ownApprovedDayOffsPromise,
   ]);
 
-  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, coworkerResult.error, ownApprovedDayOffsResult.error].filter(Boolean);
+  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error].filter(Boolean);
   if (errors.length > 0) {
     console.error("Unable to load Calendar data", errors);
     throw new Error("Unable to load Calendar data.");
@@ -128,6 +135,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     membershipId: member.id, userId: member.user_id, fullName: member.profile.full_name,
     avatarUrl: member.profile.avatar_url, birthDate: member.profile.birth_date, joinedAt: member.joined_at,
   })), start, end, { excludeSalaryPaymentsForUserId: membership.authenticatedUserId, includeSalaryPayments: isAdmin }));
+
+  for (const dayOff of studioDaysOffResult.data ?? []) {
+    items.push({ source: "studio_day_off", key: `studio-day-off:${dayOff.id}`, id: dayOff.id, title: dayOff.name, note: dayOff.note, startDate: dayOff.date, endDate: dayOff.date, allDay: true, projectId: null, personIds: [] });
+  }
 
   for (const project of projectDeadlinesResult.data ?? []) {
     if (!project.due_date) continue;

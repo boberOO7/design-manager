@@ -110,6 +110,10 @@ export type CalendarItem =
   | (CalendarBase & {
       source: "salary_payment";
       member: CalendarSystemMember;
+    })
+  | (CalendarBase & {
+      source: "studio_day_off";
+      note: string | null;
     });
 
 export type CalendarFilters = {
@@ -120,6 +124,7 @@ export type CalendarFilters = {
   birthdays: boolean;
   teamAnniversaries: boolean;
   salaryPayments: boolean;
+  studioDaysOff: boolean;
   projectId: string;
   personId: string;
   mine: boolean;

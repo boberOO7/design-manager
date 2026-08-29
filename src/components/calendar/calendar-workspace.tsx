@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Filter, MapPin, Plus, Repeat2, Search, UserRoundSearch, Video, X } from "lucide-react";
+import { CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, Plus, Repeat2, Search, Trash2, UserRoundSearch, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -33,7 +33,7 @@ import { timeOffRequestTypeKey, timeOffStatusKey } from "@/lib/time-off-labels";
 import type { CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, CalendarView, MeetingMode, TimeOffRequestType } from "@/types/calendar";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string } | { kind: "time-off-form"; date?: string } | null;
+type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string } | { kind: "time-off-form"; date?: string } | { kind: "days-off" } | null;
 
 const fieldClass = inputClassName;
 
@@ -62,6 +62,7 @@ function itemTone(item: CalendarItem) {
   if (item.source === "birthday") return "border-l-[var(--ui-birthday-border)] bg-[var(--ui-birthday-surface)] text-[var(--ui-birthday-text)]";
   if (item.source === "team_anniversary") return "border-l-[var(--ui-anniversary-border)] bg-[var(--ui-anniversary-surface)] text-[var(--ui-anniversary-text)]";
   if (item.source === "salary_payment") return "border-l-[var(--ui-payment-border)] bg-[var(--ui-payment-surface)] text-[var(--ui-payment-text)]";
+  if (item.source === "studio_day_off") return "border-l-[var(--ui-violet-text)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)]";
   if (item.source === "time_off_request_admin") {
     const status = getTimeOffStatusBadgeStyle(item.status).variant;
     if (status === "warning") return "border-l-[var(--ui-warning-accent)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]";
@@ -75,7 +76,7 @@ function dateLabel(date: string, options: Intl.DateTimeFormatOptions = { month: 
 function useCalendarItemTitle() {
   const t = useTranslations("Calendar");
   const common = useTranslations("Common");
-  return (item: CalendarItem) => item.source === "birthday" ? t("birthdayEvent", { name: item.member.fullName }) : item.source === "team_anniversary" ? t("teamAnniversaryEvent", { name: item.member.fullName }) : item.source === "salary_payment" ? t("salaryPaymentEvent", { name: item.member.fullName }) : getCalendarItemDisplayTitle(item, {
+  return (item: CalendarItem) => item.source === "studio_day_off" ? t("studioDayOffEvent", { name: item.title }) : item.source === "birthday" ? t("birthdayEvent", { name: item.member.fullName }) : item.source === "team_anniversary" ? t("teamAnniversaryEvent", { name: item.member.fullName }) : item.source === "salary_payment" ? t("salaryPaymentEvent", { name: item.member.fullName }) : getCalendarItemDisplayTitle(item, {
     outOfOffice: t("outOfOffice"),
     pendingRequest: t("pendingRequest"),
     rejectedRequest: t("rejectedRequest"),
@@ -85,7 +86,7 @@ function useCalendarItemTitle() {
 
 function useCalendarItemTypeLabel() {
   const t = useTranslations("Calendar");
-  return (item: CalendarItem) => item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "birthday" ? t("birthdays") : item.source === "team_anniversary" ? t("teamAnniversaries") : item.source === "salary_payment" ? t("salaryPayments") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice");
+  return (item: CalendarItem) => item.source === "calendar_event" ? t(eventTypeKey[item.eventType]) : item.source === "project_deadline" ? t("projectDeadline") : item.source === "task_deadline" ? t("taskDeadline") : item.source === "birthday" ? t("birthdays") : item.source === "team_anniversary" ? t("teamAnniversaries") : item.source === "salary_payment" ? t("salaryPayments") : item.source === "studio_day_off" ? t("companyDaysOff") : item.source === "time_off_request_admin" && item.status === "pending" ? t("pendingRequest") : item.source === "time_off_request_admin" && item.status === "rejected" ? t("rejectedRequest") : t("outOfOffice");
 }
 
 const monthItemPresentationClassName = "box-border min-w-0 overflow-hidden border-y-0 border-r-0 p-0 text-left text-xs font-medium leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1";
@@ -126,6 +127,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     birthdays: param(searchParams, "birthdays") !== "0",
     teamAnniversaries: param(searchParams, "anniversaries") !== "0",
     salaryPayments: initialData.isAdmin && param(searchParams, "payments") !== "0",
+    studioDaysOff: param(searchParams, "daysOff") !== "0",
     projectId: param(searchParams, "project"), personId: param(searchParams, "person"), mine: param(searchParams, "mine") === "1",
   };
 
@@ -156,6 +158,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     if (!merged.birthdays) nextParams.set("birthdays", "0");
     if (!merged.teamAnniversaries) nextParams.set("anniversaries", "0");
     if (initialData.isAdmin && !merged.salaryPayments) nextParams.set("payments", "0");
+    if (!merged.studioDaysOff) nextParams.set("daysOff", "0");
     if (merged.projectId) nextParams.set("project", merged.projectId);
     if (merged.personId) nextParams.set("person", merged.personId);
     if (merged.mine) nextParams.set("mine", "1");
@@ -191,6 +194,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-0" ariaLabel={t("view")} items={[{ value: "month", label: t("month") }, { value: "week", label: t("week") }, { value: "agenda", label: t("agenda") }]} value={initialView} onValueChange={(view) => navigate({ view })} />
           <Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-expanded={showFilters} onClick={() => setShowFilters((value) => !value)}><Filter className="size-4" />{t("filters")}{filters.taskDeadlines ? "" : t("tasksOff")}</Button>
+          {initialData.isAdmin ? <Button size="sm" className="min-h-11 w-11 p-0 sm:min-h-0" variant="outline" aria-label={t("manageDaysOff")} title={t("manageDaysOff")} onClick={() => openDrawer({ kind: "days-off" })}><Ellipsis aria-hidden="true" className="size-4" /></Button> : null}
         </div>
       </div>
       {showFilters ? <FilterBar data={initialData} filters={filters} onChange={(patch) => navigate({}, true, patch)} /> : null}
@@ -206,11 +210,12 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} item={drawer.item} data={initialData} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { if (removedKey) setItems((current) => removeCalendarItem(current, removedKey)); if (item) { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); } else closeDrawer(); router.refresh(); }} /> : null}
     {drawer?.kind === "event-form" ? <EventForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} item={drawer.item} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
     {drawer?.kind === "time-off-form" ? <TimeOffForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
+    {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current); router.refresh(); }} /> : null}
   </div>;
 }
 
 function FilterBar({ data, filters, onChange }: { data: CalendarPageData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void }) {
-  const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff" | "birthdays" | "teamAnniversaries" | "salaryPayments">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")], ["birthdays", t("birthdays")], ["teamAnniversaries", t("teamAnniversaries")]];
+  const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff" | "birthdays" | "teamAnniversaries" | "salaryPayments" | "studioDaysOff">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")], ["birthdays", t("birthdays")], ["teamAnniversaries", t("teamAnniversaries")], ["studioDaysOff", t("companyDaysOff")]];
   if (data.isAdmin) checks.push(["salaryPayments", t("salaryPayments")]);
   return <div className="grid gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4 lg:grid-cols-[1.5fr_1fr_1fr_auto]">
     <div className="flex flex-wrap gap-x-4 gap-y-2">{checks.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={filters[key]} onChange={(event) => onChange({ [key]: event.target.checked })} />{label}</label>)}</div>
@@ -349,8 +354,54 @@ function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated }:
     {item.source === "project_deadline" ? <><p className="text-[var(--ui-text-secondary)]">{item.project.clientName ?? t("projectMilestone")} · {status(item.project.status)}</p><Link className="font-medium underline" href={`/projects/${item.project.id}`}>{t("openProject")}</Link></> : null}
     {item.source === "task_deadline" ? <><p className="whitespace-pre-wrap text-[var(--ui-text-secondary)]">{item.task.description || t("taskDescription")}</p><dl className="grid grid-cols-2 gap-4"><div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd>{item.task.assigneeName}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd>{status(item.task.status)}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd>{priority(item.task.priority)}</dd></div></dl><Link className="font-medium underline" href={`/projects/${item.task.projectId}`}>{t("openTask", { project: item.task.projectName })}</Link></> : null}
     {item.source === "time_off" ? <p className="text-[var(--ui-text-secondary)]">{t("privateDetails", { name: item.subjectName })}</p> : null}
+    {item.source === "studio_day_off" ? <section className="border-t border-[var(--ui-border-subtle)] pt-4"><h3 className="font-semibold text-[var(--ui-text)]">{item.title}</h3><p className="mt-2 whitespace-pre-wrap leading-6 text-[var(--ui-text-secondary)]">{item.note || t("noNote")}</p></section> : null}
     {item.source === "time_off_request_admin" ? <><dl className="grid grid-cols-2 gap-4"><div><dt className="text-[var(--ui-text-muted)]">{t("employee")}</dt><dd>{item.subjectName}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{timeOff("status")}</dt><dd><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getTimeOffStatusBadgeStyle(item.status).className}`}>{timeOff(timeOffStatusKey[item.status])}</span></dd></div><div><dt className="text-[var(--ui-text-muted)]">{timeOff("requestType")}</dt><dd>{timeOff(timeOffRequestTypeKey[item.requestType])}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("time")}</dt><dd>{item.allDay ? timeOff("allDay") : `${item.startTime}–${item.endTime}`}</dd></div></dl>{item.compensation ? <section className="border-t border-[var(--ui-border-subtle)] pt-4"><h3 className="font-semibold">{t("compensation")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.compensation.compensatedMinutes === 0 ? t("notCompensated") : item.compensation.remainingMinutes === 0 ? t("compensated") : t("partiallyCompensated")} · {t("compensationProgress", { compensated: item.compensation.compensatedMinutes / 60, required: item.compensation.requiredMinutes / 60 })}</p></section> : null}<section><h3 className="font-semibold">{timeOff("privateNote")}</h3><p className="mt-2 whitespace-pre-wrap text-[var(--ui-text-secondary)]">{item.privateNote || timeOff("noPrivateNote")}</p></section>{item.reviewNote ? <section><h3 className="font-semibold">{timeOff("reviewNote")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.reviewNote}</p></section> : null}{data.isAdmin && item.status === "pending" ? <section className="space-y-3 border-t border-[var(--ui-border-subtle)] pt-5"><label className="grid gap-1.5 font-medium">{timeOff("reviewNote")}<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={2000} rows={3} className="rounded-xl border border-[var(--ui-border)] p-3 font-normal" /></label><div className="flex gap-2"><Button disabled={pending} onClick={() => void timeOffAction("approve")}>{pending ? timeOff("updating") : timeOff("approve")}</Button><Button disabled={pending} variant="outline" onClick={() => void timeOffAction("reject")}>{timeOff("reject")}</Button></div></section> : null}{((item.isOwn && item.status === "pending") || (data.isAdmin && item.status !== "cancelled")) ? <Button disabled={pending} variant="outline" onClick={() => void timeOffAction("cancel")}>{timeOff("cancelRequest")}</Button> : null}</> : null}
   </div></DetailPanel>;
+}
+
+type StudioDayOffItem = Extract<CalendarItem, { source: "studio_day_off" }>;
+type StudioDayOffRecord = Pick<StudioDayOffItem, "id" | "title" | "startDate" | "note">;
+
+function studioDayOffItem(record: StudioDayOffRecord): StudioDayOffItem {
+  return { source: "studio_day_off", key: `studio-day-off:${record.id}`, id: record.id, title: record.title, note: record.note, startDate: record.startDate, endDate: record.startDate, allDay: true, projectId: null, personIds: [] };
+}
+
+function parseStudioDayOffResponse(value: unknown): StudioDayOffRecord | null {
+  if (typeof value !== "object" || value === null || !("dayOff" in value) || typeof value.dayOff !== "object" || value.dayOff === null) return null;
+  const dayOff = value.dayOff;
+  if (!("id" in dayOff) || !("date" in dayOff) || !("name" in dayOff) || !("note" in dayOff)) return null;
+  return typeof dayOff.id === "string" && typeof dayOff.date === "string" && typeof dayOff.name === "string" && (typeof dayOff.note === "string" || dayOff.note === null)
+    ? { id: dayOff.id, title: dayOff.name, startDate: dayOff.date, note: dayOff.note }
+    : null;
+}
+
+function StudioDaysOffPanel({ isOpen, onExited, initialYear, items, onClose, onChange }: { isOpen: boolean; onExited: () => void; initialYear: number; items: StudioDayOffItem[]; onClose: () => void; onChange: (next: StudioDayOffItem | null, removedKey: string | null) => void }) {
+  const t = useTranslations("Calendar"); const locale = useLocale();
+  const [year, setYear] = useState(initialYear); const [editing, setEditing] = useState<StudioDayOffItem | null>(null); const [adding, setAdding] = useState(false); const [name, setName] = useState(""); const [date, setDate] = useState(`${initialYear}-01-01`); const [note, setNote] = useState(""); const [pending, setPending] = useState(false); const [error, setError] = useState("");
+  const yearItems = items.filter((item) => item.startDate.startsWith(`${year}-`));
+  function resetForm() { setEditing(null); setAdding(false); setName(""); setDate(`${year}-01-01`); setNote(""); setError(""); }
+  function edit(item: StudioDayOffItem) { setEditing(item); setAdding(true); setName(item.title); setDate(item.startDate); setNote(item.note ?? ""); setError(""); }
+  async function save() {
+    setPending(true); setError("");
+    try {
+      const response = await fetch(editing ? `/api/calendar/days-off/${encodeURIComponent(editing.id)}` : "/api/calendar/days-off", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, date, note }) });
+      const result: unknown = await response.json(); const record = response.ok ? parseStudioDayOffResponse(result) : null;
+      if (!record) { setError(t("dayOffSaveFailed")); return; }
+      onChange(studioDayOffItem(record), null); setYear(Number(record.startDate.slice(0, 4))); resetForm();
+    } catch { setError(t("dayOffSaveFailed")); } finally { setPending(false); }
+  }
+  async function remove(item: StudioDayOffItem) {
+    if (!window.confirm(t("deleteDayOffConfirm", { name: item.title }))) return;
+    setPending(true); setError("");
+    try { const response = await fetch(`/api/calendar/days-off/${encodeURIComponent(item.id)}`, { method: "DELETE" }); if (!response.ok) { setError(t("dayOffDeleteFailed")); return; } onChange(null, item.key); } catch { setError(t("dayOffDeleteFailed")); } finally { setPending(false); }
+  }
+  return <DetailPanel isOpen={isOpen} onExited={onExited} title={t("manageDaysOffTitle", { year })} eyebrow={t("companyDaysOff")} onClose={pending ? () => undefined : onClose}>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between border-b border-[var(--ui-border-subtle)] pb-3"><Button size="sm" variant="ghost" className="size-11 p-0" aria-label={t("previousYear")} onClick={() => { setYear((value) => value - 1); resetForm(); }}><ChevronLeft aria-hidden="true" className="size-4" /></Button><p aria-live="polite" className="text-base font-semibold tabular-nums text-[var(--ui-text)]">{year}</p><Button size="sm" variant="ghost" className="size-11 p-0" aria-label={t("nextYear")} onClick={() => { setYear((value) => value + 1); resetForm(); }}><ChevronRight aria-hidden="true" className="size-4" /></Button></div>
+      {yearItems.length ? <div className="divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{yearItems.map((item) => <div key={item.key} className="grid grid-cols-[6.25rem_minmax(0,1fr)_auto] items-center gap-3 px-2 py-4 transition-colors hover:bg-[var(--ui-surface-subtle)]"><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{dateLabel(item.startDate, { month: "long", day: "numeric" }, locale)}</p><div className="min-w-0"><p className="break-words text-sm font-semibold text-[var(--ui-text)]">{item.title}</p>{item.note ? <p className="mt-1 line-clamp-2 text-sm text-[var(--ui-text-secondary)]">{item.note}</p> : null}</div><div className="flex shrink-0 gap-2"><Button size="sm" variant="ghost" className="size-11 p-0" aria-label={t("editDayOff", { name: item.title })} onClick={() => edit(item)}><Pencil aria-hidden="true" className="size-4" /></Button><Button size="sm" variant="ghost" className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("deleteDayOff", { name: item.title })} onClick={() => void remove(item)}><Trash2 aria-hidden="true" className="size-4" /></Button></div></div>)}</div> : <p className="rounded-xl border border-dashed border-[var(--ui-border-strong)] p-5 text-center text-sm text-[var(--ui-text-muted)]">{t("noDaysOffForYear", { year })}</p>}
+      {!adding ? <Button className="min-h-11 w-full" variant="outline" onClick={() => { setAdding(true); setDate(`${year}-01-01`); }}>{t("addDayOff")}</Button> : <form className="space-y-4 border-t border-[var(--ui-border-subtle)] pt-5" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); void save(); }}><FormField label={t("dayOffName")}><input autoFocus required maxLength={160} className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} /></FormField><FormField label={t("date")}><DatePicker locale={locale} value={date} onValueChange={setDate} /></FormField><FormField label={t("dayOffNote")} optional><textarea maxLength={2000} rows={3} className={textareaClassName} value={note} onChange={(event) => setNote(event.target.value)} /></FormField>{error ? <p role="alert" className="rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={pending} onClick={resetForm}>{t("cancel")}</Button><Button type="submit" disabled={pending}>{pending ? t("saving") : editing ? t("saveDayOff") : t("addDayOff")}</Button></div></form>}
+    </div>
+  </DetailPanel>;
 }
 
 type MutationResult = { success: true; item?: CalendarItem | null; removedKey?: string | null };

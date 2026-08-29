@@ -8,6 +8,7 @@ export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
   birthdays: true,
   teamAnniversaries: true,
   salaryPayments: true,
+  studioDaysOff: true,
   projectId: "",
   personId: "",
   mine: false,
@@ -143,6 +144,7 @@ export function filterCalendarItems(items: CalendarItem[], filters: CalendarFilt
     if (item.source === "birthday" && !filters.birthdays) return false;
     if (item.source === "team_anniversary" && !filters.teamAnniversaries) return false;
     if (item.source === "salary_payment" && !filters.salaryPayments) return false;
+    if (item.source === "studio_day_off" && !filters.studioDaysOff) return false;
     if (filters.projectId && item.projectId !== filters.projectId) return false;
     if (filters.personId && !item.personIds.includes(filters.personId)) return false;
     if (filters.mine && !item.personIds.includes(currentUserId)) return false;
