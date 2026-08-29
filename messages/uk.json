@@ -702,6 +702,7 @@
     "titleLabel": "Назва",
     "assignee": "Виконавець",
     "selectAssignee": "Оберіть виконавця",
+    "assignToMe": "Призначити мене",
     "selectProjectFirst": "Спочатку оберіть проєкт",
     "invalidAssignee": "Оберіть учасника цього проєкту.",
     "type": "Тип",

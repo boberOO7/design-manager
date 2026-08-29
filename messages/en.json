@@ -702,6 +702,7 @@
     "titleLabel": "Title",
     "assignee": "Assignee",
     "selectAssignee": "Select an assignee",
+    "assignToMe": "Assign to me",
     "selectProjectFirst": "Select a project first",
     "invalidAssignee": "Choose an eligible project member.",
     "type": "Type",
