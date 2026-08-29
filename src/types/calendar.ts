@@ -6,6 +6,7 @@ export const TIME_OFF_REQUEST_TYPES = ["vacation", "day_off", "medical_appointme
 export const TIME_OFF_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
 
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
+export type MeetingMode = "offline" | "online";
 export type CalendarEventInvitationStatus = (typeof CALENDAR_EVENT_INVITATION_STATUSES)[number];
 export type TimeOffRequestType = (typeof TIME_OFF_REQUEST_TYPES)[number];
 export type TimeOffStatus = (typeof TIME_OFF_STATUSES)[number];
@@ -49,6 +50,7 @@ export type CalendarItem =
       description: string | null;
       location: string | null;
       meetingUrl: string | null;
+      meetingMode: MeetingMode | null;
       recurrenceRule?: import("@/lib/calendar-recurrence").RecurrenceRule | null;
       seriesId?: string | null;
       occurrenceStart?: string | null;

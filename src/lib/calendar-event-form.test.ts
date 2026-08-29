@@ -16,6 +16,7 @@ const baseValues: CalendarEventFormValues = {
   participantIds: [],
   location: "",
   meetingUrl: "",
+  meetingMode: "offline",
   description: "",
 };
 
@@ -82,7 +83,7 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : { ...baseValues, eventType };
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "client_presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
       expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
     }
   });
@@ -95,6 +96,18 @@ describe("Calendar event and time-off payload validation", () => {
   it("rejects site visits that cross a Kyiv calendar day", () => {
     const values = { ...baseValues, eventType: "site_visit" as const, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", startDate: "2026-08-29", endDate: "2026-08-30" };
     expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
+  });
+
+  it("keeps meetings within one Kyiv calendar day and normalizes their mode-specific fields", () => {
+    const crossDayMeeting = { ...baseValues, eventType: "meeting" as const, allDay: false, startDate: "2026-08-29", endDate: "2026-08-30" };
+    expect(calendarEventSchema.safeParse(toCalendarEventMutationPayload(crossDayMeeting)).success).toBe(false);
+    expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload({ ...baseValues, eventType: "meeting", allDay: false }), meetingUrl: "https://meet.example.com" }).success).toBe(false);
+    expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload({ ...baseValues, eventType: "meeting", allDay: false, meetingMode: "online" }), location: "Studio" }).success).toBe(false);
+  });
+
+  it("defaults a meeting mode only for meetings and presentations", () => {
+    expect(calendarEventSchema.parse({ ...toCalendarEventMutationPayload({ ...baseValues, eventType: "meeting", allDay: false }), meetingMode: undefined }).meetingMode).toBe("offline");
+    expect(calendarEventSchema.parse(toCalendarEventMutationPayload({ ...baseValues, eventType: "site_visit", allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", meetingMode: "online" })).meetingMode).toBeNull();
   });
 
   it("submits Presentation as client_presentation", () => {

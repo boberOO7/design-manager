@@ -37,19 +37,19 @@ export type Database = {
         Row: {
           all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
           compensates_time_off_request_id: string | null; description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          assignee_id: string | null; id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
+          assignee_id: string | null; id: string; location: string | null; meeting_mode: "offline" | "online" | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
           starts_at: string; studio_id: string; title: string; updated_at: string
         }
         Insert: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
           compensates_time_off_request_id?: string | null; description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          assignee_id?: string | null; id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
+          assignee_id?: string | null; id?: string; location?: string | null; meeting_mode?: "offline" | "online" | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at: string; studio_id: string; title: string; updated_at?: string
         }
         Update: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
           compensates_time_off_request_id?: string | null; description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
-          assignee_id?: string | null; id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
+          assignee_id?: string | null; id?: string; location?: string | null; meeting_mode?: "offline" | "online" | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at?: string; studio_id?: string; title?: string; updated_at?: string
         }
         Relationships: [
@@ -895,6 +895,7 @@ export type Database = {
           p_ends_at: string
           p_event_type: Database["public"]["Enums"]["calendar_event_type"]
           p_location: string | null
+          p_meeting_mode?: string | null
           p_meeting_url: string | null
           p_participant_ids?: string[]
           p_project_id: string | null

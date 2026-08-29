@@ -18,6 +18,7 @@ export type CalendarEventInsertPayload = {
   all_day: boolean;
   location: string | null;
   meeting_url: string | null;
+  meeting_mode: CalendarEventInput["meetingMode"];
   created_by: string;
   organizer_id: string;
   recurrence_rule: CalendarEventInput["recurrenceRule"];
@@ -60,6 +61,7 @@ export function createCalendarEventInsertPayload(
     all_day: input.allDay,
     location: input.location,
     meeting_url: input.meetingUrl,
+    meeting_mode: input.meetingMode,
     created_by: authenticatedUserId,
     organizer_id: authenticatedUserId,
     recurrence_rule: input.recurrenceRule,

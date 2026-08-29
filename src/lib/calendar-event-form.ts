@@ -1,7 +1,7 @@
 import { addCalendarDays, instantToDateOnly, instantToWallInput, parseDateOnly, zonedWallTimeToIso } from "./calendar";
 import { updateLinkedStartDate, updateLinkedStartTime } from "./calendar-form-range";
 import { getWorkMakeupMinutes } from "./time-off-compensation";
-import type { CalendarEventType, CalendarItem } from "../types/calendar";
+import type { CalendarEventType, CalendarItem, MeetingMode } from "../types/calendar";
 import type { RecurrenceRule } from "./calendar-recurrence";
 
 export type CalendarEventFormValues = {
@@ -17,6 +17,7 @@ export type CalendarEventFormValues = {
   participantIds: string[];
   location: string;
   meetingUrl: string;
+  meetingMode: MeetingMode;
   description: string;
   recurrenceRule?: RecurrenceRule | null;
   compensatesTimeOffRequestId?: string;
@@ -72,6 +73,7 @@ export function createCalendarEventFormValues(
     participantIds: item?.participants.map((person) => person.id) ?? [],
     location: item?.location ?? "",
     meetingUrl: item?.meetingUrl ?? "",
+    meetingMode: item?.meetingMode ?? "offline",
     description: item?.description ?? "",
     recurrenceRule: item?.recurrenceRule ?? null,
     compensatesTimeOffRequestId: item?.compensatesTimeOffRequestId ?? "",
@@ -97,6 +99,7 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     participantIds: values.participantIds,
     location: values.location,
     meetingUrl: values.meetingUrl,
+    meetingMode: values.meetingMode,
     description: values.description,
     recurrenceRule: values.recurrenceRule ?? null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,

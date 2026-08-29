@@ -29,7 +29,9 @@ export async function POST(request: Request) {
     ? { ...parsed.data, assigneeId: activeMembership.system_role === "admin" ? parsed.data.assigneeId : activeMembership.authenticatedUserId }
     : parsed.data.eventType === "business_trip"
       ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: activeMembership.system_role === "admin" ? parsed.data.participantIds : [activeMembership.authenticatedUserId] }
-    : parsed.data;
+    : parsed.data.eventType === "meeting" || parsed.data.eventType === "client_presentation"
+      ? { ...parsed.data, allDay: false, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
+      : parsed.data;
   if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
   }
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
     p_all_day: payload.all_day,
     p_location: payload.location,
     p_meeting_url: payload.meeting_url,
+    p_meeting_mode: payload.meeting_mode,
     p_attendee_ids: value.attendeeIds,
     p_recurrence_rule: payload.recurrence_rule,
     p_compensates_time_off_request_id: payload.compensates_time_off_request_id,

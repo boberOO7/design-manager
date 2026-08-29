@@ -6,6 +6,8 @@ const optionalText = (maximum: number) => z.string().trim().max(maximum).optiona
 const optionalUrl = z.string().trim().max(1000).optional().default("").refine((value) => !value || /^https?:\/\//i.test(value), "Use a complete http(s) URL.").transform((value) => value || null);
 const recurrenceRule = z.object({ frequency: z.enum(["daily", "weekly", "monthly", "yearly"]), interval: z.number().int().min(1).max(99), weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]), endsOn: z.iso.date().nullable().default(null), occurrenceCount: z.number().int().min(1).max(999).nullable().default(null) }).strict().nullable().default(null);
 
+const meetingMode = z.enum(["offline", "online"]).nullable().optional();
+
 export const calendarEventSchema = z.object({
   title: z.string().trim().min(1, "Enter an event title.").max(200),
   eventType: z.enum(CALENDAR_EVENT_TYPES),
@@ -17,6 +19,7 @@ export const calendarEventSchema = z.object({
   participantIds: z.array(z.string().uuid()).max(100).default([]),
   location: optionalText(300),
   meetingUrl: optionalUrl,
+  meetingMode,
   description: optionalText(5000),
   recurrenceRule,
   compensatesTimeOffRequestId: z.string().uuid().nullable().optional().default(null),
@@ -40,12 +43,25 @@ export const calendarEventSchema = z.object({
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
     if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Site visits must start and end on the same local calendar day." });
   }
+  if (value.eventType === "meeting" || value.eventType === "client_presentation") {
+    const normalizedMeetingMode = value.meetingMode ?? "offline";
+    if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Meetings and presentations must have a start and end time." });
+    if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Meetings and presentations cannot repeat." });
+    if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Meetings and presentations must start and end on the same local calendar day." });
+    if (normalizedMeetingMode === "offline" && value.meetingUrl) context.addIssue({ code: "custom", path: ["meetingUrl"], message: "Offline meetings cannot include a meeting link." });
+    if (normalizedMeetingMode === "online" && value.location) context.addIssue({ code: "custom", path: ["location"], message: "Online meetings cannot include a location." });
+  }
   if (value.eventType === "business_trip") {
     if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the business trip." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Business trips cannot repeat." });
     if (value.meetingUrl) context.addIssue({ code: "custom", path: ["meetingUrl"], message: "Business trips cannot include a meeting link." });
   }
-});
+}).transform((value) => ({
+  ...value,
+  meetingMode: value.eventType === "meeting" || value.eventType === "client_presentation"
+    ? value.meetingMode ?? "offline"
+    : null,
+}));
 
 export const timeOffRequestSchema = z.object({
   requestType: z.enum(TIME_OFF_REQUEST_TYPES),

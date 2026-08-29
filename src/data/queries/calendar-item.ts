@@ -9,7 +9,7 @@ export async function getNormalizedCalendarEvent(eventId: string, currentUserId:
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, assignee_id, recurrence_rule, series_id, occurrence_start, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url)), participants:calendar_event_participants(user_id, profile:profiles!calendar_event_participants_user_id_fkey(id, full_name, job_title, avatar_url))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, meeting_mode, organizer_id, assignee_id, recurrence_rule, series_id, occurrence_start, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url)), participants:calendar_event_participants(user_id, profile:profiles!calendar_event_participants_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("id", eventId)
     .is("cancelled_at", null)
     .maybeSingle();
@@ -24,7 +24,7 @@ export async function getNormalizedCalendarEvent(eventId: string, currentUserId:
     startDate: instantToDateOnly(data.starts_at), endDate: data.all_day ? getInclusiveAllDayEndDate(data.ends_at) : instantToDateOnly(data.ends_at), allDay: data.all_day,
     projectId: data.project_id, personIds: [...new Set([...invitees.map((person) => person.id), ...participants.map((person) => person.id), data.organizer_id, ...(data.assignee_id ? [data.assignee_id] : []), ...(data.project_id === null ? [currentUserId] : [])])],
     eventType: data.event_type, startsAt: data.starts_at, endsAt: data.ends_at, compensatesTimeOffRequestId: data.compensates_time_off_request_id, compensationDayOff: compensationDayOff ? { id: compensationDayOff.id, startDate: compensationDayOff.start_date, endDate: compensationDayOff.end_date, startTime: compensationDayOff.start_time, endTime: compensationDayOff.end_time, allDay: compensationDayOff.all_day, remainingMinutes: 0 } : null, assigneeId: data.assignee_id, assignee: data.assignee ? { ...data.assignee, projectIds: [] } : null, description: data.description,
-    location: data.location, meetingUrl: data.meeting_url, recurrenceRule: null, seriesId: data.series_id, occurrenceStart: data.occurrence_start, project: data.project, organizer: { ...data.organizer, projectIds: [] }, invitees, participants,
+    location: data.location, meetingUrl: data.meeting_url, meetingMode: data.meeting_mode, recurrenceRule: null, seriesId: data.series_id, occurrenceStart: data.occurrence_start, project: data.project, organizer: { ...data.organizer, projectIds: [] }, invitees, participants,
   };
 }
 

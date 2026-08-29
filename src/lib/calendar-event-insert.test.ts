@@ -20,12 +20,13 @@ const eventInput = {
   title: "Studio meeting",
   eventType: "meeting" as const,
   projectId: null,
-  allDay: true,
-  startsAt: "2026-07-28T21:00:00.000Z",
-  endsAt: "2026-07-29T21:00:00.000Z",
+  allDay: false,
+  startsAt: "2026-07-28T06:00:00.000Z",
+  endsAt: "2026-07-28T07:00:00.000Z",
   attendeeIds: [],
   location: "",
   meetingUrl: "",
+  meetingMode: "offline",
   description: "",
 };
 
