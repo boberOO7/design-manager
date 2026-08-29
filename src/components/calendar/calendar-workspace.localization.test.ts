@@ -32,6 +32,12 @@ describe("Calendar event form localization contract", () => {
     expect(source).toContain('if (!item || !dirty || window.confirm(t("discardEvent"))) onClose();');
   });
 
+  it("closes new absence-request drafts without a browser confirmation", () => {
+    expect(source).toContain('function requestClose() { if (!pending) onClose(); }');
+    expect(source).not.toContain('window.confirm(t("discardRequest"))');
+    expect(source).toContain('action === "cancel" && !window.confirm(t("cancelRequestConfirm"))');
+  });
+
   it("keeps English and Ukrainian event-form keys in parity", () => {
     const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "interview", "interviewer", "selectInterviewer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "meetingMode", "offline", "online", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
     for (const key of keys) {

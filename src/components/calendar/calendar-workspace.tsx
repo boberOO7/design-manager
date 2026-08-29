@@ -510,8 +510,8 @@ function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved
 function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarPageData; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "time_off_request_admin" }>) => void }) {
   const t = useTranslations("TimeOff");
   const calendar = useTranslations("Calendar"); const locale = useLocale();
-  const date = initialDate ?? data.today; const initial = { requestType: "vacation" as TimeOffRequestType, startDate: date, endDate: date, allDay: true, startTime: "09:00", endTime: "10:00", privateNote: "" }; const [values, setValues] = useState(initial); const [endDateLinked, setEndDateLinked] = useState(true); const [endTimeLinked, setEndTimeLinked] = useState(true); const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); const dirty = JSON.stringify(values) !== JSON.stringify(initial);
-  function requestClose() { if (pending) return; if (!dirty || window.confirm(t("discardRequest"))) onClose(); }
+  const date = initialDate ?? data.today; const initial = { requestType: "vacation" as TimeOffRequestType, startDate: date, endDate: date, allDay: true, startTime: "09:00", endTime: "10:00", privateNote: "" }; const [values, setValues] = useState(initial); const [endDateLinked, setEndDateLinked] = useState(true); const [endTimeLinked, setEndTimeLinked] = useState(true); const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  function requestClose() { if (!pending) onClose(); }
   function requestFieldError(field: string) { return field === "requestType" ? t("invalidRequestType") : t("invalidDateRange"); }
   async function submit() {
     setPending(true); setError(""); setFieldErrors({});
