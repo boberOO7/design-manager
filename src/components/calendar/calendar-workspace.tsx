@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronLeft, ChevronRight, Filter, MapPin, Plus, Repeat2, Search, UserRoundSearch, Video, X } from "lucide-react";
+import { CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Filter, MapPin, Plus, Repeat2, Search, UserRoundSearch, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -179,13 +179,13 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
       <div><p className="text-sm font-medium text-[var(--ui-text-muted)]">{t("schedule", { timezone: APPLICATION_TIME_ZONE })}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("description")}</p></div>
       <div className="flex flex-wrap gap-2 sm:justify-end">
-        <Button size="sm" className="min-h-11 sm:min-h-0" onClick={() => openDrawer({ kind: "event-form" })}><Plus className="size-4" />{t("addEvent")}</Button>
-        <Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" onClick={() => openDrawer({ kind: "time-off-form" })}>{t("requestTimeOff")}</Button>
+        <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" onClick={() => openDrawer({ kind: "event-form" })}><CalendarPlus aria-hidden="true" className="size-4" />{t("addEvent")}</Button>
+        <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" title={t("submitAbsenceRequest")} variant="outline" onClick={() => openDrawer({ kind: "time-off-form" })}><CalendarOff aria-hidden="true" className="size-4" />{t("absence")}</Button>
         {initialData.isAdmin && initialData.pendingCount > 0 ? <span className="inline-flex items-center rounded-full bg-[var(--ui-violet-surface)] px-3 text-xs font-semibold text-[var(--ui-violet-text)]">{t("pending", { count: initialData.pendingCount })}</span> : null}
       </div>
     </header>
 
-    <section className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-sm">
       <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2"><div className="flex items-center gap-2"><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("previous")} onClick={() => movePeriod(-1)}><ChevronLeft className="size-4" /></Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" onClick={() => navigate({ date: initialData.today })}>{t("today")}</Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("next")} onClick={() => movePeriod(1)}><ChevronRight className="size-4" /></Button></div><h2 className="min-w-0 text-sm font-semibold text-[var(--ui-text)] sm:ml-2 sm:text-base">{periodLabel}</h2></div>
         <div className="flex flex-wrap items-center gap-2">

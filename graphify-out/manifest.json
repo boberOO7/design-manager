@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1788010249.746986,
-    "ast_hash": "e46dd9a18029e1b18ed194630936ce12",
+    "mtime": 1788014704.1763835,
+    "ast_hash": "2e1e519d2a735e8d73264e21792011f1",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -745,13 +745,13 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1787922097.2283487,
-    "ast_hash": "46789e430f4ea8cb901ec7aafb0305a4",
+    "mtime": 1788011701.6881695,
+    "ast_hash": "706cdfba6c17efaa24fc44c8387c0835",
     "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1787922096.912335,
-    "ast_hash": "26125cf5f9c92611098eecb1e488291f",
+    "mtime": 1788011701.5521634,
+    "ast_hash": "e59ca4f1d2117c28549f6905e3e5903e",
     "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788010249.9029922,
-    "ast_hash": "422e9de9bd311c56276d8a289093809d",
+    "mtime": 1788012688.1958468,
+    "ast_hash": "d6642445b683b0334fa98c23bce81182",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788010250.0549984,
-    "ast_hash": "4eee6365e1d0fab01d4c4ca8114f4143",
+    "mtime": 1788012688.3758533,
+    "ast_hash": "dece1748fa36cdd55f7daa0e6abec5dc",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1765,8 +1765,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1788010250.2070045,
-    "ast_hash": "0c635b16fc09b2e5ca5aa2187691faa1",
+    "mtime": 1788012688.539859,
+    "ast_hash": "ad6d7e94378d2d6c008b4303d151ad71",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {

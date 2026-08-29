@@ -332,8 +332,10 @@ describe("Calendar filtering and identity", () => {
 
 describe("Calendar privacy and workflow", () => {
   const raw = { id: "r1", userId: "u2", employeeName: "Taylor", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true };
-  it("hides rejected and cancelled requests from coworkers and gives approved availability a named generic label", () => {
+  it("hides rejected and cancelled requests from Calendar read models and gives approved availability a named generic label", () => {
     expect(normalizeCoworkerTimeOff({ ...raw, status: "rejected" })).toBeNull(); expect(normalizeCoworkerTimeOff({ ...raw, status: "cancelled" })).toBeNull();
+    expect(normalizePrivateTimeOff({ ...raw, requestType: "vacation", status: "rejected", privateNote: null, reviewNote: "Not approved", reviewedBy: "admin", reviewedAt: null, currentUserId: "admin" })).toBeNull();
+    expect(normalizePrivateTimeOff({ ...raw, requestType: "vacation", status: "cancelled", privateNote: null, reviewNote: null, reviewedBy: null, reviewedAt: null, currentUserId: "admin" })).toBeNull();
     const availability = normalizeCoworkerTimeOff({ ...raw, status: "approved" });
     expect(availability).toMatchObject({ title: "Taylor", source: "time_off" });
     expect(availability?.title).not.toContain("medical_appointment");

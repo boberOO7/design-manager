@@ -516,7 +516,7 @@ export function normalizeCoworkerTimeOff(input: { id: string; userId: string; em
 }
 
 export function normalizePrivateTimeOff(input: { id: string; userId: string; employeeName: string; requestType: TimeOffRequestType; status: TimeOffStatus; startDate: string; endDate: string; startTime: string | null; endTime: string | null; allDay: boolean; privateNote: string | null; reviewNote: string | null; reviewedBy: string | null; reviewedAt: string | null; currentUserId: string }): Extract<CalendarItem, { source: "time_off_request_admin" }> | null {
-  if (input.status === "cancelled") return null;
+  if (input.status === "cancelled" || input.status === "rejected") return null;
   const subjectName = input.employeeName;
   const temporal = getTimeOffTemporalSemantics(input);
   return { source: "time_off_request_admin", key: `time_off_request_admin:${input.id}`, id: input.id, title: subjectName, startDate: input.startDate, endDate: input.endDate, allDay: temporal.allDay, projectId: null, personIds: [input.userId], subjectUserId: input.userId, subjectName, requestType: input.requestType, status: input.status, startTime: temporal.startTime, endTime: temporal.endTime, privateNote: input.privateNote, reviewNote: input.reviewNote, reviewedBy: input.reviewedBy, reviewedAt: input.reviewedAt, isOwn: input.userId === input.currentUserId };

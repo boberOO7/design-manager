@@ -11,6 +11,7 @@ describe("Calendar event form localization contract", () => {
     expect(source).toContain('item ? t("editEventTitle") : t("addEventTitle")');
     expect(source).toContain('getCreatableCalendarEventTypes');
     expect(source).toContain('t("addEvent")');
+    expect(source).toContain('t("absence")');
     expect(source).toContain('t("requestTimeOff")');
     expect(source).not.toContain('function CreationForm');
     expect(source).toContain('t(eventTypeKey[type])');
@@ -25,7 +26,7 @@ describe("Calendar event form localization contract", () => {
   });
 
   it("keeps English and Ukrainian event-form keys in parity", () => {
-    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "interview", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe"] as const;
+    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "interview", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
