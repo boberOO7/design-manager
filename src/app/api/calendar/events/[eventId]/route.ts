@@ -17,14 +17,16 @@ export async function PATCH(request: Request, context: Context) {
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
   const supabase = await createClient();
-  const value = parsed.data;
+  const value = parsed.data.eventType === "site_visit"
+    ? { ...parsed.data, assigneeId: membership.system_role === "admin" ? parsed.data.assigneeId : membership.authenticatedUserId }
+    : parsed.data;
   const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id, recurrence_rule, event_type").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
   if (existingEventError || !existingEvent) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
   if (!canCreateCalendarEventType(membership.system_role, value.eventType) && value.eventType !== existingEvent.event_type) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
   }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
-    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, compensates_time_off_request_id: value.compensatesTimeOffRequestId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
+    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });
     const item = await getNormalizedCalendarEvent(override.id, membership.authenticatedUserId);
     return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
@@ -32,7 +34,7 @@ export async function PATCH(request: Request, context: Context) {
   const { data, error } = await supabase.from("calendar_events").update({
     title: value.title, event_type: value.eventType, project_id: value.projectId,
     starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay,
-    location: value.location, meeting_url: value.meetingUrl, description: value.description, recurrence_rule: value.recurrenceRule, compensates_time_off_request_id: value.compensatesTimeOffRequestId,
+    location: value.location, meeting_url: value.meetingUrl, description: value.description, recurrence_rule: value.recurrenceRule, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId,
   }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 

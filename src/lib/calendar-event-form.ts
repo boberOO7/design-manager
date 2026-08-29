@@ -19,6 +19,7 @@ export type CalendarEventFormValues = {
   description: string;
   recurrenceRule?: RecurrenceRule | null;
   compensatesTimeOffRequestId?: string;
+  assigneeId?: string;
 };
 
 export function updateEventStartDate(values: CalendarEventFormValues, startDate: string, endDateLinked: boolean): CalendarEventFormValues {
@@ -72,6 +73,7 @@ export function createCalendarEventFormValues(
     description: item?.description ?? "",
     recurrenceRule: item?.recurrenceRule ?? null,
     compensatesTimeOffRequestId: item?.compensatesTimeOffRequestId ?? "",
+    assigneeId: item?.assigneeId ?? "",
   };
 }
 
@@ -95,7 +97,12 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     description: values.description,
     recurrenceRule: values.recurrenceRule ?? null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
+    assigneeId: values.assigneeId || null,
   };
+}
+
+export function getSiteVisitTitle(projectName: string, locale: string): string {
+  return locale.startsWith("uk") ? `Виїзд на об'єкт · ${projectName}` : `Site visit · ${projectName}`;
 }
 
 export function getWorkMakeupTitle(

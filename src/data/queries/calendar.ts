@@ -50,7 +50,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const eventsPromise = supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, recurrence_rule, series_id, occurrence_start, cancelled_at, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, organizer_id, assignee_id, recurrence_rule, series_id, occurrence_start, cancelled_at, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("studio_id", membership.studio_id)
     .or(`and(series_id.is.null,cancelled_at.is.null,recurrence_rule.not.is.null),and(series_id.is.null,cancelled_at.is.null,recurrence_rule.is.null,starts_at.lt.${rangeEndExclusive},ends_at.gt.${rangeStartInstant}),and(series_id.not.is.null,occurrence_start.gte.${rangeStartInstant},occurrence_start.lt.${rangeEndExclusive})`)
     .order("starts_at");
@@ -157,7 +157,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   for (const event of events) {
     if (event.series_id) continue;
     const invitees = event.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
-    const personIds = [...invitees.map((invitee) => invitee.id), event.organizer_id];
+    const personIds = [...invitees.map((invitee) => invitee.id), event.organizer_id, ...(event.assignee_id ? [event.assignee_id] : [])];
     if (event.project_id === null) personIds.push(membership.authenticatedUserId);
     const baseItem: Extract<CalendarItem, { source: "calendar_event" }> = {
       source: "calendar_event", key: `calendar_event:${event.id}`, id: event.id,
@@ -167,6 +167,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       description: event.description, location: event.location, meetingUrl: event.meeting_url,
       recurrenceRule: parseRecurrenceRule(event.recurrence_rule), seriesId: null, occurrenceStart: null,
       compensatesTimeOffRequestId: event.compensates_time_off_request_id, compensationDayOff: event.compensates_time_off_request_id ? linkedDayOffById.get(event.compensates_time_off_request_id) ?? null : null,
+      assigneeId: event.assignee_id, assignee: event.assignee ? { ...event.assignee, projectIds: [] } : null,
       project: event.project, organizer: { ...event.organizer, projectIds: [] }, invitees,
     };
     const rule = baseItem.recurrenceRule;
@@ -177,7 +178,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       if (override?.cancelled_at) continue;
       if (override) {
         const overrideInvitees = override.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
-        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, invitees: overrideInvitees });
+        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, assigneeId: override.assignee_id, assignee: override.assignee ? { ...override.assignee, projectIds: [] } : null, invitees: overrideInvitees });
       } else items.push({ ...baseItem, key: `calendar_event:${event.id}:${originalStart}`, id: event.id, startsAt: bounds.startsAt, endsAt: bounds.endsAt, startDate: instantToDateOnly(bounds.startsAt), endDate: event.all_day ? getInclusiveAllDayEndDate(bounds.endsAt) : instantToDateOnly(bounds.endsAt), seriesId: event.id, occurrenceStart: originalStart });
     }
   }

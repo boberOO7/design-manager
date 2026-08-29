@@ -37,22 +37,23 @@ export type Database = {
         Row: {
           all_day: boolean; cancelled_at: string | null; created_at: string; created_by: string;
           compensates_time_off_request_id: string | null; description: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
+          assignee_id: string | null; id: string; location: string | null; meeting_url: string | null; organizer_id: string; project_id: string | null; recurrence_rule: Json | null; series_id: string | null; occurrence_start: string | null;
           starts_at: string; studio_id: string; title: string; updated_at: string
         }
         Insert: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by: string;
           compensates_time_off_request_id?: string | null; description?: string | null; ends_at: string; event_type: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
+          assignee_id?: string | null; id?: string; location?: string | null; meeting_url?: string | null; organizer_id: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at: string; studio_id: string; title: string; updated_at?: string
         }
         Update: {
           all_day?: boolean; cancelled_at?: string | null; created_at?: string; created_by?: string;
           compensates_time_off_request_id?: string | null; description?: string | null; ends_at?: string; event_type?: Database["public"]["Enums"]["calendar_event_type"];
-          id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
+          assignee_id?: string | null; id?: string; location?: string | null; meeting_url?: string | null; organizer_id?: string; project_id?: string | null; recurrence_rule?: Json | null; series_id?: string | null; occurrence_start?: string | null;
           starts_at?: string; studio_id?: string; title?: string; updated_at?: string
         }
         Relationships: [
+          { foreignKeyName: "calendar_events_assignee_id_fkey"; columns: ["assignee_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_compensates_time_off_request_id_fkey"; columns: ["compensates_time_off_request_id"]; isOneToOne: false; referencedRelation: "time_off_requests"; referencedColumns: ["id"] },
           { foreignKeyName: "calendar_events_organizer_id_fkey"; columns: ["organizer_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
@@ -878,6 +879,7 @@ export type Database = {
       create_calendar_event_with_invites: {
         Args: {
           p_all_day: boolean
+          p_assignee_id?: string | null
           p_attendee_ids?: string[]
           p_description: string | null
           p_ends_at: string
@@ -1010,7 +1012,7 @@ export type Database = {
     Enums: {
       calendar_event_invitation_status: "pending" | "accepted" | "declined"
       calendar_event_type: "meeting" | "client_presentation" | "interview" | "site_visit" | "internal_review" | "business_trip" | "work_makeup" | "other"
-      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_updated" | "calendar_event_cancelled"
+      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_assigned" | "calendar_event_updated" | "calendar_event_cancelled"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
       time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
     }
@@ -1142,7 +1144,7 @@ export const Constants = {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],
       calendar_event_type: ["meeting", "client_presentation", "interview", "site_visit", "internal_review", "business_trip", "work_makeup", "other"],
-      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_updated", "calendar_event_cancelled"],
+      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_assigned", "calendar_event_updated", "calendar_event_cancelled"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
       time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],
     },

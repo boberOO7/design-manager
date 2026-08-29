@@ -20,6 +20,10 @@ describe("Calendar event form localization contract", () => {
     expect(source).not.toContain('title={item ? "Edit event" : "Add event"}');
   });
 
+  it("discards new event drafts without bypassing the edit confirmation", () => {
+    expect(source).toContain('if (!item || !dirty || window.confirm(t("discardEvent"))) onClose();');
+  });
+
   it("keeps English and Ukrainian event-form keys in parity", () => {
     const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "interview", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed"] as const;
     for (const key of keys) {

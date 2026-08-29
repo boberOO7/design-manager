@@ -19,6 +19,7 @@ export const calendarEventSchema = z.object({
   description: optionalText(5000),
   recurrenceRule,
   compensatesTimeOffRequestId: z.string().uuid().nullable().optional().default(null),
+  assigneeId: z.string().uuid().nullable().optional().default(null),
   occurrenceStart: z.iso.datetime({ offset: true }).optional(),
   scope: z.enum(["this", "series"]).optional(),
 }).strict().superRefine((value, context) => {
@@ -30,6 +31,12 @@ export const calendarEventSchema = z.object({
   }
   if (value.compensatesTimeOffRequestId && value.recurrenceRule) {
     context.addIssue({ code: "custom", path: ["compensatesTimeOffRequestId"], message: "A linked work makeup event cannot repeat." });
+  }
+  if (value.eventType === "site_visit") {
+    if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the site visit." });
+    if (!value.assigneeId) context.addIssue({ code: "custom", path: ["assigneeId"], message: "Choose a responsible assignee for the site visit." });
+    if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Site visits must have a start and end time." });
+    if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
   }
 });
 

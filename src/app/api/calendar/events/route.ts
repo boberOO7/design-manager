@@ -24,7 +24,9 @@ export async function POST(request: Request) {
   const parsed = calendarEventSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
-  const value = parsed.data;
+  const value = parsed.data.eventType === "site_visit"
+    ? { ...parsed.data, assigneeId: activeMembership.system_role === "admin" ? parsed.data.assigneeId : activeMembership.authenticatedUserId }
+    : parsed.data;
   if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
   }
@@ -49,6 +51,7 @@ export async function POST(request: Request) {
     p_attendee_ids: value.attendeeIds,
     p_recurrence_rule: payload.recurrence_rule,
     p_compensates_time_off_request_id: payload.compensates_time_off_request_id,
+    p_assignee_id: payload.assignee_id,
   });
   if (error || !eventId) {
     console.error("calendar event and invitation creation error", {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getInclusiveAllDayEndDate, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { getAllDayEventBounds, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
@@ -81,8 +81,14 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload({ ...baseValues, eventType }), eventType }).success).toBe(true);
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : { ...baseValues, eventType };
+      expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
     }
+  });
+
+  it("requires a timed project assignment for site visits", () => {
+    const values = { ...baseValues, eventType: "site_visit" as const, allDay: false };
+    expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
   });
 
   it("submits Presentation as client_presentation", () => {
@@ -94,6 +100,11 @@ describe("Calendar event and time-off payload validation", () => {
     expect(getWorkMakeupTitle(values, "en", { startDate: "2026-08-28", remainingMinutes: 120 })).toBe("Work makeup for August 28, 2026");
     expect(getWorkMakeupTitle({ ...values, endTime: "19:00" }, "uk", { startDate: "2026-08-28", remainingMinutes: 120 })).toBe("Часткове відпрацювання за 28 серпня 2026 р.");
     expect(getWorkMakeupTitle(values, "en")).toBe("Work makeup");
+  });
+
+  it("derives localized site visit titles from the selected project", () => {
+    expect(getSiteVisitTitle("Riverside House", "en")).toBe("Site visit · Riverside House");
+    expect(getSiteVisitTitle("Будинок на Річковій", "uk")).toBe("Виїзд на об'єкт · Будинок на Річковій");
   });
 
   it("includes selected invitee IDs in the create-event payload", () => {

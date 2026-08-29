@@ -54,6 +54,8 @@ export type CalendarItem =
       occurrenceStart?: string | null;
       compensatesTimeOffRequestId?: string | null;
       compensationDayOff?: CalendarCompensableDayOff | null;
+      assigneeId?: string | null;
+      assignee?: CalendarPerson | null;
       project: { id: string; name: string } | null;
       organizer: CalendarPerson;
       invitees: CalendarEventInvitee[];
