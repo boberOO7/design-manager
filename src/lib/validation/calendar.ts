@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CALENDAR_EVENT_TYPES, TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
-import { isValidEventRange, isValidTimeOffRange } from "@/lib/calendar";
+import { instantToDateOnly, isValidEventRange, isValidTimeOffRange } from "@/lib/calendar";
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("").transform((value) => value || null);
 const optionalUrl = z.string().trim().max(1000).optional().default("").refine((value) => !value || /^https?:\/\//i.test(value), "Use a complete http(s) URL.").transform((value) => value || null);
@@ -14,6 +14,7 @@ export const calendarEventSchema = z.object({
   startsAt: z.iso.datetime({ offset: true }),
   endsAt: z.iso.datetime({ offset: true }),
   attendeeIds: z.array(z.string().uuid()).max(100).default([]),
+  participantIds: z.array(z.string().uuid()).max(100).default([]),
   location: optionalText(300),
   meetingUrl: optionalUrl,
   description: optionalText(5000),
@@ -37,6 +38,12 @@ export const calendarEventSchema = z.object({
     if (!value.assigneeId) context.addIssue({ code: "custom", path: ["assigneeId"], message: "Choose a responsible assignee for the site visit." });
     if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Site visits must have a start and end time." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
+    if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Site visits must start and end on the same local calendar day." });
+  }
+  if (value.eventType === "business_trip") {
+    if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the business trip." });
+    if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Business trips cannot repeat." });
+    if (value.meetingUrl) context.addIssue({ code: "custom", path: ["meetingUrl"], message: "Business trips cannot include a meeting link." });
   }
 });
 
@@ -79,6 +86,9 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
   }
   if (error?.code === "22P02" || message.includes("event_type")) {
     return { formError: "Choose a supported event type.", fieldErrors: { eventType: "Unsupported event type." } };
+  }
+  if (message.includes("Business trip participant") || message.includes("Business trips require at least one participant")) {
+    return { formError: "Choose at least one active project member for the business trip.", fieldErrors: { participantIds: "Choose active project members who are going on the trip." } };
   }
   if (message.includes("Attendee") || message.includes("attendee") || message.includes("Invitee") || message.includes("invitee") || message.includes("project members") || message.includes("active studio member")) {
     return { formError: "One or more attendees are not valid for this event.", fieldErrors: { attendeeIds: "Choose active eligible attendees." } };

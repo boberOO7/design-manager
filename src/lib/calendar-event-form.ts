@@ -14,6 +14,7 @@ export type CalendarEventFormValues = {
   startTime: string;
   endTime: string;
   attendeeIds: string[];
+  participantIds: string[];
   location: string;
   meetingUrl: string;
   description: string;
@@ -68,6 +69,7 @@ export function createCalendarEventFormValues(
     startTime: start.time,
     endTime: end.time,
     attendeeIds: item?.invitees.map((person) => person.id) ?? [],
+    participantIds: item?.participants.map((person) => person.id) ?? [],
     location: item?.location ?? "",
     meetingUrl: item?.meetingUrl ?? "",
     description: item?.description ?? "",
@@ -92,6 +94,7 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     allDay: values.allDay,
     ...bounds,
     attendeeIds: values.attendeeIds,
+    participantIds: values.participantIds,
     location: values.location,
     meetingUrl: values.meetingUrl,
     description: values.description,
@@ -103,6 +106,10 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
 
 export function getSiteVisitTitle(projectName: string, locale: string): string {
   return locale.startsWith("uk") ? `Виїзд на об'єкт · ${projectName}` : `Site visit · ${projectName}`;
+}
+
+export function getBusinessTripTitle(projectName: string, locale: string): string {
+  return locale.startsWith("uk") ? `Відрядження · ${projectName}` : `Business trip · ${projectName}`;
 }
 
 export function getWorkMakeupTitle(

@@ -4,6 +4,7 @@ import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
+import { getBusinessTripTitle } from "@/lib/calendar-event-form";
 
 type Context = { params: Promise<{ eventId: string }> };
 
@@ -17,13 +18,25 @@ export async function PATCH(request: Request, context: Context) {
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
   const supabase = await createClient();
-  const value = parsed.data.eventType === "site_visit"
+  let value = parsed.data.eventType === "site_visit"
     ? { ...parsed.data, assigneeId: membership.system_role === "admin" ? parsed.data.assigneeId : membership.authenticatedUserId }
+    : parsed.data.eventType === "business_trip"
+      ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: membership.system_role === "admin" ? parsed.data.participantIds : [membership.authenticatedUserId] }
     : parsed.data;
   const { data: existingEvent, error: existingEventError } = await supabase.from("calendar_events").select("organizer_id, recurrence_rule, event_type").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
   if (existingEventError || !existingEvent) return NextResponse.json({ success: false, formError: "The event was not found or could not be updated." }, { status: 400 });
   if (!canCreateCalendarEventType(membership.system_role, value.eventType) && value.eventType !== existingEvent.event_type) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
+  }
+  if (value.eventType === "business_trip") {
+    if (value.participantIds.length === 0) return NextResponse.json({ success: false, fieldErrors: { participantIds: "Choose at least one business trip participant." } }, { status: 400 });
+    const projectId = value.projectId;
+    if (!projectId) return NextResponse.json({ success: false, fieldErrors: { projectId: "Choose an accessible project." } }, { status: 400 });
+    const { data: project } = await supabase.from("projects").select("name").eq("id", projectId).eq("studio_id", membership.studio_id).maybeSingle();
+    if (!project) return NextResponse.json({ success: false, fieldErrors: { projectId: "Choose an accessible project." } }, { status: 400 });
+    const { error: participantValidationError } = await supabase.rpc("validate_business_trip_participants", { p_studio_id: membership.studio_id, p_project_id: projectId, p_user_ids: value.participantIds });
+    if (participantValidationError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantValidationError) }, { status: 400 });
+    value = { ...value, title: getBusinessTripTitle(project.name, request.headers.get("accept-language")?.toLowerCase().startsWith("uk") ? "uk" : "en") };
   }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
     const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
@@ -52,6 +65,15 @@ export async function PATCH(request: Request, context: Context) {
   if (addedIds.length > 0) {
     const { error: inviteError } = await supabase.from("calendar_event_invites").insert(addedIds.map((userId) => ({ event_id: eventId, user_id: userId, invited_by: membership.authenticatedUserId })));
     if (inviteError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(inviteError) }, { status: 400 });
+  }
+
+  if (value.eventType === "business_trip") {
+    const { error: participantError } = await supabase.rpc("replace_business_trip_participants", { p_event_id: eventId, p_user_ids: value.participantIds });
+    if (participantError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantError) }, { status: 400 });
+  }
+  if (existingEvent.event_type === "business_trip" && value.eventType !== "business_trip") {
+    const { error: participantClearError } = await supabase.from("calendar_event_participants").delete().eq("event_id", eventId);
+    if (participantClearError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantClearError) }, { status: 400 });
   }
 
   const item = await getNormalizedCalendarEvent(eventId, membership.authenticatedUserId);

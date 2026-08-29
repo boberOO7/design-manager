@@ -5,6 +5,7 @@ import { createCalendarEventInsertPayload } from "@/lib/calendar-event-insert";
 import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { createClient } from "@/lib/supabase/server";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
+import { getBusinessTripTitle } from "@/lib/calendar-event-form";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -24,11 +25,19 @@ export async function POST(request: Request) {
   const parsed = calendarEventSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
-  const value = parsed.data.eventType === "site_visit"
+  let value = parsed.data.eventType === "site_visit"
     ? { ...parsed.data, assigneeId: activeMembership.system_role === "admin" ? parsed.data.assigneeId : activeMembership.authenticatedUserId }
+    : parsed.data.eventType === "business_trip"
+      ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: activeMembership.system_role === "admin" ? parsed.data.participantIds : [activeMembership.authenticatedUserId] }
     : parsed.data;
   if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {
     return NextResponse.json({ success: false, fieldErrors: { eventType: "This event type is not available for your role." } }, { status: 403 });
+  }
+  if (value.eventType === "business_trip") {
+    if (value.participantIds.length === 0) return NextResponse.json({ success: false, fieldErrors: { participantIds: "Choose at least one business trip participant." } }, { status: 400 });
+    const { data: project } = await supabase.from("projects").select("name").eq("id", value.projectId ?? "").eq("studio_id", activeMembership.studio_id).maybeSingle();
+    if (!project) return NextResponse.json({ success: false, fieldErrors: { projectId: "Choose an accessible project." } }, { status: 400 });
+    value = { ...value, title: getBusinessTripTitle(project.name, request.headers.get("accept-language")?.toLowerCase().startsWith("uk") ? "uk" : "en") };
   }
   const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, {
     userId: activeMembership.authenticatedUserId,
@@ -52,6 +61,7 @@ export async function POST(request: Request) {
     p_recurrence_rule: payload.recurrence_rule,
     p_compensates_time_off_request_id: payload.compensates_time_off_request_id,
     p_assignee_id: payload.assignee_id,
+    p_participant_ids: value.participantIds,
   });
   if (error || !eventId) {
     console.error("calendar event and invitation creation error", {

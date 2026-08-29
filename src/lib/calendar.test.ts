@@ -35,11 +35,11 @@ function absence(id: string, userId: string, startDate: string, endDate: string)
 }
 
 function allDayEvent(startDate: string, endDate: string): Extract<CalendarItem, { source: "calendar_event" }> {
-  return { source: "calendar_event", key: "calendar_event:e1", id: "e1", title: "Studio event", startDate, endDate, allDay: true, projectId: null, personIds: ["u1"], eventType: "other", startsAt: `${startDate}T00:00:00.000Z`, endsAt: "2026-08-01T00:00:00.000Z", description: null, location: null, meetingUrl: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [] };
+  return { source: "calendar_event", key: "calendar_event:e1", id: "e1", title: "Studio event", startDate, endDate, allDay: true, projectId: null, personIds: ["u1"], eventType: "other", startsAt: `${startDate}T00:00:00.000Z`, endsAt: "2026-08-01T00:00:00.000Z", description: null, location: null, meetingUrl: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
 }
 
 function timedEvent(id: string, startsAt: string, endsAt: string): Extract<CalendarItem, { source: "calendar_event" }> {
-  return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "other", startsAt, endsAt, description: null, location: null, meetingUrl: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [] };
+  return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "other", startsAt, endsAt, description: null, location: null, meetingUrl: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
 }
 
 function timedAbsence(id: string, startDate: string, startTime: string, endTime: string): Extract<CalendarItem, { source: "time_off" }> {

@@ -12,7 +12,7 @@ export type TimeOffStatus = (typeof TIME_OFF_STATUSES)[number];
 export type CalendarView = "month" | "week" | "agenda";
 export type { RecurrenceRule } from "@/lib/calendar-recurrence";
 
-export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status">;
+export type CalendarProject = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "project_code" | "client_name" | "status" | "city" | "country_code">;
 export type CalendarPerson = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "job_title" | "avatar_url"> & { projectIds: string[] };
 export type CalendarEventInvitee = CalendarPerson & { inviteId: string; status: CalendarEventInvitationStatus };
 export type CalendarCompensation = { requiredMinutes: number; compensatedMinutes: number; remainingMinutes: number };
@@ -56,6 +56,7 @@ export type CalendarItem =
       compensationDayOff?: CalendarCompensableDayOff | null;
       assigneeId?: string | null;
       assignee?: CalendarPerson | null;
+      participants: CalendarPerson[];
       project: { id: string; name: string } | null;
       organizer: CalendarPerson;
       invitees: CalendarEventInvitee[];

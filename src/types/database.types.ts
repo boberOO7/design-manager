@@ -62,6 +62,16 @@ export type Database = {
           { foreignKeyName: "calendar_events_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
         ]
       }
+      calendar_event_participants: {
+        Row: { assigned_by: string; created_at: string; event_id: string; user_id: string }
+        Insert: { assigned_by: string; created_at?: string; event_id: string; user_id: string }
+        Update: { assigned_by?: string; created_at?: string; event_id?: string; user_id?: string }
+        Relationships: [
+          { foreignKeyName: "calendar_event_participants_assigned_by_fkey"; columns: ["assigned_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_event_participants_event_id_fkey"; columns: ["event_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
+          { foreignKeyName: "calendar_event_participants_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       contractors: {
         Row: {
           category_id: string
@@ -886,12 +896,21 @@ export type Database = {
           p_event_type: Database["public"]["Enums"]["calendar_event_type"]
           p_location: string | null
           p_meeting_url: string | null
+          p_participant_ids?: string[]
           p_project_id: string | null
           p_starts_at: string
           p_studio_id: string
           p_title: string
         }
         Returns: string
+      }
+      replace_business_trip_participants: {
+        Args: { p_event_id: string; p_user_ids: string[] }
+        Returns: undefined
+      }
+      validate_business_trip_participants: {
+        Args: { p_project_id: string; p_studio_id: string; p_user_ids: string[] }
+        Returns: undefined
       }
       resolve_contractor_category: {
         Args: { p_name: string }

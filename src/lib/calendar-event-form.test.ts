@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
@@ -13,6 +13,7 @@ const baseValues: CalendarEventFormValues = {
   startTime: "09:00",
   endTime: "10:00",
   attendeeIds: [],
+  participantIds: [],
   location: "",
   meetingUrl: "",
   description: "",
@@ -81,7 +82,7 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : { ...baseValues, eventType };
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : { ...baseValues, eventType };
       expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
     }
   });
@@ -91,8 +92,18 @@ describe("Calendar event and time-off payload validation", () => {
     expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
   });
 
+  it("rejects site visits that cross a Kyiv calendar day", () => {
+    const values = { ...baseValues, eventType: "site_visit" as const, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", startDate: "2026-08-29", endDate: "2026-08-30" };
+    expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
+  });
+
   it("submits Presentation as client_presentation", () => {
     expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("client_presentation");
+  });
+
+  it("derives localized business-trip titles from the selected project", () => {
+    expect(getBusinessTripTitle("Riverside", "en")).toBe("Business trip · Riverside");
+    expect(getBusinessTripTitle("Ріверсайд", "uk")).toBe("Відрядження · Ріверсайд");
   });
 
   it("derives localized work makeup titles from the compensation duration", () => {
