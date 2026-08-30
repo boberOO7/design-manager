@@ -207,7 +207,7 @@ export const MONTH_LANE_GAP = MONTH_EVENT_GEOMETRY.laneGap;
 /** The common vertical origin for every desktop Month item, below the date header. */
 export function getMonthItemTop(overlayHeight = 0): number {
   const headerBottom = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight;
-  return headerBottom + MONTH_EVENT_GEOMETRY.headerClearance + (overlayHeight === 0 ? 0 : overlayHeight + MONTH_EVENT_GEOMETRY.headerClearance);
+  return headerBottom + MONTH_EVENT_GEOMETRY.headerClearance + (overlayHeight === 0 ? 0 : overlayHeight + MONTH_EVENT_GEOMETRY.laneGap);
 }
 
 function getMonthFlowItemOffset(overlayHeight: number): number {
