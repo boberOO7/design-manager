@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788111965.8894439,
-    "ast_hash": "39139dc2fb938e05944a91dffdffae98",
+    "mtime": 1788121860.173114,
+    "ast_hash": "df458aab3d74e5f28ab2e17935fef5f1",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788111966.0414498,
-    "ast_hash": "de51dd21c14b264e18bd251636535dbc",
+    "mtime": 1788121860.2931206,
+    "ast_hash": "91de59ea4df6267558dfd4d8f42b842b",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1765,8 +1765,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1788112049.0670433,
-    "ast_hash": "bbc2c90c96157df8589aa68e9a75a814",
+    "mtime": 1788121860.4091268,
+    "ast_hash": "5164f9e32312ba33a7341c531577b53c",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {

@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { createTranslator } from "next-intl";
 import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
+import { CALENDAR_EVENT_DETAIL_CONFIG } from "@/lib/calendar-event-types";
 
 const source = readFileSync(new URL("./calendar-workspace.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
@@ -55,6 +57,17 @@ describe("Calendar event form localization contract", () => {
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
+    }
+  });
+
+  it("resolves every dynamic event-detail role label through the Calendar namespace", () => {
+    const english = createTranslator({ locale: "en", messages: en, namespace: "Calendar" });
+    const ukrainian = createTranslator({ locale: "uk", messages: uk, namespace: "Calendar" });
+    const roleKeys = Object.values(CALENDAR_EVENT_DETAIL_CONFIG).flatMap((config) => [config.assigneeLabel, config.organizerLabel, config.invitationLabel]).filter((key) => key !== undefined);
+
+    for (const key of roleKeys) {
+      expect(english(key)).toBeTruthy();
+      expect(ukrainian(key)).toBeTruthy();
     }
   });
 
