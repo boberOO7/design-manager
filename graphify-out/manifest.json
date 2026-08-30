@@ -190,7 +190,7 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786973593.3086984,
+    "mtime": 1788085340.0459137,
     "ast_hash": "8aeecec164c6c60d3072be2332d8f4e0",
     "semantic_hash": ""
   },
@@ -975,7 +975,7 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1788044001.5562608,
+    "mtime": 1788085340.049914,
     "ast_hash": "6fa6f757b5be62a7e0f97562d817a9b7",
     "semantic_hash": ""
   },
@@ -1455,7 +1455,7 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1787914067.5465956,
+    "mtime": 1788085340.029913,
     "ast_hash": "3372e30d5eafd14b0dddb33d7202c9f3",
     "semantic_hash": ""
   },
@@ -1465,7 +1465,7 @@
     "semantic_hash": ""
   },
   "docs/roadmap.md": {
-    "mtime": 1785965831.7718003,
+    "mtime": 1788085340.029913,
     "ast_hash": "754b2b3f567ff2f356c77d5da89d7cc0",
     "semantic_hash": ""
   },
@@ -1720,12 +1720,12 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788044126.7993784,
+    "mtime": 1788085340.0459137,
     "ast_hash": "c85e34a7a8838ed32f257e9cdaea305b",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788044126.9713864,
+    "mtime": 1788085340.0459137,
     "ast_hash": "f2d0c73f9b0ac325107f552b4415becb",
     "semantic_hash": ""
   },
@@ -1940,7 +1940,7 @@
     "semantic_hash": ""
   },
   "src/components/layout/profile-avatar-editor.tsx": {
-    "mtime": 1787925860.393733,
+    "mtime": 1788085340.049914,
     "ast_hash": "ef35bb821bd9d54a6d8cbbcf3d09c649",
     "semantic_hash": ""
   },
@@ -2945,8 +2945,8 @@
     "semantic_hash": ""
   },
   "src/lib/time-off-approval-migration.test.ts": {
-    "mtime": 1786977923.874705,
-    "ast_hash": "eef864e2b7d14524f927b61c74bf9991",
+    "mtime": 1788089620.0474224,
+    "ast_hash": "3ba943019b223ea8309be62dadcf8626",
     "semantic_hash": ""
   },
   "supabase/migrations/20260817143113_time_off_multi_admin_approvals.sql": {
@@ -3702,6 +3702,11 @@
   "supabase/migrations/20260830120000_add_studio_days_off.sql": {
     "mtime": 1788044473.490371,
     "ast_hash": "6ed410bbf206773dfcc143e753df0581",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260830143306_fix_time_off_approval_notification_read_state.sql": {
+    "mtime": 1788089619.8194132,
+    "ast_hash": "cfd8ba9062c7f83592601db82c535cb8",
     "semantic_hash": ""
   }
 }
