@@ -15,10 +15,20 @@ describe("Calendar event form localization contract", () => {
     expect(source).toContain('t("absence")');
     expect(source).toContain('t("requestTimeOff")');
     expect(source).not.toContain('function CreationForm');
-    expect(source).toContain('t(eventTypeKey[type])');
+    expect(source).toContain('getCalendarEventTypeConfig(type)');
     expect(source).toContain('<InviteePicker');
-    expect(source).toContain('UserRoundSearch');
-    expect(source).toContain('item.eventType === "interview"');
+    expect(source).toContain('function CalendarChipIcon');
+    expect(source).toContain('getCalendarEventTypeConfig(item.eventType).Icon');
+    expect(source).toContain('const SYSTEM_CALENDAR_CHIP_ICONS');
+    expect(source).toContain('birthday: CakeSlice');
+    expect(source).toContain('team_anniversary: CalendarHeart');
+    expect(source).toContain('salary_payment: Banknote');
+    expect(source).toContain('studio_day_off: CalendarOff');
+    expect(source).toContain('time_off: UserRoundMinus');
+    expect(source).toContain('time_off_request_admin: UserRoundMinus');
+    expect(source).toContain('shrink-0 stroke-[1.75]');
+    expect(source).toContain('function CalendarDetailHeaderIcon');
+    expect(source).toContain('<CalendarDetailHeaderIcon item={item} />');
     expect(source.indexOf('<FormField label={t("type")}')).toBeLessThan(source.indexOf('<FormField label={t("titleLabel")}'));
     expect(source).toContain('<MeetingModeControl');
     expect(source).not.toContain('<SegmentedControl ariaLabel={t("meetingMode")}');
@@ -120,8 +130,12 @@ describe("admin-only salary payment reminders", () => {
     expect(source).toContain('candidate.source === "calendar_event"');
     expect(en.Calendar.salaryPayments).toBe("Payments");
     expect(uk.Calendar.salaryPayments).toBe("Виплати");
-    expect(en.Calendar.salaryPaymentEvent).toBe("💰 Payment · {name}");
-    expect(uk.Calendar.salaryPaymentEvent).toBe("💰 Виплата · {name}");
+    expect(en.Calendar.salaryPaymentEvent).toBe("Payment · {name}");
+    expect(uk.Calendar.salaryPaymentEvent).toBe("Виплата · {name}");
+    expect(en.Calendar.birthdayEvent).toBe("Birthday · {name}");
+    expect(uk.Calendar.birthdayEvent).toBe("День народження · {name}");
+    expect(en.Calendar.teamAnniversaryEvent).toBe("Team anniversary · {name}");
+    expect(uk.Calendar.teamAnniversaryEvent).toBe("Річниця в команді · {name}");
   });
 });
 

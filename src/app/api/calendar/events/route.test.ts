@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const route = readFileSync(resolve(process.cwd(), "src/app/api/calendar/events/route.ts"), "utf8");
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260820120000_create_calendar_event_with_invites.sql"), "utf8");
 const organizerAuthorizationMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260820140000_calendar_event_organizer_authorization.sql"), "utf8");
-const meetingModeMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260829180000_add_meeting_presentation_mode.sql"), "utf8");
+const canonicalEventTypeMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260830183617_fix_calendar_event_type_legacy_enum_references.sql"), "utf8");
 const interviewMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260829220311_specialize_interview_calendar_events.sql"), "utf8");
 const eventDetailsQuery = readFileSync(resolve(process.cwd(), "src/data/queries/calendar-item.ts"), "utf8");
 
@@ -52,7 +52,8 @@ describe("Calendar event creation persistence contract", () => {
 
   it("passes the explicit meeting mode to the current RPC, whose persistence normalizes non-meetings to null", () => {
     expect(route).toContain("p_meeting_mode: payload.meeting_mode");
-    expect(meetingModeMigration).toContain("case when p_event_type in ('meeting', 'client_presentation') then coalesce(p_meeting_mode, 'offline') else null end");
+    expect(canonicalEventTypeMigration).toContain("case when p_event_type in ('meeting', 'presentation') then coalesce(p_meeting_mode, 'offline') else null end");
+    expect(canonicalEventTypeMigration).not.toContain("client_presentation");
   });
 
   it("keeps interviews out of the invitation flow while persisting the selected interviewer as an assignee", () => {

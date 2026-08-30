@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       ? { ...parsed.data, projectId: null, allDay: false, attendeeIds: [], participantIds: [], location: null, recurrenceRule: null, compensatesTimeOffRequestId: null, meetingMode: null }
     : parsed.data.eventType === "business_trip"
       ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, location: null, recurrenceRule: null, participantIds: activeMembership.system_role === "admin" ? parsed.data.participantIds : [activeMembership.authenticatedUserId] }
-    : parsed.data.eventType === "meeting" || parsed.data.eventType === "client_presentation"
+    : parsed.data.eventType === "meeting" || parsed.data.eventType === "presentation"
       ? { ...parsed.data, allDay: false, assigneeId: null, recurrenceRule: null, location: parsed.data.meetingMode === "offline" ? parsed.data.location : null, meetingUrl: parsed.data.meetingMode === "online" ? parsed.data.meetingUrl : null }
       : { ...parsed.data, assigneeId: null };
   if (!canCreateCalendarEventType(activeMembership.system_role, value.eventType)) {

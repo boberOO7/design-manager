@@ -43,7 +43,7 @@ export const calendarEventSchema = z.object({
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
     if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Site visits must start and end on the same local calendar day." });
   }
-  if (value.eventType === "meeting" || value.eventType === "client_presentation") {
+  if (value.eventType === "meeting" || value.eventType === "presentation") {
     const normalizedMeetingMode = value.meetingMode ?? "offline";
     if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Meetings and presentations must have a start and end time." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Meetings and presentations cannot repeat." });
@@ -68,7 +68,7 @@ export const calendarEventSchema = z.object({
   }
 }).transform((value) => ({
   ...value,
-  meetingMode: value.eventType === "meeting" || value.eventType === "client_presentation"
+  meetingMode: value.eventType === "meeting" || value.eventType === "presentation"
     ? value.meetingMode ?? "offline"
     : null,
 }));

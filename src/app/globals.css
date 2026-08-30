@@ -40,6 +40,24 @@
   --ui-interview-surface: #f3e8ff;
   --ui-interview-border: #9333ea;
   --ui-interview-text: #6b21a8;
+  --ui-calendar-general-surface: #d9f0ff;
+  --ui-calendar-general-border: #0284c7;
+  --ui-calendar-general-text: #0c4a6e;
+  --ui-calendar-meeting-surface: #cffafe;
+  --ui-calendar-meeting-border: #0891b2;
+  --ui-calendar-meeting-text: #155e75;
+  --ui-calendar-interview-surface: #f3e8ff;
+  --ui-calendar-interview-border: #9333ea;
+  --ui-calendar-interview-text: #6b21a8;
+  --ui-calendar-site-visit-surface: #ccfbf1;
+  --ui-calendar-site-visit-border: #0f766e;
+  --ui-calendar-site-visit-text: #115e59;
+  --ui-calendar-business-trip-surface: #e0e7ff;
+  --ui-calendar-business-trip-border: #4f46e5;
+  --ui-calendar-business-trip-text: #3730a3;
+  --ui-calendar-presentation-surface: #ffedd5;
+  --ui-calendar-presentation-border: #c2410c;
+  --ui-calendar-presentation-text: #9a3412;
   --ui-success-surface: #d1fae5;
   --ui-success-border: #059669;
   --ui-success-accent: #059669;
@@ -137,6 +155,24 @@
   --ui-interview-surface: #3b0764;
   --ui-interview-border: #c084fc;
   --ui-interview-text: #e9d5ff;
+  --ui-calendar-general-surface: #0c4a6e;
+  --ui-calendar-general-border: #0ea5e9;
+  --ui-calendar-general-text: #7dd3fc;
+  --ui-calendar-meeting-surface: #164e63;
+  --ui-calendar-meeting-border: #22d3ee;
+  --ui-calendar-meeting-text: #a5f3fc;
+  --ui-calendar-interview-surface: #3b0764;
+  --ui-calendar-interview-border: #c084fc;
+  --ui-calendar-interview-text: #e9d5ff;
+  --ui-calendar-site-visit-surface: #134e4a;
+  --ui-calendar-site-visit-border: #2dd4bf;
+  --ui-calendar-site-visit-text: #99f6e4;
+  --ui-calendar-business-trip-surface: #312e81;
+  --ui-calendar-business-trip-border: #818cf8;
+  --ui-calendar-business-trip-text: #c7d2fe;
+  --ui-calendar-presentation-surface: #431407;
+  --ui-calendar-presentation-border: #fb923c;
+  --ui-calendar-presentation-text: #fed7aa;
   --ui-success-surface: #064e3b;
   --ui-success-border: #10b981;
   --ui-success-accent: #10b981;
@@ -308,6 +344,15 @@ body,
     max-height: none;
     min-height: 0;
     flex: 1 1 0%;
+  }
+}
+
+/* Keep the app's scrollable content box stable while drawers lock its scroll.
+   Calendar's viewport-fitting flex layout must not be remeasured against a
+   transient scrollbar-compensation padding value. */
+@media (min-width: 1024px) {
+  #main-content {
+    scrollbar-gutter: stable;
   }
 }
 

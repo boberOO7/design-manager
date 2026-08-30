@@ -5,7 +5,7 @@ import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
 const baseValues: CalendarEventFormValues = {
   title: "Studio presentation",
-  eventType: "client_presentation",
+  eventType: "presentation",
   projectId: "",
   allDay: true,
   startDate: "2026-07-28",
@@ -83,8 +83,14 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "client_presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
       expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
+    }
+  });
+
+  it("rejects legacy aliases and presentation metadata before they can reach Postgres", () => {
+    for (const eventType of ["client_presentation", "Presentation", "Презентація"] as const) {
+      expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(baseValues), eventType }).success).toBe(false);
     }
   });
 
@@ -122,8 +128,8 @@ describe("Calendar event and time-off payload validation", () => {
     expect(calendarEventSchema.parse(toCalendarEventMutationPayload({ ...baseValues, eventType: "site_visit", allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", meetingMode: "online" })).meetingMode).toBeNull();
   });
 
-  it("submits Presentation as client_presentation", () => {
-    expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("client_presentation");
+  it("submits Presentation as presentation", () => {
+    expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("presentation");
   });
 
   it("derives localized business-trip titles from the selected project", () => {
