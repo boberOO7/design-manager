@@ -617,8 +617,6 @@
   },
   "Calendar": {
     "title": "Calendar",
-    "description": "Events, live deadlines, and privacy-safe team availability.",
-    "schedule": "Studio schedule · {timezone}",
     "addEvent": "Add event",
     "absence": "Absence",
     "requestTimeOff": "Request time off",
@@ -633,7 +631,8 @@
     "week": "Week",
     "agenda": "Agenda",
     "filters": "Filters",
-    "tasksOff": " · tasks off",
+    "show": "Show",
+    "resetFilters": "Reset filters",
     "dayDetails": "Day details",
     "addEventOnDay": "Add event on this day",
     "events": "Events",

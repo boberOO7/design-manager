@@ -123,3 +123,29 @@ describe("admin-only salary payment reminders", () => {
     expect(uk.Calendar.salaryPaymentEvent).toBe("💰 Виплата · {name}");
   });
 });
+
+describe("Calendar filter menu", () => {
+  it("keeps scope selectors in the toolbar and moves visibility controls into a stable localized popover", () => {
+    expect(source).toContain("function CalendarFilterMenu");
+    expect(source).toContain("<Popover.Content");
+    expect(source).toContain('value={filters.projectId}');
+    expect(source).toContain('value={filters.personId}');
+    expect(source).toContain('checked={filters.mine}');
+    expect(source).toContain("...DEFAULT_CALENDAR_FILTERS");
+    expect(source).toContain('t("resetFilters")');
+    for (const key of ["events", "projectDeadlines", "taskDeadlines", "teamAvailability", "birthdays", "teamAnniversaries", "companyDaysOff", "salaryPayments"] as const) {
+      expect(source).toContain(`t("${key}")`);
+    }
+    expect(source).not.toContain("function FilterBar");
+    expect(source).not.toContain('t("tasksOff")');
+    expect(source).not.toContain('t("schedule"');
+    expect(source).not.toContain('t("description")');
+  });
+
+  it("keeps the filter menu labels in English and Ukrainian parity", () => {
+    for (const key of ["filters", "show", "resetFilters", "relevantToMe"] as const) {
+      expect(en.Calendar[key]).toBeTruthy();
+      expect(uk.Calendar[key]).toBeTruthy();
+    }
+  });
+});

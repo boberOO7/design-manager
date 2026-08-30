@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, Plus, Repeat2, Search, Trash2, UserRoundSearch, Video, X } from "lucide-react";
+import { CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, Plus, Repeat2, RotateCcw, Search, Trash2, UserRoundSearch, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -15,7 +15,7 @@ import { focusVisibleClassName, FormField, inputClassName, textareaClassName } f
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
-  APPLICATION_TIME_ZONE, addCalendarDays, filterCalendarItems,
+  DEFAULT_CALENDAR_FILTERS, addCalendarDays, filterCalendarItems,
   formatCalendarDateTime, formatCalendarTime, getCalendarRange, getDayItems, getMonthGrid,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments, getMonthMobileDayItems,
@@ -118,7 +118,6 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     return item ? { kind: "item", item } : null;
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(() => drawer !== null);
-  const [showFilters, setShowFilters] = useState(false);
   const filters: CalendarFilters = {
     events: param(searchParams, "events") !== "0",
     projectDeadlines: param(searchParams, "projects") !== "0",
@@ -179,8 +178,8 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     : `${dateLabel(getCalendarRange(initialView, initialDate).start, { month: "short", day: "numeric" }, locale)} – ${dateLabel(getCalendarRange(initialView, initialDate).end, { month: "short", day: "numeric", year: "numeric" }, locale)}`;
 
   return <div className="min-w-0 space-y-5">
-    <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-      <div><p className="text-sm font-medium text-[var(--ui-text-muted)]">{t("schedule", { timezone: APPLICATION_TIME_ZONE })}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("description")}</p></div>
+    <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <h1 className="text-3xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1>
       <div className="flex flex-wrap gap-2 sm:justify-end">
         <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" onClick={() => openDrawer({ kind: "event-form" })}><CalendarPlus aria-hidden="true" className="size-4" />{t("addEvent")}</Button>
         <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" title={t("submitAbsenceRequest")} variant="outline" onClick={() => openDrawer({ kind: "time-off-form" })}><CalendarOff aria-hidden="true" className="size-4" />{t("absence")}</Button>
@@ -193,11 +192,12 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
         <div className="flex flex-wrap items-center gap-2"><div className="flex items-center gap-2"><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("previous")} onClick={() => movePeriod(-1)}><ChevronLeft className="size-4" /></Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" onClick={() => navigate({ date: initialData.today })}>{t("today")}</Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("next")} onClick={() => movePeriod(1)}><ChevronRight className="size-4" /></Button></div><h2 className="min-w-0 text-sm font-semibold text-[var(--ui-text)] sm:ml-2 sm:text-base">{periodLabel}</h2></div>
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-0" ariaLabel={t("view")} items={[{ value: "month", label: t("month") }, { value: "week", label: t("week") }, { value: "agenda", label: t("agenda") }]} value={initialView} onValueChange={(view) => navigate({ view })} />
-          <Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-expanded={showFilters} onClick={() => setShowFilters((value) => !value)}><Filter className="size-4" />{t("filters")}{filters.taskDeadlines ? "" : t("tasksOff")}</Button>
+          <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-44" aria-label={t("filterProject")} value={filters.projectId} onValueChange={(projectId) => navigate({}, true, { projectId })}><SelectItem value="">{t("allProjects")}</SelectItem>{initialData.projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>
+          <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-40" aria-label={t("filterPerson")} value={filters.personId} onValueChange={(personId) => navigate({}, true, { personId })}><SelectItem value="">{t("allPeople")}</SelectItem>{initialData.people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>
+          <CalendarFilterMenu data={initialData} filters={filters} onChange={(patch) => navigate({}, true, patch)} onReset={() => navigate({}, true, { ...DEFAULT_CALENDAR_FILTERS, salaryPayments: initialData.isAdmin && DEFAULT_CALENDAR_FILTERS.salaryPayments })} />
           {initialData.isAdmin ? <Button size="sm" className="min-h-11 w-11 p-0 sm:min-h-0" variant="outline" aria-label={t("manageDaysOff")} title={t("manageDaysOff")} onClick={() => openDrawer({ kind: "days-off" })}><Ellipsis aria-hidden="true" className="size-4" /></Button> : null}
         </div>
       </div>
-      {showFilters ? <FilterBar data={initialData} filters={filters} onChange={(patch) => navigate({}, true, patch)} /> : null}
       {initialView === "month" ? <MonthView anchor={initialDate} today={initialData.today} items={visibleItems} onDay={(date) => openDrawer({ kind: "day", date })} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
       {initialView === "week" ? <WeekView anchor={initialDate} items={visibleItems} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
       {initialView === "agenda" ? <AgendaView start={initialDate} items={visibleItems} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
@@ -214,15 +214,14 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
   </div>;
 }
 
-function FilterBar({ data, filters, onChange }: { data: CalendarPageData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void }) {
+function CalendarFilterMenu({ data, filters, onChange, onReset }: { data: CalendarPageData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void; onReset: () => void }) {
   const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff" | "birthdays" | "teamAnniversaries" | "salaryPayments" | "studioDaysOff">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")], ["birthdays", t("birthdays")], ["teamAnniversaries", t("teamAnniversaries")], ["studioDaysOff", t("companyDaysOff")]];
   if (data.isAdmin) checks.push(["salaryPayments", t("salaryPayments")]);
-  return <div className="grid gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4 lg:grid-cols-[1.5fr_1fr_1fr_auto]">
-    <div className="flex flex-wrap gap-x-4 gap-y-2">{checks.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={filters[key]} onChange={(event) => onChange({ [key]: event.target.checked })} />{label}</label>)}</div>
-    <Select aria-label={t("filterProject")} value={filters.projectId} onValueChange={(projectId) => onChange({ projectId })}><SelectItem value="">{t("allProjects")}</SelectItem>{data.projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>
-    <Select aria-label={t("filterPerson")} value={filters.personId} onValueChange={(personId) => onChange({ personId })}><SelectItem value="">{t("allPeople")}</SelectItem>{data.people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>
-    <label className="flex items-center gap-2 whitespace-nowrap text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={filters.mine} onChange={(event) => onChange({ mine: event.target.checked })} />{t("relevantToMe")}</label>
-  </div>;
+  return <Popover.Root><Popover.Trigger asChild><Button size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline"><Filter aria-hidden="true" className="size-4" />{t("filters")}</Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} collisionPadding={8} className="z-[80] w-[min(18rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-2 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]">
+    <fieldset><legend className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-[.1em] text-[var(--ui-text-muted)]">{t("show")}</legend><div className="space-y-0.5">{checks.map(([key, label]) => <label key={key} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-2 text-sm text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] sm:min-h-9"><input type="checkbox" className="size-4 shrink-0 accent-[var(--ui-action-primary)]" checked={filters[key]} onChange={(event) => onChange({ [key]: event.target.checked })} />{label}</label>)}</div></fieldset>
+    <div className="mt-2 border-t border-[var(--ui-border-subtle)] pt-2"><label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-2 text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] sm:min-h-9"><input type="checkbox" className="size-4 shrink-0 accent-[var(--ui-action-primary)]" checked={filters.mine} onChange={(event) => onChange({ mine: event.target.checked })} />{t("relevantToMe")}</label></div>
+    <div className="mt-2 border-t border-[var(--ui-border-subtle)] pt-2"><button type="button" onClick={onReset} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-2 text-left text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:min-h-9"><RotateCcw aria-hidden="true" className="size-4" />{t("resetFilters")}</button></div>
+  </Popover.Content></Popover.Portal></Popover.Root>;
 }
 
 function MonthView({ anchor, today, items, onDay, onItem }: { anchor: string; today: string; items: CalendarItem[]; onDay: (date: string) => void; onItem: (item: CalendarItem) => void }) {
