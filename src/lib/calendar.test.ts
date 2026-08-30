@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
   filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
-  isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
+  isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
   MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
@@ -36,6 +36,13 @@ function absence(id: string, userId: string, startDate: string, endDate: string)
 
 function allDayEvent(startDate: string, endDate: string): Extract<CalendarItem, { source: "calendar_event" }> {
   return { source: "calendar_event", key: "calendar_event:e1", id: "e1", title: "Studio event", startDate, endDate, allDay: true, projectId: null, personIds: ["u1"], eventType: "general", startsAt: `${startDate}T00:00:00.000Z`, endsAt: "2026-08-01T00:00:00.000Z", description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [], }, invitees: [], participants: [] };
+}
+
+function calendarEvent(overrides: Partial<Extract<CalendarItem, { source: "calendar_event" }>> = {}): Extract<CalendarItem, { source: "calendar_event" }> {
+  return {
+    ...allDayEvent("2026-07-28", "2026-07-28"),
+    ...overrides,
+  };
 }
 
 function timedEvent(id: string, startsAt: string, endsAt: string): Extract<CalendarItem, { source: "calendar_event" }> {
@@ -357,6 +364,67 @@ describe("Calendar filtering and identity", () => {
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.title)).toEqual(["Avery", "Taylor"]);
     expect(items.find((item) => item.id === "r1")?.source).toBe("time_off_request_admin");
+  });
+});
+
+describe("Calendar relevance semantics", () => {
+  const executor = { id: "u2", full_name: "Executor", job_title: "Architect", avatar_url: null, projectIds: [] };
+  const invitee = { ...executor, inviteId: "invite-1", status: "pending" as const };
+
+  it("distinguishes a site-visit creator from its executor", () => {
+    const siteVisit = calendarEvent({ eventType: "site_visit", organizer: { ...executor, id: "u1", full_name: "Creator" }, assigneeId: "u2", assignee: executor, personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(siteVisit, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(siteVisit, "u2")).toBe(true);
+    expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u1")).toEqual([]);
+    expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u2")).toEqual([siteVisit]);
+  });
+
+  it("keeps meeting organizers relevant as genuine participants", () => {
+    const meeting = calendarEvent({ eventType: "meeting", organizer: { ...executor, id: "u1", full_name: "Organizer" }, personIds: ["u1"] });
+
+    expect(isCalendarItemRelevantToUser(meeting, "u1")).toBe(true);
+  });
+
+  it("keeps explicit invitees relevant without treating a generic creator as relevant", () => {
+    const general = calendarEvent({ eventType: "general", organizer: { ...executor, id: "u1", full_name: "Creator" }, invitees: [invitee], personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(general, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(general, "u2")).toBe(true);
+  });
+
+  it("keeps business-trip participants relevant and excludes the creator alone", () => {
+    const trip = calendarEvent({ eventType: "business_trip", organizer: { ...executor, id: "u1", full_name: "Creator" }, participants: [executor], personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(trip, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(trip, "u2")).toBe(true);
+  });
+
+  it("uses personal availability identity without exposing or interpreting its subtype", () => {
+    const ownAvailability = absence("own", "u1", "2026-07-28", "2026-07-28");
+    const coworkerAvailability = absence("coworker", "u2", "2026-07-28", "2026-07-28");
+    const companyDayOff: Extract<CalendarItem, { source: "studio_day_off" }> = { source: "studio_day_off", key: "studio-day-off:1", id: "1", title: "Company day off", note: null, startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: [] };
+
+    expect(isCalendarItemRelevantToUser(ownAvailability, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(coworkerAvailability, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(companyDayOff, "u1")).toBe(true);
+  });
+
+  it("handles the remaining event and projected-item roles explicitly", () => {
+    const presenterEvent = calendarEvent({ eventType: "presentation", organizer: { ...executor, id: "u1", full_name: "Presenter" } });
+    const interview = calendarEvent({ eventType: "interview", assigneeId: "u2", assignee: executor });
+    const internalReview = calendarEvent({ eventType: "internal_review", invitees: [invitee] });
+    const workMakeup = calendarEvent({ eventType: "work_makeup", organizer: { ...executor, id: "u1", full_name: "Employee" } });
+
+    expect(isCalendarItemRelevantToUser(presenterEvent, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(interview, "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(internalReview, "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(workMakeup, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(deadline(), "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(task(), "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(birthday(), "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(anniversary(), "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(salaryPayment(), "u1")).toBe(true);
   });
 });
 

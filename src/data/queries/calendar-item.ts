@@ -5,7 +5,7 @@ import { instantToDateOnly, normalizePrivateTimeOff } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import type { CalendarItem, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
-export async function getNormalizedCalendarEvent(eventId: string, currentUserId: string): Promise<Extract<CalendarItem, { source: "calendar_event" }> | null> {
+export async function getNormalizedCalendarEvent(eventId: string): Promise<Extract<CalendarItem, { source: "calendar_event" }> | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("calendar_events")
@@ -22,7 +22,7 @@ export async function getNormalizedCalendarEvent(eventId: string, currentUserId:
   return {
     source: "calendar_event", key: `calendar_event:${data.id}`, id: data.id, title: data.title,
     startDate: instantToDateOnly(data.starts_at), endDate: data.all_day ? getInclusiveAllDayEndDate(data.ends_at) : instantToDateOnly(data.ends_at), allDay: data.all_day,
-    projectId: data.project_id, personIds: [...new Set([...invitees.map((person) => person.id), ...participants.map((person) => person.id), data.organizer_id, ...(data.assignee_id ? [data.assignee_id] : []), ...(data.project_id === null ? [currentUserId] : [])])],
+    projectId: data.project_id, personIds: [...new Set([...invitees.map((person) => person.id), ...participants.map((person) => person.id), data.organizer_id, ...(data.assignee_id ? [data.assignee_id] : [])])],
     eventType: data.event_type, startsAt: data.starts_at, endsAt: data.ends_at, compensatesTimeOffRequestId: data.compensates_time_off_request_id, compensationDayOff: compensationDayOff ? { id: compensationDayOff.id, startDate: compensationDayOff.start_date, endDate: compensationDayOff.end_date, startTime: compensationDayOff.start_time, endTime: compensationDayOff.end_time, allDay: compensationDayOff.all_day, remainingMinutes: 0 } : null, assigneeId: data.assignee_id, assignee: data.assignee ? { ...data.assignee, projectIds: [] } : null, description: data.description,
     location: data.location, meetingUrl: data.meeting_url, meetingMode: data.meeting_mode, recurrenceRule: null, seriesId: data.series_id, occurrenceStart: data.occurrence_start, project: data.project, organizer: { ...data.organizer, projectIds: [] }, invitees, participants,
   };

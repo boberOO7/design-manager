@@ -141,6 +141,54 @@ export function sortCalendarItems(items: CalendarItem[]): CalendarItem[] {
   });
 }
 
+/**
+ * Returns whether an item represents a concrete responsibility, participation,
+ * or personal calendar state for the user. Audit ownership is deliberately not
+ * a fallback: organizer only counts for event types where it is a domain role.
+ */
+export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string): boolean {
+  if (item.source === "calendar_event") {
+    const isInvitee = item.invitees.some((invitee) => invitee.id === userId);
+
+    switch (item.eventType) {
+      case "site_visit":
+      case "interview":
+        return item.assigneeId === userId;
+      case "business_trip":
+        return item.participants.some((participant) => participant.id === userId);
+      case "meeting":
+      case "presentation":
+        return item.organizer.id === userId || isInvitee;
+      case "general":
+      case "internal_review":
+        return isInvitee;
+      case "work_makeup":
+        return item.organizer.id === userId;
+    }
+  }
+
+  switch (item.source) {
+    case "project_deadline":
+      return item.personIds.includes(userId);
+    case "task_deadline":
+      return item.task.assigneeId === userId;
+    case "time_off":
+    case "time_off_request_admin":
+      return item.subjectUserId === userId;
+    case "birthday":
+    case "team_anniversary":
+      return item.member.userId === userId;
+    case "salary_payment":
+      // Payment reminders are loaded only for administrators, who own the action.
+      return true;
+    case "studio_day_off":
+      // Company-wide days off directly affect every active member's availability.
+      return true;
+  }
+
+  return false;
+}
+
 export function filterCalendarItems(items: CalendarItem[], filters: CalendarFilters, currentUserId: string): CalendarItem[] {
   return sortCalendarItems(items.filter((item) => {
     if (item.source === "calendar_event" && !filters.events) return false;
@@ -153,7 +201,7 @@ export function filterCalendarItems(items: CalendarItem[], filters: CalendarFilt
     if (item.source === "studio_day_off" && !filters.studioDaysOff) return false;
     if (filters.projectId && item.projectId !== filters.projectId) return false;
     if (filters.personId && !item.personIds.includes(filters.personId)) return false;
-    if (filters.mine && !item.personIds.includes(currentUserId)) return false;
+    if (filters.mine && !isCalendarItemRelevantToUser(item, currentUserId)) return false;
     return true;
   }));
 }

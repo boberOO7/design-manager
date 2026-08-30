@@ -171,7 +171,6 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     const invitees = event.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
     const participants = event.participants.map((participant) => ({ ...participant.profile, projectIds: [] }));
     const personIds = [...invitees.map((invitee) => invitee.id), ...participants.map((participant) => participant.id), event.organizer_id, ...(event.assignee_id ? [event.assignee_id] : [])];
-    if (event.project_id === null) personIds.push(membership.authenticatedUserId);
     const baseItem: Extract<CalendarItem, { source: "calendar_event" }> = {
       source: "calendar_event", key: `calendar_event:${event.id}`, id: event.id,
       title: event.title, startDate: instantToDateOnly(event.starts_at), endDate: event.all_day ? getInclusiveAllDayEndDate(event.ends_at) : instantToDateOnly(event.ends_at),

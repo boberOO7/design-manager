@@ -48,7 +48,7 @@ export async function PATCH(request: Request, context: Context) {
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
     const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });
-    const item = await getNormalizedCalendarEvent(override.id, membership.authenticatedUserId);
+    const item = await getNormalizedCalendarEvent(override.id);
     return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
   }
   const { data, error } = await supabase.from("calendar_events").update({
@@ -83,7 +83,7 @@ export async function PATCH(request: Request, context: Context) {
     if (participantClearError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantClearError) }, { status: 400 });
   }
 
-  const item = await getNormalizedCalendarEvent(eventId, membership.authenticatedUserId);
+  const item = await getNormalizedCalendarEvent(eventId);
   return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
 }
 

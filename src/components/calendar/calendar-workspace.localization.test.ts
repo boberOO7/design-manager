@@ -51,7 +51,7 @@ describe("Calendar event form localization contract", () => {
   });
 
   it("keeps English and Ukrainian event-form keys in parity", () => {
-    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "yourResponse", "interview", "interviewer", "selectInterviewer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "meetingMode", "offline", "online", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
+    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "presenter", "executor", "yourResponse", "interview", "interviewer", "selectInterviewer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "meetingMode", "offline", "online", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
