@@ -2881,8 +2881,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_0",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 316,
+      "community_name": "0",
       "norm_label": "0"
     },
     {
@@ -2892,8 +2892,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_0_value",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 316,
+      "community_name": "0",
       "norm_label": "$value"
     },
     {
@@ -2903,8 +2903,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_0_type",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 316,
+      "community_name": "0",
       "norm_label": "$type"
     },
     {
@@ -2980,8 +2980,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_3",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 384,
+      "community_name": "3",
       "norm_label": "3"
     },
     {
@@ -2991,8 +2991,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_3_value",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 384,
+      "community_name": "3",
       "norm_label": "$value"
     },
     {
@@ -3002,8 +3002,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_3_type",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 384,
+      "community_name": "3",
       "norm_label": "$type"
     },
     {
@@ -3013,8 +3013,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_4",
-      "community": 384,
-      "community_name": "4",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "4"
     },
     {
@@ -3024,8 +3024,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_4_value",
-      "community": 384,
-      "community_name": "4",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$value"
     },
     {
@@ -3035,8 +3035,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_4_type",
-      "community": 384,
-      "community_name": "4",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$type"
     },
     {
@@ -3079,8 +3079,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_6",
-      "community": 387,
-      "community_name": "6",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "6"
     },
     {
@@ -3090,8 +3090,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_6_value",
-      "community": 387,
-      "community_name": "6",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$value"
     },
     {
@@ -3101,8 +3101,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_6_type",
-      "community": 387,
-      "community_name": "6",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$type"
     },
     {
@@ -3178,8 +3178,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_12",
-      "community": 382,
-      "community_name": "12",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "12"
     },
     {
@@ -3189,8 +3189,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_12_value",
-      "community": 382,
-      "community_name": "12",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$value"
     },
     {
@@ -3200,8 +3200,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_12_type",
-      "community": 382,
-      "community_name": "12",
+      "community": 9,
+      "community_name": "spacing",
       "norm_label": "$type"
     },
     {
@@ -3211,8 +3211,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_spacing_16",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 371,
+      "community_name": "16",
       "norm_label": "16"
     },
     {
@@ -3222,8 +3222,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_16_value",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 371,
+      "community_name": "16",
       "norm_label": "$value"
     },
     {
@@ -3233,8 +3233,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_16_type",
-      "community": 9,
-      "community_name": "spacing",
+      "community": 371,
+      "community_name": "16",
       "norm_label": "$type"
     },
     {
@@ -3288,7 +3288,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_fontsize_sm",
-      "community": 319,
+      "community": 235,
       "community_name": "sm",
       "norm_label": "sm"
     },
@@ -3299,7 +3299,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_sm_value",
-      "community": 319,
+      "community": 235,
       "community_name": "sm",
       "norm_label": "$value"
     },
@@ -3310,7 +3310,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_sm_type",
-      "community": 319,
+      "community": 235,
       "community_name": "sm",
       "norm_label": "$type"
     },
@@ -3530,7 +3530,7 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_radius_none",
-      "community": 371,
+      "community": 372,
       "community_name": "none",
       "norm_label": "none"
     },
@@ -3541,7 +3541,7 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_none_value",
-      "community": 371,
+      "community": 372,
       "community_name": "none",
       "norm_label": "$value"
     },
@@ -3552,7 +3552,7 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_none_type",
-      "community": 371,
+      "community": 372,
       "community_name": "none",
       "norm_label": "$type"
     },
@@ -3563,7 +3563,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_radius_sm",
-      "community": 319,
+      "community": 235,
       "community_name": "sm",
       "norm_label": "sm"
     },
@@ -3706,7 +3706,7 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_shadow_none",
-      "community": 371,
+      "community": 372,
       "community_name": "none",
       "norm_label": "none"
     },
@@ -3717,7 +3717,7 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_shadow_sm",
-      "community": 319,
+      "community": 235,
       "community_name": "sm",
       "norm_label": "sm"
     },
@@ -3926,8 +3926,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_foreground",
-      "community": 31,
-      "community_name": "color",
+      "community": 319,
+      "community_name": "foreground",
       "norm_label": "foreground"
     },
     {
@@ -3937,8 +3937,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_foreground_value",
-      "community": 31,
-      "community_name": "color",
+      "community": 319,
+      "community_name": "foreground",
       "norm_label": "$value"
     },
     {
@@ -3948,8 +3948,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_foreground_type",
-      "community": 31,
-      "community_name": "color",
+      "community": 319,
+      "community_name": "foreground",
       "norm_label": "$type"
     },
     {
@@ -3992,8 +3992,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_primary_hover",
-      "community": 31,
-      "community_name": "color",
+      "community": 382,
+      "community_name": "primary-hover",
       "norm_label": "primary-hover"
     },
     {
@@ -4003,8 +4003,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_primary_hover_value",
-      "community": 31,
-      "community_name": "color",
+      "community": 382,
+      "community_name": "primary-hover",
       "norm_label": "$value"
     },
     {
@@ -4014,8 +4014,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_primary_hover_type",
-      "community": 31,
-      "community_name": "color",
+      "community": 382,
+      "community_name": "primary-hover",
       "norm_label": "$type"
     },
     {
@@ -4025,8 +4025,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_primary_foreground",
-      "community": 409,
-      "community_name": "primary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "primary-foreground"
     },
     {
@@ -4036,8 +4036,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_primary_foreground_value",
-      "community": 409,
-      "community_name": "primary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$value"
     },
     {
@@ -4047,8 +4047,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_primary_foreground_type",
-      "community": 409,
-      "community_name": "primary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$type"
     },
     {
@@ -4091,8 +4091,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_secondary_foreground",
-      "community": 413,
-      "community_name": "secondary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "secondary-foreground"
     },
     {
@@ -4102,8 +4102,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_secondary_foreground_value",
-      "community": 413,
-      "community_name": "secondary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$value"
     },
     {
@@ -4113,8 +4113,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_secondary_foreground_type",
-      "community": 413,
-      "community_name": "secondary-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$type"
     },
     {
@@ -4157,8 +4157,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_muted_foreground",
-      "community": 31,
-      "community_name": "color",
+      "community": 365,
+      "community_name": "muted-foreground",
       "norm_label": "muted-foreground"
     },
     {
@@ -4168,8 +4168,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_muted_foreground_value",
-      "community": 31,
-      "community_name": "color",
+      "community": 365,
+      "community_name": "muted-foreground",
       "norm_label": "$value"
     },
     {
@@ -4179,8 +4179,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_muted_foreground_type",
-      "community": 31,
-      "community_name": "color",
+      "community": 365,
+      "community_name": "muted-foreground",
       "norm_label": "$type"
     },
     {
@@ -4190,7 +4190,7 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_destructive",
-      "community": 416,
+      "community": 387,
       "community_name": "destructive",
       "norm_label": "destructive"
     },
@@ -4201,7 +4201,7 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_destructive_value",
-      "community": 416,
+      "community": 387,
       "community_name": "destructive",
       "norm_label": "$value"
     },
@@ -4212,7 +4212,7 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_destructive_type",
-      "community": 416,
+      "community": 387,
       "community_name": "destructive",
       "norm_label": "$type"
     },
@@ -4223,8 +4223,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_destructive_foreground",
-      "community": 402,
-      "community_name": "destructive-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "destructive-foreground"
     },
     {
@@ -4234,8 +4234,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_destructive_foreground_value",
-      "community": 402,
-      "community_name": "destructive-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$value"
     },
     {
@@ -4245,8 +4245,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_destructive_foreground_type",
-      "community": 402,
-      "community_name": "destructive-foreground",
+      "community": 31,
+      "community_name": "color",
       "norm_label": "$type"
     },
     {
@@ -4256,8 +4256,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_color_border",
-      "community": 316,
-      "community_name": "$type",
+      "community": 40,
+      "community_name": "card",
       "norm_label": "border"
     },
     {
@@ -4267,8 +4267,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_border_value",
-      "community": 316,
-      "community_name": "$type",
+      "community": 40,
+      "community_name": "card",
       "norm_label": "$value"
     },
     {
@@ -4278,8 +4278,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_border_type",
-      "community": 316,
-      "community_name": "$type",
+      "community": 40,
+      "community_name": "card",
       "norm_label": "$type"
     },
     {
@@ -4520,7 +4520,7 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_button_padding_x",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "padding-x"
     },
@@ -4531,7 +4531,7 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_padding_x_value",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "$value"
     },
@@ -4542,7 +4542,7 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_padding_x_type",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "$type"
     },
@@ -4553,8 +4553,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_button_padding_y",
-      "community": 365,
-      "community_name": "padding-y",
+      "community": 75,
+      "community_name": "input",
       "norm_label": "padding-y"
     },
     {
@@ -4564,8 +4564,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_padding_y_value",
-      "community": 365,
-      "community_name": "padding-y",
+      "community": 75,
+      "community_name": "input",
       "norm_label": "$value"
     },
     {
@@ -4575,8 +4575,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_padding_y_type",
-      "community": 365,
-      "community_name": "padding-y",
+      "community": 75,
+      "community_name": "input",
       "norm_label": "$type"
     },
     {
@@ -4652,7 +4652,7 @@
       "source_location": "L115",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_component_input",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "input"
     },
@@ -4674,8 +4674,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_input_border",
-      "community": 316,
-      "community_name": "$type",
+      "community": 40,
+      "community_name": "card",
       "norm_label": "border"
     },
     {
@@ -4685,7 +4685,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_input_focus_ring",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "focus-ring"
     },
@@ -4696,7 +4696,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_focus_ring_value",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "$value"
     },
@@ -4707,7 +4707,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_focus_ring_type",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "$type"
     },
@@ -4718,7 +4718,7 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_input_padding_x",
-      "community": 101,
+      "community": 75,
       "community_name": "input",
       "norm_label": "padding-x"
     },
@@ -4729,8 +4729,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_input_padding_y",
-      "community": 365,
-      "community_name": "padding-y",
+      "community": 75,
+      "community_name": "input",
       "norm_label": "padding-y"
     },
     {
@@ -4773,8 +4773,8 @@
       "source_location": "L125",
       "_origin": "ast",
       "id": "agents_skills_design_system_templates_design_tokens_starter_card_border",
-      "community": 316,
-      "community_name": "$type",
+      "community": 40,
+      "community_name": "card",
       "norm_label": "border"
     },
     {
@@ -6665,8 +6665,8 @@
       "source_location": "L347",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_context_resolvecandidatecontextsummary",
-      "community": 47,
-      "community_name": "context.mjs",
+      "community": 261,
+      "community_name": "resolveProject",
       "norm_label": "resolvecandidatecontextsummary()"
     },
     {
@@ -6676,8 +6676,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_context_contextsourcestatus",
-      "community": 47,
-      "community_name": "context.mjs",
+      "community": 261,
+      "community_name": "resolveProject",
       "norm_label": "contextsourcestatus()"
     },
     {
@@ -6687,8 +6687,8 @@
       "source_location": "L377",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_context_contextsourcepath",
-      "community": 47,
-      "community_name": "context.mjs",
+      "community": 261,
+      "community_name": "resolveProject",
       "norm_label": "contextsourcepath()"
     },
     {
@@ -6830,8 +6830,8 @@
       "source_location": "L577",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_context_nearestpackagerootbetween",
-      "community": 47,
-      "community_name": "context.mjs",
+      "community": 261,
+      "community_name": "resolveProject",
       "norm_label": "nearestpackagerootbetween()"
     },
     {
@@ -6841,8 +6841,8 @@
       "source_location": "L590",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_context_ispathinsideorequal",
-      "community": 47,
-      "community_name": "context.mjs",
+      "community": 261,
+      "community_name": "resolveProject",
       "norm_label": "ispathinsideorequal()"
     },
     {
@@ -9415,8 +9415,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_isbrandfontonowndomain",
-      "community": 287,
-      "community_name": "collectBrowserFindings",
+      "community": 206,
+      "community_name": "detect-antipatterns-browser.js",
       "norm_label": "isbrandfontonowndomain()"
     },
     {
@@ -9426,8 +9426,8 @@
       "source_location": "L673",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_isneutralcolor",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "isneutralcolor()"
     },
     {
@@ -9536,8 +9536,8 @@
       "source_location": "L820",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkborders",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "checkborders()"
     },
     {
@@ -9625,7 +9625,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_isaccentcolor",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "isaccentcolor()"
     },
     {
@@ -9636,7 +9636,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_resolveheroheadingsizepx",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "resolveheroheadingsizepx()"
     },
     {
@@ -9647,7 +9647,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkheroeyebrow",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "checkheroeyebrow()"
     },
     {
@@ -9657,8 +9657,8 @@
       "source_location": "L1253",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkkickeraboveheading",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checkkickeraboveheading()"
     },
     {
@@ -10031,8 +10031,8 @@
       "source_location": "L2630",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_istabcontextelement",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "istabcontextelement()"
     },
     {
@@ -10042,8 +10042,8 @@
       "source_location": "L2651",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_isstatuscontextelement",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "isstatuscontextelement()"
     },
     {
@@ -10053,8 +10053,8 @@
       "source_location": "L2659",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementbordersdom",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "checkelementbordersdom()"
     },
     {
@@ -10120,7 +10120,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_domaccentdashpseudo",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "domaccentdashpseudo()"
     },
     {
@@ -10131,7 +10131,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementheroeyebrowdom",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "checkelementheroeyebrowdom()"
     },
     {
@@ -10262,8 +10262,8 @@
       "source_location": "L3266",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_cleaninlinetext",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "cleaninlinetext()"
     },
     {
@@ -10273,8 +10273,8 @@
       "source_location": "L3275",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_iskickercardcontext",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "iskickercardcontext()"
     },
     {
@@ -10284,8 +10284,8 @@
       "source_location": "L3288",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_iskickercandidate",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "iskickercandidate()"
     },
     {
@@ -10295,8 +10295,8 @@
       "source_location": "L3328",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_kickerheadinglevel",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "kickerheadinglevel()"
     },
     {
@@ -10306,8 +10306,8 @@
       "source_location": "L3338",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_collectkickercandidates",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "collectkickercandidates()"
     },
     {
@@ -10317,8 +10317,8 @@
       "source_location": "L3391",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkkickeraboveheadingdom",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checkkickeraboveheadingdom()"
     },
     {
@@ -10328,8 +10328,8 @@
       "source_location": "L3412",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_parsenumberedlabeltext",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "parsenumberedlabeltext()"
     },
     {
@@ -10340,7 +10340,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_isnumberedsectionlabelcandidate",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "isnumberedsectionlabelcandidate()"
     },
     {
@@ -10350,8 +10350,8 @@
       "source_location": "L3451",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_collectnumberedsectionlabelcandidates",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "collectnumberedsectionlabelcandidates()"
     },
     {
@@ -10361,8 +10361,8 @@
       "source_location": "L3507",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checknumberedsectionlabels",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checknumberedsectionlabels()"
     },
     {
@@ -10372,8 +10372,8 @@
       "source_location": "L3519",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checknumberedsectionlabelsfromdoc",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checknumberedsectionlabelsfromdoc()"
     },
     {
@@ -10383,8 +10383,8 @@
       "source_location": "L3528",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checknumberedsectionlabelsdom",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checknumberedsectionlabelsdom()"
     },
     {
@@ -10394,8 +10394,8 @@
       "source_location": "L3543",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkemdashoveruse",
-      "community": 287,
-      "community_name": "collectBrowserFindings",
+      "community": 206,
+      "community_name": "detect-antipatterns-browser.js",
       "norm_label": "checkemdashoveruse()"
     },
     {
@@ -10405,8 +10405,8 @@
       "source_location": "L3553",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkemdashoverusedom",
-      "community": 287,
-      "community_name": "collectBrowserFindings",
+      "community": 206,
+      "community_name": "detect-antipatterns-browser.js",
       "norm_label": "checkemdashoverusedom()"
     },
     {
@@ -10526,8 +10526,8 @@
       "source_location": "L3826",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_resolvelengthpx",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "resolvelengthpx()"
     },
     {
@@ -10680,8 +10680,8 @@
       "source_location": "L4402",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementborders",
-      "community": 312,
-      "community_name": "checkElementBordersDOM",
+      "community": 287,
+      "community_name": "collectBrowserFindings",
       "norm_label": "checkelementborders()"
     },
     {
@@ -10736,7 +10736,7 @@
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementheroeyebrow",
       "community": 311,
-      "community_name": "checkElementHeroEyebrow",
+      "community_name": "resolveLengthPx",
       "norm_label": "checkelementheroeyebrow()"
     },
     {
@@ -10746,8 +10746,8 @@
       "source_location": "L4640",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkkickeraboveheadingfromdoc",
-      "community": 27,
-      "community_name": "checkQuality",
+      "community": 311,
+      "community_name": "resolveLengthPx",
       "norm_label": "checkkickeraboveheadingfromdoc()"
     },
     {
@@ -10779,8 +10779,8 @@
       "source_location": "L4670",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checktypography",
-      "community": 287,
-      "community_name": "collectBrowserFindings",
+      "community": 206,
+      "community_name": "detect-antipatterns-browser.js",
       "norm_label": "checktypography()"
     },
     {
@@ -10966,7 +10966,7 @@
       "source_location": "L5297",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_shadowlayeralpha",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "shadowlayeralpha()"
     },
@@ -10977,7 +10977,7 @@
       "source_location": "L5306",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_shadowmaxblurpx",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "shadowmaxblurpx()"
     },
@@ -10999,7 +10999,7 @@
       "source_location": "L5329",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkgptthinborderwideshadow",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "checkgptthinborderwideshadow()"
     },
@@ -11010,7 +11010,7 @@
       "source_location": "L5341",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_borderwidthsfromstyle",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "borderwidthsfromstyle()"
     },
@@ -11021,7 +11021,7 @@
       "source_location": "L5350",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_bordercolorsfromstyle",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "bordercolorsfromstyle()"
     },
@@ -11032,7 +11032,7 @@
       "source_location": "L5359",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementgptbordershadow",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "checkelementgptbordershadow()"
     },
@@ -11043,7 +11043,7 @@
       "source_location": "L5363",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_detector_detect_antipatterns_browser_checkelementgptbordershadowdom",
-      "community": 372,
+      "community": 233,
       "community_name": "checkElementGptBorderShadowDOM",
       "norm_label": "checkelementgptbordershadowdom()"
     },
@@ -17577,8 +17577,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_advisory_rules",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "advisory_rules"
     },
     {
@@ -17588,8 +17588,8 @@
       "source_location": "L145",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_isadvisoryfinding",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "isadvisoryfinding()"
     },
     {
@@ -17632,8 +17632,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_depthisset",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "depthisset()"
     },
     {
@@ -17709,8 +17709,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_lookslikeprojectroot",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "lookslikeprojectroot()"
     },
     {
@@ -17720,8 +17720,8 @@
       "source_location": "L238",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_resolvecachecwd",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "resolvecachecwd()"
     },
     {
@@ -17786,8 +17786,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_numberor",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 344,
+      "community_name": "readConfig",
       "norm_label": "numberor()"
     },
     {
@@ -17808,8 +17808,8 @@
       "source_location": "L318",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_applydetectorconfigsource",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 344,
+      "community_name": "readConfig",
       "norm_label": "applydetectorconfigsource()"
     },
     {
@@ -17819,8 +17819,8 @@
       "source_location": "L346",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_applyconfigsource",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 344,
+      "community_name": "readConfig",
       "norm_label": "applyconfigsource()"
     },
     {
@@ -17830,8 +17830,8 @@
       "source_location": "L371",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_uniquestrings",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 344,
+      "community_name": "readConfig",
       "norm_label": "uniquestrings()"
     },
     {
@@ -17841,8 +17841,8 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_normalizeignorevalue",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "normalizeignorevalue()"
     },
     {
@@ -17852,8 +17852,8 @@
       "source_location": "L384",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_normalizeignorerule",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "normalizeignorerule()"
     },
     {
@@ -17984,8 +17984,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_normalizeignorevalueentries",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "normalizeignorevalueentries()"
     },
     {
@@ -17995,8 +17995,8 @@
       "source_location": "L567",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_mergeignorevalues",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "mergeignorevalues()"
     },
     {
@@ -18006,8 +18006,8 @@
       "source_location": "L578",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_ignorevaluefileskey",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "ignorevaluefileskey()"
     },
     {
@@ -18083,8 +18083,8 @@
       "source_location": "L695",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_ensuresession",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "ensuresession()"
     },
     {
@@ -18094,8 +18094,8 @@
       "source_location": "L702",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_ensurefile",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "ensurefile()"
     },
     {
@@ -18105,8 +18105,8 @@
       "source_location": "L710",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_bumpeditcount",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "bumpeditcount()"
     },
     {
@@ -18116,8 +18116,8 @@
       "source_location": "L720",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_touchfile",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "touchfile()"
     },
     {
@@ -18127,8 +18127,8 @@
       "source_location": "L725",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_suppressionnotice",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "suppressionnotice()"
     },
     {
@@ -18160,8 +18160,8 @@
       "source_location": "L783",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_filterfindings",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "filterfindings()"
     },
     {
@@ -18182,8 +18182,8 @@
       "source_location": "L819",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_peredittieringactive",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "peredittieringactive()"
     },
     {
@@ -18193,8 +18193,8 @@
       "source_location": "L824",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_isignoredfindingvalue",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "isignoredfindingvalue()"
     },
     {
@@ -18204,8 +18204,8 @@
       "source_location": "L839",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_findingmatchesscopedignorefile",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "findingmatchesscopedignorefile()"
     },
     {
@@ -18215,8 +18215,8 @@
       "source_location": "L853",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_extractfindingignorevalue",
-      "community": 245,
-      "community_name": "hook-lib.mjs",
+      "community": 100,
+      "community_name": "filterFindings",
       "norm_label": "extractfindingignorevalue()"
     },
     {
@@ -18259,8 +18259,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_dedupeagainstcache",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "dedupeagainstcache()"
     },
     {
@@ -18270,8 +18270,8 @@
       "source_location": "L952",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_rememberfindings",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "rememberfindings()"
     },
     {
@@ -18281,8 +18281,8 @@
       "source_location": "L959",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_findingcachekey",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "findingcachekey()"
     },
     {
@@ -18369,8 +18369,8 @@
       "source_location": "L1118",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_relativize",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "relativize()"
     },
     {
@@ -18402,8 +18402,8 @@
       "source_location": "L1170",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_resolveharness",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "resolveharness()"
     },
     {
@@ -18479,8 +18479,8 @@
       "source_location": "L1312",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_ui_code_exts",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "ui_code_exts"
     },
     {
@@ -18490,8 +18490,8 @@
       "source_location": "L1313",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_style_exts",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "style_exts"
     },
     {
@@ -18512,8 +18512,8 @@
       "source_location": "L1324",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_haspathtraversal",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "haspathtraversal()"
     },
     {
@@ -18523,8 +18523,8 @@
       "source_location": "L1328",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_isinsideproject",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "isinsideproject()"
     },
     {
@@ -18567,8 +18567,8 @@
       "source_location": "L1383",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_parsestaticstyleimports",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "parsestaticstyleimports()"
     },
     {
@@ -18578,8 +18578,8 @@
       "source_location": "L1398",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_colocatedstylesheets",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "colocatedstylesheets()"
     },
     {
@@ -18589,8 +18589,8 @@
       "source_location": "L1417",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_normalizescantargets",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "normalizescantargets()"
     },
     {
@@ -18600,8 +18600,8 @@
       "source_location": "L1441",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_expandscantargets",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "expandscantargets()"
     },
     {
@@ -18655,8 +18655,8 @@
       "source_location": "L1562",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_rendercleanack",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "rendercleanack()"
     },
     {
@@ -18666,8 +18666,8 @@
       "source_location": "L1568",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_renderpendingack",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "renderpendingack()"
     },
     {
@@ -18721,8 +18721,8 @@
       "source_location": "L1636",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_runhook",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "runhook()"
     },
     {
@@ -18743,8 +18743,8 @@
       "source_location": "L2141",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_hook_lib_payload",
-      "community": 16,
-      "community_name": "runHook",
+      "community": 245,
+      "community_name": "hook-lib.mjs",
       "norm_label": "payload()"
     },
     {
@@ -18798,8 +18798,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "artifact-schema.mjs"
     },
     {
@@ -18809,8 +18809,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_product_v4_sections",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "product_v4_sections"
     },
     {
@@ -18820,8 +18820,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_product_deprecated_sections",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "product_deprecated_sections"
     },
     {
@@ -18831,8 +18831,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_productstampline",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "productstampline()"
     },
     {
@@ -18842,8 +18842,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_readproductschemaversion",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "readproductschemaversion()"
     },
     {
@@ -18853,8 +18853,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_stampproductschema",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "stampproductschema()"
     },
     {
@@ -18864,8 +18864,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_artifact_schema_readsidecarschemaversion",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "readsidecarschemaversion()"
     },
     {
@@ -20866,8 +20866,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "staleness.mjs"
     },
     {
@@ -20877,8 +20877,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_known_config_keys",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "known_config_keys"
     },
     {
@@ -20888,8 +20888,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_known_detector_keys",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "known_detector_keys"
     },
     {
@@ -20899,8 +20899,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_native_evidence_paths",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "native_evidence_paths"
     },
     {
@@ -20910,8 +20910,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_native_evidence_dependencies",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "native_evidence_dependencies"
     },
     {
@@ -20921,8 +20921,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_finding",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "finding()"
     },
     {
@@ -20943,8 +20943,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_readjson",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "readjson()"
     },
     {
@@ -20954,8 +20954,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_mtimems",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "mtimems()"
     },
     {
@@ -20965,8 +20965,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_hassection",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "hassection()"
     },
     {
@@ -20976,8 +20976,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_torelative",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "torelative()"
     },
     {
@@ -20987,8 +20987,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checkproduct",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checkproduct()"
     },
     {
@@ -20998,8 +20998,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checknativeplatformevidence",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checknativeplatformevidence()"
     },
     {
@@ -21009,8 +21009,8 @@
       "source_location": "L244",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checkdesignsidecar",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checkdesignsidecar()"
     },
     {
@@ -21020,8 +21020,8 @@
       "source_location": "L305",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checkconfig",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checkconfig()"
     },
     {
@@ -21031,8 +21031,8 @@
       "source_location": "L355",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checksurfacebriefs",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checksurfacebriefs()"
     },
     {
@@ -21042,8 +21042,8 @@
       "source_location": "L387",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_checkprojectroots",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "checkprojectroots()"
     },
     {
@@ -21053,8 +21053,8 @@
       "source_location": "L407",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_describeworkspacecontext",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "describeworkspacecontext()"
     },
     {
@@ -21064,8 +21064,8 @@
       "source_location": "L424",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_lib_staleness_collectbootfindings",
-      "community": 53,
-      "community_name": "staleness.mjs",
+      "community": 21,
+      "community_name": "doctor.mjs",
       "norm_label": "collectbootfindings()"
     },
     {
@@ -22175,8 +22175,8 @@
       "source_location": "L933",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_stripmanualeditruntimestate",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 51,
+      "community_name": "connectSSE",
       "norm_label": "stripmanualeditruntimestate()"
     },
     {
@@ -22186,7 +22186,7 @@
       "source_location": "L956",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_sanitizedcontextouterhtml",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "sanitizedcontextouterhtml()"
     },
@@ -22208,7 +22208,7 @@
       "source_location": "L1008",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_contextelementformanualedit",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "contextelementformanualedit()"
     },
@@ -22219,8 +22219,8 @@
       "source_location": "L1032",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_isusefulmanualeditcontext",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "isusefulmanualeditcontext()"
     },
     {
@@ -22230,8 +22230,8 @@
       "source_location": "L1038",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_collectmanualcontextpieces",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "collectmanualcontextpieces()"
     },
     {
@@ -22241,7 +22241,7 @@
       "source_location": "L1057",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_addmanualcontexttext",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "addmanualcontexttext()"
     },
@@ -22263,7 +22263,7 @@
       "source_location": "L1068",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_normalizemanualcontexttext",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "normalizemanualcontexttext()"
     },
@@ -22747,8 +22747,8 @@
       "source_location": "L1840",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_placeholderwidthisimplicit",
-      "community": 295,
-      "community_name": "onAnnotDown",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "placeholderwidthisimplicit()"
     },
     {
@@ -22769,8 +22769,8 @@
       "source_location": "L1861",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_materializeplaceholderwidth",
-      "community": 295,
-      "community_name": "onAnnotDown",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "materializeplaceholderwidth()"
     },
     {
@@ -22978,8 +22978,8 @@
       "source_location": "L2151",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_applyplaceholderdimensions",
-      "community": 295,
-      "community_name": "onAnnotDown",
+      "community": 51,
+      "community_name": "connectSSE",
       "norm_label": "applyplaceholderdimensions()"
     },
     {
@@ -23022,8 +23022,8 @@
       "source_location": "L2209",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_startplaceholderedgeresize",
-      "community": 295,
-      "community_name": "onAnnotDown",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "startplaceholderedgeresize()"
     },
     {
@@ -23341,8 +23341,8 @@
       "source_location": "L3124",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_getmountedsveltecomponentanchor",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 34,
+      "community_name": "mountSvelteComponentVariant",
       "norm_label": "getmountedsveltecomponentanchor()"
     },
     {
@@ -23385,8 +23385,8 @@
       "source_location": "L3170",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_applyparamvalue",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "applyparamvalue()"
     },
     {
@@ -23407,8 +23407,8 @@
       "source_location": "L3203",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_formatrangevalue",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 24,
+      "community_name": "initGlobalBar",
       "norm_label": "formatrangevalue()"
     },
     {
@@ -23418,8 +23418,8 @@
       "source_location": "L3210",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_buildparamspanel",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 24,
+      "community_name": "initGlobalBar",
       "norm_label": "buildparamspanel()"
     },
     {
@@ -23451,8 +23451,8 @@
       "source_location": "L3412",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_unwrapmixedcontenttextnodes",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 51,
+      "community_name": "connectSSE",
       "norm_label": "unwrapmixedcontenttextnodes()"
     },
     {
@@ -23572,7 +23572,7 @@
       "source_location": "L3570",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_buildlocatorforleaf",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "buildlocatorforleaf()"
     },
@@ -23583,8 +23583,8 @@
       "source_location": "L3596",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_sourcehintforelement",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "sourcehintforelement()"
     },
     {
@@ -23594,8 +23594,8 @@
       "source_location": "L3612",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_parsesourceloc",
-      "community": 233,
-      "community_name": "applyEditing",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "parsesourceloc()"
     },
     {
@@ -23605,7 +23605,7 @@
       "source_location": "L3620",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_documentrefforelement",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "documentrefforelement()"
     },
@@ -23616,8 +23616,8 @@
       "source_location": "L3637",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_documentrefsegment",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "documentrefsegment()"
     },
     {
@@ -23627,8 +23627,8 @@
       "source_location": "L3642",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_documentrefidsuffix",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "documentrefidsuffix()"
     },
     {
@@ -23638,8 +23638,8 @@
       "source_location": "L3646",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_documentrefclasssuffix",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "documentrefclasssuffix()"
     },
     {
@@ -23649,8 +23649,8 @@
       "source_location": "L3657",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_normalizedocumentreftoken",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "normalizedocumentreftoken()"
     },
     {
@@ -23660,8 +23660,8 @@
       "source_location": "L3661",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_indexamongsametag",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "indexamongsametag()"
     },
     {
@@ -23671,7 +23671,7 @@
       "source_location": "L3675",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_copyeditleafcontext",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "copyeditleafcontext()"
     },
@@ -23682,7 +23682,7 @@
       "source_location": "L3689",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_nearbyeditabletextsformanualedit",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "nearbyeditabletextsformanualedit()"
     },
@@ -23693,7 +23693,7 @@
       "source_location": "L3709",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_copyeditcontainercontext",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "copyeditcontainercontext()"
     },
@@ -23704,7 +23704,7 @@
       "source_location": "L3721",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_forbiddenmanualtextchars",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "forbiddenmanualtextchars()"
     },
@@ -23715,7 +23715,7 @@
       "source_location": "L3729",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_applyediting",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "applyediting()"
     },
@@ -23946,7 +23946,7 @@
       "source_location": "L4078",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_maybeshowfirstsavetoast",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "maybeshowfirstsavetoast()"
     },
@@ -23979,7 +23979,7 @@
       "source_location": "L4144",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_onpendingtrashclick",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "onpendingtrashclick()"
     },
@@ -24067,7 +24067,7 @@
       "source_location": "L4332",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_restorediscardedmanualedits",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "restorediscardedmanualedits()"
     },
@@ -24078,7 +24078,7 @@
       "source_location": "L4351",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_canrestoremanualeditelement",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "canrestoremanualeditelement()"
     },
@@ -24089,7 +24089,7 @@
       "source_location": "L4357",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_mixedtextwraprestorehint",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "mixedtextwraprestorehint()"
     },
@@ -24100,7 +24100,7 @@
       "source_location": "L4368",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_restoremixedtextnodemanualedit",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "restoremixedtextnodemanualedit()"
     },
@@ -24111,7 +24111,7 @@
       "source_location": "L4386",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_directmixedtextrestorenodes",
-      "community": 233,
+      "community": 16,
       "community_name": "applyEditing",
       "norm_label": "directmixedtextrestorenodes()"
     },
@@ -24122,8 +24122,8 @@
       "source_location": "L4396",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_findmanualeditrestoreelement",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "findmanualeditrestoreelement()"
     },
     {
@@ -24133,8 +24133,8 @@
       "source_location": "L4415",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_querymanualeditref",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "querymanualeditref()"
     },
     {
@@ -24144,8 +24144,8 @@
       "source_location": "L4435",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_parsemanualeditrefsegment",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "parsemanualeditrefsegment()"
     },
     {
@@ -24155,8 +24155,8 @@
       "source_location": "L4451",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_elementmatchesmanualrefsegment",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "elementmatchesmanualrefsegment()"
     },
     {
@@ -24166,8 +24166,8 @@
       "source_location": "L4462",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_cssident",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "cssident()"
     },
     {
@@ -24496,8 +24496,8 @@
       "source_location": "L5002",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_parseoriginalmarkupelement",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "parseoriginalmarkupelement()"
     },
     {
@@ -24507,8 +24507,8 @@
       "source_location": "L5008",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_normalizeelementclassname",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "normalizeelementclassname()"
     },
     {
@@ -24529,8 +24529,8 @@
       "source_location": "L5030",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_isusableinjectionanchor",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "isusableinjectionanchor()"
     },
     {
@@ -24540,8 +24540,8 @@
       "source_location": "L5038",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_elementmatchesoriginalmarkup",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "elementmatchesoriginalmarkup()"
     },
     {
@@ -24551,8 +24551,8 @@
       "source_location": "L5059",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_findliveelementfromanchorsnapshot",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "findliveelementfromanchorsnapshot()"
     },
     {
@@ -24562,8 +24562,8 @@
       "source_location": "L5082",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_findliveelementfororiginalmarkup",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "findliveelementfororiginalmarkup()"
     },
     {
@@ -24573,8 +24573,8 @@
       "source_location": "L5122",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_resolveliveinjectionanchor",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "resolveliveinjectionanchor()"
     },
     {
@@ -24628,7 +24628,7 @@
       "source_location": "L5202",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_detectdevserverbase",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "detectdevserverbase()"
     },
@@ -24639,7 +24639,7 @@
       "source_location": "L5215",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_componentmodulecandidates",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "componentmodulecandidates()"
     },
@@ -24650,7 +24650,7 @@
       "source_location": "L5230",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_importfirstreachable",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "importfirstreachable()"
     },
@@ -24661,7 +24661,7 @@
       "source_location": "L5248",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_probepreviewtree",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "probepreviewtree()"
     },
@@ -24672,7 +24672,7 @@
       "source_location": "L5259",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_loadsvelteruntime",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "loadsvelteruntime()"
     },
@@ -24694,7 +24694,7 @@
       "source_location": "L5301",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_removesveltecomponentvariantstyle",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "removesveltecomponentvariantstyle()"
     },
@@ -24771,8 +24771,8 @@
       "source_location": "L5412",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_buildsveltepropvaluesfromliveelement",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "buildsveltepropvaluesfromliveelement()"
     },
     {
@@ -24782,8 +24782,8 @@
       "source_location": "L5436",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_buildsveltepropvaluesv2",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "buildsveltepropvaluesv2()"
     },
     {
@@ -24793,8 +24793,8 @@
       "source_location": "L5506",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_cssescapeident",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "cssescapeident()"
     },
     {
@@ -24804,8 +24804,8 @@
       "source_location": "L5510",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_collectvisibletexts",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "collectvisibletexts()"
     },
     {
@@ -24815,8 +24815,8 @@
       "source_location": "L5526",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_stripsvelteblockregions",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "stripsvelteblockregions()"
     },
     {
@@ -24826,8 +24826,8 @@
       "source_location": "L5555",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_stripsveltekeydelimiters",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "stripsveltekeydelimiters()"
     },
     {
@@ -24837,8 +24837,8 @@
       "source_location": "L5579",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_clonewithoutelements",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "clonewithoutelements()"
     },
     {
@@ -24848,7 +24848,7 @@
       "source_location": "L5596",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_mountsveltecomponentvariant",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "mountsveltecomponentvariant()"
     },
@@ -24859,7 +24859,7 @@
       "source_location": "L5681",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_describemountfailure",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "describemountfailure()"
     },
@@ -24881,7 +24881,7 @@
       "source_location": "L5709",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_applyoriginalattrstosvelteanchor",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "applyoriginalattrstosvelteanchor()"
     },
@@ -24892,7 +24892,7 @@
       "source_location": "L5724",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_commitacceptedsveltecomponenttodom",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "commitacceptedsveltecomponenttodom()"
     },
@@ -24925,7 +24925,7 @@
       "source_location": "L5936",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_reportvariantmounted",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "reportvariantmounted()"
     },
@@ -24936,7 +24936,7 @@
       "source_location": "L5947",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_reportvariantmountfailed",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "reportvariantmountfailed()"
     },
@@ -24947,7 +24947,7 @@
       "source_location": "L5963",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_truncatemiddle",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "truncatemiddle()"
     },
@@ -24958,7 +24958,7 @@
       "source_location": "L5977",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_showmounterrorcard",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "showmounterrorcard()"
     },
@@ -24969,7 +24969,7 @@
       "source_location": "L5988",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_clearmounterrorcard",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "clearmounterrorcard()"
     },
@@ -24980,7 +24980,7 @@
       "source_location": "L5996",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_mounterrorcardbottomoffset",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "mounterrorcardbottomoffset()"
     },
@@ -24991,7 +24991,7 @@
       "source_location": "L6003",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_rendermounterrorcard",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "rendermounterrorcard()"
     },
@@ -25002,7 +25002,7 @@
       "source_location": "L6081",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_retrymounterrorcard",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "retrymounterrorcard()"
     },
@@ -25090,8 +25090,8 @@
       "source_location": "L6382",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_buildsvelteexpressiontextmap",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "buildsvelteexpressiontextmap()"
     },
     {
@@ -25101,8 +25101,8 @@
       "source_location": "L6425",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_expressiontextmatcher",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "expressiontextmatcher()"
     },
     {
@@ -25112,8 +25112,8 @@
       "source_location": "L6439",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_collecttextnodes",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "collecttextnodes()"
     },
     {
@@ -25123,8 +25123,8 @@
       "source_location": "L6451",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_normalizepreviewtext",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "normalizepreviewtext()"
     },
     {
@@ -25134,8 +25134,8 @@
       "source_location": "L6455",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_escaperegexp",
-      "community": 100,
-      "community_name": "resolveLiveInjectionAnchor",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "escaperegexp()"
     },
     {
@@ -25200,8 +25200,8 @@
       "source_location": "L6560",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_variantstateselector",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "variantstateselector()"
     },
     {
@@ -25211,8 +25211,8 @@
       "source_location": "L6571",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_variantparamdecls",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "variantparamdecls()"
     },
     {
@@ -25222,8 +25222,8 @@
       "source_location": "L6581",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_updatevariantstatestylesheet",
-      "community": 51,
-      "community_name": "connectSSE",
+      "community": 5,
+      "community_name": "live-browser.js",
       "norm_label": "updatevariantstatestylesheet()"
     },
     {
@@ -25805,7 +25805,7 @@
       "source_location": "L8513",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_maybecompleteacceptedsession",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "maybecompleteacceptedsession()"
     },
@@ -25816,7 +25816,7 @@
       "source_location": "L8532",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_scheduleacceptcleanup",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "scheduleacceptcleanup()"
     },
@@ -25827,8 +25827,8 @@
       "source_location": "L8555",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_snapshotacceptedvariantdom",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "snapshotacceptedvariantdom()"
     },
     {
@@ -25838,8 +25838,8 @@
       "source_location": "L8568",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_selectorforacceptedroot",
-      "community": 5,
-      "community_name": "live-browser.js",
+      "community": 16,
+      "community_name": "applyEditing",
       "norm_label": "selectorforacceptedroot()"
     },
     {
@@ -25849,7 +25849,7 @@
       "source_location": "L8576",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_accepteddomalreadyclean",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "accepteddomalreadyclean()"
     },
@@ -25860,7 +25860,7 @@
       "source_location": "L8583",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_ensureaccepteddomclean",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "ensureaccepteddomclean()"
     },
@@ -25871,7 +25871,7 @@
       "source_location": "L8609",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_findacceptedruntimewrappers",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "findacceptedruntimewrappers()"
     },
@@ -25882,7 +25882,7 @@
       "source_location": "L8617",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_restoreaccepteddomfromsnapshot",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "restoreaccepteddomfromsnapshot()"
     },
@@ -25893,7 +25893,7 @@
       "source_location": "L8639",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_browser_reloadaftermissingaccepteddom",
-      "community": 75,
+      "community": 34,
       "community_name": "mountSvelteComponentVariant",
       "norm_label": "reloadaftermissingaccepteddom()"
     },
@@ -30744,7 +30744,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "accept-css.mjs"
     },
@@ -30755,7 +30755,7 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_parsestylesheet",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "parsestylesheet()"
     },
@@ -30766,7 +30766,7 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_scantoblockorstatementend",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "scantoblockorstatementend()"
     },
@@ -30777,7 +30777,7 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_scanblockend",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "scanblockend()"
     },
@@ -30788,7 +30788,7 @@
       "source_location": "L172",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_serializenodes",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "serializenodes()"
     },
@@ -30799,7 +30799,7 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_formatbody",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "formatbody()"
     },
@@ -30810,7 +30810,7 @@
       "source_location": "L200",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_normalizeselector",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "normalizeselector()"
     },
@@ -30821,7 +30821,7 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_reconcilecss",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "reconcilecss()"
     },
@@ -30832,7 +30832,7 @@
       "source_location": "L292",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_substituteparamvar",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "substituteparamvar()"
     },
@@ -30843,7 +30843,7 @@
       "source_location": "L320",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_normalizetoggleforvar",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "normalizetoggleforvar()"
     },
@@ -30854,7 +30854,7 @@
       "source_location": "L324",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_istoggleon",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "istoggleon()"
     },
@@ -30865,7 +30865,7 @@
       "source_location": "L335",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_stripparamselector",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "stripparamselector()"
     },
@@ -30876,7 +30876,7 @@
       "source_location": "L373",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_bakeparamvalues",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "bakeparamvalues()"
     },
@@ -30887,7 +30887,7 @@
       "source_location": "L440",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_splitselectorlist",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "splitselectorlist()"
     },
@@ -30909,7 +30909,7 @@
       "source_location": "L493",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_pruneunusedselectors",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "pruneunusedselectors()"
     },
@@ -30920,7 +30920,7 @@
       "source_location": "L530",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_removeselectorat",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "removeselectorat()"
     },
@@ -30931,7 +30931,7 @@
       "source_location": "L581",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_escaperegexp",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "escaperegexp()"
     },
@@ -30942,7 +30942,7 @@
       "source_location": "L592",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_collectallselectors",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "collectallselectors()"
     },
@@ -30953,7 +30953,7 @@
       "source_location": "L609",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_accept_css_collectselectorsfromnodes",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "collectselectorsfromnodes()"
     },
@@ -31767,8 +31767,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_frameworks_script_src",
-      "community": 276,
-      "community_name": "tag-strategy.mjs",
+      "community": 297,
+      "community_name": "tanstack-adapter.mjs",
       "norm_label": "script-src.mjs"
     },
     {
@@ -31778,8 +31778,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_frameworks_script_src_buildlivescriptsrc",
-      "community": 276,
-      "community_name": "tag-strategy.mjs",
+      "community": 297,
+      "community_name": "tanstack-adapter.mjs",
       "norm_label": "buildlivescriptsrc()"
     },
     {
@@ -31844,8 +31844,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_frameworks_tag_strategy_tag_patch_markers",
-      "community": 276,
-      "community_name": "tag-strategy.mjs",
+      "community": 234,
+      "community_name": "frameworks/index.mjs",
       "norm_label": "tag_patch_markers"
     },
     {
@@ -32218,8 +32218,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_insert_ui_cancreateinsert",
-      "community": 10,
-      "community_name": "insert-ui.mjs",
+      "community": 232,
+      "community_name": "event-validation.mjs",
       "norm_label": "cancreateinsert()"
     },
     {
@@ -32229,8 +32229,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_insert_ui_insertcreatedisabledreason",
-      "community": 10,
-      "community_name": "insert-ui.mjs",
+      "community": 232,
+      "community_name": "event-validation.mjs",
       "norm_label": "insertcreatedisabledreason()"
     },
     {
@@ -34330,7 +34330,7 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_svelte_component_extractmatchingsourcecss",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "extractmatchingsourcecss()"
     },
@@ -34572,7 +34572,7 @@
       "source_location": "L847",
       "_origin": "ast",
       "id": "agents_skills_impeccable_scripts_live_svelte_component_removeselectorsfromsveltesource",
-      "community": 34,
+      "community": 53,
       "community_name": "accept-css.mjs",
       "norm_label": "removeselectorsfromsveltesource()"
     },
@@ -36475,8 +36475,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_shadcn_add",
-      "community": 55,
-      "community_name": ".add_components",
+      "community": 395,
+      "community_name": "test_shadcn_add.py",
       "norm_label": "shadcn_add.py"
     },
     {
@@ -37146,8 +37146,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add",
-      "community": 55,
-      "community_name": ".add_components",
+      "community": 395,
+      "community_name": "test_shadcn_add.py",
       "norm_label": "test_shadcn_add.py"
     },
     {
@@ -37190,8 +37190,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_init_default_project_root",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 41,
+      "community_name": "TestShadcnInstaller",
       "norm_label": ".test_init_default_project_root()"
     },
     {
@@ -37201,8 +37201,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_init_custom_project_root",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 41,
+      "community_name": "TestShadcnInstaller",
       "norm_label": ".test_init_custom_project_root()"
     },
     {
@@ -37212,8 +37212,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_init_dry_run",
-      "community": 401,
-      "community_name": ".test_init_dry_run",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": ".test_init_dry_run()"
     },
     {
@@ -37223,8 +37223,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_check_shadcn_config_exists",
-      "community": 41,
-      "community_name": "TestShadcnInstaller",
+      "community": 399,
+      "community_name": ".test_check_shadcn_config_exists",
       "norm_label": ".test_check_shadcn_config_exists()"
     },
     {
@@ -37245,8 +37245,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_get_installed_components_empty",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 401,
+      "community_name": ".test_get_installed_components_empty",
       "norm_label": ".test_get_installed_components_empty()"
     },
     {
@@ -37256,8 +37256,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_get_installed_components_with_files",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 402,
+      "community_name": ".test_get_installed_components_with_files",
       "norm_label": ".test_get_installed_components_with_files()"
     },
     {
@@ -37267,8 +37267,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_get_installed_components_no_config",
-      "community": 41,
-      "community_name": "TestShadcnInstaller",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": ".test_get_installed_components_no_config()"
     },
     {
@@ -37289,8 +37289,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_add_components_no_config",
-      "community": 395,
-      "community_name": ".test_add_components_no_config",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": ".test_add_components_no_config()"
     },
     {
@@ -37410,8 +37410,8 @@
       "source_location": "L239",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_testshadcninstaller_test_list_installed_no_config",
-      "community": 399,
-      "community_name": ".test_list_installed_no_config",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": ".test_list_installed_no_config()"
     },
     {
@@ -37443,8 +37443,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_1",
-      "community": 55,
-      "community_name": ".add_components",
+      "community": 395,
+      "community_name": "test_shadcn_add.py",
       "norm_label": "tests for shadcn_add.py"
     },
     {
@@ -37476,8 +37476,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_45",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 41,
+      "community_name": "TestShadcnInstaller",
       "norm_label": "test initialization with default project root."
     },
     {
@@ -37487,8 +37487,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_51",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 41,
+      "community_name": "TestShadcnInstaller",
       "norm_label": "test initialization with custom project root."
     },
     {
@@ -37498,8 +37498,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_56",
-      "community": 401,
-      "community_name": ".test_init_dry_run",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": "test initialization with dry run mode."
     },
     {
@@ -37509,8 +37509,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_61",
-      "community": 41,
-      "community_name": "TestShadcnInstaller",
+      "community": 399,
+      "community_name": ".test_check_shadcn_config_exists",
       "norm_label": "test checking for existing shadcn config."
     },
     {
@@ -37531,8 +37531,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_71",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 401,
+      "community_name": ".test_get_installed_components_empty",
       "norm_label": "test getting installed components when none exist."
     },
     {
@@ -37542,8 +37542,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_77",
-      "community": 50,
-      "community_name": "ShadcnInstaller",
+      "community": 402,
+      "community_name": ".test_get_installed_components_with_files",
       "norm_label": "test getting installed components when files exist."
     },
     {
@@ -37553,8 +37553,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_90",
-      "community": 41,
-      "community_name": "TestShadcnInstaller",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": "test getting installed components without config."
     },
     {
@@ -37575,8 +37575,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_104",
-      "community": 395,
-      "community_name": ".test_add_components_no_config",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": "test adding components without shadcn config."
     },
     {
@@ -37685,8 +37685,8 @@
       "source_location": "L240",
       "_origin": "ast",
       "id": "agents_skills_ui_styling_scripts_tests_test_shadcn_add_rationale_240",
-      "community": 399,
-      "community_name": ".test_list_installed_no_config",
+      "community": 50,
+      "community_name": "ShadcnInstaller",
       "norm_label": "test listing installed components without config."
     },
     {
@@ -42767,8 +42767,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_api_projects_projectid_stage_configuration_route",
-      "community": 6,
-      "community_name": "createClient",
+      "community": 37,
+      "community_name": "project-task-board.tsx",
       "norm_label": "stage-configuration/route.ts"
     },
     {
@@ -42778,8 +42778,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_app_api_projects_projectid_stage_configuration_route_patch",
-      "community": 6,
-      "community_name": "createClient",
+      "community": 37,
+      "community_name": "project-task-board.tsx",
       "norm_label": "patch()"
     },
     {
@@ -43633,7 +43633,7 @@
       "label": "recurrenceText()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L40",
+      "source_location": "L44",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_recurrencetext",
       "community": 11,
@@ -43644,7 +43644,7 @@
       "label": "eventTypeKey",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L45",
+      "source_location": "L49",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_eventtypekey",
       "community": 11,
@@ -43655,7 +43655,7 @@
       "label": "param()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L56",
+      "source_location": "L60",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_param",
       "community": 282,
@@ -43666,7 +43666,7 @@
       "label": "itemTone()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L57",
+      "source_location": "L61",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_itemtone",
       "community": 11,
@@ -43677,7 +43677,7 @@
       "label": "dateLabel()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L74",
+      "source_location": "L78",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_datelabel",
       "community": 11,
@@ -43688,7 +43688,7 @@
       "label": "useCalendarItemTitle()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_usecalendaritemtitle",
       "community": 11,
@@ -43699,7 +43699,7 @@
       "label": "useCalendarItemTypeLabel()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L87",
+      "source_location": "L91",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_usecalendaritemtypelabel",
       "community": 11,
@@ -43710,7 +43710,7 @@
       "label": "CalendarPill()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L94",
+      "source_location": "L98",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_calendarpill",
       "community": 11,
@@ -43721,7 +43721,7 @@
       "label": "CalendarWorkspace()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_calendarworkspace",
       "community": 11,
@@ -43732,7 +43732,7 @@
       "label": "CalendarFilterMenu()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L218",
+      "source_location": "L222",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_calendarfiltermenu",
       "community": 11,
@@ -43743,7 +43743,7 @@
       "label": "MonthView()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L228",
+      "source_location": "L232",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_monthview",
       "community": 12,
@@ -43754,7 +43754,7 @@
       "label": "WeekView()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L261",
+      "source_location": "L265",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_weekview",
       "community": 11,
@@ -43765,7 +43765,7 @@
       "label": "AgendaView()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L314",
+      "source_location": "L332",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_agendaview",
       "community": 12,
@@ -43776,7 +43776,7 @@
       "label": "DetailPanel()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L322",
+      "source_location": "L340",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_detailpanel",
       "community": 11,
@@ -43787,7 +43787,7 @@
       "label": "DayDetails()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L326",
+      "source_location": "L344",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_daydetails",
       "community": 11,
@@ -43798,7 +43798,7 @@
       "label": "ItemPanel()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L334",
+      "source_location": "L352",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_itempanel",
       "community": 11,
@@ -43809,7 +43809,7 @@
       "label": "StudioDayOffItem",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L364",
+      "source_location": "L382",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_studiodayoffitem",
       "community": 11,
@@ -43820,7 +43820,7 @@
       "label": "StudioDayOffRecord",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L365",
+      "source_location": "L383",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_studiodayoffrecord",
       "community": 11,
@@ -43831,7 +43831,7 @@
       "label": "parseStudioDayOffResponse()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L371",
+      "source_location": "L389",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_parsestudiodayoffresponse",
       "community": 11,
@@ -43842,7 +43842,7 @@
       "label": "StudioDaysOffPanel()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L380",
+      "source_location": "L398",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_studiodaysoffpanel",
       "community": 11,
@@ -43853,7 +43853,7 @@
       "label": "MutationResult",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L409",
+      "source_location": "L427",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_mutationresult",
       "community": 11,
@@ -43864,7 +43864,7 @@
       "label": "isCalendarItem()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L410",
+      "source_location": "L428",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_iscalendaritem",
       "community": 11,
@@ -43875,7 +43875,7 @@
       "label": "isMutationResult()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L411",
+      "source_location": "L429",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_ismutationresult",
       "community": 11,
@@ -43886,7 +43886,7 @@
       "label": "InvitationStatus()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L413",
+      "source_location": "L431",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_invitationstatus",
       "community": 11,
@@ -43897,7 +43897,7 @@
       "label": "InviteePicker()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L419",
+      "source_location": "L437",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_inviteepicker",
       "community": 231,
@@ -43908,7 +43908,7 @@
       "label": "BusinessTripParticipantPicker()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L428",
+      "source_location": "L446",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_businesstripparticipantpicker",
       "community": 11,
@@ -43919,7 +43919,7 @@
       "label": "MeetingModeControl()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L435",
+      "source_location": "L453",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_meetingmodecontrol",
       "community": 11,
@@ -43930,7 +43930,7 @@
       "label": "projectDestination()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L444",
+      "source_location": "L462",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_projectdestination",
       "community": 11,
@@ -43941,7 +43941,7 @@
       "label": "RecurrenceControl()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L450",
+      "source_location": "L468",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_recurrencecontrol",
       "community": 11,
@@ -43952,7 +43952,7 @@
       "label": "EventForm()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L458",
+      "source_location": "L476",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_eventform",
       "community": 11,
@@ -43963,7 +43963,7 @@
       "label": "TimeOffForm()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L563",
+      "source_location": "L581",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_timeoffform",
       "community": 18,
@@ -43974,7 +43974,7 @@
       "label": "Input()",
       "file_type": "code",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L593",
+      "source_location": "L611",
       "_origin": "ast",
       "id": "src_components_calendar_calendar_workspace_input",
       "community": 11,
@@ -48399,8 +48399,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "src_data_mutations_project_stage_columns_updateprojectstageconfiguration",
-      "community": 6,
-      "community_name": "createClient",
+      "community": 37,
+      "community_name": "project-task-board.tsx",
       "norm_label": "updateprojectstageconfiguration()"
     },
     {
@@ -51248,7 +51248,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_test",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "calendar-system-events.test.ts"
     },
@@ -51259,7 +51259,7 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_test_member",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "member"
     },
@@ -51270,7 +51270,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "calendar-system-events.ts"
     },
@@ -51281,7 +51281,7 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_calendarsystemeventmember",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "calendarsystemeventmember"
     },
@@ -51292,7 +51292,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_isleapyear",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "isleapyear()"
     },
@@ -51303,7 +51303,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_annualcalendardate",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "annualcalendardate()"
     },
@@ -51314,7 +51314,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_rangeyears",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "rangeyears()"
     },
@@ -51325,7 +51325,7 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_monthlycalendardate",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "monthlycalendardate()"
     },
@@ -51336,7 +51336,7 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_rangemonths",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "rangemonths()"
     },
@@ -51347,7 +51347,7 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_lib_calendar_system_events_buildcalendarsystemevents",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "buildcalendarsystemevents()"
     },
@@ -51512,7 +51512,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_lib_calendar_todateonly",
-      "community": 235,
+      "community": 101,
       "community_name": "calendar-system-events.ts",
       "norm_label": "todateonly()"
     },
@@ -65130,8 +65130,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 329,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 312,
+      "community_name": "1. THE THREE DIALS (Core Configuration)",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -65141,8 +65141,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 329,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 312,
+      "community_name": "1. THE THREE DIALS (Core Configuration)",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -65152,8 +65152,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 329,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 312,
+      "community_name": "1. THE THREE DIALS (Core Configuration)",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -65163,8 +65163,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 329,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 312,
+      "community_name": "1. THE THREE DIALS (Core Configuration)",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -195854,7 +195854,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L314",
+      "source_location": "L332",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195865,7 +195865,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L428",
+      "source_location": "L446",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195876,7 +195876,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L218",
+      "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195887,7 +195887,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L94",
+      "source_location": "L98",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195898,7 +195898,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L109",
+      "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195909,7 +195909,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L74",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195920,7 +195920,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L326",
+      "source_location": "L344",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195931,7 +195931,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L322",
+      "source_location": "L340",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195953,7 +195953,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L458",
+      "source_location": "L476",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195964,7 +195964,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L45",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195975,7 +195975,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L593",
+      "source_location": "L611",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195986,7 +195986,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L413",
+      "source_location": "L431",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -195997,7 +195997,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L419",
+      "source_location": "L437",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196008,7 +196008,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L410",
+      "source_location": "L428",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196019,7 +196019,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L411",
+      "source_location": "L429",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196030,7 +196030,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L334",
+      "source_location": "L352",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196041,7 +196041,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L57",
+      "source_location": "L61",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196052,7 +196052,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L435",
+      "source_location": "L453",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196063,7 +196063,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L228",
+      "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196074,7 +196074,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L409",
+      "source_location": "L427",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196085,7 +196085,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L56",
+      "source_location": "L60",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196096,7 +196096,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L371",
+      "source_location": "L389",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196107,7 +196107,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L444",
+      "source_location": "L462",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196118,7 +196118,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L450",
+      "source_location": "L468",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196129,7 +196129,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L40",
+      "source_location": "L44",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196151,7 +196151,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L367",
+      "source_location": "L385",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196162,7 +196162,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L365",
+      "source_location": "L383",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196173,7 +196173,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L380",
+      "source_location": "L398",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196184,7 +196184,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L563",
+      "source_location": "L581",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196195,7 +196195,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L76",
+      "source_location": "L80",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196206,7 +196206,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L87",
+      "source_location": "L91",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -196217,7 +196217,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L261",
+      "source_location": "L265",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace",
@@ -197249,7 +197249,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L455",
+      "source_location": "L473",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_recurrencecontrol",
@@ -197261,7 +197261,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L115",
+      "source_location": "L119",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197273,7 +197273,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L104",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarpill",
@@ -197285,7 +197285,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L331",
+      "source_location": "L349",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_daydetails",
@@ -197297,7 +197297,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L67",
+      "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itemtone",
@@ -197309,7 +197309,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L254",
+      "source_location": "L258",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197321,7 +197321,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L299",
+      "source_location": "L317",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197333,7 +197333,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L319",
+      "source_location": "L337",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_agendaview",
@@ -197345,7 +197345,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L177",
+      "source_location": "L181",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197357,7 +197357,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L74",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_datelabel",
@@ -197369,7 +197369,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L552",
+      "source_location": "L570",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -197381,7 +197381,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L353",
+      "source_location": "L371",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197393,7 +197393,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L239",
+      "source_location": "L243",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197405,7 +197405,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L403",
+      "source_location": "L421",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_studiodaysoffpanel",
@@ -197417,7 +197417,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L294",
+      "source_location": "L312",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197429,7 +197429,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L96",
+      "source_location": "L100",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarpill",
@@ -197441,7 +197441,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L328",
+      "source_location": "L346",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_daydetails",
@@ -197453,7 +197453,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L336",
+      "source_location": "L354",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197465,7 +197465,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L230",
+      "source_location": "L234",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197477,7 +197477,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L79",
+      "source_location": "L83",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_usecalendaritemtitle",
@@ -197489,7 +197489,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L264",
+      "source_location": "L268",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197501,7 +197501,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L97",
+      "source_location": "L101",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarpill",
@@ -197513,7 +197513,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L329",
+      "source_location": "L347",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_daydetails",
@@ -197525,7 +197525,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L337",
+      "source_location": "L355",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197537,7 +197537,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L102",
+      "source_location": "L106",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarpill",
@@ -197549,7 +197549,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L99",
+      "source_location": "L103",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarpill",
@@ -197562,7 +197562,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L134",
+      "source_location": "L138",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197574,7 +197574,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L178",
+      "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197586,7 +197586,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L208",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197598,7 +197598,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L211",
+      "source_location": "L215",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197610,7 +197610,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L211",
+      "source_location": "L215",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_calendarworkspace",
@@ -197622,7 +197622,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L239",
+      "source_location": "L243",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197634,7 +197634,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L246",
+      "source_location": "L250",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197646,7 +197646,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L248",
+      "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197658,7 +197658,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L232",
+      "source_location": "L236",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197670,7 +197670,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L231",
+      "source_location": "L235",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197682,7 +197682,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L253",
+      "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197694,7 +197694,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L243",
+      "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197706,7 +197706,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L233",
+      "source_location": "L237",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197718,7 +197718,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L258",
+      "source_location": "L262",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197730,7 +197730,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L254",
+      "source_location": "L258",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_monthview",
@@ -197742,7 +197742,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L266",
+      "source_location": "L270",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197754,7 +197754,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L306",
+      "source_location": "L324",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197766,7 +197766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L276",
+      "source_location": "L281",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197778,7 +197778,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L282",
+      "source_location": "L306",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197790,7 +197790,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L306",
+      "source_location": "L324",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197802,7 +197802,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L269",
+      "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197814,7 +197814,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L269",
+      "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197826,7 +197826,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L267",
+      "source_location": "L271",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197838,7 +197838,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L265",
+      "source_location": "L269",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_weekview",
@@ -197850,7 +197850,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L317",
+      "source_location": "L335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_agendaview",
@@ -197862,7 +197862,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L319",
+      "source_location": "L337",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_agendaview",
@@ -197874,7 +197874,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L317",
+      "source_location": "L335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_agendaview",
@@ -197886,7 +197886,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L331",
+      "source_location": "L349",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_daydetails",
@@ -197898,7 +197898,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L353",
+      "source_location": "L371",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197910,7 +197910,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L360",
+      "source_location": "L378",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197922,7 +197922,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L355",
+      "source_location": "L373",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_itempanel",
@@ -197933,7 +197933,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L411",
+      "source_location": "L429",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_ismutationresult",
@@ -197945,7 +197945,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L551",
+      "source_location": "L569",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -197958,7 +197958,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L461",
+      "source_location": "L479",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -197970,7 +197970,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L462",
+      "source_location": "L480",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -197982,7 +197982,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L554",
+      "source_location": "L572",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -197994,7 +197994,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L554",
+      "source_location": "L572",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_eventform",
@@ -198006,7 +198006,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L583",
+      "source_location": "L601",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_timeoffform",
@@ -198018,7 +198018,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L585",
+      "source_location": "L603",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_timeoffform",
@@ -198030,7 +198030,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/calendar/calendar-workspace.tsx",
-      "source_location": "L586",
+      "source_location": "L604",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_calendar_calendar_workspace_timeoffform",
@@ -257779,5 +257779,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "38a5d8038beda56ef2ac77dab48900fda8b7196a"
+  "built_at_commit": "94df7db4104dda0d7eb1a2efb0698767af0bf35d"
 }

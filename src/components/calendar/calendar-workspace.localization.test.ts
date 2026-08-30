@@ -151,18 +151,36 @@ describe("Calendar filter menu", () => {
   });
 });
 
-describe("Calendar Month viewport sizing", () => {
-  it("uses the app shell's available desktop height without changing Week or Agenda containers", () => {
-    expect(source).toContain('const monthView = initialView === "month"');
-    expect(source).toContain('calendar-month-viewport');
-    expect(source).toContain('calendar-month-card');
-    expect(source).toContain('calendar-month-toolbar');
+describe("Calendar viewport sizing", () => {
+  it("uses one shared compact title-to-card gap and fills the Month and Week cards from the app shell", () => {
+    expect(source).toContain('const fillsViewport = initialView !== "agenda"');
+    expect(source).toContain('className="calendar-viewport min-w-0 space-y-3"');
+    expect(source).toContain('calendar-fill-card');
+    expect(source).toContain('calendar-toolbar');
     expect(source).toContain('className="calendar-month-view"');
+    expect(source).toContain('className="calendar-week-view relative"');
     expect(globalStyles).toContain('@media (min-width: 1024px) and (min-height: 900px)');
+    expect(globalStyles).toContain('gap: 0.75rem;');
     expect(globalStyles).toContain('height: 100%;');
     expect(globalStyles).toContain('flex: 1 1 0%;');
+    expect(globalStyles).toContain('.calendar-viewport > * + *');
     expect(globalStyles).toContain('.calendar-month-grid');
     expect(source).toContain('gridTemplateRows: `repeat(${desktopWeekCount}, minmax(0, 1fr))`');
+  });
+
+  it("lets the Week timeline fill and scale within its available card height", () => {
+    expect(source).toContain('const [pixelsPerMinute, setPixelsPerMinute] = useState(WEEK_MIN_PIXELS_PER_MINUTE);');
+    expect(source).toContain('new ResizeObserver(updateScale)');
+    expect(source).toContain('const WEEK_VIEWPORT_WINDOW_MINUTES = 11 * 60;');
+    expect(source).toContain('const WEEK_MIN_PIXELS_PER_MINUTE = 0.92;');
+    expect(source).toContain('Math.max(WEEK_MIN_PIXELS_PER_MINUTE, container.clientHeight / WEEK_VIEWPORT_WINDOW_MINUTES)');
+    expect(source).toContain('height: 24 * 60 * pixelsPerMinute');
+    expect(source).toContain('top: segment.startMinute * pixelsPerMinute');
+    expect(source).toContain('height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute)');
+    expect(source).toContain('border-[var(--ui-border)]');
+    expect(globalStyles).toContain('.calendar-week-timeline');
+    expect(globalStyles).toContain('max-height: none;');
+    expect(globalStyles).toContain('--ui-calendar-gridline: var(--ui-border);');
   });
 
   it("keeps Month overflow bounded inside the equal-height row budget", () => {
