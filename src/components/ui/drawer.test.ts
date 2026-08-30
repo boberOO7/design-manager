@@ -36,6 +36,10 @@ describe("Drawer focus trap", () => {
     expect(source).toContain("lockAppScroll();");
     expect(source).toContain("if (isDrawerScrollLockedRef.current) {");
     expect(source).toContain("unlockAppScroll();");
+    expect(source).toContain("createPortal(");
+    expect(source).toContain("useSyncExternalStore(");
+    expect(source).toContain("focus({ preventScroll: true })");
+    expect(source).toContain("return document.body;");
     expect(scrollLock).toContain('document.getElementById("main-content")');
     expect(scrollLock).toContain("let appScrollLockCount = 0;");
     expect(scrollLock).toContain('target.style.overflow = "hidden"');

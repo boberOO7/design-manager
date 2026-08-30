@@ -289,8 +289,8 @@ body,
 @media (min-width: 1024px) and (min-height: 900px) {
   .calendar-viewport {
     display: flex;
-    height: 100%;
     min-height: 0;
+    flex: 1 1 0%;
     flex-direction: column;
     gap: 0.75rem;
   }

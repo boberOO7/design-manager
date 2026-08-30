@@ -690,6 +690,7 @@
     "close": "Close",
     "nothingScheduled": "Nothing scheduled.",
     "when": "When",
+    "recurrence": "Recurrence",
     "details": "Details",
     "noDescription": "No description",
     "openMeeting": "Open meeting link",

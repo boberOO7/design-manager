@@ -5,6 +5,7 @@ import uk from "../../../messages/uk.json";
 
 const source = readFileSync(new URL("./calendar-workspace.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+const appLayout = readFileSync(new URL("../../app/(app)/layout.tsx", import.meta.url), "utf8");
 
 describe("Calendar event form localization contract", () => {
   it("renders create and edit forms from canonical next-intl messages", () => {
@@ -175,8 +176,9 @@ describe("Calendar viewport sizing", () => {
     expect(source).toContain('className="calendar-week-view relative"');
     expect(globalStyles).toContain('@media (min-width: 1024px) and (min-height: 900px)');
     expect(globalStyles).toContain('gap: 0.75rem;');
-    expect(globalStyles).toContain('height: 100%;');
+    expect(globalStyles).not.toContain('.calendar-viewport {\n    display: flex;\n    height: 100%;');
     expect(globalStyles).toContain('flex: 1 1 0%;');
+    expect(appLayout).toContain('className="flex flex-1 flex-col p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8"');
     expect(globalStyles).toContain('.calendar-viewport > * + *');
     expect(globalStyles).toContain('.calendar-month-grid');
     expect(source).toContain('gridTemplateRows: `repeat(${desktopWeekCount}, minmax(0, 1fr))`');
