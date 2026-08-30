@@ -95,6 +95,12 @@ export function getMonthGrid(value: string): string[] {
   return Array.from({ length: 42 }, (_, index) => addCalendarDays(start, index));
 }
 
+/** Desktop Month view reserves a fifth row, then adds a sixth only when the month reaches it. */
+export function getMonthDesktopWeekCount(anchor: string): 5 | 6 {
+  const month = anchor.slice(0, 7);
+  return getMonthGrid(anchor).slice(35).some((date) => date.slice(0, 7) === month) ? 6 : 5;
+}
+
 export function getCalendarRange(view: CalendarView, anchor: string): { start: string; end: string } {
   if (view === "month") {
     const dates = getMonthGrid(anchor);
@@ -240,9 +246,9 @@ export function getMonthLaneLayout(segments: MonthLayoutSegment[], maximumLanes 
   return { laneCount, overlayHeight, itemOffset: getMonthFlowItemOffset(overlayHeight) };
 }
 
-export function getMonthDateLaneLayout(segments: MonthLayoutSegment[], date: string): MonthLaneLayout {
+export function getMonthDateLaneLayout(segments: MonthLayoutSegment[], date: string, maximumLanes = Number.POSITIVE_INFINITY): MonthLaneLayout {
   const coveringSegments = segments.filter((segment) => segment.visibleStartDate <= date && segment.visibleEndDate >= date);
-  const laneCount = Math.max(0, ...coveringSegments.map((segment) => segment.lane + 1));
+  const laneCount = Math.min(maximumLanes, Math.max(0, ...coveringSegments.map((segment) => segment.lane + 1)));
   const overlayHeight = laneCount === 0 ? 0 : laneCount * MONTH_LANE_HEIGHT + (laneCount - 1) * MONTH_LANE_GAP;
   return { laneCount, overlayHeight, itemOffset: getMonthFlowItemOffset(overlayHeight) };
 }

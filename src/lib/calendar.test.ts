@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
-  filterCalendarItems, getDayItems, getMonthGrid, getVisibleDayItems, instantToDateOnly,
+  filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
   isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
@@ -54,6 +54,10 @@ describe("Calendar dates and views", () => {
   it("starts a six-week Month grid on Monday and includes adjacent dates", () => {
     const grid = getMonthGrid("2026-08-15");
     expect(grid).toHaveLength(42); expect(grid[0]).toBe("2026-07-27"); expect(grid.at(-1)).toBe("2026-09-06");
+  });
+  it("uses five equal desktop Month rows unless the calendar days reach a sixth", () => {
+    expect(getMonthDesktopWeekCount("2026-04-15")).toBe(5);
+    expect(getMonthDesktopWeekCount("2026-08-15")).toBe(6);
   });
   it("keeps date-only deadlines on their literal day", () => {
     expect(deadline({ startDate: "2026-01-01" }).startDate).toBe("2026-01-01");
@@ -238,6 +242,16 @@ describe("Month spanning layout", () => {
     const segments = getMonthLayoutSegments([first, hidden], dates).filter((segment) => segment.weekIndex === 0);
     expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 30 });
     expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 52 });
+  });
+
+  it("caps Month date lanes at the visible overlay budget before placing overflow", () => {
+    const segments = getMonthLayoutSegments([
+      absence("first", "Avery", "2026-07-28", "2026-07-28"),
+      absence("second", "Taylor", "2026-07-28", "2026-07-28"),
+      absence("third", "Morgan", "2026-07-28", "2026-07-28"),
+      absence("fourth", "Jordan", "2026-07-28", "2026-07-28"),
+    ], dates);
+    expect(getMonthDateLaneLayout(segments, "2026-07-28", 3)).toMatchObject({ laneCount: 3, overlayHeight: 64, itemOffset: 74 });
   });
 });
 

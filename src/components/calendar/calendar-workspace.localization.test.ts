@@ -4,6 +4,7 @@ import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
 
 const source = readFileSync(new URL("./calendar-workspace.tsx", import.meta.url), "utf8");
+const globalStyles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
 
 describe("Calendar event form localization contract", () => {
   it("renders create and edit forms from canonical next-intl messages", () => {
@@ -147,5 +148,27 @@ describe("Calendar filter menu", () => {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
     }
+  });
+});
+
+describe("Calendar Month viewport sizing", () => {
+  it("uses the app shell's available desktop height without changing Week or Agenda containers", () => {
+    expect(source).toContain('const monthView = initialView === "month"');
+    expect(source).toContain('calendar-month-viewport');
+    expect(source).toContain('calendar-month-card');
+    expect(source).toContain('calendar-month-toolbar');
+    expect(source).toContain('className="calendar-month-view"');
+    expect(globalStyles).toContain('@media (min-width: 1024px) and (min-height: 900px)');
+    expect(globalStyles).toContain('height: 100%;');
+    expect(globalStyles).toContain('flex: 1 1 0%;');
+    expect(globalStyles).toContain('.calendar-month-grid');
+    expect(source).toContain('gridTemplateRows: `repeat(${desktopWeekCount}, minmax(0, 1fr))`');
+  });
+
+  it("keeps Month overflow bounded inside the equal-height row budget", () => {
+    expect(source).toContain('const visibleTimedItems = timedItems.slice(0, Math.max(0, visibleLaneCount - dateLaneLayout.laneCount));');
+    expect(source).toContain('const overflow = hiddenSpanningItems.size + timedItems.length - visibleTimedItems.length;');
+    expect(source).toContain('calendar-month-overflow');
+    expect(globalStyles).toContain('.calendar-month-day {\n    overflow: hidden;');
   });
 });

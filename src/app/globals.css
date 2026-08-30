@@ -248,6 +248,55 @@ body,
   background: var(--ui-surface);
 }
 
+/* On usable desktop heights, Month view consumes the app shell's remaining space.
+   Shorter viewports keep the natural, scrollable layout so event chips stay readable. */
+@media (min-width: 1024px) and (min-height: 900px) {
+  .calendar-month-viewport {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .calendar-month-viewport > * + * {
+    margin-top: 0;
+  }
+
+  .calendar-month-card,
+  .calendar-month-view {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+  }
+
+  .calendar-month-toolbar,
+  .calendar-month-weekdays {
+    flex: 0 0 auto;
+  }
+
+  .calendar-month-grid {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+  }
+
+  .calendar-month-week,
+  .calendar-month-day {
+    min-height: 0;
+  }
+
+  .calendar-month-day {
+    overflow: hidden;
+  }
+
+  .calendar-month-overflow {
+    min-height: 1.25rem;
+  }
+}
+
 .calendar-week-timeline::-webkit-scrollbar-thumb {
   border: 2px solid var(--ui-surface);
   border-radius: var(--ui-radius-control);
