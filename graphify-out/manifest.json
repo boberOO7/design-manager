@@ -190,8 +190,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786973593.3086984,
-    "ast_hash": "8aeecec164c6c60d3072be2332d8f4e0",
+    "mtime": 1788046640.967285,
+    "ast_hash": "a62e69e88e8fc1ef2cb9557358b08ef6",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1788044001.5562608,
-    "ast_hash": "6fa6f757b5be62a7e0f97562d817a9b7",
+    "mtime": 1788046762.3586488,
+    "ast_hash": "1094f109423e415abb4a9b1263bd3989",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1455,8 +1455,8 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1787914067.5465956,
-    "ast_hash": "3372e30d5eafd14b0dddb33d7202c9f3",
+    "mtime": 1788047031.1264606,
+    "ast_hash": "25acd7f70870e1b1ce19652e3717ee50",
     "semantic_hash": ""
   },
   "docs/product-spec.md": {
@@ -1465,8 +1465,8 @@
     "semantic_hash": ""
   },
   "docs/roadmap.md": {
-    "mtime": 1785965831.7718003,
-    "ast_hash": "754b2b3f567ff2f356c77d5da89d7cc0",
+    "mtime": 1788047031.2824671,
+    "ast_hash": "7128c8e911a99628aa6576c42ade9c34",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788044126.7993784,
-    "ast_hash": "c85e34a7a8838ed32f257e9cdaea305b",
+    "mtime": 1788047481.1689146,
+    "ast_hash": "a72902786f9d3bb1647c0496904198f5",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788044126.9713864,
-    "ast_hash": "f2d0c73f9b0ac325107f552b4415becb",
+    "mtime": 1788047481.3129208,
+    "ast_hash": "478278283eb583eb883e82e8c15666b8",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1940,8 +1940,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/profile-avatar-editor.tsx": {
-    "mtime": 1787925860.393733,
-    "ast_hash": "ef35bb821bd9d54a6d8cbbcf3d09c649",
+    "mtime": 1788047092.4746027,
+    "ast_hash": "0b27f6c0c9794562c4f523a5fcf5fc02",
     "semantic_hash": ""
   },
   "src/lib/avatar-storage-migration.test.ts": {
@@ -3702,6 +3702,76 @@
   "supabase/migrations/20260830120000_add_studio_days_off.sql": {
     "mtime": 1788044473.490371,
     "ast_hash": "6ed410bbf206773dfcc143e753df0581",
+    "semantic_hash": ""
+  },
+  "src/app/api/integrations/google-calendar/callback/route.ts": {
+    "mtime": 1788047462.8080928,
+    "ast_hash": "ee61a39cb3b11a54cee982ec7bf865bc",
+    "semantic_hash": ""
+  },
+  "src/app/api/integrations/google-calendar/connect/route.ts": {
+    "mtime": 1788047030.7504444,
+    "ast_hash": "a99ea56d6df8ca2a572aed14a57d8f16",
+    "semantic_hash": ""
+  },
+  "src/app/api/integrations/google-calendar/disconnect/route.ts": {
+    "mtime": 1788047356.3051355,
+    "ast_hash": "643af766e74bf366fed9938c6dad4340",
+    "semantic_hash": ""
+  },
+  "src/app/api/integrations/google-calendar/status/route.ts": {
+    "mtime": 1788046932.1958573,
+    "ast_hash": "25b2d5b387826ac9c5683e21a7d49d73",
+    "semantic_hash": ""
+  },
+  "src/app/api/integrations/google-calendar/sync/route.ts": {
+    "mtime": 1788047356.1651294,
+    "ast_hash": "a64de5a9f58096907ca6a067a786b00b",
+    "semantic_hash": ""
+  },
+  "src/components/layout/google-calendar-integration.tsx": {
+    "mtime": 1788047199.0174375,
+    "ast_hash": "80a3f4e6ae10fb6c525c5c8e660b6230",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/auth.ts": {
+    "mtime": 1788047356.0331237,
+    "ast_hash": "e48547e7fc0f7fd7b1fbd633ddb184cd",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/config.ts": {
+    "mtime": 1788047030.622439,
+    "ast_hash": "07fed313b7d6c71468ea88602ec386b7",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/crypto.ts": {
+    "mtime": 1788046784.1621842,
+    "ast_hash": "0f30bc3541b175f620be89b65c216850",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/google-calendar-integration.test.ts": {
+    "mtime": 1788047356.4251409,
+    "ast_hash": "2c0da9603d247ead3a4f350beff34e23",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/oauth.ts": {
+    "mtime": 1788046784.2861896,
+    "ast_hash": "3acb665301fa85c88cf0762d55944a9a",
+    "semantic_hash": ""
+  },
+  "src/lib/google-calendar/sync.ts": {
+    "mtime": 1788047176.3487718,
+    "ast_hash": "fa0f3a6e2c07a9e44c75888c6c5a9f4f",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260830130000_google_calendar_phase_one.sql": {
+    "mtime": 1788046663.9958441,
+    "ast_hash": "4264a778289e19b02db6bc59da8a3ebc",
+    "semantic_hash": ""
+  },
+  "supabase/tests/google_calendar_rls.test.sql": {
+    "mtime": 1788047389.0058439,
+    "ast_hash": "b31439459a17088ded92e44e6160db41",
     "semantic_hash": ""
   }
 }

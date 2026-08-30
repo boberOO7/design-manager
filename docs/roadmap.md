@@ -66,6 +66,10 @@
 - [x] Complete Phase 3E Calendar mobile polish: responsive controls, compact
   Month and Agenda presentation, intentional Week scrolling, and mobile-ready
   drawers.
+- [x] Add Google Calendar Phase 1: secure per-user OAuth, a dedicated secondary
+  calendar, and idempotent manual one-way projection of real Calendar events.
+- [ ] Add automatic Google Calendar create/update/delete delivery after the
+  localhost manual-sync flow is validated; Google-to-StudioFlow sync remains separate.
 
 ## Production
 

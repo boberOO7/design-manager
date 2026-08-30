@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      google_calendar_connections: {
+        Row: {
+          created_at: string; google_account_email: string; google_calendar_id: string; google_calendar_name: string;
+          google_calendar_timezone: string; granted_scopes: string[]; id: string; last_sync_at: string | null;
+          last_sync_error: string | null; status: "active" | "reconnect_required"; studio_id: string; updated_at: string; user_id: string
+        }
+        Insert: {
+          created_at?: string; google_account_email: string; google_calendar_id: string; google_calendar_name: string;
+          google_calendar_timezone?: string; granted_scopes?: string[]; id?: string; last_sync_at?: string | null;
+          last_sync_error?: string | null; status?: "active" | "reconnect_required"; studio_id: string; updated_at?: string; user_id: string
+        }
+        Update: {
+          google_account_email?: string; google_calendar_id?: string; google_calendar_name?: string; google_calendar_timezone?: string;
+          granted_scopes?: string[]; last_sync_at?: string | null; last_sync_error?: string | null;
+          status?: "active" | "reconnect_required"; studio_id?: string; updated_at?: string; user_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "google_calendar_connections_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+          { foreignKeyName: "google_calendar_connections_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      google_calendar_event_mappings: {
+        Row: { connection_id: string; created_at: string; google_event_id: string; id: string; last_synced_at: string; payload_hash: string; source_event_id: string | null; source_key: string; updated_at: string }
+        Insert: { connection_id: string; created_at?: string; google_event_id: string; id?: string; last_synced_at?: string; payload_hash: string; source_event_id?: string | null; source_key: string; updated_at?: string }
+        Update: { connection_id?: string; google_event_id?: string; last_synced_at?: string; payload_hash?: string; source_event_id?: string | null; source_key?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "google_calendar_event_mappings_connection_id_fkey"; columns: ["connection_id"]; isOneToOne: false; referencedRelation: "google_calendar_connections"; referencedColumns: ["id"] },
+          { foreignKeyName: "google_calendar_event_mappings_source_event_id_fkey"; columns: ["source_event_id"]; isOneToOne: false; referencedRelation: "calendar_events"; referencedColumns: ["id"] },
+        ]
+      }
+      google_calendar_server_credentials: {
+        Row: { connection_id: string; created_at: string; encrypted_refresh_token: string; updated_at: string }
+        Insert: { connection_id: string; created_at?: string; encrypted_refresh_token: string; updated_at?: string }
+        Update: { encrypted_refresh_token?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "google_calendar_server_credentials_connection_id_fkey"; columns: ["connection_id"]; isOneToOne: true; referencedRelation: "google_calendar_connections"; referencedColumns: ["id"] },
+        ]
+      }
       calendar_event_attendees: {
         Row: { created_at: string; event_id: string; user_id: string }
         Insert: { created_at?: string; event_id: string; user_id: string }

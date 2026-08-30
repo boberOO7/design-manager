@@ -156,8 +156,12 @@
   Completed projects must be reopened before receiving a new event; existing
   historical events remain readable and cancellable. Archived projects cannot
   receive events.
-- Recurring events, reminders, public holidays, and Google/Outlook or external
-  calendar synchronization are deferred.
+- Google Calendar Phase 1 is an explicit, manual, one-way projection from each
+  authenticated user's RLS-visible real `calendar_events` into a dedicated
+  secondary `StudioFlow · {studioName}` calendar. StudioFlow remains canonical;
+  automatic mutation-triggered delivery and Google-to-StudioFlow sync remain
+  deferred. Other external calendars, reminders, and public holidays are also
+  deferred.
 
 ## Administration
 
