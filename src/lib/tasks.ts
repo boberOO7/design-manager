@@ -1,10 +1,12 @@
 import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES, type MyTask, type ProjectTask, type TaskPriority, type TaskStatus } from "../types/tasks";
 import { getAutomaticTaskProgress } from "./project-progress";
+import { isTaskDeadlineOverdue } from "./task-deadlines";
+import { DEFAULT_STAGE_COLUMN_STATUSES, type BoardColumnId, type WritableTaskStatus } from "./task-workflow";
 
-export type BoardColumnId = "todo" | "in-progress" | "internal-review" | "client-review" | "done";
+export { BOARD_COLUMNS, DEFAULT_STAGE_COLUMN_STATUSES } from "./task-workflow";
+export type { BoardColumnId, WritableTaskStatus } from "./task-workflow";
+
 export type MyTaskGroupId = "overdue" | "today" | "upcoming" | "completed";
-export type WritableTaskStatus = TaskStatus & ("todo" | "in_progress" | "internal_review" | "review" | "completed");
-export const DEFAULT_STAGE_COLUMN_STATUSES = ["todo", "in_progress", "internal_review", "review", "completed"] as const satisfies readonly WritableTaskStatus[];
 export const WRITABLE_TASK_STATUS_VALUES = DEFAULT_STAGE_COLUMN_STATUSES;
 
 export function isWritableTaskStatus(status: string): status is (typeof WRITABLE_TASK_STATUS_VALUES)[number] {
@@ -14,18 +16,6 @@ export function isWritableTaskStatus(status: string): status is (typeof WRITABLE
     || status === "review"
     || status === "completed";
 }
-
-export const BOARD_COLUMNS: ReadonlyArray<{
-  id: BoardColumnId;
-  label: string;
-  status: WritableTaskStatus;
-}> = [
-  { id: "todo", label: "To do", status: "todo" },
-  { id: "in-progress", label: "In progress", status: "in_progress" },
-  { id: "internal-review", label: "Internal review", status: "internal_review" },
-  { id: "client-review", label: "Client review", status: "review" },
-  { id: "done", label: "Done", status: "completed" },
-];
 
 const BOARD_COLUMN_BY_STATUS: Record<TaskStatus, BoardColumnId> = {
   todo: "todo",
@@ -83,10 +73,10 @@ export function isTaskFinished(status: string): boolean {
 }
 
 export function isTaskOverdue(
-  task: Pick<ProjectTask, "due_date" | "status">,
+  task: Pick<ProjectTask, "deadlines" | "status">,
   today = [new Date().getFullYear(), String(new Date().getMonth() + 1).padStart(2, "0"), String(new Date().getDate()).padStart(2, "0")].join("-"),
 ): boolean {
-  return Boolean(task.due_date && task.due_date < today && !isTaskFinished(task.status));
+  return isTaskDeadlineOverdue(task, today);
 }
 
 export function getBoardColumn(status: string): BoardColumnId {
@@ -227,6 +217,8 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.priority === right.priority
     && left.assignee_id === right.assignee_id
     && left.due_date === right.due_date
+    && (left.deadlines?.length ?? 0) === (right.deadlines?.length ?? 0)
+    && (left.deadlines ?? []).every((deadline, index) => deadline.id === right.deadlines?.[index]?.id && deadline.target_status === right.deadlines?.[index]?.target_status && deadline.due_date === right.deadlines?.[index]?.due_date)
     && left.completed_at === right.completed_at
     && left.created_at === right.created_at
     && left.created_by === right.created_by
@@ -310,7 +302,7 @@ export function groupMyTasks(
 
   for (const task of tasks) {
     if (isTaskFinished(task.status)) groups.completed.push(task);
-    else if (task.due_date && task.due_date < today) groups.overdue.push(task);
+    else if (isTaskOverdue(task, today)) groups.overdue.push(task);
     else if (task.due_date === today) groups.today.push(task);
     else groups.upcoming.push(task);
   }

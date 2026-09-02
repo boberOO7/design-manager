@@ -4,9 +4,10 @@ import { getCurrentUserProfile } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
 import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
+import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { MyTask, ProjectTask } from "@/types/tasks";
 
-const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
+const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
 type ProjectTaskRow = Omit<ProjectTask, "collaborators"> & {
   collaborators: TaskCollaboratorRelation[];
@@ -17,11 +18,13 @@ type MyTaskRow = Omit<MyTask, "collaborators"> & {
 };
 
 function normalizeProjectTask({ collaborators, ...task }: ProjectTaskRow): ProjectTask {
-  return { ...task, collaborators: normalizeTaskCollaborators(collaborators) };
+  const deadlines = task.deadlines ?? [];
+  return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 function normalizeMyTask({ collaborators, ...task }: MyTaskRow): MyTask {
-  return { ...task, collaborators: normalizeTaskCollaborators(collaborators) };
+  const deadlines = task.deadlines ?? [];
+  return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 export async function getProjectTasks(projectId: string): Promise<ProjectTask[]> {

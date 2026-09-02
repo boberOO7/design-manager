@@ -6,6 +6,7 @@ import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalize
 import { buildCalendarSystemEvents } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { getDayOffCompensation } from "@/lib/time-off-compensation";
 import type { CalendarCompensableDayOff, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
@@ -40,13 +41,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const taskDeadlinesPromise = supabase
     .from("tasks")
-    .select("id, project_id, title, description, status, priority, assignee_id, due_date, project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status), assignee:profiles!tasks_assignee_id_fkey!inner(id, full_name)")
+    .select("id, project_id, title, description, status, priority, assignee_id, deadlines:task_deadlines(id, target_status, due_date), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status), assignee:profiles!tasks_assignee_id_fkey!inner(id, full_name)")
     .eq("project.studio_id", membership.studio_id)
-    .not("due_date", "is", null)
-    .gte("due_date", start)
-    .lte("due_date", end)
     .neq("status", "cancelled")
-    .order("due_date");
+    .order("created_at");
 
   const eventsPromise = supabase
     .from("calendar_events")
@@ -151,10 +149,11 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   }
 
   for (const task of taskDeadlinesResult.data ?? []) {
-    if (!task.due_date || !task.assignee_id) continue;
+    const deadline = getActiveTaskDeadline({ status: task.status, deadlines: task.deadlines ?? [] });
+    if (!deadline || deadline.due_date < start || deadline.due_date > end || !task.assignee_id) continue;
     items.push({
       source: "task_deadline", key: `task_deadline:${task.id}`, id: task.id,
-      title: task.title, startDate: task.due_date, endDate: task.due_date, allDay: true,
+      title: task.title, startDate: deadline.due_date, endDate: deadline.due_date, allDay: true,
       projectId: task.project_id, personIds: [task.assignee_id],
       task: {
         id: task.id, projectId: task.project_id, projectName: task.project.name,

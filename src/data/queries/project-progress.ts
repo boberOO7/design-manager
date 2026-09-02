@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { Database } from "@/types/database.types";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
@@ -13,6 +14,7 @@ type ProjectListMembershipRow = {
   user_id: string;
   profile: ProjectListParticipant | null;
 };
+type ProjectTaskWithDeadlines = ProjectTaskForProgress & { project_id: string; deadlines: Array<{ id: string; target_status: string; due_date: string }> };
 
 export type AccessibleProjectWithTasks = ProjectListRow & {
   participants: ProjectListParticipant[];
@@ -39,9 +41,9 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, checklist_items:task_checklist_items(id, is_completed, weight)")
+      .select("id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, weight)")
       .in("project_id", ids)
-      .overrideTypes<Array<ProjectTaskForProgress & { project_id: string }>, { merge: false }>(),
+      .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>(),
     supabase
       .from("project_members")
       .select("project_id, user_id, profile:profiles!project_members_user_id_fkey!inner(id, full_name, avatar_url, is_active)")
@@ -70,7 +72,10 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
     return { projects: null, error: "query_failed" };
   }
   const tasksByProject = new Map<string, ProjectTaskForProgress[]>();
-  for (const task of tasks) tasksByProject.set(task.project_id, [...(tasksByProject.get(task.project_id) ?? []), task]);
+  for (const task of tasks) {
+    const due_date = getActiveTaskDeadline(task)?.due_date ?? null;
+    tasksByProject.set(task.project_id, [...(tasksByProject.get(task.project_id) ?? []), { ...task, due_date }]);
+  }
   const participantsByProject = new Map<string, ProjectListParticipant[]>();
   for (const membership of memberships) {
     const participant = membership.profile;

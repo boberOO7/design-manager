@@ -109,4 +109,17 @@ describe("task details drawer contract", () => {
     expect(en.Tasks.deleteTask).toBe("Delete task");
     expect(uk.Tasks.deleteTask).toBe("Видалити завдання");
   });
+
+  it("edits compact milestone deadlines and keeps status changes out of the task edit form", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    const editPlanning = source.slice(source.indexOf('aria-labelledby="task-edit-planning"'), source.indexOf('aria-labelledby="task-edit-progress"'));
+
+    expect(editPlanning).toContain("<DeadlineEditor");
+    expect(editPlanning).toContain("error={fieldErrors.deadlines}");
+    expect(editPlanning).not.toContain('label={t("status")}');
+    expect(source).toContain("TASK_MILESTONE_STATUSES.filter");
+    expect(source).toContain('t("addDeadline")');
+    expect(source).toContain('t("removeDeadline"');
+    expect(source).toContain("deadlines: toTaskDeadlineInputs(values.deadlines)");
+  });
 });

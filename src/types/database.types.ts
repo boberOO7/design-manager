@@ -835,6 +835,12 @@ export type Database = {
           },
         ]
       }
+      task_deadlines: {
+        Row: { created_at: string; due_date: string; id: string; target_status: string; task_id: string; updated_at: string }
+        Insert: { created_at?: string; due_date: string; id?: string; target_status: string; task_id: string; updated_at?: string }
+        Update: { created_at?: string; due_date?: string; id?: string; target_status?: string; task_id?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "task_deadlines_task_id_fkey"; columns: ["task_id"]; isOneToOne: false; referencedRelation: "tasks"; referencedColumns: ["id"] }]
+      }
       task_collaborators: {
         Row: { task_id: string; user_id: string; created_at: string }
         Insert: { task_id: string; user_id: string; created_at?: string }
@@ -1013,7 +1019,7 @@ export type Database = {
         Returns: string
       }
       update_task_details_with_collaborators: {
-        Args: { p_collaborator_ids?: string[]; p_task: Json; p_task_id: string }
+        Args: { p_collaborator_ids?: string[]; p_deadlines?: Json; p_task: Json; p_task_id: string }
         Returns: undefined
       }
       get_personal_task_ids: {

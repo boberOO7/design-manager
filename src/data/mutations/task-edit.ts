@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTaskById } from "@/data/queries/tasks";
-import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
 import { taskEditSchema } from "@/lib/validation/task";
@@ -17,12 +16,15 @@ export async function updateTaskDetailsMutation(
   const parsed = taskEditSchema.safeParse(input);
   if (!parsed.success) {
     const fields = parsed.error.flatten().fieldErrors;
+    const fieldErrors = Object.fromEntries(
+      Object.entries(fields).flatMap(([field, errors]) => errors?.[0] ? [[field, errors[0]]] : []),
+    );
     return {
       success: false,
-      formError: "Please correct the highlighted fields.",
-      fieldErrors: Object.fromEntries(
-        Object.entries(fields).flatMap(([field, errors]) => errors?.[0] ? [[field, errors[0]]] : []),
-      ),
+      formError: Object.keys(fieldErrors).length
+        ? "Please correct the highlighted fields."
+        : "The task details could not be validated. Please refresh and try again.",
+      fieldErrors,
     };
   }
 
@@ -30,12 +32,6 @@ export async function updateTaskDetailsMutation(
   if (!authorization.success) return authorization;
   if (!authorization.isStudioAdmin) {
     return { success: false, formError: "Only active studio administrators can edit task details." };
-  }
-  const stageColumns = await getProjectStageColumns(authorization.task.project_id);
-  if (!stageColumns[parsed.data.stage].includes(parsed.data.status)) return { success: false, formError: "Choose a status enabled for the destination stage.", fieldErrors: { status: "Choose a status enabled for the destination stage." } };
-  if ((parsed.data.status === "review" || parsed.data.status === "completed")
-    && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
-    return { success: false, formError: "Complete every checklist item before moving this task to Client review or Done." };
   }
 
   const members = (parsed.data.assignee_id === null && parsed.data.collaborator_ids.length === 0)
@@ -53,22 +49,21 @@ export async function updateTaskDetailsMutation(
     };
   }
 
-  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "due_date" | "completed_area_m2" | "progress_weight" | "stage" | "status"> = {
+  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "completed_area_m2" | "progress_weight" | "stage"> = {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     assignee_id: parsed.data.assignee_id,
     priority: parsed.data.priority,
-    due_date: parsed.data.due_date ?? null,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
     progress_weight: parsed.data.progress_weight,
     stage: parsed.data.stage,
-    status: parsed.data.status,
   };
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_task_details_with_collaborators", {
     p_task_id: authorization.task.id,
     p_task: update,
     p_collaborator_ids: parsed.data.collaborator_ids,
+    p_deadlines: parsed.data.deadlines,
   });
 
   if (error) {

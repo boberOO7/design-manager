@@ -1,0 +1,21 @@
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vitest";
+
+const migration = new URL("../../supabase/migrations/20260902180000_add_task_milestone_deadlines.sql", import.meta.url);
+
+describe("task milestone deadlines migration", () => {
+  it("preserves legacy due dates, protects authenticated writes, and distinguishes omitted deadline input", async () => {
+    const sql = await readFile(migration, "utf8");
+
+    expect(sql).toContain("create table public.task_deadlines");
+    expect(sql).toContain("unique (task_id, target_status)");
+    expect(sql).toContain("select id, 'completed', due_date");
+    expect(sql).toContain("alter table public.task_deadlines enable row level security");
+    expect(sql).toContain("grant select, insert, delete on table public.task_deadlines to authenticated");
+    expect(sql).toContain('create policy "task_deadlines_write_for_studio_admins"');
+    expect(sql).toContain("p_deadlines jsonb default null");
+    expect(sql).toContain("if p_deadlines is not null then");
+    expect(sql).toContain("delete from public.task_deadlines where task_id = p_task_id;");
+    expect(sql).toContain("insert into public.task_deadlines (task_id, target_status, due_date)");
+  });
+});

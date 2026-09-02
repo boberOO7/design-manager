@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { TASK_STAGES } from "@/lib/task-stages";
+import { TASK_MILESTONE_STATUSES } from "@/lib/task-deadlines";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const optionalDateSchema = z.preprocess(
@@ -23,6 +24,10 @@ const optionalAssigneeSchema = z.preprocess(
 );
 const collaboratorIdsSchema = z.array(z.uuid("Choose valid project members")).max(50).default([])
   .refine((ids) => new Set(ids).size === ids.length, "Choose each co-assignee only once");
+const taskDeadlineSchema = z.object({ target_status: z.enum(TASK_MILESTONE_STATUSES), due_date: optionalDateSchema }).strict();
+const taskDeadlinesSchema = z.array(taskDeadlineSchema).max(TASK_MILESTONE_STATUSES.length)
+  .refine((deadlines) => deadlines.every((deadline) => deadline.due_date !== undefined), "Enter a valid deadline date")
+  .refine((deadlines) => new Set(deadlines.map((deadline) => deadline.target_status)).size === deadlines.length, "Choose each workflow point only once");
 
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
@@ -80,11 +85,10 @@ export const taskEditSchema = z.object({
   assignee_id: optionalAssigneeSchema,
   collaborator_ids: collaboratorIdsSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
-  due_date: optionalDateSchema,
+  deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: progressWeightSchema,
   stage: z.enum(TASK_STAGES),
-  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
 }).strict();
 
 export const taskProductionProgressSchema = z.object({

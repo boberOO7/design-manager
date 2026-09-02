@@ -158,9 +158,10 @@ describe("task work editing permission", () => {
 
 describe("task overdue behavior", () => {
   it("does not mark completed or cancelled tasks overdue", () => {
-    expect(isTaskOverdue(makeTask({ due_date: "2026-07-01", status: "todo" }), "2026-07-27")).toBe(true);
-    expect(isTaskOverdue(makeTask({ due_date: "2026-07-01", status: "completed" }), "2026-07-27")).toBe(false);
-    expect(isTaskOverdue(makeTask({ due_date: "2026-07-01", status: "cancelled" }), "2026-07-27")).toBe(false);
+    const deadlines = [{ id: "done", target_status: "completed" as const, due_date: "2026-07-01" }];
+    expect(isTaskOverdue(makeTask({ deadlines, status: "todo" }), "2026-07-27")).toBe(true);
+    expect(isTaskOverdue(makeTask({ deadlines, status: "completed" }), "2026-07-27")).toBe(false);
+    expect(isTaskOverdue(makeTask({ deadlines, status: "cancelled" }), "2026-07-27")).toBe(false);
   });
 });
 

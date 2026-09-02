@@ -16,7 +16,8 @@ import { taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
-import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus, isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
+import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus } from "@/lib/tasks";
+import { isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
@@ -49,10 +50,9 @@ function makeFormValues(task: ProjectTask): {
   collaborator_ids: string[];
   priority: ProjectTask["priority"];
   stage: ProjectTask["stage"];
-  due_date: string;
+  deadlines: TaskDeadlineInput[];
   completed_area_m2: string;
   progress_weight: string;
-  status: WritableTaskStatus;
 } {
   return {
     title: task.title,
@@ -61,10 +61,9 @@ function makeFormValues(task: ProjectTask): {
     collaborator_ids: task.collaborators.map((collaborator) => collaborator.id),
     priority: task.priority,
     stage: task.stage,
-    due_date: task.due_date ?? "",
+    deadlines: toTaskDeadlineInputs(task.deadlines ?? []),
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
     progress_weight: task.progress_weight.toString(),
-    status: isWritableTaskStatus(task.status) ? task.status : "completed",
   };
 }
 
@@ -134,7 +133,6 @@ export function TaskDetailsDrawer({
   const [isApplyingChecklistTemplate, setIsApplyingChecklistTemplate] = useState(false);
   const statusLabel = (status: ProjectTask["status"]) => statusT(status === "in_progress" ? "inProgress" : status);
   const selectedChecklistTemplate = templates.find((template) => template.id === selectedChecklistTemplateId);
-  const enabledStatuses = stageColumns?.[values.stage] ?? BOARD_COLUMNS.map((column) => column.status);
   const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
 
   const canEdit = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
@@ -205,7 +203,6 @@ export function TaskDetailsDrawer({
   }
 
   async function saveTaskDetails() {
-    if (values.status === "review" && task.status !== "review" && !window.confirm(t("confirmClientReview"))) return;
     setIsSaving(true);
     setFormError(null);
     setFieldErrors({});
@@ -215,7 +212,7 @@ export function TaskDetailsDrawer({
       const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, deadlines: toTaskDeadlineInputs(values.deadlines) }),
       });
       let result: unknown = null;
       try {
@@ -421,19 +418,12 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                   <FormField label={t("stage")}>
-                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage, status: stageColumns?.[stage].includes(current.status) ? current.status : stageColumns?.[stage][0] ?? "todo" })); }}>
+                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
                       {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
                     </Select>
                   </FormField>
-                  <FormField label={t("dueDate")} optional error={fieldErrors.due_date ? validation("correctFields") : undefined}>
-                    <DatePicker value={values.due_date} disabled={isSaving} locale={locale} invalid={Boolean(fieldErrors.due_date)} onValueChange={(due_date) => setValues({ ...values, due_date })} />
-                  </FormField>
-                  <FormField label={t("status")}>
-                    <Select value={values.status} disabled={isSaving} onValueChange={(status) => { if (isWritableTaskStatus(status)) setValues({ ...values, status }); }}>
-                      {BOARD_COLUMNS.filter((column) => enabledStatuses.includes(column.status)).map((column) => taskStatusSelectItem(column.status, statusLabel(column.status)))}
-                    </Select>
-                  </FormField>
                 </div>
+                <DeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
               <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
@@ -577,6 +567,47 @@ function CoAssigneeMultiSelect({
       </Popover.Content>
     </Popover.Portal>
   </Popover.Root>;
+}
+
+function DeadlineEditor({
+  deadlines,
+  disabled,
+  error,
+  locale,
+  onChange,
+  statusLabel,
+}: {
+  deadlines: TaskDeadlineInput[];
+  disabled: boolean;
+  error?: string;
+  locale: string;
+  onChange: (deadlines: TaskDeadlineInput[]) => void;
+  statusLabel: (status: ProjectTask["status"]) => string;
+}) {
+  const t = useTranslations("Tasks");
+  const availableStatuses = TASK_MILESTONE_STATUSES.filter((status) => !deadlines.some((deadline) => deadline.target_status === status));
+
+  function updateDeadline(index: number, update: Partial<TaskDeadlineInput>) {
+    onChange(deadlines.map((deadline, deadlineIndex) => deadlineIndex === index ? { ...deadline, ...update } : deadline));
+  }
+
+  return <section aria-labelledby="task-edit-deadlines" className="mt-3 border-t border-[var(--ui-border-subtle)] pt-4">
+    <h3 id="task-edit-deadlines" className="text-sm font-semibold text-[var(--ui-text)]">{t("deadlines")}</h3>
+    <div className="mt-2 space-y-2">
+      {deadlines.map((deadline, index) => <div key={deadline.target_status} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-2">
+        <Select value={deadline.target_status} disabled={disabled} onValueChange={(target_status) => {
+          if (isTaskMilestoneStatus(target_status) && !deadlines.some((item, itemIndex) => itemIndex !== index && item.target_status === target_status)) updateDeadline(index, { target_status });
+        }}>
+          <SelectItem value={deadline.target_status}>{statusLabel(deadline.target_status)}</SelectItem>
+          {availableStatuses.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}
+        </Select>
+        <DatePicker value={deadline.due_date} disabled={disabled} locale={locale} onValueChange={(due_date) => updateDeadline(index, { due_date })} />
+        <Button type="button" size="sm" variant="ghost" disabled={disabled} className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("removeDeadline", { status: statusLabel(deadline.target_status) })} onClick={() => onChange(deadlines.filter((_, deadlineIndex) => deadlineIndex !== index))}><Trash2 className="size-4" aria-hidden="true" /></Button>
+      </div>)}
+    </div>
+    {error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
+    {availableStatuses.length ? <Button type="button" size="sm" variant="outline" disabled={disabled} className="mt-2 min-h-11" onClick={() => onChange([...deadlines, { target_status: availableStatuses[0]!, due_date: "" }])}><Plus className="size-4" aria-hidden="true" />{t("addDeadline")}</Button> : null}
+  </section>;
 }
 
 function ChecklistItemRow({ canToggle, item, onToggle, pending }: {

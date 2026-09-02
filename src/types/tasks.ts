@@ -1,5 +1,6 @@
 import type { Database } from "@/types/database.types";
 import type { TaskStage } from "@/lib/task-stages";
+import type { TaskDeadline } from "@/lib/task-deadlines";
 
 export type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
@@ -47,6 +48,7 @@ export type ProjectTask = Pick<
   | "production_completion"
   | "progress_weight"
 > & {
+  deadlines?: TaskDeadline[];
   stage: TaskStage;
   completed_area_m2: TaskRow["completed_area_m2"];
   checklist_items: TaskChecklistItem[];

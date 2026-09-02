@@ -96,10 +96,9 @@ describe("task editing validation", () => {
     assignee_id: validTask.assignee_id,
     priority: "high",
     stage: "stage_2",
-    due_date: "2026-08-01",
+    deadlines: [{ target_status: "completed", due_date: "2026-08-01" }],
     completed_area_m2: "70",
     progress_weight: "2.5",
-    status: "in_progress",
   };
 
   it("trims titles and descriptions and rejects missing titles", () => {
@@ -114,12 +113,30 @@ describe("task editing validation", () => {
     expect(taskEditSchema.parse({ ...validEdit, assignee_id: null }).assignee_id).toBeNull();
   });
 
-  it("accepts Client review and rejects invalid priority, weight, and dates", () => {
+  it("validates unique milestone deadlines alongside the other edit fields", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, priority: "medium" }).success).toBe(false);
-    expect(taskEditSchema.safeParse({ ...validEdit, status: "review" }).success).toBe(true);
-    expect(taskEditSchema.safeParse({ ...validEdit, status: "cancelled" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "review", due_date: "2026-08-01" }] }).success).toBe(true);
+    expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "review", due_date: "2026-08-01" }, { target_status: "review", due_date: "2026-08-02" }] }).success).toBe(false);
     expect(taskEditSchema.safeParse({ ...validEdit, progress_weight: "0" }).success).toBe(false);
-    expect(taskEditSchema.safeParse({ ...validEdit, due_date: "2026-02-30" }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "review", due_date: "2026-02-30" }] }).success).toBe(false);
+  });
+
+  it("accepts the status-free, legacy-date-free Task Details PATCH payload", () => {
+    const result = taskEditSchema.parse(validEdit);
+
+    expect(result).not.toHaveProperty("status");
+    expect(result).not.toHaveProperty("due_date");
+    expect(result.deadlines).toEqual([{ target_status: "completed", due_date: "2026-08-01" }]);
+  });
+
+  it("reports deadline-row errors under the visible deadlines field", () => {
+    const result = taskEditSchema.safeParse({
+      ...validEdit,
+      deadlines: [{ id: "persisted-row", target_status: "completed", due_date: "2026-08-01" }],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.flatten().fieldErrors.deadlines).toBeTruthy();
   });
 });
 

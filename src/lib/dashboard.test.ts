@@ -5,7 +5,10 @@ import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "./project-progress";
 
 const today = "2026-07-27";
 const project: DashboardProject = { id: "p1", name: "Alpha", project_code: null, client_name: null, due_date: null, status: "active", stageProgressMethods: DEFAULT_PROJECT_STAGE_PROGRESS_METHODS };
-function task(overrides: Partial<DashboardTask> = {}): DashboardTask { return { id: "t1", project_id: "p1", stage: "stage_1", title: "Task", description: null, status: "todo", priority: "normal", assignee_id: "u1", due_date: null, completed_at: null, completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], created_at: "2026-07-01T12:00:00Z", created_by: "admin", assignee: null, collaborators: [], creator: null, project: { id: "p1", name: "Alpha", status: "active", archived_at: null }, ...overrides }; }
+function task(overrides: Partial<DashboardTask> = {}): DashboardTask {
+  const value: DashboardTask = { id: "t1", project_id: "p1", stage: "stage_1", title: "Task", description: null, status: "todo", priority: "normal", assignee_id: "u1", due_date: null, completed_at: null, completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], created_at: "2026-07-01T12:00:00Z", created_by: "admin", assignee: null, collaborators: [], creator: null, project: { id: "p1", name: "Alpha", status: "active", archived_at: null }, ...overrides };
+  return { ...value, deadlines: value.deadlines ?? (value.due_date ? [{ id: `deadline-${value.id}`, target_status: "completed", due_date: value.due_date }] : []) };
+}
 
 describe("dashboard calculations", () => {
   it("accepts canonical workflow stages and statuses only", () => {

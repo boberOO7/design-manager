@@ -129,8 +129,10 @@
 
 - Calendar combines manually managed studio/project events, employee time-off,
   and live project/task deadline projections in one normalized UI model.
-- Project and task deadlines remain canonical date-only fields on their
-  original tables; Calendar never copies them into event rows. Task deadlines
+- Project deadlines remain canonical date-only fields on `projects`; task
+  deadlines are normalized in `task_deadlines`, one per canonical workflow
+  milestone. Surfaces resolve only the next unreached milestone deadline;
+  Calendar never copies either deadline type into event rows. Task deadlines
   are hidden by default to keep dense Month views readable.
 - Time-off request types, private notes, review notes, pending requests, and
   rejected requests are visible only to the requesting employee and active
