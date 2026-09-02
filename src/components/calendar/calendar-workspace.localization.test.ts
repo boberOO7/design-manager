@@ -101,7 +101,7 @@ describe("time-off form localization contract", () => {
   });
 
   it("keeps English and Ukrainian request-form keys in parity", () => {
-    const keys = ["privateRequest", "requestType", "allDay", "startDate", "endDate", "startTime", "endTime", "privateNote", "visibleNote", "cancel", "submit", "submitting", "requestCreateFailed", "invalidDateRange"] as const;
+    const keys = ["privateRequest", "requestType", "allDay", "startDate", "endDate", "startTime", "endTime", "reason", "note", "visibleNote", "reasonRequired", "dayOffReasonPlaceholder", "cancel", "submit", "submitting", "requestCreateFailed", "invalidDateRange"] as const;
     for (const key of keys) {
       expect(en.TimeOff[key]).toBeTruthy();
       expect(uk.TimeOff[key]).toBeTruthy();
