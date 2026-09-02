@@ -1074,6 +1074,134 @@
     "failure": "City search is unavailable. You can still enter the city manually.",
     "manual": "You can keep any typed city as free text."
   },
+  "Legal": {
+    "navigation": {
+      "skipToContent": "Skip to content",
+      "homeLabel": "StudioFlow home",
+      "legalNavigation": "Legal pages",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdatedLabel": "Last updated",
+      "lastUpdatedDate": "September 2, 2026",
+      "introduction": "This policy explains how StudioFlow handles information when invited teams use the service, including when a user connects Google Calendar.",
+      "service": {
+        "title": "What StudioFlow is",
+        "body": "StudioFlow is an evolving internal and team-management product for organizing studio work, including projects, tasks, calendars, people, and related operations. It is currently used in a closed production-test stage."
+      },
+      "accountData": {
+        "title": "Account and profile information",
+        "body": "We store the information needed to authenticate you, maintain your profile, and determine your studio access. Depending on what you or your studio provide, this can include your name, sign-in email, avatar, role, job title, location, birthday, start date, and studio membership."
+      },
+      "workspaceData": {
+        "title": "Information entered in StudioFlow",
+        "body": "StudioFlow stores the project, task, calendar event, team, leave, contractor, and other operational information that authorized users enter into the service. This information is used to provide the workspace features and is visible according to the access controls within the relevant studio."
+      },
+      "googleAccess": {
+        "title": "Google Calendar data we access",
+        "bodyOne": "If you choose to connect Google Calendar, StudioFlow uses Google OAuth and requests your basic Google identity (OpenID and email) plus permission to create and manage calendars created by StudioFlow. We receive and store the email address of the Google account you selected so the connection can be identified in StudioFlow.",
+        "bodyTwo": "StudioFlow creates a separate secondary calendar named for your studio (for example, “StudioFlow · Studio name”) and manages events on that app-created calendar. StudioFlow does not write to your primary Google calendar and does not request access to manage calendars that it did not create."
+      },
+      "googleUse": {
+        "title": "How the Google integration works",
+        "bodyOne": "Google Calendar access is used to project relevant StudioFlow calendar events into the secondary calendar. The current integration is one-way from StudioFlow to Google Calendar. It does not import Google Calendar events into StudioFlow and does not add attendees or send invitations.",
+        "bodyTwo": "StudioFlow stores connection metadata and event mappings to create, update, and safely remove its own projections without duplicating them. Google user data is not used for advertising and is not sold."
+      },
+      "credentials": {
+        "title": "Google credentials",
+        "body": "StudioFlow stores an encrypted Google refresh token in private server-side storage so that requested synchronization can continue without asking you to authorize every time. Stored access and refresh tokens are not exposed to the browser. Google may issue short-lived access tokens to the server when the integration is used."
+      },
+      "disconnect": {
+        "title": "Disconnecting Google Calendar",
+        "body": "You can disconnect Google Calendar from your StudioFlow profile. StudioFlow will attempt to revoke the Google token, then remove the stored integration credentials, connection record, and local event mappings. Disconnecting does not delete your StudioFlow data, the secondary Google calendar, or events already projected to it; you can remove that calendar or those events in Google Calendar if desired."
+      },
+      "limitedUse": {
+        "title": "Google API data and Limited Use",
+        "body": "StudioFlow’s use and transfer of information received from Google APIs adheres to the <policy>Google API Services User Data Policy</policy>, including its Limited Use requirements. We use Google data only to provide the user-facing connection and calendar synchronization described in this policy, except where another use is required for security or by law."
+      },
+      "retention": {
+        "title": "Data retention and deletion",
+        "body": "We retain account and workspace data while it is needed to operate the relevant account or studio, and retain integration data while the connection is active. You may ask us about access to or deletion of your information. Some records may remain for a reasonable period in backups or where needed for security, dispute resolution, or legal obligations."
+      },
+      "security": {
+        "title": "Security",
+        "body": "We use access controls, database row-level policies, server-only credential storage, and encryption for stored Google refresh tokens. We take reasonable measures to protect information, but no online service or storage method can guarantee absolute security."
+      },
+      "providers": {
+        "title": "Infrastructure and service providers",
+        "body": "StudioFlow relies on service providers to operate the product, including Supabase for database, authentication, and storage services; Vercel for application hosting; and Google APIs when you enable the Google Calendar integration. These providers process information as needed to deliver their services and under their own applicable terms and privacy practices."
+      },
+      "updates": {
+        "title": "Policy updates",
+        "body": "We may update this policy as StudioFlow evolves. The date at the top will show when it was last revised. If a change materially affects how Google user data is used, we will provide appropriate notice and seek consent where required before using that data in a new way."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "Questions or data requests can be sent to <email>studioflow.notifications@gmail.com</email>."
+      }
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "lastUpdatedLabel": "Last updated",
+      "lastUpdatedDate": "September 2, 2026",
+      "introduction": "These terms set out the practical rules for using StudioFlow during its closed production-test and evolving beta stage.",
+      "acceptance": {
+        "title": "Acceptance of these terms",
+        "body": "By accessing or using StudioFlow, you agree to these terms. If you do not agree, do not use the service. If you use StudioFlow for a studio or team, you confirm that you are authorized to do so."
+      },
+      "purpose": {
+        "title": "Purpose of StudioFlow",
+        "body": "StudioFlow helps invited studios and teams organize projects, tasks, calendars, people, and related internal work. Access is currently provided for internal use and controlled production testing."
+      },
+      "beta": {
+        "title": "Evolving product",
+        "body": "StudioFlow is still evolving. Features may be incomplete, change, or be removed as the product is tested and improved. Please use appropriate judgment before relying on the service for critical or time-sensitive decisions."
+      },
+      "account": {
+        "title": "Account responsibility",
+        "body": "You are responsible for keeping your sign-in method secure, providing accurate information, and promptly reporting suspected unauthorized access. Do not share access in a way that bypasses your studio’s permissions."
+      },
+      "permitted": {
+        "title": "Permitted use",
+        "body": "You may use StudioFlow for legitimate studio and team-management activities within the access granted to you. You must respect other users, confidential workspace information, and applicable laws."
+      },
+      "misuse": {
+        "title": "Prohibited misuse",
+        "body": "Do not attempt to access another user’s or studio’s data without permission, interfere with the service, probe or bypass security controls, upload malicious code, misuse integrations, automate abusive traffic, or use StudioFlow for unlawful, deceptive, or harmful activity."
+      },
+      "content": {
+        "title": "Your content and data",
+        "body": "You and your studio retain ownership of the content and data you enter. You permit StudioFlow and its service providers to host, process, and display that information only as needed to operate, secure, maintain, and improve the service. You are responsible for having the right to submit the information you provide."
+      },
+      "integrations": {
+        "title": "Third-party integrations",
+        "bodyOne": "Optional integrations, including Google Calendar, are also governed by the relevant third party’s terms and policies. When you connect an integration, you authorize StudioFlow to take the actions described in the product and Privacy Policy on your behalf.",
+        "bodyTwo": "The current Google Calendar integration synchronizes StudioFlow events one way into a secondary calendar created by StudioFlow. Third-party services can change, interrupt, or revoke access, and StudioFlow cannot guarantee their availability or behavior."
+      },
+      "availability": {
+        "title": "Availability and service changes",
+        "body": "We aim to keep StudioFlow useful and available, but do not promise uninterrupted access or a service-level commitment. We may maintain, change, suspend, or discontinue features or access when reasonably needed, including for security, testing, or product development."
+      },
+      "liability": {
+        "title": "Reasonable limitations",
+        "body": "StudioFlow is provided on an evolving, as-available basis. We will use reasonable care in operating it, but to the extent permitted by law, we are not responsible for indirect losses, lost opportunities, or losses caused by third-party services, unauthorized use outside our control, or decisions made solely from StudioFlow data. Keep separate copies of information you cannot afford to lose. Nothing in these terms excludes liability that cannot legally be limited."
+      },
+      "termination": {
+        "title": "Termination and access removal",
+        "body": "You may stop using StudioFlow at any time. Studio administrators may remove team access, and we may suspend or remove access where reasonably necessary for security, misuse, legal compliance, or the end of a production test. Data handling after access ends is described in the Privacy Policy."
+      },
+      "changes": {
+        "title": "Changes to these terms",
+        "body": "We may update these terms as StudioFlow evolves. The date at the top will identify the latest version. We will provide reasonable notice of material changes when appropriate; continued use after an update means you accept the revised terms."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "Questions about these terms can be sent to <email>studioflow.notifications@gmail.com</email>."
+      }
+    }
+  },
   "Roles": {
     "studioAdministrator": "Studio Administrator",
     "administrator": "Administrator",

@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788341051.861159,
-    "ast_hash": "807287e76fb596c82207ba354b918311",
+    "mtime": 1788354871.9491153,
+    "ast_hash": "b8dad5d21b1d29bfd2fa1c23d8c2b2dd",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788341051.8651593,
-    "ast_hash": "5ca818ccaa29cd6048350d0e339a6cf3",
+    "mtime": 1788354872.0971212,
+    "ast_hash": "320e0ef66c2b37893c291c311a1788c6",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -3812,6 +3812,31 @@
   "supabase/tests/google_calendar_rls.test.sql": {
     "mtime": 1788340704.0063524,
     "ast_hash": "b31439459a17088ded92e44e6160db41",
+    "semantic_hash": ""
+  },
+  "src/app/(legal)/layout.tsx": {
+    "mtime": 1788354660.553396,
+    "ast_hash": "2d995ca28b6b50989ce17e0a80e054a9",
+    "semantic_hash": ""
+  },
+  "src/app/(legal)/legal-pages.test.ts": {
+    "mtime": 1788354924.6984692,
+    "ast_hash": "7e05639a7a8f37935e98a2b58083d9a4",
+    "semantic_hash": ""
+  },
+  "src/app/(legal)/privacy/page.tsx": {
+    "mtime": 1788354660.8334072,
+    "ast_hash": "cd46b03b5d1263b15f1389717157a421",
+    "semantic_hash": ""
+  },
+  "src/app/(legal)/terms/page.tsx": {
+    "mtime": 1788354661.1214187,
+    "ast_hash": "3cbbf126ed8911f72e028fb2776a8967",
+    "semantic_hash": ""
+  },
+  "src/components/legal/legal-document.tsx": {
+    "mtime": 1788354660.2813852,
+    "ast_hash": "b5927526b0f699ee97f37773b2a7d38b",
     "semantic_hash": ""
   }
 }
