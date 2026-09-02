@@ -17,6 +17,16 @@ type ConnectionStatus =
     lastSyncError: string | null;
   };
 
+let cachedConnectionStatus: ConnectionStatus | undefined;
+
+function updateCachedConnectionStatus(nextStatus: ConnectionStatus) {
+  cachedConnectionStatus = nextStatus;
+}
+
+function invalidateCachedConnectionStatus() {
+  cachedConnectionStatus = undefined;
+}
+
 function isConnectionStatus(value: unknown): value is ConnectionStatus {
   if (!value || typeof value !== "object") return false;
   if (!("connected" in value) || typeof value.connected !== "boolean") return false;
@@ -28,10 +38,38 @@ function isConnectionStatus(value: unknown): value is ConnectionStatus {
     && "lastSyncError" in value && (typeof value.lastSyncError === "string" || value.lastSyncError === null);
 }
 
+function toConnectionStatus(value: unknown): ConnectionStatus | null {
+  if (!isConnectionStatus(value)) return null;
+  if (!value.connected) return { connected: false };
+  return {
+    connected: true,
+    email: value.email,
+    calendarName: value.calendarName,
+    requiresReconnect: value.requiresReconnect,
+    lastSyncAt: value.lastSyncAt,
+    lastSyncError: value.lastSyncError,
+  };
+}
+
+function GoogleCalendarStatusSkeleton({ label }: { label: string }) {
+  return (
+    <div aria-label={label} className="mt-2 animate-pulse space-y-2" role="status">
+      <span className="block h-4 w-3/5 rounded bg-[var(--ui-surface-muted)]" />
+      <span className="block h-4 w-2/5 rounded bg-[var(--ui-surface-muted)]" />
+      <span className="block h-3 w-4/5 rounded bg-[var(--ui-surface-muted)]" />
+      <div className="flex gap-2 pt-2">
+        <span className="h-9 w-24 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)]" />
+        <span className="h-9 w-28 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)]" />
+      </div>
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
 export function GoogleCalendarIntegration({ active, oauthResult }: { active: boolean; oauthResult: string | null }) {
   const t = useTranslations("Account");
   const locale = useLocale();
-  const [status, setStatus] = useState<ConnectionStatus | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus | null>(() => cachedConnectionStatus ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [action, setAction] = useState<"sync" | "disconnect" | null>(null);
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
@@ -39,16 +77,18 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
   const [error, setError] = useState<string | null>(null);
   const disconnectTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     setIsLoading(true);
-    setError(null);
+    if (!silent) setError(null);
     try {
       const response = await fetch("/api/integrations/google-calendar/status", { cache: "no-store" });
       const data: unknown = await response.json();
-      if (!response.ok || !isConnectionStatus(data)) throw new Error("Invalid connection status response.");
-      setStatus(data);
+      const nextStatus = toConnectionStatus(data);
+      if (!response.ok || !nextStatus) throw new Error("Invalid connection status response.");
+      updateCachedConnectionStatus(nextStatus);
+      setStatus(nextStatus);
     } catch {
-      setError(t("googleCalendarStatusFailed"));
+      if (!silent) setError(t("googleCalendarStatusFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +96,7 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
 
   useEffect(() => {
     if (!active) return;
-    const timeoutId = window.setTimeout(() => void loadStatus(), 0);
+    const timeoutId = window.setTimeout(() => void loadStatus({ silent: cachedConnectionStatus !== undefined }), 0);
     return () => window.clearTimeout(timeoutId);
   }, [active, loadStatus]);
 
@@ -71,7 +111,12 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
       const response = await fetch("/api/integrations/google-calendar/sync", { method: "POST" });
       const data: unknown = await response.json();
       if (!response.ok || !data || typeof data !== "object") {
-        if (response.status === 409) setStatus((current) => current?.connected ? { ...current, requiresReconnect: true } : current);
+        if (response.status === 409) setStatus((current) => {
+          if (!current?.connected) return current;
+          const reconnectRequiredStatus = { ...current, requiresReconnect: true };
+          updateCachedConnectionStatus(reconnectRequiredStatus);
+          return reconnectRequiredStatus;
+        });
         throw new Error("Sync failed.");
       }
       const inserted = "inserted" in data && typeof data.inserted === "number" ? data.inserted : 0;
@@ -93,7 +138,9 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
     try {
       const response = await fetch("/api/integrations/google-calendar/disconnect", { method: "POST" });
       if (!response.ok) throw new Error("Disconnect failed.");
-      setStatus({ connected: false });
+      const disconnectedStatus = { connected: false } as const;
+      updateCachedConnectionStatus(disconnectedStatus);
+      setStatus(disconnectedStatus);
       setDisconnectDialogOpen(false);
       setMessage(t("googleCalendarDisconnected"));
     } catch {
@@ -104,12 +151,12 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
   }
 
   return (
-    <section aria-labelledby="google-calendar-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
+    <section aria-labelledby="google-calendar-heading" className={`border-t border-[var(--ui-border-subtle)] pt-5 ${(isLoading && !status) || status?.connected ? "min-h-[9.5rem]" : ""}`}>
       <div className="flex items-start gap-3">
         <CalendarSync aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" />
         <div className="min-w-0 flex-1">
           <h3 id="google-calendar-heading" className="font-medium text-[var(--ui-text)]">{t("googleCalendar")}</h3>
-          {isLoading && !status ? <p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("googleCalendarLoading")}</p> : null}
+          {isLoading && !status ? <GoogleCalendarStatusSkeleton label={t("googleCalendarLoading")} /> : null}
           {status?.connected ? (
             <div className="mt-2 min-w-0 space-y-1 text-sm">
               <p className="truncate text-[var(--ui-text-secondary)]">{status.email}</p>
@@ -123,11 +170,11 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
       </div>
 
       {!isLoading && status && !status.connected ? (
-        <div className="mt-4"><Button asChild size="sm"><a href="/api/integrations/google-calendar/connect">{t("connectGoogleCalendar")}</a></Button></div>
+        <div className="mt-4"><Button asChild size="sm"><a href="/api/integrations/google-calendar/connect" onClick={invalidateCachedConnectionStatus}>{t("connectGoogleCalendar")}</a></Button></div>
       ) : null}
       {status?.connected ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          {status.requiresReconnect ? <Button asChild size="sm"><a href="/api/integrations/google-calendar/connect">{t("reconnectGoogleCalendar")}</a></Button> : <Button disabled={action !== null} onClick={() => void syncNow()} size="sm" type="button">{action === "sync" ? <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> : <CalendarSync aria-hidden="true" className="size-3.5" />}{t("syncNow")}</Button>}
+          {status.requiresReconnect ? <Button asChild size="sm"><a href="/api/integrations/google-calendar/connect" onClick={invalidateCachedConnectionStatus}>{t("reconnectGoogleCalendar")}</a></Button> : <Button disabled={action !== null} onClick={() => void syncNow()} size="sm" type="button">{action === "sync" ? <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> : <CalendarSync aria-hidden="true" className="size-3.5" />}{t("syncNow")}</Button>}
           <Button ref={disconnectTriggerRef} disabled={action !== null} onClick={() => { setMessage(null); setError(null); setDisconnectDialogOpen(true); }} size="sm" type="button" variant="outline"><Unplug aria-hidden="true" className="size-3.5" />{t("disconnectGoogleCalendar")}</Button>
         </div>
       ) : null}

@@ -93,4 +93,15 @@ describe("Google Calendar Phase 1 security and projection contract", () => {
     expect(en).toContain("Events in StudioFlow will remain unchanged.");
     expect(uk).toContain("Події у StudioFlow залишаться без змін.");
   });
+
+  it("keeps only the safe connection summary in an in-memory stale-while-revalidate cache", () => {
+    expect(integrationUi).toContain("let cachedConnectionStatus: ConnectionStatus | undefined");
+    expect(integrationUi).toContain("loadStatus({ silent: cachedConnectionStatus !== undefined })");
+    expect(integrationUi).toContain("function GoogleCalendarStatusSkeleton({ label }: { label: string })");
+    expect(integrationUi).toContain('min-h-[9.5rem]');
+    expect(integrationUi).toContain("updateCachedConnectionStatus(disconnectedStatus)");
+    expect(integrationUi).not.toContain("localStorage");
+    expect(integrationUi).not.toContain("sessionStorage");
+    expect(integrationUi).not.toContain("encrypted_refresh_token");
+  });
 });
