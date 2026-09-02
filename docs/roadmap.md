@@ -68,8 +68,10 @@
   drawers.
 - [x] Add Google Calendar Phase 1: secure per-user OAuth, a dedicated secondary
   calendar, and idempotent manual one-way projection of real Calendar events.
-- [ ] Add automatic Google Calendar create/update/delete delivery after the
-  localhost manual-sync flow is validated; Google-to-StudioFlow sync remains separate.
+- [x] Add durable asynchronous Google Calendar create/update/delete reconciliation
+  using the shared `Relevant to me` rule and retain manual full repair
+  (migration and production cron configuration pending deployment validation);
+  Google-to-StudioFlow sync remains separate.
 
 ## Production
 

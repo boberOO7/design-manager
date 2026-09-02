@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 import { getBusinessTripTitle } from "@/lib/calendar-event-form";
+import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 
 type Context = { params: Promise<{ eventId: string }> };
 
@@ -48,6 +49,7 @@ export async function PATCH(request: Request, context: Context) {
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
     const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });
+    scheduleGoogleCalendarReconciliation();
     const item = await getNormalizedCalendarEvent(override.id);
     return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
   }
@@ -83,6 +85,7 @@ export async function PATCH(request: Request, context: Context) {
     if (participantClearError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantClearError) }, { status: 400 });
   }
 
+  scheduleGoogleCalendarReconciliation();
   const item = await getNormalizedCalendarEvent(eventId);
   return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
 }
@@ -98,9 +101,11 @@ export async function DELETE(_request: Request, context: Context) {
     if (seriesError || !series?.recurrence_rule) return NextResponse.json({ success: false, formError: "The recurring event was not found." }, { status: 400 });
     const { error } = await supabase.from("calendar_events").insert({ ...series, recurrence_rule: null, series_id: eventId, occurrence_start: occurrenceStart, created_by: membership.authenticatedUserId, cancelled_at: new Date().toISOString() });
     if (error) return NextResponse.json({ success: false, formError: "The occurrence could not be cancelled." }, { status: 400 });
+    scheduleGoogleCalendarReconciliation();
     return NextResponse.json({ success: true, key: `calendar_event:${eventId}:${occurrenceStart}` });
   }
   const { data, error } = await supabase.from("calendar_events").update({ cancelled_at: new Date().toISOString() }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, formError: "The event was not found or could not be cancelled." }, { status: 400 });
+  scheduleGoogleCalendarReconciliation();
   return NextResponse.json({ success: true, key: `calendar_event:${eventId}` });
 }

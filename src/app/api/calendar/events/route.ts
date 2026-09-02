@@ -6,6 +6,7 @@ import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { createClient } from "@/lib/supabase/server";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
 import { getBusinessTripTitle } from "@/lib/calendar-event-form";
+import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
   }
 
+  scheduleGoogleCalendarReconciliation();
   const item = await getNormalizedCalendarEvent(eventId);
   return item ? NextResponse.json({ success: true, item }, { status: 201 }) : NextResponse.json({ success: false, formError: "The event was created but could not be reloaded." }, { status: 500 });
 }

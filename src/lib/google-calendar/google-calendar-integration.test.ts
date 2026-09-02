@@ -41,8 +41,9 @@ describe("Google Calendar Phase 1 security and projection contract", () => {
     expect(migration).not.toContain("grant select on table public.google_calendar_server_credentials to authenticated");
   });
 
-  it("projects only RLS-visible calendar_events with timed/all-day semantics and private source markers", () => {
+  it("projects only relevant real calendar_events with timed/all-day semantics and private source markers", () => {
     expect(sync).toContain('.from("calendar_events")');
+    expect(sync).toContain("isCalendarEventRelevantToUser");
     expect(sync).not.toContain("time_off_requests");
     expect(sync).not.toContain("project_deadline");
     expect(sync).not.toContain("task_deadline");
