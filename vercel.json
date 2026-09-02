@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true
+    }
+  },
+
+  "crons": [
+    {
+      "path": "/api/integrations/google-calendar/reconcile",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

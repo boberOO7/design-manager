@@ -11,6 +11,6 @@ describe("Calendar attendee update contract", () => {
     expect(route).toContain('from("calendar_event_invites")');
     expect(route).toContain('.in("user_id", removedIds)');
     expect(route).toContain("addedIds.map");
-    expect(route).not.toContain('.delete().eq("event_id", eventId);');
+    expect(route).not.toContain('.from("calendar_event_invites").delete().eq("event_id", eventId);');
   });
 });

@@ -141,6 +141,36 @@ export function sortCalendarItems(items: CalendarItem[]): CalendarItem[] {
   });
 }
 
+export type CalendarEventRelevance = {
+  eventType: CalendarEventType;
+  organizerId: string;
+  assigneeId: string | null;
+  inviteeIds: readonly string[];
+  participantIds: readonly string[];
+};
+
+/**
+ * Canonical business rule behind "Relevant to me" for real Calendar events.
+ * Google projection uses this same function regardless of the UI filter state.
+ */
+export function isCalendarEventRelevantToUser(event: CalendarEventRelevance, userId: string): boolean {
+  switch (event.eventType) {
+    case "site_visit":
+    case "interview":
+      return event.assigneeId === userId;
+    case "business_trip":
+      return event.participantIds.includes(userId);
+    case "meeting":
+    case "presentation":
+      return event.organizerId === userId || event.inviteeIds.includes(userId);
+    case "general":
+    case "internal_review":
+      return event.inviteeIds.includes(userId);
+    case "work_makeup":
+      return event.organizerId === userId;
+  }
+}
+
 /**
  * Returns whether an item represents a concrete responsibility, participation,
  * or personal calendar state for the user. Audit ownership is deliberately not
@@ -148,23 +178,13 @@ export function sortCalendarItems(items: CalendarItem[]): CalendarItem[] {
  */
 export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string): boolean {
   if (item.source === "calendar_event") {
-    const isInvitee = item.invitees.some((invitee) => invitee.id === userId);
-
-    switch (item.eventType) {
-      case "site_visit":
-      case "interview":
-        return item.assigneeId === userId;
-      case "business_trip":
-        return item.participants.some((participant) => participant.id === userId);
-      case "meeting":
-      case "presentation":
-        return item.organizer.id === userId || isInvitee;
-      case "general":
-      case "internal_review":
-        return isInvitee;
-      case "work_makeup":
-        return item.organizer.id === userId;
-    }
+    return isCalendarEventRelevantToUser({
+      eventType: item.eventType,
+      organizerId: item.organizer.id,
+      assigneeId: item.assigneeId ?? null,
+      inviteeIds: item.invitees.map((invitee) => invitee.id),
+      participantIds: item.participants.map((participant) => participant.id),
+    }, userId);
   }
 
   switch (item.source) {

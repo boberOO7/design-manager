@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 
 const responseSchema = z.object({ status: z.enum(["accepted", "declined"]) }).strict();
 
@@ -18,6 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ in
     .update({ status: parsed.data.status, responded_at: new Date().toISOString() })
     .eq("id", inviteId).eq("user_id", userData.user.id).neq("status", parsed.data.status).select("event_id").maybeSingle();
   if (error || !invite) return NextResponse.json({ success: false, error: "This invitation is no longer available." }, { status: 400 });
+  scheduleGoogleCalendarReconciliation();
   const item = await getNormalizedCalendarEvent(invite.event_id);
   return NextResponse.json({ success: true, item });
 }

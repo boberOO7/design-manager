@@ -1,7 +1,7 @@
 "use client";
 
 import { CakeSlice, CalendarDays, Camera, LoaderCircle, LockKeyhole, MapPin, Trash2, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { AvatarCropStep } from "@/components/layout/avatar-crop-step";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { GoogleCalendarIntegration } from "@/components/layout/google-calendar-integration";
 import { getCountryOptions, isCountryCode } from "@/lib/countries";
 import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -42,6 +43,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [googleCalendarResult, setGoogleCalendarResult] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,19 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
   const isProfilePending = isPending || isSavingProfile;
   const canEditStartDate = systemRole === "admin";
   const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId || (canEditStartDate && currentJoinedAt !== initialJoinedAt);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const result = url.searchParams.get("googleCalendar");
+    if (!result) return;
+    url.searchParams.delete("googleCalendar");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    const timeoutId = window.setTimeout(() => {
+      setGoogleCalendarResult(result);
+      setIsOpen(true);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   function resetProfileFields() {
     setCurrentBirthDate(initialBirthDate);
@@ -257,6 +272,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
             </label>
           </div>
         </section>
+        <GoogleCalendarIntegration active={isOpen} oauthResult={googleCalendarResult} />
         {profileError ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{profileError}</p> : null}
         </div>
         <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:flex-row sm:justify-end sm:px-6"><Button disabled={isProfilePending} onClick={closeDialog} type="button" variant="outline">{t("cancel")}</Button><Button aria-busy={isSavingProfile} disabled={isProfilePending || !isProfileDirty} onClick={() => void saveProfile()} type="button">{isSavingProfile ? <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("saving")}</> : t("save")}</Button></footer>

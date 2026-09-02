@@ -156,8 +156,19 @@
   Completed projects must be reopened before receiving a new event; existing
   historical events remain readable and cancellable. Archived projects cannot
   receive events.
-- Recurring events, reminders, public holidays, and Google/Outlook or external
-  calendar synchronization are deferred.
+- Google Calendar remains a one-way projection of real `calendar_events` into
+  each connected user's dedicated secondary `{studioName} Team` calendar. A
+  connection always creates a fresh calendar by exact persisted ID; disconnect
+  deletes that calendar before revoking authorization and removing local
+  connection state. Both automatic event-scoped reconciliation and manual full repair
+  use the exact Calendar `Relevant to me` business predicate; RLS visibility
+  alone is not synchronization relevance. Calendar, invitation, participant,
+  assignee, cancellation, and recurrence writes enqueue one coalescing database
+  outbox row per root event in the same transaction. Post-response workers and a
+  protected scheduled drain process it with bounded retry, while revoked Google
+  credentials mark the connection for reconnection without failing StudioFlow
+  writes. Google-to-StudioFlow sync, synthetic Calendar items, attendees,
+  reminders, public holidays, and other external calendars remain deferred.
 
 ## Administration
 
