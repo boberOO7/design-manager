@@ -124,7 +124,7 @@ export function getGoogleCalendarFailureDiagnostic(error: unknown): GoogleCalend
 
 export function logGoogleCalendarFailure(error: unknown, context: DiagnosticContext = {}) {
   const diagnostic = getGoogleCalendarFailureDiagnostic(error);
-  console.error("Google Calendar reconciliation failed", JSON.stringify({ ...context, ...diagnostic }));
+  console.error("Google Calendar operation failed", JSON.stringify({ ...context, ...diagnostic }));
 }
 
 export function googleCalendarJobLastError(error: unknown, exhausted: boolean): string {

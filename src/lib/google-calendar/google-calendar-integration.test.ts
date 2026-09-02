@@ -9,6 +9,9 @@ const callbackRoute = read("src/app/api/integrations/google-calendar/callback/ro
 const sync = read("src/lib/google-calendar/sync.ts");
 const disconnectRoute = read("src/app/api/integrations/google-calendar/disconnect/route.ts");
 const tokenCrypto = read("src/lib/google-calendar/crypto.ts");
+const integrationUi = read("src/components/layout/google-calendar-integration.tsx");
+const en = read("messages/en.json");
+const uk = read("messages/uk.json");
 
 describe("Google Calendar Phase 1 security and projection contract", () => {
   it("encrypts refresh tokens with authenticated encryption and never returns them from status", () => {
@@ -61,9 +64,33 @@ describe("Google Calendar Phase 1 security and projection contract", () => {
     expect(sync).toContain("events.delete");
   });
 
-  it("revokes Google authorization and removes only integration records on disconnect", () => {
+  it("creates a fresh studio-named calendar and runs a full reconcile after OAuth", () => {
+    expect(callbackRoute).toContain("googleCalendarName(actor.membership.studioName)");
+    expect(callbackRoute).toContain("currentCalendar.calendars.insert");
+    expect(callbackRoute).toContain("await syncGoogleCalendar(actor)");
+    expect(callbackRoute).toContain("runGoogleCalendarDisconnectLifecycle");
+    expect(callbackRoute).not.toContain("calendars.list");
+    expect(callbackRoute).not.toContain("calendars.get");
+    expect(callbackRoute).not.toContain("calendars.update");
+    expect(callbackRoute).not.toContain("StudioFlow ·");
+  });
+
+  it("deletes the exact persisted calendar before mappings, revocation, and local connection cleanup", () => {
+    expect(disconnectRoute).toContain("calendar.calendars.delete({ calendarId: connection.google_calendar_id })");
     expect(disconnectRoute).toContain("revokeToken");
     expect(disconnectRoute).toContain('.from("google_calendar_connections")');
+    expect(disconnectRoute).toContain('.from("google_calendar_event_mappings")');
     expect(disconnectRoute).not.toContain('.from("calendar_events").delete');
+    expect(disconnectRoute).not.toContain("google_calendar_reconciliation_jobs");
+    expect(disconnectRoute).not.toContain("calendarList");
+    expect(disconnectRoute).not.toContain("calendars.list");
+  });
+
+  it("confirms destructive disconnect with localized copy that preserves StudioFlow source events", () => {
+    expect(integrationUi).toContain("googleCalendarDisconnectTitle");
+    expect(integrationUi).toContain("googleCalendarDisconnectDescription");
+    expect(integrationUi).toContain("data-dialog-initial-focus");
+    expect(en).toContain("Events in StudioFlow will remain unchanged.");
+    expect(uk).toContain("Події у StudioFlow залишаться без змін.");
   });
 });

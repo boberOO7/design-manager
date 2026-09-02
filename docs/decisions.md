@@ -157,8 +157,10 @@
   historical events remain readable and cancellable. Archived projects cannot
   receive events.
 - Google Calendar remains a one-way projection of real `calendar_events` into
-  each connected user's dedicated secondary `StudioFlow · {studioName}`
-  calendar. Both automatic event-scoped reconciliation and manual full repair
+  each connected user's dedicated secondary `{studioName} Team` calendar. A
+  connection always creates a fresh calendar by exact persisted ID; disconnect
+  deletes that calendar before revoking authorization and removing local
+  connection state. Both automatic event-scoped reconciliation and manual full repair
   use the exact Calendar `Relevant to me` business predicate; RLS visibility
   alone is not synchronization relevance. Calendar, invitation, participant,
   assignee, cancellation, and recurrence writes enqueue one coalescing database

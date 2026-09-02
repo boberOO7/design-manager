@@ -42,6 +42,7 @@ describe("public legal pages", () => {
     expect(privacyCopy).toContain("encrypted Google refresh token");
     expect(privacyCopy).toContain("one-way from StudioFlow to Google Calendar");
     expect(privacyCopy).toContain("does not import Google Calendar events");
+    expect(privacyCopy).toContain("delete the exact app-created secondary Google calendar");
     expect(privacyCopy).toContain("Google API Services User Data Policy");
     expect(privacyCopy).toContain("studioflow.notifications@gmail.com");
   });

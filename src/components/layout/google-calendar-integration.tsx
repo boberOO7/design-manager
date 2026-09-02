@@ -1,9 +1,10 @@
 "use client";
 
 import { CalendarSync, LoaderCircle, Unplug } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 
 type ConnectionStatus =
   | { connected: false }
@@ -33,8 +34,10 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
   const [status, setStatus] = useState<ConnectionStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [action, setAction] = useState<"sync" | "disconnect" | null>(null);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const disconnectTriggerRef = useRef<HTMLButtonElement>(null);
 
   const loadStatus = useCallback(async () => {
     setIsLoading(true);
@@ -91,6 +94,7 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
       const response = await fetch("/api/integrations/google-calendar/disconnect", { method: "POST" });
       if (!response.ok) throw new Error("Disconnect failed.");
       setStatus({ connected: false });
+      setDisconnectDialogOpen(false);
       setMessage(t("googleCalendarDisconnected"));
     } catch {
       setError(t("googleCalendarDisconnectFailed"));
@@ -124,13 +128,29 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
       {status?.connected ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {status.requiresReconnect ? <Button asChild size="sm"><a href="/api/integrations/google-calendar/connect">{t("reconnectGoogleCalendar")}</a></Button> : <Button disabled={action !== null} onClick={() => void syncNow()} size="sm" type="button">{action === "sync" ? <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> : <CalendarSync aria-hidden="true" className="size-3.5" />}{t("syncNow")}</Button>}
-          <Button disabled={action !== null} onClick={() => void disconnect()} size="sm" type="button" variant="outline">{action === "disconnect" ? <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> : <Unplug aria-hidden="true" className="size-3.5" />}{t("disconnectGoogleCalendar")}</Button>
+          <Button ref={disconnectTriggerRef} disabled={action !== null} onClick={() => { setMessage(null); setError(null); setDisconnectDialogOpen(true); }} size="sm" type="button" variant="outline"><Unplug aria-hidden="true" className="size-3.5" />{t("disconnectGoogleCalendar")}</Button>
         </div>
       ) : null}
       <div aria-live="polite">
         {displayedMessage ? <p className="mt-3 text-sm text-[var(--ui-success-text)]">{displayedMessage}</p> : null}
-        {displayedError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{displayedError}</p> : null}
+        {displayedError && !disconnectDialogOpen ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{displayedError}</p> : null}
       </div>
+      <Dialog
+        className="max-w-md"
+        closeDisabled={action === "disconnect"}
+        closeLabel={t("cancel")}
+        description={status?.connected ? t("googleCalendarDisconnectDescription", { calendarName: status.calendarName }) : undefined}
+        isOpen={disconnectDialogOpen && Boolean(status?.connected)}
+        onRequestClose={() => { if (action !== "disconnect") setDisconnectDialogOpen(false); }}
+        returnFocusRef={disconnectTriggerRef}
+        title={t("googleCalendarDisconnectTitle")}
+      >
+        {error ? <div className="min-h-0 flex-1 px-4 py-3 sm:px-6"><p role="alert" className="text-sm text-[var(--ui-danger-text)]">{error}</p></div> : null}
+        <footer className="flex shrink-0 justify-end gap-3 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6">
+          <Button data-dialog-initial-focus disabled={action === "disconnect"} onClick={() => setDisconnectDialogOpen(false)} type="button" variant="outline">{t("cancel")}</Button>
+          <Button className="bg-[var(--ui-action-danger)] text-[var(--ui-action-primary-text)] hover:opacity-90 disabled:bg-[var(--ui-surface-muted)] disabled:text-[var(--ui-text-muted)] disabled:!opacity-100" disabled={action === "disconnect"} onClick={() => void disconnect()} type="button">{action === "disconnect" ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Unplug aria-hidden="true" className="size-4" />}{action === "disconnect" ? t("googleCalendarDisconnecting") : t("disconnectGoogleCalendar")}</Button>
+        </footer>
+      </Dialog>
     </section>
   );
 }

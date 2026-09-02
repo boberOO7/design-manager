@@ -170,6 +170,9 @@
     "googleCalendarLoading": "Loading connection…",
     "googleCalendarConnected": "Google Calendar connected.",
     "googleCalendarDisconnected": "Google Calendar disconnected.",
+    "googleCalendarDisconnectTitle": "Disconnect Google Calendar?",
+    "googleCalendarDisconnectDescription": "The Google calendar “{calendarName}” and its synchronized events will be deleted. Events in StudioFlow will remain unchanged.",
+    "googleCalendarDisconnecting": "Disconnecting…",
     "googleCalendarReconnectRequired": "Google authorization needs to be renewed.",
     "googleCalendarLastSync": "Last synced {date}",
     "googleCalendarSyncComplete": "Sync complete: {inserted} created, {updated} updated, {removed} removed.",
@@ -1102,7 +1105,7 @@
       "googleAccess": {
         "title": "Google Calendar data we access",
         "bodyOne": "If you choose to connect Google Calendar, StudioFlow uses Google OAuth and requests your basic Google identity (OpenID and email) plus permission to create and manage calendars created by StudioFlow. We receive and store the email address of the Google account you selected so the connection can be identified in StudioFlow.",
-        "bodyTwo": "StudioFlow creates a separate secondary calendar named for your studio (for example, “StudioFlow · Studio name”) and manages events on that app-created calendar. StudioFlow does not write to your primary Google calendar and does not request access to manage calendars that it did not create."
+        "bodyTwo": "StudioFlow creates a separate secondary calendar named for your studio (for example, “Studio name Team”) and manages events on that app-created calendar. StudioFlow does not write to your primary Google calendar and does not request access to manage calendars that it did not create."
       },
       "googleUse": {
         "title": "How the Google integration works",
@@ -1115,7 +1118,7 @@
       },
       "disconnect": {
         "title": "Disconnecting Google Calendar",
-        "body": "You can disconnect Google Calendar from your StudioFlow profile. StudioFlow will attempt to revoke the Google token, then remove the stored integration credentials, connection record, and local event mappings. Disconnecting does not delete your StudioFlow data, the secondary Google calendar, or events already projected to it; you can remove that calendar or those events in Google Calendar if desired."
+        "body": "You can disconnect Google Calendar from your StudioFlow profile. StudioFlow first attempts to delete the exact app-created secondary Google calendar, then removes local event mappings, revokes the Google authorization, and removes the stored integration credentials and connection record. If Google authorization is already invalid, the local integration can still be removed. Disconnecting does not delete your StudioFlow events or other workspace data."
       },
       "limitedUse": {
         "title": "Google API data and Limited Use",

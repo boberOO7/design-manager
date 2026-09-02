@@ -170,6 +170,9 @@
     "googleCalendarLoading": "Завантаження підключення…",
     "googleCalendarConnected": "Google Calendar підключено.",
     "googleCalendarDisconnected": "Google Calendar відключено.",
+    "googleCalendarDisconnectTitle": "Відключити Google Calendar?",
+    "googleCalendarDisconnectDescription": "Календар «{calendarName}» та синхронізовані події буде видалено з Google Calendar. Події у StudioFlow залишаться без змін.",
+    "googleCalendarDisconnecting": "Відключення…",
     "googleCalendarReconnectRequired": "Потрібно поновити авторизацію Google.",
     "googleCalendarLastSync": "Остання синхронізація: {date}",
     "googleCalendarSyncComplete": "Синхронізовано: створено {inserted}, оновлено {updated}, видалено {removed}.",
@@ -1102,7 +1105,7 @@
       "googleAccess": {
         "title": "До яких даних Google Calendar ми отримуємо доступ",
         "bodyOne": "Якщо ви вирішите підключити Google Calendar, StudioFlow використовує Google OAuth і запитує базові дані вашого облікового запису Google (OpenID та email), а також дозвіл створювати й керувати календарями, створеними StudioFlow. Ми отримуємо та зберігаємо адресу електронної пошти вибраного облікового запису Google, щоб показувати, який обліковий запис підключено у StudioFlow.",
-        "bodyTwo": "StudioFlow створює для вашої студії окремий додатковий календар із відповідною назвою (наприклад, «StudioFlow · Назва студії») і керує подіями в цьому створеному застосунком календарі. StudioFlow не записує дані до вашого основного Google Calendar і не запитує доступ для керування календарями, яких він не створював."
+        "bodyTwo": "StudioFlow створює для вашої студії окремий додатковий календар із відповідною назвою (наприклад, «Назва студії Team») і керує подіями в цьому створеному застосунком календарі. StudioFlow не записує дані до вашого основного Google Calendar і не запитує доступ для керування календарями, яких він не створював."
       },
       "googleUse": {
         "title": "Як працює інтеграція з Google",
@@ -1115,7 +1118,7 @@
       },
       "disconnect": {
         "title": "Відключення Google Calendar",
-        "body": "Ви можете відключити Google Calendar у своєму профілі StudioFlow. StudioFlow спробує відкликати токен Google, а потім видалить збережені облікові дані інтеграції, запис підключення та локальні відповідності подій. Відключення не видаляє ваші дані StudioFlow, додатковий календар Google або вже перенесені до нього події; за бажанням ви можете видалити цей календар чи події у Google Calendar."
+        "body": "Ви можете відключити Google Calendar у своєму профілі StudioFlow. Спочатку StudioFlow спробує видалити саме той додатковий календар Google, який створив застосунок, потім видалить локальні відповідності подій, відкличе авторизацію Google і видалить збережені облікові дані та запис підключення. Якщо авторизація Google уже недійсна, локальну інтеграцію все одно можна видалити. Відключення не видаляє події StudioFlow чи інші дані робочого простору."
       },
       "limitedUse": {
         "title": "Дані Google API та вимоги Limited Use",
