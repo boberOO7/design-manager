@@ -17,6 +17,8 @@ export function getAppScrollContainer() {
 }
 
 function getScrollContainerScrollbarWidth(container: HTMLElement) {
+  if (window.getComputedStyle(container).scrollbarGutter.includes("stable")) return 0;
+
   if (container === document.body) {
     return getScrollbarWidth(window.innerWidth, document.documentElement.clientWidth);
   }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CALENDAR_EVENT_TYPES, TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
 import { instantToDateOnly, isValidEventRange, isValidTimeOffRange } from "@/lib/calendar";
+import { getTimeOffRequestPresentation } from "@/lib/time-off-labels";
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("").transform((value) => value || null);
 const optionalUrl = z.string().trim().max(1000).optional().default("").refine((value) => !value || /^https?:\/\//i.test(value), "Use a complete http(s) URL.").transform((value) => value || null);
@@ -43,7 +44,7 @@ export const calendarEventSchema = z.object({
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
     if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Site visits must start and end on the same local calendar day." });
   }
-  if (value.eventType === "meeting" || value.eventType === "client_presentation") {
+  if (value.eventType === "meeting" || value.eventType === "presentation") {
     const normalizedMeetingMode = value.meetingMode ?? "offline";
     if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Meetings and presentations must have a start and end time." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Meetings and presentations cannot repeat." });
@@ -68,7 +69,7 @@ export const calendarEventSchema = z.object({
   }
 }).transform((value) => ({
   ...value,
-  meetingMode: value.eventType === "meeting" || value.eventType === "client_presentation"
+  meetingMode: value.eventType === "meeting" || value.eventType === "presentation"
     ? value.meetingMode ?? "offline"
     : null,
 }));
@@ -82,6 +83,13 @@ export const timeOffRequestSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional().default(null),
   privateNote: optionalText(2000),
 }).strict().superRefine((value, context) => {
+  const presentation = getTimeOffRequestPresentation(value.requestType);
+  if (presentation.requiresReason && !value.privateNote) {
+    context.addIssue({ code: "custom", path: ["privateNote"], message: "Enter a reason for this time-off request." });
+  }
+  if (!presentation.supportsPartialDay && !value.allDay) {
+    context.addIssue({ code: "custom", path: ["allDay"], message: "Vacation requests must be for a full day." });
+  }
   if (!isValidTimeOffRange(value)) {
     context.addIssue({ code: "custom", path: ["endDate"], message: "Use a valid date range; partial time off must be within one day and end after it starts." });
   }

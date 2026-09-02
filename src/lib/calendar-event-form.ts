@@ -62,7 +62,7 @@ export function createCalendarEventFormValues(
 
   return {
     title: item?.title ?? "",
-    eventType: item?.eventType ?? "meeting",
+    eventType: item?.eventType ?? "general",
     projectId: item?.projectId ?? "",
     allDay: item?.allDay ?? false,
     startDate: item?.allDay ? item.startDate : start.date,
@@ -82,7 +82,7 @@ export function createCalendarEventFormValues(
 }
 
 export function toCalendarEventMutationPayload(values: CalendarEventFormValues) {
-  const isSameDayTimedType = values.eventType === "meeting" || values.eventType === "client_presentation" || values.eventType === "interview";
+  const isSameDayTimedType = values.eventType === "meeting" || values.eventType === "presentation" || values.eventType === "interview";
   const bounds = values.allDay
     ? getAllDayEventBounds(values.startDate, values.endDate)
     : {

@@ -18,6 +18,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ in
     .update({ status: parsed.data.status, responded_at: new Date().toISOString() })
     .eq("id", inviteId).eq("user_id", userData.user.id).neq("status", parsed.data.status).select("event_id").maybeSingle();
   if (error || !invite) return NextResponse.json({ success: false, error: "This invitation is no longer available." }, { status: 400 });
-  const item = await getNormalizedCalendarEvent(invite.event_id, userData.user.id);
+  const item = await getNormalizedCalendarEvent(invite.event_id);
   return NextResponse.json({ success: true, item });
 }

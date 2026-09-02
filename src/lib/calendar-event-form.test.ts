@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
+import { getTimeOffRequestPresentation } from "./time-off-labels";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
 
 const baseValues: CalendarEventFormValues = {
   title: "Studio presentation",
-  eventType: "client_presentation",
+  eventType: "presentation",
   projectId: "",
   allDay: true,
   startDate: "2026-07-28",
@@ -83,8 +84,14 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "client_presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
       expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
+    }
+  });
+
+  it("rejects legacy aliases and presentation metadata before they can reach Postgres", () => {
+    for (const eventType of ["client_presentation", "Presentation", "Презентація"] as const) {
+      expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(baseValues), eventType }).success).toBe(false);
     }
   });
 
@@ -122,8 +129,8 @@ describe("Calendar event and time-off payload validation", () => {
     expect(calendarEventSchema.parse(toCalendarEventMutationPayload({ ...baseValues, eventType: "site_visit", allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", meetingMode: "online" })).meetingMode).toBeNull();
   });
 
-  it("submits Presentation as client_presentation", () => {
-    expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("client_presentation");
+  it("submits Presentation as presentation", () => {
+    expect(toCalendarEventMutationPayload(baseValues).eventType).toBe("presentation");
   });
 
   it("derives localized business-trip titles from the selected project", () => {
@@ -152,7 +159,25 @@ describe("Calendar event and time-off payload validation", () => {
     expect(timeOffRequestSchema.safeParse({ requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, privateNote: "", userId: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
   });
 
-  it("accepts a partial-day day-off request with persisted start and end times", () => {
-    expect(timeOffRequestSchema.safeParse({ requestType: "day_off", startDate: "2026-08-28", endDate: "2026-08-28", allDay: false, startTime: "14:00", endTime: "18:00", privateNote: "" }).success).toBe(true);
+  it("derives canonical time-off presentation rules by request type", () => {
+    expect(getTimeOffRequestPresentation("day_off")).toMatchObject({ fieldLabelKey: "reason", placeholderKey: "dayOffReasonPlaceholder", requiresReason: true, supportsPartialDay: true });
+    expect(getTimeOffRequestPresentation("other")).toMatchObject({ fieldLabelKey: "reason", requiresReason: true, supportsPartialDay: true });
+    expect(getTimeOffRequestPresentation("vacation")).toMatchObject({ fieldLabelKey: "note", requiresReason: false, supportsPartialDay: false });
+    expect(getTimeOffRequestPresentation("sick_leave")).toMatchObject({ fieldLabelKey: "note", requiresReason: false, supportsPartialDay: true });
+  });
+
+  it("requires a non-whitespace reason only for day-off and other requests", () => {
+    const baseRequest = { startDate: "2026-08-28", endDate: "2026-08-28", allDay: false, startTime: "14:00", endTime: "18:00" };
+    for (const requestType of ["day_off", "other"] as const) {
+      expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType, privateNote: "" }).success).toBe(false);
+      expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType, privateNote: "   " }).success).toBe(false);
+      expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType, privateNote: "Family commitment" }).success).toBe(true);
+    }
+    expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "sick_leave", privateNote: "" }).success).toBe(true);
+    expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "vacation", allDay: true, startTime: null, endTime: null, privateNote: "" }).success).toBe(true);
+  });
+
+  it("rejects partial-day vacation requests before they reach persistence", () => {
+    expect(timeOffRequestSchema.safeParse({ requestType: "vacation", startDate: "2026-08-28", endDate: "2026-08-28", allDay: false, startTime: "14:00", endTime: "18:00", privateNote: "" }).success).toBe(false);
   });
 });

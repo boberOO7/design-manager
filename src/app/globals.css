@@ -26,7 +26,7 @@
   --ui-danger-solid: #ef4444;
   --ui-overlay: rgb(12 10 9 / 0.48);
   --ui-progress-track: #f5f5f4;
-  --ui-calendar-gridline: #f5f5f4;
+  --ui-calendar-gridline: var(--ui-border);
   --ui-neutral-surface: #f5f5f4;
   --ui-neutral-border: #e7e5e4;
   --ui-neutral-text: #44403c;
@@ -40,6 +40,24 @@
   --ui-interview-surface: #f3e8ff;
   --ui-interview-border: #9333ea;
   --ui-interview-text: #6b21a8;
+  --ui-calendar-general-surface: #d9f0ff;
+  --ui-calendar-general-border: #0284c7;
+  --ui-calendar-general-text: #0c4a6e;
+  --ui-calendar-meeting-surface: #cffafe;
+  --ui-calendar-meeting-border: #0891b2;
+  --ui-calendar-meeting-text: #155e75;
+  --ui-calendar-interview-surface: #f3e8ff;
+  --ui-calendar-interview-border: #9333ea;
+  --ui-calendar-interview-text: #6b21a8;
+  --ui-calendar-site-visit-surface: #ccfbf1;
+  --ui-calendar-site-visit-border: #0f766e;
+  --ui-calendar-site-visit-text: #115e59;
+  --ui-calendar-business-trip-surface: #e0e7ff;
+  --ui-calendar-business-trip-border: #4f46e5;
+  --ui-calendar-business-trip-text: #3730a3;
+  --ui-calendar-presentation-surface: #ffedd5;
+  --ui-calendar-presentation-border: #c2410c;
+  --ui-calendar-presentation-text: #9a3412;
   --ui-success-surface: #d1fae5;
   --ui-success-border: #059669;
   --ui-success-accent: #059669;
@@ -123,7 +141,7 @@
   --ui-danger-solid: #f87171;
   --ui-overlay: rgb(0 0 0 / 0.68);
   --ui-progress-track: #35312b;
-  --ui-calendar-gridline: #292621;
+  --ui-calendar-gridline: var(--ui-border);
   --ui-neutral-surface: #302d29;
   --ui-neutral-border: #a8a29e;
   --ui-neutral-text: #e7e5e4;
@@ -137,6 +155,24 @@
   --ui-interview-surface: #3b0764;
   --ui-interview-border: #c084fc;
   --ui-interview-text: #e9d5ff;
+  --ui-calendar-general-surface: #0c4a6e;
+  --ui-calendar-general-border: #0ea5e9;
+  --ui-calendar-general-text: #7dd3fc;
+  --ui-calendar-meeting-surface: #164e63;
+  --ui-calendar-meeting-border: #22d3ee;
+  --ui-calendar-meeting-text: #a5f3fc;
+  --ui-calendar-interview-surface: #3b0764;
+  --ui-calendar-interview-border: #c084fc;
+  --ui-calendar-interview-text: #e9d5ff;
+  --ui-calendar-site-visit-surface: #134e4a;
+  --ui-calendar-site-visit-border: #2dd4bf;
+  --ui-calendar-site-visit-text: #99f6e4;
+  --ui-calendar-business-trip-surface: #312e81;
+  --ui-calendar-business-trip-border: #818cf8;
+  --ui-calendar-business-trip-text: #c7d2fe;
+  --ui-calendar-presentation-surface: #431407;
+  --ui-calendar-presentation-border: #fb923c;
+  --ui-calendar-presentation-text: #fed7aa;
   --ui-success-surface: #064e3b;
   --ui-success-border: #10b981;
   --ui-success-accent: #10b981;
@@ -246,6 +282,78 @@ body,
 
 .calendar-week-timeline::-webkit-scrollbar-track {
   background: var(--ui-surface);
+}
+
+/* On usable desktop heights, Calendar views consume the app shell's remaining space.
+   Shorter viewports keep the natural, scrollable layout so content stays readable. */
+@media (min-width: 1024px) and (min-height: 900px) {
+  .calendar-viewport {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .calendar-viewport > * + * {
+    margin-top: 0;
+  }
+
+  .calendar-fill-card,
+  .calendar-month-view,
+  .calendar-week-view,
+  .calendar-week-horizontal,
+  .calendar-week-content {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+  }
+
+  .calendar-toolbar,
+  .calendar-month-weekdays {
+    flex: 0 0 auto;
+  }
+
+  .calendar-month-grid {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+  }
+
+  .calendar-month-week,
+  .calendar-month-day {
+    min-height: 0;
+  }
+
+  .calendar-month-day {
+    overflow: hidden;
+  }
+
+  .calendar-month-overflow {
+    min-height: 1.25rem;
+  }
+
+  .calendar-week-horizontal {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .calendar-week-timeline {
+    max-height: none;
+    min-height: 0;
+    flex: 1 1 0%;
+  }
+}
+
+/* Keep the app's scrollable content box stable while drawers lock its scroll.
+   Calendar's viewport-fitting flex layout must not be remeasured against a
+   transient scrollbar-compensation padding value. */
+@media (min-width: 1024px) {
+  #main-content {
+    scrollbar-gutter: stable;
+  }
 }
 
 .calendar-week-timeline::-webkit-scrollbar-thumb {

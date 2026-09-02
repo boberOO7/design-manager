@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
-  filterCalendarItems, getDayItems, getMonthGrid, getVisibleDayItems, instantToDateOnly,
-  isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
+  filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
+  isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
   MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
@@ -35,11 +35,18 @@ function absence(id: string, userId: string, startDate: string, endDate: string)
 }
 
 function allDayEvent(startDate: string, endDate: string): Extract<CalendarItem, { source: "calendar_event" }> {
-  return { source: "calendar_event", key: "calendar_event:e1", id: "e1", title: "Studio event", startDate, endDate, allDay: true, projectId: null, personIds: ["u1"], eventType: "other", startsAt: `${startDate}T00:00:00.000Z`, endsAt: "2026-08-01T00:00:00.000Z", description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
+  return { source: "calendar_event", key: "calendar_event:e1", id: "e1", title: "Studio event", startDate, endDate, allDay: true, projectId: null, personIds: ["u1"], eventType: "general", startsAt: `${startDate}T00:00:00.000Z`, endsAt: "2026-08-01T00:00:00.000Z", description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [], }, invitees: [], participants: [] };
+}
+
+function calendarEvent(overrides: Partial<Extract<CalendarItem, { source: "calendar_event" }>> = {}): Extract<CalendarItem, { source: "calendar_event" }> {
+  return {
+    ...allDayEvent("2026-07-28", "2026-07-28"),
+    ...overrides,
+  };
 }
 
 function timedEvent(id: string, startsAt: string, endsAt: string): Extract<CalendarItem, { source: "calendar_event" }> {
-  return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "other", startsAt, endsAt, description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
+  return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "general", startsAt, endsAt, description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
 }
 
 function timedAbsence(id: string, startDate: string, startTime: string, endTime: string): Extract<CalendarItem, { source: "time_off" }> {
@@ -54,6 +61,10 @@ describe("Calendar dates and views", () => {
   it("starts a six-week Month grid on Monday and includes adjacent dates", () => {
     const grid = getMonthGrid("2026-08-15");
     expect(grid).toHaveLength(42); expect(grid[0]).toBe("2026-07-27"); expect(grid.at(-1)).toBe("2026-09-06");
+  });
+  it("uses five equal desktop Month rows unless the calendar days reach a sixth", () => {
+    expect(getMonthDesktopWeekCount("2026-04-15")).toBe(5);
+    expect(getMonthDesktopWeekCount("2026-08-15")).toBe(6);
   });
   it("keeps date-only deadlines on their literal day", () => {
     expect(deadline({ startDate: "2026-01-01" }).startDate).toBe("2026-01-01");
@@ -164,11 +175,27 @@ describe("Month spanning layout", () => {
     expect(categorySegments.map(getMonthSegmentGeometry)).toEqual(Array.from({ length: 5 }, () => expect.objectContaining({ height: MONTH_EVENT_GEOMETRY.barHeight, textPaddingInline: MONTH_EVENT_GEOMETRY.textPaddingInline, borderInlineStartWidth: MONTH_EVENT_GEOMETRY.borderInlineStartWidth })));
   });
 
-  it("uses the same header-clearance origin before all Month lanes and after their overlays", () => {
+  it("uses the compact Month lane gap after all-day overlays", () => {
     const headerBottom = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight;
     expect(getMonthItemTop()).toBe(headerBottom + MONTH_EVENT_GEOMETRY.headerClearance);
-    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight)).toBe(getMonthItemTop() + MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.headerClearance);
-    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight * 3 + MONTH_EVENT_GEOMETRY.laneGap * 2)).toBe(116);
+    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight)).toBe(getMonthItemTop() + MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.laneGap);
+    expect(getMonthItemTop(MONTH_EVENT_GEOMETRY.barHeight * 3 + MONTH_EVENT_GEOMETRY.laneGap * 2)).toBe(110);
+  });
+
+  it("keeps mixed Month event stacks two pixels apart at the all-day handoff", () => {
+    const allDaySegments = getMonthLayoutSegments([
+      absence("time-off", "Avery", "2026-07-28", "2026-07-28"),
+      deadline(),
+      timedEvent("event", "2026-07-28T06:00:00.000Z", "2026-07-28T07:00:00.000Z"),
+    ], dates);
+    const lastAllDaySegment = allDaySegments.find((segment) => segment.lane === Math.max(...allDaySegments.map((candidate) => candidate.lane)));
+    if (!lastAllDaySegment) throw new Error("Expected Month all-day segments");
+
+    const allDayBottom = getMonthItemTop() + lastAllDaySegment.lane * (MONTH_EVENT_GEOMETRY.barHeight + MONTH_EVENT_GEOMETRY.laneGap) + getMonthSegmentGeometry(lastAllDaySegment).height;
+    const timedRowTop = MONTH_EVENT_GEOMETRY.cellPaddingBlockStart + MONTH_EVENT_GEOMETRY.dateHeaderHeight
+      + getMonthDateLaneLayout(allDaySegments, "2026-07-28").itemOffset;
+
+    expect(timedRowTop - allDayBottom).toBe(MONTH_EVENT_GEOMETRY.laneGap);
   });
 
   it("keeps continuation boundaries gapless and leaves timed events out of Month all-day segments", () => {
@@ -198,11 +225,11 @@ describe("Month spanning layout", () => {
   it("reserves compact Month overlay space only for lanes that are actually used", () => {
     expect(getMonthLaneLayout([])).toMatchObject({ laneCount: 0, overlayHeight: 0, itemOffset: 8 });
     const oneLane = getMonthLayoutSegments([absence("one", "Avery", "2026-07-27", "2026-07-29")], dates);
-    expect(getMonthLaneLayout(oneLane)).toMatchObject({ laneCount: 1, overlayHeight: 20, itemOffset: 36 });
+    expect(getMonthLaneLayout(oneLane)).toMatchObject({ laneCount: 1, overlayHeight: 20, itemOffset: 30 });
     const threeLanes = getMonthLayoutSegments([
       absence("a", "Avery", "2026-07-27", "2026-07-31"), absence("b", "Taylor", "2026-07-27", "2026-07-31"), absence("c", "Morgan", "2026-07-27", "2026-07-31"),
     ], dates);
-    expect(getMonthLaneLayout(threeLanes)).toMatchObject({ laneCount: 3, overlayHeight: 64 });
+    expect(getMonthLaneLayout(threeLanes)).toMatchObject({ laneCount: 3, overlayHeight: 64, itemOffset: 74 });
   });
 
   it("reserves Month lane space per date instead of using the week's maximum", () => {
@@ -210,9 +237,9 @@ describe("Month spanning layout", () => {
     const augFirstAbsence = absence("later", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([longAbsence, augFirstAbsence], dates).filter((segment) => segment.weekIndex === 0);
     expect(segments.map((segment) => [segment.itemId, segment.lane])).toEqual([[longAbsence.key, 0], [augFirstAbsence.key, 1]]);
-    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 58 });
-    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 36 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 58 });
+    expect(getMonthLaneLayout(segments)).toMatchObject({ laneCount: 2, itemOffset: 52 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-29")).toMatchObject({ laneCount: 1, itemOffset: 30 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 52 });
     expect(getMonthDateLaneLayout(segments, "2026-07-28")).toMatchObject({ laneCount: 0, itemOffset: 8 });
   });
 
@@ -220,8 +247,18 @@ describe("Month spanning layout", () => {
     const first = absence("first", "Avery", "2026-07-29", "2026-08-02");
     const hidden = absence("hidden", "Taylor", "2026-08-01", "2026-08-01");
     const segments = getMonthLayoutSegments([first, hidden], dates).filter((segment) => segment.weekIndex === 0);
-    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 36 });
-    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 58 });
+    expect(getMonthDateLaneLayout(segments, "2026-07-30")).toMatchObject({ laneCount: 1, itemOffset: 30 });
+    expect(getMonthDateLaneLayout(segments, "2026-08-01")).toMatchObject({ laneCount: 2, itemOffset: 52 });
+  });
+
+  it("caps Month date lanes at the visible overlay budget before placing overflow", () => {
+    const segments = getMonthLayoutSegments([
+      absence("first", "Avery", "2026-07-28", "2026-07-28"),
+      absence("second", "Taylor", "2026-07-28", "2026-07-28"),
+      absence("third", "Morgan", "2026-07-28", "2026-07-28"),
+      absence("fourth", "Jordan", "2026-07-28", "2026-07-28"),
+    ], dates);
+    expect(getMonthDateLaneLayout(segments, "2026-07-28", 3)).toMatchObject({ laneCount: 3, overlayHeight: 64, itemOffset: 74 });
   });
 });
 
@@ -327,6 +364,67 @@ describe("Calendar filtering and identity", () => {
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.title)).toEqual(["Avery", "Taylor"]);
     expect(items.find((item) => item.id === "r1")?.source).toBe("time_off_request_admin");
+  });
+});
+
+describe("Calendar relevance semantics", () => {
+  const executor = { id: "u2", full_name: "Executor", job_title: "Architect", avatar_url: null, projectIds: [] };
+  const invitee = { ...executor, inviteId: "invite-1", status: "pending" as const };
+
+  it("distinguishes a site-visit creator from its executor", () => {
+    const siteVisit = calendarEvent({ eventType: "site_visit", organizer: { ...executor, id: "u1", full_name: "Creator" }, assigneeId: "u2", assignee: executor, personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(siteVisit, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(siteVisit, "u2")).toBe(true);
+    expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u1")).toEqual([]);
+    expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u2")).toEqual([siteVisit]);
+  });
+
+  it("keeps meeting organizers relevant as genuine participants", () => {
+    const meeting = calendarEvent({ eventType: "meeting", organizer: { ...executor, id: "u1", full_name: "Organizer" }, personIds: ["u1"] });
+
+    expect(isCalendarItemRelevantToUser(meeting, "u1")).toBe(true);
+  });
+
+  it("keeps explicit invitees relevant without treating a generic creator as relevant", () => {
+    const general = calendarEvent({ eventType: "general", organizer: { ...executor, id: "u1", full_name: "Creator" }, invitees: [invitee], personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(general, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(general, "u2")).toBe(true);
+  });
+
+  it("keeps business-trip participants relevant and excludes the creator alone", () => {
+    const trip = calendarEvent({ eventType: "business_trip", organizer: { ...executor, id: "u1", full_name: "Creator" }, participants: [executor], personIds: ["u1", "u2"] });
+
+    expect(isCalendarItemRelevantToUser(trip, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(trip, "u2")).toBe(true);
+  });
+
+  it("uses personal availability identity without exposing or interpreting its subtype", () => {
+    const ownAvailability = absence("own", "u1", "2026-07-28", "2026-07-28");
+    const coworkerAvailability = absence("coworker", "u2", "2026-07-28", "2026-07-28");
+    const companyDayOff: Extract<CalendarItem, { source: "studio_day_off" }> = { source: "studio_day_off", key: "studio-day-off:1", id: "1", title: "Company day off", note: null, startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, projectId: null, personIds: [] };
+
+    expect(isCalendarItemRelevantToUser(ownAvailability, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(coworkerAvailability, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(companyDayOff, "u1")).toBe(true);
+  });
+
+  it("handles the remaining event and projected-item roles explicitly", () => {
+    const presenterEvent = calendarEvent({ eventType: "presentation", organizer: { ...executor, id: "u1", full_name: "Presenter" } });
+    const interview = calendarEvent({ eventType: "interview", assigneeId: "u2", assignee: executor });
+    const internalReview = calendarEvent({ eventType: "internal_review", invitees: [invitee] });
+    const workMakeup = calendarEvent({ eventType: "work_makeup", organizer: { ...executor, id: "u1", full_name: "Employee" } });
+
+    expect(isCalendarItemRelevantToUser(presenterEvent, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(interview, "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(internalReview, "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(workMakeup, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(deadline(), "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(task(), "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(birthday(), "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(anniversary(), "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser(salaryPayment(), "u1")).toBe(true);
   });
 });
 
