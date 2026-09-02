@@ -16,6 +16,9 @@ type TeamMemberCardProps = {
   isActive: boolean;
   isAdmin: boolean;
   canEditProfile: boolean;
+  city: string | null;
+  cityGeoNamesId: number | null;
+  countryCode: string | null;
   editableJobTitle: string | null;
   jobTitle: string | null;
   joinedAt: string | null;
@@ -26,7 +29,7 @@ type TeamMemberCardProps = {
   userId: string;
 };
 
-export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditProfile, editableJobTitle, fullName, isActive, isAdmin, jobTitle, joinedAt, location, removedAt, roleLabel, systemRole, userId }: TeamMemberCardProps) {
+export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditProfile, city, cityGeoNamesId, countryCode, editableJobTitle, fullName, isActive, isAdmin, jobTitle, joinedAt, location, removedAt, roleLabel, systemRole, userId }: TeamMemberCardProps) {
   const t = useTranslations("Team");
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [hasFailedImage, setHasFailedImage] = useState(false);
@@ -34,7 +37,7 @@ export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditPro
   const canViewAvatar = Boolean(imageUrl) && !hasFailedImage;
 
   return <article className={`relative flex h-full w-full max-w-[18.75rem] flex-col items-center rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 pb-4 pt-5 text-center ${isActive ? "" : "opacity-75"}`}>
-    {isAdmin ? <StudioMemberLifecycleControls birthDate={birthDate} canEditProfile={canEditProfile} isFormer={!isActive} jobTitle={editableJobTitle} joinedAt={joinedAt} name={fullName} systemRole={systemRole} userId={userId} /> : null}
+    {isAdmin ? <StudioMemberLifecycleControls birthDate={birthDate} canEditProfile={canEditProfile} city={city} cityGeoNamesId={cityGeoNamesId} countryCode={countryCode} isFormer={!isActive} jobTitle={editableJobTitle} joinedAt={joinedAt} name={fullName} systemRole={systemRole} userId={userId} /> : null}
     {canViewAvatar ? <button aria-label={t("viewAvatar", { name: fullName })} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" onClick={() => setIsAvatarOpen(true)} type="button">
       <UserAvatar className="ring-4 ring-[var(--ui-surface)] transition-opacity hover:opacity-85" decorative imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />
     </button> : <UserAvatar className="ring-4 ring-[var(--ui-surface)]" imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />}

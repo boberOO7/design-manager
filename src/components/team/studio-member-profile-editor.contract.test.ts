@@ -25,4 +25,13 @@ describe("studio member profile editor", () => {
     expect(source).toContain("canEditProfile && profileDialogOpen");
     expect(source).toContain("removeFromStudio");
   });
+
+  it("keeps country and city as plain fields in the existing two-column form grid", async () => {
+    const source = await readFile(editorPath, "utf8");
+    expect(source).toContain('className="grid gap-4 sm:grid-cols-2"');
+    expect(source).toContain('name="countryCode"');
+    expect(source).toContain('name="city"');
+    expect(source).toContain("<CityCombobox");
+    expect(source).not.toContain("Місце перебування");
+  });
 });

@@ -1096,7 +1096,7 @@ export type Database = {
         Returns: undefined
       }
       update_studio_member_profile: {
-        Args: { p_birth_date: string | null; p_full_name: string; p_job_title: string; p_joined_at: string | null; p_system_role: string; p_user_id: string }
+        Args: { p_birth_date: string | null; p_city: string | null; p_city_geonames_id: number | null; p_country_code: string | null; p_full_name: string; p_job_title: string; p_joined_at: string | null; p_system_role: string; p_user_id: string }
         Returns: undefined
       }
     }

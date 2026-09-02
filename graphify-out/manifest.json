@@ -285,8 +285,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/team/actions.ts": {
-    "mtime": 1787854574.9269328,
-    "ast_hash": "7fb4bde1d933f74042d3d75a021d4dad",
+    "mtime": 1788376421.0804775,
+    "ast_hash": "2d6e7c6950d8be49377edbedb3919007",
     "semantic_hash": ""
   },
   "src/app/(app)/team/page.tsx": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1788372592.097601,
-    "ast_hash": "d958e9d34ea8388ad201fb5f766b1d02",
+    "mtime": 1788376492.457843,
+    "ast_hash": "0899c7b780fef1ca65b98163f1d1ed44",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1990,8 +1990,8 @@
     "semantic_hash": ""
   },
   "src/components/team/team-member-card.tsx": {
-    "mtime": 1787909188.3184423,
-    "ast_hash": "8f89b87b5f5f54803328b9e801515e6d",
+    "mtime": 1788376421.4804933,
+    "ast_hash": "f04e29f9a5f2fab742d82409921c7623",
     "semantic_hash": ""
   },
   "src/lib/avatar-storage-cleanup.test.ts": {
@@ -2010,13 +2010,13 @@
     "semantic_hash": ""
   },
   "src/components/team/studio-member-lifecycle-controls.tsx": {
-    "mtime": 1787854575.326955,
-    "ast_hash": "b235f46e3b000d5dbdd3d605079991f2",
+    "mtime": 1788376421.6404996,
+    "ast_hash": "49d9fbff47d8252897ba6cec215705a5",
     "semantic_hash": ""
   },
   "src/components/team/team-directory.tsx": {
-    "mtime": 1787854576.0989978,
-    "ast_hash": "d16bad3b3bc7e875c9de06cea258ede9",
+    "mtime": 1788376421.2884858,
+    "ast_hash": "1a73076ac14687c8f5431cd547db8d9c",
     "semantic_hash": ""
   },
   "src/lib/validation/team-membership.ts": {
@@ -3390,28 +3390,28 @@
     "semantic_hash": ""
   },
   "src/components/team/studio-member-profile-editor.contract.test.ts": {
-    "mtime": 1787854605.9121926,
-    "ast_hash": "73c9c3950d158ca3536a9a7ab282a482",
+    "mtime": 1788376667.8342519,
+    "ast_hash": "b1aeae6b75dc26bbb509e8adc5555060",
     "semantic_hash": ""
   },
   "src/components/team/studio-member-profile-editor.tsx": {
-    "mtime": 1787854575.1269438,
-    "ast_hash": "f7e4bcb56131134b5d0a1a18ae2f579e",
+    "mtime": 1788376492.2651014,
+    "ast_hash": "2f23115223edb70fed4e3accdd50b9e9",
     "semantic_hash": ""
   },
   "src/lib/team-member-profile-migration.test.ts": {
-    "mtime": 1787664099.6059933,
-    "ast_hash": "c1d5dc0925611dab91ecd2fb5ba2ffb5",
+    "mtime": 1788376546.5507715,
+    "ast_hash": "495944459afeabc0498f0898e2987f9b",
     "semantic_hash": ""
   },
   "src/lib/validation/team-member-profile.test.ts": {
-    "mtime": 1787854605.776185,
-    "ast_hash": "9b3d5e51153bb61fc9cb7a835b1b569e",
+    "mtime": 1788376546.3947654,
+    "ast_hash": "49b3ff8969aae85ebb1e4bb3a5ec19b9",
     "semantic_hash": ""
   },
   "src/lib/validation/team-member-profile.ts": {
-    "mtime": 1787854574.7989259,
-    "ast_hash": "2fcca69757f0fd25016a5c0fe6ec8628",
+    "mtime": 1788376420.9244714,
+    "ast_hash": "fc49d8aeda59f797ec8cd903cb656438",
     "semantic_hash": ""
   },
   "supabase/migrations/20260825131748_update_team_member_profile.sql": {
@@ -3795,8 +3795,8 @@
     "semantic_hash": ""
   },
   "src/lib/google-calendar/google-calendar-integration.test.ts": {
-    "mtime": 1788375327.6976557,
-    "ast_hash": "c30fe0857b74bb4ca7a27e6ef8ac4796",
+    "mtime": 1788375386.0330698,
+    "ast_hash": "ff1799654d224f16b66257e3577b9f41",
     "semantic_hash": ""
   },
   "src/lib/google-calendar/oauth.ts": {
@@ -3892,6 +3892,11 @@
   "src/lib/google-calendar/lifecycle.ts": {
     "mtime": 1788372592.097601,
     "ast_hash": "392ec9641c1150128597ec78e40026ad",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260902120000_add_team_member_profile_location.sql": {
+    "mtime": 1788376492.637851,
+    "ast_hash": "1a24a508681b130a9f8218abfadd7be5",
     "semantic_hash": ""
   }
 }

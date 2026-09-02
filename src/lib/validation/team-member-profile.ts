@@ -1,10 +1,15 @@
 import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
+import { isCountryCode } from "@/lib/countries";
 import type { SystemRole } from "@/types";
 import { z } from "zod";
 
 export const STUDIO_ACCESS_ROLES = ["employee", "admin"] as const satisfies readonly SystemRole[];
 
 const optionalDateSchema = z.union([z.iso.date(), z.literal("")]).transform((value) => value || null);
+const optionalCountryCodeSchema = z.string().trim().transform((value) => value ? value.toUpperCase() : null)
+  .refine((value) => value === null || isCountryCode(value), "Choose a valid country");
+const optionalCitySchema = z.string().trim().transform((value) => value || null);
+const optionalCityGeoNamesIdSchema = z.preprocess((value) => value === "" || value === undefined ? null : value, z.coerce.number().int().positive().nullable());
 
 export const studioMemberProfileSchema = z.object({
   userId: z.string().uuid(),
@@ -14,6 +19,12 @@ export const studioMemberProfileSchema = z.object({
   systemRole: z.enum(STUDIO_ACCESS_ROLES, { error: "Choose a supported access role" }),
   joinedAt: optionalDateSchema,
   birthDate: optionalDateSchema,
+  countryCode: optionalCountryCodeSchema,
+  city: optionalCitySchema,
+  cityGeoNamesId: optionalCityGeoNamesIdSchema,
+}).superRefine((value, context) => {
+  if (value.city && !value.countryCode) context.addIssue({ code: "custom", message: "Choose a country before saving a city.", path: ["countryCode"] });
+  if (value.cityGeoNamesId && !value.city) context.addIssue({ code: "custom", message: "A city is required for its GeoNames identifier.", path: ["city"] });
 });
 
 export type StudioMemberProfileInput = z.infer<typeof studioMemberProfileSchema>;
@@ -38,6 +49,9 @@ export function getStudioMemberProfileInput(formData: FormData) {
     systemRole: getFormString(formData, "systemRole"),
     joinedAt: getFormString(formData, "joinedAt"),
     birthDate: getFormString(formData, "birthDate"),
+    countryCode: getFormString(formData, "countryCode") ?? "",
+    city: getFormString(formData, "city") ?? "",
+    cityGeoNamesId: getFormString(formData, "cityGeoNamesId"),
   };
 }
 
