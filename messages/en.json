@@ -407,6 +407,7 @@
     "description": "Description",
     "assignee": "Assignee",
     "coAssignees": "Co-assignees",
+    "noCollaborators": "None",
     "addCoAssignees": "Add co-assignees",
     "searchCoAssignees": "Search co-assignees",
     "noCoAssigneeResults": "No members found.",

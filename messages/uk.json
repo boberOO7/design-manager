@@ -407,6 +407,7 @@
     "description": "Опис",
     "assignee": "Виконавець",
     "coAssignees": "Співвиконавці",
+    "noCollaborators": "Немає",
     "addCoAssignees": "Додати співвиконавців",
     "searchCoAssignees": "Пошук співвиконавців",
     "noCoAssigneeResults": "Учасників не знайдено.",

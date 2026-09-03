@@ -2,7 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
@@ -396,7 +396,7 @@ export function TaskDetailsDrawer({
                     <Input autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} />
                   </FormField>
                   <FormField label={t("description")} optional error={fieldErrors.description ? validation("correctFields") : undefined}>
-                    <Textarea autoComplete="off" value={values.description} rows={2} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
+                    <AutoGrowingTextarea autoComplete="off" value={values.description} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
                   </FormField>
                 </div>
               </section>
@@ -477,8 +477,7 @@ export function TaskDetailsDrawer({
                 <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
                 <dl className="mt-4 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
                   <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span>{task.assignee.full_name}</span></> : t("unassigned")}</dd></div>
-                  {task.collaborators.length > 0 ? <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1 flex -space-x-1.5" aria-label={task.collaborators.map((collaborator) => collaborator.full_name).join(", ")}>{task.collaborators.slice(0, 4).map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}{task.collaborators.length > 4 ? <span title={task.collaborators.slice(4).map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{task.collaborators.length - 4}</span> : null}</dd></div> : null}
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{statusLabel(task.status)}</dd></div>
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
                   <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} status={task.status} statusLabel={statusLabel} /></dd></div>
@@ -627,12 +626,48 @@ function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, stat
       const isCompleted = state === "completed";
       const isOverdue = state === "overdue";
       return <li key={deadline.id} className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", isCompleted && "text-[var(--ui-text-muted)]")}>
-        {isCompleted ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : <span aria-hidden="true" className="size-4 shrink-0" />}
+        {isCompleted ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : null}
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", workflowStyle.className, isCompleted && "opacity-70")}>{statusLabel(deadline.target_status)}</span>
         <span className={cn("ui-numeric font-medium", isCompleted && "line-through", isOverdue && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
       </li>;
     })}
   </ul>;
+}
+
+function AutoGrowingTextarea({ className, value, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 240 ? "auto" : "hidden";
+  }, [value]);
+
+  return <Textarea ref={textareaRef} value={value} rows={3} className={cn("min-h-[5.5rem] max-h-60 resize-none", className)} {...props} />;
+}
+
+function TaskCollaboratorSummary({ collaborators, emptyLabel }: {
+  collaborators: ProjectTask["collaborators"];
+  emptyLabel: string;
+}) {
+  if (!collaborators.length) return <span className="font-medium text-[var(--ui-text-muted)]">{emptyLabel}</span>;
+
+  if (collaborators.length <= 2) {
+    return <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+      {collaborators.map((collaborator) => <span key={collaborator.id} className="flex min-w-0 items-center gap-1.5 font-medium text-[var(--ui-text)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="board" /><span className="truncate">{collaborator.full_name}</span></span>)}
+    </div>;
+  }
+
+  const visibleCollaborators = collaborators.slice(0, 3);
+  const hiddenCollaborators = collaborators.slice(3);
+  return <div className="flex items-center" aria-label={collaborators.map((collaborator) => collaborator.full_name).join(", ")}>
+    <div className="flex -space-x-1.5">
+      {visibleCollaborators.map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}
+      <span title={hiddenCollaborators.map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-7 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{hiddenCollaborators.length}</span>
+    </div>
+  </div>;
 }
 
 function ChecklistItemRow({ canToggle, item, onToggle, pending }: {

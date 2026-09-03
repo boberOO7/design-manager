@@ -126,4 +126,22 @@ describe("task details drawer contract", () => {
     expect(source).toContain("getTaskDeadlinePresentation");
     expect(source).toContain("<Check aria-hidden=\"true\"");
   });
+
+  it("keeps active deadline rows aligned, grows descriptions, and summarizes collaborators in details", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    const deadlineSummary = source.slice(source.indexOf("function TaskDeadlineSummary"), source.indexOf("function AutoGrowingTextarea"));
+    const taskInformation = source.slice(source.indexOf('{task.description?.trim() ? <section>'), source.indexOf('{!canManageTasks && canUpdateStatus'));
+
+    expect(deadlineSummary).toContain('{isCompleted ? <Check');
+    expect(deadlineSummary).not.toContain(': <span aria-hidden="true" className="size-4 shrink-0" />');
+    expect(source).toContain("function AutoGrowingTextarea");
+    expect(source).toContain('textarea.style.height = "auto"');
+    expect(source).toContain("Math.min(textarea.scrollHeight, 240)");
+    expect(source).toContain('<AutoGrowingTextarea autoComplete="off"');
+    expect(source).toContain("function TaskCollaboratorSummary");
+    expect(source).toContain('emptyLabel={t("noCollaborators")}');
+    expect(taskInformation).not.toContain('{t("status")}');
+    expect(en.Tasks.noCollaborators).toBe("None");
+    expect(uk.Tasks.noCollaborators).toBe("Немає");
+  });
 });

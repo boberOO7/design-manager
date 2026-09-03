@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export const focusVisibleClassName = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2";
@@ -9,9 +9,11 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return <input className={cn(inputClassName, className)} {...props} />;
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(textareaClassName, className)} {...props} />;
-}
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...props }, ref) {
+    return <textarea ref={ref} className={cn(textareaClassName, className)} {...props} />;
+  },
+);
 
 export function FormField({ children, className, error, label, optional = false, as = "label" }: { as?: "div" | "label"; children: ReactNode; className?: string; error?: string; label: ReactNode; optional?: boolean }) {
   const Tag = as;

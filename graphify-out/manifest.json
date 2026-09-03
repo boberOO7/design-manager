@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1788425586.1302562,
-    "ast_hash": "db624c6de3c9d0d3895a70cb04d33499",
+    "mtime": 1788430135.0271187,
+    "ast_hash": "6d4962693cfa28c4fc7e7e157ff1c4d6",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -560,8 +560,8 @@
     "semantic_hash": "ae9dbe520d2b938aebdbeef2f51afa23"
   },
   "src/components/ui/form-field.tsx": {
-    "mtime": 1787231775.9176779,
-    "ast_hash": "b27c7e8462aa3f1337eca519d0bdd531",
+    "mtime": 1788430149.2235506,
+    "ast_hash": "895b2cef888251fcd894acd8f06a612c",
     "semantic_hash": ""
   },
   "src/components/ui/panel.tsx": {
@@ -1590,8 +1590,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1788425616.063731,
-    "ast_hash": "9f9aedd850729b806d5b75eb7b9c05c8",
+    "mtime": 1788430171.786452,
+    "ast_hash": "3a77e1a3284dbf44920f0a799909cbbe",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788381927.162268,
-    "ast_hash": "7a39a14e4f67efc1bdd70170ebcfbf4b",
+    "mtime": 1788430135.1991248,
+    "ast_hash": "e259a3be1ebf6e0da50da463bb4d7180",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788381927.3062747,
-    "ast_hash": "a004abbd942e575f444764bb454386c8",
+    "mtime": 1788430135.3871315,
+    "ast_hash": "db356d9e1702a06998404a38da403987",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -3880,8 +3880,8 @@
     "semantic_hash": ""
   },
   "supabase/snippets/Untitled query 526.sql": {
-    "mtime": 1788372592.097601,
-    "ast_hash": "5cafa17789ce459071834b85d1387ba8",
+    "mtime": 1788427172.0344892,
+    "ast_hash": "67eeaf6a4cedb0c6679cdba582931c32",
     "semantic_hash": ""
   },
   "src/lib/google-calendar/google-calendar-lifecycle.test.ts": {
