@@ -823,7 +823,7 @@ export function ProjectTaskBoard({
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
         <div className="flex items-center gap-2">
-          {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} stageColumns={localStageColumns} templates={templates} /> : null}
+          {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} templates={templates} /> : null}
           <Popover.Root>
             <Popover.Trigger asChild>
               <button type="button" className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={boardActions}>

@@ -51,10 +51,10 @@ export async function createProjectTask(
       title: flattened.title?.[0],
       description: flattened.description?.[0],
       assignee_id: flattened.assignee_id?.[0],
+      collaborator_ids: flattened.collaborator_ids?.[0],
       priority: flattened.priority?.[0],
       stage: flattened.stage?.[0],
-      status: flattened.status?.[0],
-      due_date: flattened.due_date?.[0],
+      deadlines: flattened.deadlines?.[0],
       completed_area_m2: flattened.completed_area_m2?.[0],
       checklist_items: flattened.checklist_items?.[0],
     };
@@ -71,13 +71,19 @@ export async function createProjectTask(
     return { formError: "The project was not found or is not available for new tasks." };
   }
   const stageColumns = await getProjectStageColumns(project.id);
-  if (!stageColumns[parsed.data.stage].includes(parsed.data.status)) return { fieldErrors: { status: "Choose a status enabled for this stage." } };
-
-  const projectMembers = parsed.data.assignee_id === null
+  if (!stageColumns[parsed.data.stage].includes("todo")) {
+    return { fieldErrors: { stage: "Choose a stage that allows new Todo tasks." } };
+  }
+  const projectMembers = (parsed.data.assignee_id === null && parsed.data.collaborator_ids.length === 0)
     ? []
     : await getAssignableProjectMembers(project.id, project.studio_id);
-  if (parsed.data.assignee_id !== null && !projectMembers.some((member) => member.id === parsed.data.assignee_id)) {
-    return { fieldErrors: { assignee_id: "Choose an active member of this project." } };
+  const requestedPeople = [parsed.data.assignee_id, ...parsed.data.collaborator_ids].filter((id): id is string => id !== null);
+  if (requestedPeople.some((id) => !projectMembers.some((member) => member.id === id))) {
+    return {
+      fieldErrors: {
+        [parsed.data.assignee_id !== null && !projectMembers.some((member) => member.id === parsed.data.assignee_id) ? "assignee_id" : "collaborator_ids"]: "Choose active members of this project.",
+      },
+    };
   }
 
   const task = {
@@ -86,9 +92,9 @@ export async function createProjectTask(
     description: parsed.data.description ?? null,
     priority: parsed.data.priority,
     stage: parsed.data.stage,
-    status: parsed.data.status,
     assignee_id: parsed.data.assignee_id,
-    due_date: parsed.data.due_date ?? null,
+    collaborator_ids: parsed.data.collaborator_ids,
+    deadlines: parsed.data.deadlines,
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
   };
   const supabase = await createClient();

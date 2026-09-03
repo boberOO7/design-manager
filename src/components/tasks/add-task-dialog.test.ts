@@ -32,4 +32,17 @@ describe("task creation checklist template contract", () => {
     expect(source).not.toContain('name="assignee_id" required');
     expect(source).not.toContain("disabled={isPending || members.length === 0}");
   });
+
+  it("uses shared collaborator and milestone-deadline controls without a creation status or legacy date", async () => {
+    const source = await readFile(dialogPath, "utf8");
+
+    expect(source).toContain("TaskCollaboratorMultiSelect");
+    expect(source).toContain('name="collaborator_ids"');
+    expect(source).toContain("TaskDeadlineEditor");
+    expect(source).toContain('name="deadlines"');
+    expect(source).not.toContain('label={t("status")}');
+    expect(source).not.toContain('name="status"');
+    expect(source).not.toContain('name="due_date"');
+    expect(source).not.toContain('t("taskAreaHelp")');
+  });
 });

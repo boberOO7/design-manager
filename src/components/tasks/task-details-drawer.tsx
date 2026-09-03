@@ -1,12 +1,11 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -17,7 +16,9 @@ import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
 import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus } from "@/lib/tasks";
-import { getTaskDeadlinePresentation, isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
+import { getTaskDeadlinePresentation, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
+import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborator-multi-select";
+import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { cn, formatDate, formatNumber } from "@/lib/utils";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
@@ -410,7 +411,7 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                   <FormField label={t("coAssignees")} optional error={fieldErrors.collaborator_ids ? validation("correctFields") : undefined}>
-                    <CoAssigneeMultiSelect assigneeId={values.assignee_id} disabled={isSaving} members={members} selectedIds={values.collaborator_ids} onSelectedIdsChange={(collaborator_ids) => setValues((current) => ({ ...current, collaborator_ids }))} />
+                    <TaskCollaboratorMultiSelect assigneeId={values.assignee_id} disabled={isSaving} members={members} selectedIds={values.collaborator_ids} onSelectedIdsChange={(collaborator_ids) => setValues((current) => ({ ...current, collaborator_ids }))} />
                   </FormField>
                   <FormField label={t("priority")}>
                     <Select value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
@@ -423,7 +424,7 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                 </div>
-                <DeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
+                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
               <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
@@ -508,105 +509,6 @@ export function TaskDetailsDrawer({
       </div>
     </Drawer>
   );
-}
-
-function CoAssigneeMultiSelect({
-  assigneeId,
-  disabled,
-  members,
-  onSelectedIdsChange,
-  selectedIds,
-}: {
-  assigneeId: string | null;
-  disabled: boolean;
-  members: AssignableProjectMember[];
-  onSelectedIdsChange: (ids: string[]) => void;
-  selectedIds: string[];
-}) {
-  const t = useTranslations("Tasks");
-  const [open, setOpen] = useState(false);
-  const availableMembers = members.filter((member) => member.id !== assigneeId);
-  const selectedMembers = availableMembers.filter((member) => selectedIds.includes(member.id));
-  const visibleChips = selectedMembers.slice(0, 2);
-  const overflowCount = selectedMembers.length - visibleChips.length;
-
-  function toggle(memberId: string) {
-    onSelectedIdsChange(selectedIds.includes(memberId)
-      ? selectedIds.filter((id) => id !== memberId)
-      : [...selectedIds, memberId]);
-  }
-
-  return <Popover.Root open={open} onOpenChange={setOpen}>
-    <div className="relative flex h-11 min-w-0 items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 text-sm transition-colors hover:border-[var(--ui-border)]">
-      <Popover.Trigger asChild>
-        <button type="button" disabled={disabled} aria-label={t("coAssignees")} className="absolute inset-0 rounded-[var(--ui-radius-control)] outline-none transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-60" />
-      </Popover.Trigger>
-      {selectedMembers.length ? <div className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden" aria-live="polite">
-        {visibleChips.map((member) => <button key={member.id} type="button" disabled={disabled} onClick={() => toggle(member.id)} className="inline-flex min-w-0 shrink items-center gap-1 rounded-full bg-[var(--ui-surface-strong)] py-0.5 pl-0.5 pr-1.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed" aria-label={t("removeCoAssignee", { name: member.full_name })}>
-          <UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="board" />
-          <span className="max-w-20 truncate">{member.full_name}</span>
-          <X aria-hidden="true" className="size-3 shrink-0 text-[var(--ui-text-secondary)]" />
-        </button>)}
-        {overflowCount > 0 ? <span className="shrink-0 rounded-full bg-[var(--ui-surface-strong)] px-1.5 py-0.5 text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflowCount}</span> : null}
-      </div> : <span className="pointer-events-none relative z-10 truncate text-[var(--ui-text-muted)]">{t("addCoAssignees")}</span>}
-      <ChevronDown aria-hidden="true" className="pointer-events-none relative z-10 ml-auto size-4 shrink-0 text-[var(--ui-text-muted)]" />
-    </div>
-    <Popover.Portal>
-      <Popover.Content align="start" sideOffset={6} className="z-[80] w-[min(24rem,calc(100vw-2rem))] rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1.5 shadow-[var(--ui-shadow-popover)]">
-        <div className="max-h-64 overflow-y-auto">
-          {availableMembers.length ? availableMembers.map((member) => {
-            const checked = selectedIds.includes(member.id);
-            return <label key={member.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-[var(--ui-surface-muted)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--ui-focus)]">
-              <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggle(member.id)} className="size-4 shrink-0 accent-[var(--ui-action-primary)]" />
-              <UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="boardCard" />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--ui-text)]">{member.full_name}</span>
-            </label>;
-          }) : <p className="p-3 text-sm text-[var(--ui-text-muted)]">{t("noCoAssigneeResults")}</p>}
-        </div>
-      </Popover.Content>
-    </Popover.Portal>
-  </Popover.Root>;
-}
-
-function DeadlineEditor({
-  deadlines,
-  disabled,
-  error,
-  locale,
-  onChange,
-  statusLabel,
-}: {
-  deadlines: TaskDeadlineInput[];
-  disabled: boolean;
-  error?: string;
-  locale: string;
-  onChange: (deadlines: TaskDeadlineInput[]) => void;
-  statusLabel: (status: ProjectTask["status"]) => string;
-}) {
-  const t = useTranslations("Tasks");
-  const availableStatuses = TASK_MILESTONE_STATUSES.filter((status) => !deadlines.some((deadline) => deadline.target_status === status));
-
-  function updateDeadline(index: number, update: Partial<TaskDeadlineInput>) {
-    onChange(deadlines.map((deadline, deadlineIndex) => deadlineIndex === index ? { ...deadline, ...update } : deadline));
-  }
-
-  return <section aria-labelledby="task-edit-deadlines" className="mt-3 border-t border-[var(--ui-border-subtle)] pt-4">
-    <h3 id="task-edit-deadlines" className="text-sm font-semibold text-[var(--ui-text)]">{t("deadlines")}</h3>
-    <div className="mt-2 space-y-2">
-      {deadlines.map((deadline, index) => <div key={deadline.target_status} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-2">
-        <Select value={deadline.target_status} disabled={disabled} onValueChange={(target_status) => {
-          if (isTaskMilestoneStatus(target_status) && !deadlines.some((item, itemIndex) => itemIndex !== index && item.target_status === target_status)) updateDeadline(index, { target_status });
-        }}>
-          <SelectItem value={deadline.target_status} className={getTaskStatusBadgeStyle(deadline.target_status).className}>{statusLabel(deadline.target_status)}</SelectItem>
-          {availableStatuses.map((status) => <SelectItem key={status} value={status} className={getTaskStatusBadgeStyle(status).className}>{statusLabel(status)}</SelectItem>)}
-        </Select>
-        <DatePicker value={deadline.due_date} disabled={disabled} locale={locale} onValueChange={(due_date) => updateDeadline(index, { due_date })} />
-        <Button type="button" size="sm" variant="ghost" disabled={disabled} className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("removeDeadline", { status: statusLabel(deadline.target_status) })} onClick={() => onChange(deadlines.filter((_, deadlineIndex) => deadlineIndex !== index))}><Trash2 className="size-4" aria-hidden="true" /></Button>
-      </div>)}
-    </div>
-    {error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
-    {availableStatuses.length ? <Button type="button" size="sm" variant="outline" disabled={disabled} className="mt-2 min-h-11" onClick={() => onChange([...deadlines, { target_status: availableStatuses[0]!, due_date: "" }])}><Plus className="size-4" aria-hidden="true" />{t("addDeadline")}</Button> : null}
-  </section>;
 }
 
 function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, statusLabel }: {

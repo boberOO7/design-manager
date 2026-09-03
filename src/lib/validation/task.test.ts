@@ -9,8 +9,8 @@ const validTask = {
   assignee_id: "123e4567-e89b-12d3-a456-426614174000",
   priority: "normal",
   stage: "stage_1",
-  status: "todo",
-  due_date: "",
+  collaborator_ids: [],
+  deadlines: [],
   completed_area_m2: "",
 };
 
@@ -52,6 +52,20 @@ describe("task creation validation", () => {
     expect(taskCreationSchema.parse(validTask).checklist_items).toEqual([]);
     expect(taskCreationSchema.parse({ ...validTask, checklist_items: JSON.stringify([{ title: "Plans", weight: 2 }]) }).checklist_items).toEqual([{ title: "Plans", weight: 2 }]);
     expect(taskCreationSchema.safeParse({ ...validTask, checklist_items: JSON.stringify([{ title: "Plans", weight: 1.5 }]) }).success).toBe(false);
+  });
+
+  it("uses a status-free milestone-deadline creation payload", () => {
+    const result = taskCreationSchema.parse({
+      ...validTask,
+      collaborator_ids: [validTask.assignee_id],
+      deadlines: [{ target_status: "internal_review", due_date: "2026-08-01" }, { target_status: "completed", due_date: "2026-08-15" }],
+    });
+
+    expect(result).not.toHaveProperty("status");
+    expect(result).not.toHaveProperty("due_date");
+    expect(result.deadlines).toHaveLength(2);
+    expect(taskCreationSchema.safeParse({ ...validTask, status: "review" }).success).toBe(false);
+    expect(taskCreationSchema.safeParse({ ...validTask, deadlines: [{ target_status: "in_progress", due_date: "2026-08-01" }] }).success).toBe(false);
   });
 });
 

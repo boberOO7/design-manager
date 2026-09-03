@@ -5,17 +5,16 @@ import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, use
 import { useLocale, useTranslations } from "next-intl";
 import { createProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborator-multi-select";
+import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { taskPrioritySelectItem } from "@/components/tasks/task-select-presentation";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { TaskActionState } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
-import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
-import { BOARD_COLUMNS, isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
-import { taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
+import { type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 
@@ -27,14 +26,12 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   members: AssignableProjectMember[];
   defaultStage?: TaskStage;
   projectId: string;
-  stageColumns?: ProjectStageColumns;
   templates: StudioChecklistTemplate[];
 }>(function AddTaskDialog({
   members,
   defaultStage = "stage_1",
   projectId,
   templates,
-  stageColumns,
 }, ref) {
   const t = useTranslations("Tasks");
   const locale = useLocale();
@@ -55,7 +52,9 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const [checklistItems, setChecklistItems] = useState<ChecklistTemplateStage[]>([]);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<TaskStage>(defaultStage);
-  const [selectedStatus, setSelectedStatus] = useState<WritableTaskStatus>(stageColumns?.[defaultStage][0] ?? "todo");
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
+  const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
+  const [deadlines, setDeadlines] = useState<TaskDeadlineInput[]>([]);
   const selectedTemplate = templates.find((template) => template.id === templateId);
   const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(selectedTemplate, checklistItems);
   const totalWeight = getChecklistTemplateWeight({ stages: checklistItems });
@@ -71,7 +70,9 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   function openDialog(stage = defaultStage) {
     formRef.current?.reset();
     setSelectedStage(stage);
-    setSelectedStatus(stageColumns?.[stage][0] ?? "todo");
+    setSelectedAssigneeId(null);
+    setCollaboratorIds([]);
+    setDeadlines([]);
     setTemplateId("");
     setChecklistItems([]);
     setIsCustomizerOpen(false);
@@ -104,36 +105,33 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("assignee")} optional error={state.fieldErrors?.assignee_id ? validation("correctFields") : undefined}>
-              <Select name="assignee_id" defaultValue="" placeholder={t("selectProjectMember")} disabled={isPending}>
+              <Select name="assignee_id" value={selectedAssigneeId ?? ""} placeholder={t("selectProjectMember")} disabled={isPending} onValueChange={(assigneeId) => { setSelectedAssigneeId(assigneeId || null); setCollaboratorIds((current) => current.filter((id) => id !== assigneeId)); }}>
                 <SelectItem value="">{t("unassigned")}</SelectItem>
                 {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
               </Select>
             </FormField>
+            <FormField label={t("coAssignees")} optional error={state.fieldErrors?.collaborator_ids ? validation("correctFields") : undefined}>
+              <TaskCollaboratorMultiSelect assigneeId={selectedAssigneeId} disabled={isPending} members={members} selectedIds={collaboratorIds} onSelectedIdsChange={setCollaboratorIds} />
+              <input type="hidden" name="collaborator_ids" value={JSON.stringify(collaboratorIds)} />
+            </FormField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField label={t("priority")}>
               <Select name="priority" defaultValue="normal" disabled={isPending}>
                 {TASK_PRIORITY_VALUES.map((value) => taskPrioritySelectItem(value, priority(value)))}
               </Select>
             </FormField>
-          </div>
-          <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
-            <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) { setSelectedStage(stage); setSelectedStatus(stageColumns?.[stage][0] ?? "todo"); } }}>
-              {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
-            </Select>
-          </FormField>
-          <FormField label={t("status")} error={state.fieldErrors?.status ? validation("correctFields") : undefined}>
-            <Select name="status" value={selectedStatus} disabled={isPending} onValueChange={(status) => { if (isWritableTaskStatus(status)) setSelectedStatus(status); }}>
-              {(stageColumns?.[selectedStage] ?? BOARD_COLUMNS.map((column) => column.status)).map((status) => taskStatusSelectItem(status, statusT(status === "in_progress" ? "inProgress" : status)))}
-            </Select>
-          </FormField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t("dueDate")} optional error={state.fieldErrors?.due_date ? validation("correctFields") : undefined}>
-              <DatePicker name="due_date" disabled={isPending} locale={locale} invalid={Boolean(state.fieldErrors?.due_date)} />
-            </FormField>
-            <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
-              <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} autoComplete="off" aria-describedby="completed-area-help" />
-              <p id="completed-area-help" className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{t("taskAreaHelp")}</p>
+            <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
+              <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) setSelectedStage(stage); }}>
+                {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
+              </Select>
             </FormField>
           </div>
+          <TaskDeadlineEditor deadlines={deadlines} disabled={isPending} error={state.fieldErrors?.deadlines} locale={locale} onChange={setDeadlines} statusLabel={(status) => statusT(status === "in_progress" ? "inProgress" : status)} />
+          <input type="hidden" name="deadlines" value={JSON.stringify(deadlines)} />
+          <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
+            <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} autoComplete="off" />
+          </FormField>
           <section aria-labelledby="checklist-template-heading" className="border-t border-[var(--ui-border-subtle)] pt-4">
             <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 id="checklist-template-heading" className="text-sm font-medium text-[var(--ui-text)]">{templatesT("checklistTemplate")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{templatesT("optionalStages")}</p></div></div>
             <label className="mt-3 grid gap-1 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sr-only">{templatesT("checklistTemplate")}</span><Select value={templateId} disabled={isPending} onValueChange={(nextTemplateId) => { if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm(templatesT("changingConfirm"))) return; const nextTemplate = templates.find((template) => template.id === nextTemplateId); setTemplateId(nextTemplateId); setChecklistItems(cloneChecklistTemplateStages(nextTemplate)); setIsCustomizerOpen(false); }}><SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</Select></label>

@@ -19,5 +19,8 @@ describe("task milestone deadlines migration", () => {
     expect(sql).toContain("if p_deadlines is not null then");
     expect(sql).toContain("delete from public.task_deadlines where task_id = p_task_id;");
     expect(sql).toContain("insert into public.task_deadlines (task_id, target_status, due_date)");
+    expect(sql).toContain("'todo') returning id into new_task_id");
+    expect(sql).toContain("p_task ? 'deadlines'");
+    expect(sql).toContain("p_task -> 'collaborator_ids'");
   });
 });

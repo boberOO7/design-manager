@@ -4,6 +4,8 @@ import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
 
 const drawerPath = new URL("./task-details-drawer.tsx", import.meta.url);
+const collaboratorControlPath = new URL("./task-collaborator-multi-select.tsx", import.meta.url);
+const deadlineEditorPath = new URL("./task-deadline-editor.tsx", import.meta.url);
 
 describe("task details drawer contract", () => {
   it("connects the visible eyebrow, dialog title, and close label to canonical messages", async () => {
@@ -81,8 +83,9 @@ describe("task details drawer contract", () => {
 
   it("keeps co-assignee selection compact and moves options into an accessible popover", async () => {
     const source = await readFile(drawerPath, "utf8");
-    const control = source.slice(source.indexOf("function CoAssigneeMultiSelect"), source.indexOf("function ChecklistItemRow"));
+    const control = await readFile(collaboratorControlPath, "utf8");
 
+    expect(source).toContain("TaskCollaboratorMultiSelect");
     expect(control).toContain("Popover.Trigger");
     expect(control).toContain("Popover.Content");
     expect(control).toContain('type="checkbox"');
@@ -112,16 +115,17 @@ describe("task details drawer contract", () => {
 
   it("edits compact milestone deadlines and keeps status changes out of the task edit form", async () => {
     const source = await readFile(drawerPath, "utf8");
+    const deadlineEditor = await readFile(deadlineEditorPath, "utf8");
     const editPlanning = source.slice(source.indexOf('aria-labelledby="task-edit-planning"'), source.indexOf('aria-labelledby="task-edit-progress"'));
 
-    expect(editPlanning).toContain("<DeadlineEditor");
+    expect(editPlanning).toContain("<TaskDeadlineEditor");
     expect(editPlanning).toContain("error={fieldErrors.deadlines}");
     expect(editPlanning).not.toContain('label={t("status")}');
-    expect(source).toContain("TASK_MILESTONE_STATUSES.filter");
-    expect(source).toContain('t("addDeadline")');
-    expect(source).toContain('t("removeDeadline"');
+    expect(deadlineEditor).toContain("TASK_MILESTONE_STATUSES.filter");
+    expect(deadlineEditor).toContain('t("addDeadline")');
+    expect(deadlineEditor).toContain('t("removeDeadline"');
     expect(source).toContain("deadlines: toTaskDeadlineInputs(values.deadlines)");
-    expect(source).toContain("getTaskStatusBadgeStyle(deadline.target_status).className");
+    expect(deadlineEditor).toContain("getTaskStatusBadgeStyle(deadline.target_status).className");
     expect(source).toContain("TaskDeadlineSummary");
     expect(source).toContain("getTaskDeadlinePresentation");
     expect(source).toContain("<Check aria-hidden=\"true\"");

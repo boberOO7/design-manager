@@ -127,11 +127,40 @@ grant execute on function public.update_task_details_with_collaborators(uuid, js
 
 create or replace function public.create_task_with_checklist(p_task jsonb, p_checklist_items jsonb default '[]'::jsonb)
 returns uuid language plpgsql security invoker set search_path = '' as $$
-declare new_task_id uuid;
+declare
+  new_task_id uuid;
+  task_project_id uuid := (p_task ->> 'project_id')::uuid;
+  collaborator_ids uuid[];
+  requested_id uuid;
 begin
+  if jsonb_typeof(coalesce(p_task -> 'collaborator_ids', '[]'::jsonb)) <> 'array' then raise exception 'Task co-assignees must be an array'; end if;
+  select coalesce(array_agg(value::uuid), '{}'::uuid[]) into collaborator_ids
+  from jsonb_array_elements_text(coalesce(p_task -> 'collaborator_ids', '[]'::jsonb));
+  if cardinality(collaborator_ids) <> cardinality(array(select distinct unnest(collaborator_ids))) then raise exception 'Task co-assignees must be unique'; end if;
+  foreach requested_id in array collaborator_ids loop
+    if not private.is_active_task_collaborator(task_project_id, requested_id) then raise exception 'Task co-assignee must be an active project member'; end if;
+  end loop;
+  if p_task ? 'deadlines' and jsonb_typeof(p_task -> 'deadlines') <> 'array' then raise exception 'Task deadlines must be an array'; end if;
+  if p_task ? 'deadlines' and exists (
+    select 1 from jsonb_to_recordset(p_task -> 'deadlines') as deadline(target_status text, due_date date)
+    where deadline.target_status not in ('internal_review', 'review', 'completed') or deadline.due_date is null
+  ) then raise exception 'Task deadlines must use a workflow milestone and valid date'; end if;
+  if p_task ? 'deadlines' and (select count(*) from jsonb_to_recordset(p_task -> 'deadlines') as deadline(target_status text, due_date date))
+    <> (select count(distinct deadline.target_status) from jsonb_to_recordset(p_task -> 'deadlines') as deadline(target_status text, due_date date)) then
+    raise exception 'Task deadlines must be unique per workflow milestone';
+  end if;
   insert into public.tasks (project_id, title, description, priority, assignee_id, created_by, completed_area_m2, stage, status)
-  values ((p_task ->> 'project_id')::uuid, p_task ->> 'title', nullif(p_task ->> 'description', ''), p_task ->> 'priority', (p_task ->> 'assignee_id')::uuid, auth.uid(), nullif(p_task ->> 'completed_area_m2', '')::numeric, coalesce(nullif(p_task ->> 'stage', ''), 'stage_1'), coalesce(nullif(p_task ->> 'status', ''), 'todo')) returning id into new_task_id;
-  if nullif(p_task ->> 'due_date', '') is not null then
+  values (task_project_id, p_task ->> 'title', nullif(p_task ->> 'description', ''), p_task ->> 'priority', (p_task ->> 'assignee_id')::uuid, auth.uid(), nullif(p_task ->> 'completed_area_m2', '')::numeric, coalesce(nullif(p_task ->> 'stage', ''), 'stage_1'), 'todo') returning id into new_task_id;
+  insert into public.task_collaborators (task_id, user_id)
+  select new_task_id, collaborator_id
+  from unnest(collaborator_ids) as collaborator_id
+  where collaborator_id <> (p_task ->> 'assignee_id')::uuid
+  on conflict (task_id, user_id) do nothing;
+  if p_task ? 'deadlines' then
+    insert into public.task_deadlines (task_id, target_status, due_date)
+    select new_task_id, deadline.target_status, deadline.due_date
+    from jsonb_to_recordset(p_task -> 'deadlines') as deadline(target_status text, due_date date);
+  elsif nullif(p_task ->> 'due_date', '') is not null then
     insert into public.task_deadlines (task_id, target_status, due_date) values (new_task_id, 'completed', (p_task ->> 'due_date')::date);
   end if;
   insert into public.task_checklist_items (task_id, title, weight, position)

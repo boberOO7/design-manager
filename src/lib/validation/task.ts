@@ -46,13 +46,13 @@ export const taskCreationSchema = z.object({
     z.string().trim().max(5000, "Description is too long").optional(),
   ),
   assignee_id: optionalAssigneeSchema,
+  collaborator_ids: collaboratorIdsSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   stage: z.enum(TASK_STAGES),
-  status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
-  due_date: optionalDateSchema,
+  deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
   checklist_items: checklistTemplateItemsSchema,
-});
+}).strict();
 
 export const taskStatusUpdateSchema = z.object({
   task_id: z.uuid("Choose a valid task"),
@@ -129,15 +129,21 @@ function getFormString(formData: FormData, field: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function getFormJson(formData: FormData, field: string): unknown {
+  const value = getFormString(formData, field);
+  if (!value) return undefined;
+  try { return JSON.parse(value); } catch { return value; }
+}
+
 export function getTaskCreationInput(formData: FormData) {
   return {
     title: getFormString(formData, "title"),
     description: getFormString(formData, "description"),
     assignee_id: getFormString(formData, "assignee_id"),
+    collaborator_ids: getFormJson(formData, "collaborator_ids"),
     priority: getFormString(formData, "priority"),
     stage: getFormString(formData, "stage"),
-    status: getFormString(formData, "status"),
-    due_date: getFormString(formData, "due_date"),
+    deadlines: getFormJson(formData, "deadlines"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
     checklist_items: getFormString(formData, "checklist_items"),
     progress_weight: getFormString(formData, "progress_weight"),
