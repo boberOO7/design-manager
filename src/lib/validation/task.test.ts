@@ -119,6 +119,7 @@ describe("task editing validation", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "review", due_date: "2026-08-01" }, { target_status: "review", due_date: "2026-08-02" }] }).success).toBe(false);
     expect(taskEditSchema.safeParse({ ...validEdit, progress_weight: "0" }).success).toBe(false);
     expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "review", due_date: "2026-02-30" }] }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "in_progress", due_date: "2026-08-01" }] }).success).toBe(false);
   });
 
   it("accepts the status-free, legacy-date-free Task Details PATCH payload", () => {

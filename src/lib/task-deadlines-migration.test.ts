@@ -8,6 +8,8 @@ describe("task milestone deadlines migration", () => {
     const sql = await readFile(migration, "utf8");
 
     expect(sql).toContain("create table public.task_deadlines");
+    expect(sql).toContain("target_status in ('internal_review', 'review', 'completed')");
+    expect(sql).not.toContain("target_status in ('in_progress', 'internal_review', 'review', 'completed')");
     expect(sql).toContain("unique (task_id, target_status)");
     expect(sql).toContain("select id, 'completed', due_date");
     expect(sql).toContain("alter table public.task_deadlines enable row level security");

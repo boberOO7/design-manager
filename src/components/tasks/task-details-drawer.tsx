@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
@@ -17,9 +17,9 @@ import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
 import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus } from "@/lib/tasks";
-import { isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
+import { getTaskDeadlinePresentation, isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { calculateTaskProgress } from "@/lib/project-progress";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { cn, formatDate, formatNumber } from "@/lib/utils";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
@@ -481,7 +481,7 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{statusLabel(task.status)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("dueDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{task.due_date ? formatDate(task.due_date, locale) : t("noDueDate")}</dd></div>
+                  <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} status={task.status} statusLabel={statusLabel} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.created_at, locale)}</dd></div>
                 </dl>
@@ -598,8 +598,8 @@ function DeadlineEditor({
         <Select value={deadline.target_status} disabled={disabled} onValueChange={(target_status) => {
           if (isTaskMilestoneStatus(target_status) && !deadlines.some((item, itemIndex) => itemIndex !== index && item.target_status === target_status)) updateDeadline(index, { target_status });
         }}>
-          <SelectItem value={deadline.target_status}>{statusLabel(deadline.target_status)}</SelectItem>
-          {availableStatuses.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}
+          <SelectItem value={deadline.target_status} className={getTaskStatusBadgeStyle(deadline.target_status).className}>{statusLabel(deadline.target_status)}</SelectItem>
+          {availableStatuses.map((status) => <SelectItem key={status} value={status} className={getTaskStatusBadgeStyle(status).className}>{statusLabel(status)}</SelectItem>)}
         </Select>
         <DatePicker value={deadline.due_date} disabled={disabled} locale={locale} onValueChange={(due_date) => updateDeadline(index, { due_date })} />
         <Button type="button" size="sm" variant="ghost" disabled={disabled} className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("removeDeadline", { status: statusLabel(deadline.target_status) })} onClick={() => onChange(deadlines.filter((_, deadlineIndex) => deadlineIndex !== index))}><Trash2 className="size-4" aria-hidden="true" /></Button>
@@ -608,6 +608,31 @@ function DeadlineEditor({
     {error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
     {availableStatuses.length ? <Button type="button" size="sm" variant="outline" disabled={disabled} className="mt-2 min-h-11" onClick={() => onChange([...deadlines, { target_status: availableStatuses[0]!, due_date: "" }])}><Plus className="size-4" aria-hidden="true" />{t("addDeadline")}</Button> : null}
   </section>;
+}
+
+function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, statusLabel }: {
+  deadlines: NonNullable<ProjectTask["deadlines"]>;
+  locale: string;
+  noDeadlinesLabel: string;
+  status: ProjectTask["status"];
+  statusLabel: (status: ProjectTask["status"]) => string;
+}) {
+  const deadlinesWithState = getTaskDeadlinePresentation({ status, deadlines }, new Date().toISOString().slice(0, 10));
+
+  if (!deadlinesWithState.length) return <span className="font-medium text-[var(--ui-text)]">{noDeadlinesLabel}</span>;
+
+  return <ul className="space-y-1.5">
+    {deadlinesWithState.map(({ deadline, state }) => {
+      const workflowStyle = getTaskStatusBadgeStyle(deadline.target_status);
+      const isCompleted = state === "completed";
+      const isOverdue = state === "overdue";
+      return <li key={deadline.id} className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", isCompleted && "text-[var(--ui-text-muted)]")}>
+        {isCompleted ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : <span aria-hidden="true" className="size-4 shrink-0" />}
+        <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", workflowStyle.className, isCompleted && "opacity-70")}>{statusLabel(deadline.target_status)}</span>
+        <span className={cn("ui-numeric font-medium", isCompleted && "line-through", isOverdue && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
+      </li>;
+    })}
+  </ul>;
 }
 
 function ChecklistItemRow({ canToggle, item, onToggle, pending }: {

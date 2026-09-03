@@ -1,7 +1,7 @@
 create table public.task_deadlines (
   id uuid primary key default gen_random_uuid(),
   task_id uuid not null references public.tasks(id) on delete cascade,
-  target_status text not null check (target_status in ('in_progress', 'internal_review', 'review', 'completed')),
+  target_status text not null check (target_status in ('internal_review', 'review', 'completed')),
   due_date date not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -80,7 +80,7 @@ begin
   if p_deadlines is not null and exists (
     select 1
     from jsonb_to_recordset(p_deadlines) as deadline(target_status text, due_date date)
-    where deadline.target_status not in ('in_progress', 'internal_review', 'review', 'completed')
+    where deadline.target_status not in ('internal_review', 'review', 'completed')
        or deadline.due_date is null
   ) then raise exception 'Task deadlines must use a workflow milestone and valid date'; end if;
   if p_deadlines is not null and (select count(*) from jsonb_to_recordset(p_deadlines) as deadline(target_status text, due_date date))

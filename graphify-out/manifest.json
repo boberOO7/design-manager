@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1788383924.8299778,
-    "ast_hash": "96270df0df9e24d5f28679c700d9c837",
+    "mtime": 1788425586.1302562,
+    "ast_hash": "db624c6de3c9d0d3895a70cb04d33499",
     "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
@@ -955,12 +955,12 @@
     "semantic_hash": "977ff5c5a9214dc7c923a1b648427687"
   },
   "src/lib/validation/task.test.ts": {
-    "mtime": 1788383950.774304,
-    "ast_hash": "d529d36b4b2b67c275ccbf5fa25a105e",
+    "mtime": 1788425615.7837214,
+    "ast_hash": "5c49fb4e08bc3ae5b2c1bbbf795f26a2",
     "semantic_hash": ""
   },
   "src/lib/validation/task.ts": {
-    "mtime": 1788381803.0441377,
+    "mtime": 1788425542.7859824,
     "ast_hash": "fae0ed841f98f886d6fe72a335a6f82b",
     "semantic_hash": ""
   },
@@ -1590,8 +1590,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1788383950.9023094,
-    "ast_hash": "1bd8c9e916bb8ecf73885a008999e706",
+    "mtime": 1788425616.063731,
+    "ast_hash": "9f9aedd850729b806d5b75eb7b9c05c8",
     "semantic_hash": ""
   },
   "src/data/mutations/task-status.test.ts": {
@@ -3895,18 +3895,18 @@
     "semantic_hash": ""
   },
   "src/lib/task-deadlines-migration.test.ts": {
-    "mtime": 1788382607.775224,
-    "ast_hash": "59c0d6b557518949efe5f67c6c48ecea",
+    "mtime": 1788425615.9277263,
+    "ast_hash": "b6d10edf0ec0712b770f80230a4784e1",
     "semantic_hash": ""
   },
   "src/lib/task-deadlines.test.ts": {
-    "mtime": 1788383950.642298,
-    "ast_hash": "6569506054b9314d20631fc8539f4d4a",
+    "mtime": 1788425615.6237159,
+    "ast_hash": "07cf26f3aa2754fb8b78cd2de68bd3e0",
     "semantic_hash": ""
   },
   "src/lib/task-deadlines.ts": {
-    "mtime": 1788384001.1309733,
-    "ast_hash": "5d7199b74769b16fb6a58a251c649dc1",
+    "mtime": 1788425666.3650928,
+    "ast_hash": "c0eaa7efcae55f7380c9d40a048b12c9",
     "semantic_hash": ""
   },
   "src/lib/task-workflow.ts": {
@@ -3920,8 +3920,8 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260902180000_add_task_milestone_deadlines.sql": {
-    "mtime": 1788382600.6549065,
-    "ast_hash": "01018e359b2afb79f7307bf3e60b49b7",
+    "mtime": 1788425542.9379876,
+    "ast_hash": "08026eb6073488787c422f2fcc6a370a",
     "semantic_hash": ""
   },
   "supabase/tests/task_deadlines_rls.test.sql": {

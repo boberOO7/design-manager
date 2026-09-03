@@ -121,5 +121,9 @@ describe("task details drawer contract", () => {
     expect(source).toContain('t("addDeadline")');
     expect(source).toContain('t("removeDeadline"');
     expect(source).toContain("deadlines: toTaskDeadlineInputs(values.deadlines)");
+    expect(source).toContain("getTaskStatusBadgeStyle(deadline.target_status).className");
+    expect(source).toContain("TaskDeadlineSummary");
+    expect(source).toContain("getTaskDeadlinePresentation");
+    expect(source).toContain("<Check aria-hidden=\"true\"");
   });
 });
