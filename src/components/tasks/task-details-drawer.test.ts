@@ -88,6 +88,8 @@ describe("task details drawer contract", () => {
     expect(source).toContain("TaskCollaboratorMultiSelect");
     expect(control).toContain("Popover.Trigger");
     expect(control).toContain("Popover.Content");
+    expect(control).toContain('closest("dialog, [role=\'dialog\']")');
+    expect(control).toContain("Popover.Portal container={portalContainer}");
     expect(control).toContain('type="checkbox"');
     expect(control).toContain('>{t("addCoAssignees")}</span>');
     expect(control).toContain('t("removeCoAssignee"');

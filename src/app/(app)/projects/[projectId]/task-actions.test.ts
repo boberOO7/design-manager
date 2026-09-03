@@ -26,3 +26,15 @@ describe("project task deletion action contract", () => {
     expect(source).toContain('revalidatePath("/my-tasks")');
   });
 });
+
+describe("project task creation progress contract", () => {
+  it("uses the project stage configuration to persist only the applicable progress input", async () => {
+    const source = await readFile(actionsPath, "utf8");
+    const createAction = source.slice(source.indexOf("export async function createProjectTask"), source.indexOf("export async function updateTaskStatus"));
+
+    expect(createAction).toContain("getProjectStageConfiguration(project.id)");
+    expect(createAction).toContain("getTaskCreationProgressField(parsed.data.stage)");
+    expect(createAction).toContain('progressField === "area" ? { completed_area_m2: parsed.data.completed_area_m2 ?? null } : {}');
+    expect(createAction).toContain('progressField === "weight" ? { progress_weight: parsed.data.progress_weight ?? 1 } : {}');
+  });
+});

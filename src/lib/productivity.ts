@@ -7,10 +7,19 @@ export const PRODUCTIVITY_STAGE_RATIOS = {
 } as const satisfies Partial<Record<TaskStage, number>>;
 
 export type ProductivityStageMode = "project_area_ratio" | "task_area" | "none";
+export type TaskCreationProgressField = "area" | "weight" | null;
 
 export function getProductivityStageMode(stage: TaskStage): ProductivityStageMode {
   if (stage === "stage_2") return "task_area";
   return stage in PRODUCTIVITY_STAGE_RATIOS ? "project_area_ratio" : "none";
+}
+
+/** Maps the canonical productivity stage mode to the one editable task value. */
+export function getTaskCreationProgressField(stage: TaskStage): TaskCreationProgressField {
+  const mode = getProductivityStageMode(stage);
+  if (mode === "task_area") return "area";
+  if (mode === "project_area_ratio") return "weight";
+  return null;
 }
 
 export function doesTaskCompletionRequireProductivityAttribution(input: {

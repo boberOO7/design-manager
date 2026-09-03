@@ -22,5 +22,10 @@ describe("task milestone deadlines migration", () => {
     expect(sql).toContain("'todo') returning id into new_task_id");
     expect(sql).toContain("p_task ? 'deadlines'");
     expect(sql).toContain("p_task -> 'collaborator_ids'");
+    expect(sql).toContain("completed_area_m2, progress_weight, stage, status");
+    expect(sql).toContain("coalesce(nullif(p_task ->> 'progress_weight', '')::numeric, 1)");
+    expect(sql).toContain("grant insert (\n  project_id,");
+    expect(sql).toContain("progress_weight,\n  stage,\n  status\n) on table public.tasks to authenticated;");
+    expect(sql).not.toContain("grant insert on table public.tasks to authenticated;");
   });
 });

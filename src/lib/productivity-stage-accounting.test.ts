@@ -4,6 +4,7 @@ import {
   allocateRemainingStageBudget,
   doesTaskCompletionRequireProductivityAttribution,
   getProductivityStageMode,
+  getTaskCreationProgressField,
 } from "./productivity";
 
 describe("stage productivity accounting", () => {
@@ -17,6 +18,13 @@ describe("stage productivity accounting", () => {
     expect(getProductivityStageMode("stage_2")).toBe("task_area");
     expect(doesTaskCompletionRequireProductivityAttribution({ stage: "stage_2", completedAreaM2: 42, projectAreaM2: 120 })).toBe(true);
     expect(doesTaskCompletionRequireProductivityAttribution({ stage: "stage_4", completedAreaM2: 42, projectAreaM2: 120 })).toBe(false);
+  });
+
+  it("uses the same canonical stage modes for Create Task progress inputs", () => {
+    expect(getTaskCreationProgressField("stage_1")).toBe("weight");
+    expect(getTaskCreationProgressField("stage_2")).toBe("area");
+    expect(getTaskCreationProgressField("stage_3")).toBe("weight");
+    expect(getTaskCreationProgressField("stage_4")).toBeNull();
   });
 
   it("allocates only the remaining Stage 3 budget when tasks are added after a completion", () => {

@@ -5,7 +5,8 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { authorizeTaskMutation, updateTaskStatusMutation } from "@/data/mutations/task-status";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
+import { getProjectStageConfiguration } from "@/data/queries/project-stage-columns";
+import { getTaskCreationProgressField } from "@/lib/productivity";
 import { toTaskStatusActionState } from "@/lib/task-status-mutation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -56,6 +57,7 @@ export async function createProjectTask(
       stage: flattened.stage?.[0],
       deadlines: flattened.deadlines?.[0],
       completed_area_m2: flattened.completed_area_m2?.[0],
+      progress_weight: flattened.progress_weight?.[0],
       checklist_items: flattened.checklist_items?.[0],
     };
     return { formError: "Please correct the highlighted fields.", fieldErrors };
@@ -70,8 +72,8 @@ export async function createProjectTask(
   ) {
     return { formError: "The project was not found or is not available for new tasks." };
   }
-  const stageColumns = await getProjectStageColumns(project.id);
-  if (!stageColumns[parsed.data.stage].includes("todo")) {
+  const stageConfiguration = await getProjectStageConfiguration(project.id);
+  if (!stageConfiguration.columns[parsed.data.stage].includes("todo")) {
     return { fieldErrors: { stage: "Choose a stage that allows new Todo tasks." } };
   }
   const projectMembers = (parsed.data.assignee_id === null && parsed.data.collaborator_ids.length === 0)
@@ -86,6 +88,7 @@ export async function createProjectTask(
     };
   }
 
+  const progressField = getTaskCreationProgressField(parsed.data.stage);
   const task = {
     project_id: project.id,
     title: parsed.data.title,
@@ -95,7 +98,8 @@ export async function createProjectTask(
     assignee_id: parsed.data.assignee_id,
     collaborator_ids: parsed.data.collaborator_ids,
     deadlines: parsed.data.deadlines,
-    completed_area_m2: parsed.data.completed_area_m2 ?? null,
+    ...(progressField === "area" ? { completed_area_m2: parsed.data.completed_area_m2 ?? null } : {}),
+    ...(progressField === "weight" ? { progress_weight: parsed.data.progress_weight ?? 1 } : {}),
   };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_task_with_checklist", {

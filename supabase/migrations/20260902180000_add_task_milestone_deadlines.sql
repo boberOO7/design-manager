@@ -149,8 +149,8 @@ begin
     <> (select count(distinct deadline.target_status) from jsonb_to_recordset(p_task -> 'deadlines') as deadline(target_status text, due_date date)) then
     raise exception 'Task deadlines must be unique per workflow milestone';
   end if;
-  insert into public.tasks (project_id, title, description, priority, assignee_id, created_by, completed_area_m2, stage, status)
-  values (task_project_id, p_task ->> 'title', nullif(p_task ->> 'description', ''), p_task ->> 'priority', (p_task ->> 'assignee_id')::uuid, auth.uid(), nullif(p_task ->> 'completed_area_m2', '')::numeric, coalesce(nullif(p_task ->> 'stage', ''), 'stage_1'), 'todo') returning id into new_task_id;
+  insert into public.tasks (project_id, title, description, priority, assignee_id, created_by, completed_area_m2, progress_weight, stage, status)
+  values (task_project_id, p_task ->> 'title', nullif(p_task ->> 'description', ''), p_task ->> 'priority', (p_task ->> 'assignee_id')::uuid, auth.uid(), nullif(p_task ->> 'completed_area_m2', '')::numeric, coalesce(nullif(p_task ->> 'progress_weight', '')::numeric, 1), coalesce(nullif(p_task ->> 'stage', ''), 'stage_1'), 'todo') returning id into new_task_id;
   insert into public.task_collaborators (task_id, user_id)
   select new_task_id, collaborator_id
   from unnest(collaborator_ids) as collaborator_id
@@ -170,3 +170,19 @@ begin
   return new_task_id;
 end;
 $$;
+
+-- This SECURITY INVOKER RPC inserts the task row before its collaborators,
+-- milestone deadlines, and checklist items. Keep the task grant column-scoped;
+-- the existing tasks_insert_for_studio_admins RLS policy remains the write gate.
+grant insert (
+  project_id,
+  title,
+  description,
+  priority,
+  assignee_id,
+  created_by,
+  completed_area_m2,
+  progress_weight,
+  stage,
+  status
+) on table public.tasks to authenticated;

@@ -45,4 +45,15 @@ describe("task creation checklist template contract", () => {
     expect(source).not.toContain('name="due_date"');
     expect(source).not.toContain('t("taskAreaHelp")');
   });
+
+  it("uses the configured stage progress method to show one relevant field and clear the other draft value", async () => {
+    const source = await readFile(dialogPath, "utf8");
+
+    expect(source).toContain("getTaskCreationProgressField(selectedStage)");
+    expect(source).toContain('progressField === "area"');
+    expect(source).toContain('progressField === "weight"');
+    expect(source).toContain('setCompletedAreaM2("")');
+    expect(source).toContain('setProgressWeight(nextProgressField === "weight" ? "1" : "")');
+    expect(source).not.toContain('t("addTaskDescription")');
+  });
 });

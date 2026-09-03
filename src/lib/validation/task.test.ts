@@ -48,6 +48,12 @@ describe("task creation validation", () => {
     expect(taskCreationSchema.safeParse({ ...validTask, completed_area_m2: "-1" }).success).toBe(false);
   });
 
+  it("accepts an optional creation weight with the same positive bounds as task editing", () => {
+    expect(taskCreationSchema.parse({ ...validTask, progress_weight: "2.5" }).progress_weight).toBe(2.5);
+    expect(taskCreationSchema.parse({ ...validTask, progress_weight: "" }).progress_weight).toBeUndefined();
+    expect(taskCreationSchema.safeParse({ ...validTask, progress_weight: "0" }).success).toBe(false);
+  });
+
   it("defaults to no checklist and validates an edited checklist template payload", () => {
     expect(taskCreationSchema.parse(validTask).checklist_items).toEqual([]);
     expect(taskCreationSchema.parse({ ...validTask, checklist_items: JSON.stringify([{ title: "Plans", weight: 2 }]) }).checklist_items).toEqual([{ title: "Plans", weight: 2 }]);

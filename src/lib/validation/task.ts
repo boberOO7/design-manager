@@ -30,6 +30,10 @@ const taskDeadlinesSchema = z.array(taskDeadlineSchema).max(TASK_MILESTONE_STATU
   .refine((deadlines) => new Set(deadlines.map((deadline) => deadline.target_status)).size === deadlines.length, "Choose each workflow point only once");
 
 const progressWeightSchema = z.coerce.number().finite("Enter a valid weight").positive("Weight must be greater than zero").max(1000, "Weight is too large");
+const optionalProgressWeightSchema = z.preprocess(
+  (value) => value === "" || value === null ? undefined : value,
+  progressWeightSchema.optional(),
+);
 const checklistWeightSchema = z.coerce.number().finite("Enter a valid weight").int("Weight must be a whole number").positive("Weight must be greater than zero").max(1000, "Weight is too large");
 const checklistTemplateItemsSchema = z.preprocess(
   (value) => {
@@ -51,6 +55,7 @@ export const taskCreationSchema = z.object({
   stage: z.enum(TASK_STAGES),
   deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
+  progress_weight: optionalProgressWeightSchema,
   checklist_items: checklistTemplateItemsSchema,
 }).strict();
 

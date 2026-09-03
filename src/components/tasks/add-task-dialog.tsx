@@ -17,6 +17,7 @@ import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import { type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
+import { getTaskCreationProgressField } from "@/lib/productivity";
 
 export type AddTaskDialogHandle = {
   open: (stage?: TaskStage) => void;
@@ -55,6 +56,9 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [deadlines, setDeadlines] = useState<TaskDeadlineInput[]>([]);
+  const [completedAreaM2, setCompletedAreaM2] = useState("");
+  const [progressWeight, setProgressWeight] = useState("1");
+  const progressField = getTaskCreationProgressField(selectedStage);
   const selectedTemplate = templates.find((template) => template.id === templateId);
   const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(selectedTemplate, checklistItems);
   const totalWeight = getChecklistTemplateWeight({ stages: checklistItems });
@@ -73,6 +77,8 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
     setSelectedAssigneeId(null);
     setCollaboratorIds([]);
     setDeadlines([]);
+    setCompletedAreaM2("");
+    setProgressWeight("1");
     setTemplateId("");
     setChecklistItems([]);
     setIsCustomizerOpen(false);
@@ -90,10 +96,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
         className="m-auto max-h-[calc(100dvh-2rem)] w-[min(92vw,34rem)] overflow-y-auto rounded-[var(--ui-radius-drawer)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-0 text-[var(--ui-text)] shadow-2xl backdrop:bg-[var(--ui-overlay)]"
       >
         <div className="flex items-center justify-between border-b border-[var(--ui-border-subtle)] px-5 py-4">
-          <div>
-            <h2 id="add-task-title" className="font-semibold">{t("addTask")}</h2>
-            <p className="mt-0.5 text-sm text-[var(--ui-text-muted)]">{t("addTaskDescription")}</p>
-          </div>
+          <h2 id="add-task-title" className="font-semibold">{t("addTask")}</h2>
           <Button type="button" size="sm" variant="ghost" onClick={() => dialogRef.current?.close()} aria-label={t("closeAddTask")}>{t("cancel")}</Button>
         </div>
         <form ref={formRef} action={formAction} autoComplete="off" onSubmit={(event) => { if (hasSubmittedRef.current) event.preventDefault(); else hasSubmittedRef.current = true; }} className="space-y-4 p-5">
@@ -122,16 +125,19 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
               </Select>
             </FormField>
             <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
-              <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) setSelectedStage(stage); }}>
+              <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) { setSelectedStage(stage); const nextProgressField = getTaskCreationProgressField(stage); setCompletedAreaM2(""); setProgressWeight(nextProgressField === "weight" ? "1" : ""); } }}>
                 {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
               </Select>
             </FormField>
           </div>
           <TaskDeadlineEditor deadlines={deadlines} disabled={isPending} error={state.fieldErrors?.deadlines} locale={locale} onChange={setDeadlines} statusLabel={(status) => statusT(status === "in_progress" ? "inProgress" : status)} />
           <input type="hidden" name="deadlines" value={JSON.stringify(deadlines)} />
-          <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
-            <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" disabled={isPending} autoComplete="off" />
-          </FormField>
+          {progressField === "area" ? <FormField label={t("taskArea")} optional error={state.fieldErrors?.completed_area_m2 ? validation("correctFields") : undefined}>
+            <Input type="number" name="completed_area_m2" min="0.01" step="0.01" inputMode="decimal" placeholder="m²" value={completedAreaM2} onChange={(event) => setCompletedAreaM2(event.target.value)} disabled={isPending} autoComplete="off" />
+          </FormField> : null}
+          {progressField === "weight" ? <FormField label={t("progressWeight")} error={state.fieldErrors?.progress_weight ? validation("correctFields") : undefined}>
+            <Input type="number" name="progress_weight" min="0.01" max="1000" step="0.01" inputMode="decimal" value={progressWeight} onChange={(event) => setProgressWeight(event.target.value)} disabled={isPending} autoComplete="off" />
+          </FormField> : null}
           <section aria-labelledby="checklist-template-heading" className="border-t border-[var(--ui-border-subtle)] pt-4">
             <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 id="checklist-template-heading" className="text-sm font-medium text-[var(--ui-text)]">{templatesT("checklistTemplate")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{templatesT("optionalStages")}</p></div></div>
             <label className="mt-3 grid gap-1 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sr-only">{templatesT("checklistTemplate")}</span><Select value={templateId} disabled={isPending} onValueChange={(nextTemplateId) => { if (templateId && nextTemplateId !== templateId && isCustomized && !window.confirm(templatesT("changingConfirm"))) return; const nextTemplate = templates.find((template) => template.id === nextTemplateId); setTemplateId(nextTemplateId); setChecklistItems(cloneChecklistTemplateStages(nextTemplate)); setIsCustomizerOpen(false); }}><SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</Select></label>

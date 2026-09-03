@@ -594,7 +594,7 @@
   },
   "Templates": {
     "checklistTemplate": "Checklist template",
-    "optionalStages": "Optional weighted stages. You can edit this draft before creating the task.",
+    "optionalStages": "Optional weighted stages. You can edit the draft before creating.",
     "noChecklistTemplate": "No checklist template",
     "changingConfirm": "Changing the template will replace your checklist edits. Continue?",
     "stages": "{count, plural, one {# stage} other {# stages}}",
