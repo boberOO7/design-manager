@@ -56,4 +56,14 @@ describe("task creation checklist template contract", () => {
     expect(source).toContain('setProgressWeight(nextProgressField === "weight" ? "1" : "")');
     expect(source).not.toContain('t("addTaskDescription")');
   });
+
+  it("limits creation to allowed stages and submits a locked single stage", async () => {
+    const source = await readFile(dialogPath, "utf8");
+
+    expect(source).toContain("allowedStages?: readonly TaskStage[]");
+    expect(source).toContain("availableStages.includes(stage) ? stage : initialStage");
+    expect(source).toContain("availableStages.map((stage)");
+    expect(source).toContain('name={isStageLocked ? undefined : "stage"}');
+    expect(source).toContain('isStageLocked ? <input type="hidden" name="stage" value={selectedStage} /> : null');
+  });
 });

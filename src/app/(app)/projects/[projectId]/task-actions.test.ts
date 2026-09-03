@@ -37,4 +37,14 @@ describe("project task creation progress contract", () => {
     expect(createAction).toContain('progressField === "area" ? { completed_area_m2: parsed.data.completed_area_m2 ?? null } : {}');
     expect(createAction).toContain('progressField === "weight" ? { progress_weight: parsed.data.progress_weight ?? 1 } : {}');
   });
+
+  it("checks lifecycle and stage eligibility server-side after rejecting archived projects", async () => {
+    const source = await readFile(actionsPath, "utf8");
+    const createAction = source.slice(source.indexOf("export async function createProjectTask"), source.indexOf("export async function updateTaskStatus"));
+
+    expect(createAction).toContain('project.status === "archived"');
+    expect(createAction).toContain("project.archived_at");
+    expect(createAction).toContain("canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })");
+    expect(createAction).toContain("Only the post-completion stage accepts new tasks after project completion.");
+  });
 });

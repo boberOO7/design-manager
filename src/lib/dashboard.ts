@@ -1,6 +1,6 @@
 import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
 import type { MyTask } from "../types/tasks";
-import type { ProjectLifecycleStatus } from "./project-lifecycle";
+import { canWorkOnTaskInProject, isOperationalProjectStatus, type ProjectLifecycleStatus } from "./project-lifecycle";
 import { calculateProjectProgress, type ProjectStageProgressMethods } from "./project-progress";
 import { isTaskStage } from "./task-stages";
 
@@ -23,6 +23,15 @@ export function isDashboardTask(task: { project: DashboardTask["project"]; prior
     && isTaskStatus(task.status)
     && isTaskPriority(task.priority)
     && isTaskStage(task.stage);
+}
+
+export function isDashboardTaskProjectEligible(task: Pick<DashboardTask, "stage" | "project">): boolean {
+  return isOperationalProjectStatus(task.project.status)
+    || (task.project.status === "completed" && canWorkOnTaskInProject({
+      projectStatus: task.project.status,
+      archivedAt: task.project.archived_at,
+      stage: task.stage,
+    }));
 }
 
 export function getTodayDate(now = new Date()): string {

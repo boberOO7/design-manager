@@ -10,7 +10,9 @@ describe("paused-project operational query scope", () => {
 
     expect(source).toContain('import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle"');
     expect(source).toContain('.in("status", OPERATIONAL_PROJECT_STATUSES)');
-    expect(source).toContain('.in("project.status", OPERATIONAL_PROJECT_STATUSES)');
+    expect(source).toContain('.neq("project.status", "paused")');
+    expect(source).toContain('.neq("project.status", "archived")');
+    expect(source).toContain(".filter(isDashboardTaskProjectEligible)");
     expect(source).not.toContain('["planned", "active", "paused"]');
   });
 

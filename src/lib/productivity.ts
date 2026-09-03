@@ -49,6 +49,7 @@ export type ProductivityAttribution = {
   contributor_job_title: string;
   credited_area_m2: number | string;
   source_type: "task" | "project_fallback";
+  task_stage?: TaskStage | null;
 };
 
 export type CompletedProductivityAttribution = ProductivityAttribution & { completed_at: string };

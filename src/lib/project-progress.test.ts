@@ -209,6 +209,17 @@ describe("stage progress", () => {
     ]).progressPercent).toBe(100);
   });
 
+  it("stays at 100% when post-completion work is open or overdue", () => {
+    const progress = calculateProjectProgress([
+      { ...task({ id: "one", status: "completed" }), stage: "stage_1" },
+      { ...task({ id: "two", status: "completed" }), stage: "stage_2" },
+      { ...task({ id: "three", status: "completed" }), stage: "stage_3" },
+      { ...task({ id: "operations", status: "todo", due_date: "2026-01-01" }), stage: "stage_4" },
+    ], "2026-09-03");
+    expect(progress.progressPercent).toBe(100);
+    expect(progress.rawProgressPercent).toBe(100);
+  });
+
   it("never lets stage four tasks affect overall project progress", () => {
     const progress = calculateProjectProgress([
       { ...task({ id: "one", status: "completed" }), stage: "stage_1" },

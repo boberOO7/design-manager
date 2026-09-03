@@ -1,3 +1,6 @@
+import { isProjectProgressStage } from "./project-progress";
+import { TASK_STAGES, type TaskStage } from "./task-stages";
+
 export const PROJECT_LIFECYCLE_STATUSES = ["planned", "active", "paused", "completed", "archived"] as const;
 export type ProjectLifecycleStatus = (typeof PROJECT_LIFECYCLE_STATUSES)[number];
 export const OPERATIONAL_PROJECT_STATUSES = ["planned", "active"] as const;
@@ -20,8 +23,21 @@ export function getLifecycleTarget(action: ProjectLifecycleAction): ProjectLifec
   return targetByAction[action];
 }
 
-export function getAutomaticProjectStatus(projectStatus: ProjectLifecycleStatus, taskStatus: string): ProjectLifecycleStatus {
-  return projectStatus === "planned" && (taskStatus === "in_progress" || taskStatus === "review" || taskStatus === "completed") ? "active" : projectStatus;
+export function getAutomaticProjectStatus(projectStatus: ProjectLifecycleStatus, taskStatus: string, taskStage = "stage_1"): ProjectLifecycleStatus {
+  return projectStatus === "planned"
+    && isProjectProgressStage(taskStage)
+    && (taskStatus === "in_progress" || taskStatus === "review" || taskStatus === "completed")
+    ? "active"
+    : projectStatus;
+}
+
+export function canWorkOnTaskInProject(input: { projectStatus: string; archivedAt?: string | null; stage: string }): boolean {
+  if (input.archivedAt || input.projectStatus === "archived") return false;
+  return input.projectStatus !== "completed" || !isProjectProgressStage(input.stage);
+}
+
+export function getTaskCreationStagesForProject(input: { projectStatus: string; archivedAt?: string | null }): TaskStage[] {
+  return TASK_STAGES.filter((stage) => canWorkOnTaskInProject({ ...input, stage }));
 }
 
 export function getRestoredProjectStatus(hasCompletedAt: boolean): "completed" | "paused" {
@@ -62,10 +78,10 @@ export function validateLifecycleTransition({ from, to, openTaskCount, hasProgre
   return { valid: false, reason: from === "paused" && to === "planned" ? "progressed_tasks" : "invalid_transition" };
 }
 
-export function countOpenLifecycleTasks(tasks: readonly { status: string }[]): number {
-  return tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").length;
+export function countOpenLifecycleTasks(tasks: readonly { stage: string; status: string }[]): number {
+  return tasks.filter((task) => isProjectProgressStage(task.stage) && task.status !== "completed" && task.status !== "cancelled").length;
 }
 
-export function hasProgressedEligibleTasks(tasks: readonly { status: string }[]): boolean {
-  return tasks.some((task) => task.status !== "cancelled" && task.status !== "todo");
+export function hasProgressedEligibleTasks(tasks: readonly { stage: string; status: string }[]): boolean {
+  return tasks.some((task) => isProjectProgressStage(task.stage) && task.status !== "cancelled" && task.status !== "todo");
 }

@@ -22,6 +22,7 @@ import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
 import { filterProductivityAttributionsForPeriod, getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember } from "@/lib/productivity";
+import { isProjectProgressStage } from "@/lib/project-progress";
 
 export type DataMode = "mock" | "supabase";
 
@@ -198,7 +199,7 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
       .overrideTypes<Array<{ id: string; include_in_productivity: boolean }>, { merge: false }>(),
     supabase
     .from("productivity_attributions")
-    .select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")
+    .select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")
     .eq("studio_id", studioId)
     .is("voided_at", null)
     .gte("completed_at", bounds.start)
@@ -218,7 +219,10 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
     avatar_url: profile.avatar_url,
   }));
   return projectProductivityLeaderboard(
-    filterProductivityAttributionsForPeriod(data.filter((attribution) => !excludedProjectIds.has(attribution.project_id)), period),
+    filterProductivityAttributionsForPeriod(data.filter((attribution) =>
+      !excludedProjectIds.has(attribution.project_id)
+      || (attribution.source_type === "task" && attribution.task_stage !== null && attribution.task_stage !== undefined && !isProjectProgressStage(attribution.task_stage)),
+    ), period),
     eligibleMembers,
   );
 }

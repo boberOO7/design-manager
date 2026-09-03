@@ -22,9 +22,9 @@ export async function updateProjectLifecycleStatus(projectId: string, requestedS
   const supabase = await createClient();
   const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
-    .select("status")
+    .select("stage, status")
     .eq("project_id", project.id)
-    .overrideTypes<Array<{ status: string }>, { merge: false }>();
+    .overrideTypes<Array<{ stage: string; status: string }>, { merge: false }>();
   if (tasksError || !tasks) return { success: false, formError: "The project lifecycle could not be verified. Please try again." };
   const openTaskCount = countOpenLifecycleTasks(tasks);
   const transition = validateLifecycleTransition({ from: project.status, to: requestedStatus, openTaskCount, hasProgressedEligibleTasks: hasProgressedEligibleTasks(tasks) });

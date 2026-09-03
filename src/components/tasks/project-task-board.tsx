@@ -38,8 +38,8 @@ import { getPriorityBadgeStyle, getTaskStatusBadgeStyle, getTaskStatusBulkDragSt
 import type { ProjectTask } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
-import { getAutomaticProjectStatus, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
-import { calculateStageProgress, type ProjectStageProgressMethods, type StageProgressMethod } from "@/lib/project-progress";
+import { getAutomaticProjectStatus, getTaskCreationStagesForProject, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { calculateStageProgress, isProjectProgressStage, type ProjectStageProgressMethods, type StageProgressMethod } from "@/lib/project-progress";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
@@ -475,6 +475,8 @@ export function ProjectTaskBoard({
   const suppressCardOpenRef = useRef(false);
   const onTasksChangeRef = useRef(onTasksChange);
   const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
+  const taskCreationStages = getTaskCreationStagesForProject({ projectStatus });
+  const defaultTaskCreationStage = taskCreationStages[0];
   const stageLayoutKey = `project-task-board:stages:${projectId}:${currentUserId}`;
   const compactCardsKey = `project-task-board:compact-cards:${currentUserId}`;
   const [compactCards, setCompactCards] = useState(false);
@@ -766,7 +768,7 @@ export function ProjectTaskBoard({
       const optimisticTasks = appendTasksInOrder(batchTasks.reduce((nextTasks, task) => setProjectTaskStatus(nextTasks, task.id, targetStatus), previousTasks), bulkSource.taskIds);
       localTasksRef.current = optimisticTasks;
       setLocalTasks(optimisticTasks);
-      onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus));
+      onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus, bulkSource.stage));
       void persistBulkTaskMove(bulkSource, targetStatus, targetLabel, previousTasks, projectStatus);
       return;
     }
@@ -790,7 +792,7 @@ export function ProjectTaskBoard({
     );
     localTasksRef.current = optimisticTasks;
     setLocalTasks(optimisticTasks);
-    onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus));
+    onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus, task.stage));
 
     void persistTaskMove(
       task.id,
@@ -823,7 +825,7 @@ export function ProjectTaskBoard({
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
         <div className="flex items-center gap-2">
-          {canCreate ? <AddTaskDialog ref={addTaskDialogRef} members={members} projectId={projectId} templates={templates} /> : null}
+          {canCreate && defaultTaskCreationStage ? <AddTaskDialog ref={addTaskDialogRef} allowedStages={taskCreationStages} defaultStage={defaultTaskCreationStage} members={members} projectId={projectId} templates={templates} /> : null}
           <Popover.Root>
             <Popover.Trigger asChild>
               <button type="button" className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={boardActions}>
@@ -846,6 +848,8 @@ export function ProjectTaskBoard({
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="space-y-3">
           {stages.filter((item) => item.isEnabled).map(({ stage }) => {
+            const isStageReadOnly = isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(stage));
+            const canCreateInStage = canCreate && taskCreationStages.includes(stage);
             const isExpanded = expandedStages[stage];
             const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status));
             const taskCount = groupsByStage[stage].todo.length
@@ -853,7 +857,7 @@ export function ProjectTaskBoard({
               + groupsByStage[stage]["internal-review"].length
               + groupsByStage[stage]["client-review"].length
               + groupsByStage[stage].done.length;
-            const progress = stage === "stage_4" ? null : stageProgress[stage];
+            const progress = isProjectProgressStage(stage) ? stageProgress[stage] : null;
             return (
               <section key={stage} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
                 <div className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-4" onClick={() => toggleStage(stage)}>
@@ -871,11 +875,11 @@ export function ProjectTaskBoard({
                   </div>
                   <span onClick={(event) => event.stopPropagation()} className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
                   <div className="flex shrink-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                  {canManageTasks && !isProjectReadOnly ? <StageAssigneePopover currentUserId={currentUserId} members={members} onAssign={assignStageTasks} stage={stage} tasks={localTasks.filter((task) => task.stage === stage)} /> : null}
-                  {canCreate ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
+                  {canManageTasks && !isStageReadOnly ? <StageAssigneePopover currentUserId={currentUserId} members={members} onAssign={assignStageTasks} stage={stage} tasks={localTasks.filter((task) => task.stage === stage)} /> : null}
+                  {canCreateInStage ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{stage !== "stage_4" ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isProjectProgressStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
@@ -901,7 +905,7 @@ export function ProjectTaskBoard({
                           compactCards={compactCards}
                           columnId={column.id}
                           currentUserId={currentUserId}
-                          isProjectReadOnly={isProjectReadOnly}
+                          isProjectReadOnly={isStageReadOnly}
                           label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
                           onOpenTask={openTaskDrawer}
                           pendingTaskIds={pendingTaskIds}
@@ -936,7 +940,7 @@ export function ProjectTaskBoard({
         canManageTasks={canManageTasks}
         currentUserId={currentUserId}
         isOpen={isTaskDrawerOpen}
-        isProjectReadOnly={isProjectReadOnly}
+        isProjectReadOnly={isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(selectedTask.stage))}
         members={members}
         onClose={closeTaskDrawer}
         onExited={clearExitedTask}

@@ -72,11 +72,13 @@
   project-member, or profile foreign keys. Hard-deleting a task or project does
   not remove completed-work history; deleting a studio remains the intentional
   tenant-wide deletion boundary.
-- Project-level productivity inclusion is a live leaderboard filter. Toggling it
-  excludes or restores that project’s existing and future attribution rows in
-  monthly, quarterly, and yearly rankings without rewriting snapshots, budgets,
-  or attribution history. Stage labels, ordering, and visibility are presentation
-  configuration only; stable stage IDs remain the productivity-policy inputs.
+- Project-level productivity inclusion is a live leaderboard area filter.
+  Toggling it excludes or restores that project’s production-stage attribution
+  rows in monthly, quarterly, and yearly rankings without rewriting snapshots,
+  budgets, or attribution history. Stage labels, ordering, and visibility are
+  presentation configuration only; stable stage IDs remain the policy inputs.
+- Post-completion-stage task completions create a task-count ledger event with
+  zero credited area and never materialize a task productivity-area snapshot.
 
 ## Project lifecycle workflow
 
@@ -84,8 +86,12 @@
   project task enters in-progress, review, or completed work.
 - Pausing, completing, and reopening remain explicit administrator decisions;
   project status is managed through lifecycle actions rather than Edit Project.
-- Completed projects require all tasks closed and remain read-only until an
-  administrator reopens them.
+- Completing a project submits directly without a client confirmation; existing
+  server validation and lifecycle feedback remain the eligibility boundary.
+- Completed projects require all production-stage tasks closed. Post-completion
+  stage work remains creatable and writable without reopening the project. The
+  shared creation form exposes only canonical post-completion stages in that
+  state; production-stage tasks and project metadata remain read-only.
 
 ## Structured project creation metadata
 

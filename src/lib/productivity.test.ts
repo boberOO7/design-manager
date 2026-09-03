@@ -3,6 +3,13 @@ import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, get
 import { getLeaderboardBonusPercent, getLeaderboardEntryBonusPercent } from "./leaderboard-bonus-rules";
 
 describe("monthly productivity projection", () => {
+  it("counts a zero-area operational completion without adding square metres", () => {
+    const entries = projectProductivityLeaderboard([
+      { contributor_id: "operations", contributor_name: "Oli", contributor_job_title: "Architect", credited_area_m2: 0, source_type: "task" },
+    ]);
+    expect(entries).toMatchObject([{ user_id: "operations", completed_tasks: 1, completed_area_m2: 0 }]);
+    expect(getLeaderboardTotals(entries)).toEqual({ completed_tasks: 1, completed_area_m2: 0 });
+  });
   it("uses Europe/Kyiv month boundaries across a DST month", () => {
     expect(getKyivMonthBounds(new Date("2026-03-31T20:30:00.000Z"))).toEqual({
       start: "2026-02-28T22:00:00.000Z",

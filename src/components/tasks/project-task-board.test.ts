@@ -14,3 +14,16 @@ describe("task-card assignee presentation", () => {
     expect(source).toContain("const visibleCollaboratorCount = task.assignee ? 3 : 4;");
   });
 });
+
+describe("completed-project task creation", () => {
+  it("keeps the general action visible and shares canonical allowed stages with local stage actions", async () => {
+    const source = await readFile(boardPath, "utf8");
+
+    expect(source).toContain("getTaskCreationStagesForProject({ projectStatus })");
+    expect(source).toContain("canCreate && defaultTaskCreationStage");
+    expect(source).toContain("allowedStages={taskCreationStages}");
+    expect(source).toContain("defaultStage={defaultTaskCreationStage}");
+    expect(source).toContain("canCreate && taskCreationStages.includes(stage)");
+    expect(source).not.toContain('canCreate && projectStatus !== "completed"');
+  });
+});

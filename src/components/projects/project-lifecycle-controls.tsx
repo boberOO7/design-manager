@@ -13,7 +13,7 @@ export function ProjectLifecycleControls({ projectId }: { projectId: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const actions: Record<ProjectLifecycleStatus, Array<{ status: ProjectLifecycleStatus; label: string; icon: typeof Play; confirm?: string }>> = {
-    planned: [{ status: "active", label: t("startProject"), icon: Play }], active: [{ status: "paused", label: t("pauseProject"), icon: Pause }, { status: "completed", label: t("completeProject"), icon: Check, confirm: t("completeConfirm") }], paused: [{ status: "active", label: t("resumeProject"), icon: Play }, { status: "completed", label: t("completeProject"), icon: Check, confirm: t("completeConfirm") }], completed: [{ status: "active", label: t("reopenProject"), icon: RotateCcw, confirm: t("reopenConfirm") }], archived: [],
+    planned: [{ status: "active", label: t("startProject"), icon: Play }], active: [{ status: "paused", label: t("pauseProject"), icon: Pause }, { status: "completed", label: t("completeProject"), icon: Check }], paused: [{ status: "active", label: t("resumeProject"), icon: Play }, { status: "completed", label: t("completeProject"), icon: Check }], completed: [{ status: "active", label: t("reopenProject"), icon: RotateCcw, confirm: t("reopenConfirm") }], archived: [],
   };
   const primary = actions[status][0]; const secondary = actions[status][1];
   async function updateStatus(nextStatus: ProjectLifecycleStatus, confirmation?: string) {

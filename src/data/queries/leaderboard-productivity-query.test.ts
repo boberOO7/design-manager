@@ -14,8 +14,9 @@ describe("leaderboard productivity query", () => {
     expect(source).toContain('.in("profile.job_title", PROFESSIONAL_ROLES)');
     expect(source).toContain("projectProductivityLeaderboard(");
     expect(source).toContain("eligibleMembers,");
-    expect(source).toContain('select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, completed_at")');
+    expect(source).toContain('select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")');
     expect(source).toContain("excludedProjectIds.has(attribution.project_id)");
+    expect(source).toContain("!isProjectProgressStage(attribution.task_stage)");
     expect(source).not.toContain("projects!inner(include_in_productivity)");
   });
 

@@ -542,7 +542,6 @@
     "restoring": "Restoring…",
     "archiveConfirm": "Archive {name}? You can restore it later.",
     "lifecycleError": "The project lifecycle could not be updated. Please try again.",
-    "completeConfirm": "Complete this project? All remaining tasks must already be completed or cancelled.",
     "reopenConfirm": "Reopen this project? Tasks can be changed again.",
     "noActivity": "No activity yet",
     "activityPending": "Activity History starts when this migration is deployed. Future project, task, and team changes will appear here.",

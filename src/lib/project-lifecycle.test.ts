@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canUpdateProjectMetadata, countOpenLifecycleTasks, getAutomaticProjectStatus, getLifecycleCompletedAt, getRestoredProjectStatus, hasProgressedEligibleTasks, isOperationalProjectStatus, isValidArchiveState, OPERATIONAL_PROJECT_STATUSES, validateLifecycleTransition } from "./project-lifecycle";
+import { canUpdateProjectMetadata, canWorkOnTaskInProject, countOpenLifecycleTasks, getAutomaticProjectStatus, getLifecycleCompletedAt, getRestoredProjectStatus, getTaskCreationStagesForProject, hasProgressedEligibleTasks, isOperationalProjectStatus, isValidArchiveState, OPERATIONAL_PROJECT_STATUSES, validateLifecycleTransition } from "./project-lifecycle";
+import { TASK_STAGES } from "./task-stages";
 import { isWritableTaskStatus } from "./tasks";
 import { editProjectSchema } from "./validation/project";
 
@@ -20,6 +21,7 @@ describe("automatic project activation", () => {
     expect(getAutomaticProjectStatus("active", "todo")).toBe("active");
     expect(getAutomaticProjectStatus("paused", "completed")).toBe("paused");
     expect(getAutomaticProjectStatus("completed", "in_progress")).toBe("completed");
+    expect(getAutomaticProjectStatus("planned", "in_progress", "stage_4")).toBe("planned");
   });
   it("defines paused work outside the operational query boundary and restores it on resume", () => {
     expect(OPERATIONAL_PROJECT_STATUSES).toEqual(["planned", "active"]);
@@ -35,8 +37,8 @@ describe("automatic project activation", () => {
 });
 
 describe("manual lifecycle transitions", () => {
-  const todo = [{ status: "todo" }];
-  const progressed = [{ status: "in_progress" }];
+  const todo = [{ stage: "stage_1", status: "todo" }];
+  const progressed = [{ stage: "stage_1", status: "in_progress" }];
   it("allows the supported active workflow", () => {
     expect(validateLifecycleTransition({ from: "planned", to: "active", openTaskCount: 1, hasProgressedEligibleTasks: false }).valid).toBe(true);
     expect(validateLifecycleTransition({ from: "active", to: "paused", openTaskCount: 1, hasProgressedEligibleTasks: true }).valid).toBe(true);
@@ -46,6 +48,27 @@ describe("manual lifecycle transitions", () => {
   it("permits completion only after all tasks close", () => {
     expect(validateLifecycleTransition({ from: "active", to: "completed", openTaskCount: 0, hasProgressedEligibleTasks: false }).valid).toBe(true);
     expect(validateLifecycleTransition({ from: "paused", to: "completed", openTaskCount: 2, hasProgressedEligibleTasks: true })).toMatchObject({ valid: false, reason: "open_tasks" });
+  });
+  it("ignores post-completion work when evaluating project completion", () => {
+    const tasks = [
+      { stage: "stage_1", status: "completed" },
+      { stage: "stage_2", status: "cancelled" },
+      { stage: "stage_3", status: "completed" },
+      { stage: "stage_4", status: "todo" },
+    ];
+    expect(countOpenLifecycleTasks(tasks)).toBe(0);
+    expect(hasProgressedEligibleTasks(tasks)).toBe(true);
+    expect(validateLifecycleTransition({ from: "active", to: "completed", openTaskCount: countOpenLifecycleTasks(tasks), hasProgressedEligibleTasks: true }).valid).toBe(true);
+  });
+  it("keeps completed projects writable only for post-completion tasks", () => {
+    expect(canWorkOnTaskInProject({ projectStatus: "completed", stage: "stage_4" })).toBe(true);
+    expect(canWorkOnTaskInProject({ projectStatus: "completed", stage: "stage_3" })).toBe(false);
+    expect(canWorkOnTaskInProject({ projectStatus: "archived", archivedAt: "2026-09-03", stage: "stage_4" })).toBe(false);
+  });
+  it("derives task-creation choices from the canonical stage order and project lifecycle", () => {
+    expect(getTaskCreationStagesForProject({ projectStatus: "active" })).toEqual(TASK_STAGES);
+    expect(getTaskCreationStagesForProject({ projectStatus: "completed" })).toEqual(["stage_4"]);
+    expect(getTaskCreationStagesForProject({ projectStatus: "archived", archivedAt: "2026-09-03" })).toEqual([]);
   });
   it("returns paused projects to planned only before eligible work progresses", () => {
     expect(hasProgressedEligibleTasks(todo)).toBe(false);

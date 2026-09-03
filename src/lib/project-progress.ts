@@ -43,6 +43,10 @@ export const PROJECT_PROGRESS_STAGE_WEIGHTS: Record<ProjectProgressStage, number
 
 export const TASK_PRODUCTION_PROGRESS_CEILING = 70;
 
+export function isProjectProgressStage(stage: string): stage is ProjectProgressStage {
+  return PROJECT_PROGRESS_STAGES.includes(stage as ProjectProgressStage);
+}
+
 export type StageProgress = {
   eligibleTaskCount: number;
   completedTaskCount: number;

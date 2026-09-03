@@ -8,6 +8,7 @@ import { groupMyTasks, mergeProjectTask, type MyTaskGroupId } from "@/lib/tasks"
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { MyTask, ProjectTask } from "@/types/tasks";
+import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 
 const sections: Array<{ id: MyTaskGroupId; title: "overdue" | "today" | "upcoming" | "completed"; description: "overdueDescription" | "todayDescription" | "upcomingDescription" | "completedDescription" }> = [
   { id: "overdue", title: "overdue", description: "overdueDescription" },
@@ -95,7 +96,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
         key={selectedTask.id}
         canManageTasks={false}
         currentUserId={currentUserId}
-        isProjectReadOnly={selectedTask.project.status === "completed" || selectedTask.project.status === "archived" || selectedTask.project.archived_at !== null}
+        isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: selectedTask.project.status, archivedAt: selectedTask.project.archived_at, stage: selectedTask.stage })}
         members={[]}
         isOpen={isTaskDrawerOpen}
         onClose={closeTaskDrawer}

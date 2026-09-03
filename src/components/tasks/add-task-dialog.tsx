@@ -24,11 +24,13 @@ export type AddTaskDialogHandle = {
 };
 
 export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
+  allowedStages?: readonly TaskStage[];
   members: AssignableProjectMember[];
   defaultStage?: TaskStage;
   projectId: string;
   templates: StudioChecklistTemplate[];
 }>(function AddTaskDialog({
+  allowedStages = TASK_STAGES,
   members,
   defaultStage = "stage_1",
   projectId,
@@ -43,6 +45,9 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const templatesT = useTranslations("Templates");
   const validation = useTranslations("Validation");
   const roles = useTranslations("Roles");
+  const availableStages = allowedStages.length > 0 ? allowedStages : TASK_STAGES;
+  const initialStage = availableStages.includes(defaultStage) ? defaultStage : availableStages[0];
+  const isStageLocked = availableStages.length === 1;
   const roleLabel = (value: string) => { const roleKey = getCanonicalRoleTranslationKey(value); return roleKey ? roles(roleKey) : value; };
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -52,7 +57,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const [templateId, setTemplateId] = useState("");
   const [checklistItems, setChecklistItems] = useState<ChecklistTemplateStage[]>([]);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [selectedStage, setSelectedStage] = useState<TaskStage>(defaultStage);
+  const [selectedStage, setSelectedStage] = useState<TaskStage>(initialStage);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [deadlines, setDeadlines] = useState<TaskDeadlineInput[]>([]);
@@ -71,9 +76,9 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
     if (state.success || state.formError || state.fieldErrors) hasSubmittedRef.current = false;
   }, [state]);
 
-  function openDialog(stage = defaultStage) {
+  function openDialog(stage = initialStage) {
     formRef.current?.reset();
-    setSelectedStage(stage);
+    setSelectedStage(availableStages.includes(stage) ? stage : initialStage);
     setSelectedAssigneeId(null);
     setCollaboratorIds([]);
     setDeadlines([]);
@@ -125,9 +130,10 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
               </Select>
             </FormField>
             <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
-              <Select name="stage" value={selectedStage} disabled={isPending} onValueChange={(stage) => { if (isTaskStage(stage)) { setSelectedStage(stage); const nextProgressField = getTaskCreationProgressField(stage); setCompletedAreaM2(""); setProgressWeight(nextProgressField === "weight" ? "1" : ""); } }}>
-                {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
+              <Select aria-readonly={isStageLocked || undefined} name={isStageLocked ? undefined : "stage"} value={selectedStage} disabled={isPending || isStageLocked} onValueChange={(stage) => { if (isTaskStage(stage) && availableStages.includes(stage)) { setSelectedStage(stage); const nextProgressField = getTaskCreationProgressField(stage); setCompletedAreaM2(""); setProgressWeight(nextProgressField === "weight" ? "1" : ""); } }}>
+                {availableStages.map((stage) => <SelectItem key={stage} value={stage}>{stages(stage)}</SelectItem>)}
               </Select>
+              {isStageLocked ? <input type="hidden" name="stage" value={selectedStage} /> : null}
             </FormField>
           </div>
           <TaskDeadlineEditor deadlines={deadlines} disabled={isPending} error={state.fieldErrors?.deadlines} locale={locale} onChange={setDeadlines} statusLabel={(status) => statusT(status === "in_progress" ? "inProgress" : status)} />

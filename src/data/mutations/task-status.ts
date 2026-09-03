@@ -9,6 +9,7 @@ import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { canCompleteAttributedTask, doesTaskCompletionRequireProductivityAttribution } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
+import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
@@ -37,6 +38,9 @@ export async function authorizeTaskMutation(taskId: string): Promise<TaskMutatio
   }
 
   if (!task) return { formError: "The task was not found or is not available.", success: false };
+  if (!canWorkOnTaskInProject({ projectStatus: task.project.status, archivedAt: task.project.archived_at, stage: task.stage })) {
+    return { formError: "Completed production tasks and archived project tasks are read-only.", success: false };
+  }
 
   const isStudioAdmin = membership.system_role === "admin"
     && task.project.studio_id === membership.studio_id;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isOpenTask, sortEmployeeTasks, type DashboardProject, type DashboardTask } from "./dashboard";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardProject, type DashboardTask } from "./dashboard";
 import { isTaskOverdue } from "./tasks";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "./project-progress";
 
@@ -17,6 +17,13 @@ describe("dashboard calculations", () => {
     expect(isDashboardTask({ ...dashboardTask, stage: "unsupported_stage" })).toBe(false);
     expect(isDashboardTask({ ...dashboardTask, status: "unsupported_status" })).toBe(false);
     expect(isDashboardTask({ ...dashboardTask, priority: "unsupported_priority" })).toBe(false);
+  });
+
+  it("includes only post-completion work from completed projects and keeps paused or archived work excluded", () => {
+    expect(isDashboardTaskProjectEligible(task({ stage: "stage_4", project: { id: "p1", name: "Alpha", status: "completed", archived_at: null } }))).toBe(true);
+    expect(isDashboardTaskProjectEligible(task({ stage: "stage_3", project: { id: "p1", name: "Alpha", status: "completed", archived_at: null } }))).toBe(false);
+    expect(isDashboardTaskProjectEligible(task({ stage: "stage_4", project: { id: "p1", name: "Alpha", status: "paused", archived_at: null } }))).toBe(false);
+    expect(isDashboardTaskProjectEligible(task({ stage: "stage_4", project: { id: "p1", name: "Alpha", status: "archived", archived_at: "2026-09-03" } }))).toBe(false);
   });
 
   it("excludes completed and cancelled tasks from open and overdue counts", () => {

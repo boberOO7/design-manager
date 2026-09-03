@@ -7,6 +7,7 @@ import { getProjectById } from "@/data/queries/project-by-id";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectStageConfiguration } from "@/data/queries/project-stage-columns";
 import { getTaskCreationProgressField } from "@/lib/productivity";
+import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import { toTaskStatusActionState } from "@/lib/task-status-mutation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -71,6 +72,9 @@ export async function createProjectTask(
     || project.archived_at
   ) {
     return { formError: "The project was not found or is not available for new tasks." };
+  }
+  if (!canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })) {
+    return { fieldErrors: { stage: "Only the post-completion stage accepts new tasks after project completion." } };
   }
   const stageConfiguration = await getProjectStageConfiguration(project.id);
   if (!stageConfiguration.columns[parsed.data.stage].includes("todo")) {
