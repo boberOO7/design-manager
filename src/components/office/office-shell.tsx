@@ -33,13 +33,13 @@ export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; 
     {children}
     <Dialog isOpen={chooserOpen} onRequestClose={() => setChooserOpen(false)} closeLabel={t("close")} title={t("chooser.title")} description={t("chooser.description")} className="max-w-lg">
       <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
-        <CreateChoice href="/office/submissions?create=submission" icon={MessageSquareText} title={t("chooser.submission")} description={t("chooser.submissionDescription")} onClick={() => setChooserOpen(false)} />
+        <CreateChoice initialFocus href="/office/submissions?create=submission" icon={MessageSquareText} title={t("chooser.submission")} description={t("chooser.submissionDescription")} onClick={() => setChooserOpen(false)} />
         <CreateChoice href="/office/assignments?create=assignment" icon={ClipboardCheck} title={t("chooser.assignment")} description={t("chooser.assignmentDescription")} onClick={() => setChooserOpen(false)} />
       </div>
     </Dialog>
   </div>;
 }
 
-function CreateChoice({ href, icon: Icon, title, description, onClick }: { href: string; icon: typeof ClipboardCheck; title: string; description: string; onClick: () => void }) {
-  return <Link href={href} onClick={onClick} className="group rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] p-4 transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex size-10 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)]/10 text-[var(--ui-action-primary)]"><Icon className="size-5" aria-hidden="true" /></span><strong className="mt-4 block text-sm text-[var(--ui-text)]">{title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{description}</span></Link>;
+function CreateChoice({ initialFocus = false, href, icon: Icon, title, description, onClick }: { initialFocus?: boolean; href: string; icon: typeof ClipboardCheck; title: string; description: string; onClick: () => void }) {
+  return <Link data-dialog-initial-focus={initialFocus || undefined} href={href} onClick={onClick} className="group rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] p-4 transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex size-10 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)]/10 text-[var(--ui-action-primary)]"><Icon className="size-5" aria-hidden="true" /></span><strong className="mt-4 block text-sm text-[var(--ui-text)]">{title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{description}</span></Link>;
 }

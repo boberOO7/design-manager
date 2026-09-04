@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("title") };
 }
 
-export default async function OfficeSubmissionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [data, params] = await Promise.all([getSubmissionsData(), searchParams]);
-  return <SubmissionsWorkspace {...data} requestedItemId={typeof params.item === "string" ? params.item : null} createRequested={params.create === "submission"} />;
+export default async function OfficeSubmissionsPage() {
+  const data = await getSubmissionsData();
+  return <SubmissionsWorkspace {...data} />;
 }

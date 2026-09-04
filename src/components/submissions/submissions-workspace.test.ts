@@ -36,6 +36,12 @@ describe("submissions workspace contract", () => {
     expect(source).not.toContain('key={selected?.id ?? "closed"}');
   });
 
+  it("derives create and detail overlays directly from URL search parameters", () => {
+    expect(source).toContain("useOfficeOverlayRouting");
+    expect(source).not.toContain("setCreateOpen");
+    expect(source).not.toContain("setSelectedId");
+  });
+
   it("does not render script markup from the Submissions client component", () => {
     expect(source).not.toMatch(/<script\b/i);
     expect(source).not.toContain("dangerouslySetInnerHTML");
@@ -48,14 +54,31 @@ describe("submissions workspace contract", () => {
     expect(source).toContain("aria-pressed={supportedByMe}");
   });
 
-  it("shares contextual workflow actions and keeps rejection secondary", () => {
-    expect(source).toContain("getPrimarySubmissionStatus");
+  it("uses canonical semantic workflow actions and confirmed explicit rejection", () => {
+    expect(source).toContain("getPrimarySubmissionAction");
     expect(source).toContain("submissionTransitionRequiresResponsible");
     expect(source).toContain("<SubmissionWorkflowAction");
-    expect(source).toContain("<SubmissionSecondaryActions");
+    expect(source).toContain("workflowStyles[action.tone]");
+    expect(source).toContain("<SubmissionRejectAction");
+    expect(source).toContain('title={t("workflow.rejectTitle")}');
+    expect(source).toContain('t("workflow.confirmReject")');
+    expect(source).not.toContain("<SubmissionSecondaryActions");
     expect(source).toContain('t("workflow.chooseResponsible")');
     expect(source).toContain('t("workflow.assignMe")');
     expect(source).toContain('runWorkflow("rejected"');
+  });
+
+  it("keeps workflow controls out of the editable drawer admin form", () => {
+    const adminControls = source.slice(source.indexOf("function AdminControls"), source.indexOf("function SubmissionWorkflowAction"));
+    expect(adminControls).toContain('t("admin.save")');
+    expect(adminControls).not.toContain("<SubmissionWorkflowAction");
+    expect(adminControls).not.toContain("<SubmissionRejectAction");
+  });
+
+  it("starts the communication composer at one row and grows it modestly", () => {
+    expect(source).toContain("ref={commentRef}");
+    expect(source).toContain("rows={1}");
+    expect(source).toContain("Math.min(composer.scrollHeight, 112)");
   });
 
   it("uses shared Office drawer controls and protects anonymous identity", () => {
@@ -67,5 +90,6 @@ describe("submissions workspace contract", () => {
     expect(source).toContain("!item.isAnonymous ? <section");
     expect(source).toContain('item.type === "suggestion" ? "discussion" : "communication"');
     expect(source).toContain("Popover.Portal container={portalContainer}");
+    expect(source).toContain("data-dialog-initial-focus");
   });
 });

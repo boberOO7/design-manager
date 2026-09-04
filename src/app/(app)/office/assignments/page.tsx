@@ -12,7 +12,7 @@ function kyivToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
-export default async function OfficeAssignmentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [data, params] = await Promise.all([getOfficeAssignmentsData(), searchParams]);
-  return <AssignmentsWorkspace {...data} requestedItemId={typeof params.item === "string" ? params.item : null} createRequested={params.create === "assignment"} today={kyivToday()} />;
+export default async function OfficeAssignmentsPage() {
+  const data = await getOfficeAssignmentsData();
+  return <AssignmentsWorkspace {...data} today={kyivToday()} />;
 }

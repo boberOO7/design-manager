@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canRejectSubmission, getAllowedNextStatuses, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_WORKFLOWS } from "./submissions";
+import { canRejectSubmission, getAllowedNextStatuses, getPrimarySubmissionAction, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_WORKFLOWS } from "./submissions";
 
 describe("submission workflows", () => {
   it("keeps the three canonical workflows independent from task statuses", () => {
@@ -21,6 +21,13 @@ describe("submission workflows", () => {
     expect(getPrimarySubmissionStatus("complaint", "new")).toBe("reviewing");
     expect(getPrimarySubmissionStatus("suggestion", "new")).toBe("accepted");
     expect(getPrimarySubmissionStatus("suggestion", "planned")).toBe("implemented");
+  });
+
+  it("derives semantic action presentation from the canonical transition", () => {
+    expect(getPrimarySubmissionAction("request", "new")).toEqual({ status: "accepted", icon: "accept", tone: "info" });
+    expect(getPrimarySubmissionAction("complaint", "new")).toEqual({ status: "reviewing", icon: "review", tone: "warning" });
+    expect(getPrimarySubmissionAction("suggestion", "planned")).toEqual({ status: "implemented", icon: "complete", tone: "success" });
+    expect(getPrimarySubmissionAction("request", "done")).toBeNull();
   });
 
   it("requires a responsible person when request work starts", () => {

@@ -4,8 +4,9 @@ import { useActionState, useEffect, useMemo, useOptimistic, useRef, useState, us
 import * as Popover from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CircleAlert, Ellipsis, Lightbulb, LockKeyhole, MessageSquareText, Send, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
+import { CalendarCheck2, CalendarClock, Check, CheckCircle2, CircleAlert, Eye, Lightbulb, LockKeyhole, MessageSquareText, Play, Send, ShieldCheck, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
 import { addSubmissionComment, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
+import { useOfficeOverlayRouting } from "@/components/office/use-office-overlay-routing";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { SubmissionItem, SubmissionPerson } from "@/data/queries/submissions";
-import { canRejectSubmission, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_PRIORITIES, SUBMISSION_TYPES, type SubmissionPriority, type SubmissionStatus, type SubmissionType } from "@/lib/submissions";
+import { canRejectSubmission, getPrimarySubmissionAction, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_PRIORITIES, SUBMISSION_TYPES, type SubmissionPriority, type SubmissionStatus, type SubmissionType, type SubmissionWorkflowAction as SubmissionWorkflowActionDefinition } from "@/lib/submissions";
 import type { SubmissionActionState } from "@/lib/validation/submission";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,22 @@ const typeStyles = {
   complaint: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
 } as const;
 
+const workflowIcons = {
+  accept: Check,
+  start: Play,
+  complete: CheckCircle2,
+  review: Eye,
+  action: ShieldCheck,
+  plan: CalendarCheck2,
+} as const;
+
+const workflowStyles = {
+  info: "border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)] hover:opacity-85",
+  success: "border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)] hover:opacity-85",
+  warning: "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-85",
+  violet: "border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)] hover:opacity-85",
+} as const;
+
 function statusStyle(status: SubmissionStatus) {
   if (["done", "implemented", "closed"].includes(status)) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   if (status === "rejected") return "bg-rose-500/10 text-rose-700 dark:text-rose-300";
@@ -37,15 +54,13 @@ function statusStyle(status: SubmissionStatus) {
   return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
-export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, requestedItemId, createRequested }: { currentUserId: string; isAdmin: boolean; items: SubmissionItem[]; members: SubmissionPerson[]; requestedItemId: string | null; createRequested: boolean }) {
+export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }: { currentUserId: string; isAdmin: boolean; items: SubmissionItem[]; members: SubmissionPerson[] }) {
   const t = useTranslations("Submissions");
-  const router = useRouter();
   const [filter, setFilter] = useState<InboxFilter>("active");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [createOpen, setCreateOpen] = useState(createRequested);
   const [createdNotice, setCreatedNotice] = useState<"named" | "anonymous" | null>(null);
-  const [selectedId, setSelectedId] = useState(requestedItemId);
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const { closeCreate, closeItem, createOpen, openItem, selectedItemId } = useOfficeOverlayRouting("/office/submissions", "submission");
+  const selected = items.find((item) => item.id === selectedItemId) ?? null;
   const filters: InboxFilter[] = ["active", "mine", "history"];
   const filtered = useMemo(() => items.filter((item) => {
     if (typeFilter !== "all" && item.type !== typeFilter) return false;
@@ -62,10 +77,6 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, r
     return b.createdAt.localeCompare(a.createdAt);
   }), [currentUserId, filter, items, typeFilter]);
 
-  function openItem(id: string) { setSelectedId(id); router.replace(`/office/submissions?item=${id}`, { scroll: false }); }
-  function closeItem() { setSelectedId(null); router.replace("/office/submissions", { scroll: false }); }
-  function closeCreate() { setCreateOpen(false); router.replace("/office/submissions", { scroll: false }); }
-
   return <div className="space-y-6">
     <div><h2 className="text-lg font-bold text-[var(--ui-text)]">{t("title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("description")}</p></div>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1" role="tablist" aria-label={t("filters.label")}>
@@ -73,7 +84,7 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, r
     </div><Select aria-label={t("filters.typeLabel")} value={typeFilter} width="content" onValueChange={(value) => setTypeFilter(value as TypeFilter)}><SelectItem value="all">{t("filters.allTypes")}</SelectItem>{SUBMISSION_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`filters.${value}`)}</SelectItem>)}</Select></div>
     {createdNotice ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200">{t(createdNotice === "anonymous" ? "anonymousCreatedNotice" : "createdNotice")}</p> : null}
     {filtered.length ? <div className="grid gap-3 lg:grid-cols-2">{filtered.map((item) => <SubmissionRow key={item.id} currentUserId={currentUserId} isAdmin={isAdmin} item={item} members={members} onOpen={() => openItem(item.id)} />)}</div> : <div className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-6 py-14 text-center"><MessageSquareText className="mx-auto size-8 text-[var(--ui-text-muted)]" aria-hidden="true" /><h2 className="mt-3 font-semibold">{t("empty.title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("empty.description")}</p></div>}
-    <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={closeCreate} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); }} />
+    <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={closeCreate} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); else closeCreate(); }} />
     <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onClose={closeItem} />
   </div>;
 }
@@ -114,14 +125,14 @@ function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { curr
       else router.refresh();
     });
   }
-  const primaryStatus = getPrimarySubmissionStatus(item.type, item.status);
-  return <article className="group relative flex h-full flex-col rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3.5 shadow-[var(--ui-shadow-panel)] transition-colors hover:border-[var(--ui-border-strong)] focus-within:border-[var(--ui-focus)] focus-within:ring-2 focus-within:ring-[var(--ui-focus)]">
+  const primaryAction = getPrimarySubmissionAction(item.type, item.status);
+  return <article className="group relative rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 shadow-[var(--ui-shadow-panel)] transition-colors hover:border-[var(--ui-border-strong)] focus-within:border-[var(--ui-focus)] focus-within:ring-2 focus-within:ring-[var(--ui-focus)]">
     <button type="button" aria-label={`${t(`types.${item.type}`)}: ${item.title}`} onClick={onOpen} className="absolute inset-0 cursor-pointer rounded-[var(--ui-radius-panel)] focus-visible:outline-none" />
-    <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col">
-      <div className="flex items-start gap-2.5"><div className={cn("flex size-8 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-4" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</span><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span></div><h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[var(--ui-text)]">{item.title}</h3>{item.description.trim() ? <p className="mt-1 line-clamp-2 text-xs leading-4 text-[var(--ui-text-secondary)]">{item.description}</p> : null}</div></div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--ui-border-subtle)] pt-2.5">{item.isAnonymous ? <AnonymousPerson label={t("anonymous")} /> : item.author ? <Person person={item.author} label={t("author")} compact /> : null}{item.responsible ? <Person person={item.responsible} label={t("responsible")} compact /> : null}<time dateTime={item.deadline ?? item.createdAt} className={cn("ml-auto inline-flex items-center gap-1.5 text-xs", item.deadline ? "font-medium text-[var(--ui-text-secondary)]" : "text-[var(--ui-text-muted)]")}><CalendarClock className="size-3.5" aria-hidden="true" />{item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(item.createdAt))}</time></div>
-      {(isAdmin && (primaryStatus || canRejectSubmission(item.type, item.status))) || item.type === "suggestion" ? <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2">{item.type === "suggestion" ? <button type="button" aria-label={supportedByMe ? t("supported", { count: supportCount }) : t("support", { count: supportCount })} aria-pressed={supportedByMe} disabled={supportPending} onClick={toggleSupport} className={cn("pointer-events-auto relative z-10 inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait disabled:opacity-70", supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : "border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)] hover:border-[var(--ui-warning-border)] hover:bg-[var(--ui-warning-surface)] hover:text-[var(--ui-warning-text)]")}><ThumbsUp className={cn("size-3.5", supportedByMe && "fill-current")} aria-hidden="true" />{supportCount}</button> : null}{isAdmin && primaryStatus ? <SubmissionWorkflowAction currentUserId={currentUserId} disabled={workflowPending} members={members} responsibleId={item.responsible?.id ?? null} status={primaryStatus} type={item.type} onTransition={runWorkflow} compact /> : null}{isAdmin && canRejectSubmission(item.type, item.status) ? <SubmissionSecondaryActions disabled={workflowPending} onReject={() => runWorkflow("rejected", item.responsible?.id ?? null)} /> : null}</div> : null}
-      {supportError ? <p role="alert" className="mt-2 text-xs text-[var(--ui-danger-text)]">{t("errors.support")}</p> : null}{workflowError ? <p role="alert" className="mt-2 text-xs text-[var(--ui-danger-text)]">{t(`errors.${workflowError}`)}</p> : null}
+    <div className="pointer-events-none relative grid min-w-0 gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0"><div className="flex items-start gap-2.5"><div className={cn("flex size-7 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-3.5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</span><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span></div><h3 className="mt-0.5 line-clamp-1 text-sm font-semibold leading-5 text-[var(--ui-text)]">{item.title}</h3>{item.description.trim() ? <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-[var(--ui-text-secondary)]">{item.description}</p> : null}</div></div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">{item.isAnonymous ? <AnonymousPerson label={t("anonymous")} /> : item.author ? <Person person={item.author} label={t("author")} compact /> : null}{item.responsible ? <Person person={item.responsible} label={t("responsible")} compact /> : null}<time dateTime={item.deadline ?? item.createdAt} className={cn("inline-flex items-center gap-1 text-[11px]", item.deadline ? "font-medium text-[var(--ui-text-secondary)]" : "text-[var(--ui-text-muted)]")}><CalendarClock className="size-3" aria-hidden="true" />{item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(item.createdAt))}</time></div></div>
+      {(isAdmin && (primaryAction || canRejectSubmission(item.type, item.status))) || item.type === "suggestion" ? <div className="pointer-events-auto relative z-10 flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end" onClick={(event) => event.stopPropagation()}>{item.type === "suggestion" ? <button type="button" aria-label={supportedByMe ? t("supported", { count: supportCount }) : t("support", { count: supportCount })} aria-pressed={supportedByMe} disabled={supportPending} onClick={toggleSupport} className={cn("inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait disabled:opacity-70 sm:min-h-9", supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : "border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)] hover:border-[var(--ui-warning-border)] hover:bg-[var(--ui-warning-surface)] hover:text-[var(--ui-warning-text)]")}><ThumbsUp className={cn("size-3.5", supportedByMe && "fill-current")} aria-hidden="true" />{supportCount}</button> : null}{isAdmin && primaryAction ? <SubmissionWorkflowAction action={primaryAction} currentUserId={currentUserId} disabled={workflowPending} members={members} responsibleId={item.responsible?.id ?? null} type={item.type} onTransition={runWorkflow} compact /> : null}{isAdmin && canRejectSubmission(item.type, item.status) ? <SubmissionRejectAction disabled={workflowPending} title={item.title} onReject={() => runWorkflow("rejected", item.responsible?.id ?? null)} /> : null}</div> : null}
+      {supportError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)] sm:col-span-2">{t("errors.support")}</p> : null}{workflowError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)] sm:col-span-2">{t(`errors.${workflowError}`)}</p> : null}
     </div>
   </article>;
 }
@@ -131,11 +142,11 @@ function CreateSubmissionDialog({ isOpen, onClose, onCreated }: { isOpen: boolea
   const [type, setType] = useState<SubmissionType>("request");
   const processed = useRef(false);
   const [state, action, pending] = useActionState(createSubmission, initialCreateState);
-  useEffect(() => { if (state.success && !processed.current) { processed.current = true; onClose(); onCreated(state.submissionId ?? null, Boolean(state.anonymousSubmitted)); } }, [onClose, onCreated, state.anonymousSubmitted, state.submissionId, state.success]);
+  useEffect(() => { if (state.success && !processed.current) { processed.current = true; onCreated(state.submissionId ?? null, Boolean(state.anonymousSubmitted)); } }, [onCreated, state.anonymousSubmitted, state.submissionId, state.success]);
   return <Dialog closeDisabled={pending} closeLabel={t("close")} description={t("form.description")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("form.title")}>
     <form action={action} className="grid gap-5 p-5 sm:p-6">
       <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-semibold text-[var(--ui-text-secondary)]">{t("form.type")}</legend><div className="grid gap-2 sm:grid-cols-3">{SUBMISSION_TYPES.map((value) => { const Icon = typeIcons[value]; return <label key={value} className={cn("flex min-h-14 cursor-pointer items-center gap-2 rounded-[var(--ui-radius-control)] border px-3 transition-colors", type === value ? "border-[var(--ui-action-primary)] bg-[var(--ui-action-primary)]/5" : "border-[var(--ui-border-strong)] hover:bg-[var(--ui-surface-muted)]")}><input className="sr-only" type="radio" name="type" value={value} checked={type === value} onChange={() => setType(value)} /><Icon className="size-4" aria-hidden="true" /><span className="text-sm font-semibold">{t(`types.${value}`)}</span></label>; })}</div></fieldset>
-      <FormField label={t("form.subject")}><Input name="title" required maxLength={160} /></FormField>
+      <FormField label={t("form.subject")}><Input data-dialog-initial-focus name="title" required maxLength={160} /></FormField>
       <FormField label={t("form.details")}><Textarea name="description" required maxLength={5000} rows={6} /></FormField>
       {type === "complaint" ? <label className="flex cursor-pointer gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] p-4"><input type="checkbox" name="anonymous" className="mt-1 size-4 accent-[var(--ui-action-primary)]" /><span><span className="block text-sm font-semibold">{t("form.anonymous")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-secondary)]">{t("form.anonymousNotice")}</span></span></label> : null}
       {state.error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t(`errors.${state.error}`)}</p> : null}
@@ -149,25 +160,31 @@ function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose
   const locale = useLocale();
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  useEffect(() => {
+    const composer = commentRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(composer.scrollHeight, 112)}px`;
+  }, [comment]);
   if (!item) return null;
   const submissionId = item.id;
   const Icon = typeIcons[item.type];
   function refreshAfter(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else router.refresh(); }); }
   function submitComment() { if (!comment.trim()) return; refreshAfter(async () => { const result = await addSubmissionComment({ submissionId, body: comment }); if (!result.error) setComment(""); return result; }); }
   return <Drawer isOpen={Boolean(item)} onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.title} className="w-[calc(100%-0.5rem)] max-w-2xl sm:w-full">
-    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 gap-3"><div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</p><h2 className="mt-0.5 text-lg font-bold leading-6">{item.title}</h2></div></div><button ref={closeRef} type="button" aria-label={t("close")} onClick={onClose} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
+    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 gap-3"><div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</p><h2 className="mt-0.5 text-lg font-bold leading-6">{item.title}</h2><div className="mt-2 flex flex-wrap gap-1.5"><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span><span className="rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-[11px] font-semibold">{t(`priorities.${item.priority}`)}</span></div></div></div><div className="flex shrink-0 items-center gap-1">{isAdmin && canRejectSubmission(item.type, item.status) ? <SubmissionRejectAction disabled={pending} title={item.title} onReject={() => refreshAfter(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" }))} /> : null}<button ref={closeRef} type="button" aria-label={t("close")} onClick={onClose} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <section className="space-y-5 p-5 sm:p-6"><div className="flex flex-wrap gap-2"><span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span>{item.priority ? <span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-semibold">{t(`priorities.${item.priority}`)}</span> : null}</div>
-        <dl className="grid gap-x-6 gap-y-4 border-y border-[var(--ui-border-subtle)] py-4 sm:grid-cols-2">{item.isAnonymous ? <AnonymousMeta label={t("author")} value={t("anonymousPrivate")} /> : item.author ? <PersonMeta label={t("author")} person={item.author} /> : <Meta label={t("author")} value="—" />}{item.responsible ? <PersonMeta label={t("responsible")} person={item.responsible} /> : <Meta label={t("responsible")} value={t("unassigned")} />}<Meta label={t("created")} value={new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(item.createdAt))} /><Meta label={t("deadline")} value={item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : "—"} /></dl>
+      <section className="space-y-5 p-5 sm:p-6"><dl className="grid gap-x-6 gap-y-4 border-b border-[var(--ui-border-subtle)] pb-4 sm:grid-cols-2">{item.isAnonymous ? <AnonymousMeta label={t("author")} value={t("anonymousPrivate")} /> : item.author ? <PersonMeta label={t("author")} person={item.author} /> : <Meta label={t("author")} value="—" />}{item.responsible ? <PersonMeta label={t("responsible")} person={item.responsible} /> : <Meta label={t("responsible")} value={t("unassigned")} />}<Meta label={t("created")} value={new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(item.createdAt))} /><Meta label={t("deadline")} value={item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : "—"} /></dl>
         <div><h3 className="text-sm font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{item.description}</p></div>
         {item.type === "suggestion" ? <Button type="button" size="lg" variant="outline" aria-pressed={item.supportedByMe} disabled={pending} onClick={() => refreshAfter(() => toggleSuggestionSupport(item.id, item.supportedByMe))} className={item.supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : undefined}><ThumbsUp className={cn("mr-2 size-4", item.supportedByMe && "fill-current")} aria-hidden="true" />{item.supportedByMe ? t("supported", { count: item.supportCount }) : t("support", { count: item.supportCount })}</Button> : null}
       </section>
-      {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} currentUserId={currentUserId} item={item} members={members} disabled={pending} onSave={(input) => refreshAfter(() => manageSubmission(input))} /> : null}
+      {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={item} members={members} disabled={pending} onSave={(input) => refreshAfter(() => manageSubmission(input))} /> : null}
       {!item.isAnonymous ? <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><h3 className="font-semibold">{t(item.type === "suggestion" ? "discussion" : "communication")}</h3><div className="mt-4 grid gap-4">{item.comments.map((entry) => <div key={entry.id} className="flex gap-3"><UserAvatar imageUrl={entry.author.avatarUrl} name={entry.author.fullName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-semibold">{entry.author.id === currentUserId ? t("you") : entry.author.fullName}</span><time className="text-xs text-[var(--ui-text-muted)]">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{entry.body}</p></div></div>)}{!item.comments.length ? <p className="text-sm text-[var(--ui-text-muted)]">{t("noComments")}</p> : null}</div>
-        <div className="mt-5 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={3000} rows={3} /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
+        <div className="mt-4 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea ref={commentRef} value={comment} onChange={(event) => setComment(event.target.value)} maxLength={3000} rows={1} className="min-h-11 max-h-28 resize-none overflow-y-auto py-2.5 leading-5" /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
       </section> : null}
       {error ? <p role="alert" className="mx-5 mb-5 text-sm text-[var(--ui-danger-text)] sm:mx-6 sm:mb-6">{t(`errors.${error}`)}</p> : null}
     </div>
@@ -181,40 +198,42 @@ function AnonymousPerson({ label }: { label: string }) { return <div className="
 function PersonMeta({ label, person }: { label: string; person: SubmissionPerson }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{label}</dt><dd className="mt-1.5 flex items-center gap-2 text-sm font-medium text-[var(--ui-text)]"><UserAvatar decorative imageUrl={person.avatarUrl} name={person.fullName} size="sm" /><span>{person.fullName}</span></dd></div>; }
 function AnonymousMeta({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{label}</dt><dd className="mt-1.5 flex items-center gap-2 text-sm font-medium text-[var(--ui-text)]"><span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]"><LockKeyhole className="size-4" aria-hidden="true" /></span><span>{value}</span></dd></div>; }
 
-function AdminControls({ currentUserId, disabled, item, members, onSave }: { currentUserId: string; disabled: boolean; item: SubmissionItem; members: SubmissionPerson[]; onSave: (input: ManageSubmissionInput) => void }) {
+function AdminControls({ disabled, item, members, onSave }: { disabled: boolean; item: SubmissionItem; members: SubmissionPerson[]; onSave: (input: ManageSubmissionInput) => void }) {
   const t = useTranslations("Submissions");
   const locale = useLocale();
   const [responsibleId, setResponsibleId] = useState(item.responsible?.id ?? "");
   const [priority, setPriority] = useState<SubmissionPriority>(item.priority);
   const [deadline, setDeadline] = useState(item.deadline ?? "");
   const [note, setNote] = useState(item.internalNote ?? "");
-  const primaryStatus = getPrimarySubmissionStatus(item.type, item.status);
-  function save(status = item.status, nextResponsibleId = responsibleId || null) { onSave({ submissionId: item.id, status, responsibleId: nextResponsibleId, priority, deadline: deadline || null, internalNote: note }); }
+  function save() { onSave({ submissionId: item.id, status: item.status, responsibleId: responsibleId || null, priority, deadline: deadline || null, internalNote: note }); }
   return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-center gap-2"><UserRound className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" /><h3 className="font-semibold">{t("admin.title")}</h3></div><div className="mt-4 grid gap-4 sm:grid-cols-2">
     <FormField label={t("admin.responsible")}><Select disabled={disabled || item.type === "complaint"} value={responsibleId} onValueChange={setResponsibleId}><SelectItem value="">{t("unassigned")}</SelectItem>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}</span></SelectItem>)}</Select></FormField>
     <FormField label={t("admin.deadline")}><DatePicker value={deadline} disabled={disabled} locale={locale} onValueChange={setDeadline} /></FormField>
     <FormField label={t("admin.priority")}><Select value={priority} disabled={disabled} onValueChange={(value) => setPriority(value as SubmissionPriority)}>{SUBMISSION_PRIORITIES.map((value) => <SelectItem key={value} value={value}>{t(`priorities.${value}`)}</SelectItem>)}</Select></FormField>
     <FormField className="sm:col-span-2" label={t("admin.note")}><Textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} maxLength={5000} /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("admin.notePrivate")}</span></FormField>
-  </div><div className="mt-4 flex flex-wrap items-center justify-end gap-2">{canRejectSubmission(item.type, item.status) ? <SubmissionSecondaryActions disabled={disabled} onReject={() => save("rejected")} /> : null}<Button type="button" variant="outline" disabled={disabled} onClick={() => save()}>{disabled ? t("admin.saving") : t("admin.save")}</Button>{primaryStatus ? <SubmissionWorkflowAction currentUserId={currentUserId} disabled={disabled} members={members} responsibleId={responsibleId || null} status={primaryStatus} type={item.type} onTransition={(status, nextResponsibleId) => save(status, nextResponsibleId)} /> : null}</div></section>;
+  </div><div className="mt-4 flex justify-end"><Button type="button" disabled={disabled} onClick={save}>{disabled ? t("admin.saving") : t("admin.save")}</Button></div></section>;
 }
 
-function SubmissionWorkflowAction({ compact = false, currentUserId, disabled, members, onTransition, responsibleId, status, type }: { compact?: boolean; currentUserId: string; disabled: boolean; members: SubmissionPerson[]; onTransition: (status: SubmissionStatus, responsibleId: string | null) => void; responsibleId: string | null; status: SubmissionStatus; type: SubmissionType }) {
+function SubmissionWorkflowAction({ action, compact = false, currentUserId, disabled, members, onTransition, responsibleId, type }: { action: SubmissionWorkflowActionDefinition; compact?: boolean; currentUserId: string; disabled: boolean; members: SubmissionPerson[]; onTransition: (status: SubmissionStatus, responsibleId: string | null) => void; responsibleId: string | null; type: SubmissionType }) {
   const t = useTranslations("Submissions");
   const [open, setOpen] = useState(false);
   const [triggerNode, setTriggerNode] = useState<HTMLButtonElement | null>(null);
   const portalContainer = triggerNode?.closest("dialog, [role='dialog']") ?? undefined;
-  const requiresResponsible = submissionTransitionRequiresResponsible(type, status) && !responsibleId;
+  const requiresResponsible = submissionTransitionRequiresResponsible(type, action.status) && !responsibleId;
+  const ActionIcon = workflowIcons[action.icon];
   function transition(nextResponsibleId: string | null) {
     setOpen(false);
-    onTransition(status, nextResponsibleId);
+    onTransition(action.status, nextResponsibleId);
   }
-  if (!requiresResponsible) return <Button type="button" size={compact ? "sm" : "default"} disabled={disabled} onClick={() => transition(responsibleId)} className={compact ? "pointer-events-auto relative z-10 min-h-9" : undefined}>{disabled ? t("workflow.updating") : t(`workflow.${status}`)}</Button>;
-  return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button ref={setTriggerNode} type="button" size={compact ? "sm" : "default"} disabled={disabled} className={compact ? "pointer-events-auto relative z-10 min-h-9" : undefined}>{t(`workflow.${status}`)}</Button></Popover.Trigger><Popover.Portal container={portalContainer}><Popover.Content align="end" sideOffset={6} collisionPadding={12} className="z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"><p className="text-sm font-semibold">{t("workflow.chooseResponsible")}</p><div className="mt-3 grid gap-2"><Button type="button" variant="outline" disabled={disabled} onClick={() => transition(currentUserId)}>{t("workflow.assignMe")}</Button><Select aria-label={t("admin.responsible")} disabled={disabled} placeholder={t("workflow.chooseMember")} onValueChange={(value) => transition(value)}>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}</span></SelectItem>)}</Select></div><Popover.Arrow className="fill-[var(--ui-surface)]" /></Popover.Content></Popover.Portal></Popover.Root>;
+  const actionClassName = cn("gap-1.5 border", workflowStyles[action.tone], compact && "min-h-11 px-2.5 sm:min-h-9");
+  const label = disabled ? t("workflow.updating") : t(`workflow.${action.status}`);
+  if (!requiresResponsible) return <Button type="button" size={compact ? "sm" : "default"} variant="outline" disabled={disabled} onClick={() => transition(responsibleId)} className={actionClassName}><ActionIcon className="size-3.5" aria-hidden="true" />{label}</Button>;
+  return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button ref={setTriggerNode} type="button" size={compact ? "sm" : "default"} variant="outline" disabled={disabled} className={actionClassName}><ActionIcon className="size-3.5" aria-hidden="true" />{label}</Button></Popover.Trigger><Popover.Portal container={portalContainer}><Popover.Content align="end" sideOffset={6} collisionPadding={12} className="z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"><p className="text-sm font-semibold">{t("workflow.chooseResponsible")}</p><div className="mt-3 grid gap-2"><Button type="button" variant="outline" disabled={disabled} onClick={() => transition(currentUserId)}>{t("workflow.assignMe")}</Button><Select aria-label={t("admin.responsible")} disabled={disabled} placeholder={t("workflow.chooseMember")} onValueChange={(value) => transition(value)}>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}</span></SelectItem>)}</Select></div><Popover.Arrow className="fill-[var(--ui-surface)]" /></Popover.Content></Popover.Portal></Popover.Root>;
 }
 
-function SubmissionSecondaryActions({ disabled, onReject }: { disabled: boolean; onReject: () => void }) {
+function SubmissionRejectAction({ disabled, onReject, title }: { disabled: boolean; onReject: () => void; title: string }) {
   const t = useTranslations("Submissions");
-  const [triggerNode, setTriggerNode] = useState<HTMLButtonElement | null>(null);
-  const portalContainer = triggerNode?.closest("dialog, [role='dialog']") ?? undefined;
-  return <Popover.Root><Popover.Trigger asChild><button ref={setTriggerNode} type="button" aria-label={t("workflow.moreActions")} disabled={disabled} className="pointer-events-auto relative z-10 flex size-9 cursor-pointer items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50"><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal container={portalContainer}><Popover.Content align="end" sideOffset={4} collisionPadding={8} className="z-[70] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" disabled={disabled} onClick={onReject} className="flex min-h-10 w-full cursor-pointer items-center rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("workflow.reject")}</button></Popover.Content></Popover.Portal></Popover.Root>;
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  return <><button ref={triggerRef} type="button" aria-label={t("workflow.reject")} disabled={disabled} onClick={(event) => { event.stopPropagation(); setOpen(true); }} className="flex size-11 cursor-pointer items-center justify-center rounded-[var(--ui-radius-control)] border border-transparent text-[var(--ui-danger-text)] transition-colors hover:border-[var(--ui-danger-border)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50 sm:size-9"><X className="size-4" aria-hidden="true" /></button><Dialog isOpen={open} onRequestClose={() => setOpen(false)} returnFocusRef={triggerRef} closeLabel={t("close")} title={t("workflow.rejectTitle")} description={t("workflow.rejectDescription", { title })} className="h-auto max-w-md"><div className="flex justify-end gap-2 p-5 sm:p-6"><Button data-dialog-initial-focus type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={disabled} onClick={() => { setOpen(false); onReject(); }} className="bg-[var(--ui-danger-solid)] text-white hover:opacity-90"><X className="mr-1.5 size-4" aria-hidden="true" />{t("workflow.confirmReject")}</Button></div></Dialog></>;
 }

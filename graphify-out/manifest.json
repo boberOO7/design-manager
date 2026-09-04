@@ -550,8 +550,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.tsx": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "3e48016a7f85066e75463b83b3e00613",
+    "mtime": 1788549452.085672,
+    "ast_hash": "59482f6a980c7064e589e7787120accc",
     "semantic_hash": ""
   },
   "src/components/ui/empty-state.tsx": {
@@ -1530,8 +1530,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/drawer.test.ts": {
-    "mtime": 1788341051.8691595,
-    "ast_hash": "60c57480b6ca1a6f0d4de5fd563366ba",
+    "mtime": 1788549491.3706415,
+    "ast_hash": "8ea2ce03023ae97316e708b97e4c6800",
     "semantic_hash": ""
   },
   "src/components/ui/form-field.test.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788543693.6702478,
-    "ast_hash": "3c450ffdc0989e105b4803a95970efa0",
+    "mtime": 1788549424.6501503,
+    "ast_hash": "70911df9ceb426d4934d6c13cb21560e",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788543693.8382525,
-    "ast_hash": "d1d22bb8d44604b4a000dac15f25cbc3",
+    "mtime": 1788549424.4341395,
+    "ast_hash": "c249f0f5f676ba7b0c8b2fedb26d7a4c",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -1850,8 +1850,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/dialog.tsx": {
-    "mtime": 1788108103.9313185,
-    "ast_hash": "dfae0af3028f74eaaa72dc5fd6ca2011",
+    "mtime": 1788549451.673664,
+    "ast_hash": "b1df8600dcd2d04a1798f1807d29ba12",
     "semantic_hash": ""
   },
   "src/lib/city-provider.test.ts": {
@@ -3985,13 +3985,13 @@
     "semantic_hash": ""
   },
   "src/components/submissions/submissions-workspace.test.ts": {
-    "mtime": 1788543893.2411122,
-    "ast_hash": "7ef36194f4ebffd4a0c95e8b90ba11b9",
+    "mtime": 1788549491.0186245,
+    "ast_hash": "f562f6d924aceef361cbd26484005f48",
     "semantic_hash": ""
   },
   "src/components/submissions/submissions-workspace.tsx": {
-    "mtime": 1788543893.0931075,
-    "ast_hash": "6ec03cd8a13d721002a343de7777e456",
+    "mtime": 1788549652.309514,
+    "ast_hash": "4946569b512e6cdd9d72db183fc85a2e",
     "semantic_hash": ""
   },
   "src/data/queries/submissions.ts": {
@@ -4005,13 +4005,13 @@
     "semantic_hash": ""
   },
   "src/lib/submissions.test.ts": {
-    "mtime": 1788543440.8341975,
-    "ast_hash": "e943570fd654058a3c9ebbe966de1326",
+    "mtime": 1788549490.8426158,
+    "ast_hash": "07562f33e60a483bfbcf4c23edcdbb93",
     "semantic_hash": ""
   },
   "src/lib/submissions.ts": {
-    "mtime": 1788543717.7757387,
-    "ast_hash": "330a0633d5200d58a144cf83b6ff0d4c",
+    "mtime": 1788549042.6027842,
+    "ast_hash": "ad71bbc5473f883f917d4f2e41fb9d84",
     "semantic_hash": ""
   },
   "src/lib/validation/submission.ts": {
@@ -4040,8 +4040,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/office/assignments/page.tsx": {
-    "mtime": 1788530369.5685308,
-    "ast_hash": "13a007b648f557dc58d60ef4f1df8f67",
+    "mtime": 1788549312.0397775,
+    "ast_hash": "6082fd0dbe103f3a60e54e22944aaafb",
     "semantic_hash": ""
   },
   "src/app/(app)/office/layout.tsx": {
@@ -4055,23 +4055,23 @@
     "semantic_hash": ""
   },
   "src/app/(app)/office/submissions/page.tsx": {
-    "mtime": 1788530266.4849517,
-    "ast_hash": "49efa1a63c0e90956e2644acb10f90f6",
+    "mtime": 1788549311.8517668,
+    "ast_hash": "5f4b78c67b7b1c8bbedea984347b14b6",
     "semantic_hash": ""
   },
   "src/components/office/assignments-workspace.tsx": {
-    "mtime": 1788539652.5472105,
-    "ast_hash": "733b72e1f9fc310357e11a89f7b387b8",
+    "mtime": 1788549652.521524,
+    "ast_hash": "e3276e62585c21dd5e059351b6486840",
     "semantic_hash": ""
   },
   "src/components/office/office-shell.tsx": {
-    "mtime": 1788530266.052936,
-    "ast_hash": "60150c275b7e265258c40f2a40e57983",
+    "mtime": 1788549312.2317884,
+    "ast_hash": "15f98306a81d844c1f050170d3e4d0bb",
     "semantic_hash": ""
   },
   "src/components/office/office-workspace.test.ts": {
-    "mtime": 1788539560.1373897,
-    "ast_hash": "5146ab44e1befcf8a7351bd9b2da8620",
+    "mtime": 1788549491.194633,
+    "ast_hash": "90411338b6d2b2ef87845f824c4482ce",
     "semantic_hash": ""
   },
   "src/data/queries/office-assignments.ts": {
@@ -4117,6 +4117,16 @@
   "supabase/migrations/20260904173557_submission_operational_inbox.sql": {
     "mtime": 1788543441.498219,
     "ast_hash": "e1742f09109895a89aee7d2b7e90b056",
+    "semantic_hash": ""
+  },
+  "src/components/office/use-office-overlay-routing.ts": {
+    "mtime": 1788549652.1335056,
+    "ast_hash": "8ce1d344ed0d996fef15355dd210200d",
+    "semantic_hash": ""
+  },
+  "src/components/ui/dialog.test.ts": {
+    "mtime": 1788549491.5466502,
+    "ast_hash": "208d2d14921eabdab18c0c2d9ad8c773",
     "semantic_hash": ""
   }
 }

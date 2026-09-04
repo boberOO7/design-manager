@@ -19,6 +19,23 @@ const SUBMISSION_PRIMARY_TRANSITIONS: Record<SubmissionType, Partial<Record<Subm
   complaint: { new: "reviewing", reviewing: "action_taken", action_taken: "closed" },
 };
 
+export type SubmissionWorkflowAction = {
+  icon: "accept" | "start" | "complete" | "review" | "action" | "plan";
+  status: SubmissionStatus;
+  tone: "info" | "success" | "warning" | "violet";
+};
+
+const SUBMISSION_ACTION_PRESENTATION: Partial<Record<SubmissionStatus, Omit<SubmissionWorkflowAction, "status">>> = {
+  accepted: { icon: "accept", tone: "info" },
+  in_progress: { icon: "start", tone: "info" },
+  done: { icon: "complete", tone: "success" },
+  reviewing: { icon: "review", tone: "warning" },
+  action_taken: { icon: "action", tone: "success" },
+  closed: { icon: "complete", tone: "success" },
+  planned: { icon: "plan", tone: "violet" },
+  implemented: { icon: "complete", tone: "success" },
+};
+
 export const SUBMISSION_TERMINAL_STATUSES = {
   request: ["done", "rejected"],
   suggestion: ["implemented", "rejected"],
@@ -43,6 +60,12 @@ export function getAllowedNextStatuses(type: SubmissionType, status: SubmissionS
 
 export function getPrimarySubmissionStatus(type: SubmissionType, status: SubmissionStatus): SubmissionStatus | null {
   return SUBMISSION_PRIMARY_TRANSITIONS[type][status] ?? null;
+}
+
+export function getPrimarySubmissionAction(type: SubmissionType, status: SubmissionStatus): SubmissionWorkflowAction | null {
+  const nextStatus = getPrimarySubmissionStatus(type, status);
+  const presentation = nextStatus ? SUBMISSION_ACTION_PRESENTATION[nextStatus] : null;
+  return nextStatus && presentation ? { status: nextStatus, ...presentation } : null;
 }
 
 export function canRejectSubmission(type: SubmissionType, status: SubmissionStatus): boolean {

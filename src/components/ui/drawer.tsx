@@ -73,6 +73,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
     if (panel) autofillObserver.observe(panel, { childList: true, subtree: true });
 
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
       if (event.key === "Escape") {
         event.preventDefault();
         requestClose();
