@@ -65,12 +65,12 @@ describe("getCurrentUserProfile", () => {
     await expect(getCurrentUserProfile()).resolves.toMatchObject({ id: "current-user", system_role: "admin" });
   });
 
-  it("reports a missing profile as a data-integrity error", async () => {
+  it("lets the authenticated layout recover when a stale session has no profile row", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "current-user" } }, error: null });
     mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
     const { getCurrentUserProfile } = await loadProfileQuery();
 
-    await expect(getCurrentUserProfile()).rejects.toThrow("missing its required profile record");
+    await expect(getCurrentUserProfile()).resolves.toBeNull();
   });
 
   it("distinguishes a profile query failure from a missing row", async () => {

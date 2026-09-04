@@ -14,6 +14,11 @@ describe("application navigation", () => {
     expect(items.some((item) => item.href === "/leaderboard")).toBe(true);
   });
 
+  it("shows the standalone submissions module to every active role", () => {
+    expect(getNavigationItems("employee").some((item) => item.href === "/submissions")).toBe(true);
+    expect(getNavigationItems("admin").some((item) => item.href === "/submissions")).toBe(true);
+  });
+
   it("shows administration and archive to administrators", () => {
     const items = getNavigationItems("admin");
     expect(items.some((item) => item.href === "/admin")).toBe(true);

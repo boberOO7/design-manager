@@ -66,7 +66,12 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
   }
 
   if (!profile) {
-    throw new Error(`Authenticated Auth user is missing its required profile record for user ID: ${user.id}.`);
+    // Route layouts and pages can render concurrently. After a local database
+    // reset, a stale browser session may reach a page profile query while the
+    // authenticated layout is already redirecting through access recovery.
+    // Treat a genuinely absent row like an unavailable authenticated profile;
+    // database/query failures above remain hard errors.
+    return null;
   }
 
   if (profile.system_role !== "admin" && profile.system_role !== "employee") {

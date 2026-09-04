@@ -107,5 +107,6 @@ describe("application shell cleanup", () => {
     expect(layout).toContain('access.status === "UNAUTHENTICATED"');
     expect(layout).toContain('redirect("/access-unavailable")');
     expect(layout).toContain('access.status === "MULTIPLE_ACTIVE_STUDIOS"');
+    expect(layout.indexOf('access.status === "NO_ACTIVE_STUDIO"')).toBeLessThan(layout.indexOf("getCurrentUserProfile()"));
   });
 });

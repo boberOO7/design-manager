@@ -14,6 +14,40 @@ export type Database = {
   }
   public: {
     Tables: {
+      submissions: {
+        Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string | null; deadline: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string | null; deadline?: string | null; created_at?: string; updated_at?: string }
+        Update: { status?: Database["public"]["Enums"]["submission_status"]; responsible_id?: string | null; priority?: string | null; deadline?: string | null; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "submissions_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+          { foreignKeyName: "submissions_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "submissions_studio_id_responsible_id_fkey"; columns: ["studio_id", "responsible_id"]; isOneToOne: false; referencedRelation: "studio_members"; referencedColumns: ["studio_id", "user_id"] },
+        ]
+      }
+      submission_admin_details: {
+        Row: { submission_id: string; studio_id: string; internal_note: string | null; updated_at: string }
+        Insert: { submission_id: string; studio_id: string; internal_note?: string | null; updated_at?: string }
+        Update: { internal_note?: string | null; updated_at?: string }
+        Relationships: [{ foreignKeyName: "submission_admin_details_submission_id_studio_id_fkey"; columns: ["submission_id", "studio_id"]; isOneToOne: true; referencedRelation: "submissions"; referencedColumns: ["id", "studio_id"] }]
+      }
+      submission_comments: {
+        Row: { id: string; submission_id: string; studio_id: string; author_id: string; body: string; created_at: string; updated_at: string }
+        Insert: { id?: string; submission_id: string; studio_id: string; author_id: string; body: string; created_at?: string; updated_at?: string }
+        Update: { body?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "submission_comments_submission_id_studio_id_fkey"; columns: ["submission_id", "studio_id"]; isOneToOne: false; referencedRelation: "submissions"; referencedColumns: ["id", "studio_id"] },
+          { foreignKeyName: "submission_comments_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      submission_reactions: {
+        Row: { submission_id: string; studio_id: string; user_id: string; created_at: string }
+        Insert: { submission_id: string; studio_id: string; user_id: string; created_at?: string }
+        Update: { submission_id?: string; studio_id?: string; user_id?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "submission_reactions_submission_id_studio_id_fkey"; columns: ["submission_id", "studio_id"]; isOneToOne: false; referencedRelation: "submissions"; referencedColumns: ["id", "studio_id"] },
+          { foreignKeyName: "submission_reactions_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       google_calendar_connections: {
         Row: {
           created_at: string; google_account_email: string; google_calendar_id: string; google_calendar_name: string;
@@ -951,6 +985,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_submission: {
+        Args: { p_type: Database["public"]["Enums"]["submission_type"]; p_title: string; p_description: string; p_anonymous?: boolean }
+        Returns: string
+      }
+      manage_submission: {
+        Args: { p_submission_id: string; p_status: Database["public"]["Enums"]["submission_status"]; p_responsible_id: string | null; p_priority: string | null; p_deadline: string | null; p_internal_note: string }
+        Returns: undefined
+      }
       claim_google_calendar_reconciliation_jobs: {
         Args: { p_limit?: number }
         Returns: Database["public"]["Tables"]["google_calendar_reconciliation_jobs"]["Row"][]
@@ -1117,7 +1159,9 @@ export type Database = {
     Enums: {
       calendar_event_invitation_status: "pending" | "accepted" | "declined"
       calendar_event_type: "general" | "meeting" | "presentation" | "interview" | "site_visit" | "internal_review" | "business_trip" | "work_makeup"
-      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_assigned" | "calendar_event_updated" | "calendar_event_cancelled"
+      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_assigned" | "calendar_event_updated" | "calendar_event_cancelled" | "submission_created" | "submission_assigned" | "submission_status_changed"
+      submission_type: "request" | "suggestion" | "complaint"
+      submission_status: "new" | "accepted" | "in_progress" | "done" | "rejected" | "discussion" | "planned" | "implemented" | "reviewing" | "action_taken" | "closed"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
       time_off_request_type: "vacation" | "day_off" | "medical_appointment" | "sick_leave" | "other"
     }
@@ -1249,7 +1293,9 @@ export const Constants = {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],
       calendar_event_type: ["general", "meeting", "presentation", "interview", "site_visit", "internal_review", "business_trip", "work_makeup"],
-      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_assigned", "calendar_event_updated", "calendar_event_cancelled"],
+      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_assigned", "calendar_event_updated", "calendar_event_cancelled", "submission_created", "submission_assigned", "submission_status_changed"],
+      submission_type: ["request", "suggestion", "complaint"],
+      submission_status: ["new", "accepted", "in_progress", "done", "rejected", "discussion", "planned", "implemented", "reviewing", "action_taken", "closed"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],
       time_off_request_type: ["vacation", "day_off", "medical_appointment", "sick_leave", "other"],
     },
