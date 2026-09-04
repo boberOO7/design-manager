@@ -1,6 +1,6 @@
 import { Flame } from "lucide-react";
 import { SelectItem } from "@/components/ui/select";
-import type { TaskPriority, TaskStatus } from "@/types/tasks";
+import type { TaskStatus } from "@/types/tasks";
 
 const priorityTone = {
   low: "text-[var(--ui-neutral-text)]",
@@ -8,6 +8,7 @@ const priorityTone = {
   high: "text-[var(--ui-warning-text)]",
   urgent: "text-[var(--ui-urgent-text)]",
 } as const;
+type PriorityValue = keyof typeof priorityTone;
 
 const statusTone = {
   todo: "text-[var(--ui-neutral-text)]",
@@ -22,7 +23,7 @@ function TaskSelectLabel({ children, className, urgent = false }: { children: st
   return <span className={`inline-flex min-w-0 items-center gap-1.5 font-medium ${className}`}><span className="truncate">{children}</span>{urgent ? <Flame aria-hidden="true" className="size-3.5 shrink-0" /> : null}</span>;
 }
 
-export function taskPrioritySelectItem(priority: TaskPriority, label: string) {
+export function taskPrioritySelectItem(priority: PriorityValue, label: string) {
   return <SelectItem key={priority} textValue={label} value={priority}><TaskSelectLabel className={priorityTone[priority]} urgent={priority === "urgent"}>{label}</TaskSelectLabel></SelectItem>;
 }
 

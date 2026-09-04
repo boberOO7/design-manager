@@ -68,17 +68,31 @@ describe("submissions workspace contract", () => {
     expect(source).toContain('runWorkflow("rejected"');
   });
 
-  it("keeps workflow controls out of the editable drawer admin form", () => {
+  it("keeps workflow transitions out of the editable drawer admin form but separates rejection there", () => {
     const adminControls = source.slice(source.indexOf("function AdminControls"), source.indexOf("function SubmissionWorkflowAction"));
     expect(adminControls).toContain('t("admin.save")');
     expect(adminControls).not.toContain("<SubmissionWorkflowAction");
-    expect(adminControls).not.toContain("<SubmissionRejectAction");
+    expect(adminControls).toContain("<SubmissionRejectAction label");
+  });
+
+  it("uses the canonical detail drawer width and keeps badges in the title row", () => {
+    const drawer = source.slice(source.indexOf("function SubmissionDetailDrawer"), source.indexOf("function Meta"));
+    expect(drawer).toContain('className="w-full max-w-[34rem]"');
+    expect(drawer).toContain('className="mt-1 flex flex-wrap items-center gap-2"');
+    expect(drawer).toContain("getPriorityBadgeStyle(item.priority)");
+    expect(drawer).toContain('!border-0", getPriorityBadgeStyle(item.priority).className');
+    expect(drawer).not.toContain('className="mt-2 flex flex-wrap gap-1.5"');
+    expect(drawer).not.toContain('<SubmissionRejectAction disabled={pending}');
   });
 
   it("starts the communication composer at one row and grows it modestly", () => {
     expect(source).toContain("ref={commentRef}");
     expect(source).toContain("rows={1}");
     expect(source).toContain("Math.min(composer.scrollHeight, 112)");
+    expect(source).toContain('event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || isComposingCommentRef.current');
+    expect(source).toContain("onCompositionStart");
+    expect(source).toContain("onCompositionEnd");
+    expect(source).not.toContain('t("noComments")');
   });
 
   it("uses shared Office drawer controls and protects anonymous identity", () => {
@@ -91,5 +105,8 @@ describe("submissions workspace contract", () => {
     expect(source).toContain('item.type === "suggestion" ? "discussion" : "communication"');
     expect(source).toContain("Popover.Portal container={portalContainer}");
     expect(source).toContain("data-dialog-initial-focus");
+    expect(source).toContain("<Ban");
+    expect(source).toContain("taskPrioritySelectItem(value, t(`priorities.${value}`))");
+    expect(source).toContain('<MessageSquareText className="size-4 text-[var(--ui-text-muted)]"');
   });
 });

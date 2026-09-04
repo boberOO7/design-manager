@@ -2995,8 +2995,8 @@
     "semantic_hash": ""
   },
   "src/components/tasks/task-select-presentation.tsx": {
-    "mtime": 1787066660.2986042,
-    "ast_hash": "9f3d67120279df0bdff6175c315fefa2",
+    "mtime": 1788555394.3768282,
+    "ast_hash": "07947a5361e29c7dc7e896fab60d325b",
     "semantic_hash": ""
   },
   "src/lib/contractor-category-colors.test.ts": {
@@ -3985,13 +3985,13 @@
     "semantic_hash": ""
   },
   "src/components/submissions/submissions-workspace.test.ts": {
-    "mtime": 1788549491.0186245,
-    "ast_hash": "f562f6d924aceef361cbd26484005f48",
+    "mtime": 1788555410.4495494,
+    "ast_hash": "f99635d4cee5ea738621c49db3b8b60d",
     "semantic_hash": ""
   },
   "src/components/submissions/submissions-workspace.tsx": {
-    "mtime": 1788549652.309514,
-    "ast_hash": "4946569b512e6cdd9d72db183fc85a2e",
+    "mtime": 1788555394.5368352,
+    "ast_hash": "1c903f53bcde250ea6dabe1df8b6ae6a",
     "semantic_hash": ""
   },
   "src/data/queries/submissions.ts": {
@@ -4060,8 +4060,8 @@
     "semantic_hash": ""
   },
   "src/components/office/assignments-workspace.tsx": {
-    "mtime": 1788549652.521524,
-    "ast_hash": "e3276e62585c21dd5e059351b6486840",
+    "mtime": 1788555394.6968424,
+    "ast_hash": "3140e23483d6ab1b70a6b8cee4fb400e",
     "semantic_hash": ""
   },
   "src/components/office/office-shell.tsx": {
@@ -4070,8 +4070,8 @@
     "semantic_hash": ""
   },
   "src/components/office/office-workspace.test.ts": {
-    "mtime": 1788549491.194633,
-    "ast_hash": "90411338b6d2b2ef87845f824c4482ce",
+    "mtime": 1788555410.6175568,
+    "ast_hash": "3ae84393798d303e5240de5e67f1ea71",
     "semantic_hash": ""
   },
   "src/data/queries/office-assignments.ts": {

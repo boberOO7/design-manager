@@ -843,7 +843,7 @@
   },
   "Office": {
     "title": "Office",
-    "description": "Internal studio operations kept separate from project production.",
+    "description": "Internal studio operations",
     "create": "Create",
     "close": "Close",
     "tabs": { "label": "Office sections", "overview": "Overview", "submissions": "Submissions", "assignments": "Assignments" },
@@ -880,7 +880,7 @@
   },
   "Submissions": {
     "title": "Submissions",
-    "description": "Internal requests, suggestions and complaints — tracked independently from projects and tasks.",
+    "description": "Internal requests, suggestions and complaints",
     "new": "New submission",
     "createdNotice": "Submission created.",
     "anonymousCreatedNotice": "Anonymous complaint submitted. It is now visible only to administrators and cannot be tracked in Mine.",

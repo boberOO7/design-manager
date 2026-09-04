@@ -65,6 +65,9 @@ describe("Office workspace presentation", () => {
     expect(assignments).toContain("<Select");
     expect(assignments).not.toContain('<Input type="date"');
     expect(assignments).not.toContain("<select className=");
+    expect(assignments).toContain("taskPrioritySelectItem(value, t(`priorities.${value}`))");
+    expect(assignments).toContain("getPriorityBadgeStyle(item.priority)");
+    expect(assignments).not.toContain("function priorityStyle");
   });
 
   it("uses canonical avatars for assignment people", () => {
