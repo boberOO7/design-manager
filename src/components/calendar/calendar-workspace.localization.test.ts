@@ -85,6 +85,16 @@ describe("calendar detail drawer lifecycle", () => {
     expect(source).toContain("isOpen={isOpen}");
     expect(source).toContain("onExited={onExited}");
   });
+
+  it("uses the canonical small avatar for standalone event-detail identities", () => {
+    const personDetail = source.slice(
+      source.indexOf("function CalendarPersonDetail"),
+      source.indexOf("function CalendarEventDetails"),
+    );
+
+    expect(personDetail).toContain('size="sm"');
+    expect(personDetail).toContain("items-center gap-3");
+  });
 });
 
 describe("time-off form localization contract", () => {

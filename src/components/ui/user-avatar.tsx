@@ -5,6 +5,10 @@ import { getAvatarImageUrl, getUserInitials } from "@/lib/user-avatar";
 import { cn } from "@/lib/utils";
 
 const sizeClassName = {
+  sm: "size-8 text-xs",
+  md: "size-10 text-sm",
+  lg: "size-12 text-sm",
+  // Dense task-board and chip contexts intentionally sit below the normal user-avatar baseline.
   board: "size-5 text-[9px]",
   boardCard: "size-7 text-[11px]",
   directoryPortrait: "size-32 text-4xl",
@@ -13,12 +17,14 @@ const sizeClassName = {
   profile: "size-16 text-base",
 } as const;
 
+export type UserAvatarSize = keyof typeof sizeClassName;
+
 type UserAvatarProps = {
   className?: string;
   decorative?: boolean;
   imageUrl?: string | null;
   name?: string | null;
-  size?: keyof typeof sizeClassName;
+  size?: UserAvatarSize;
 };
 
 export function UserAvatar({
@@ -26,7 +32,7 @@ export function UserAvatar({
   decorative = false,
   imageUrl,
   name,
-  size = "board",
+  size = "sm",
 }: UserAvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const resolvedImageUrl = getAvatarImageUrl(imageUrl);

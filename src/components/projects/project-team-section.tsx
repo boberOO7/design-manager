@@ -48,7 +48,7 @@ export async function ProjectTeamSection({
           {members.map((member) => (
             <div key={member.id} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <UserAvatar className="size-10 text-sm" imageUrl={member.profile.avatar_url} name={member.profile.full_name} decorative />
+                <UserAvatar imageUrl={member.profile.avatar_url} name={member.profile.full_name} size="md" decorative />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-[var(--ui-text)]">{member.profile.full_name}</p>
                   {member.profile.job_title ? <p className="truncate text-sm text-[var(--ui-text-muted)]">{(() => { const roleKey = getCanonicalRoleTranslationKey(member.profile.job_title); return roleKey ? roles(roleKey) : member.profile.job_title; })()}</p> : null}

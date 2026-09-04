@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1787839858.439727,
-    "ast_hash": "9153192e8675d1fd4f9f4566a946c967",
+    "mtime": 1788516792.6382055,
+    "ast_hash": "a8fd32f48b53e380b2de7c0c3515432c",
     "semantic_hash": ""
   },
   "src/app/(app)/my-tasks/page.tsx": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1788341051.8691595,
-    "ast_hash": "d009964ea57b5916e6619026dc04184c",
+    "mtime": 1788516792.474198,
+    "ast_hash": "6468620e6f26ecf518e0da23cc622bcc",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-form.tsx": {
-    "mtime": 1787333807.8081992,
-    "ast_hash": "c794c76a185316a9cabf4305e53dcca2",
+    "mtime": 1788516693.080993,
+    "ast_hash": "214421a57e91b4ec0d19960e64fe732e",
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-context.tsx": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-team-section.tsx": {
-    "mtime": 1786663523.3935635,
-    "ast_hash": "a02f2a0b62321c465bb9185b5428e3b9",
+    "mtime": 1788516692.9329865,
+    "ast_hash": "d0187ed3b3dbe8b435813c95d3688e26",
     "semantic_hash": ""
   },
   "src/components/projects/project-workspace.tsx": {
@@ -1765,8 +1765,8 @@
     "semantic_hash": ""
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1788341051.8691595,
-    "ast_hash": "fae2f41378d223923bfad22c4ade9d88",
+    "mtime": 1788516885.1115763,
+    "ast_hash": "db1c2d34a1ed15aed505b2f8d26598fe",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {
@@ -1805,8 +1805,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/user-avatar.tsx": {
-    "mtime": 1787779025.5066967,
-    "ast_hash": "df00ee6de80517226e202ad1bd9b1d8f",
+    "mtime": 1788516692.54897,
+    "ast_hash": "760cd2c87cf0a9f65a0276e6f0a2cdf0",
     "semantic_hash": ""
   },
   "src/lib/user-avatar.test.ts": {
@@ -2835,8 +2835,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1788462506.000479,
-    "ast_hash": "19a275b8707d7ac0138834485128daeb",
+    "mtime": 1788516692.3849628,
+    "ast_hash": "f24baeeb11f8d0498948ee5301f47f6f",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
@@ -3045,8 +3045,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-permissions.contract.test.ts": {
-    "mtime": 1788462326.518914,
-    "ast_hash": "e66867492009cc1cd7824a409a3751e4",
+    "mtime": 1788516884.987571,
+    "ast_hash": "8e2b69135e16d60d93d4a52ea9470a61",
     "semantic_hash": ""
   },
   "src/lib/contractor-update-permissions-migration.test.ts": {
@@ -3967,6 +3967,11 @@
   "supabase/migrations/20260903190137_contractor_category_management.sql": {
     "mtime": 1788462176.2083654,
     "ast_hash": "57aa319726f0a74abec68c141ed23e9d",
+    "semantic_hash": ""
+  },
+  "src/components/ui/user-avatar.test.tsx": {
+    "mtime": 1788516885.2435818,
+    "ast_hash": "bbae8b529cb5bf86f5b3d187b6429e8a",
     "semantic_hash": ""
   }
 }

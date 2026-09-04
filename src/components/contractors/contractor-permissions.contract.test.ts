@@ -44,6 +44,20 @@ describe("contractor permissions", () => {
     expect(source).not.toContain("window.confirm");
   });
 
+  it("groups each category into a compact tokenized row with balanced actions", async () => {
+    const source = await readFile(directoryPath, "utf8");
+    const managementDialog = source.slice(
+      source.indexOf('description={t("categoryManagement.description")}'),
+      source.indexOf('description={t("categoryManagement.deleteDescription"'),
+    );
+
+    expect(managementDialog).toContain("space-y-2");
+    expect(managementDialog).toContain("rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-3");
+    expect(managementDialog).toContain('className="size-9 shrink-0 p-0 hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]"');
+    expect(managementDialog).toContain('className="size-9 shrink-0 p-0 text-[var(--ui-danger-text)] hover:bg-[color-mix(in_srgb,var(--ui-danger-surface)_55%,var(--ui-surface))]"');
+    expect(managementDialog).toContain("sm:border-l sm:border-t-0 sm:pl-3");
+  });
+
   it("derives the edit affordance from the canonical active studio membership", async () => {
     const source = await readFile(pagePath, "utf8");
 
