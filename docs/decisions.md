@@ -198,6 +198,13 @@
 - Notification content excludes private time-off and review notes. Administration notification unread counts and pending-request counts remain separate concepts.
 - Notification links reuse the existing task, Calendar, and Administration drawers.
 
+## Office operations
+
+- Office is the home for internal studio operations outside project production. It contains a role-aware overview, submissions, and standalone office assignments.
+- Submissions retain their dedicated privacy and workflow model under `/office/submissions`; the legacy `/submissions` route redirects without repurposing historical project data.
+- Office assignments use the fixed `assigned → in_progress → done` workflow with administrator-only cancellation. Administrators create and manage them; only administrators and the assigned active member can read them.
+- Office records have no project, task, productivity, area, progress, or Rating relationship. Aggregation across submissions and assignments is presentation-only.
+
 ## Project Activity History
 
 - Activity History is an immutable, project-scoped audit feed: it has no recipient,

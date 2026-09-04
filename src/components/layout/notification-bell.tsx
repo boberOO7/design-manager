@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarDays, CheckSquare, Clock3, MessagesSquare, X } from "lucide-react";
+import { Bell, Building2, CalendarDays, CheckSquare, Clock3, MessagesSquare, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -11,7 +11,7 @@ import type { NotificationData, NotificationItem } from "@/data/queries/notifica
 import { markAllNotificationsRead, markNotificationRead, unreadNotificationCount } from "@/lib/notifications";
 
 function iconFor(type: NotificationItem["notification_type"]) {
-  return type.startsWith("task_") ? CheckSquare : type.startsWith("calendar_") ? CalendarDays : type.startsWith("submission_") ? MessagesSquare : Clock3;
+  return type.startsWith("task_") ? CheckSquare : type.startsWith("calendar_") ? CalendarDays : type.startsWith("submission_") ? MessagesSquare : type.startsWith("office_assignment_") ? Building2 : Clock3;
 }
 function relativeTime(value: string) {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));

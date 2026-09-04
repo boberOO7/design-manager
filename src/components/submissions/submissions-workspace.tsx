@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { CircleAlert, Lightbulb, MessageSquareText, Plus, Send, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
+import { CircleAlert, Lightbulb, MessageSquareText, Send, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
 import { addSubmissionComment, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -32,11 +32,11 @@ function statusStyle(status: SubmissionStatus) {
   return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
-export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, requestedItemId }: { currentUserId: string; isAdmin: boolean; items: SubmissionItem[]; members: SubmissionPerson[]; requestedItemId: string | null }) {
+export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, requestedItemId, createRequested }: { currentUserId: string; isAdmin: boolean; items: SubmissionItem[]; members: SubmissionPerson[]; requestedItemId: string | null; createRequested: boolean }) {
   const t = useTranslations("Submissions");
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(createRequested);
   const [createdNotice, setCreatedNotice] = useState<"named" | "anonymous" | null>(null);
   const [selectedId, setSelectedId] = useState(requestedItemId);
   const selected = items.find((item) => item.id === selectedId) ?? null;
@@ -49,20 +49,18 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members, r
     return item.type === filter;
   }), [currentUserId, filter, items]);
 
-  function openItem(id: string) { setSelectedId(id); router.replace(`/submissions?item=${id}`, { scroll: false }); }
-  function closeItem() { setSelectedId(null); router.replace("/submissions", { scroll: false }); }
+  function openItem(id: string) { setSelectedId(id); router.replace(`/office/submissions?item=${id}`, { scroll: false }); }
+  function closeItem() { setSelectedId(null); router.replace("/office/submissions", { scroll: false }); }
+  function closeCreate() { setCreateOpen(false); router.replace("/office/submissions", { scroll: false }); }
 
   return <div className="space-y-6">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div><h1 className="text-2xl font-bold tracking-tight text-[var(--ui-text)] sm:text-3xl">{t("title")}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--ui-text-secondary)]">{t("description")}</p></div>
-      <Button type="button" size="lg" onClick={() => setCreateOpen(true)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("new")}</Button>
-    </div>
+    <div><h2 className="text-lg font-bold text-[var(--ui-text)]">{t("title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("description")}</p></div>
     <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={t("filters.label")}>
       {filters.map((value) => <button key={value} type="button" role="tab" aria-selected={filter === value} onClick={() => setFilter(value)} className={cn("min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", filter === value ? "border-[var(--ui-action-primary)] bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "border-[var(--ui-border)] bg-[var(--ui-surface)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]")}>{t(`filters.${value}`)}</button>)}
     </div>
     {createdNotice ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200">{t(createdNotice === "anonymous" ? "anonymousCreatedNotice" : "createdNotice")}</p> : null}
     {filtered.length ? <div className="grid gap-3">{filtered.map((item) => <SubmissionRow key={item.id} item={item} onOpen={() => openItem(item.id)} />)}</div> : <div className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-6 py-14 text-center"><MessageSquareText className="mx-auto size-8 text-[var(--ui-text-muted)]" aria-hidden="true" /><h2 className="mt-3 font-semibold">{t("empty.title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("empty.description")}</p></div>}
-    <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); }} />
+    <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={closeCreate} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); }} />
     <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onClose={closeItem} />
   </div>;
 }

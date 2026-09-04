@@ -54,6 +54,11 @@
 
 - [X] Replace the mock Administration page with the real admin action queue.
 
+## Office
+
+- [x] Consolidate internal submissions under the Office workspace with a role-aware operational overview.
+- [x] Add standalone Office Assignments with isolated RLS, notifications, and a dedicated non-project workflow.
+
 ## Notifications
 
 - [ ] Deliver persistent in-app Notifications with event-driven delivery.

@@ -14,6 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
+      office_assignments: {
+        Row: { id: string; studio_id: string; title: string; description: string | null; creator_id: string; responsible_id: string; priority: string; deadline: string | null; status: Database["public"]["Enums"]["office_assignment_status"]; created_at: string; updated_at: string }
+        Insert: { id?: string; studio_id: string; title: string; description?: string | null; creator_id: string; responsible_id: string; priority?: string; deadline?: string | null; status?: Database["public"]["Enums"]["office_assignment_status"]; created_at?: string; updated_at?: string }
+        Update: { responsible_id?: string; priority?: string; deadline?: string | null; status?: Database["public"]["Enums"]["office_assignment_status"]; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "office_assignments_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
+          { foreignKeyName: "office_assignments_studio_id_creator_id_fkey"; columns: ["studio_id", "creator_id"]; isOneToOne: false; referencedRelation: "studio_members"; referencedColumns: ["studio_id", "user_id"] },
+          { foreignKeyName: "office_assignments_studio_id_responsible_id_fkey"; columns: ["studio_id", "responsible_id"]; isOneToOne: false; referencedRelation: "studio_members"; referencedColumns: ["studio_id", "user_id"] },
+        ]
+      }
       submissions: {
         Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string | null; deadline: string | null; created_at: string; updated_at: string }
         Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string | null; deadline?: string | null; created_at?: string; updated_at?: string }
@@ -985,6 +995,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_office_assignment: {
+        Args: { p_title: string; p_description: string; p_responsible_id: string; p_priority: string; p_deadline: string | null }
+        Returns: string
+      }
+      transition_office_assignment: {
+        Args: { p_assignment_id: string; p_status: Database["public"]["Enums"]["office_assignment_status"] }
+        Returns: undefined
+      }
+      manage_office_assignment: {
+        Args: { p_assignment_id: string; p_status: Database["public"]["Enums"]["office_assignment_status"]; p_responsible_id: string; p_priority: string; p_deadline: string | null }
+        Returns: undefined
+      }
       create_submission: {
         Args: { p_type: Database["public"]["Enums"]["submission_type"]; p_title: string; p_description: string; p_anonymous?: boolean }
         Returns: string
@@ -1159,7 +1181,8 @@ export type Database = {
     Enums: {
       calendar_event_invitation_status: "pending" | "accepted" | "declined"
       calendar_event_type: "general" | "meeting" | "presentation" | "interview" | "site_visit" | "internal_review" | "business_trip" | "work_makeup"
-      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_assigned" | "calendar_event_updated" | "calendar_event_cancelled" | "submission_created" | "submission_assigned" | "submission_status_changed"
+      notification_type: "time_off_request_submitted" | "time_off_request_approved" | "time_off_request_rejected" | "time_off_request_cancelled" | "task_assigned" | "task_details_changed" | "calendar_event_invitation" | "calendar_event_assigned" | "calendar_event_updated" | "calendar_event_cancelled" | "submission_created" | "submission_assigned" | "submission_status_changed" | "office_assignment_assigned" | "office_assignment_status_changed"
+      office_assignment_status: "assigned" | "in_progress" | "done" | "cancelled"
       submission_type: "request" | "suggestion" | "complaint"
       submission_status: "new" | "accepted" | "in_progress" | "done" | "rejected" | "discussion" | "planned" | "implemented" | "reviewing" | "action_taken" | "closed"
       time_off_request_status: "pending" | "approved" | "rejected" | "cancelled"
@@ -1293,7 +1316,8 @@ export const Constants = {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],
       calendar_event_type: ["general", "meeting", "presentation", "interview", "site_visit", "internal_review", "business_trip", "work_makeup"],
-      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_assigned", "calendar_event_updated", "calendar_event_cancelled", "submission_created", "submission_assigned", "submission_status_changed"],
+      notification_type: ["time_off_request_submitted", "time_off_request_approved", "time_off_request_rejected", "time_off_request_cancelled", "task_assigned", "task_details_changed", "calendar_event_invitation", "calendar_event_assigned", "calendar_event_updated", "calendar_event_cancelled", "submission_created", "submission_assigned", "submission_status_changed", "office_assignment_assigned", "office_assignment_status_changed"],
+      office_assignment_status: ["assigned", "in_progress", "done", "cancelled"],
       submission_type: ["request", "suggestion", "complaint"],
       submission_status: ["new", "accepted", "in_progress", "done", "rejected", "discussion", "planned", "implemented", "reviewing", "action_taken", "closed"],
       time_off_request_status: ["pending", "approved", "rejected", "cancelled"],

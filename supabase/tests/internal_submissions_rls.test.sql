@@ -28,8 +28,8 @@ select lives_ok($$select public.create_submission('complaint','Noise','Recurring
 select is((select count(*)::integer from public.submissions where type='complaint'),0,'anonymous complaint is not visible to submitter');
 
 set local role postgres;
-select is((select count(*)::integer from public.submissions where type='complaint' and author_id is null and is_anonymous),1,'anonymous complaint stores no author');
-select is((select count(*)::integer from public.notifications where entity_type='submission' and actor_id is null and notification_type='submission_created'),1,'anonymous complaint notification stores no actor');
+select is((select count(*)::integer from public.submissions where studio_id='40000000-0000-0000-0000-000000000001' and title='Noise' and type='complaint' and author_id is null and is_anonymous),1,'anonymous complaint stores no author');
+select is((select count(*)::integer from public.notifications where studio_id='40000000-0000-0000-0000-000000000001' and entity_type='submission' and actor_id is null and notification_type='submission_created'),1,'anonymous complaint notification stores no actor');
 select is((select count(*)::integer from public.notifications where entity_type='submission' and (metadata ? 'author' or metadata ? 'user_id' or metadata ? 'submitter')),0,'anonymous complaint notification metadata stores no identity key');
 select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000012',true);
 set local role authenticated;

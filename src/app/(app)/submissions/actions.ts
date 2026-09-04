@@ -6,7 +6,10 @@ import { getActiveStudioMembership } from "@/data/queries/active-studio-membersh
 import { createClient } from "@/lib/supabase/server";
 import { commentSubmissionSchema, createSubmissionSchema, manageSubmissionSchema, type SubmissionActionState } from "@/lib/validation/submission";
 
-const refresh = () => revalidatePath("/submissions");
+const refresh = () => {
+  revalidatePath("/office");
+  revalidatePath("/office/submissions");
+};
 
 export async function createSubmission(_state: SubmissionActionState, formData: FormData): Promise<SubmissionActionState> {
   const membership = await getActiveStudioMembership();
