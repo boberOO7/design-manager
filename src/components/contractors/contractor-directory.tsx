@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, Copy, ExternalLink, MoreHorizontal, Palette, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, MoreHorizontal, Palette, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createContractor, deleteContractor, updateContractor, updateContractorCategoryColor } from "@/app/(app)/contractors/actions";
+import { createContractor, deleteContractor, deleteContractorCategory, renameContractorCategory, updateContractor, updateContractorCategoryColor } from "@/app/(app)/contractors/actions";
 import { ContractorCategoryCombobox, ContractorSubcategoryCombobox, getUniqueContractorCategories } from "@/components/contractors/contractor-category-combobox";
 import type { Contractor, ContractorCategory } from "@/data/queries/contractors";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,21 @@ import type { ContractorFormActionState, ContractorFormField } from "@/lib/valid
 const initialState: ContractorFormActionState = {};
 
 type ContractorAction = (state: ContractorFormActionState, formData: FormData) => Promise<ContractorFormActionState>;
+type ContractorCategoryOverride = { colorKey?: ContractorCategoryColorKey; name?: string };
 
 export function ContractorDirectory({ categories: initialCategories, contractors: initialContractors, canEdit, isAdmin }: { categories: ContractorCategory[]; contractors: Contractor[]; canEdit: boolean; isAdmin: boolean }) {
   const t = useTranslations("Contractors");
   const locale = useLocale();
   const router = useRouter();
-  const [colorOverrides, setColorOverrides] = useState<Record<string, ContractorCategoryColorKey>>({});
-  const categories = useMemo(() => getUniqueContractorCategories(initialCategories.map((category) => ({ ...category, colorKey: colorOverrides[category.id] ?? category.colorKey }))), [colorOverrides, initialCategories]);
-  const contractors = useMemo(() => initialContractors.map((contractor) => ({ ...contractor, category: { ...contractor.category, colorKey: colorOverrides[contractor.category.id] ?? contractor.category.colorKey } })), [colorOverrides, initialContractors]);
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, ContractorCategoryOverride>>({});
+  const [deletedCategoryIds, setDeletedCategoryIds] = useState<string[]>([]);
+  const categories = useMemo(() => getUniqueContractorCategories(initialCategories
+    .filter((category) => !deletedCategoryIds.includes(category.id))
+    .map((category) => ({ ...category, ...categoryOverrides[category.id] }))), [categoryOverrides, deletedCategoryIds, initialCategories]);
+  const contractors = useMemo(() => initialContractors.map((contractor) => ({
+    ...contractor,
+    category: { ...contractor.category, ...categoryOverrides[contractor.category.id] },
+  })), [categoryOverrides, initialContractors]);
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
@@ -38,9 +45,14 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   const [deleting, setDeleting] = useState<Contractor | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [managingColors, setManagingColors] = useState(false);
+  const [managingCategories, setManagingCategories] = useState(false);
   const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
-  const [colorError, setColorError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryNameDraft, setCategoryNameDraft] = useState("");
+  const [categoryNameError, setCategoryNameError] = useState("");
+  const [deletingCategory, setDeletingCategory] = useState<ContractorCategory | null>(null);
+  const [deleteCategoryError, setDeleteCategoryError] = useState("");
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [copiedContractorId, setCopiedContractorId] = useState<string | null>(null);
   const copiedPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,7 +62,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   }, []);
 
   const selectedFilterSubcategories = getContractorSubcategories(categories, categoryId);
-  const manageCategoriesLabel = locale === "uk" ? "Керувати категоріями" : "Manage categories";
+  const manageCategoriesLabel = t("categoryManagement.trigger");
   const visible = useMemo(() => {
     return filterContractors(contractors, { categoryId, subcategoryId, query });
   }, [categoryId, contractors, query, subcategoryId]);
@@ -87,11 +99,47 @@ export function ContractorDirectory({ categories: initialCategories, contractors
 
   async function changeCategoryColor(categoryId: string, colorKey: ContractorCategoryColorKey) {
     setSavingCategoryId(categoryId);
-    setColorError("");
+    setCategoryError("");
     const result = await updateContractorCategoryColor(categoryId, colorKey);
     setSavingCategoryId(null);
-    if (result.error) { setColorError(result.error); return; }
-    setColorOverrides((current) => ({ ...current, [categoryId]: colorKey }));
+    if (result.error) { setCategoryError(result.error); return; }
+    setCategoryOverrides((current) => ({ ...current, [categoryId]: { ...current[categoryId], colorKey } }));
+    router.refresh();
+  }
+
+  function beginCategoryRename(category: ContractorCategory) {
+    setEditingCategoryId(category.id);
+    setCategoryNameDraft(category.name);
+    setCategoryNameError("");
+  }
+
+  function cancelCategoryRename() {
+    setEditingCategoryId(null);
+    setCategoryNameDraft("");
+    setCategoryNameError("");
+  }
+
+  async function saveCategoryName(categoryId: string) {
+    setSavingCategoryId(categoryId);
+    setCategoryNameError("");
+    const result = await renameContractorCategory(categoryId, categoryNameDraft);
+    setSavingCategoryId(null);
+    if (result.error || !result.name) { setCategoryNameError(result.error ?? t("categoryManagement.errors.renameFailed")); return; }
+    setCategoryOverrides((current) => ({ ...current, [categoryId]: { ...current[categoryId], name: result.name } }));
+    cancelCategoryRename();
+    router.refresh();
+  }
+
+  async function confirmCategoryDelete() {
+    if (!deletingCategory) return;
+    setSavingCategoryId(deletingCategory.id);
+    setDeleteCategoryError("");
+    const result = await deleteContractorCategory(deletingCategory.id);
+    setSavingCategoryId(null);
+    if (result.error) { setDeleteCategoryError(result.error); return; }
+    setDeletedCategoryIds((current) => [...current, deletingCategory.id]);
+    if (categoryId === deletingCategory.id) changeCategoryFilter("");
+    setDeletingCategory(null);
     router.refresh();
   }
 
@@ -124,7 +172,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
             {selectedFilterSubcategories.map((item) => <SelectItem className="min-h-12 py-2.5" key={item.id} value={item.id}>{item.name}</SelectItem>)}
           </Select>
         </div>
-        <div className="flex shrink-0 gap-2">{canEdit ? <Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button> : null}{isAdmin ? <Popover.Root open={categoryMenuOpen} onOpenChange={setCategoryMenuOpen}><Popover.Trigger asChild><Button type="button" variant="ghost" className="size-11 shrink-0 p-0" aria-label={manageCategoriesLabel}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-52 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]"><button type="button" onClick={() => { setCategoryMenuOpen(false); setColorError(""); setManagingColors(true); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:bg-[var(--ui-surface-muted)]"><Palette className="size-4 text-[var(--ui-text-secondary)]" aria-hidden="true" />{manageCategoriesLabel}</button></Popover.Content></Popover.Portal></Popover.Root> : null}</div>
+        <div className="flex shrink-0 gap-2">{canEdit ? <Button type="button" onClick={openCreate} className="min-h-11"><Plus className="size-4" aria-hidden="true" />{t("add")}</Button> : null}{isAdmin ? <Popover.Root open={categoryMenuOpen} onOpenChange={setCategoryMenuOpen}><Popover.Trigger asChild><Button type="button" variant="ghost" className="size-11 shrink-0 p-0" aria-label={manageCategoriesLabel}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-52 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]"><button type="button" onClick={() => { setCategoryMenuOpen(false); setCategoryError(""); setManagingCategories(true); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:bg-[var(--ui-surface-muted)]"><Palette className="size-4 text-[var(--ui-text-secondary)]" aria-hidden="true" />{manageCategoriesLabel}</button></Popover.Content></Popover.Portal></Popover.Root> : null}</div>
       </div>
 
       {visible.length ? <div className="overflow-x-auto">
@@ -151,8 +199,29 @@ export function ContractorDirectory({ categories: initialCategories, contractors
     <Dialog closeDisabled={isDeleting} closeLabel={t("close")} description={deleting ? t("deleteDialog.description", { name: deleting.name }) : undefined} isOpen={Boolean(deleting)} onRequestClose={(reason) => { if (reason !== "outside" && !isDeleting) setDeleting(null); }} title={t("deleteDialog.title")}>
       <div className="p-4 sm:p-6"><p className="text-sm text-[var(--ui-text-secondary)]">{t("deleteDialog.notice")}</p>{deleteError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{deleteError}</p> : null}<div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" disabled={isDeleting} onClick={() => setDeleting(null)}>{t("cancel")}</Button><Button type="button" className="bg-[var(--ui-danger-text)] text-white hover:bg-[var(--ui-danger-text)]/90" disabled={isDeleting} onClick={confirmDelete}>{isDeleting ? t("deleting") : t("delete")}</Button></div></div>
     </Dialog>
-    <Dialog closeDisabled={Boolean(savingCategoryId)} closeLabel={t("close")} isOpen={managingColors} onRequestClose={(reason) => { if (reason !== "outside" && !savingCategoryId) setManagingColors(false); }} title={t("columns.category")}>
-      <div className="min-h-0 overflow-y-auto p-4 sm:p-6"><div className="space-y-3">{categories.map((item) => <section key={item.id} className="flex flex-col gap-3 border-b border-[var(--ui-border-subtle)] pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"><span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span><div className="grid grid-cols-9 gap-1" role="radiogroup" aria-label={item.name}>{contractorCategoryColorKeys.map((colorKey) => <button key={colorKey} type="button" role="radio" aria-checked={item.colorKey === colorKey} aria-label={getContractorCategoryColorLabel(colorKey, locale)} disabled={savingCategoryId !== null} onClick={() => void changeCategoryColor(item.id, colorKey)} className={`flex size-8 items-center justify-center rounded-[var(--ui-radius-control)] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${item.colorKey === colorKey ? "ring-2 ring-[var(--ui-focus)] ring-offset-2" : "hover:bg-[var(--ui-surface-muted)]"} ${getContractorCategoryBadgeClassName(colorKey)}`}><span className="size-3 rounded-sm bg-current" aria-hidden="true" /></button>)}</div></section>)}</div>{colorError ? <p role="alert" className="mt-4 text-sm text-[var(--ui-danger-text)]">{colorError}</p> : null}</div>
+    <Dialog closeDisabled={Boolean(savingCategoryId)} closeLabel={t("close")} description={t("categoryManagement.description")} isOpen={managingCategories && !deletingCategory} onRequestClose={(reason) => { if (reason !== "outside" && !savingCategoryId) { cancelCategoryRename(); setManagingCategories(false); } }} title={t("categoryManagement.title")}>
+      <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+        <div className="space-y-3">{categories.map((item) => <section key={item.id} className="grid gap-3 border-b border-[var(--ui-border-subtle)] pb-3 last:border-0 last:pb-0 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-center">
+          <div className="min-w-0">
+            {editingCategoryId === item.id ? <div className="flex min-w-0 items-center gap-1">
+              <Input data-dialog-initial-focus aria-label={t("categoryManagement.nameLabel")} aria-invalid={Boolean(categoryNameError)} aria-describedby={categoryNameError ? `category-name-${item.id}-error` : undefined} className="min-w-0" maxLength={100} value={categoryNameDraft} disabled={savingCategoryId !== null} onChange={(event) => setCategoryNameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void saveCategoryName(item.id); } else if (event.key === "Escape") { event.preventDefault(); cancelCategoryRename(); } }} />
+              <Button type="button" variant="ghost" className="size-11 shrink-0 p-0" disabled={savingCategoryId !== null} aria-label={t("categoryManagement.saveName", { name: item.name })} onClick={() => void saveCategoryName(item.id)}><Check className="size-4" aria-hidden="true" /></Button>
+              <Button type="button" variant="ghost" className="size-11 shrink-0 p-0" disabled={savingCategoryId !== null} aria-label={t("categoryManagement.cancelRename")} onClick={cancelCategoryRename}><X className="size-4" aria-hidden="true" /></Button>
+            </div> : <div className="flex min-w-0 items-center gap-1">
+              <span title={item.name} className={`min-w-0 truncate rounded-full px-2 py-0.5 text-xs font-medium ${getContractorCategoryBadgeClassName(item.colorKey)}`}>{item.name}</span>
+              <Button type="button" variant="ghost" className="size-11 shrink-0 p-0" disabled={savingCategoryId !== null} aria-label={t("categoryManagement.rename", { name: item.name })} onClick={() => beginCategoryRename(item)}><Pencil className="size-4" aria-hidden="true" /></Button>
+              <Button type="button" variant="ghost" className="size-11 shrink-0 p-0 text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" disabled={savingCategoryId !== null} aria-label={t("categoryManagement.delete", { name: item.name })} onClick={() => { setDeleteCategoryError(""); setDeletingCategory(item); }}><Trash2 className="size-4" aria-hidden="true" /></Button>
+            </div>}
+            {editingCategoryId === item.id && categoryNameError ? <p id={`category-name-${item.id}-error`} role="alert" className="mt-1.5 text-xs text-[var(--ui-danger-text)]">{categoryNameError}</p> : null}
+          </div>
+          <div className="grid grid-cols-9 gap-1" role="radiogroup" aria-label={t("categoryManagement.colorLabel", { name: item.name })}>{contractorCategoryColorKeys.map((colorKey) => <button key={colorKey} type="button" role="radio" aria-checked={item.colorKey === colorKey} aria-label={getContractorCategoryColorLabel(colorKey, locale)} disabled={savingCategoryId !== null} onClick={() => void changeCategoryColor(item.id, colorKey)} className={`flex size-8 items-center justify-center rounded-[var(--ui-radius-control)] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50 ${item.colorKey === colorKey ? "ring-2 ring-[var(--ui-focus)] ring-offset-2" : "hover:bg-[var(--ui-surface-muted)]"} ${getContractorCategoryBadgeClassName(colorKey)}`}><span className="size-3 rounded-sm bg-current" aria-hidden="true" /></button>)}</div>
+        </section>)}</div>
+        {!categories.length ? <p className="text-sm text-[var(--ui-text-muted)]">{t("categoryManagement.empty")}</p> : null}
+        {categoryError ? <p role="alert" className="mt-4 text-sm text-[var(--ui-danger-text)]">{categoryError}</p> : null}
+      </div>
+    </Dialog>
+    <Dialog closeDisabled={Boolean(savingCategoryId)} closeLabel={t("close")} description={deletingCategory ? t("categoryManagement.deleteDialog.description", { name: deletingCategory.name }) : undefined} isOpen={Boolean(deletingCategory)} onRequestClose={(reason) => { if (reason !== "outside" && !savingCategoryId) setDeletingCategory(null); }} title={t("categoryManagement.deleteDialog.title")}>
+      <div className="p-4 sm:p-6"><p className="text-sm text-[var(--ui-text-secondary)]">{t("categoryManagement.deleteDialog.notice")}</p>{deleteCategoryError ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{deleteCategoryError}</p> : null}<div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" disabled={Boolean(savingCategoryId)} onClick={() => setDeletingCategory(null)}>{t("cancel")}</Button><Button type="button" className="bg-[var(--ui-danger-text)] text-white hover:bg-[var(--ui-danger-text)]/90" disabled={Boolean(savingCategoryId)} onClick={() => void confirmCategoryDelete()}>{savingCategoryId ? t("deleting") : t("delete")}</Button></div></div>
     </Dialog>
   </>;
 }

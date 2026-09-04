@@ -998,6 +998,14 @@ export type Database = {
         Args: { p_category_id: string; p_name: string }
         Returns: string
       }
+      rename_contractor_category: {
+        Args: { p_category_id: string; p_name: string }
+        Returns: undefined
+      }
+      delete_contractor_category: {
+        Args: { p_category_id: string }
+        Returns: undefined
+      }
       update_contractor_category_color: {
         Args: { p_category_id: string; p_color_key: string }
         Returns: undefined

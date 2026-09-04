@@ -24,6 +24,26 @@ describe("contractor permissions", () => {
     expect(deleteAction).toContain("getActiveStudioAdmin()");
   });
 
+  it("keeps category rename and deletion behind active admin authorization", async () => {
+    const source = await readFile(actionsPath, "utf8");
+    const renameAction = source.slice(source.indexOf("export async function renameContractorCategory"), source.indexOf("export async function deleteContractorCategory"));
+    const deleteCategoryAction = source.slice(source.indexOf("export async function deleteContractorCategory"));
+
+    expect(renameAction).toContain("getActiveStudioAdmin()");
+    expect(renameAction).toContain('supabase.rpc("rename_contractor_category"');
+    expect(deleteCategoryAction).toContain("getActiveStudioAdmin()");
+    expect(deleteCategoryAction).toContain('supabase.rpc("delete_contractor_category"');
+  });
+
+  it("exposes category management only to administrators", async () => {
+    const source = await readFile(directoryPath, "utf8");
+
+    expect(source).toContain("{isAdmin ? <Popover.Root");
+    expect(source).toContain("renameContractorCategory");
+    expect(source).toContain("deleteContractorCategory");
+    expect(source).not.toContain("window.confirm");
+  });
+
   it("derives the edit affordance from the canonical active studio membership", async () => {
     const source = await readFile(pagePath, "utf8");
 

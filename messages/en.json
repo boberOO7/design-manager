@@ -47,6 +47,31 @@
       "description": "Contractor “{name}” will be permanently deleted.",
       "notice": "This action cannot be undone."
     },
+    "categoryManagement": {
+      "trigger": "Manage categories",
+      "title": "Manage categories",
+      "description": "Rename and recolor categories, or delete ones that are not in use.",
+      "nameLabel": "Category name",
+      "rename": "Rename category {name}",
+      "saveName": "Save category name {name}",
+      "cancelRename": "Cancel rename",
+      "delete": "Delete category {name}",
+      "colorLabel": "Color for category {name}",
+      "empty": "No categories yet.",
+      "deleteDialog": {
+        "title": "Delete category?",
+        "description": "Category “{name}” will be permanently deleted.",
+        "notice": "A category can only be deleted when no contractors use it."
+      },
+      "errors": {
+        "permission": "Only active administrators can manage categories.",
+        "nameTaken": "A category with this name already exists.",
+        "renameFailed": "Could not rename the category. Please try again.",
+        "colorFailed": "Could not change the category color. Please try again.",
+        "inUse": "Contractors use this category. Assign them to another category first.",
+        "deleteFailed": "Could not delete the category. Please try again."
+      }
+    },
     "form": {
       "createTitle": "Add contractor",
       "editTitle": "Edit contractor",

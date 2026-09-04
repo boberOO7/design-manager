@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { createContractorSchema, getContractorFormInput } from "@/lib/validation/contractor";
+import { createContractorCategoryNameSchema, createContractorSchema, getContractorFormInput } from "@/lib/validation/contractor";
 
 const messages = {
   categoryRequired: "category required", categoryTooLong: "category too long", subcategoryTooLong: "subcategory too long", nameRequired: "name required", nameTooLong: "name too long", websiteTooLong: "website too long", websiteInvalid: "website invalid", phoneTooLong: "phone too long", phoneInvalid: "phone invalid", descriptionTooLong: "description too long",
 };
 
 describe("contractor validation", () => {
+  it("trims category names and rejects empty or overlong rename values", () => {
+    const schema = createContractorCategoryNameSchema(messages);
+
+    expect(schema.parse("  Electrical  ")).toBe("Electrical");
+    expect(schema.safeParse("   ").success).toBe(false);
+    expect(schema.safeParse("x".repeat(101)).success).toBe(false);
+  });
+
   it("accepts a category-only contractor and normalizes an optional subcategory", () => {
     const result = createContractorSchema(messages).safeParse({ category: " Electrical ", subcategory: " Lighting ", name: "Acme" });
     expect(result.success && result.data).toMatchObject({ category: "Electrical", subcategory: "Lighting" });

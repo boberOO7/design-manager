@@ -6,7 +6,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { isContractorCategoryColorKey } from "@/lib/contractor-category-colors";
-import { createContractorSchema, getContractorFormInput, type ContractorFormActionState, type ContractorFormField, type ContractorFormValues } from "@/lib/validation/contractor";
+import { createContractorCategoryNameSchema, createContractorSchema, getContractorFormInput, type ContractorFormActionState, type ContractorFormField, type ContractorFormValues } from "@/lib/validation/contractor";
 
 async function parseForm(formData: FormData): Promise<ContractorFormActionState | { values: ContractorFormValues }> {
   const t = await getTranslations("Contractors");
@@ -128,12 +128,44 @@ export async function deleteContractor(contractorId: string): Promise<{ error?: 
 
 export async function updateContractorCategoryColor(categoryId: string, colorKey: string): Promise<{ error?: string }> {
   const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
-  if (!admin || !isContractorCategoryColorKey(colorKey)) return { error: t("errors.updateFailed") };
+  if (!admin) return { error: t("categoryManagement.errors.permission") };
+  if (!isContractorCategoryColorKey(colorKey)) return { error: t("categoryManagement.errors.colorFailed") };
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_contractor_category_color", { p_category_id: categoryId, p_color_key: colorKey });
   if (error) {
     console.error("Unable to update contractor category color", error);
-    return { error: t("errors.updateFailed") };
+    return { error: t("categoryManagement.errors.colorFailed") };
+  }
+  revalidatePath("/contractors");
+  return {};
+}
+
+export async function renameContractorCategory(categoryId: string, name: string): Promise<{ error?: string; name?: string }> {
+  const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
+  if (!admin) return { error: t("categoryManagement.errors.permission") };
+  const parsed = createContractorCategoryNameSchema({
+    categoryRequired: t("validation.categoryRequired"),
+    categoryTooLong: t("validation.categoryTooLong"),
+  }).safeParse(name);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? t("categoryManagement.errors.renameFailed") };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("rename_contractor_category", { p_category_id: categoryId, p_name: parsed.data });
+  if (error) {
+    console.error("Unable to rename contractor category", error);
+    return { error: error.message.includes("contractor_category_name_taken") ? t("categoryManagement.errors.nameTaken") : t("categoryManagement.errors.renameFailed") };
+  }
+  revalidatePath("/contractors");
+  return { name: parsed.data };
+}
+
+export async function deleteContractorCategory(categoryId: string): Promise<{ error?: string }> {
+  const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
+  if (!admin) return { error: t("categoryManagement.errors.permission") };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_contractor_category", { p_category_id: categoryId });
+  if (error) {
+    console.error("Unable to delete contractor category", error);
+    return { error: error.message.includes("contractor_category_in_use") ? t("categoryManagement.errors.inUse") : t("categoryManagement.errors.deleteFailed") };
   }
   revalidatePath("/contractors");
   return {};

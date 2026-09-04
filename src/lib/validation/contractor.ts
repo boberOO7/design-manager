@@ -14,10 +14,14 @@ export type ContractorValidationMessages = {
   descriptionTooLong: string;
 };
 
+export function createContractorCategoryNameSchema(messages: Pick<ContractorValidationMessages, "categoryRequired" | "categoryTooLong">) {
+  return z.string().trim().min(1, messages.categoryRequired).max(100, messages.categoryTooLong);
+}
+
 export function createContractorSchema(messages: ContractorValidationMessages) {
   const optionalText = (maximum: number, message: string) => z.string().trim().max(maximum, message).optional();
   return z.object({
-  category: z.string().trim().min(1, messages.categoryRequired).max(100, messages.categoryTooLong),
+  category: createContractorCategoryNameSchema(messages),
   subcategory: optionalText(100, messages.subcategoryTooLong),
   name: z.string().trim().min(1, messages.nameRequired).max(200, messages.nameTooLong),
   website_url: optionalText(500, messages.websiteTooLong).refine(

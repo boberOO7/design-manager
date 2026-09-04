@@ -465,8 +465,8 @@
     "semantic_hash": "97bf0b08cc31b01da6d24407d2476ccd"
   },
   "src/components/projects/project-lifecycle-controls.tsx": {
-    "mtime": 1788453769.1670184,
-    "ast_hash": "1880325e0e3cb4da5db5bf70a2e169ef",
+    "mtime": 1788462175.3961148,
+    "ast_hash": "c82368e631a240bc1e4f956701bb8a0f",
     "semantic_hash": ""
   },
   "src/components/projects/project-list-controls.tsx": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/types/database.types.ts": {
-    "mtime": 1788381960.370003,
-    "ast_hash": "2aeb711c4b4cad2c68e2553cff44a111",
+    "mtime": 1788462300.3877118,
+    "ast_hash": "9b26720b9e20576c7a92fca296cb4692",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -1720,13 +1720,13 @@
     "semantic_hash": ""
   },
   "messages/en.json": {
-    "mtime": 1788453769.3310251,
-    "ast_hash": "073d7a2f55f1b7cf28bef2b843772331",
+    "mtime": 1788462560.209919,
+    "ast_hash": "a15a19449f8d00d3d0e317ee462f6740",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788453769.4950318,
-    "ast_hash": "bcd1615f59a010589c316d9e87f657e8",
+    "mtime": 1788462560.0179174,
+    "ast_hash": "396e926f3c920afb21fa061548892fc8",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -2825,8 +2825,8 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/actions.ts": {
-    "mtime": 1787039376.8129427,
-    "ast_hash": "9074041f6ada5766af82d8c61f30bf86",
+    "mtime": 1788462559.8099158,
+    "ast_hash": "9eefb004a26cee7f8a9e5bfc96dcba9e",
     "semantic_hash": ""
   },
   "src/app/(app)/contractors/page.tsx": {
@@ -2835,8 +2835,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-directory.tsx": {
-    "mtime": 1787603096.529185,
-    "ast_hash": "817bce42490177cd50eba9494492ab65",
+    "mtime": 1788462506.000479,
+    "ast_hash": "19a275b8707d7ac0138834485128daeb",
     "semantic_hash": ""
   },
   "src/data/queries/contractors.ts": {
@@ -2845,8 +2845,8 @@
     "semantic_hash": ""
   },
   "src/lib/validation/contractor.ts": {
-    "mtime": 1787035925.996942,
-    "ast_hash": "1c9c193335489d0e9a8c49576a07aaf1",
+    "mtime": 1788462175.7002087,
+    "ast_hash": "1ff249b91d13f9b54039e47faf659bc1",
     "semantic_hash": ""
   },
   "supabase/migrations/20260814120100_add_contractors.sql": {
@@ -3035,8 +3035,8 @@
     "semantic_hash": ""
   },
   "src/lib/validation/contractor.test.ts": {
-    "mtime": 1787036189.712811,
-    "ast_hash": "da9835522ce76542dd811a7c2c8e1d31",
+    "mtime": 1788462175.8682606,
+    "ast_hash": "1847a1cba30fefaa34517aa987624e86",
     "semantic_hash": ""
   },
   "supabase/migrations/20260818140000_add_contractor_subcategories.sql": {
@@ -3045,8 +3045,8 @@
     "semantic_hash": ""
   },
   "src/components/contractors/contractor-permissions.contract.test.ts": {
-    "mtime": 1787039395.9017856,
-    "ast_hash": "c6a2e44669450007a4d2f5150f2ee711",
+    "mtime": 1788462326.518914,
+    "ast_hash": "e66867492009cc1cd7824a409a3751e4",
     "semantic_hash": ""
   },
   "src/lib/contractor-update-permissions-migration.test.ts": {
@@ -3955,8 +3955,18 @@
     "semantic_hash": ""
   },
   "src/components/projects/project-lifecycle-controls.test.ts": {
-    "mtime": 1788453798.875792,
-    "ast_hash": "8e65fb5d13d0871eb2cb82f602797fbf",
+    "mtime": 1788462175.5601654,
+    "ast_hash": "f589908a296fa59bbfbdd888911804e0",
+    "semantic_hash": ""
+  },
+  "src/lib/contractor-category-management-migration.test.ts": {
+    "mtime": 1788462326.6589084,
+    "ast_hash": "78f2d76461835d243a80662c4615b6ea",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260903190137_contractor_category_management.sql": {
+    "mtime": 1788462176.2083654,
+    "ast_hash": "57aa319726f0a74abec68c141ed23e9d",
     "semantic_hash": ""
   }
 }
