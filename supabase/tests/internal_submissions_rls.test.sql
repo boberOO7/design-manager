@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(23);
 
 insert into public.studios(id, name) values
   ('40000000-0000-0000-0000-000000000001', 'Studio A'),
@@ -26,6 +26,7 @@ select lives_ok($$select public.create_submission('request','Mouse','Broken mous
 select lives_ok($$select public.create_submission('suggestion','Chairs','Buy better chairs',false)$$,'member creates suggestion');
 select lives_ok($$select public.create_submission('complaint','Noise','Recurring noise',true)$$,'member creates anonymous complaint');
 select is((select count(*)::integer from public.submissions where type='complaint'),0,'anonymous complaint is not visible to submitter');
+select is((select priority from public.submissions where type='request'),'normal','new submission defaults to normal priority');
 
 set local role postgres;
 select is((select count(*)::integer from public.submissions where studio_id='40000000-0000-0000-0000-000000000001' and title='Noise' and type='complaint' and author_id is null and is_anonymous),1,'anonymous complaint stores no author');
@@ -41,9 +42,12 @@ set local role postgres;
 select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
 select is((select count(*)::integer from public.submissions),3,'admin sees all studio submissions');
-select lives_ok($$select public.manage_submission((select id from public.submissions where title='Mouse'),'accepted','40000000-0000-0000-0000-000000000012','high','2030-01-01','private note')$$,'admin manages request');
+select lives_ok($$select public.manage_submission((select id from public.submissions where title='Chairs'),'accepted',null,'normal',null,'')$$,'admin directly accepts a new suggestion');
+select lives_ok($$select public.manage_submission((select id from public.submissions where title='Mouse'),'accepted',null,'high','2030-01-01','private note')$$,'admin accepts request without assigning it');
 select is((select count(*)::integer from public.submission_admin_details where internal_note='private note'),1,'admin sees internal note');
 select throws_ok($$select public.manage_submission((select id from public.submissions where title='Mouse'),'done',null,null,null,'')$$,'invalid_submission_transition','workflow rejects skipped state');
+select throws_ok($$select public.manage_submission((select id from public.submissions where title='Mouse'),'in_progress',null,'high','2030-01-01','private note')$$,'responsible_required_for_work','starting request work requires a responsible member');
+select lives_ok($$select public.manage_submission((select id from public.submissions where title='Mouse'),'in_progress','40000000-0000-0000-0000-000000000012','high','2030-01-01','private note')$$,'assignment and start-work transition succeed atomically');
 select throws_ok($$select public.manage_submission((select id from public.submissions where title='Noise'),'reviewing','40000000-0000-0000-0000-000000000012',null,null,'')$$,'complaints_do_not_expose_responsible_participants','complaint assignment cannot expand its private audience');
 
 set local role postgres;

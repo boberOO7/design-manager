@@ -16,7 +16,7 @@ export type SubmissionItem = {
   author: SubmissionPerson | null;
   isAnonymous: boolean;
   responsible: SubmissionPerson | null;
-  priority: SubmissionPriority | null;
+  priority: SubmissionPriority;
   deadline: string | null;
   createdAt: string;
   updatedAt: string;
@@ -28,7 +28,7 @@ export type SubmissionItem = {
 
 type SubmissionRow = {
   id: string; studio_id: string; type: SubmissionType; title: string; description: string;
-  status: SubmissionStatus; is_anonymous: boolean; priority: SubmissionPriority | null;
+  status: SubmissionStatus; is_anonymous: boolean; priority: SubmissionPriority;
   deadline: string | null; created_at: string; updated_at: string;
   author: { id: string; full_name: string; avatar_url: string | null } | null;
   responsible: { profile: { id: string; full_name: string; avatar_url: string | null } } | null;

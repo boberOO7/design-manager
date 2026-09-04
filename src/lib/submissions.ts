@@ -13,6 +13,12 @@ export const SUBMISSION_WORKFLOWS = {
   complaint: ["new", "reviewing", "action_taken", "closed"],
 } as const satisfies Record<SubmissionType, readonly SubmissionStatus[]>;
 
+const SUBMISSION_PRIMARY_TRANSITIONS: Record<SubmissionType, Partial<Record<SubmissionStatus, SubmissionStatus>>> = {
+  request: { new: "accepted", accepted: "in_progress", in_progress: "done" },
+  suggestion: { new: "accepted", discussion: "accepted", accepted: "planned", planned: "implemented" },
+  complaint: { new: "reviewing", reviewing: "action_taken", action_taken: "closed" },
+};
+
 export const SUBMISSION_TERMINAL_STATUSES = {
   request: ["done", "rejected"],
   suggestion: ["implemented", "rejected"],
@@ -31,12 +37,20 @@ export function isSubmissionStatus(value: unknown): value is SubmissionStatus {
 }
 
 export function getAllowedNextStatuses(type: SubmissionType, status: SubmissionStatus): SubmissionStatus[] {
-  const workflow = SUBMISSION_WORKFLOWS[type];
-  const index = workflow.findIndex((item) => item === status);
-  if (index < 0 || index === workflow.length - 1) return [];
-  const next: SubmissionStatus[] = [workflow[index + 1]];
-  if (type !== "complaint") next.push("rejected");
-  return next;
+  const next = getPrimarySubmissionStatus(type, status);
+  return next ? [next] : [];
+}
+
+export function getPrimarySubmissionStatus(type: SubmissionType, status: SubmissionStatus): SubmissionStatus | null {
+  return SUBMISSION_PRIMARY_TRANSITIONS[type][status] ?? null;
+}
+
+export function canRejectSubmission(type: SubmissionType, status: SubmissionStatus): boolean {
+  return type !== "complaint" && !isTerminalSubmissionStatus(type, status);
+}
+
+export function submissionTransitionRequiresResponsible(type: SubmissionType, status: SubmissionStatus): boolean {
+  return type === "request" && status === "in_progress";
 }
 
 export function isTerminalSubmissionStatus(type: SubmissionType, status: SubmissionStatus): boolean {

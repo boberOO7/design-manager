@@ -202,6 +202,8 @@
 
 - Office is the home for internal studio operations outside project production. It contains a role-aware overview, submissions, and standalone office assignments.
 - Submissions retain their dedicated privacy and workflow model under `/office/submissions`; the legacy `/submissions` route redirects without repurposing historical project data.
+- The submissions surface is an active-first operational inbox with terminal records separated into History. Primary actions follow the canonical type workflow; rejection remains a separate administrator action. Starting request work requires an active responsible studio member, and assignment plus transition stays atomic through the existing management RPC.
+- Submission priority is always present and defaults to Normal, matching the task convention. Anonymous complaints retain no author identity and expose neither participant assignment nor communication UI.
 - Office assignments use the fixed `assigned → in_progress → done` workflow with administrator-only cancellation. Administrators create and manage them; only administrators and the assigned active member can read them.
 - Office records have no project, task, productivity, area, progress, or Rating relationship. Aggregation across submissions and assignments is presentation-only.
 

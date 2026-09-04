@@ -25,9 +25,9 @@ export type Database = {
         ]
       }
       submissions: {
-        Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string | null; deadline: string | null; created_at: string; updated_at: string }
-        Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string | null; deadline?: string | null; created_at?: string; updated_at?: string }
-        Update: { status?: Database["public"]["Enums"]["submission_status"]; responsible_id?: string | null; priority?: string | null; deadline?: string | null; updated_at?: string }
+        Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string; deadline: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string; deadline?: string | null; created_at?: string; updated_at?: string }
+        Update: { status?: Database["public"]["Enums"]["submission_status"]; responsible_id?: string | null; priority?: string; deadline?: string | null; updated_at?: string }
         Relationships: [
           { foreignKeyName: "submissions_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
           { foreignKeyName: "submissions_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
@@ -1012,7 +1012,7 @@ export type Database = {
         Returns: string
       }
       manage_submission: {
-        Args: { p_submission_id: string; p_status: Database["public"]["Enums"]["submission_status"]; p_responsible_id: string | null; p_priority: string | null; p_deadline: string | null; p_internal_note: string }
+        Args: { p_submission_id: string; p_status: Database["public"]["Enums"]["submission_status"]; p_responsible_id: string | null; p_priority: string; p_deadline: string | null; p_internal_note: string }
         Returns: undefined
       }
       claim_google_calendar_reconciliation_jobs: {

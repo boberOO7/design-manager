@@ -52,7 +52,7 @@ export async function toggleSuggestionSupport(submissionId: string, supported: b
   refresh(); return {};
 }
 
-export async function manageSubmission(input: { submissionId: string; status: string; responsibleId: string | null; priority: string | null; deadline: string | null; internalNote: string }): Promise<{ error?: string }> {
+export async function manageSubmission(input: { submissionId: string; status: string; responsibleId: string | null; priority: string; deadline: string | null; internalNote: string }): Promise<{ error?: string }> {
   const [admin, parsed] = await Promise.all([getActiveStudioAdmin(), Promise.resolve(manageSubmissionSchema.safeParse(input))]);
   if (!admin) return { error: "permission" };
   if (!parsed.success) return { error: "invalid" };
@@ -62,6 +62,6 @@ export async function manageSubmission(input: { submissionId: string; status: st
     p_responsible_id: parsed.data.responsibleId, p_priority: parsed.data.priority,
     p_deadline: parsed.data.deadline, p_internal_note: parsed.data.internalNote,
   });
-  if (error) { console.error("Unable to manage submission", error); return { error: error.message.includes("invalid_submission_transition") ? "transition" : "manage" }; }
+  if (error) { console.error("Unable to manage submission", error); return { error: error.message.includes("invalid_submission_transition") ? "transition" : error.message.includes("responsible_required_for_work") || error.message.includes("responsible_must_be_active_studio_member") ? "responsible" : "manage" }; }
   refresh(); return {};
 }

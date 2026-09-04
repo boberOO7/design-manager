@@ -20,7 +20,7 @@ export const manageSubmissionSchema = z.object({
   submissionId: z.string().uuid(),
   status: z.enum(SUBMISSION_STATUSES),
   responsibleId: z.string().uuid().nullable(),
-  priority: z.enum(SUBMISSION_PRIORITIES).nullable(),
+  priority: z.enum(SUBMISSION_PRIORITIES),
   deadline: z.iso.date().nullable(),
   internalNote: z.string().trim().max(5000),
 });
