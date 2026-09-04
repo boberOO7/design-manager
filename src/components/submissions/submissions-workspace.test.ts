@@ -29,4 +29,19 @@ describe("submissions workspace contract", () => {
     expect(source).not.toMatch(/<script\b/i);
     expect(source).not.toContain("dangerouslySetInnerHTML");
   });
+
+  it("uses dense clickable cards with an inline optimistic support control", () => {
+    expect(source).toContain('lg:grid-cols-2');
+    expect(source).toContain('className="absolute inset-0');
+    expect(source).toContain("startSupportTransition");
+    expect(source).toContain("aria-pressed={supportedByMe}");
+  });
+
+  it("uses shared Office drawer controls and protects anonymous identity", () => {
+    expect(source).toContain("<DatePicker");
+    expect(source).toContain("<Select");
+    expect(source).toContain("<LockKeyhole");
+    expect(source).not.toContain('<Input type="date"');
+    expect(source).not.toContain("<select className=");
+  });
 });
