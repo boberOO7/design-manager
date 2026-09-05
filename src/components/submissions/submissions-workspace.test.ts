@@ -47,11 +47,16 @@ describe("submissions workspace contract", () => {
     expect(source).not.toContain("dangerouslySetInnerHTML");
   });
 
-  it("uses dense clickable cards with an inline optimistic support control", () => {
-    expect(source).toContain('lg:grid-cols-2');
+  it("uses one compact clickable list with responsive grid rows and inline optimistic support", () => {
+    expect(source).toContain('divide-y divide-[var(--ui-border-subtle)]');
+    expect(source).toContain('lg:grid-cols-[auto_minmax(8rem,0.8fr)_minmax(12rem,1.75fr)');
+    expect(source).toContain('lg:min-h-[4rem]');
+    expect(source).not.toContain('lg:grid-cols-2');
     expect(source).toContain('className="absolute inset-0');
     expect(source).toContain("startSupportTransition");
     expect(source).toContain("aria-pressed={supportedByMe}");
+    expect(source).toContain("function RowPerson");
+    expect(source).toContain("const displayedDate = terminal ? item.updatedAt : item.deadline ?? item.createdAt");
   });
 
   it("uses canonical semantic workflow actions and confirmed explicit rejection", () => {
