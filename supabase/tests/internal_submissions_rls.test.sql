@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(26);
 
 insert into public.studios(id, name) values
   ('40000000-0000-0000-0000-000000000001', 'Studio A'),
@@ -22,9 +22,12 @@ insert into public.studio_members(studio_id,user_id,system_role) values
 
 select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000011',true);
 set local role authenticated;
-select lives_ok($$select public.create_submission('request','Mouse','Broken mouse',false)$$,'member creates request');
+select lives_ok($$select public.create_submission('request','Mouse','Broken mouse',false,'equipment')$$,'member creates categorized request');
 select lives_ok($$select public.create_submission('suggestion','Chairs','Buy better chairs',false)$$,'member creates suggestion');
 select lives_ok($$select public.create_submission('complaint','Noise','Recurring noise',true)$$,'member creates anonymous complaint');
+select is((select request_category from public.submissions where type='request'),'equipment','request category persists');
+select throws_ok($$select public.create_submission('request','Uncategorized','Missing category',false)$$,'request_category_required','new requests require a category');
+select throws_ok($$select public.create_submission('suggestion','Wrong category','Not a request',false,'office')$$,'request_category_not_applicable','non-request submissions reject categories');
 select is((select count(*)::integer from public.submissions where type='complaint'),0,'anonymous complaint is not visible to submitter');
 select is((select priority from public.submissions where type='request'),'normal','new submission defaults to normal priority');
 

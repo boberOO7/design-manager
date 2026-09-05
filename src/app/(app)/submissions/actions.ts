@@ -17,12 +17,14 @@ export async function createSubmission(_state: SubmissionActionState, formData: 
   if (!membership) return { error: "permission" };
   const parsed = createSubmissionSchema.safeParse({
     type: formData.get("type"), title: formData.get("title"), description: formData.get("description"),
+    requestCategory: formData.get("requestCategory") || null,
     anonymous: formData.get("anonymous") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "invalid" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_submission", {
     p_type: parsed.data.type, p_title: parsed.data.title, p_description: parsed.data.description, p_anonymous: parsed.data.anonymous,
+    p_request_category: parsed.data.requestCategory,
   });
   if (error || !data) { console.error("Unable to create submission", error); return { error: "create" }; }
   refresh();

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUBMISSION_PRIORITIES, SUBMISSION_STATUSES, SUBMISSION_TYPES } from "@/lib/submissions";
+import { SUBMISSION_PRIORITIES, SUBMISSION_REQUEST_CATEGORIES, SUBMISSION_STATUSES, SUBMISSION_TYPES } from "@/lib/submissions";
 
 const requiredText = (maximum: number) => z.string().trim().min(1).max(maximum);
 
@@ -7,10 +7,17 @@ export const createSubmissionSchema = z.object({
   type: z.enum(SUBMISSION_TYPES),
   title: requiredText(160),
   description: requiredText(5000),
+  requestCategory: z.enum(SUBMISSION_REQUEST_CATEGORIES).nullable(),
   anonymous: z.boolean(),
 }).superRefine((value, context) => {
   if (value.anonymous && value.type !== "complaint") {
     context.addIssue({ code: "custom", path: ["anonymous"], message: "anonymous_complaints_only" });
+  }
+  if (value.type === "request" && value.requestCategory === null) {
+    context.addIssue({ code: "custom", path: ["requestCategory"], message: "request_category_required" });
+  }
+  if (value.type !== "request" && value.requestCategory !== null) {
+    context.addIssue({ code: "custom", path: ["requestCategory"], message: "request_category_not_applicable" });
   }
 });
 

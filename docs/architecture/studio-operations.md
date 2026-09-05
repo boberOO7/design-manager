@@ -46,6 +46,10 @@ Legacy `/submissions` entry points redirect to `/office/submissions`.
 ### Submissions
 
 - Types are request, suggestion, and complaint; priority defaults to Normal.
+- New requests require one of the fixed request categories: equipment, office,
+  software, or other. The database column remains nullable so submissions
+  created before categories were introduced stay readable; suggestions and
+  complaints cannot carry a request category.
 - The inbox separates active work from terminal History.
 - Type-specific transition helpers in `src/lib/submissions.ts` are presentation
   guidance; database RPCs enforce atomic assignment and transition.

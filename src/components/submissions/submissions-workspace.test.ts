@@ -24,6 +24,19 @@ describe("submissions workspace contract", () => {
     expect(source).toContain('name="anonymous"');
   });
 
+  it("keeps a stable desktop options region and limits categories to requests", () => {
+    const dialog = source.slice(source.indexOf("function CreateSubmissionDialog"), source.indexOf("function SubmissionDetailDrawer"));
+    expect(dialog).toContain('sm:min-h-[7.5rem]');
+    expect(dialog).toContain('overflow-y-auto');
+    expect(dialog).toContain('type === "request"');
+    expect(dialog).toContain('name="requestCategory"');
+    expect(dialog).toContain('placeholder={t("form.categoryPlaceholder")}');
+    expect(dialog).toContain('required value={requestCategory}');
+    expect(dialog).toContain("SUBMISSION_REQUEST_CATEGORIES.map");
+    expect(dialog).toContain('type === "complaint"');
+    expect(dialog).toContain('name="anonymous"');
+  });
+
   it("uses the shared detail drawer without task components", () => {
     expect(source).toContain("<Drawer");
     expect(source).not.toContain("TaskDetailsDrawer");
@@ -73,6 +86,7 @@ describe("submissions workspace contract", () => {
     expect(row).toContain('size-9 shrink-0');
     expect(row).toContain('size-[1.125rem]');
     expect(row).not.toContain("uppercase");
+    expect(row).toContain('item.type === "request" && item.requestCategory');
     expect(row).toContain('className="pointer-events-auto relative z-10 col-span-full flex min-h-0 shrink-0 items-center justify-end gap-1.5 xl:col-span-1"');
   });
 
@@ -81,6 +95,10 @@ describe("submissions workspace contract", () => {
     expect(source).toContain("submissionTransitionRequiresResponsible");
     expect(source).toContain("<SubmissionWorkflowAction");
     expect(source).toContain("workflowStyles[action.tone]");
+    expect(source).toContain('warning: "border-[var(--ui-warning-border)]');
+    expect(source).toContain('info: "border-[var(--ui-info-border)]');
+    expect(source).toContain('violet: "border-[var(--ui-violet-border)]');
+    expect(source).toContain('success: "border-[var(--ui-success-border)]');
     expect(source).toContain("<SubmissionRejectAction");
     expect(source).toContain("<SubmissionRejectAction overflow");
     expect(source).toContain('aria-label={t("workflow.moreActions")}');
@@ -110,6 +128,7 @@ describe("submissions workspace contract", () => {
     expect(drawer).toContain('className="w-full max-w-[34rem]"');
     expect(drawer).toContain('className="mt-1 flex flex-wrap items-center gap-2"');
     expect(drawer).toContain("getPriorityBadgeStyle(item.priority)");
+    expect(drawer).toContain('item.type === "request" && item.requestCategory');
     expect(drawer).toContain('!border-0", getPriorityBadgeStyle(item.priority).className');
     expect(drawer).not.toContain('className="mt-2 flex flex-wrap gap-1.5"');
     expect(drawer).not.toContain('<SubmissionRejectAction disabled={pending}');

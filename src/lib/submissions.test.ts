@@ -24,8 +24,10 @@ describe("submission workflows", () => {
   });
 
   it("derives semantic action presentation from the canonical transition", () => {
-    expect(getPrimarySubmissionAction("request", "new")).toEqual({ status: "accepted", icon: "accept", tone: "info" });
-    expect(getPrimarySubmissionAction("complaint", "new")).toEqual({ status: "reviewing", icon: "review", tone: "warning" });
+    expect(getPrimarySubmissionAction("request", "new")).toEqual({ status: "accepted", icon: "accept", tone: "warning" });
+    expect(getPrimarySubmissionAction("request", "accepted")).toEqual({ status: "in_progress", icon: "start", tone: "info" });
+    expect(getPrimarySubmissionAction("suggestion", "accepted")).toEqual({ status: "planned", icon: "plan", tone: "violet" });
+    expect(getPrimarySubmissionAction("complaint", "new")).toEqual({ status: "reviewing", icon: "review", tone: "violet" });
     expect(getPrimarySubmissionAction("suggestion", "planned")).toEqual({ status: "implemented", icon: "complete", tone: "success" });
     expect(getPrimarySubmissionAction("request", "done")).toBeNull();
   });

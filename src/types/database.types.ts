@@ -25,8 +25,8 @@ export type Database = {
         ]
       }
       submissions: {
-        Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string; deadline: string | null; created_at: string; updated_at: string }
-        Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string; deadline?: string | null; created_at?: string; updated_at?: string }
+        Row: { id: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; request_category: string | null; status: Database["public"]["Enums"]["submission_status"]; author_id: string | null; is_anonymous: boolean; responsible_id: string | null; priority: string; deadline: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; studio_id: string; type: Database["public"]["Enums"]["submission_type"]; title: string; description: string; request_category?: string | null; status?: Database["public"]["Enums"]["submission_status"]; author_id?: string | null; is_anonymous?: boolean; responsible_id?: string | null; priority?: string; deadline?: string | null; created_at?: string; updated_at?: string }
         Update: { status?: Database["public"]["Enums"]["submission_status"]; responsible_id?: string | null; priority?: string; deadline?: string | null; updated_at?: string }
         Relationships: [
           { foreignKeyName: "submissions_studio_id_fkey"; columns: ["studio_id"]; isOneToOne: false; referencedRelation: "studios"; referencedColumns: ["id"] },
@@ -1008,7 +1008,7 @@ export type Database = {
         Returns: undefined
       }
       create_submission: {
-        Args: { p_type: Database["public"]["Enums"]["submission_type"]; p_title: string; p_description: string; p_anonymous?: boolean }
+        Args: { p_type: Database["public"]["Enums"]["submission_type"]; p_title: string; p_description: string; p_anonymous?: boolean; p_request_category?: string | null }
         Returns: string
       }
       manage_submission: {

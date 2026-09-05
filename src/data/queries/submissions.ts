@@ -2,7 +2,7 @@ import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
-import type { SubmissionPriority, SubmissionStatus, SubmissionType } from "@/lib/submissions";
+import type { SubmissionPriority, SubmissionRequestCategory, SubmissionStatus, SubmissionType } from "@/lib/submissions";
 
 export type SubmissionPerson = { id: string; fullName: string; avatarUrl: string | null };
 export type SubmissionComment = { id: string; body: string; createdAt: string; author: SubmissionPerson };
@@ -10,6 +10,7 @@ export type SubmissionItem = {
   id: string;
   studioId: string;
   type: SubmissionType;
+  requestCategory: SubmissionRequestCategory | null;
   title: string;
   description: string;
   status: SubmissionStatus;
@@ -27,7 +28,7 @@ export type SubmissionItem = {
 };
 
 type SubmissionRow = {
-  id: string; studio_id: string; type: SubmissionType; title: string; description: string;
+  id: string; studio_id: string; type: SubmissionType; request_category: SubmissionRequestCategory | null; title: string; description: string;
   status: SubmissionStatus; is_anonymous: boolean; priority: SubmissionPriority;
   deadline: string | null; created_at: string; updated_at: string;
   author: { id: string; full_name: string; avatar_url: string | null } | null;
@@ -44,7 +45,7 @@ export async function getSubmissionsData(): Promise<{ items: SubmissionItem[]; c
   if (!membership) throw new Error("An active studio membership is required to load submissions.");
   const supabase = await createClient();
   const [itemsResult, commentsResult, reactionsResult, detailsResult, membersResult] = await Promise.all([
-    supabase.from("submissions").select("id, studio_id, type, title, description, status, is_anonymous, priority, deadline, created_at, updated_at, author:profiles!submissions_author_id_fkey(id, full_name, avatar_url), responsible:studio_members!submissions_studio_id_responsible_id_fkey(profile:profiles!studio_members_user_id_fkey(id, full_name, avatar_url))").eq("studio_id", membership.studio_id).order("created_at", { ascending: false }).overrideTypes<SubmissionRow[], { merge: false }>(),
+    supabase.from("submissions").select("id, studio_id, type, request_category, title, description, status, is_anonymous, priority, deadline, created_at, updated_at, author:profiles!submissions_author_id_fkey(id, full_name, avatar_url), responsible:studio_members!submissions_studio_id_responsible_id_fkey(profile:profiles!studio_members_user_id_fkey(id, full_name, avatar_url))").eq("studio_id", membership.studio_id).order("created_at", { ascending: false }).overrideTypes<SubmissionRow[], { merge: false }>(),
     supabase.from("submission_comments").select("id, submission_id, body, created_at, author:profiles!submission_comments_author_id_fkey!inner(id, full_name, avatar_url)").eq("studio_id", membership.studio_id).order("created_at").overrideTypes<CommentRow[], { merge: false }>(),
     supabase.from("submission_reactions").select("submission_id, user_id").eq("studio_id", membership.studio_id),
     supabase.from("submission_admin_details").select("submission_id, internal_note").eq("studio_id", membership.studio_id),
@@ -73,7 +74,7 @@ export async function getSubmissionsData(): Promise<{ items: SubmissionItem[]; c
     isAdmin: membership.system_role === "admin",
     members: (membersResult.data ?? []).map((row) => person(row.profile)).sort((a, b) => a.fullName.localeCompare(b.fullName)),
     items: (itemsResult.data ?? []).map((row) => ({
-      id: row.id, studioId: row.studio_id, type: row.type, title: row.title, description: row.description,
+      id: row.id, studioId: row.studio_id, type: row.type, requestCategory: row.request_category, title: row.title, description: row.description,
       status: row.status, author: row.author ? person(row.author) : null, isAnonymous: row.is_anonymous,
       responsible: row.responsible ? person(row.responsible.profile) : null, priority: row.priority,
       deadline: row.deadline, createdAt: row.created_at, updatedAt: row.updated_at,

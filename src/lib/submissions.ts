@@ -1,6 +1,9 @@
 export const SUBMISSION_TYPES = ["request", "suggestion", "complaint"] as const;
 export type SubmissionType = (typeof SUBMISSION_TYPES)[number];
 
+export const SUBMISSION_REQUEST_CATEGORIES = ["equipment", "office", "software", "other"] as const;
+export type SubmissionRequestCategory = (typeof SUBMISSION_REQUEST_CATEGORIES)[number];
+
 export const SUBMISSION_STATUSES = [
   "new", "accepted", "in_progress", "done", "rejected", "discussion",
   "planned", "implemented", "reviewing", "action_taken", "closed",
@@ -26,10 +29,10 @@ export type SubmissionWorkflowAction = {
 };
 
 const SUBMISSION_ACTION_PRESENTATION: Partial<Record<SubmissionStatus, Omit<SubmissionWorkflowAction, "status">>> = {
-  accepted: { icon: "accept", tone: "info" },
+  accepted: { icon: "accept", tone: "warning" },
   in_progress: { icon: "start", tone: "info" },
   done: { icon: "complete", tone: "success" },
-  reviewing: { icon: "review", tone: "warning" },
+  reviewing: { icon: "review", tone: "violet" },
   action_taken: { icon: "action", tone: "success" },
   closed: { icon: "complete", tone: "success" },
   planned: { icon: "plan", tone: "violet" },
