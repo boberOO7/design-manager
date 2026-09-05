@@ -47,16 +47,33 @@ describe("submissions workspace contract", () => {
     expect(source).not.toContain("dangerouslySetInnerHTML");
   });
 
-  it("uses one compact clickable list with responsive grid rows and inline optimistic support", () => {
+  it("uses one compact clickable list with content-first responsive rows and inline optimistic support", () => {
+    const row = source.slice(source.indexOf("function SubmissionRow"), source.indexOf("function CreateSubmissionDialog"));
     expect(source).toContain('divide-y divide-[var(--ui-border-subtle)]');
-    expect(source).toContain('lg:grid-cols-[auto_minmax(8rem,0.8fr)_minmax(12rem,1.75fr)');
-    expect(source).toContain('lg:min-h-[4rem]');
+    expect(source).toContain('const submissionDesktopGridClassName = "xl:grid-cols-[minmax(14rem,1.4fr)_minmax(10rem,0.75fr)_minmax(11rem,0.85fr)_7.5rem_13.5rem]"');
+    expect(source).toContain("submissionDesktopGridClassName");
+    expect(source).toContain("xl:min-h-14");
     expect(source).not.toContain('lg:grid-cols-2');
     expect(source).toContain('className="absolute inset-0');
     expect(source).toContain("startSupportTransition");
     expect(source).toContain("aria-pressed={supportedByMe}");
     expect(source).toContain("function RowPerson");
     expect(source).toContain("const displayedDate = terminal ? item.updatedAt : item.deadline ?? item.createdAt");
+    expect(row.indexOf("<h3")).toBeLessThan(row.indexOf('className="hidden min-w-0 items-center'));
+    expect(row).toContain("item.responsible ?? item.author");
+    expect(row).toContain('item.responsible ? t("responsible") : t("author")');
+    expect(row).toContain('item.description.trim() ?');
+    expect(row).toContain('className="min-w-0 truncate"');
+    expect(row).toContain("title={item.description}");
+    expect(row).toContain('aria-hidden="true" className="shrink-0 text-[var(--ui-text-subtle)]">·</span>');
+    expect(row).toContain('rounded-full bg-[var(--ui-warning-surface)]');
+    expect(row).toContain('text-[var(--ui-warning-text)]');
+    expect(row).toContain("xl:min-h-7");
+    expect(row).not.toContain('border-[var(--ui-warning-border)]');
+    expect(row).toContain('size-9 shrink-0');
+    expect(row).toContain('size-[1.125rem]');
+    expect(row).not.toContain("uppercase");
+    expect(row).toContain('className="pointer-events-auto relative z-10 col-span-full flex min-h-0 shrink-0 items-center justify-end gap-1.5 xl:col-span-1"');
   });
 
   it("uses canonical semantic workflow actions and confirmed explicit rejection", () => {
@@ -65,12 +82,20 @@ describe("submissions workspace contract", () => {
     expect(source).toContain("<SubmissionWorkflowAction");
     expect(source).toContain("workflowStyles[action.tone]");
     expect(source).toContain("<SubmissionRejectAction");
+    expect(source).toContain("<SubmissionRejectAction overflow");
+    expect(source).toContain('aria-label={t("workflow.moreActions")}');
+    expect(source).toContain('<Ellipsis className="size-4"');
+    expect(source).toContain("compact && \"min-h-11 px-2.5 xl:min-h-9\"");
+    expect(source).toContain("xl:size-9");
+    expect(source).toContain("transition-[color,background-color,border-color,opacity]");
     expect(source).toContain('title={t("workflow.rejectTitle")}');
     expect(source).toContain('t("workflow.confirmReject")');
     expect(source).not.toContain("<SubmissionSecondaryActions");
     expect(source).toContain('t("workflow.chooseResponsible")');
     expect(source).toContain('t("workflow.assignMe")');
     expect(source).toContain('runWorkflow("rejected"');
+    const rejectAction = source.slice(source.indexOf("function SubmissionRejectAction"));
+    expect(rejectAction).not.toContain('<X className="size-4"');
   });
 
   it("keeps workflow transitions out of the editable drawer admin form but separates rejection there", () => {
