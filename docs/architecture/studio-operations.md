@@ -52,6 +52,9 @@ Legacy `/submissions` entry points redirect to `/office/submissions`.
 - Starting request work requires an active responsible studio member.
 - Assignment and status transition are performed together by `manage_submission`.
 - Suggestions have support/reaction behavior distinct from managed request work.
+- Open non-anonymous submission discussions receive request-scoped comment
+  inserts through Supabase Realtime; the existing submission visibility policy
+  remains the read boundary for delivery.
 - Anonymous complaints store no author identity and expose no participant
   assignment or communication UI. Administrator details remain separately
   protected.

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import type { SubmissionComment } from "@/data/queries/submissions";
 import { createClient } from "@/lib/supabase/server";
 import { commentSubmissionSchema, createSubmissionSchema, manageSubmissionSchema, type SubmissionActionState } from "@/lib/validation/submission";
 
@@ -28,16 +29,35 @@ export async function createSubmission(_state: SubmissionActionState, formData: 
   return parsed.data.anonymous ? { success: true, anonymousSubmitted: true } : { success: true, submissionId: data };
 }
 
-export async function addSubmissionComment(input: { submissionId: string; body: string }): Promise<{ error?: string }> {
+type InsertedCommentRow = {
+  id: string;
+  body: string;
+  created_at: string;
+  author: { id: string; full_name: string; avatar_url: string | null };
+};
+
+export async function addSubmissionComment(input: { submissionId: string; body: string }): Promise<{ error?: string; comment?: SubmissionComment }> {
   const membership = await getActiveStudioMembership();
   const parsed = commentSubmissionSchema.safeParse(input);
   if (!membership || !parsed.success) return { error: "invalid" };
   const supabase = await createClient();
   const { data: submission, error: readError } = await supabase.from("submissions").select("studio_id").eq("id", parsed.data.submissionId).maybeSingle();
   if (readError || !submission) return { error: "permission" };
-  const { error } = await supabase.from("submission_comments").insert({ submission_id: parsed.data.submissionId, studio_id: submission.studio_id, author_id: membership.authenticatedUserId, body: parsed.data.body });
-  if (error) { console.error("Unable to add submission comment", error); return { error: "comment" }; }
-  refresh(); return {};
+  const { data, error } = await supabase
+    .from("submission_comments")
+    .insert({ submission_id: parsed.data.submissionId, studio_id: submission.studio_id, author_id: membership.authenticatedUserId, body: parsed.data.body })
+    .select("id, body, created_at, author:profiles!submission_comments_author_id_fkey!inner(id, full_name, avatar_url)")
+    .single<InsertedCommentRow>();
+  if (error || !data) { console.error("Unable to add submission comment", error); return { error: "comment" }; }
+  refresh();
+  return {
+    comment: {
+      id: data.id,
+      body: data.body,
+      createdAt: data.created_at,
+      author: { id: data.author.id, fullName: data.author.full_name, avatarUrl: data.author.avatar_url },
+    },
+  };
 }
 
 export async function toggleSuggestionSupport(submissionId: string, supported: boolean): Promise<{ error?: string }> {

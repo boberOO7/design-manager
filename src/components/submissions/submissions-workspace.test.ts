@@ -125,6 +125,17 @@ describe("submissions workspace contract", () => {
     expect(source).not.toContain('t("noComments")');
   });
 
+  it("scopes live comment inserts to the open submission and removes the channel on cleanup", () => {
+    const drawer = source.slice(source.indexOf("function SubmissionDetailDrawer"), source.indexOf("function Meta"));
+    expect(drawer).toContain('.channel(`submission-comments:${submissionId}`)');
+    expect(drawer).toContain('{ event: "INSERT", schema: "public", table: "submission_comments", filter: `submission_id=eq.${submissionId}` }');
+    expect(drawer).toContain("knownCommentIdsRef.current.has(row.id)");
+    expect(drawer).toContain('.eq("submission_id", submissionId)');
+    expect(drawer).toContain("supabase.removeChannel(channel)");
+    expect(drawer).toContain("isNearDiscussionBottom()");
+    expect(drawer).toContain("comments.map((entry)");
+  });
+
   it("uses shared Office drawer controls and protects anonymous identity", () => {
     expect(source).toContain("<DatePicker");
     expect(source).toContain("<Select");

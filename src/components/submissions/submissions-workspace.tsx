@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -15,8 +15,9 @@ import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import type { SubmissionItem, SubmissionPerson } from "@/data/queries/submissions";
+import type { SubmissionComment, SubmissionItem, SubmissionPerson } from "@/data/queries/submissions";
 import { canRejectSubmission, getPrimarySubmissionAction, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_PRIORITIES, SUBMISSION_TYPES, type SubmissionPriority, type SubmissionStatus, type SubmissionType, type SubmissionWorkflowAction as SubmissionWorkflowActionDefinition } from "@/lib/submissions";
+import { createClient } from "@/lib/supabase/client";
 import type { SubmissionActionState } from "@/lib/validation/submission";
 import { getPriorityBadgeStyle } from "@/lib/semantic-styles";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,13 @@ import { cn } from "@/lib/utils";
 type InboxFilter = "active" | "mine" | "history";
 type TypeFilter = "all" | SubmissionType;
 type ManageSubmissionInput = { submissionId: string; status: string; responsibleId: string | null; priority: SubmissionPriority; deadline: string | null; internalNote: string };
+type RealtimeCommentDetailRow = { id: string; body: string; created_at: string; author: { id: string; full_name: string; avatar_url: string | null } };
 const initialCreateState: SubmissionActionState = {};
+const discussionBottomThreshold = 96;
+
+function sortComments(comments: SubmissionComment[]) {
+  return [...comments].sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+}
 
 const typeIcons = { request: Wrench, suggestion: Lightbulb, complaint: CircleAlert } as const;
 const typeStyles = {
@@ -180,30 +187,97 @@ function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const knownCommentIdsRef = useRef(new Set(item?.comments.map((entry) => entry.id) ?? []));
+  const scrollToNewestCommentRef = useRef(false);
   const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<SubmissionComment[]>(item?.comments ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const isComposingCommentRef = useRef(false);
+  const submissionId = item?.id ?? null;
+  const membersById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
+  const isNearDiscussionBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    return !container || container.scrollHeight - container.scrollTop - container.clientHeight <= discussionBottomThreshold;
+  }, []);
+  const upsertComment = useCallback((entry: SubmissionComment, keepNewestVisible: boolean) => {
+    knownCommentIdsRef.current.add(entry.id);
+    scrollToNewestCommentRef.current ||= keepNewestVisible;
+    setComments((current) => sortComments([...current.filter((commentEntry) => commentEntry.id !== entry.id), entry]));
+  }, []);
+  useEffect(() => {
+    if (!scrollToNewestCommentRef.current) return;
+    scrollToNewestCommentRef.current = false;
+    const frame = requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [comments]);
+  useEffect(() => {
+    if (!submissionId || item?.isAnonymous) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`submission-comments:${submissionId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "submission_comments", filter: `submission_id=eq.${submissionId}` },
+        async (payload) => {
+          const row = payload.new;
+          if (typeof row.id !== "string" || typeof row.author_id !== "string" || typeof row.body !== "string" || typeof row.created_at !== "string") return;
+          if (knownCommentIdsRef.current.has(row.id)) return;
+          const author = membersById.get(row.author_id);
+          if (author) {
+            upsertComment({ id: row.id, body: row.body, createdAt: row.created_at, author }, isNearDiscussionBottom());
+            return;
+          }
+          const { data } = await supabase
+            .from("submission_comments")
+            .select("id, body, created_at, author:profiles!submission_comments_author_id_fkey!inner(id, full_name, avatar_url)")
+            .eq("submission_id", submissionId)
+            .eq("id", row.id)
+            .single<RealtimeCommentDetailRow>();
+          if (!data) return;
+          upsertComment({ id: data.id, body: data.body, createdAt: data.created_at, author: { id: data.author.id, fullName: data.author.full_name, avatarUrl: data.author.avatar_url } }, isNearDiscussionBottom());
+        },
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [isNearDiscussionBottom, item?.isAnonymous, membersById, submissionId, upsertComment]);
   useEffect(() => {
     const composer = commentRef.current;
     if (!composer) return;
     composer.style.height = "auto";
     composer.style.height = `${Math.min(composer.scrollHeight, 112)}px`;
   }, [comment]);
-  if (!item) return null;
-  const submissionId = item.id;
+  if (!item || !submissionId) return null;
+  const openSubmissionId = submissionId;
   const Icon = typeIcons[item.type];
   function refreshAfter(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else router.refresh(); }); }
-  function submitComment() { if (!comment.trim()) return; refreshAfter(async () => { const result = await addSubmissionComment({ submissionId, body: comment }); if (!result.error) setComment(""); return result; }); }
+  function submitComment() {
+    if (pending || !comment.trim()) return;
+    const keepNewestVisible = isNearDiscussionBottom();
+    setError(null);
+    startTransition(async () => {
+      const result = await addSubmissionComment({ submissionId: openSubmissionId, body: comment });
+      if (result.error || !result.comment) {
+        setError(result.error ?? "comment");
+        return;
+      }
+      upsertComment(result.comment, keepNewestVisible);
+      setComment("");
+    });
+  }
   return <Drawer isOpen={Boolean(item)} onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.title} className="w-full max-w-[34rem]">
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 gap-3"><div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</p><div className="mt-1 flex flex-wrap items-center gap-2"><h2 className="max-w-full break-words text-lg font-bold leading-6">{item.title}</h2><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold !border-0", getPriorityBadgeStyle(item.priority).className)}>{t(`priorities.${item.priority}`)}</span></div></div></div><button ref={closeRef} type="button" aria-label={t("close")} onClick={onClose} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
       <section className="space-y-5 p-5 sm:p-6"><dl className="grid gap-x-6 gap-y-4 border-b border-[var(--ui-border-subtle)] pb-4 sm:grid-cols-2">{item.isAnonymous ? <AnonymousMeta label={t("author")} value={t("anonymousPrivate")} /> : item.author ? <PersonMeta label={t("author")} person={item.author} /> : <Meta label={t("author")} value="—" />}{item.responsible ? <PersonMeta label={t("responsible")} person={item.responsible} /> : <Meta label={t("responsible")} value={t("unassigned")} />}<Meta label={t("created")} value={new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(item.createdAt))} /><Meta label={t("deadline")} value={item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : "—"} /></dl>
         <div><h3 className="text-sm font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{item.description}</p></div>
         {item.type === "suggestion" ? <Button type="button" size="lg" variant="outline" aria-pressed={item.supportedByMe} disabled={pending} onClick={() => refreshAfter(() => toggleSuggestionSupport(item.id, item.supportedByMe))} className={item.supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : undefined}><ThumbsUp className={cn("mr-2 size-4", item.supportedByMe && "fill-current")} aria-hidden="true" />{item.supportedByMe ? t("supported", { count: item.supportCount }) : t("support", { count: item.supportCount })}</Button> : null}
       </section>
       {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={item} members={members} disabled={pending} onSave={(input) => refreshAfter(() => manageSubmission(input))} onReject={canRejectSubmission(item.type, item.status) ? () => refreshAfter(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" })) : undefined} /> : null}
-      {!item.isAnonymous ? <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><h3 className="flex items-center gap-2 font-semibold"><MessageSquareText className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t(item.type === "suggestion" ? "discussion" : "communication")}</h3><div className="mt-4 grid gap-4">{item.comments.map((entry) => <div key={entry.id} className="flex gap-3"><UserAvatar imageUrl={entry.author.avatarUrl} name={entry.author.fullName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-semibold">{entry.author.id === currentUserId ? t("you") : entry.author.fullName}</span><time className="text-xs text-[var(--ui-text-muted)]">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{entry.body}</p></div></div>)}</div>
+      {!item.isAnonymous ? <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><h3 className="flex items-center gap-2 font-semibold"><MessageSquareText className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t(item.type === "suggestion" ? "discussion" : "communication")}</h3><div className="mt-4 grid gap-4">{comments.map((entry) => <div key={entry.id} className="flex gap-3"><UserAvatar imageUrl={entry.author.avatarUrl} name={entry.author.fullName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-semibold">{entry.author.id === currentUserId ? t("you") : entry.author.fullName}</span><time className="text-xs text-[var(--ui-text-muted)]">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{entry.body}</p></div></div>)}</div>
         <div className="mt-4 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea ref={commentRef} value={comment} onChange={(event) => setComment(event.target.value)} onCompositionStart={() => { isComposingCommentRef.current = true; }} onCompositionEnd={() => { isComposingCommentRef.current = false; }} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || isComposingCommentRef.current) return; event.preventDefault(); submitComment(); }} maxLength={3000} rows={1} className="min-h-11 max-h-28 resize-none overflow-y-auto py-2.5 leading-5" /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
       </section> : null}
       {error ? <p role="alert" className="mx-5 mb-5 text-sm text-[var(--ui-danger-text)] sm:mx-6 sm:mb-6">{t(`errors.${error}`)}</p> : null}
