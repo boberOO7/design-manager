@@ -13,7 +13,7 @@ describe("automatic project activation", () => {
     expect(getAutomaticProjectStatus("planned", "todo")).toBe("planned");
     expect(countOpenLifecycleTasks([])).toBe(0);
   });
-  it.each(["in_progress", "review", "completed"])("activates a planned project when a task enters %s", (status) => {
+  it.each(["in_progress", "internal_review", "review", "completed"])("activates a planned project when a task enters %s", (status) => {
     expect(getAutomaticProjectStatus("planned", status)).toBe("active");
   });
   it("does not activate from cancelled work or reverse any stored lifecycle state", () => {

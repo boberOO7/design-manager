@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest";
 const migrationPath = new URL("../../supabase/migrations/20260903122126_stage_four_operational_independence.sql", import.meta.url);
 
 describe("Stage 4 operational independence migration contract", () => {
+  it("activates planned projects when Stage 1–3 tasks enter an active workflow status", async () => {
+    const sql = await readFile(migrationPath, "utf8");
+    expect(sql).toContain("private.is_project_progress_stage(new.stage)");
+    expect(sql).toContain("new.status in ('in_progress', 'internal_review', 'review', 'completed')");
+  });
+
   it("limits completion validation and completed-project writes by canonical stage identity", async () => {
     const sql = await readFile(migrationPath, "utf8");
     expect(sql).toContain("private.is_project_progress_stage(task.stage)");

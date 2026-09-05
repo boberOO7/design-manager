@@ -26,7 +26,7 @@ export function getLifecycleTarget(action: ProjectLifecycleAction): ProjectLifec
 export function getAutomaticProjectStatus(projectStatus: ProjectLifecycleStatus, taskStatus: string, taskStage = "stage_1"): ProjectLifecycleStatus {
   return projectStatus === "planned"
     && isProjectProgressStage(taskStage)
-    && (taskStatus === "in_progress" || taskStatus === "review" || taskStatus === "completed")
+    && (taskStatus === "in_progress" || taskStatus === "internal_review" || taskStatus === "review" || taskStatus === "completed")
     ? "active"
     : projectStatus;
 }

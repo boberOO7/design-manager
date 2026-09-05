@@ -32,10 +32,8 @@ Invariants:
 
 - The database activates a planned project when a Stage 1–3 task enters In
   progress, Internal review, Client review, or Done.
-- The client helper `getAutomaticProjectStatus()` currently omits Internal review
-  from its optimistic prediction even though the database trigger includes it.
-  Treat the database result as authoritative and preserve this mismatch as a
-  known implementation issue until both layers are aligned.
+- The client helper `getAutomaticProjectStatus()` mirrors the database trigger
+  for optimistic project activation, including Internal review.
 - Pause, completion, reopening, return to planned, archive, and restore are
   explicit lifecycle operations, not generic project-form edits.
 - Completion requires all non-cancelled Stage 1–3 tasks to be closed. Stage 4
