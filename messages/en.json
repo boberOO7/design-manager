@@ -871,7 +871,7 @@
     "filters": { "label": "Filter assignments", "all": "All", "mine": "Mine", "active": "Active", "overdue": "Overdue", "history": "History" },
     "statuses": { "assigned": "Assigned", "in_progress": "In progress", "done": "Done", "cancelled": "Cancelled" },
     "priorities": { "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent" },
-    "actions": { "in_progress": "Start work", "done": "Mark as done", "cancelled": "Cancel" },
+    "actions": { "in_progress": "Start work", "done": "Mark as done", "cancelled": "Cancel assignment", "more": "More actions", "updating": "Updating…" },
     "cancelDialog": { "title": "Cancel this assignment?", "description": "“{title}” will move to History with the Cancelled status.", "confirm": "Cancel assignment" },
     "empty": { "title": "No assignments in this view", "description": "Choose another filter or create an assignment." },
     "form": { "title": "New assignment", "description": "Create a compact operational item without project fields.", "name": "Title", "details": "Description", "responsible": "Responsible", "selectResponsible": "Choose a member", "priority": "Priority", "deadline": "Deadline", "submit": "Create assignment", "submitting": "Creating…" },

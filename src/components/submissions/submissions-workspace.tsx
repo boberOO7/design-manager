@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Ban, CalendarCheck2, CalendarClock, Check, CheckCircle2, CircleAlert, Ellipsis, Eye, Lightbulb, LockKeyhole, MessageSquareText, Play, Send, ShieldCheck, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
 import { addSubmissionComment, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
 import { useOfficeOverlayRouting } from "@/components/office/use-office-overlay-routing";
+import { officeListDesktopGridClassName, officeWorkflowStyles } from "@/components/office/office-list-patterns";
 import { taskPrioritySelectItem } from "@/components/tasks/task-select-presentation";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -40,8 +41,6 @@ const typeStyles = {
   complaint: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
 } as const;
 
-const submissionDesktopGridClassName = "xl:grid-cols-[minmax(14rem,1.4fr)_minmax(10rem,0.75fr)_minmax(11rem,0.85fr)_7.5rem_13.5rem]";
-
 const workflowIcons = {
   accept: Check,
   start: Play,
@@ -49,13 +48,6 @@ const workflowIcons = {
   review: Eye,
   action: ShieldCheck,
   plan: CalendarCheck2,
-} as const;
-
-const workflowStyles = {
-  info: "border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)] hover:opacity-85",
-  success: "border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)] hover:opacity-85",
-  warning: "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-85",
-  violet: "border-[var(--ui-violet-border)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)] hover:opacity-85",
 } as const;
 
 function statusStyle(status: SubmissionStatus) {
@@ -145,18 +137,18 @@ function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { curr
   const personLabel = item.responsible ? t("responsible") : t("author");
   return <article className="group relative bg-[var(--ui-surface)] px-3 py-2 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)] sm:px-4">
     <button type="button" aria-label={`${t(`types.${item.type}`)}: ${item.title}`} onClick={onOpen} className="absolute inset-0 cursor-pointer focus-visible:outline-none" />
-    <div className={cn("pointer-events-none relative grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 xl:min-h-14 xl:gap-x-3", submissionDesktopGridClassName)}>
+    <div className={cn("pointer-events-none relative grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 xl:min-h-14 xl:gap-x-3", officeListDesktopGridClassName)}>
       <div className="col-span-full flex min-w-0 items-center gap-2.5 xl:col-span-1">
         <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-[1.125rem]" aria-hidden="true" /></div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold leading-5 text-[var(--ui-text)]" title={item.title}>{item.title}</h3>
-          {item.description.trim() || item.type === "suggestion" ? <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-[var(--ui-text-secondary)]">{item.description.trim() ? <p className="min-w-0 truncate" title={item.description}>{item.description}</p> : null}{item.description.trim() && item.type === "suggestion" ? <span aria-hidden="true" className="shrink-0 text-[var(--ui-text-subtle)]">·</span> : null}{item.type === "suggestion" ? <button type="button" aria-label={supportedByMe ? t("supported", { count: supportCount }) : t("support", { count: supportCount })} aria-pressed={supportedByMe} disabled={supportPending} onClick={toggleSupport} className="pointer-events-auto relative z-10 inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-[var(--ui-warning-surface)] px-2 text-xs font-semibold text-[var(--ui-warning-text)] transition-opacity hover:opacity-85 active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait disabled:opacity-70 xl:min-h-7"><ThumbsUp className={cn("size-3.5", supportedByMe && "fill-current")} aria-hidden="true" />{supportCount}</button> : null}</div> : null}
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}</p>
+          <div className="mt-0.5 flex min-w-0 items-center gap-2"><h3 className="min-w-0 truncate text-sm font-semibold leading-5 text-[var(--ui-text)]" title={item.title}>{item.title}</h3>{item.type === "suggestion" ? <button type="button" aria-label={supportedByMe ? t("supported", { count: supportCount }) : t("support", { count: supportCount })} aria-pressed={supportedByMe} disabled={supportPending} onClick={toggleSupport} className="pointer-events-auto relative z-10 inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-[var(--ui-warning-surface)] px-2 text-xs font-semibold text-[var(--ui-warning-text)] transition-opacity hover:opacity-85 active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait disabled:opacity-70 xl:min-h-7"><ThumbsUp className={cn("size-3.5", supportedByMe && "fill-current")} aria-hidden="true" />{supportCount}</button> : null}</div>
         </div>
       </div>
-      <div className="hidden min-w-0 items-center gap-2 xl:flex"><span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-[var(--ui-text-muted)]"><span className="shrink-0">{t(`types.${item.type}`)}</span>{item.type === "request" && item.requestCategory ? <><span aria-hidden="true" className="text-[var(--ui-text-subtle)]">·</span><span className="truncate">{t(`categories.${item.requestCategory}`)}</span></> : null}</span><span title={t(`statuses.${item.status}`)} className={cn("truncate rounded-full px-2 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span></div>
+      <div className="hidden min-w-0 items-center gap-2 xl:flex">{item.type === "request" && item.requestCategory ? <span className="min-w-0 truncate text-[13px] font-medium text-[var(--ui-text-muted)]">{t(`categories.${item.requestCategory}`)}</span> : null}<span title={t(`statuses.${item.status}`)} className={cn("truncate rounded-full px-2 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span></div>
       <div className="hidden min-w-0 xl:block">{item.isAnonymous && !item.responsible ? <AnonymousPerson label={personLabel} value={t("anonymous")} /> : person ? <RowPerson label={personLabel} person={person} /> : <span className="text-sm text-[var(--ui-text-muted)]">—</span>}</div>
       <time dateTime={displayedDateTime} className="ui-numeric hidden shrink-0 text-[13px] text-[var(--ui-text-muted)] xl:block">{dateLabel}</time>
-      <div className="col-span-full flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--ui-border-subtle)] pt-1.5 text-[13px] text-[var(--ui-text-muted)] xl:hidden"><span className="font-medium">{t(`types.${item.type}`)}{item.type === "request" && item.requestCategory ? ` · ${t(`categories.${item.requestCategory}`)}` : ""}</span><span title={t(`statuses.${item.status}`)} className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span>{item.isAnonymous && !item.responsible ? <AnonymousPerson label={personLabel} value={t("anonymous")} /> : person ? <RowPerson label={personLabel} person={person} /> : null}<time dateTime={displayedDateTime} className="ui-numeric inline-flex items-center gap-1"><CalendarClock className="size-3.5" aria-hidden="true" />{dateLabel}</time></div>
+      <div className="col-span-full flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--ui-border-subtle)] pt-1.5 text-[13px] text-[var(--ui-text-muted)] xl:hidden">{item.type === "request" && item.requestCategory ? <span className="font-medium">{t(`categories.${item.requestCategory}`)}</span> : null}<span title={t(`statuses.${item.status}`)} className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span>{item.isAnonymous && !item.responsible ? <AnonymousPerson label={personLabel} value={t("anonymous")} /> : person ? <RowPerson label={personLabel} person={person} /> : null}<time dateTime={displayedDateTime} className="ui-numeric inline-flex items-center gap-1"><CalendarClock className="size-3.5" aria-hidden="true" />{dateLabel}</time></div>
       <div className="pointer-events-auto relative z-10 col-span-full flex min-h-0 shrink-0 items-center justify-end gap-1.5 xl:col-span-1" onClick={(event) => event.stopPropagation()}>{isAdmin && primaryAction ? <SubmissionWorkflowAction action={primaryAction} currentUserId={currentUserId} disabled={workflowPending} members={members} responsibleId={item.responsible?.id ?? null} type={item.type} onTransition={runWorkflow} compact /> : null}{isAdmin && canRejectSubmission(item.type, item.status) ? <SubmissionRejectAction overflow disabled={workflowPending} title={item.title} onReject={() => runWorkflow("rejected", item.responsible?.id ?? null)} /> : null}</div>
       {supportError ? <p role="alert" className="col-span-full text-xs text-[var(--ui-danger-text)]">{t("errors.support")}</p> : null}{workflowError ? <p role="alert" className="col-span-full text-xs text-[var(--ui-danger-text)]">{t(`errors.${workflowError}`)}</p> : null}
     </div>
@@ -323,7 +315,7 @@ function SubmissionWorkflowAction({ action, compact = false, currentUserId, disa
     setOpen(false);
     onTransition(action.status, nextResponsibleId);
   }
-  const actionClassName = cn("gap-1.5 border transition-[color,background-color,border-color,opacity]", workflowStyles[action.tone], compact && "min-h-11 px-2.5 xl:min-h-9");
+  const actionClassName = cn("gap-1.5 border transition-[color,background-color,border-color,opacity]", officeWorkflowStyles[action.tone], compact && "min-h-11 px-2.5 xl:min-h-9");
   const label = disabled ? t("workflow.updating") : t(`workflow.${action.status}`);
   if (!requiresResponsible) return <Button type="button" size={compact ? "sm" : "default"} variant="outline" disabled={disabled} onClick={() => transition(responsibleId)} className={actionClassName}><ActionIcon className="size-3.5" aria-hidden="true" />{label}</Button>;
   return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button ref={setTriggerNode} type="button" size={compact ? "sm" : "default"} variant="outline" disabled={disabled} className={actionClassName}><ActionIcon className="size-3.5" aria-hidden="true" />{label}</Button></Popover.Trigger><Popover.Portal container={portalContainer}><Popover.Content align="end" sideOffset={6} collisionPadding={12} className="z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"><p className="text-sm font-semibold">{t("workflow.chooseResponsible")}</p><div className="mt-3 grid gap-2"><Button type="button" variant="outline" disabled={disabled} onClick={() => transition(currentUserId)}>{t("workflow.assignMe")}</Button><Select aria-label={t("admin.responsible")} disabled={disabled} placeholder={t("workflow.chooseMember")} onValueChange={(value) => transition(value)}>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}</span></SelectItem>)}</Select></div><Popover.Arrow className="fill-[var(--ui-surface)]" /></Popover.Content></Popover.Portal></Popover.Root>;

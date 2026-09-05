@@ -63,8 +63,7 @@ describe("submissions workspace contract", () => {
   it("uses one compact clickable list with content-first responsive rows and inline optimistic support", () => {
     const row = source.slice(source.indexOf("function SubmissionRow"), source.indexOf("function CreateSubmissionDialog"));
     expect(source).toContain('divide-y divide-[var(--ui-border-subtle)]');
-    expect(source).toContain('const submissionDesktopGridClassName = "xl:grid-cols-[minmax(14rem,1.4fr)_minmax(10rem,0.75fr)_minmax(11rem,0.85fr)_7.5rem_13.5rem]"');
-    expect(source).toContain("submissionDesktopGridClassName");
+    expect(source).toContain("officeListDesktopGridClassName");
     expect(source).toContain("xl:min-h-14");
     expect(source).not.toContain('lg:grid-cols-2');
     expect(source).toContain('className="absolute inset-0');
@@ -75,17 +74,17 @@ describe("submissions workspace contract", () => {
     expect(row.indexOf("<h3")).toBeLessThan(row.indexOf('className="hidden min-w-0 items-center'));
     expect(row).toContain("item.responsible ?? item.author");
     expect(row).toContain('item.responsible ? t("responsible") : t("author")');
-    expect(row).toContain('item.description.trim() ?');
-    expect(row).toContain('className="min-w-0 truncate"');
-    expect(row).toContain("title={item.description}");
-    expect(row).toContain('aria-hidden="true" className="shrink-0 text-[var(--ui-text-subtle)]">·</span>');
+    expect(row).not.toContain("item.description");
+    expect(row).toContain('font-semibold uppercase tracking-wide');
+    expect(row).toContain('t(`types.${item.type}`)');
+    expect(row.match(/t\(`types\.\$\{item\.type\}`\)/g)).toHaveLength(2);
+    expect(row).toContain("title={item.title}");
     expect(row).toContain('rounded-full bg-[var(--ui-warning-surface)]');
     expect(row).toContain('text-[var(--ui-warning-text)]');
     expect(row).toContain("xl:min-h-7");
     expect(row).not.toContain('border-[var(--ui-warning-border)]');
     expect(row).toContain('size-9 shrink-0');
     expect(row).toContain('size-[1.125rem]');
-    expect(row).not.toContain("uppercase");
     expect(row).toContain('item.type === "request" && item.requestCategory');
     expect(row).toContain('className="pointer-events-auto relative z-10 col-span-full flex min-h-0 shrink-0 items-center justify-end gap-1.5 xl:col-span-1"');
   });
@@ -94,11 +93,7 @@ describe("submissions workspace contract", () => {
     expect(source).toContain("getPrimarySubmissionAction");
     expect(source).toContain("submissionTransitionRequiresResponsible");
     expect(source).toContain("<SubmissionWorkflowAction");
-    expect(source).toContain("workflowStyles[action.tone]");
-    expect(source).toContain('warning: "border-[var(--ui-warning-border)]');
-    expect(source).toContain('info: "border-[var(--ui-info-border)]');
-    expect(source).toContain('violet: "border-[var(--ui-violet-border)]');
-    expect(source).toContain('success: "border-[var(--ui-success-border)]');
+    expect(source).toContain("officeWorkflowStyles[action.tone]");
     expect(source).toContain("<SubmissionRejectAction");
     expect(source).toContain("<SubmissionRejectAction overflow");
     expect(source).toContain('aria-label={t("workflow.moreActions")}');

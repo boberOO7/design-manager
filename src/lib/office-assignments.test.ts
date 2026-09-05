@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllowedOfficeAssignmentStatuses, isOfficeAssignmentOverdue, isTerminalOfficeAssignmentStatus } from "./office-assignments";
+import { getAllowedOfficeAssignmentStatuses, getPrimaryOfficeAssignmentStatus, isOfficeAssignmentOverdue, isTerminalOfficeAssignmentStatus } from "./office-assignments";
 
 describe("office assignment workflow", () => {
   it("enforces the normal assigned to in-progress to done sequence", () => {
@@ -12,6 +12,13 @@ describe("office assignment workflow", () => {
     expect(getAllowedOfficeAssignmentStatuses("assigned", true)).toEqual(["in_progress", "cancelled"]);
     expect(getAllowedOfficeAssignmentStatuses("cancelled", true)).toEqual([]);
     expect(isTerminalOfficeAssignmentStatus("cancelled")).toBe(true);
+  });
+
+  it("derives one contextual progress action without exposing cancellation as primary", () => {
+    expect(getPrimaryOfficeAssignmentStatus("assigned")).toBe("in_progress");
+    expect(getPrimaryOfficeAssignmentStatus("in_progress")).toBe("done");
+    expect(getPrimaryOfficeAssignmentStatus("done")).toBeNull();
+    expect(getPrimaryOfficeAssignmentStatus("cancelled")).toBeNull();
   });
 
   it("marks only active past-deadline assignments overdue", () => {

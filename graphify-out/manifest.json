@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788642120.4481182,
-    "ast_hash": "ebcffc95e54f0cb6bf6c5b2541e41c05",
-    "semantic_hash": "ebcffc95e54f0cb6bf6c5b2541e41c05"
+    "mtime": 1788643317.0181417,
+    "ast_hash": "fa178c76c0264e6d8621ce9b16f74e3f",
+    "semantic_hash": "fa178c76c0264e6d8621ce9b16f74e3f"
   },
   "messages/uk.json": {
-    "mtime": 1788642120.6001208,
-    "ast_hash": "d6ebec3c3cd5bc196d2df96dac5cb30c",
-    "semantic_hash": "d6ebec3c3cd5bc196d2df96dac5cb30c"
+    "mtime": 1788643317.1701443,
+    "ast_hash": "9fe8d45d35520691f248e6aa6ec864c0",
+    "semantic_hash": "9fe8d45d35520691f248e6aa6ec864c0"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -3745,14 +3745,14 @@
     "semantic_hash": "f7f0f397c7831e42f4fb71a88c98ce57"
   },
   "src/components/submissions/submissions-workspace.test.ts": {
-    "mtime": 1788642125.9122627,
-    "ast_hash": "d91ddb2297d4f86692149ae5a5c585fa",
-    "semantic_hash": "d91ddb2297d4f86692149ae5a5c585fa"
+    "mtime": 1788643373.058563,
+    "ast_hash": "15af02401ce2b2639c07c69263ca251c",
+    "semantic_hash": "15af02401ce2b2639c07c69263ca251c"
   },
   "src/components/submissions/submissions-workspace.tsx": {
-    "mtime": 1788642120.2961156,
-    "ast_hash": "442f257ca67b438cd01d6a64df956ffc",
-    "semantic_hash": "442f257ca67b438cd01d6a64df956ffc"
+    "mtime": 1788643123.9553735,
+    "ast_hash": "da7495ea6c7f88026e7bdecb76e7c528",
+    "semantic_hash": "da7495ea6c7f88026e7bdecb76e7c528"
   },
   "src/data/queries/submissions.ts": {
     "mtime": 1788641557.363844,
@@ -3820,9 +3820,9 @@
     "semantic_hash": "5f4b78c67b7b1c8bbedea984347b14b6"
   },
   "src/components/office/assignments-workspace.tsx": {
-    "mtime": 1788555394.6968424,
-    "ast_hash": "3140e23483d6ab1b70a6b8cee4fb400e",
-    "semantic_hash": "3140e23483d6ab1b70a6b8cee4fb400e"
+    "mtime": 1788643474.9885337,
+    "ast_hash": "8765f5730c38609a4af683d0a9137990",
+    "semantic_hash": "8765f5730c38609a4af683d0a9137990"
   },
   "src/components/office/office-shell.tsx": {
     "mtime": 1788549312.2317884,
@@ -3830,9 +3830,9 @@
     "semantic_hash": "15f98306a81d844c1f050170d3e4d0bb"
   },
   "src/components/office/office-workspace.test.ts": {
-    "mtime": 1788555410.6175568,
-    "ast_hash": "3ae84393798d303e5240de5e67f1ea71",
-    "semantic_hash": "3ae84393798d303e5240de5e67f1ea71"
+    "mtime": 1788643453.1534445,
+    "ast_hash": "7f42d847caa54b253447b72852301257",
+    "semantic_hash": "7f42d847caa54b253447b72852301257"
   },
   "src/data/queries/office-assignments.ts": {
     "mtime": 1788530209.1668928,
@@ -3845,14 +3845,14 @@
     "semantic_hash": "9d9c95fba95675a67fbc2d6c3f2b897d"
   },
   "src/lib/office-assignments.test.ts": {
-    "mtime": 1788530554.6129925,
-    "ast_hash": "80d941e4c36332ecc8e69a7c6658b504",
-    "semantic_hash": "80d941e4c36332ecc8e69a7c6658b504"
+    "mtime": 1788643373.1825652,
+    "ast_hash": "f05201e417d510d62af89fb72259a68f",
+    "semantic_hash": "f05201e417d510d62af89fb72259a68f"
   },
   "src/lib/office-assignments.ts": {
-    "mtime": 1788530208.9068842,
-    "ast_hash": "52acae248498e18fa416d56020f5888c",
-    "semantic_hash": "52acae248498e18fa416d56020f5888c"
+    "mtime": 1788643277.2060285,
+    "ast_hash": "346571e20f04b8257333e0ca1f2fcc25",
+    "semantic_hash": "346571e20f04b8257333e0ca1f2fcc25"
   },
   "src/lib/validation/office-assignment.ts": {
     "mtime": 1788530209.022888,
@@ -4133,5 +4133,15 @@
     "mtime": 1788641556.7358422,
     "ast_hash": "be304831d23b7a2d7f4bc98661820a5a",
     "semantic_hash": "be304831d23b7a2d7f4bc98661820a5a"
+  },
+  "src/components/office/assignments-workspace.test.ts": {
+    "mtime": 1788643373.3025672,
+    "ast_hash": "d08ed8592fb5b0c41c2adbabe89d54c3",
+    "semantic_hash": "d08ed8592fb5b0c41c2adbabe89d54c3"
+  },
+  "src/components/office/office-list-patterns.ts": {
+    "mtime": 1788643123.8233712,
+    "ast_hash": "b07e5b0b03d616b5e65f264406a414df",
+    "semantic_hash": "b07e5b0b03d616b5e65f264406a414df"
   }
 }

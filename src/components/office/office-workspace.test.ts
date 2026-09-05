@@ -58,8 +58,10 @@ describe("Office workspace presentation", () => {
     expect(legacy).toContain('query.set("item", params.item)');
   });
 
-  it("uses dense clickable assignment cards and shared drawer controls", () => {
-    expect(assignments).toContain('lg:grid-cols-2');
+  it("uses the unified compact assignment list and shared drawer controls", () => {
+    expect(assignments).toContain('divide-y divide-[var(--ui-border-subtle)]');
+    expect(assignments).toContain("officeListDesktopGridClassName");
+    expect(assignments).not.toContain('lg:grid-cols-2');
     expect(assignments).toContain('className="absolute inset-0');
     expect(assignments).toContain("<DatePicker");
     expect(assignments).toContain("<Select");
