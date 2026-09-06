@@ -24,7 +24,7 @@ export type CalendarEventDetailSection =
 export type CalendarEventDetailConfig = {
   sections: readonly CalendarEventDetailSection[];
   invitationLabel?: "invitees" | "participants";
-  organizerLabel?: "organizer" | "presenter";
+  organizerLabel?: "organizer" | "presenter" | "employee";
   assigneeLabel?: "assignee" | "executor" | "interviewer";
 };
 
@@ -52,7 +52,7 @@ export const CALENDAR_EVENT_DETAIL_CONFIG: Record<CalendarEventType, CalendarEve
   business_trip: { sections: ["project", "destination", "participants"] },
   presentation: { sections: ["project", "organizer", "invitations", "meetingMode", "location", "meetingUrl"], invitationLabel: "participants", organizerLabel: "presenter" },
   internal_review: { sections: ["project", "invitations", "location", "meetingUrl", "recurrence"], invitationLabel: "invitees" },
-  work_makeup: { sections: ["linkedDayOff"] },
+  work_makeup: { sections: ["organizer", "linkedDayOff"], organizerLabel: "employee" },
 };
 
 export function getCalendarEventTypeConfig(eventType: CalendarEventType): CalendarEventTypeConfig {

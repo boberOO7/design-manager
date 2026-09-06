@@ -23,6 +23,7 @@ describe("calendar event semantic types", () => {
     expect(CALENDAR_EVENT_DETAIL_CONFIG.general.sections).not.toContain("organizer");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.internal_review.sections).toContain("recurrence");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.internal_review.sections).not.toContain("organizer");
-    expect(CALENDAR_EVENT_DETAIL_CONFIG.work_makeup.sections).toEqual(["linkedDayOff"]);
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.work_makeup.sections).toEqual(["organizer", "linkedDayOff"]);
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.work_makeup.organizerLabel).toBe("employee");
   });
 });

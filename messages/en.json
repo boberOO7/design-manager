@@ -854,7 +854,7 @@
   },
   "OfficeAssignments": {
     "title": "Assignments",
-    "description": "Standalone internal studio work that never affects project metrics.",
+    "description": "Standalone internal studio work",
     "eyebrow": "Office assignment",
     "createdNotice": "Assignment created and sent to the responsible person.",
     "close": "Close",
