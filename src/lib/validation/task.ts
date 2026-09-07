@@ -71,7 +71,7 @@ export const taskStatusPayloadSchema = z.object({
 
 export const taskBulkStatusMovePayloadSchema = z.object({
   stage: z.enum(TASK_STAGES),
-  source_statuses: z.array(z.enum(["todo", "in_progress", "internal_review", "review", "completed", "cancelled"])).min(1).max(2),
+  source_statuses: z.array(z.enum(["todo", "in_progress", "internal_review", "review", "completed", "cancelled"])).min(1).max(6),
   target_status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
@@ -81,6 +81,19 @@ export const taskBulkStageAssignmentPayloadSchema = z.object({
   assignee_id: z.uuid("Choose a valid project member"),
   scope: z.enum(["unassigned", "all"]),
 }).strict();
+
+export const taskBulkAssignmentPayloadSchema = z.object({
+  stage: z.enum(TASK_STAGES),
+  assignee_id: z.uuid("Choose a valid project member"),
+  task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
+}).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
+
+export const taskBulkDeadlinePayloadSchema = z.object({
+  stage: z.enum(TASK_STAGES),
+  target_status: z.enum(TASK_MILESTONE_STATUSES),
+  due_date: dateSchema,
+  task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
+}).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
 export const taskEditSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),

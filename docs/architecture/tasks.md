@@ -85,6 +85,9 @@ Project aggregation and attribution are described in
   them into `calendar_events`.
 - Legacy `tasks.due_date` remains in the generated shape and some migration
   compatibility paths. New behavior should use the milestone model deliberately.
+- Administrators may apply one configured workflow milestone and date to an
+  exact same-stage task selection through one guarded atomic RPC. Other
+  milestones on those tasks are preserved.
 
 ## Board interaction
 
@@ -95,6 +98,15 @@ Project aggregation and attribution are described in
 - Manual ordering within a status column is not persisted.
 - Rejected optimistic moves restore prior task/project state and surface the
   failure.
+- Ctrl/Cmd-click builds a same-stage task selection. Escape, an empty board
+  click, stage collapse, project navigation, or a completed selected-task move
+  clears it.
+- Right-click keeps an already-selected batch or replaces it with the clicked
+  task, then exposes exact-selection assignment, milestone deadline, and move
+  actions. Assignee/deadline changes keep the selection available for chaining.
+- Dragging a selected task moves the selected batch through the same guarded
+  bulk transition as the context-menu move; dragging an unselected task retains
+  the existing single-task transition path.
 
 ## Canonical sources
 

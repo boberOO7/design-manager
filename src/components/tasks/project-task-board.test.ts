@@ -27,3 +27,22 @@ describe("completed-project task creation", () => {
     expect(source).not.toContain('canCreate && projectStatus !== "completed"');
   });
 });
+
+describe("task board multi-selection", () => {
+  it("keeps modifier selection, selected semantics, context actions, and grouped dragging on the shared board paths", async () => {
+    const source = await readFile(boardPath, "utf8");
+
+    expect(source).toContain("event.ctrlKey || event.metaKey");
+    expect(source).toContain("if (event.ctrlKey || event.metaKey) return true;");
+    expect(source).toContain("aria-pressed={isSelected}");
+    expect(source).toContain("onContextMenu={(event) => onContextMenu(event, task)}");
+    expect(source).toContain('kind: "selection"');
+    expect(source).toContain("getBulkMoveBatch");
+    expect(source).toContain('locale === "uk" ? `${activeBulkDrag.taskIds.length} задач`');
+    expect(source).toContain("Призначити виконавця");
+    expect(source).toContain("Встановити дедлайн");
+    expect(source).toContain("Перемістити до…");
+    expect(source).toContain("Зняти вибір");
+    expect(source).toContain("TASK_MILESTONE_STATUSES.filter");
+  });
+});

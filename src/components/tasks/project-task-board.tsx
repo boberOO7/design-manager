@@ -11,8 +11,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Ellipsis, GripVertical, LoaderCircle, Plus, UserPlus } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, UserPlus, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
@@ -22,6 +22,7 @@ import type { ConfiguredProjectStage } from "@/data/queries/project-stage-column
 import {
   BOARD_COLUMNS,
   canMoveTask,
+  getBoardColumn,
   getTaskStatusForDrop,
   groupTasksByBoardColumn,
   isBoardColumnId,
@@ -43,6 +44,10 @@ import { calculateStageProgress, isProjectProgressStage, type ProjectStageProgre
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Select, SelectItem } from "@/components/ui/select";
+import { TASK_MILESTONE_STATUSES, isTaskMilestoneStatus, type TaskDeadlineInput } from "@/lib/task-deadlines";
+import { getBulkMoveBatch, toggleTaskBoardSelection, type TaskBoardSelection } from "@/lib/task-board-selection";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
 const interactiveSelector = [
@@ -62,6 +67,7 @@ const pointerSensor = PointerSensor.configure({
     return typeof constraints === "function" ? constraints(event, source) : constraints;
   },
   preventActivation(event, source) {
+    if (event.ctrlKey || event.metaKey) return true;
     if (!(event.target instanceof Element)) return false;
     const interactiveElement = event.target.closest(interactiveSelector);
     return interactiveElement !== null && interactiveElement !== source.element;
@@ -70,6 +76,15 @@ const pointerSensor = PointerSensor.configure({
 
 const keyboardSensor = KeyboardSensor.configure({ offset: 320 });
 const sensors = [pointerSensor, keyboardSensor];
+
+type BulkDragSource = {
+  columnId: BoardColumnId;
+  kind: "column" | "selection";
+  stage: TaskStage;
+  taskIds: string[];
+};
+
+type TaskContextMenuState = { x: number; y: number };
 
 function getColumnDropId(stage: TaskStage, columnId: BoardColumnId): string {
   return `${COLUMN_DROP_ID_PREFIX}${stage}:${columnId}`;
@@ -175,16 +190,122 @@ function isSuccessfulBulkTaskStatusResponse(value: unknown): value is { success:
     && "tasks" in value && Array.isArray(value.tasks);
 }
 
+function BulkTaskContextMenu({
+  canManageTasks,
+  canMoveSelection,
+  enabledStatuses,
+  members,
+  onAssign,
+  onClear,
+  onClose,
+  onDeadline,
+  onMove,
+  position,
+  selectedCount,
+  selectedStatuses,
+}: {
+  canManageTasks: boolean;
+  canMoveSelection: boolean;
+  enabledStatuses: WritableTaskStatus[];
+  members: AssignableProjectMember[];
+  onAssign: (assignee: AssignableProjectMember) => Promise<boolean>;
+  onClear: () => void;
+  onClose: () => void;
+  onDeadline: (deadline: TaskDeadlineInput) => Promise<boolean>;
+  onMove: (status: WritableTaskStatus) => Promise<boolean>;
+  position: TaskContextMenuState;
+  selectedCount: number;
+  selectedStatuses: Set<string>;
+}) {
+  const locale = useLocale();
+  const statusT = useTranslations("Status");
+  const isUkrainian = locale === "uk";
+  const [view, setView] = useState<"actions" | "assignee" | "deadline" | "move">("actions");
+  const [query, setQuery] = useState("");
+  const availableDeadlineStatuses = TASK_MILESTONE_STATUSES.filter((status) => enabledStatuses.includes(status));
+  const [deadlineStatus, setDeadlineStatus] = useState<TaskDeadlineInput["target_status"] | null>(availableDeadlineStatuses[0] ?? null);
+  const [dueDate, setDueDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const filteredMembers = members.filter((member) => member.full_name.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
+  const moveStatuses = enabledStatuses.filter((status) => !selectedStatuses.has(status) || selectedStatuses.size > 1);
+  const statusLabel = (status: WritableTaskStatus) => statusT(status === "in_progress" ? "inProgress" : status);
+
+  useEffect(() => {
+    panelRef.current?.focus();
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !panelRef.current?.contains(event.target)) onClose();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [onClose]);
+
+  async function submit(action: () => Promise<boolean>) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const succeeded = await action();
+    setIsSubmitting(false);
+    if (succeeded) onClose();
+  }
+
+  const actionClassName = "flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-45";
+  const heading = view === "assignee"
+    ? (isUkrainian ? "Призначити виконавця" : "Assign assignee")
+    : view === "deadline"
+      ? (isUkrainian ? "Встановити дедлайн" : "Set deadline")
+      : (isUkrainian ? "Перемістити до…" : "Move to…");
+
+  return <div
+    ref={panelRef}
+    role="dialog"
+    aria-label={isUkrainian ? `Масові дії: ${selectedCount} задач` : `Bulk actions: ${selectedCount} tasks`}
+    tabIndex={-1}
+    data-bulk-menu
+    className="fixed z-50 w-80 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)] outline-none"
+    style={{ left: position.x, top: position.y }}
+    onContextMenu={(event) => event.preventDefault()}
+  >
+    {view === "actions" ? <>
+      <p className="px-3 pb-1 pt-2 text-xs font-semibold text-[var(--ui-text-muted)]">{isUkrainian ? `${selectedCount} задач вибрано` : `${selectedCount} tasks selected`}</p>
+      <button type="button" className={actionClassName} disabled={!canManageTasks || isSubmitting} onClick={() => setView("assignee")}><UserPlus className="size-4" aria-hidden="true" />{isUkrainian ? "Призначити виконавця" : "Assign assignee"}</button>
+      <button type="button" className={actionClassName} disabled={!canManageTasks || availableDeadlineStatuses.length === 0 || isSubmitting} onClick={() => setView("deadline")}><CalendarClock className="size-4" aria-hidden="true" />{isUkrainian ? "Встановити дедлайн" : "Set deadline"}</button>
+      <button type="button" className={actionClassName} disabled={!canMoveSelection || moveStatuses.length === 0 || isSubmitting} onClick={() => setView("move")}><FolderInput className="size-4" aria-hidden="true" />{isUkrainian ? "Перемістити до…" : "Move to…"}</button>
+      <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><button type="button" className={actionClassName} onClick={onClear}><X className="size-4" aria-hidden="true" />{isUkrainian ? "Зняти вибір" : "Clear selection"}</button></div>
+    </> : <>
+      <div className="flex items-center gap-1 px-1 py-1">
+        <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={isUkrainian ? "Назад" : "Back"} onClick={() => setView("actions")}><ArrowLeft className="size-4" aria-hidden="true" /></button>
+        <p className="text-sm font-semibold text-[var(--ui-text)]">{heading}</p>
+      </div>
+      {view === "assignee" ? <div className="space-y-2 p-2 pt-1">
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isUkrainian ? "Пошук учасника" : "Search members"} aria-label={isUkrainian ? "Пошук учасника" : "Search members"} className="h-9 w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2.5 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
+        <div className="max-h-56 space-y-0.5 overflow-y-auto">{filteredMembers.map((member) => <button key={member.id} type="button" disabled={isSubmitting} onClick={() => void submit(() => onAssign(member))} className={actionClassName}><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="board" /><span className="min-w-0"><span className="block truncate">{member.full_name}</span><span className="block truncate text-xs font-normal text-[var(--ui-text-muted)]">{member.job_title}</span></span></button>)}{filteredMembers.length === 0 ? <p className="py-4 text-center text-xs text-[var(--ui-text-muted)]">{isUkrainian ? "Учасників не знайдено." : "No members found."}</p> : null}</div>
+      </div> : null}
+      {view === "deadline" ? <div className="space-y-3 p-2 pt-1">
+        <label className="block text-xs font-medium text-[var(--ui-text-secondary)]">{isUkrainian ? "Етап процесу" : "Workflow step"}</label>
+        <Select value={deadlineStatus ?? undefined} disabled={isSubmitting} onValueChange={(value) => { if (isTaskMilestoneStatus(value)) setDeadlineStatus(value); }}>
+          {availableDeadlineStatuses.map((status) => <SelectItem key={status} value={status} className={getTaskStatusBadgeStyle(status).className}>{statusLabel(status)}</SelectItem>)}
+        </Select>
+        <label className="block text-xs font-medium text-[var(--ui-text-secondary)]">{isUkrainian ? "Дата" : "Date"}</label>
+        <DatePicker value={dueDate} disabled={isSubmitting} locale={locale} onValueChange={setDueDate} />
+        <button type="button" disabled={!deadlineStatus || !dueDate || isSubmitting} onClick={() => deadlineStatus && void submit(() => onDeadline({ target_status: deadlineStatus, due_date: dueDate }))} className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[var(--ui-action-primary)] px-3 text-sm font-semibold text-[var(--ui-action-primary-text)] hover:bg-[var(--ui-action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? (isUkrainian ? "Збереження…" : "Saving…") : (isUkrainian ? "Застосувати" : "Apply")}</button>
+      </div> : null}
+      {view === "move" ? <div className="max-h-64 space-y-0.5 overflow-y-auto p-1">{moveStatuses.map((status) => <button key={status} type="button" disabled={isSubmitting} onClick={() => void submit(() => onMove(status))} className={actionClassName}>{statusLabel(status)}</button>)}</div> : null}
+    </>}
+  </div>;
+}
+
 function TaskCardContent({
   compact = false,
   isOverlay = false,
   isPending = false,
+  isSelected = false,
   showGrip = false,
   task,
 }: {
   compact?: boolean;
   isOverlay?: boolean;
   isPending?: boolean;
+  isSelected?: boolean;
   showGrip?: boolean;
   task: ProjectTask;
 }) {
@@ -199,7 +320,8 @@ function TaskCardContent({
   const visibleCollaboratorCount = task.assignee ? 3 : 4;
 
   return (
-    <div className={cn("rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl")}>
+    <div className={cn("relative rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] transition-[border-color,box-shadow]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected && "border-[var(--ui-focus)] ring-2 ring-[var(--ui-focus)] ring-offset-1 ring-offset-[var(--ui-surface-muted)]")}>
+      {isSelected ? <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)] shadow-sm"><Check className="size-3" /></span> : null}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
           {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
@@ -246,13 +368,19 @@ function TaskCardContent({
 function DraggableTaskCard({
   compact,
   isPending,
+  isSelected,
+  onContextMenu,
   onOpen,
+  onToggleSelection,
   shouldSuppressOpen,
   task,
 }: {
   compact: boolean;
   isPending: boolean;
+  isSelected: boolean;
+  onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) => void;
   onOpen: (taskId: string) => void;
+  onToggleSelection: (task: ProjectTask) => void;
   shouldSuppressOpen: () => boolean;
   task: ProjectTask;
 }) {
@@ -273,7 +401,15 @@ function DraggableTaskCard({
       aria-label={t("openTaskDrag", { name: task.title })}
       aria-disabled={isPending}
       aria-busy={isPending}
-      onClick={() => {
+      aria-pressed={isSelected}
+      data-task-card
+      onContextMenu={(event) => onContextMenu(event, task)}
+      onClick={(event) => {
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          onToggleSelection(task);
+          return;
+        }
         if (shouldOpenTaskDrawer(shouldSuppressOpen())) {
           onOpen(task.id);
         }
@@ -285,16 +421,16 @@ function DraggableTaskCard({
       )}
       style={{ touchAction: "pan-x pan-y" }}
     >
-      <TaskCardContent compact={compact} task={task} isPending={isPending} showGrip />
+      <TaskCardContent compact={compact} task={task} isPending={isPending} isSelected={isSelected} showGrip />
     </button>
   );
 }
 
-function ReadOnlyTaskCard({ compact, task, onOpen }: { compact: boolean; task: ProjectTask; onOpen: (taskId: string) => void }) {
+function ReadOnlyTaskCard({ compact, isSelected, task, onContextMenu, onOpen, onToggleSelection }: { compact: boolean; isSelected: boolean; task: ProjectTask; onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) => void; onOpen: (taskId: string) => void; onToggleSelection: (task: ProjectTask) => void }) {
   const t = useTranslations("Tasks");
   return (
-    <button type="button" onClick={() => onOpen(task.id)} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
-      <TaskCardContent compact={compact} task={task} />
+    <button type="button" data-task-card aria-pressed={isSelected} onContextMenu={(event) => onContextMenu(event, task)} onClick={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); onToggleSelection(task); } else onOpen(task.id); }} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
+      <TaskCardContent compact={compact} task={task} isSelected={isSelected} />
     </button>
   );
 }
@@ -341,11 +477,14 @@ function BoardColumn({
   status,
   stage,
   onOpenTask,
+  onTaskContextMenu,
+  onToggleTaskSelection,
   pendingTaskIds,
+  selectedTaskIds,
   shouldSuppressOpen,
   tasks,
 }: {
-  activeBulkDrag: { columnId: BoardColumnId; stage: TaskStage; taskIds: string[] } | null;
+  activeBulkDrag: BulkDragSource | null;
   activeTask: ProjectTask | null;
   canManageTasks: boolean;
   compactCards: boolean;
@@ -356,7 +495,10 @@ function BoardColumn({
   status: WritableTaskStatus;
   stage: TaskStage;
   onOpenTask: (taskId: string) => void;
+  onTaskContextMenu: (event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) => void;
+  onToggleTaskSelection: (task: ProjectTask) => void;
   pendingTaskIds: Set<string>;
+  selectedTaskIds: Set<string>;
   shouldSuppressOpen: () => boolean;
   tasks: ProjectTask[];
 }) {
@@ -398,9 +540,10 @@ function BoardColumn({
             isAdmin: canManageTasks,
             isProjectReadOnly,
           });
+          const isSelected = selectedTaskIds.has(task.id);
           return canDrag
-            ? <DraggableTaskCard key={task.id} compact={compactCards} task={task} isPending={pendingTaskIds.has(task.id)} onOpen={onOpenTask} shouldSuppressOpen={shouldSuppressOpen} />
-            : <ReadOnlyTaskCard key={task.id} compact={compactCards} task={task} onOpen={onOpenTask} />;
+            ? <DraggableTaskCard key={task.id} compact={compactCards} task={task} isPending={pendingTaskIds.has(task.id)} isSelected={isSelected} onContextMenu={onTaskContextMenu} onOpen={onOpenTask} onToggleSelection={onToggleTaskSelection} shouldSuppressOpen={shouldSuppressOpen} />
+            : <ReadOnlyTaskCard key={task.id} compact={compactCards} isSelected={isSelected} task={task} onContextMenu={onTaskContextMenu} onOpen={onOpenTask} onToggleSelection={onToggleTaskSelection} />;
         })}
       </div>
     </section>
@@ -455,7 +598,9 @@ export function ProjectTaskBoard({
   const [localTasks, setLocalTasks] = useState(tasks);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [activeBulkDrag, setActiveBulkDrag] = useState<{ columnId: BoardColumnId; stage: TaskStage; taskIds: string[] } | null>(null);
+  const [activeBulkDrag, setActiveBulkDrag] = useState<BulkDragSource | null>(null);
+  const [taskSelection, setTaskSelection] = useState<TaskBoardSelection>({ stage: null, taskIds: [] });
+  const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
@@ -473,6 +618,7 @@ export function ProjectTaskBoard({
   const previousTasksRef = useRef(new Map<string, ProjectTask>());
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
+  const suppressSelectionClearRef = useRef(false);
   const onTasksChangeRef = useRef(onTasksChange);
   const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
   const taskCreationStages = getTaskCreationStagesForProject({ projectStatus });
@@ -534,6 +680,17 @@ export function ProjectTaskBoard({
   }, [localTasks]);
 
   useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || taskSelection.taskIds.length === 0) return;
+      setTaskSelection({ stage: null, taskIds: [] });
+      setTaskContextMenu(null);
+      setAnnouncement(locale === "uk" ? "Вибір знято." : "Selection cleared.");
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [locale, taskSelection.taskIds.length]);
+
+  useEffect(() => {
     setLocalTasks((currentTasks) => {
       for (const serverTask of tasks) {
         const confirmedStatus = confirmedStatusesRef.current.get(serverTask.id);
@@ -560,8 +717,39 @@ export function ProjectTaskBoard({
   const selectedTask = selectedTaskId
     ? localTasks.find((task) => task.id === selectedTaskId) ?? null
     : null;
+  const selectedTaskIdSet = new Set(taskSelection.taskIds);
+  const selectedTasks = localTasks.filter((task) => selectedTaskIdSet.has(task.id));
+  const selectedStageIsReadOnly = taskSelection.stage === null
+    || isProjectReadOnly
+    || (projectStatus === "completed" && isProjectProgressStage(taskSelection.stage));
+  const canMoveSelection = selectedTasks.length === taskSelection.taskIds.length
+    && selectedTasks.length > 0
+    && selectedTasks.every((task) => canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: selectedStageIsReadOnly }));
+
+  function clearTaskSelection() {
+    setTaskSelection({ stage: null, taskIds: [] });
+    setTaskContextMenu(null);
+  }
+
+  function toggleTaskSelection(task: ProjectTask) {
+    setTaskContextMenu(null);
+    setTaskSelection((current) => toggleTaskBoardSelection(current, task));
+  }
+
+  function openTaskContextMenu(event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!selectedTaskIdSet.has(task.id)) setTaskSelection({ stage: task.stage, taskIds: [task.id] });
+    const menuWidth = 320;
+    const menuHeight = 430;
+    setTaskContextMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+    });
+  }
 
   function openTaskDrawer(taskId: string) {
+    clearTaskSelection();
     isTaskDrawerOpenRef.current = true;
     setSelectedTaskId(taskId);
     setIsTaskDrawerOpen(true);
@@ -577,6 +765,7 @@ export function ProjectTaskBoard({
   }
 
   function toggleStage(stage: TaskStage) {
+    if (expandedStages[stage] && taskSelection.stage === stage) clearTaskSelection();
     setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }));
   }
 
@@ -641,7 +830,7 @@ export function ProjectTaskBoard({
     }
   }
 
-  async function persistBulkTaskMove(source: { columnId: BoardColumnId; stage: TaskStage; taskIds: string[] }, targetStatus: WritableTaskStatus, targetLabel: string, previousTasks: ProjectTask[], previousProjectStatus: ProjectLifecycleStatus) {
+  async function persistBulkTaskMove(source: BulkDragSource, targetStatus: WritableTaskStatus, targetLabel: string, previousTasks: ProjectTask[], previousProjectStatus: ProjectLifecycleStatus): Promise<boolean> {
     try {
       const sourceStatuses = [...new Set(previousTasks.filter((task) => source.taskIds.includes(task.id)).map((task) => task.status))];
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage: source.stage, source_statuses: sourceStatuses, target_status: targetStatus, task_ids: source.taskIds }) });
@@ -654,6 +843,8 @@ export function ProjectTaskBoard({
       if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusChange?.(result.projectStatus);
       for (const taskId of source.taskIds) setTaskPending(taskId, false);
       setAnnouncement(locale === "uk" ? `${source.taskIds.length} задач переміщено до «${targetLabel}».` : `${source.taskIds.length} tasks moved to ${targetLabel}.`);
+      if (source.kind === "selection") clearTaskSelection();
+      return true;
     } catch (error) {
       localTasksRef.current = previousTasks;
       setLocalTasks(previousTasks);
@@ -663,7 +854,24 @@ export function ProjectTaskBoard({
       const restoredMessage = t("statusRestored", { message });
       setBoardError(restoredMessage);
       setAnnouncement(restoredMessage);
+      return false;
     }
+  }
+
+  async function moveTaskBatch(source: BulkDragSource, targetStatus: WritableTaskStatus): Promise<boolean> {
+    const previousTasks = localTasksRef.current;
+    const batch = getBulkMoveBatch(previousTasks, { stage: source.stage, taskIds: source.taskIds }, targetStatus);
+    if (!batch || batch.taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
+    const movingSource = { ...source, taskIds: batch.taskIds };
+    for (const selectedId of batch.taskIds) setTaskPending(selectedId, true);
+    setBoardError(null);
+    setTaskContextMenu(null);
+    const optimisticTasks = appendTasksInOrder(batch.taskIds.reduce((nextTasks, selectedId) => setProjectTaskStatus(nextTasks, selectedId, targetStatus), previousTasks), batch.taskIds);
+    localTasksRef.current = optimisticTasks;
+    setLocalTasks(optimisticTasks);
+    onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus, source.stage));
+    return persistBulkTaskMove(movingSource, targetStatus, targetLabel, previousTasks, projectStatus);
   }
 
   async function assignStageTasks(assignee: AssignableProjectMember, scope: BulkAssignmentScope, taskIds: string[]): Promise<boolean> {
@@ -701,6 +909,62 @@ export function ProjectTaskBoard({
     }
   }
 
+  async function assignSelectedTasks(assignee: AssignableProjectMember): Promise<boolean> {
+    const taskIds = taskSelection.taskIds;
+    const stage = taskSelection.stage;
+    const previousTasks = localTasksRef.current;
+    if (!stage || taskIds.length === 0 || taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    for (const taskId of taskIds) setTaskPending(taskId, true);
+    setBoardError(null);
+    const optimisticTasks = previousTasks.map((task) => taskIds.includes(task.id)
+      ? { ...task, assignee_id: assignee.id, assignee: { id: assignee.id, full_name: assignee.full_name, job_title: assignee.job_title, avatar_url: assignee.avatar_url } }
+      : task);
+    localTasksRef.current = optimisticTasks;
+    setLocalTasks(optimisticTasks);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/selected-assignee`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, assignee_id: assignee.id, task_ids: taskIds }) });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося призначити виконавця для вибраних задач." : "The selected tasks could not be assigned.");
+      localTasksRef.current = result.tasks;
+      setLocalTasks(result.tasks);
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      setAnnouncement(locale === "uk" ? `Виконавця призначено для ${taskIds.length} задач.` : `Assignee updated for ${taskIds.length} tasks.`);
+      return true;
+    } catch (error) {
+      localTasksRef.current = previousTasks;
+      setLocalTasks(previousTasks);
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося призначити виконавця для вибраних задач." : "The selected tasks could not be assigned.");
+      setBoardError(message);
+      setAnnouncement(message);
+      return false;
+    }
+  }
+
+  async function setSelectedTaskDeadline(deadline: TaskDeadlineInput): Promise<boolean> {
+    const taskIds = taskSelection.taskIds;
+    const stage = taskSelection.stage;
+    if (!stage || taskIds.length === 0 || taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    for (const taskId of taskIds) setTaskPending(taskId, true);
+    setBoardError(null);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-deadline`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, ...deadline }) });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося встановити дедлайн для вибраних задач." : "The selected task deadlines could not be updated.");
+      localTasksRef.current = result.tasks;
+      setLocalTasks(result.tasks);
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      setAnnouncement(locale === "uk" ? `Дедлайн встановлено для ${taskIds.length} задач.` : `Deadline updated for ${taskIds.length} tasks.`);
+      return true;
+    } catch (error) {
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося встановити дедлайн для вибраних задач." : "The selected task deadlines could not be updated.");
+      setBoardError(message);
+      setAnnouncement(message);
+      return false;
+    }
+  }
+
   async function updateStageProgressMethod(stage: Exclude<TaskStage, "stage_4">, method: StageProgressMethod) {
     if (savingProgressMethodStage || localStageProgressMethods[stage] === method) return;
     setSavingProgressMethodStage(stage);
@@ -727,13 +991,15 @@ export function ProjectTaskBoard({
   function handleDragStart(event: DragStartEvent) {
     const taskId = event.operation.source?.id;
     if (taskId === undefined) return;
+    suppressSelectionClearRef.current = true;
     if (event.operation.source?.type === "project-task-bulk") {
       const data = event.operation.source?.data as { columnId?: unknown; stage?: unknown; taskIds?: unknown } | undefined;
       if (!data || !isBoardColumnId(String(data.columnId)) || !isTaskStage(String(data.stage)) || !Array.isArray(data.taskIds) || data.taskIds.some((id) => typeof id !== "string") || data.taskIds.length === 0) return;
       const columnId = String(data.columnId);
       const stage = String(data.stage);
       if (!isBoardColumnId(columnId) || !isTaskStage(stage)) return;
-      setActiveBulkDrag({ columnId, stage, taskIds: data.taskIds });
+      clearTaskSelection();
+      setActiveBulkDrag({ columnId, kind: "column", stage, taskIds: data.taskIds });
       setBoardError(null);
       setAnnouncement(locale === "uk" ? `Переміщення ${data.taskIds.length} задач.` : `Moving ${data.taskIds.length} tasks.`);
       return;
@@ -741,6 +1007,16 @@ export function ProjectTaskBoard({
     const task = localTasksRef.current.find((item) => item.id === String(taskId));
     if (!task) return;
     suppressCardOpenRef.current = true;
+    const selectedBatch = taskSelection.taskIds.includes(task.id)
+      ? localTasksRef.current.filter((item) => taskSelection.taskIds.includes(item.id))
+      : [];
+    if (selectedBatch.length === taskSelection.taskIds.length && selectedBatch.length > 0 && selectedBatch.every((item) => canMoveTask({ assigneeId: item.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(item.stage)) }))) {
+      setActiveBulkDrag({ columnId: getBoardColumn(task.status), kind: "selection", stage: task.stage, taskIds: taskSelection.taskIds });
+      setBoardError(null);
+      setAnnouncement(locale === "uk" ? `Переміщення ${taskSelection.taskIds.length} задач.` : `Moving ${taskSelection.taskIds.length} tasks.`);
+      return;
+    }
+    clearTaskSelection();
     setActiveTaskId(task.id);
     setBoardError(null);
     setAnnouncement(t("movingTask", { name: task.title }));
@@ -752,24 +1028,17 @@ export function ProjectTaskBoard({
     const bulkSource = activeBulkDrag;
     setActiveTaskId(null);
     setActiveBulkDrag(null);
-    window.setTimeout(() => { suppressCardOpenRef.current = false; }, 0);
+    window.setTimeout(() => {
+      suppressCardOpenRef.current = false;
+      suppressSelectionClearRef.current = false;
+    }, 0);
     if (event.canceled || taskId === undefined || !target) return;
 
-    if (event.operation.source?.type === "project-task-bulk") {
+    if (bulkSource) {
       if (!bulkSource || bulkSource.stage !== target.stage || bulkSource.columnId === target.columnId) return;
       const targetStatus = BOARD_COLUMNS.find((column) => column.id === target.columnId)?.status;
       if (!targetStatus) return;
-      const previousTasks = localTasksRef.current;
-      const batchTasks = previousTasks.filter((task) => bulkSource.taskIds.includes(task.id));
-      if (batchTasks.length !== bulkSource.taskIds.length || batchTasks.some((task) => pendingTaskIdsRef.current.has(task.id))) return;
-      const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
-      for (const taskId of bulkSource.taskIds) setTaskPending(taskId, true);
-      setBoardError(null);
-      const optimisticTasks = appendTasksInOrder(batchTasks.reduce((nextTasks, task) => setProjectTaskStatus(nextTasks, task.id, targetStatus), previousTasks), bulkSource.taskIds);
-      localTasksRef.current = optimisticTasks;
-      setLocalTasks(optimisticTasks);
-      onProjectStatusChange?.(getAutomaticProjectStatus(projectStatus, targetStatus, bulkSource.stage));
-      void persistBulkTaskMove(bulkSource, targetStatus, targetLabel, previousTasks, projectStatus);
+      void moveTaskBatch(bulkSource, targetStatus);
       return;
     }
 
@@ -815,6 +1084,10 @@ export function ProjectTaskBoard({
     localTasksRef.current = nextTasks;
     setLocalTasks(nextTasks);
     setSelectedTaskId((selectedId) => selectedId === taskId ? null : selectedId);
+    setTaskSelection((current) => {
+      const taskIds = current.taskIds.filter((selectedId) => selectedId !== taskId);
+      return { stage: taskIds.length ? current.stage : null, taskIds };
+    });
   }
 
   return (
@@ -894,7 +1167,7 @@ export function ProjectTaskBoard({
                 </div>
                 <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
                   <div className="min-h-0 overflow-hidden">
-                    <div className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3">
+                    <div className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3" onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
                       <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
                       {enabledColumns.map((column) => (
                         <BoardColumn
@@ -908,7 +1181,10 @@ export function ProjectTaskBoard({
                           isProjectReadOnly={isStageReadOnly}
                           label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
                           onOpenTask={openTaskDrawer}
+                          onTaskContextMenu={openTaskContextMenu}
+                          onToggleTaskSelection={toggleTaskSelection}
                           pendingTaskIds={pendingTaskIds}
+                          selectedTaskIds={selectedTaskIdSet}
                           shouldSuppressOpen={() => suppressCardOpenRef.current}
                           stage={stage}
                           status={column.status}
@@ -927,6 +1203,7 @@ export function ProjectTaskBoard({
           {() => {
             if (activeTask) return <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip />;
             if (!activeBulkDrag) return null;
+            if (activeBulkDrag.kind === "selection") return <div className="inline-flex min-w-32 items-center gap-2 rounded-xl border border-[var(--ui-focus)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm font-semibold text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"><GripVertical className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{locale === "uk" ? `${activeBulkDrag.taskIds.length} задач` : `${activeBulkDrag.taskIds.length} tasks`}</div>;
             const sourceStatus = BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status ?? "todo";
             const sourceLabel = statusLabels(sourceStatus === "in_progress" ? "inProgress" : sourceStatus);
             const bulkDragStyle = getTaskStatusBulkDragStyle(sourceStatus);
@@ -934,6 +1211,24 @@ export function ProjectTaskBoard({
           }}
         </DragOverlay>
       </DragDropProvider>
+      {taskContextMenu && taskSelection.stage && taskSelection.taskIds.length > 0 ? <BulkTaskContextMenu
+        canManageTasks={canManageTasks && !selectedStageIsReadOnly}
+        canMoveSelection={canMoveSelection}
+        enabledStatuses={localStageColumns[taskSelection.stage]}
+        members={members}
+        onAssign={assignSelectedTasks}
+        onClear={() => { clearTaskSelection(); setAnnouncement(locale === "uk" ? "Вибір знято." : "Selection cleared."); }}
+        onClose={() => setTaskContextMenu(null)}
+        onDeadline={setSelectedTaskDeadline}
+        onMove={(status) => {
+          const sourceTask = selectedTasks[0];
+          if (!sourceTask) return Promise.resolve(false);
+          return moveTaskBatch({ columnId: getBoardColumn(sourceTask.status), kind: "selection", stage: sourceTask.stage, taskIds: taskSelection.taskIds }, status);
+        }}
+        position={taskContextMenu}
+        selectedCount={taskSelection.taskIds.length}
+        selectedStatuses={new Set(selectedTasks.map((task) => task.status))}
+      /> : null}
       {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
       {selectedTask ? <TaskDetailsDrawer
         key={selectedTask.id}

@@ -24,4 +24,14 @@ describe("task status mutation contract", () => {
     expect(source).not.toContain('authorization.task.assignee_id === null');
     expect(source).toContain('const update: Pick<TaskUpdate, "status"> = { status: parsed.data.status };');
   });
+
+  it("routes exact selected ids through guarded atomic assignee and deadline RPCs", async () => {
+    const source = await readFile(mutationPath, "utf8");
+
+    expect(source).toContain('supabase.rpc("bulk_assign_selected_project_tasks"');
+    expect(source).toContain("p_task_ids: parsed.data.task_ids");
+    expect(source).toContain('supabase.rpc("bulk_set_project_task_deadline"');
+    expect(source).toContain("p_target_status: parsed.data.target_status");
+    expect(source).toContain("p_due_date: parsed.data.due_date");
+  });
 });

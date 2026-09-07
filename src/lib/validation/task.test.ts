@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkStageAssignmentPayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -95,6 +95,24 @@ describe("task status validation", () => {
     expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "unassigned" }).success).toBe(true);
     expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "all" }).success).toBe(true);
     expect(taskBulkStageAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, scope: "selected" }).success).toBe(false);
+  });
+
+  it("validates exact task ids for selected assignment and deadline updates", () => {
+    const secondTaskId = "223e4567-e89b-12d3-a456-426614174000";
+    expect(taskBulkAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, task_ids: [validTask.assignee_id, secondTaskId] }).success).toBe(true);
+    expect(taskBulkAssignmentPayloadSchema.safeParse({ stage: "stage_1", assignee_id: validTask.assignee_id, task_ids: [validTask.assignee_id, validTask.assignee_id] }).success).toBe(false);
+    expect(taskBulkDeadlinePayloadSchema.safeParse({ stage: "stage_1", target_status: "review", due_date: "2026-09-10", task_ids: [validTask.assignee_id] }).success).toBe(true);
+    expect(taskBulkDeadlinePayloadSchema.safeParse({ stage: "stage_1", target_status: "in_progress", due_date: "2026-09-10", task_ids: [validTask.assignee_id] }).success).toBe(false);
+    expect(taskBulkDeadlinePayloadSchema.safeParse({ stage: "stage_1", target_status: "review", due_date: "2026-02-30", task_ids: [validTask.assignee_id] }).success).toBe(false);
+  });
+
+  it("accepts a selected move spanning several source columns", () => {
+    expect(taskBulkStatusMovePayloadSchema.safeParse({
+      stage: "stage_1",
+      source_statuses: ["todo", "in_progress", "internal_review", "review", "cancelled"],
+      target_status: "completed",
+      task_ids: [validTask.assignee_id],
+    }).success).toBe(true);
   });
 });
 

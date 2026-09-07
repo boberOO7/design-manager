@@ -54,6 +54,10 @@ Use this map instead of duplicating their fields here.
   shape, and cross-studio references.
 - Mutating RPCs that lock or coordinate records use one transaction; the
   application must not reproduce half of their behavior client-side.
+- Exact task selections use `bulk_assign_selected_project_tasks`,
+  `bulk_set_project_task_deadline`, and the existing
+  `bulk_move_project_tasks`; each validates the full same-project/stage batch
+  before changing any row.
 - Storage is a separate RLS surface. The `avatars` bucket is public for reads but
   upload/delete/select paths are constrained to the authenticated user's folder;
   profile avatar updates use guarded cleanup behavior.

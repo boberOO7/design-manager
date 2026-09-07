@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
-import { taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
+import { taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 type AuthorizedTask = NonNullable<Awaited<ReturnType<typeof getTaskForStatusUpdate>>>;
@@ -174,6 +174,56 @@ export async function bulkAssignTaskStageMutation(projectId: string, input: unkn
   const tasks = await getProjectTasks(projectId);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { projectId, success: true, tasks };
+}
+
+export async function bulkAssignSelectedTasksMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {
+  const parsed = taskBulkAssignmentPayloadSchema.safeParse(input);
+  if (!parsed.success) return { formError: "Choose a valid task batch and project member.", success: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bulk_assign_selected_project_tasks", {
+    p_assignee_id: parsed.data.assignee_id,
+    p_project_id: projectId,
+    p_stage: parsed.data.stage,
+    p_task_ids: parsed.data.task_ids,
+  });
+  if (error) {
+    console.error("Unable to assign selected project tasks", error);
+    return { formError: error.message || "The selected tasks could not be assigned. Please try again.", success: false };
+  }
+
+  const tasks = await getProjectTasks(projectId);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { projectId, success: true, tasks };
+}
+
+export async function bulkSetSelectedTaskDeadlineMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {
+  const parsed = taskBulkDeadlinePayloadSchema.safeParse(input);
+  if (!parsed.success) return { formError: "Choose a valid task batch, workflow step, and deadline.", success: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bulk_set_project_task_deadline", {
+    p_due_date: parsed.data.due_date,
+    p_project_id: projectId,
+    p_stage: parsed.data.stage,
+    p_target_status: parsed.data.target_status,
+    p_task_ids: parsed.data.task_ids,
+  });
+  if (error) {
+    console.error("Unable to set selected task deadlines", error);
+    return { formError: error.message || "The selected task deadlines could not be updated. Please try again.", success: false };
+  }
+
+  const tasks = await getProjectTasks(projectId);
+  revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   revalidatePath("/dashboard");
   revalidatePath("/my-tasks");
