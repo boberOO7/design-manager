@@ -126,7 +126,7 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
     {name ? <input type="hidden" name={name} value={selectedValue} /> : null}
     <Popover.Trigger asChild>
       <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled} data-invalid={invalid || undefined} aria-label={buttonProps["aria-label"] ?? copy.chooseDate} className={cn(datePickerClassName, invalid && "border-[var(--ui-danger-border)]", className)} {...buttonProps}>
-        <span className={cn("truncate", !selectedDate && "text-[var(--ui-text-muted)]")}>{selectedDate ? dateFormatter.format(selectedDate) : placeholder ?? ""}</span>
+        <span className={cn("truncate", selectedDate ? "font-medium" : "text-[var(--ui-text-muted)]")}>{selectedDate ? dateFormatter.format(selectedDate) : placeholder ?? ""}</span>
         <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-secondary)]" strokeWidth={1.8} />
       </button>
     </Popover.Trigger>

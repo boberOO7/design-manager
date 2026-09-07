@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react"
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -402,7 +403,7 @@ export function TaskDetailsDrawer({
                 <h3 id="task-edit-completion-date" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
                 <div className="mt-2">
                   <FormField label={t("completionDate")} error={fieldErrors.completed_at ? validation("correctFields") : undefined}>
-                    <Input autoComplete="off" type="date" value={values.completed_at} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_at: event.target.value })} />
+                    <DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale} onValueChange={(completed_at) => setValues((current) => ({ ...current, completed_at }))} />
                   </FormField>
                 </div>
               </section> : null}
@@ -441,7 +442,7 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                   {canManageTasks && task.status === "completed" ? <FormField label={t("completionDate")} error={fieldErrors.completed_at ? validation("correctFields") : undefined}>
-                    <Input autoComplete="off" type="date" value={values.completed_at} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_at: event.target.value })} />
+                    <DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale} onValueChange={(completed_at) => setValues((current) => ({ ...current, completed_at }))} />
                   </FormField> : null}
                 </div>
                 <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />

@@ -29,4 +29,10 @@ describe("DatePicker navigation", () => {
     expect(source).toContain('const isYearAvailable');
     expect(source).toContain('const unavailable = Boolean(minValue && dateValue < minValue)');
   });
+
+  it("uses readable shared typography for selected date values", async () => {
+    const source = await readFile(pickerPath, "utf8");
+
+    expect(source).toContain('selectedDate ? "font-medium" : "text-[var(--ui-text-muted)]"');
+  });
 });

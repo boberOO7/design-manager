@@ -80,6 +80,7 @@ const sensors = [pointerSensor, keyboardSensor];
 type BulkDragSource = {
   columnId: BoardColumnId;
   kind: "column" | "selection";
+  previewOffset?: { x: number; y: number };
   stage: TaskStage;
   taskIds: string[];
 };
@@ -88,6 +89,25 @@ type TaskContextMenuState = { x: number; y: number };
 
 function getColumnDropId(stage: TaskStage, columnId: BoardColumnId): string {
   return `${COLUMN_DROP_ID_PREFIX}${stage}:${columnId}`;
+}
+
+function getBulkPreviewOffset(event: DragStartEvent) {
+  const activatorEvent = event.operation.activatorEvent;
+  const sourceElement = event.operation.source?.element;
+  if (!(activatorEvent instanceof MouseEvent) || !sourceElement) return undefined;
+  const sourceRect = sourceElement.getBoundingClientRect();
+  const handleRadius = 14;
+  return {
+    x: Math.round(activatorEvent.clientX - sourceRect.left - handleRadius),
+    y: Math.round(activatorEvent.clientY - sourceRect.top - handleRadius),
+  };
+}
+
+function formatTaskCount(count: number, locale: string) {
+  if (!locale.startsWith("uk")) return `${count} ${count === 1 ? "task" : "tasks"}`;
+  const pluralCategory = new Intl.PluralRules("uk").select(count);
+  const noun = pluralCategory === "one" ? "задачу" : pluralCategory === "few" ? "задачі" : "задач";
+  return `${count} ${noun}`;
 }
 
 function getDropTarget(id: string | number | undefined): { stage: TaskStage; columnId: BoardColumnId } | null {
@@ -367,6 +387,7 @@ function TaskCardContent({
 
 function DraggableTaskCard({
   compact,
+  isGroupDragging,
   isPending,
   isSelected,
   onContextMenu,
@@ -376,6 +397,7 @@ function DraggableTaskCard({
   task,
 }: {
   compact: boolean;
+  isGroupDragging: boolean;
   isPending: boolean;
   isSelected: boolean;
   onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) => void;
@@ -417,7 +439,7 @@ function DraggableTaskCard({
       className={cn(
         "w-full select-none rounded-xl text-left outline-none transition-[opacity,transform,box-shadow] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2",
         isPending ? "cursor-wait" : "cursor-grab active:cursor-grabbing",
-        isDragging && "cursor-grabbing opacity-30",
+        (isDragging || isGroupDragging) && "cursor-grabbing opacity-30",
       )}
       style={{ touchAction: "pan-x pan-y" }}
     >
@@ -541,8 +563,9 @@ function BoardColumn({
             isProjectReadOnly,
           });
           const isSelected = selectedTaskIds.has(task.id);
+          const isGroupDragging = activeBulkDrag?.kind === "selection" && activeBulkDrag.taskIds.includes(task.id);
           return canDrag
-            ? <DraggableTaskCard key={task.id} compact={compactCards} task={task} isPending={pendingTaskIds.has(task.id)} isSelected={isSelected} onContextMenu={onTaskContextMenu} onOpen={onOpenTask} onToggleSelection={onToggleTaskSelection} shouldSuppressOpen={shouldSuppressOpen} />
+            ? <DraggableTaskCard key={task.id} compact={compactCards} task={task} isGroupDragging={isGroupDragging} isPending={pendingTaskIds.has(task.id)} isSelected={isSelected} onContextMenu={onTaskContextMenu} onOpen={onOpenTask} onToggleSelection={onToggleTaskSelection} shouldSuppressOpen={shouldSuppressOpen} />
             : <ReadOnlyTaskCard key={task.id} compact={compactCards} isSelected={isSelected} task={task} onContextMenu={onTaskContextMenu} onOpen={onOpenTask} onToggleSelection={onToggleTaskSelection} />;
         })}
       </div>
@@ -1011,7 +1034,7 @@ export function ProjectTaskBoard({
       ? localTasksRef.current.filter((item) => taskSelection.taskIds.includes(item.id))
       : [];
     if (selectedBatch.length === taskSelection.taskIds.length && selectedBatch.length > 0 && selectedBatch.every((item) => canMoveTask({ assigneeId: item.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(item.stage)) }))) {
-      setActiveBulkDrag({ columnId: getBoardColumn(task.status), kind: "selection", stage: task.stage, taskIds: taskSelection.taskIds });
+      setActiveBulkDrag({ columnId: getBoardColumn(task.status), kind: "selection", previewOffset: getBulkPreviewOffset(event), stage: task.stage, taskIds: taskSelection.taskIds });
       setBoardError(null);
       setAnnouncement(locale === "uk" ? `Переміщення ${taskSelection.taskIds.length} задач.` : `Moving ${taskSelection.taskIds.length} tasks.`);
       return;
@@ -1203,11 +1226,10 @@ export function ProjectTaskBoard({
           {() => {
             if (activeTask) return <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip />;
             if (!activeBulkDrag) return null;
-            if (activeBulkDrag.kind === "selection") return <div className="inline-flex min-w-32 items-center gap-2 rounded-xl border border-[var(--ui-focus)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm font-semibold text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"><GripVertical className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{locale === "uk" ? `${activeBulkDrag.taskIds.length} задач` : `${activeBulkDrag.taskIds.length} tasks`}</div>;
             const sourceStatus = BOARD_COLUMNS.find((column) => column.id === activeBulkDrag.columnId)?.status ?? "todo";
             const sourceLabel = statusLabels(sourceStatus === "in_progress" ? "inProgress" : sourceStatus);
             const bulkDragStyle = getTaskStatusBulkDragStyle(sourceStatus);
-            return <div className={cn("w-60 rounded-xl border p-3.5 shadow-[var(--ui-shadow-popover)]", bulkDragStyle.previewClassName)}><div className="flex items-start gap-2.5"><span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-current/20 bg-[color-mix(in_srgb,currentColor_8%,transparent)]"><GripVertical className="size-4" aria-hidden="true" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold leading-5">{sourceLabel}</p><p className="mt-0.5 text-xs font-medium leading-4 opacity-80">{locale === "uk" ? `Перемістити ${activeBulkDrag.taskIds.length} задач` : `Move ${activeBulkDrag.taskIds.length} tasks`}</p></div></div></div>;
+            return <div className={cn("w-60 rounded-xl border p-3.5 shadow-[var(--ui-shadow-popover)]", bulkDragStyle.previewClassName)} style={activeBulkDrag.previewOffset ? { transform: `translate(${activeBulkDrag.previewOffset.x}px, ${activeBulkDrag.previewOffset.y}px)` } : undefined}><div className="flex items-start gap-2.5"><span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-current/20 bg-[color-mix(in_srgb,currentColor_8%,transparent)]"><GripVertical className="size-4" aria-hidden="true" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold leading-5">{sourceLabel}</p><p className="mt-0.5 text-xs font-medium leading-4 opacity-80">{locale.startsWith("uk") ? `Перемістити ${formatTaskCount(activeBulkDrag.taskIds.length, locale)}` : `Move ${formatTaskCount(activeBulkDrag.taskIds.length, locale)}`}</p></div></div></div>;
           }}
         </DragOverlay>
       </DragDropProvider>

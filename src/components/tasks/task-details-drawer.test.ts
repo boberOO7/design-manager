@@ -137,7 +137,8 @@ describe("task details drawer contract", () => {
     const source = await readFile(drawerPath, "utf8");
 
     expect(source).toContain('canManageTasks && task.status === "completed" ? <FormField label={t("completionDate")}');
-    expect(source).toContain('type="date" value={values.completed_at}');
+    expect(source).toContain('<DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale}');
+    expect(source).not.toContain('type="date" value={values.completed_at}');
     expect(source).toContain('completed_at: task.completed_at ?? ""');
     expect(source).toContain('canManageTasks && task.status === "completed" && task.completed_at ? <div>');
     expect(en.Tasks.completionDate).toBe("Completion date");

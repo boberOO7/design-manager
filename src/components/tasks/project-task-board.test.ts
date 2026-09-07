@@ -38,7 +38,11 @@ describe("task board multi-selection", () => {
     expect(source).toContain("onContextMenu={(event) => onContextMenu(event, task)}");
     expect(source).toContain('kind: "selection"');
     expect(source).toContain("getBulkMoveBatch");
-    expect(source).toContain('locale === "uk" ? `${activeBulkDrag.taskIds.length} задач`');
+    expect(source).toContain('(isDragging || isGroupDragging) && "cursor-grabbing opacity-30"');
+    expect(source).toContain("previewOffset: getBulkPreviewOffset(event)");
+    expect(source).toContain('pluralCategory === "few" ? "задачі"');
+    expect(source).toContain('`Перемістити ${formatTaskCount(activeBulkDrag.taskIds.length, locale)}`');
+    expect(source).not.toContain('activeBulkDrag.kind === "selection") return <div');
     expect(source).toContain("Призначити виконавця");
     expect(source).toContain("Встановити дедлайн");
     expect(source).toContain("Перемістити до…");

@@ -460,14 +460,14 @@
     "semantic_hash": "d7fb13a38b4d6b550689e6ad1079da25"
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1788814996.3583531,
-    "ast_hash": "278d8de4d8d687f7442df9ac7f307880",
-    "semantic_hash": "278d8de4d8d687f7442df9ac7f307880"
+    "mtime": 1788816617.072117,
+    "ast_hash": "3c66442091c35e842902bed82113cd9c",
+    "semantic_hash": "3c66442091c35e842902bed82113cd9c"
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1788811539.5346131,
-    "ast_hash": "91ae55202a56db5d27e11f84a7de06f7",
-    "semantic_hash": "91ae55202a56db5d27e11f84a7de06f7"
+    "mtime": 1788816193.6647685,
+    "ast_hash": "1447b762280dda75aac9b6b1ff34ad0a",
+    "semantic_hash": "1447b762280dda75aac9b6b1ff34ad0a"
   },
   "src/components/tasks/task-status-control.tsx": {
     "mtime": 1787007543.5488749,
@@ -1355,9 +1355,9 @@
     "semantic_hash": "dad2074df4aa137d45113f004edfb4eb"
   },
   "src/components/tasks/task-details-drawer.test.ts": {
-    "mtime": 1788811207.649573,
-    "ast_hash": "b0d8b88c3079de3d72287a5636de0ed0",
-    "semantic_hash": "b0d8b88c3079de3d72287a5636de0ed0"
+    "mtime": 1788816194.2447948,
+    "ast_hash": "728077aeced4af095e69fcf9e84d16ea",
+    "semantic_hash": "728077aeced4af095e69fcf9e84d16ea"
   },
   "src/data/mutations/task-status.test.ts": {
     "mtime": 1788814542.5632184,
@@ -2560,9 +2560,9 @@
     "semantic_hash": "fc7af12a966eb89c65ca1d2e65a0a59a"
   },
   "src/components/ui/date-picker.tsx": {
-    "mtime": 1787867048.114637,
-    "ast_hash": "cf3677772e166aa2d2952f34f4f75ab7",
-    "semantic_hash": "cf3677772e166aa2d2952f34f4f75ab7"
+    "mtime": 1788816193.8807783,
+    "ast_hash": "f0dadbb34331151aafb44c95fb4a84ae",
+    "semantic_hash": "f0dadbb34331151aafb44c95fb4a84ae"
   },
   "src/components/leaderboard/leaderboard-period-switcher.tsx": {
     "mtime": 1786657776.656872,
@@ -3305,9 +3305,9 @@
     "semantic_hash": "9661d790112e8e82798e38243e2b7b3e"
   },
   "src/components/tasks/project-task-board.test.ts": {
-    "mtime": 1788815017.674059,
-    "ast_hash": "7483c4d8681fcd2c8cfa0a34b3072637",
-    "semantic_hash": "7483c4d8681fcd2c8cfa0a34b3072637"
+    "mtime": 1788816617.2401245,
+    "ast_hash": "34d253e68c63dd7579481da5b3fb3a3e",
+    "semantic_hash": "34d253e68c63dd7579481da5b3fb3a3e"
   },
   "src/lib/profile-birthday-migration.test.ts": {
     "mtime": 1787858000.1254845,
@@ -3335,9 +3335,9 @@
     "semantic_hash": "514c4e3893b099f37167beb5265ebbe2"
   },
   "src/components/ui/date-picker.contract.test.ts": {
-    "mtime": 1787867008.3057165,
-    "ast_hash": "fcd4e059a31fde7b042fe532652a5c55",
-    "semantic_hash": "fcd4e059a31fde7b042fe532652a5c55"
+    "mtime": 1788816194.3968017,
+    "ast_hash": "52dc8c0eca865c862d6181a6e8247096",
+    "semantic_hash": "52dc8c0eca865c862d6181a6e8247096"
   },
   "src/lib/calendar-system-events.test.ts": {
     "mtime": 1787917223.7720246,
