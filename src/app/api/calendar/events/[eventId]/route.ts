@@ -4,7 +4,7 @@ import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateCalendarEventType } from "@/lib/calendar-creation";
 import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
-import { getBusinessTripTitle } from "@/lib/calendar-event-form";
+import { getBusinessTripTitle, isCalendarEventInviteeSelectable } from "@/lib/calendar-event-form";
 import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 
 type Context = { params: Promise<{ eventId: string }> };
@@ -60,7 +60,7 @@ export async function PATCH(request: Request, context: Context) {
   }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
 
-  const inviteeIds = [...new Set(value.attendeeIds)].filter((userId) => userId !== existingEvent.organizer_id);
+  const inviteeIds = [...new Set(value.attendeeIds)].filter((userId) => isCalendarEventInviteeSelectable(value.eventType, userId, existingEvent.organizer_id));
   const { data: existingInvites, error: invitesReadError } = await supabase.from("calendar_event_invites").select("user_id").eq("event_id", eventId);
   if (invitesReadError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(invitesReadError) }, { status: 400 });
   const existingIds = new Set((existingInvites ?? []).map((invite) => invite.user_id));

@@ -1,7 +1,7 @@
 import { addCalendarDays, instantToDateOnly, instantToWallInput, parseDateOnly, zonedWallTimeToIso } from "./calendar";
 import { updateLinkedStartDate, updateLinkedStartTime } from "./calendar-form-range";
 import { getWorkMakeupMinutes } from "./time-off-compensation";
-import type { CalendarEventType, CalendarItem, MeetingMode } from "../types/calendar";
+import type { CalendarEventType, CalendarItem, CalendarProject, MeetingMode } from "../types/calendar";
 import type { RecurrenceRule } from "./calendar-recurrence";
 
 export type CalendarEventFormValues = {
@@ -23,6 +23,17 @@ export type CalendarEventFormValues = {
   compensatesTimeOffRequestId?: string;
   assigneeId?: string;
 };
+
+export function groupCalendarEventProjects(projects: readonly CalendarProject[]): { current: CalendarProject[]; completed: CalendarProject[] } {
+  return {
+    current: projects.filter((project) => project.status !== "completed" && project.status !== "archived"),
+    completed: projects.filter((project) => project.status === "completed"),
+  };
+}
+
+export function isCalendarEventInviteeSelectable(eventType: CalendarEventType, personId: string, organizerId: string): boolean {
+  return eventType === "general" || personId !== organizerId;
+}
 
 export function updateEventStartDate(values: CalendarEventFormValues, startDate: string, endDateLinked: boolean): CalendarEventFormValues {
   return { ...values, ...updateLinkedStartDate(values, startDate, endDateLinked) };

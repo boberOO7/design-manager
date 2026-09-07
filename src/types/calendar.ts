@@ -1,11 +1,13 @@
 import type { Database } from "@/types/database.types";
 
 export const CALENDAR_EVENT_TYPES = ["general", "meeting", "interview", "site_visit", "business_trip", "presentation", "internal_review", "work_makeup"] as const;
+export const CALENDAR_TIME_FORMATS = ["24h", "12h"] as const;
 export const CALENDAR_EVENT_INVITATION_STATUSES = ["pending", "accepted", "declined"] as const;
 export const TIME_OFF_REQUEST_TYPES = ["vacation", "day_off", "medical_appointment", "sick_leave", "other"] as const;
 export const TIME_OFF_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
 
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
+export type CalendarTimeFormat = (typeof CALENDAR_TIME_FORMATS)[number];
 export type MeetingMode = "offline" | "online";
 export type CalendarEventInvitationStatus = (typeof CALENDAR_EVENT_INVITATION_STATUSES)[number];
 export type TimeOffRequestType = (typeof TIME_OFF_REQUEST_TYPES)[number];
@@ -141,4 +143,5 @@ export type CalendarPageData = {
   rangeEnd: string;
   today: string;
   compensableDayOffs: CalendarCompensableDayOff[];
+  timeFormat: CalendarTimeFormat;
 };

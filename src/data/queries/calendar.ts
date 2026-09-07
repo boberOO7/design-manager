@@ -2,7 +2,7 @@ import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
-import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
 import { buildCalendarSystemEvents } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
 import { createClient } from "@/lib/supabase/server";
@@ -88,8 +88,9 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       range_end: end,
     });
   const ownApprovedDayOffsPromise = supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId).eq("request_type", "day_off").eq("status", "approved");
+  const calendarPreferencePromise = supabase.auth.getUser();
 
-  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult] = await Promise.all([
+  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult] = await Promise.all([
     projectsPromise,
     projectDeadlinesPromise,
     taskDeadlinesPromise,
@@ -100,9 +101,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     studioDaysOffPromise,
     coworkerPromise,
     ownApprovedDayOffsPromise,
+    calendarPreferencePromise,
   ]);
 
-  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error].filter(Boolean);
+  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error].filter(Boolean);
   if (errors.length > 0) {
     console.error("Unable to load Calendar data", errors);
     throw new Error("Unable to load Calendar data.");
@@ -223,5 +225,6 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     rangeStart: start, rangeEnd: end,
     today: instantToDateOnly(new Date().toISOString()),
     compensableDayOffs,
+    timeFormat: normalizeCalendarTimeFormat(calendarPreferenceResult.data.user?.user_metadata.calendar_time_format),
   };
 }

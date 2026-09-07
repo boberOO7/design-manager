@@ -13,4 +13,9 @@ describe("Calendar attendee update contract", () => {
     expect(route).toContain("addedIds.map");
     expect(route).not.toContain('.from("calendar_event_invites").delete().eq("event_id", eventId);');
   });
+
+  it("retains an organizer selected as an invitee only for a generic event", () => {
+    expect(route).toContain("isCalendarEventInviteeSelectable(value.eventType, userId, existingEvent.organizer_id)");
+    expect(route).not.toContain("userId !== existingEvent.organizer_id");
+  });
 });

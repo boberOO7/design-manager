@@ -53,11 +53,17 @@ describe("Calendar event form localization contract", () => {
   });
 
   it("keeps English and Ukrainian event-form keys in parity", () => {
-    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "addInvitees", "invitees", "organizer", "presenter", "executor", "yourResponse", "interview", "interviewer", "selectInterviewer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "meetingMode", "offline", "online", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
+    const keys = ["eventForm", "addEventTitle", "editEventTitle", "titleLabel", "type", "project", "selectProject", "completedProjects", "addInvitees", "invitees", "organizer", "presenter", "executor", "yourResponse", "interview", "interviewer", "selectInterviewer", "businessTrip", "allDayEvent", "startDate", "endDate", "startTime", "endTime", "location", "meetingUrl", "meetingMode", "offline", "online", "descriptionLabel", "saveEvent", "saving", "eventSaveFailed", "assignToMe", "absence", "submitAbsenceRequest"] as const;
     for (const key of keys) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
     }
+  });
+
+  it("keeps completed calendar projects selectable in a secondary group", () => {
+    expect(source).toContain("groupCalendarEventProjects");
+    expect(source).toContain('t("completedProjects")');
+    expect(source).not.toContain('disabled={project.status === "completed"}');
   });
 
   it("resolves every dynamic event-detail role label through the Calendar namespace", () => {
@@ -183,6 +189,32 @@ describe("Calendar filter menu", () => {
 
   it("keeps the filter menu labels in English and Ukrainian parity", () => {
     for (const key of ["filters", "show", "resetFilters", "relevantToMe"] as const) {
+      expect(en.Calendar[key]).toBeTruthy();
+      expect(uk.Calendar[key]).toBeTruthy();
+    }
+  });
+});
+
+describe("Calendar actions and time-format settings", () => {
+  it("opens a menu before settings or the existing company-days-off panel", () => {
+    expect(source).toContain("function CalendarActionsMenu");
+    expect(source).toContain('role="menu"');
+    expect(source).toContain('t("settings")');
+    expect(source).toContain('t("companyDaysOff")');
+    expect(source).toContain("select(onOpenSettings)");
+    expect(source).toContain("select(onOpenDaysOff)");
+    expect(source).toContain('drawer?.kind === "days-off"');
+  });
+
+  it("applies one preference to the axis, event cards, and event details", () => {
+    expect(source).toContain("formatCalendarClockTime(hour, 0, timeFormat)");
+    expect(source).toContain("formatCalendarTime(segment.item.startsAt, timeFormat)");
+    expect(source).toContain("formatCalendarDateTime(item.startsAt, locale, timeFormat)");
+    expect(source).toContain("setTimeFormat(next)");
+  });
+
+  it("keeps settings labels in English and Ukrainian parity", () => {
+    for (const key of ["moreActions", "settings", "calendarSettings", "calendarSettingsDescription", "timeFormat", "timeFormat24", "timeFormat12", "saveSettings", "savingSettings", "settingsSaveFailed"] as const) {
       expect(en.Calendar[key]).toBeTruthy();
       expect(uk.Calendar[key]).toBeTruthy();
     }

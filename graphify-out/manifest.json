@@ -255,9 +255,9 @@
     "semantic_hash": "d88e01e136460728887a2895a83610c5"
   },
   "src/app/api/calendar/events/[eventId]/route.ts": {
-    "mtime": 1788372592.0936007,
-    "ast_hash": "43999f31474aa7b567f507c861ffb7c5",
-    "semantic_hash": "43999f31474aa7b567f507c861ffb7c5"
+    "mtime": 1788795250.861732,
+    "ast_hash": "872ff587ab44a37b390aa7d25773b91b",
+    "semantic_hash": "872ff587ab44a37b390aa7d25773b91b"
   },
   "src/app/api/calendar/events/route.ts": {
     "mtime": 1788372592.0936007,
@@ -345,9 +345,9 @@
     "semantic_hash": "767720cd55343b27bfaa1fa51f27b882"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1788516792.474198,
-    "ast_hash": "6468620e6f26ecf518e0da23cc622bcc",
-    "semantic_hash": "6468620e6f26ecf518e0da23cc622bcc"
+    "mtime": 1788797388.4165435,
+    "ast_hash": "428f4738978d65f3c0c8b9cf032ff42e",
+    "semantic_hash": "428f4738978d65f3c0c8b9cf032ff42e"
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
     "mtime": 1785752190.9020236,
@@ -570,9 +570,9 @@
     "semantic_hash": "63dc15e7a717dfeda7c1c2367f2487b1"
   },
   "src/data/queries/calendar.ts": {
-    "mtime": 1788381989.6754866,
-    "ast_hash": "cd9058139f905426b0b9f84f29ae9f7c",
-    "semantic_hash": "cd9058139f905426b0b9f84f29ae9f7c"
+    "mtime": 1788797272.7778718,
+    "ast_hash": "ae5214844c9798333dc45912c7a0ad54",
+    "semantic_hash": "ae5214844c9798333dc45912c7a0ad54"
   },
   "src/data/queries/dashboard.ts": {
     "mtime": 1788438219.1717243,
@@ -645,19 +645,19 @@
     "semantic_hash": "7dfdd23b5b1e1e1db66d5ef986ac2cd9"
   },
   "src/lib/calendar-attendee-update-contract.test.ts": {
-    "mtime": 1788372592.097601,
-    "ast_hash": "a96f6900422728632507ebc1fd3cc1db",
-    "semantic_hash": "a96f6900422728632507ebc1fd3cc1db"
+    "mtime": 1788795251.1857448,
+    "ast_hash": "0bdbb38af416ae3262490d5a9b9a1f2a",
+    "semantic_hash": "0bdbb38af416ae3262490d5a9b9a1f2a"
   },
   "src/lib/calendar-event-form.test.ts": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "c1d88d13d3c237c05580acee92ccfc85",
-    "semantic_hash": "c1d88d13d3c237c05580acee92ccfc85"
+    "mtime": 1788795251.0257385,
+    "ast_hash": "bfe9ef825f9590b27c0ac1b2bf9c8ed1",
+    "semantic_hash": "bfe9ef825f9590b27c0ac1b2bf9c8ed1"
   },
   "src/lib/calendar-event-form.ts": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "15525c0262dfb7b2503596d1eb71088e",
-    "semantic_hash": "15525c0262dfb7b2503596d1eb71088e"
+    "mtime": 1788795250.4897175,
+    "ast_hash": "6519be974836515cd5394e04fdff0884",
+    "semantic_hash": "6519be974836515cd5394e04fdff0884"
   },
   "src/lib/calendar-event-insert.test.ts": {
     "mtime": 1788017668.6310375,
@@ -680,14 +680,14 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "45fb0bfbc1c4328d96039f46c34024c8",
-    "semantic_hash": "45fb0bfbc1c4328d96039f46c34024c8"
+    "mtime": 1788796601.7285862,
+    "ast_hash": "5ac905e97e575b20fde62262396bd457",
+    "semantic_hash": "5ac905e97e575b20fde62262396bd457"
   },
   "src/lib/calendar.ts": {
-    "mtime": 1788372592.097601,
-    "ast_hash": "6bd218974abf8c72290b28e6f2c8798e",
-    "semantic_hash": "6bd218974abf8c72290b28e6f2c8798e"
+    "mtime": 1788797355.5804627,
+    "ast_hash": "d8d1d8892e705c28c5ff8e1b623bef91",
+    "semantic_hash": "d8d1d8892e705c28c5ff8e1b623bef91"
   },
   "src/lib/dashboard-presentation.test.ts": {
     "mtime": 1785752449.20195,
@@ -840,9 +840,9 @@
     "semantic_hash": "cf70f69bc3d30fd23c243b06bb8ee36c"
   },
   "src/lib/validation/calendar.ts": {
-    "mtime": 1788341051.8771598,
-    "ast_hash": "5e2e409e2f0ee3132195862b6f77aaf5",
-    "semantic_hash": "5e2e409e2f0ee3132195862b6f77aaf5"
+    "mtime": 1788796576.1956434,
+    "ast_hash": "c3114b252165e428d34704a4fd801d2b",
+    "semantic_hash": "c3114b252165e428d34704a4fd801d2b"
   },
   "src/lib/validation/employee-invitation.test.ts": {
     "mtime": 1785715087.6042728,
@@ -905,12 +905,12 @@
     "semantic_hash": "f45c9926af659008ea4529f821acb83d"
   },
   "src/types/calendar.ts": {
-    "mtime": 1788341051.8771598,
-    "ast_hash": "c863d47d9c95529db277e58494ed37ae",
-    "semantic_hash": "c863d47d9c95529db277e58494ed37ae"
+    "mtime": 1788796575.8716302,
+    "ast_hash": "4c2ba5d9257f228edc76308fae96191e",
+    "semantic_hash": "4c2ba5d9257f228edc76308fae96191e"
   },
   "src/types/database.types.ts": {
-    "mtime": 1788641764.5470557,
+    "mtime": 1788797272.0898454,
     "ast_hash": "08381fb3fb6e19bc77d50f7e5b04cb90",
     "semantic_hash": "08381fb3fb6e19bc77d50f7e5b04cb90"
   },
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788643317.0181417,
-    "ast_hash": "fa178c76c0264e6d8621ce9b16f74e3f",
-    "semantic_hash": "fa178c76c0264e6d8621ce9b16f74e3f"
+    "mtime": 1788796982.0770116,
+    "ast_hash": "6a83253c16fa824728a0e7af53b7ca5a",
+    "semantic_hash": "6a83253c16fa824728a0e7af53b7ca5a"
   },
   "messages/uk.json": {
-    "mtime": 1788643317.1701443,
-    "ast_hash": "9fe8d45d35520691f248e6aa6ec864c0",
-    "semantic_hash": "9fe8d45d35520691f248e6aa6ec864c0"
+    "mtime": 1788796981.9090042,
+    "ast_hash": "3cdd8b8afef4ba3f10ff24d23fac2c69",
+    "semantic_hash": "3cdd8b8afef4ba3f10ff24d23fac2c69"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -1530,9 +1530,9 @@
     "semantic_hash": "c0ecb23a6d2efecdc8b55aff83b57e01"
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1788516885.1115763,
-    "ast_hash": "db1c2d34a1ed15aed505b2f8d26598fe",
-    "semantic_hash": "db1c2d34a1ed15aed505b2f8d26598fe"
+    "mtime": 1788797297.4708395,
+    "ast_hash": "3935d7e5849a4ca31f478571d3959560",
+    "semantic_hash": "3935d7e5849a4ca31f478571d3959560"
   },
   "src/lib/professional-roles.test.ts": {
     "mtime": 1785761371.9473782,
@@ -3480,14 +3480,14 @@
     "semantic_hash": "45bf5d017d593c5407e6ceca0f610427"
   },
   "src/lib/calendar-event-types.test.ts": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "ba353fd44b48fc7c85b6199e5d4e7ecc",
-    "semantic_hash": "ba353fd44b48fc7c85b6199e5d4e7ecc"
+    "mtime": 1788735028.0338829,
+    "ast_hash": "b893f957c8521d48e55d95f60f4b7443",
+    "semantic_hash": "b893f957c8521d48e55d95f60f4b7443"
   },
   "src/lib/calendar-event-types.ts": {
-    "mtime": 1788341051.8731596,
-    "ast_hash": "cb110a8d4e711d7fb20c4096e571d402",
-    "semantic_hash": "cb110a8d4e711d7fb20c4096e571d402"
+    "mtime": 1788735027.8858771,
+    "ast_hash": "66c532079df00aa40c54fccf435db5bd",
+    "semantic_hash": "66c532079df00aa40c54fccf435db5bd"
   },
   "supabase/migrations/20260830170000_calendar_event_semantic_types.sql": {
     "mtime": 1788341051.8771598,
@@ -3745,9 +3745,9 @@
     "semantic_hash": "f7f0f397c7831e42f4fb71a88c98ce57"
   },
   "src/components/submissions/submissions-workspace.test.ts": {
-    "mtime": 1788643373.058563,
-    "ast_hash": "15af02401ce2b2639c07c69263ca251c",
-    "semantic_hash": "15af02401ce2b2639c07c69263ca251c"
+    "mtime": 1788643537.7978652,
+    "ast_hash": "7a38b06b57973377745ace5e0192c1e7",
+    "semantic_hash": "7a38b06b57973377745ace5e0192c1e7"
   },
   "src/components/submissions/submissions-workspace.tsx": {
     "mtime": 1788643123.9553735,
@@ -4135,13 +4135,53 @@
     "semantic_hash": "be304831d23b7a2d7f4bc98661820a5a"
   },
   "src/components/office/assignments-workspace.test.ts": {
-    "mtime": 1788643373.3025672,
-    "ast_hash": "d08ed8592fb5b0c41c2adbabe89d54c3",
-    "semantic_hash": "d08ed8592fb5b0c41c2adbabe89d54c3"
+    "mtime": 1788643537.9178674,
+    "ast_hash": "80bbba6fd0707dc0c5d6d206adca15b8",
+    "semantic_hash": "80bbba6fd0707dc0c5d6d206adca15b8"
   },
   "src/components/office/office-list-patterns.ts": {
     "mtime": 1788643123.8233712,
     "ast_hash": "b07e5b0b03d616b5e65f264406a414df",
     "semantic_hash": "b07e5b0b03d616b5e65f264406a414df"
+  },
+  "src/lib/calendar-completed-projects-migration.test.ts": {
+    "mtime": 1788793817.7174847,
+    "ast_hash": "02610614d7c3090212b967df08602707",
+    "semantic_hash": "02610614d7c3090212b967df08602707"
+  },
+  "supabase/migrations/20260907150717_allow_completed_projects_for_calendar_events.sql": {
+    "mtime": 1788793817.5334775,
+    "ast_hash": "c98a98d79287f679539f48afc14908dd",
+    "semantic_hash": "c98a98d79287f679539f48afc14908dd"
+  },
+  "supabase/tests/calendar_completed_projects.test.sql": {
+    "mtime": 1788794116.2967129,
+    "ast_hash": "ec01311b707f58cddaa11bd38152e9d8",
+    "semantic_hash": "ec01311b707f58cddaa11bd38152e9d8"
+  },
+  "src/lib/calendar-general-self-invite-migration.test.ts": {
+    "mtime": 1788795251.5617595,
+    "ast_hash": "eb59ccbc9240332e55672e66e7bab591",
+    "semantic_hash": "eb59ccbc9240332e55672e66e7bab591"
+  },
+  "supabase/migrations/20260907153151_allow_general_event_organizer_invitation.sql": {
+    "mtime": 1788795251.4377546,
+    "ast_hash": "6831e18bb7250f294a12500b5fc6a014",
+    "semantic_hash": "6831e18bb7250f294a12500b5fc6a014"
+  },
+  "supabase/tests/calendar_general_self_invite.test.sql": {
+    "mtime": 1788795273.4624007,
+    "ast_hash": "560fc12e183a8c49eeb8a33aa0d4d1dc",
+    "semantic_hash": "560fc12e183a8c49eeb8a33aa0d4d1dc"
+  },
+  "src/app/api/calendar/settings/route.test.ts": {
+    "mtime": 1788797355.7364693,
+    "ast_hash": "e85824db47f1cb43d7bd13762023f14b",
+    "semantic_hash": "e85824db47f1cb43d7bd13762023f14b"
+  },
+  "src/app/api/calendar/settings/route.ts": {
+    "mtime": 1788797272.9058769,
+    "ast_hash": "768441cd6ffa7e471073b34d3feb082e",
+    "semantic_hash": "768441cd6ffa7e471073b34d3feb082e"
   }
 }

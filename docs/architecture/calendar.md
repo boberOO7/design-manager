@@ -23,6 +23,9 @@ own canonical sources.
 Views are Month, Week, and Agenda. Task deadlines are hidden by default in dense
 views. Timed values are absolute `timestamptz` displayed in `Europe/Kyiv`;
 project/task deadlines and full-day time off preserve date-only semantics.
+The authenticated user's calendar time-format preference is stored in Supabase
+Auth user metadata and normalized to 24-hour time when absent or invalid. It is
+presentation-only and does not alter stored timestamps or Kyiv timezone rules.
 
 ## Semantic event types
 
@@ -33,12 +36,14 @@ participants, destination, meeting mode, recurrence, or linked day off.
 
 Invariants:
 
-- New project events are limited to planned, active, or paused projects.
-- Completed projects must be reopened before a new event is added. Existing
-  historical events remain readable and cancellable.
+- New project events may use planned, active, paused, or completed projects.
+- Completed projects remain available for follow-up calendar work such as site
+  visits, while appearing after current projects in the event picker.
 - Archived projects cannot receive events.
 - Event creation with invitations is atomic. Specialized participant/assignee
   updates use guarded database operations.
+- A general event may include its organizer as an invitee; other event types
+  retain their organizer-specific role and invitation restrictions.
 - Recurrence preserves a root series and occurrence identity; update/cancel
   behavior must keep Google mappings and reconciliation rooted consistently.
 

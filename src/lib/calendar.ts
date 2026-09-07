@@ -1,4 +1,4 @@
-import type { CalendarEventType, CalendarFilters, CalendarItem, CalendarView, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
+import type { CalendarEventType, CalendarFilters, CalendarItem, CalendarTimeFormat, CalendarView, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
 
 export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
   events: true,
@@ -17,6 +17,10 @@ export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
 export const APPLICATION_TIME_ZONE = "Europe/Kyiv";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function normalizeCalendarTimeFormat(value: unknown): CalendarTimeFormat {
+  return value === "12h" ? "12h" : "24h";
+}
 
 export function parseDateOnly(value: string): Date {
   if (!DATE_ONLY.test(value)) throw new Error("Invalid date-only value");
@@ -48,12 +52,27 @@ export function instantToDateOnly(value: string): string {
   return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
-export function formatCalendarTime(value: string, locale = "en"): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, hour: "numeric", minute: "2-digit" }).format(new Date(value));
+export function formatCalendarClockTime(hour: number, minute: number, timeFormat: CalendarTimeFormat = "24h"): string {
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) throw new Error("Invalid calendar clock time");
+  if (timeFormat === "24h") return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const period = hour < 12 ? "AM" : "PM";
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
-export function formatCalendarDateTime(value: string, locale = "en"): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+export function formatCalendarTime(value: string, timeFormat: CalendarTimeFormat = "24h"): string {
+  const parts = zonedParts(new Date(value));
+  return formatCalendarClockTime(parts.hour, parts.minute, timeFormat);
+}
+
+export function formatCalendarWallTime(value: string, timeFormat: CalendarTimeFormat = "24h"): string {
+  const match = /^(\d{2}):(\d{2})/.exec(value);
+  if (!match) throw new Error("Invalid calendar wall time");
+  return formatCalendarClockTime(Number(match[1]), Number(match[2]), timeFormat);
+}
+
+export function formatCalendarDateTime(value: string, locale = "en", timeFormat: CalendarTimeFormat = "24h"): string {
+  const date = new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return `${date}, ${formatCalendarTime(value, timeFormat)}`;
 }
 
 export function instantToWallInput(value: string): string {

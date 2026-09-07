@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems,
+  DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems, formatCalendarClockTime, formatCalendarDateTime, formatCalendarTime, formatCalendarWallTime,
   filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
   isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
-  MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
+  MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
 } from "./calendar";
 import type { CalendarItem } from "@/types/calendar";
 
@@ -58,6 +58,17 @@ function timedAbsence(id: string, startDate: string, startTime: string, endTime:
 const rawPartialTimeOff = { id: "medical-appointment", userId: "u2", employeeName: "Vasilios Genshin", startDate: "2026-08-12", endDate: "2026-08-12", startTime: "09:00:00", endTime: "12:00:00", allDay: false };
 
 describe("Calendar dates and views", () => {
+  it("formats every calendar time source with an explicit 24-hour or 12-hour preference", () => {
+    expect(normalizeCalendarTimeFormat(undefined)).toBe("24h");
+    expect(normalizeCalendarTimeFormat("12h")).toBe("12h");
+    expect(formatCalendarClockTime(0, 0)).toBe("00:00");
+    expect(formatCalendarClockTime(9, 0, "12h")).toBe("9:00 AM");
+    expect(formatCalendarClockTime(17, 30, "12h")).toBe("5:30 PM");
+    expect(formatCalendarTime("2026-07-28T06:00:00.000Z", "24h")).toBe("09:00");
+    expect(formatCalendarWallTime("17:30", "12h")).toBe("5:30 PM");
+    expect(formatCalendarDateTime("2026-07-28T14:30:00.000Z", "en", "12h")).toContain("5:30 PM");
+  });
+
   it("starts a six-week Month grid on Monday and includes adjacent dates", () => {
     const grid = getMonthGrid("2026-08-15");
     expect(grid).toHaveLength(42); expect(grid[0]).toBe("2026-07-27"); expect(grid.at(-1)).toBe("2026-09-06");

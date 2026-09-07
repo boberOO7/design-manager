@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { getTimeOffRequestPresentation } from "./time-off-labels";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
@@ -20,6 +20,33 @@ const baseValues: CalendarEventFormValues = {
   meetingMode: "offline",
   description: "",
 };
+
+describe("Calendar event project options", () => {
+  it("keeps current projects first and completed projects selectable in a secondary group", () => {
+    const project = (id: string, status: "planned" | "active" | "paused" | "completed" | "archived") => ({ id, name: id, project_code: id.toUpperCase(), client_name: null, status, city: null, country_code: "UA" });
+    const groups = groupCalendarEventProjects([
+      project("active", "active"),
+      project("completed", "completed"),
+      project("planned", "planned"),
+      project("archived", "archived"),
+    ]);
+
+    expect(groups.current.map(({ id }) => id)).toEqual(["active", "planned"]);
+    expect(groups.completed.map(({ id }) => id)).toEqual(["completed"]);
+  });
+});
+
+describe("Calendar event invitee eligibility", () => {
+  it("allows the organizer to participate in a generic event", () => {
+    expect(isCalendarEventInviteeSelectable("general", "current-user", "current-user")).toBe(true);
+  });
+
+  it("preserves organizer exclusion for other invitation-based event types", () => {
+    expect(isCalendarEventInviteeSelectable("meeting", "current-user", "current-user")).toBe(false);
+    expect(isCalendarEventInviteeSelectable("internal_review", "current-user", "current-user")).toBe(false);
+    expect(isCalendarEventInviteeSelectable("general", "studio-member", "current-user")).toBe(true);
+  });
+});
 
 describe("Calendar event form time semantics", () => {
   it("moves the linked end date with a changed start date while preserving the end time", () => {

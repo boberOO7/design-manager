@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CALENDAR_EVENT_TYPES, TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
+import { CALENDAR_EVENT_TYPES, CALENDAR_TIME_FORMATS, TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
 import { instantToDateOnly, isValidEventRange, isValidTimeOffRange } from "@/lib/calendar";
 import { getTimeOffRequestPresentation } from "@/lib/time-off-labels";
 
@@ -8,6 +8,10 @@ const optionalUrl = z.string().trim().max(1000).optional().default("").refine((v
 const recurrenceRule = z.object({ frequency: z.enum(["daily", "weekly", "monthly", "yearly"]), interval: z.number().int().min(1).max(99), weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]), endsOn: z.iso.date().nullable().default(null), occurrenceCount: z.number().int().min(1).max(999).nullable().default(null) }).strict().nullable().default(null);
 
 const meetingMode = z.enum(["offline", "online"]).nullable().optional();
+
+export const calendarSettingsSchema = z.object({
+  timeFormat: z.enum(CALENDAR_TIME_FORMATS),
+}).strict();
 
 export const calendarEventSchema = z.object({
   title: z.string().trim().min(1, "Enter an event title.").max(200),
@@ -131,7 +135,7 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
     return { formError: "One or more attendees are not valid for this event.", fieldErrors: { attendeeIds: "Choose active eligible attendees." } };
   }
   if (message.includes("project") || message.includes("Project") || message.includes("Events on completed or archived")) {
-    return { formError: "The selected project is unavailable or cannot receive events.", fieldErrors: { projectId: "Choose an accessible planned, active, or paused project." } };
+    return { formError: "The selected project is unavailable or cannot receive events.", fieldErrors: { projectId: "Choose an accessible non-archived project." } };
   }
   return { formError: "The event could not be saved. Please try again." };
 }
