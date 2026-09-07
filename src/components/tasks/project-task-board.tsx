@@ -941,6 +941,7 @@ export function ProjectTaskBoard({
         currentUserId={currentUserId}
         isOpen={isTaskDrawerOpen}
         isProjectReadOnly={isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(selectedTask.stage))}
+        projectStatus={projectStatus}
         members={members}
         onClose={closeTaskDrawer}
         onExited={clearExitedTask}

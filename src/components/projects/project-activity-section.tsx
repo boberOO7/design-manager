@@ -28,7 +28,7 @@ type ActivityTranslations = { statusT: Awaited<ReturnType<typeof getTranslations
 
 function getHeadline(actionType: string, field: string | undefined, entityType: string, taskTitle: string, locale: string, t: Awaited<ReturnType<typeof getTranslations>>) {
   if (entityType === "task") {
-    const action = actionType === "task_created" ? t("createdTask") : field === "status" ? t("changedTaskStatus") : field === "assignee_id" ? locale === "uk" ? "змінив(-ла) виконавця завдання" : "changed the assignee of task" : field === "due_date" ? locale === "uk" ? "змінив(-ла) дедлайн завдання" : "changed the due date of task" : t("updatedTask");
+    const action = actionType === "task_created" ? t("createdTask") : field === "status" ? t("changedTaskStatus") : field === "assignee_id" ? locale === "uk" ? "змінив(-ла) виконавця завдання" : "changed the assignee of task" : field === "due_date" ? locale === "uk" ? "змінив(-ла) дедлайн завдання" : "changed the due date of task" : field === "completed_at" ? locale === "uk" ? "змінив(-ла) дату завершення завдання" : "changed the completion date of task" : t("updatedTask");
     return `${action} “${taskTitle}”`;
   }
   const summaryKey = ({ project_archived: "archivedProject", project_restored: "restoredProject", project_member_added: "addedMember", project_member_removed: "removedMember", project_lifecycle_changed: "changedLifecycle" } as Record<string, string>)[actionType] ?? "updatedProject";
@@ -40,7 +40,7 @@ function formatChange(change: ActivityChangeDetails, locale: string, { statusT, 
     if (change.field === "assignee_id") return value === null ? tasksT("unassigned") : typeof value === "string" ? memberName(value) : t("unknownMember");
     if (change.field === "status" && typeof value === "string") return statusT(value === "in_progress" ? "inProgress" : value);
     if (change.field === "priority" && typeof value === "string") return priorityT(value);
-    if (change.field === "due_date" && typeof value === "string") return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(new Date(`${value}T00:00:00`));
+    if ((change.field === "due_date" || change.field === "completed_at") && typeof value === "string") return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T00:00:00`));
     if (value === null) return t("noDate");
     if (typeof value === "boolean") return value ? t("active") : t("inactive");
     if (typeof value === "string" && isUuid(value)) return memberName(value);

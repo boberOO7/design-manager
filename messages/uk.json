@@ -475,6 +475,7 @@
     "taskInformation": "Інформація про завдання",
     "createdBy": "Створив(-ла)",
     "created": "Створено",
+    "completionDate": "Дата завершення",
     "unknown": "Невідомо",
     "project": "Проєкт",
     "progressWeight": "Вага прогресу",

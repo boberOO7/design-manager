@@ -33,6 +33,10 @@ rows without `voided_at`.
 
 - A qualifying completion transition creates an attribution row from a stable
   snapshot.
+- An administrator correction to a completed task's authoritative
+  `tasks.completed_at` date updates the active attribution timestamp in place so
+  period reporting follows the corrected Kyiv calendar date. It does not change
+  contributor, stage, or credited-area snapshots.
 - Reopening voids the active row. Recompletion creates one fresh row and does not
   double count or reserve a stage budget twice.
 - Contributor ID, name, and professional title are snapshots. They are not

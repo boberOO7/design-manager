@@ -54,6 +54,7 @@ function makeFormValues(task: ProjectTask): {
   deadlines: TaskDeadlineInput[];
   completed_area_m2: string;
   progress_weight: string;
+  completed_at: string;
 } {
   return {
     title: task.title,
@@ -65,6 +66,7 @@ function makeFormValues(task: ProjectTask): {
     deadlines: toTaskDeadlineInputs(task.deadlines ?? []),
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
     progress_weight: task.progress_weight.toString(),
+    completed_at: task.completed_at ?? "",
   };
 }
 
@@ -79,6 +81,7 @@ export function TaskDetailsDrawer({
   onTaskDeleted,
   onTaskUpdated,
   onProjectStatusUpdated,
+  projectStatus,
   stageColumns,
   task,
   templates = [],
@@ -93,6 +96,7 @@ export function TaskDetailsDrawer({
   onTaskDeleted?: (taskId: string) => void;
   onTaskUpdated: (task: ProjectTask) => void;
   onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
+  projectStatus?: ProjectLifecycleStatus;
   stageColumns?: ProjectStageColumns;
   task: ProjectTask;
   templates?: StudioChecklistTemplate[];
@@ -136,7 +140,9 @@ export function TaskDetailsDrawer({
   const selectedChecklistTemplate = templates.find((template) => template.id === selectedChecklistTemplateId);
   const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
 
-  const canEdit = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
+  const canEditTaskFields = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
+  const canEditCompletionDate = canManageTasks && task.status === "completed" && projectStatus !== "archived";
+  const canEdit = canEditTaskFields || canEditCompletionDate;
   const canUpdateStatus = !isProjectReadOnly
     && (canManageTasks || task.assignee_id === currentUserId);
   const canEditWork = canEditTaskWork({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, status: task.status });
@@ -210,10 +216,12 @@ export function TaskDetailsDrawer({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
+      const response = await fetch(canEditTaskFields ? `/api/tasks/${encodeURIComponent(task.id)}` : `/api/tasks/${encodeURIComponent(task.id)}/completion-date`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, deadlines: toTaskDeadlineInputs(values.deadlines) }),
+        body: JSON.stringify(canEditTaskFields
+          ? { ...values, deadlines: toTaskDeadlineInputs(values.deadlines) }
+          : { completed_at: values.completed_at }),
       });
       let result: unknown = null;
       try {
@@ -390,6 +398,15 @@ export function TaskDetailsDrawer({
           {formError ? <p role="alert" className="mb-3 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{formError}</p> : null}
           {isEditing ? (
             <div className="space-y-5">
+              {!canEditTaskFields ? <section aria-labelledby="task-edit-completion-date">
+                <h3 id="task-edit-completion-date" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
+                <div className="mt-2">
+                  <FormField label={t("completionDate")} error={fieldErrors.completed_at ? validation("correctFields") : undefined}>
+                    <Input autoComplete="off" type="date" value={values.completed_at} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_at: event.target.value })} />
+                  </FormField>
+                </div>
+              </section> : null}
+              {canEditTaskFields ? <>
               <section aria-labelledby="task-edit-main-information">
                 <h3 id="task-edit-main-information" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
                 <div className="mt-2 space-y-3">
@@ -423,6 +440,9 @@ export function TaskDetailsDrawer({
                       {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
                     </Select>
                   </FormField>
+                  {canManageTasks && task.status === "completed" ? <FormField label={t("completionDate")} error={fieldErrors.completed_at ? validation("correctFields") : undefined}>
+                    <Input autoComplete="off" type="date" value={values.completed_at} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_at: event.target.value })} />
+                  </FormField> : null}
                 </div>
                 <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
@@ -454,6 +474,7 @@ export function TaskDetailsDrawer({
                 {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemEditorRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
                 {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-2 grid gap-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("newItem")}<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("weight")}<Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={isSaving || isApplyingChecklistTemplate || !newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> {checklistT("add")}</Button></form> : null}
               </section>
+              </> : null}
             </div>
           ) : (
             <div className="space-y-6">
@@ -484,6 +505,7 @@ export function TaskDetailsDrawer({
                   <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} status={task.status} statusLabel={statusLabel} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.created_at, locale)}</dd></div>
+                  {canManageTasks && task.status === "completed" && task.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.completed_at, locale)}</dd></div> : null}
                 </dl>
               </section>
               {!canManageTasks && canUpdateStatus ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">

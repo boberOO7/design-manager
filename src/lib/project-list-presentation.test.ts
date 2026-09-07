@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectProgressLabel, type ProjectListFilters } from "./project-list-presentation";
+import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
 import type { ProjectTaskForProgress } from "./project-progress";
 
 const today = "2026-07-29";
@@ -26,7 +26,7 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, operational).map((item) => item.id)).toEqual(["late", "risk", "soon", "same-a", "same-b", "track"]);
   });
 
-  it("always places paused projects after current work while preserving each selected sort within its group", () => {
+  it("sorts filtered projects globally by name while keeping paused projects last for operational sorts", () => {
     const items = getPresentedProjects([
       project({ id: "active-z", name: "Zeta", due_date: "2026-08-10" }),
       project({ id: "paused-a", name: "Alpha", status: "paused", due_date: "2026-07-01" }),
@@ -34,7 +34,7 @@ describe("project list presentation", () => {
       project({ id: "paused-z", name: "Zeta", status: "paused", due_date: "2026-07-02" }),
     ], today);
 
-    expect(filterAndSortProjects(items, { ...operational, sort: "name" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "name" }).map((item) => item.id)).toEqual(["paused-a", "active-a", "active-z", "paused-z"]);
     expect(filterAndSortProjects(items, { ...operational, sort: "deadline" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
   });
 
@@ -48,6 +48,19 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, { ...operational, priority: "low" }).map((item) => item.id)).toEqual(["paused"]);
   });
 
+  it("defaults to active projects and alphabetizes after combining filters", () => {
+    const items = getPresentedProjects([
+      project({ id: "active-z", name: "Zeta", priority: "urgent", tasks: [{ id: "z-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
+      project({ id: "planned", name: "Beta", status: "planned", priority: "urgent" }),
+      project({ id: "active-a", name: "Alpha", priority: "urgent", tasks: [{ id: "a-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
+      project({ id: "paused", name: "Delta", status: "paused", priority: "low" }),
+    ], today);
+
+    expect(filterAndSortProjects(items, getProjectListFilters({})).map((item) => item.id)).toEqual(["active-a", "active-z"]);
+    expect(filterAndSortProjects(items, getProjectListFilters({ lifecycle: "all" })).map((item) => item.id)).toEqual(["active-a", "planned", "paused", "active-z"]);
+    expect(filterAndSortProjects(items, getProjectListFilters({ health: "needs_attention", priority: "urgent" })).map((item) => item.id)).toEqual(["active-a", "active-z"]);
+  });
+
   it("uses truthful no-task and stage-weighted progress labels, and keeps project deep links", () => {
     const [emptyProject, activeProject] = getPresentedProjects([project(), project({ id: "progress", tasks: [{ id: "done", status: "completed", priority: "normal", due_date: null, assignee_id: null, stage: "stage_1" }, { id: "open", status: "todo", priority: "normal", due_date: null, assignee_id: null, stage: "stage_1" }] })], today);
     expect(getProjectProgressLabel(emptyProject.progress)).toBe("No tasks yet");
@@ -57,12 +70,14 @@ describe("project list presentation", () => {
   });
 
   it("uses valid URL-backed filter defaults", () => {
+    expect(getProjectListFilters({})).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
     expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" });
-    expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual({ ...operational, sort: "name" });
+    expect(getProjectListFilters({ lifecycle: "all" })).toEqual({ ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "all" });
+    expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
   });
 
   it("selects a resettable localized empty state when filters return no projects", () => {
     expect(getProjectListEmptyState({ ...operational, health: "overdue" })).toEqual({ titleKey: "emptyFiltered", canReset: true });
-    expect(getProjectListEmptyState({ ...operational, lifecycle: "active" })).toEqual({ titleKey: "emptyFilteredActive", canReset: true });
+    expect(getProjectListEmptyState(PROJECT_LIST_DEFAULT_FILTERS)).toEqual({ titleKey: "emptyFilteredActive", canReset: false });
   });
 });

@@ -4,13 +4,14 @@ import { TASK_STAGES } from "@/lib/task-stages";
 import { TASK_MILESTONE_STATUSES } from "@/lib/task-deadlines";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const dateSchema = z.string().refine((value) => {
+  if (!datePattern.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, "Enter a valid date");
 const optionalDateSchema = z.preprocess(
   (value) => value === "" ? undefined : value,
-  z.string().refine((value) => {
-    if (!datePattern.test(value)) return false;
-    const date = new Date(`${value}T00:00:00.000Z`);
-    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-  }, "Enter a valid date").optional(),
+  dateSchema.optional(),
 );
 
 const optionalCompletedAreaSchema = z.preprocess(
@@ -94,6 +95,11 @@ export const taskEditSchema = z.object({
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: progressWeightSchema,
   stage: z.enum(TASK_STAGES),
+  completed_at: optionalDateSchema,
+}).strict();
+
+export const taskCompletionDateEditSchema = z.object({
+  completed_at: dateSchema,
 }).strict();
 
 export const taskProductionProgressSchema = z.object({

@@ -2,11 +2,12 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
+import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectTaskById } from "@/data/queries/tasks";
+import { getProjectTaskById, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
-import { taskEditSchema } from "@/lib/validation/task";
+import { taskCompletionDateEditSchema, taskEditSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 export async function updateTaskDetailsMutation(
@@ -49,7 +50,18 @@ export async function updateTaskDetailsMutation(
     };
   }
 
-  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "completed_area_m2" | "progress_weight" | "stage"> = {
+  if (authorization.task.status === "completed" && !parsed.data.completed_at) {
+    return {
+      success: false,
+      formError: "Please correct the highlighted fields.",
+      fieldErrors: { completed_at: "Enter a valid completion date." },
+    };
+  }
+  if (authorization.task.status !== "completed" && parsed.data.completed_at !== undefined) {
+    return { success: false, formError: "Only completed tasks may have a completion date." };
+  }
+
+  const update: Pick<TaskUpdate, "title" | "description" | "assignee_id" | "priority" | "completed_area_m2" | "progress_weight" | "stage" | "completed_at"> = {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     assignee_id: parsed.data.assignee_id,
@@ -57,6 +69,7 @@ export async function updateTaskDetailsMutation(
     completed_area_m2: parsed.data.completed_area_m2 ?? null,
     progress_weight: parsed.data.progress_weight,
     stage: parsed.data.stage,
+    completed_at: authorization.task.status === "completed" ? parsed.data.completed_at : undefined,
   };
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_task_details_with_collaborators", {
@@ -84,4 +97,56 @@ export async function updateTaskDetailsMutation(
     console.error("Unable to load updated task", error);
     return { success: false, formError: "The task was updated, but could not be refreshed. Please refresh the page." };
   }
+}
+
+export async function updateTaskCompletionDateMutation(
+  taskId: string,
+  input: unknown,
+): Promise<TaskEditMutationResult> {
+  const parsed = taskCompletionDateEditSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      formError: "Please correct the highlighted fields.",
+      fieldErrors: { completed_at: "Enter a valid completion date." },
+    };
+  }
+
+  const verification = await Promise.all([
+    getActiveStudioAdmin(),
+    getTaskForStatusUpdate(taskId),
+  ]).catch((error: unknown) => {
+    console.error("Unable to verify task completion date authorization", error);
+    return null;
+  });
+  if (!verification) return { success: false, formError: "The task could not be verified." };
+  const [adminMembership, task] = verification;
+  if (!adminMembership || !task || task.project.studio_id !== adminMembership.studio_id) {
+    return { success: false, formError: "Only active studio administrators can edit task completion dates." };
+  }
+  if (task.project.status === "archived" || task.project.archived_at) {
+    return { success: false, formError: "Archived project tasks are read-only." };
+  }
+  if (task.status !== "completed") {
+    return { success: false, formError: "Only completed tasks may have a completion date." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_task_details_with_collaborators", {
+    p_task_id: task.id,
+    p_task: { completed_at: parsed.data.completed_at },
+  });
+  if (error) {
+    console.error("Unable to update task completion date", error);
+    return { success: false, formError: "The task completion date could not be updated. Please try again." };
+  }
+
+  revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+
+  const updatedTask = await getProjectTaskById(task.id);
+  if (!updatedTask) return { success: false, formError: "The task was updated, but could not be refreshed. Please refresh the page." };
+  return { success: true, task: updatedTask, projectStatus: task.project.status };
 }

@@ -142,6 +142,12 @@ describe("task editing validation", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, deadlines: [{ target_status: "in_progress", due_date: "2026-08-01" }] }).success).toBe(false);
   });
 
+  it("accepts a valid optional completion date and rejects impossible dates", () => {
+    expect(taskEditSchema.parse({ ...validEdit, completed_at: "2025-02-14" }).completed_at).toBe("2025-02-14");
+    expect(taskEditSchema.safeParse({ ...validEdit, completed_at: "2025-02-30" }).success).toBe(false);
+    expect(taskEditSchema.parse({ ...validEdit, completed_at: "" }).completed_at).toBeUndefined();
+  });
+
   it("accepts the status-free, legacy-date-free Task Details PATCH payload", () => {
     const result = taskEditSchema.parse(validEdit);
 

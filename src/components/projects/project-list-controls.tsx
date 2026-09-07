@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
-import { PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, PROJECT_LIST_SORTS, PROJECT_LIST_SORT_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
+import { hasActiveProjectListFilters, PROJECT_LIST_DEFAULT_FILTERS, PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, PROJECT_LIST_SORTS, PROJECT_LIST_SORT_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
 
 export function ProjectListControls({ filters }: { filters: ProjectListFilters }) {
   const t = useTranslations("Projects");
@@ -18,10 +18,10 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
     const health = key === "health" ? value : filters.health;
     const priority = key === "priority" ? value : filters.priority;
     const sort = key === "sort" ? value : filters.sort;
-    if (lifecycle !== "all") params.set("lifecycle", lifecycle);
-    if (health !== "all") params.set("health", health);
-    if (priority !== "all") params.set("priority", priority);
-    if (sort !== "name") params.set("sort", sort);
+    if (lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle) params.set("lifecycle", lifecycle);
+    if (health !== PROJECT_LIST_DEFAULT_FILTERS.health) params.set("health", health);
+    if (priority !== PROJECT_LIST_DEFAULT_FILTERS.priority) params.set("priority", priority);
+    if (sort !== PROJECT_LIST_DEFAULT_FILTERS.sort) params.set("sort", sort);
     const query = params.toString();
     router.replace(query ? `/projects?${query}` : "/projects");
   }
@@ -37,7 +37,7 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
       <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
     </div></fieldset>
     <FilterSelect label={t("sortBy")} value={filters.sort} options={PROJECT_LIST_SORTS} getOptionLabel={(option) => t(PROJECT_LIST_SORT_LABEL_KEYS[option])} onChange={(value) => update("sort", value)} />
-    {(filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "name") ? <Button type="button" variant="ghost" onClick={reset}>{t("resetFilters")}</Button> : null}
+    {hasActiveProjectListFilters(filters) ? <Button type="button" variant="ghost" onClick={reset}>{t("resetFilters")}</Button> : null}
   </div>;
 }
 

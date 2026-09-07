@@ -41,6 +41,10 @@ change is valid only when its destination is enabled for that task's stage.
   administrator workflows.
 - Completing productivity-bearing work requires an eligible active project
   member when an assignee is present.
+- Administrators may correct `completed_at` on completed tasks to backfill
+  historical work. The database rejects employee, open-task, null, and future
+  completion-date edits and moves the active productivity attribution timestamp
+  to the same Kyiv calendar date atomically.
 - Status changes revalidate Projects, Dashboard, My Tasks, and Leaderboard;
   deadline or Calendar-facing changes must also refresh their consumers.
 

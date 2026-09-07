@@ -133,6 +133,17 @@ describe("task details drawer contract", () => {
     expect(source).toContain("<Check aria-hidden=\"true\"");
   });
 
+  it("shows the authoritative completion date only to administrators for Done tasks", async () => {
+    const source = await readFile(drawerPath, "utf8");
+
+    expect(source).toContain('canManageTasks && task.status === "completed" ? <FormField label={t("completionDate")}');
+    expect(source).toContain('type="date" value={values.completed_at}');
+    expect(source).toContain('completed_at: task.completed_at ?? ""');
+    expect(source).toContain('canManageTasks && task.status === "completed" && task.completed_at ? <div>');
+    expect(en.Tasks.completionDate).toBe("Completion date");
+    expect(uk.Tasks.completionDate).toBe("Дата завершення");
+  });
+
   it("keeps active deadline rows aligned, grows descriptions, and summarizes collaborators in details", async () => {
     const source = await readFile(drawerPath, "utf8");
     const deadlineSummary = source.slice(source.indexOf("function TaskDeadlineSummary"), source.indexOf("function AutoGrowingTextarea"));

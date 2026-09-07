@@ -475,6 +475,7 @@
     "taskInformation": "Task information",
     "createdBy": "Created by",
     "created": "Created",
+    "completionDate": "Completion date",
     "unknown": "Unknown",
     "project": "Project",
     "progressWeight": "Progress weight",

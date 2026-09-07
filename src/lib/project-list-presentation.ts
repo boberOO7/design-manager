@@ -34,7 +34,7 @@ export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[
   progress: ProjectProgress;
 };
 
-const defaultFilters: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "name" };
+export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { lifecycle: "active", health: "all", priority: "all", sort: "name" };
 const healthOrder: Record<ProjectHealth, number> = { overdue: 0, needs_attention: 1, deadline_soon: 2, on_track: 3, completed: 4 };
 
 function isOneOf<T extends readonly string[]>(value: string | string[] | undefined, options: T): value is T[number] {
@@ -43,10 +43,10 @@ function isOneOf<T extends readonly string[]>(value: string | string[] | undefin
 
 export function getProjectListFilters(searchParams: Record<string, string | string[] | undefined>): ProjectListFilters {
   return {
-    lifecycle: isOneOf(searchParams.lifecycle, PROJECT_LIST_LIFECYCLE_FILTERS) ? searchParams.lifecycle : defaultFilters.lifecycle,
-    health: isOneOf(searchParams.health, PROJECT_LIST_HEALTH_FILTERS) ? searchParams.health : defaultFilters.health,
-    priority: isOneOf(searchParams.priority, PROJECT_LIST_PRIORITY_FILTERS) ? searchParams.priority : defaultFilters.priority,
-    sort: isOneOf(searchParams.sort, PROJECT_LIST_SORTS) ? searchParams.sort : defaultFilters.sort,
+    lifecycle: isOneOf(searchParams.lifecycle, PROJECT_LIST_LIFECYCLE_FILTERS) ? searchParams.lifecycle : PROJECT_LIST_DEFAULT_FILTERS.lifecycle,
+    health: isOneOf(searchParams.health, PROJECT_LIST_HEALTH_FILTERS) ? searchParams.health : PROJECT_LIST_DEFAULT_FILTERS.health,
+    priority: isOneOf(searchParams.priority, PROJECT_LIST_PRIORITY_FILTERS) ? searchParams.priority : PROJECT_LIST_DEFAULT_FILTERS.priority,
+    sort: isOneOf(searchParams.sort, PROJECT_LIST_SORTS) ? searchParams.sort : PROJECT_LIST_DEFAULT_FILTERS.sort,
   };
 }
 
@@ -71,10 +71,10 @@ export function filterAndSortProjects<T extends { name: string; priority: string
   return filtered.map((project, index) => ({ project, index })).sort((left, right) => {
     const first = left.project;
     const second = right.project;
+    if (filters.sort === "name") return first.name.localeCompare(second.name) || left.index - right.index;
     const pauseGroup = Number(first.status === "paused") - Number(second.status === "paused");
     if (pauseGroup !== 0) return pauseGroup;
     if (filters.sort === "deadline") return compareNullableDate(first.due_date, second.due_date) || left.index - right.index;
-    if (filters.sort === "name") return first.name.localeCompare(second.name) || left.index - right.index;
     if (filters.sort === "health") return healthOrder[first.health] - healthOrder[second.health] || first.name.localeCompare(second.name) || left.index - right.index;
     if (filters.sort === "progress") return (second.progress.progressPercent ?? -1) - (first.progress.progressPercent ?? -1) || first.name.localeCompare(second.name) || left.index - right.index;
     return healthOrder[first.health] - healthOrder[second.health]
@@ -85,7 +85,10 @@ export function filterAndSortProjects<T extends { name: string; priority: string
 }
 
 export function hasActiveProjectListFilters(filters: ProjectListFilters): boolean {
-  return filters.lifecycle !== "all" || filters.health !== "all" || filters.priority !== "all" || filters.sort !== "name";
+  return filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle
+    || filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health
+    || filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority
+    || filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort;
 }
 
 export function getProjectListEmptyState(filters: ProjectListFilters): { canReset: boolean; titleKey: "emptyFilteredActive" | "emptyFiltered" } {
