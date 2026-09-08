@@ -17,6 +17,10 @@ describe("leaderboard productivity query", () => {
     expect(source).toContain('select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")');
     expect(source).toContain("excludedProjectIds.has(attribution.project_id)");
     expect(source).toContain("!isProjectProgressStage(attribution.task_stage)");
+    expect(source).toContain("const referenceTime = new Date();");
+    expect(source).toContain("getLeaderboardForPeriod(membership.studio_id, period, 0, referenceTime)");
+    expect(source).toContain("getLeaderboardForPeriod(membership.studio_id, period, -1, referenceTime)");
+    expect(source).not.toContain("filterProductivityAttributionsForPeriod(data.filter");
     expect(source).not.toContain("projects!inner(include_in_productivity)");
   });
 

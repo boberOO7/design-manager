@@ -21,7 +21,7 @@ import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonu
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
-import { filterProductivityAttributionsForPeriod, getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember } from "@/lib/productivity";
+import { getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember } from "@/lib/productivity";
 import { isProjectProgressStage } from "@/lib/project-progress";
 
 export type DataMode = "mock" | "supabase";
@@ -185,8 +185,8 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
   return getEmployeeWorkload();
 }
 
-async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number): Promise<ProductivityLeaderboardEntry[]> {
-  const bounds = getKyivPeriodBounds(period, undefined, periodOffset);
+async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number, referenceTime: Date): Promise<ProductivityLeaderboardEntry[]> {
+  const bounds = getKyivPeriodBounds(period, referenceTime, periodOffset);
   const supabase = await createClient();
   const [{ data: members, error: membersError }, { data: projects, error: projectsError }, { data, error }] = await Promise.all([
     supabase
@@ -224,10 +224,10 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
     avatar_url: profile.avatar_url,
   }));
   return projectProductivityLeaderboard(
-    filterProductivityAttributionsForPeriod(data.filter((attribution) =>
+    data.filter((attribution) =>
       !excludedProjectIds.has(attribution.project_id)
       || (attribution.source_type === "task" && attribution.task_stage !== null && attribution.task_stage !== undefined && !isProjectProgressStage(attribution.task_stage)),
-    ), period),
+    ),
     eligibleMembers,
   );
 }
@@ -238,9 +238,10 @@ export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "mo
   if (!canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })) {
     return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
   }
+  const referenceTime = new Date();
   const [current, previous, bonusConfig] = await Promise.all([
-    getLeaderboardForPeriod(membership.studio_id, period, 0),
-    getLeaderboardForPeriod(membership.studio_id, period, -1),
+    getLeaderboardForPeriod(membership.studio_id, period, 0, referenceTime),
+    getLeaderboardForPeriod(membership.studio_id, period, -1, referenceTime),
     getStudioLeaderboardBonusConfig(membership.studio_id),
   ]);
   return { current, previous, bonusConfig };

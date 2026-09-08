@@ -580,9 +580,9 @@
     "semantic_hash": "a9e235f52e9103297894a52cf6c72a77"
   },
   "src/data/queries/index.ts": {
-    "mtime": 1788523309.2834508,
-    "ast_hash": "ff39b3f9375b53fec7ed40054c7399a5",
-    "semantic_hash": "ff39b3f9375b53fec7ed40054c7399a5"
+    "mtime": 1788856502.4059439,
+    "ast_hash": "3900a33e88d2c9251dffe72ae94f76c5",
+    "semantic_hash": "3900a33e88d2c9251dffe72ae94f76c5"
   },
   "src/data/queries/notifications.ts": {
     "mtime": 1787166325.846092,
@@ -1310,9 +1310,9 @@
     "semantic_hash": "b7a9cbb926266ecdeb45c88a9e48c054"
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1788438594.0866985,
-    "ast_hash": "a564d8aece05394b6ed60d7ec026d963",
-    "semantic_hash": "a564d8aece05394b6ed60d7ec026d963"
+    "mtime": 1788856521.4506688,
+    "ast_hash": "106e48e3b4e7d67231d294edbe516823",
+    "semantic_hash": "106e48e3b4e7d67231d294edbe516823"
   },
   "src/lib/productivity.ts": {
     "mtime": 1788438955.5399473,
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788811093.2260163,
-    "ast_hash": "01856b3130038dae7942d77597cecde0",
-    "semantic_hash": "01856b3130038dae7942d77597cecde0"
+    "mtime": 1788819527.371231,
+    "ast_hash": "f5b79869530c41d0e24a2be75268a610",
+    "semantic_hash": "f5b79869530c41d0e24a2be75268a610"
   },
   "messages/uk.json": {
-    "mtime": 1788811093.3900228,
-    "ast_hash": "a58c15fa65e2117f49aedf8fe42bf14e",
-    "semantic_hash": "a58c15fa65e2117f49aedf8fe42bf14e"
+    "mtime": 1788819569.08463,
+    "ast_hash": "6cf015647b3be194c99f6ab7ebe48cb4",
+    "semantic_hash": "6cf015647b3be194c99f6ab7ebe48cb4"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -3215,9 +3215,9 @@
     "semantic_hash": "ed9d281a80d7419c80409ae512438465"
   },
   "src/data/queries/leaderboard-productivity-query.test.ts": {
-    "mtime": 1788438955.887961,
-    "ast_hash": "0eefaa85f23d4642ca90674819c9aa39",
-    "semantic_hash": "0eefaa85f23d4642ca90674819c9aa39"
+    "mtime": 1788856502.5539496,
+    "ast_hash": "355fe2591f63a76660fda4487716823f",
+    "semantic_hash": "355fe2591f63a76660fda4487716823f"
   },
   "src/app/(app)/leaderboard/page.test.ts": {
     "mtime": 1787839858.8477442,

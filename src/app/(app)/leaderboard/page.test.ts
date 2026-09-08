@@ -24,4 +24,12 @@ describe("leaderboard page access", () => {
     expect(source).toContain("overview.current.find(hasQualifyingProductivity) ?? null");
     expect(source).toContain("overview.current.some(hasQualifyingProductivity)");
   });
+
+  it("keeps the centered leaderboard width stable for populated and empty previous periods", async () => {
+    const source = await readFile(pagePath, "utf8");
+
+    expect(source).toContain('<div className="mx-auto w-full max-w-5xl space-y-5">');
+    expect(source).toContain("{previousLeader ? <div");
+    expect(source).toContain(': <p className="mt-3 text-sm leading-6 text-[var(--ui-text-secondary)]">{t("noPrevious"');
+  });
 });

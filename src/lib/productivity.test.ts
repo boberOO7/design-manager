@@ -107,6 +107,55 @@ describe("monthly productivity projection", () => {
     ]);
   });
 
+  it("ranks an August completion-date correction in September's previous month", () => {
+    const previous = filterProductivityAttributionsForPeriod([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 40, source_type: "task", completed_at: "2026-08-14T21:00:00.000Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 10, source_type: "task", completed_at: "2026-08-31T20:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 100, source_type: "task", completed_at: "2026-07-31T20:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 100, source_type: "task", completed_at: "2026-08-31T21:00:00.000Z" },
+    ], "month", new Date("2026-09-15T12:00:00.000Z"), -1);
+
+    expect(projectProductivityLeaderboard(previous)).toMatchObject([
+      { user_id: "a", completed_area_m2: 50, completed_tasks: 2 },
+    ]);
+  });
+
+  it("ranks only the immediately preceding Kyiv quarter across a year boundary", () => {
+    const previous = filterProductivityAttributionsForPeriod([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 40, source_type: "task", completed_at: "2025-09-30T21:00:00.000Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 10, source_type: "task", completed_at: "2025-12-31T21:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 100, source_type: "task", completed_at: "2025-12-31T22:00:00.000Z" },
+    ], "quarter", new Date("2026-01-15T12:00:00.000Z"), -1);
+
+    expect(projectProductivityLeaderboard(previous)).toMatchObject([
+      { user_id: "a", completed_area_m2: 50, completed_tasks: 2 },
+    ]);
+  });
+
+  it("ranks only the immediately preceding Kyiv year with an exclusive end", () => {
+    const previous = filterProductivityAttributionsForPeriod([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 60, source_type: "task", completed_at: "2024-12-31T22:00:00.000Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 20, source_type: "task", completed_at: "2025-12-31T21:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 100, source_type: "task", completed_at: "2025-12-31T22:00:00.000Z" },
+    ], "year", new Date("2026-06-15T12:00:00.000Z"), -1);
+
+    expect(projectProductivityLeaderboard(previous)).toMatchObject([
+      { user_id: "a", completed_area_m2: 80, completed_tasks: 2 },
+    ]);
+  });
+
+  it("keeps the previous-period leader empty when no ledger row qualifies", () => {
+    const previous = filterProductivityAttributionsForPeriod([
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 40, source_type: "task", completed_at: "2026-09-01T10:00:00.000Z" },
+    ], "month", new Date("2026-09-15T12:00:00.000Z"), -1);
+    const entries = projectProductivityLeaderboard(previous, [
+      { user_id: "a", full_name: "Ari", job_title: "Architect" },
+    ]);
+
+    expect(entries).toMatchObject([{ user_id: "a", completed_area_m2: 0, completed_tasks: 0 }]);
+    expect(entries.find(hasQualifyingProductivity)).toBeUndefined();
+  });
+
   it("credits a 500 m² fallback project to both genuine architect and designer contributors", () => {
     const contributors = [
       { userId: "architect", role: "Architect" },

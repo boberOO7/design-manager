@@ -1110,7 +1110,7 @@
     "loginRequired": "You must be logged in to view the leaderboard.",
     "productivity": "Productivity",
     "loadDescription": "Completed work for the studio team.",
-    "description": "{period} completed work in Europe/Kyiv. Bonus eligibility applies to monthly rankings only.",
+    "description": "{period} completed work",
     "loadFailed": "Productivity could not be loaded. Please refresh and try again.",
     "month": "Month",
     "quarter": "Quarter",
