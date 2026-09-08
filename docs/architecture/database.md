@@ -32,6 +32,7 @@ Use this map instead of duplicating their fields here.
 | Calendar | `calendar_events`, `calendar_event_invites`, `calendar_event_participants`, `calendar_event_attendees`, `time_off_requests`, `time_off_request_approvals`, `studio_days_off` |
 | Google projection | `google_calendar_connections`, `google_calendar_server_credentials`, `google_calendar_event_mappings`, `google_calendar_reconciliation_jobs` |
 | Contractors | `contractors`, `contractor_categories`, `contractor_subcategories` |
+| CRM | `crm_leads`, `crm_candidates`, `crm_recruiting_cycles` |
 | Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments` |
 | Delivery | `notifications` |
 

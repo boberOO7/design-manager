@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getNavigationItems, isNavigationItemActive } from "./navigation";
 
 describe("application navigation", () => {
-  it("hides administration and archive from employees", () => {
+  it("hides administration, archive, and CRM from employees", () => {
     const items = getNavigationItems("employee");
     expect(items.some((item) => item.href === "/admin")).toBe(false);
     expect(items.some((item) => item.href === "/archive")).toBe(false);
+    expect(items.some((item) => item.href === "/crm")).toBe(false);
     expect(items.some((item) => item.href === "/leaderboard")).toBe(false);
   });
 
@@ -19,10 +20,11 @@ describe("application navigation", () => {
     expect(getNavigationItems("admin").some((item) => item.href === "/office")).toBe(true);
   });
 
-  it("shows administration and archive to administrators", () => {
+  it("shows administration, archive, and CRM to administrators", () => {
     const items = getNavigationItems("admin");
     expect(items.some((item) => item.href === "/admin")).toBe(true);
     expect(items.some((item) => item.href === "/archive")).toBe(true);
+    expect(items.some((item) => item.href === "/crm")).toBe(true);
     expect(items.some((item) => item.href === "/leaderboard")).toBe(true);
   });
 

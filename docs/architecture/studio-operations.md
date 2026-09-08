@@ -1,6 +1,6 @@
 # Studio operations
 
-This domain covers non-project studio work: Team, Administration, Contractors,
+This domain covers non-project studio work: Team, Administration, CRM, Contractors,
 Office, and in-app notifications. These records do not contribute to project
 progress or productivity unless a separate domain explicitly says so.
 
@@ -37,6 +37,23 @@ Invariants:
 Canonical paths: `src/app/(app)/contractors/`,
 `src/data/queries/contractors.ts`, `src/components/contractors/`, and contractor
 migrations/tests.
+
+## CRM
+
+- CRM is admin-only and scoped to the administrator's active studio at both the
+  route/server-action layer and the database RLS boundary.
+- Leads retain an explicit first-contact date independently from status and
+  follow-up changes.
+- Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
+  lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
+  preserves prior interview notes, test results, and outcomes.
+- At most one recruiting cycle per candidate may be active (without a final
+  outcome). Final outcomes are Hired, Reserve, and Rejected.
+- Candidate-to-member and lead-to-project conversion are intentionally manual in
+  this foundation.
+
+Canonical paths: `src/app/(app)/crm/`, `src/data/queries/crm.ts`,
+`src/components/crm/`, CRM migrations, and `supabase/tests/crm_rls.test.sql`.
 
 ## Office
 

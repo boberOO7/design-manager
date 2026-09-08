@@ -5,6 +5,20 @@
     "unknown": "Невідомо",
     "loading": "Завантаження…"
   },
+  "Crm": {
+    "sectionNavigation": "Розділи CRM", "search": "Пошук", "statusFilter": "Фільтр за статусом", "positionFilter": "Фільтр за посадою", "save": "Зберегти", "saveContact": "Зберегти контакт", "saveCycle": "Зберегти цикл найму", "saving": "Збереження…", "close": "Закрити", "delete": "Видалити", "deleting": "Видалення…", "openProfile": "Відкрити портфоліо або CV",
+    "deleteLeadConfirm": "Видалити лід «{name}»? Цю дію не можна скасувати.", "deleteCandidateConfirm": "Видалити кандидата «{name}» та всю історію найму? Цю дію не можна скасувати.",
+    "leads": { "metadata": "CRM — Ліди", "title": "Ліди", "description": "Потенційні клієнти й проєкти до початку роботи в StudioFlow.", "searchPlaceholder": "Пошук контактів, компаній або запитів", "add": "Додати лід", "formDescription": "Зберігайте перший контакт і комерційний контекст разом.", "emptyTitle": "Лідів ще немає", "emptyDescription": "Додайте першого потенційного клієнта або проєкт.", "columns": { "contact": "Контакт", "request": "Запит", "status": "Статус", "responsible": "Відповідальний", "followUp": "Наступний контакт" } },
+    "candidates": { "metadata": "CRM — Кандидати", "title": "Кандидати", "description": "Контакти кандидатів зі сталою історією всіх циклів найму.", "searchPlaceholder": "Пошук кандидатів, контактів або посад", "add": "Додати кандидата", "createDescription": "Створіть контакт і перший цикл найму.", "detailDescription": "Оновлюйте контактні дані та зберігайте кожен цикл найму окремо.", "contactSection": "Профіль кандидата", "currentCycle": "Поточний цикл найму", "latestCycle": "Останній цикл найму", "history": "Попередня історія найму", "cycleStarted": "Початок: {date}", "startCycle": "Почати новий цикл", "startCycleDescription": "Завершений цикл залишиться в історії.", "emptyTitle": "Кандидатів ще немає", "emptyDescription": "Додайте перший контакт кандидата.", "columns": { "name": "Кандидат", "position": "Посада", "stage": "Етап / результат", "responsible": "Відповідальний", "nextContact": "Наступний контакт" } },
+    "fields": { "clientName": "Клієнт / контактна особа", "company": "Компанія", "email": "Електронна пошта", "phone": "Телефон", "source": "Джерело", "projectType": "Очікуваний тип проєкту", "city": "Місто", "country": "Країна", "area": "Орієнтовна площа (м²)", "budget": "Бюджет / діапазон", "firstContact": "Дата першого контакту", "nextContact": "Дата наступного контакту", "responsible": "Відповідальний адміністратор", "status": "Статус", "request": "Опис проєкту / запиту", "notes": "Внутрішні нотатки", "fullName": "Повне ім’я", "position": "Цільова посада", "profileLink": "Портфоліо / CV / профіль", "stage": "Етап найму", "outcome": "Остаточний результат", "interviewDate": "Дата й час співбесіди", "interviewNotes": "Перше враження / нотатки співбесіди", "testResult": "Результат тестового завдання", "decisionNotes": "Нотатки щодо рішення" },
+    "filters": { "all": "Усі статуси", "active": "Активні / у процесі", "reserve": "Резерв", "hired": "Найняті", "rejected": "Відхилені", "allPositions": "Усі посади" },
+    "leadStatus": { "new": "Новий", "contacted": "Контакт встановлено", "discussion": "Обговорення", "proposal": "Пропозиція", "won": "Успішний", "lost": "Втрачений" },
+    "candidateStage": { "new": "Новий", "interview_scheduled": "Співбесіду заплановано", "interview_completed": "Співбесіду завершено", "test_task": "Тестове завдання", "decision": "Рішення" },
+    "candidateOutcome": { "hired": "Найнято", "reserve": "Резерв", "rejected": "Відхилено" },
+    "empty": { "filteredTitle": "Збігів не знайдено", "filteredDescription": "Змініть пошук або фільтри та спробуйте ще раз." },
+    "validation": { "correctFields": "Виправте виділені поля.", "invalidField": "Введіть коректне значення." },
+    "errors": { "permission": "Керувати CRM можуть лише активні адміністратори студії.", "loadTitle": "Не вдалося завантажити CRM", "loadDescription": "Оновіть сторінку або спробуйте пізніше.", "saveLead": "Не вдалося зберегти лід. Спробуйте ще раз.", "deleteLead": "Не вдалося видалити лід.", "saveCandidate": "Не вдалося зберегти кандидата. Спробуйте ще раз.", "deleteCandidate": "Не вдалося видалити кандидата.", "saveCycle": "Не вдалося зберегти цикл найму. Спробуйте ще раз.", "activeCycle": "Завершіть активний цикл найму, перш ніж починати новий." }
+  },
   "Contractors": {
     "metadata": "Підрядники",
     "title": "Підрядники",
@@ -134,6 +148,7 @@
     "office": "Офіс",
     "team": "Команда",
     "contractors": "Підрядники",
+    "crm": "CRM",
     "leaderboard": "Рейтинг",
     "archive": "Архів",
     "administration": "Адміністрування"

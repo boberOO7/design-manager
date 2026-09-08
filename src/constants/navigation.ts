@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CheckSquare,
   ContactRound,
+  Handshake,
   FolderKanban,
   LayoutGrid,
   Building2,
@@ -22,6 +23,7 @@ export const navigationItems = [
   { href: "/team", label: "Team", messageKey: "team", adminOnly: false },
   { href: "/contractors", label: "Contractors", messageKey: "contractors", adminOnly: false },
   { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
+  { href: "/crm", label: "CRM", messageKey: "crm", adminOnly: true },
   { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: true },
   { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },
 ] as const;
@@ -37,6 +39,7 @@ export const navigationIcons: Record<NavigationItem["href"], LucideIcon> = {
   "/team": Users,
   "/contractors": ContactRound,
   "/leaderboard": Trophy,
+  "/crm": Handshake,
   "/archive": Archive,
   "/admin": ShieldCheck,
 };
