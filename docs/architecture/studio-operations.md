@@ -96,6 +96,9 @@ Invariants:
 
 - `notifications` rows are created through private database helpers/triggers;
   callers do not author arbitrary recipient messages.
+- Producers persist a semantic notification type plus structured metadata for
+  system-generated values. The header translates that copy at render time while
+  preserving user-authored names and text unchanged.
 - The actor is not notified of their own action, and inactive recipients are
   skipped.
 - A recipient may select their own rows and change only `read_at`; notifications

@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import en from "../../messages/en.json";
+import uk from "../../messages/uk.json";
 
 const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const migrationNames = readdirSync(migrationsDirectory).filter((name) => name.endsWith(".sql")).sort();
@@ -84,8 +86,6 @@ describe("time-off stabilization migration contract", () => {
     const client = readFileSync(resolve(process.cwd(), "src/lib/time-off-request-client.ts"), "utf8");
     const calendar = readFileSync(resolve(process.cwd(), "src/components/calendar/calendar-workspace.tsx"), "utf8");
     const administration = readFileSync(resolve(process.cwd(), "src/components/administration/administration-workspace.tsx"), "utf8");
-    const englishMessages = readFileSync(resolve(process.cwd(), "messages/en.json"), "utf8");
-    const ukrainianMessages = readFileSync(resolve(process.cwd(), "messages/uk.json"), "utf8");
     expect(client).toContain("/api/calendar/time-off/${encodeURIComponent(requestId)}");
     expect(calendar).toContain("updateTimeOffRequest(item.id, action, reviewNote)");
     expect(administration).toContain("updateTimeOffRequest(request.id, action, reviewNote)");
@@ -95,8 +95,8 @@ describe("time-off stabilization migration contract", () => {
     expect(administration).toContain('const timeOff = useTranslations("TimeOff")');
     expect(calendar).toContain('catch { setError(timeOff("requestUpdateFailed")); }');
     expect(administration).toContain('caught instanceof Error ? caught.message : timeOff("requestUpdateFailed")');
-    expect(englishMessages).toContain('"requestUpdateFailed":"The request could not be updated. Please try again."');
-    expect(ukrainianMessages).toContain('"requestUpdateFailed":"Не вдалося оновити запит. Спробуйте ще раз."');
+    expect(en.TimeOff.requestUpdateFailed).toBe("The request could not be updated. Please try again.");
+    expect(uk.TimeOff.requestUpdateFailed).toBe("Не вдалося оновити запит. Спробуйте ще раз.");
     expect(administration).toContain("const [reviewNote, setReviewNote]");
     expect(calendar).toContain("router.refresh()");
     expect(administration).toContain("applyAdministrationDecision(current, request)");

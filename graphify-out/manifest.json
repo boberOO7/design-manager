@@ -170,9 +170,9 @@
     "semantic_hash": "ca489344f6721f51dcce6ad9c60af45b"
   },
   "src/app/(app)/leaderboard/page.tsx": {
-    "mtime": 1788516792.6382055,
-    "ast_hash": "a8fd32f48b53e380b2de7c0c3515432c",
-    "semantic_hash": "a8fd32f48b53e380b2de7c0c3515432c"
+    "mtime": 1788857371.7705045,
+    "ast_hash": "e699d5cd7f47e76cb0407ebff8b359cd",
+    "semantic_hash": "e699d5cd7f47e76cb0407ebff8b359cd"
   },
   "src/app/(app)/my-tasks/page.tsx": {
     "mtime": 1786803346.240085,
@@ -375,9 +375,9 @@
     "semantic_hash": "7fb831a60a2754252ccc31b68c87085e"
   },
   "src/components/layout/notification-bell.tsx": {
-    "mtime": 1788530428.7817652,
-    "ast_hash": "38b605ee142cfb5dcbf217407cbb5452",
-    "semantic_hash": "38b605ee142cfb5dcbf217407cbb5452"
+    "mtime": 1788859603.2883368,
+    "ast_hash": "faeaca20743c530b1d1fe403bf108092",
+    "semantic_hash": "faeaca20743c530b1d1fe403bf108092"
   },
   "src/components/projects/add-project-member-form.tsx": {
     "mtime": 1785971918.3075466,
@@ -580,7 +580,7 @@
     "semantic_hash": "a9e235f52e9103297894a52cf6c72a77"
   },
   "src/data/queries/index.ts": {
-    "mtime": 1788856502.4059439,
+    "mtime": 1788857020.3958373,
     "ast_hash": "3900a33e88d2c9251dffe72ae94f76c5",
     "semantic_hash": "3900a33e88d2c9251dffe72ae94f76c5"
   },
@@ -825,9 +825,9 @@
     "semantic_hash": "0ff9d58dfbcffde2191a1a76ce017dac"
   },
   "src/lib/time-off-stabilization-migration.test.ts": {
-    "mtime": 1786977300.2024891,
-    "ast_hash": "b180c945281554550a656c590b5ff3b3",
-    "semantic_hash": "b180c945281554550a656c590b5ff3b3"
+    "mtime": 1788860438.3710134,
+    "ast_hash": "3bd3359520eba4ea8c1857ae4f25423f",
+    "semantic_hash": "3bd3359520eba4ea8c1857ae4f25423f"
   },
   "src/lib/utils.ts": {
     "mtime": 1787854575.6909752,
@@ -1310,7 +1310,7 @@
     "semantic_hash": "b7a9cbb926266ecdeb45c88a9e48c054"
   },
   "src/lib/productivity.test.ts": {
-    "mtime": 1788856521.4506688,
+    "mtime": 1788857020.5198433,
     "ast_hash": "106e48e3b4e7d67231d294edbe516823",
     "semantic_hash": "106e48e3b4e7d67231d294edbe516823"
   },
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788819527.371231,
-    "ast_hash": "f5b79869530c41d0e24a2be75268a610",
-    "semantic_hash": "f5b79869530c41d0e24a2be75268a610"
+    "mtime": 1788859695.43364,
+    "ast_hash": "85424078d2ca0aac48821cb858b00f06",
+    "semantic_hash": "85424078d2ca0aac48821cb858b00f06"
   },
   "messages/uk.json": {
-    "mtime": 1788819569.08463,
-    "ast_hash": "6cf015647b3be194c99f6ab7ebe48cb4",
-    "semantic_hash": "6cf015647b3be194c99f6ab7ebe48cb4"
+    "mtime": 1788859695.5816462,
+    "ast_hash": "d243d737035808dff5aaeb048e8092c0",
+    "semantic_hash": "d243d737035808dff5aaeb048e8092c0"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -3215,14 +3215,14 @@
     "semantic_hash": "ed9d281a80d7419c80409ae512438465"
   },
   "src/data/queries/leaderboard-productivity-query.test.ts": {
-    "mtime": 1788856502.5539496,
+    "mtime": 1788857020.3958373,
     "ast_hash": "355fe2591f63a76660fda4487716823f",
     "semantic_hash": "355fe2591f63a76660fda4487716823f"
   },
   "src/app/(app)/leaderboard/page.test.ts": {
-    "mtime": 1787839858.8477442,
-    "ast_hash": "71b0eeab5ed774e18ec6e8f690f3bd87",
-    "semantic_hash": "71b0eeab5ed774e18ec6e8f690f3bd87"
+    "mtime": 1788857371.89451,
+    "ast_hash": "43c1fd1d826e9bc5f74382bdc18cf13c",
+    "semantic_hash": "43c1fd1d826e9bc5f74382bdc18cf13c"
   },
   "src/components/leaderboard/leaderboard-bonus-menu.contract.test.ts": {
     "mtime": 1787694512.401163,
@@ -4253,5 +4253,25 @@
     "mtime": 1788814633.0285337,
     "ast_hash": "511e285a1538cebb03c1471ceb10ce4c",
     "semantic_hash": "511e285a1538cebb03c1471ceb10ce4c"
+  },
+  "src/lib/notification-localization-migration.test.ts": {
+    "mtime": 1788859956.5170007,
+    "ast_hash": "e89d6d5aa5bd02cf502578ccd10f071a",
+    "semantic_hash": "e89d6d5aa5bd02cf502578ccd10f071a"
+  },
+  "src/lib/notification-presentation.test.ts": {
+    "mtime": 1788860347.29409,
+    "ast_hash": "9f931809a3637bf97751c8bbed5d2cec",
+    "semantic_hash": "9f931809a3637bf97751c8bbed5d2cec"
+  },
+  "src/lib/notification-presentation.ts": {
+    "mtime": 1788860275.8291695,
+    "ast_hash": "24be0e7e6b7a626c9b6f6213444fd968",
+    "semantic_hash": "24be0e7e6b7a626c9b6f6213444fd968"
+  },
+  "supabase/migrations/20260908092224_localize_notification_payloads.sql": {
+    "mtime": 1788859851.1244314,
+    "ast_hash": "8ee6e3a1067a83ec2b0ce98f14fc0a3d",
+    "semantic_hash": "8ee6e3a1067a83ec2b0ce98f14fc0a3d"
   }
 }
