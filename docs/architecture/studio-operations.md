@@ -44,6 +44,11 @@ migrations/tests.
   route/server-action layer and the database RLS boundary.
 - Leads retain an explicit first-contact date independently from status and
   follow-up changes.
+- Lead project type, country, and city selection reuse the canonical Project
+  metadata controls. New leads default to Ukraine; legacy free-text country and
+  budget values remain readable until an administrator replaces them.
+- Lead budgets keep a single combined form input but persist a positive amount
+  and either UAH or USD as separate values for filtering and reporting.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
   lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
   preserves prior interview notes, test results, and outcomes.

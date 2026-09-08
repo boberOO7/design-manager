@@ -558,14 +558,19 @@ export type Database = {
       crm_leads: {
         Row: {
           approximate_area: number | null
+          budget_amount: number | null
+          budget_currency: string | null
           budget_note: string | null
           city: string | null
+          city_geonames_id: number | null
           client_name: string
           company: string | null
           country: string | null
+          country_code: string | null
           created_at: string
           email: string | null
           expected_project_type: string | null
+          expected_project_type_custom: string | null
           first_contact_date: string
           id: string
           internal_notes: string | null
@@ -580,14 +585,19 @@ export type Database = {
         }
         Insert: {
           approximate_area?: number | null
+          budget_amount?: number | null
+          budget_currency?: string | null
           budget_note?: string | null
           city?: string | null
+          city_geonames_id?: number | null
           client_name: string
           company?: string | null
           country?: string | null
+          country_code?: string | null
           created_at?: string
           email?: string | null
           expected_project_type?: string | null
+          expected_project_type_custom?: string | null
           first_contact_date: string
           id?: string
           internal_notes?: string | null
@@ -602,14 +612,19 @@ export type Database = {
         }
         Update: {
           approximate_area?: number | null
+          budget_amount?: number | null
+          budget_currency?: string | null
           budget_note?: string | null
           city?: string | null
+          city_geonames_id?: number | null
           client_name?: string
           company?: string | null
           country?: string | null
+          country_code?: string | null
           created_at?: string
           email?: string | null
           expected_project_type?: string | null
+          expected_project_type_custom?: string | null
           first_contact_date?: string
           id?: string
           internal_notes?: string | null

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isCountryCode } from "@/lib/countries";
+import { PROJECT_TYPE_KEYS } from "@/lib/validation/project";
 
 export const CRM_LEAD_STATUSES = ["new", "contacted", "discussion", "proposal", "won", "lost"] as const;
 export const RECRUITING_STAGES = ["new", "interview_scheduled", "interview_completed", "test_task", "decision"] as const;
@@ -17,11 +19,13 @@ export const crmLeadSchema = z.object({
   phone: optionalText(80),
   source: optionalText(160),
   request_description: optionalText(5000),
-  expected_project_type: optionalText(160),
+  expected_project_type: z.union([z.literal(""), z.enum(PROJECT_TYPE_KEYS)]).optional().default(""),
+  expected_project_type_custom: optionalText(100),
   city: optionalText(160),
-  country: optionalText(160),
+  city_geonames_id: z.union([z.literal(""), z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER)]).optional().default(""),
+  country_code: z.string().trim().refine((value) => value === "__legacy__" || isCountryCode(value)),
   approximate_area: z.union([z.literal(""), z.coerce.number().min(0).max(9999999999)]).optional().default(""),
-  budget_note: optionalText(500),
+  budget: z.string().trim().max(50),
   responsible_admin_id: optionalUuid,
   first_contact_date: z.iso.date(),
   next_contact_date: optionalDate,

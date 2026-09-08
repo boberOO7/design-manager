@@ -38,6 +38,11 @@ Use this map instead of duplicating their fields here.
 
 ## Database boundary patterns
 
+`crm_leads` keeps structured Project-compatible location and type metadata, and
+stores lead budget amount/currency separately. Legacy `country` and
+`budget_note` values remain compatibility fields for records created before the
+structured columns were introduced.
+
 - Every browser-reachable tenant table requires explicit Data API grants and RLS.
   A grant permits an operation category; its policy limits eligible rows.
 - Prefer caller-context table writes when a simple RLS/column-grant boundary is

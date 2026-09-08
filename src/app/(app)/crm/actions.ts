@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
+import { parseCrmBudgetInput } from "@/lib/crm-budget";
 import { createClient } from "@/lib/supabase/server";
 import {
   crmCandidateContactSchema,
@@ -40,6 +41,20 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
   const parsed = crmLeadSchema.safeParse(formValues(formData));
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
+  const budget = value.budget ? parseCrmBudgetInput(value.budget) : null;
+  const needsLegacyRecord = value.country_code === "__legacy__" || (value.budget !== "" && budget === null);
+  const legacyResult = needsLegacyRecord && leadId
+    ? await crm.supabase.from("crm_leads").select("country, country_code, budget_note, budget_amount, budget_currency").eq("id", leadId).eq("studio_id", crm.admin.studio_id).maybeSingle()
+    : null;
+  const legacyLead = legacyResult?.data ?? null;
+  const preservesLegacyCountry = value.country_code === "__legacy__" && Boolean(legacyLead?.country) && legacyLead?.country_code === null;
+  const preservesLegacyBudget = value.budget !== "" && budget === null && legacyLead?.budget_amount === null && legacyLead?.budget_currency === null && value.budget === legacyLead?.budget_note;
+  if (value.country_code === "__legacy__" && !preservesLegacyCountry) {
+    return { error: t("validation.correctFields"), fieldErrors: { country_code: t("validation.invalidField") } };
+  }
+  if (value.budget !== "" && budget === null && !preservesLegacyBudget) {
+    return { error: t("validation.correctFields"), fieldErrors: { budget: t("validation.invalidBudget") } };
+  }
   const record = {
     client_name: value.client_name,
     company: nullable(value.company),
@@ -48,10 +63,15 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     source: nullable(value.source),
     request_description: nullable(value.request_description),
     expected_project_type: nullable(value.expected_project_type),
+    expected_project_type_custom: value.expected_project_type === "other" ? nullable(value.expected_project_type_custom) : null,
     city: nullable(value.city),
-    country: nullable(value.country),
+    city_geonames_id: value.city_geonames_id === "" ? null : value.city_geonames_id,
+    country: preservesLegacyCountry ? legacyLead?.country ?? null : null,
+    country_code: value.country_code === "__legacy__" ? null : value.country_code,
     approximate_area: value.approximate_area === "" ? null : value.approximate_area,
-    budget_note: nullable(value.budget_note),
+    budget_amount: budget?.amount ?? null,
+    budget_currency: budget?.currency ?? null,
+    budget_note: preservesLegacyBudget ? legacyLead?.budget_note ?? null : null,
     responsible_admin_id: nullable(value.responsible_admin_id),
     first_contact_date: value.first_contact_date,
     next_contact_date: nullable(value.next_contact_date),

@@ -24,7 +24,7 @@ describe("operational form autocomplete policy", () => {
     expect(cityCombobox).toContain('autoComplete="off"');
     expect(cityCombobox).toContain("userEditedRef.current = true");
     expect(projectForm).toContain('name="city_search"');
-    expect(projectForm).toContain('<input type="hidden" name="city" value={city} />');
+    expect(projectForm).toContain('<input type="hidden" name="city" value={metadata.city} />');
   });
 
   it("suppresses autofill for dynamically mounted operational drawer fields without overriding explicit tokens", async () => {

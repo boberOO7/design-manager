@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(32);
 
 select is((select relrowsecurity from pg_class where oid = 'public.crm_leads'::regclass), true, 'lead RLS is enabled');
 select is((select relrowsecurity from pg_class where oid = 'public.crm_candidates'::regclass), true, 'candidate RLS is enabled');
@@ -23,8 +23,14 @@ insert into public.studio_members(studio_id,user_id,system_role) values
 
 select set_config('request.jwt.claim.sub','51000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
-select lives_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, responsible_admin_id) values ('51000000-0000-0000-0000-000000000001','Client One','2025-01-02','51000000-0000-0000-0000-000000000010')$$, 'admin creates a lead');
+select lives_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, responsible_admin_id, expected_project_type, expected_project_type_custom, country_code, city, city_geonames_id, budget_amount, budget_currency) values ('51000000-0000-0000-0000-000000000001','Client One','2025-01-02','51000000-0000-0000-0000-000000000010','other','Cultural','UA','Kyiv',703448,100000,'UAH')$$, 'admin creates a lead with structured project metadata');
 select is((select first_contact_date::text from public.crm_leads where client_name='Client One'),'2025-01-02','first contact is stored independently');
+select is((select country_code from public.crm_leads where client_name='Client One'),'UA','lead country uses an ISO code');
+select is((select city_geonames_id::text from public.crm_leads where client_name='Client One'),'703448','lead stores the selected GeoNames city id');
+select is((select expected_project_type_custom from public.crm_leads where client_name='Client One'),'Cultural','lead preserves an Other project type label');
+select is((select budget_amount::text || ' ' || budget_currency from public.crm_leads where client_name='Client One'),'100000.00 UAH','lead budget persists amount and currency independently');
+select throws_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, budget_amount, budget_currency) values ('51000000-0000-0000-0000-000000000001','Invalid budget','2025-01-02',0,'USD')$$,'23514',null,'invalid structured budgets are rejected');
+select throws_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, expected_project_type, expected_project_type_custom) values ('51000000-0000-0000-0000-000000000001','Invalid type','2025-01-02','private','Custom')$$,'23514',null,'custom project type is limited to Other');
 select lives_ok($$select public.create_crm_candidate('Candidate One','candidate@test','','','','51000000-0000-0000-0000-000000000010','','Architect')$$,'admin creates candidate and first cycle atomically');
 select is((select count(*)::integer from public.crm_recruiting_cycles),1,'candidate starts with one cycle');
 select lives_ok($$update public.crm_recruiting_cycles set stage='decision', outcome='reserve', completed_at=now(), interview_notes='Strong first impression', test_task_result='Passed'$$,'admin completes the first cycle');

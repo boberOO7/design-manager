@@ -32,7 +32,7 @@ function CandidateContactFields({ admins, candidate, fieldErrors, includePositio
     <TextField name="phone" label={t("fields.phone")} type="tel" defaultValue={candidate?.phone} error={fieldErrors?.phone} />
     <TextField name="external_profile_url" label={t("fields.profileLink")} type="url" defaultValue={candidate?.external_profile_url} error={fieldErrors?.external_profile_url} />
     <TextField name="source" label={t("fields.source")} defaultValue={candidate?.source} error={fieldErrors?.source} />
-    <AdminField admins={admins} defaultValue={candidate?.responsible_admin_id} label={t("fields.responsible")} />
+    <AdminField admins={admins} defaultValue={candidate?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
     <div className="sm:col-span-2"><NotesField name="internal_notes" label={t("fields.notes")} defaultValue={candidate?.internal_notes} rows={4} error={fieldErrors?.internal_notes} /></div>
   </div>;
 }

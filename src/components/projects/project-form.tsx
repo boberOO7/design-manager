@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check } from "lucide-react";
-import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import { CityCombobox } from "@/components/projects/city-combobox";
+import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
-import { getCountryOptions } from "@/lib/countries";
-import { PROJECT_TYPE_KEYS, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
+import { type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
 import { cn } from "@/lib/utils";
 import { getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateStageTasks, PROJECT_TEMPLATE_STAGES, type ProjectTemplate } from "@/lib/project-templates";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
@@ -50,19 +50,18 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
 }) {
   const t = useTranslations("ProjectForm");
   const priority = useTranslations("Priority");
-  const projectTypes = useTranslations("ProjectTypes");
   const locale = useLocale();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState<ProjectFormActionState, FormData>(action, {});
-  const [projectType, setProjectType] = useState(defaultValues.project_type ?? "");
-  const [projectTypeCustom, setProjectTypeCustom] = useState(defaultValues.project_type_custom ?? "");
-  const [countryCode, setCountryCode] = useState(defaultValues.country_code ?? "UA");
-  const [city, setCity] = useState(defaultValues.city ?? "");
-  const [cityGeoNamesId, setCityGeoNamesId] = useState(defaultValues.city_geonames_id);
-  const [countryResetMessage, setCountryResetMessage] = useState("");
+  const metadata = useProjectMetadataControls({
+    city: defaultValues.city,
+    cityGeoNamesId: defaultValues.city_geonames_id,
+    countryCode: defaultValues.country_code,
+    projectType: defaultValues.project_type,
+    projectTypeCustom: defaultValues.project_type_custom,
+  }, () => onDirtyChange?.(true));
   const [stageAssignees, setStageAssignees] = useState<Record<string, string>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => getDefaultProjectTemplate(templates, defaultValues.project_type ?? "")?.id ?? "");
-  const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
 
   useEffect(() => {
     if (state.projectId) onSuccess?.(state.projectId);
@@ -88,22 +87,9 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const markDirty = () => onDirtyChange?.(true);
 
   function changeProjectType(value: string) {
-    setProjectType(value);
+    metadata.changeProjectType(value);
     setStageAssignees({});
     setSelectedTemplateId(getDefaultProjectTemplate(templates, value)?.id ?? "");
-    if (value !== "other") setProjectTypeCustom("");
-    markDirty();
-  }
-
-  function changeCountry(nextCountryCode: string) {
-    if (nextCountryCode === countryCode) return;
-    setCountryCode(nextCountryCode);
-    setCityGeoNamesId(undefined);
-    if (city) {
-      setCity("");
-      setCountryResetMessage(t("cityCleared"));
-    }
-    markDirty();
   }
 
   const fields = <div className="grid gap-4 md:grid-cols-2">
@@ -112,32 +98,27 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("project_type")} id="project_type" label={t("projectType")}>
-      <Select name="project_type" value={projectType} onValueChange={changeProjectType} className="mt-2" {...errorAttributes("project_type")}>
-        <SelectItem value="">{t("notSpecified")}</SelectItem>
-        {PROJECT_TYPE_KEYS.map((key) => <SelectItem key={key} value={key}>{projectTypes(key)}</SelectItem>)}
-      </Select>
+      <ProjectTypeSelect name="project_type" value={metadata.projectType} onValueChange={changeProjectType} className="mt-2" {...errorAttributes("project_type")} />
     </Field>
 
-    {projectType === "other" ? <Field error={fieldError("project_type_custom")} id="project_type_custom" label={t("projectTypeCustom")}>
-      <input name="project_type_custom" value={projectTypeCustom} onChange={(event) => { setProjectTypeCustom(event.target.value); markDirty(); }} className={inputClassName} autoComplete="off" {...errorAttributes("project_type_custom")} />
+    {metadata.projectType === "other" ? <Field error={fieldError("project_type_custom")} id="project_type_custom" label={t("projectTypeCustom")}>
+      <input name="project_type_custom" value={metadata.projectTypeCustom} onChange={(event) => metadata.changeProjectTypeCustom(event.target.value)} className={inputClassName} autoComplete="off" {...errorAttributes("project_type_custom")} />
     </Field> : null}
 
-    {mode === "create" ? <TemplateSummary selectedTemplateId={selectedTemplateId} templates={getActiveProjectTemplatesForType(templates, projectType)} members={members} stageAssignees={stageAssignees} onTemplateChange={(id) => { setSelectedTemplateId(id); setStageAssignees({}); markDirty(); }} onAssigneeChange={(stage, assigneeId) => { setStageAssignees((current) => ({ ...current, [stage]: assigneeId })); markDirty(); }} /> : null}
+    {mode === "create" ? <TemplateSummary selectedTemplateId={selectedTemplateId} templates={getActiveProjectTemplatesForType(templates, metadata.projectType)} members={members} stageAssignees={stageAssignees} onTemplateChange={(id) => { setSelectedTemplateId(id); setStageAssignees({}); markDirty(); }} onAssigneeChange={(stage, assigneeId) => { setStageAssignees((current) => ({ ...current, [stage]: assigneeId })); markDirty(); }} /> : null}
 
     <Field error={fieldError("client_name")} id="client_name" label={t("clientName")}>
       <input name="client_name" defaultValue={defaultValues.client_name} className={inputClassName} autoComplete="off" {...errorAttributes("client_name")} />
     </Field>
 
     <Field error={fieldError("country_code")} id="country_code" label={t("country")} required>
-      <Select name="country_code" required value={countryCode} onValueChange={changeCountry} className="mt-2" {...errorAttributes("country_code")}>
-        {countryOptions.map((country) => <SelectItem key={country.code} value={country.code} textValue={country.label}>{country.label}</SelectItem>)}
-      </Select>
+      <ProjectCountrySelect name="country_code" required value={metadata.countryCode} onValueChange={metadata.changeCountry} className="mt-2" {...errorAttributes("country_code")} />
     </Field>
 
     <Field error={fieldError("city")} id="city" label={t("city")}>
-      <CityCombobox countryCode={countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={city} onGeoNamesIdChange={setCityGeoNamesId} onValueChange={(value) => { setCity(value); markDirty(); }} />
-      <input type="hidden" name="city" value={city} />
-      <input type="hidden" name="city_geonames_id" value={cityGeoNamesId ?? ""} />
+      <CityCombobox countryCode={metadata.countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} />
+      <input type="hidden" name="city" value={metadata.city} />
+      <input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} />
     </Field>
 
     <Field error={fieldError("total_area_m2")} id="total_area_m2" label={t("totalArea")} required>
@@ -165,7 +146,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
 
   return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} action={formAction} autoComplete="off" noValidate onInput={markDirty} onSubmit={(event) => { if (isPending) event.preventDefault(); }}>
     <div className={cn(layout === "modal" ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6" : undefined)}>{fields}
-      <p aria-live="polite" className={countryResetMessage ? "mt-3 text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{countryResetMessage}</p>
+      <p aria-live="polite" className={metadata.countryResetMessage ? "mt-3 text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{metadata.countryResetMessage}</p>
       {state.formError ? <div role="alert" className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{state.formError}</div> : null}
     </div>
     <div className={cn("flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--ui-border)] sm:flex-row sm:justify-end", layout === "modal" ? "bg-[var(--ui-surface)] px-4 py-3 sm:px-6" : "pt-5")}>

@@ -8,6 +8,7 @@ const editModalPath = new URL("./project-edit-modal.tsx", import.meta.url);
 const contextPath = new URL("./project-context-band.tsx", import.meta.url);
 const actionPath = new URL("../../app/(app)/projects/new/actions.ts", import.meta.url);
 const editActionPath = new URL("../../app/(app)/projects/[projectId]/actions.ts", import.meta.url);
+const metadataControlsPath = new URL("./project-metadata-controls.tsx", import.meta.url);
 
 describe("compact project creation contract", () => {
   it("uses one shared ordered form and omits manual project code entry", async () => {
@@ -24,7 +25,7 @@ describe("compact project creation contract", () => {
     expect(modal).toContain("<ProjectFormModal");
     expect(sharedModal).toContain("<Dialog");
     expect(modal).toContain("router.push(`/projects/${projectId}`)");
-    expect(action).toContain("return { projectId: data.id }");
+    expect(action).toContain("return { projectId: data }");
     expect(action).not.toContain("service_role");
     expect(action).not.toContain("project_code:");
   });
@@ -53,10 +54,10 @@ describe("compact project creation contract", () => {
   });
 
   it("keeps a GeoNames id separate from the browser-visible city search value", async () => {
-    const source = await readFile(formPath, "utf8");
+    const [source, metadataControls] = await Promise.all([readFile(formPath, "utf8"), readFile(metadataControlsPath, "utf8")]);
     expect(source).toContain('name="city_search"');
-    expect(source).toContain('<input type="hidden" name="city" value={city} />');
-    expect(source).toContain('<input type="hidden" name="city_geonames_id" value={cityGeoNamesId ?? ""} />');
-    expect(source).toContain("setCityGeoNamesId(undefined);");
+    expect(source).toContain('<input type="hidden" name="city" value={metadata.city} />');
+    expect(source).toContain('<input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} />');
+    expect(metadataControls).toContain("setCityGeoNamesId(undefined);");
   });
 });
