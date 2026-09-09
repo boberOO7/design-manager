@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
+import { normalizePhoneForCountry } from "@/lib/ukrainian-phone";
 import { createClient } from "@/lib/supabase/server";
 import {
   crmCandidateContactSchema,
@@ -45,25 +46,25 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
   const source = resolveCrmLeadSourceValue(value.source, value.source_custom);
-  const budget = value.budget ? parseCrmBudgetInput(value.budget) : null;
-  const needsLegacyRecord = value.country_code === "__legacy__" || (value.budget !== "" && budget === null);
+  const budget = value.budget_amount ? parseCrmBudgetInput(value.budget_amount, value.budget_currency) : null;
+  const needsLegacyRecord = value.country_code === "__legacy__" || (leadId !== null && value.budget_amount === "") || (value.budget_amount !== "" && budget === null);
   const legacyResult = needsLegacyRecord && leadId
     ? await crm.supabase.from("crm_leads").select("country, country_code, budget_note, budget_amount, budget_currency").eq("id", leadId).eq("studio_id", crm.admin.studio_id).maybeSingle()
     : null;
   const legacyLead = legacyResult?.data ?? null;
   const preservesLegacyCountry = value.country_code === "__legacy__" && Boolean(legacyLead?.country) && legacyLead?.country_code === null;
-  const preservesLegacyBudget = value.budget !== "" && budget === null && legacyLead?.budget_amount === null && legacyLead?.budget_currency === null && value.budget === legacyLead?.budget_note;
+  const preservesLegacyBudget = value.budget_amount === "" && legacyLead?.budget_amount === null && legacyLead?.budget_currency === null && Boolean(legacyLead?.budget_note);
   if (value.country_code === "__legacy__" && !preservesLegacyCountry) {
     return { error: t("validation.correctFields"), fieldErrors: { country_code: t("validation.invalidField") } };
   }
-  if (value.budget !== "" && budget === null && !preservesLegacyBudget) {
-    return { error: t("validation.correctFields"), fieldErrors: { budget: t("validation.invalidBudget") } };
+  if (value.budget_amount !== "" && budget === null) {
+    return { error: t("validation.correctFields"), fieldErrors: { budget_amount: t("validation.invalidBudget") } };
   }
   const record = {
     client_name: value.client_name,
     company: nullable(value.company),
     email: nullable(value.email),
-    phone: nullable(value.phone),
+    phone: nullable(normalizePhoneForCountry(value.phone, value.country_code)),
     source: nullable(source),
     request_description: nullable(value.request_description),
     expected_project_type: nullable(value.expected_project_type),

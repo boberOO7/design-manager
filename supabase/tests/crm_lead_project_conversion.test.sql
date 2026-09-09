@@ -78,7 +78,7 @@ $$,'%administrators%','other-studio admin cannot convert the Lead');
 
 set local role postgres;
 select throws_ok($$update public.crm_leads set project_id=(select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000100') where id='53000000-0000-0000-0000-000000000101'$$,'23505',null,'one Project cannot be linked to a second Lead');
-select is((select count(*)::integer from public.crm_lead_history where event_type='project_linked'),1,'failed attempts do not append link history');
+select is((select count(*)::integer from public.crm_lead_history where lead_id in ('53000000-0000-0000-0000-000000000100','53000000-0000-0000-0000-000000000101') and event_type='project_linked'),1,'failed attempts do not append link history');
 
 select * from finish();
 rollback;

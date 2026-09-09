@@ -23,6 +23,24 @@ export function formatUkrainianPhone(value: string | null | undefined) {
   return formatted;
 }
 
+/** Decides whether a value should use the UA mask without capturing an existing foreign number. */
+export function shouldFormatAsUkrainianPhone(value: string, countryCode: string, preserveInternational: boolean) {
+  if (countryCode !== "UA") return false;
+  const trimmed = value.trim();
+  if (!preserveInternational || !trimmed) return true;
+  if (trimmed.startsWith("+")) return trimmed.startsWith("+380");
+  if (trimmed.startsWith("00")) return trimmed.startsWith("00380");
+  return true;
+}
+
+/** Normalizes UA numbers while retaining foreign numbers on country-aware CRM records. */
+export function normalizePhoneForCountry(value: string, countryCode: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (!shouldFormatAsUkrainianPhone(trimmed, countryCode, true)) return trimmed;
+  return normalizeUkrainianPhone(trimmed) ?? trimmed;
+}
+
 /** Returns the database representation of a complete number, or undefined when invalid. */
 export function normalizeUkrainianPhone(value: string) {
   const trimmed = value.trim();

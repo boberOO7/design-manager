@@ -20,7 +20,7 @@ export function CrmActionForm({ action, cancelLabel, children, onCancel, onSucce
   useEffect(() => {
     if (state.success) onSuccess?.();
   }, [onSuccess, state.success]);
-  return <form action={formAction} className="contents">
+  return <form action={formAction} className="contents" noValidate>
     <div className="grid gap-4">{children(state)}</div>
     {state.error ? <p role="alert" className="mt-4 text-sm text-[var(--ui-danger-text)]">{state.error}</p> : null}
     <div className="mt-6 flex justify-end gap-2 border-t border-[var(--ui-border)] pt-4">

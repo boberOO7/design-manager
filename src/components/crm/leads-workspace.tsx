@@ -18,10 +18,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { CrmAdmin, CrmLead, CrmLeadHistory } from "@/data/queries/crm";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
-import { formatCrmBudget, getCrmBudgetInputValue } from "@/lib/crm-budget";
+import { CRM_BUDGET_CURRENCIES, formatCrmBudget, getCrmBudgetInputValue, isCrmBudgetCurrency, type CrmBudgetCurrency } from "@/lib/crm-budget";
 import { filterLeads } from "@/lib/crm";
 import { getCountryName, isCountryCode } from "@/lib/countries";
 import { CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
@@ -133,8 +134,8 @@ export function LeadsWorkspace({ admins, defaultStartDate, leads, members, templ
         ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><span className="rounded-full border border-[var(--ui-border)] px-2 py-1 text-xs">{t(`leadStatus.${item.status}`)}</span></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{formatDate(item.next_contact_date, locale) ?? "—"}</td></tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
-    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onConvert={() => { setConversionDirty(false); setView("convert"); }} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onDirtyChange={setConversionDirty} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionDirty(false); setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : () => closeDialog("explicit")} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
+    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => { setConversionDirty(false); setView("convert"); }} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onDirtyChange={setConversionDirty} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionDirty(false); setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : () => closeDialog("explicit")} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
   </>;
 }
@@ -157,8 +158,8 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
     <div className="grid gap-4 sm:grid-cols-2">
       <TextField name="client_name" label={t("fields.clientName")} defaultValue={lead?.client_name} required initialFocus error={state.fieldErrors?.client_name} />
       <TextField name="company" label={t("fields.company")} defaultValue={lead?.company} error={state.fieldErrors?.company} />
-      <TextField name="email" label={t("fields.email")} type="email" defaultValue={lead?.email} error={state.fieldErrors?.email} />
-      <TextField name="phone" label={t("fields.phone")} type="tel" defaultValue={lead?.phone} error={state.fieldErrors?.phone} />
+      <TextField name="email" label={t("fields.email")} type="email" autoComplete="email" placeholder={t("fields.emailPlaceholder")} defaultValue={lead?.email} error={state.fieldErrors?.email} />
+      <FormField label={t("fields.phone")} error={state.fieldErrors?.phone} optional><PhoneInput countryCode={metadata.countryCode} preserveInternational name="phone" defaultValue={lead?.phone} placeholder={metadata.countryCode === "UA" ? "+380 (XX) XXX-XX-XX" : "+44 20 1234 5678"} aria-invalid={Boolean(state.fieldErrors?.phone)} /></FormField>
       <FormField as="div" label={t("fields.source")} error={state.fieldErrors?.source} optional><Select name="source" value={source} onValueChange={(value) => { if (value === "" || value === "other" || isCrmLeadSourceKey(value)) setSource(value); if (value !== "other") setCustomSource(""); }}><SelectItem value="">{t("sourceOptions.notSpecified")}</SelectItem>{CRM_LEAD_SOURCE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`sourceOptions.${key}`)}</SelectItem>)}<SelectItem value="other">{t("sourceOptions.other")}</SelectItem></Select></FormField>
       {source === "other" ? <FormField label={t("fields.sourceCustom")} error={state.fieldErrors?.source_custom} optional><Input name="source_custom" value={customSource} maxLength={160} onChange={(event) => setCustomSource(event.target.value)} aria-invalid={Boolean(state.fieldErrors?.source_custom)} /></FormField> : null}
       <FormField as="div" label={t("fields.projectType")} error={state.fieldErrors?.expected_project_type} optional><ProjectTypeSelect name="expected_project_type" value={metadata.projectType} onValueChange={metadata.changeProjectType} /></FormField>
@@ -166,7 +167,7 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
       <FormField as="div" label={t("fields.country")} error={state.fieldErrors?.country_code}><ProjectCountrySelect legacyCountry={legacyCountry} name="country_code" required value={metadata.countryCode} onValueChange={metadata.changeCountry} /></FormField>
       <FormField as="div" label={t("fields.city")} error={state.fieldErrors?.city} optional><CityCombobox countryCode={metadata.countryCode} describedBy={state.fieldErrors?.city ? "city-error" : undefined} invalid={Boolean(state.fieldErrors?.city)} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} /><input type="hidden" name="city" value={metadata.city} /><input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} /></FormField>
       <TextField name="approximate_area" label={t("fields.area")} type="number" defaultValue={lead?.approximate_area?.toString()} error={state.fieldErrors?.approximate_area} />
-      <FormField label={t("fields.budget")} error={state.fieldErrors?.budget} optional><Input name="budget" defaultValue={lead ? getCrmBudgetInputValue({ amount: lead.budget_amount, currency: lead.budget_currency, legacyNote: lead.budget_note }) : ""} inputMode="numeric" placeholder={t("fields.budgetPlaceholder")} aria-invalid={Boolean(state.fieldErrors?.budget)} /></FormField>
+      <FormField label={t("fields.budget")} error={state.fieldErrors?.budget_amount} optional><div className="flex"><Input className="relative rounded-r-none focus-visible:z-10" name="budget_amount" defaultValue={lead ? getCrmBudgetInputValue({ amount: lead.budget_amount, currency: lead.budget_currency }) : ""} inputMode="numeric" placeholder={t("fields.budgetPlaceholder")} aria-invalid={Boolean(state.fieldErrors?.budget_amount)} /><Select aria-label={t("fields.budgetCurrency")} className="relative w-[4.75rem] shrink-0 rounded-l-none border-l-0 px-2 focus-visible:z-10 [&_[data-currency-code]]:hidden" defaultValue={lead && isCrmBudgetCurrency(lead.budget_currency) ? lead.budget_currency : "UAH"} name="budget_currency" width="content">{CRM_BUDGET_CURRENCIES.map((currency) => <SelectItem key={currency} value={currency} textValue={`${getCurrencySymbol(currency)} — ${currency}`}><span className="flex items-center gap-2"><span>{getCurrencySymbol(currency)}</span><span data-currency-code className="text-[var(--ui-text-muted)]">{currency}</span></span></SelectItem>)}</Select></div>{lead?.budget_note && lead.budget_amount === null ? <span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("fields.legacyBudget", { value: lead.budget_note })}</span> : null}</FormField>
       <FormField as="div" label={t("fields.firstContact")} error={state.fieldErrors?.first_contact_date}><DatePicker name="first_contact_date" defaultValue={lead?.first_contact_date ?? today()} locale={locale} invalid={Boolean(state.fieldErrors?.first_contact_date)} /></FormField>
       <FormField as="div" label={t("fields.nextContact")} error={state.fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={lead?.next_contact_date ?? ""} locale={locale} invalid={Boolean(state.fieldErrors?.next_contact_date)} /></FormField>
       <AdminField admins={admins} defaultValue={lead?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
@@ -177,7 +178,7 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
   </>;
 }
 
-function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory }: { deleting: boolean; historyOpen: boolean; onDelete: () => void; onEdit: () => void; onHistory: () => void }) {
+function LeadHeaderActions({ deleting, historyOpen, lead, onConvert, onDelete, onEdit, onHistory }: { deleting: boolean; historyOpen: boolean; lead: CrmLead; onConvert: () => void; onDelete: () => void; onEdit: () => void; onHistory: () => void }) {
   const t = useTranslations("Crm");
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const setMenuTriggerRef = useCallback((node: HTMLButtonElement | null) => setPortalContainer(node?.closest<HTMLElement>("dialog, [role='dialog']") ?? null), []);
@@ -185,6 +186,7 @@ function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory 
 
   return <>
     <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onHistory} aria-label={t(historyOpen ? "history.back" : "history.action")}>{historyOpen ? <ArrowLeft className="size-4" aria-hidden="true" /> : <History className="size-4" aria-hidden="true" />}<span className="hidden sm:inline">{t(historyOpen ? "history.back" : "history.action")}</span></Button>
+    {lead.project_id ? <Button asChild variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3"><Link href={`/projects/${lead.project_id}`} aria-label={t("conversion.openProject")}><FolderKanban className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{t("conversion.openProject")}</span></Link></Button> : lead.status !== "lost" ? <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onConvert} aria-label={t("conversion.action")}><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{t("conversion.action")}</span></Button> : null}
     <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onEdit} aria-label={t("edit")}><Pencil className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{t("edit")}</span></Button>
     <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
       <Popover.Trigger asChild><Button ref={setMenuTriggerRef} type="button" variant="ghost" className="size-11 p-0" aria-label={t("recordActions")}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger>
@@ -193,14 +195,14 @@ function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory 
   </>;
 }
 
-function LeadDetail({ lead, locale, onConvert, onStatusChange }: { lead: CrmLead; locale: string; onConvert: () => void; onStatusChange: (status: CrmLead["status"]) => Promise<{ error?: string }> }) {
+function LeadDetail({ lead, locale, onStatusChange }: { lead: CrmLead; locale: string; onStatusChange: (status: CrmLead["status"]) => Promise<{ error?: string }> }) {
   const t = useTranslations("Crm");
   const projectTypes = useTranslations("ProjectTypes");
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusPending, startStatusTransition] = useTransition();
   const countryCode = lead.country_code ?? (isCountryCode(lead.country) ? lead.country : null);
   const country = countryCode ? getCountryName(countryCode, locale) : lead.country;
-  const budget = lead.budget_amount !== null && (lead.budget_currency === "UAH" || lead.budget_currency === "USD")
+  const budget = lead.budget_amount !== null && isCrmBudgetCurrency(lead.budget_currency)
     ? formatCrmBudget(lead.budget_amount, lead.budget_currency)
     : lead.budget_note;
   const projectType = getProjectTypeDisplayName(lead.expected_project_type, lead.expected_project_type_custom, projectTypes);
@@ -210,7 +212,7 @@ function LeadDetail({ lead, locale, onConvert, onStatusChange }: { lead: CrmLead
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
         <DetailField icon={Building2} label={t("fields.company")} value={lead.company} />
-        <DetailField icon={CircleDot} label={t("fields.status")} value={<div className="flex flex-col items-start gap-2"><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>{statusError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}{lead.project_id ? <Button asChild size="sm" variant="outline"><Link href={`/projects/${lead.project_id}`}><FolderKanban className="size-4" aria-hidden="true" />{t("conversion.openProject")}</Link></Button> : lead.status !== "lost" ? <Button type="button" size="sm" variant="outline" onClick={onConvert}><Plus className="size-4" aria-hidden="true" />{t("conversion.action")}</Button> : null}</div>} />
+        <DetailField icon={CircleDot} label={t("fields.status")} value={<div className="flex flex-col items-start gap-2"><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>{statusError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}</div>} />
         <DetailField icon={Mail} label={t("fields.email")} value={lead.email ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a> : null} />
         <DetailField icon={Phone} label={t("fields.phone")} value={lead.phone ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a> : null} />
         <DetailField icon={Megaphone} label={t("fields.source")} value={source} />
@@ -257,6 +259,13 @@ function getLeadProjectDefaults(lead: CrmLead, defaultStartDate: string): Projec
     start_date: defaultStartDate,
     total_area_m2: lead.approximate_area && lead.approximate_area > 0 ? lead.approximate_area : undefined,
   };
+}
+
+function getCurrencySymbol(currency: CrmBudgetCurrency) {
+  if (currency === "USD") return "$";
+  if (currency === "EUR") return "€";
+  if (currency === "PLN") return "zł";
+  return "₴";
 }
 
 function formatDate(value: string | null, locale: string) {

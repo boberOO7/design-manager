@@ -102,4 +102,22 @@ describe("CRM leads workspace contract", () => {
     expect(Object.keys(en.Crm.history).sort()).toEqual(Object.keys(uk.Crm.history).sort());
     expect(uk.Crm.leadStatus.won).toBe("Виграно");
   });
+
+  it("keeps Project actions in the header and uses structured contact and budget inputs", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    const headerStart = workspace.indexOf("function LeadHeaderActions");
+    const detailStart = workspace.indexOf("function LeadDetail");
+    const header = workspace.slice(headerStart, detailStart);
+    const detail = workspace.slice(detailStart, workspace.indexOf("function LeadHistoryPanel"));
+    expect(header).toContain("lead.project_id");
+    expect(header).toContain('t("conversion.openProject")');
+    expect(header).toContain('t("conversion.action")');
+    expect(detail).not.toContain('t("conversion.openProject")');
+    expect(detail).not.toContain('t("conversion.action")');
+    expect(workspace).toContain("<PhoneInput");
+    expect(workspace).toContain('autoComplete="email"');
+    expect(workspace).toContain('name="budget_amount"');
+    expect(workspace).toContain('name="budget_currency"');
+    expect(Object.keys(en.Crm.fields).sort()).toEqual(Object.keys(uk.Crm.fields).sort());
+  });
 });

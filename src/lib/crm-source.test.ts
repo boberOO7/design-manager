@@ -3,7 +3,8 @@ import { crmLeadSchema, getCrmLeadSourceFormValues, resolveCrmLeadSourceValue } 
 
 const validLead = {
   approximate_area: "",
-  budget: "",
+  budget_amount: "",
+  budget_currency: "UAH",
   city: "",
   city_geonames_id: "",
   client_name: "Client",
@@ -37,5 +38,13 @@ describe("CRM lead source selection", () => {
 
   it("rejects unrecognized values submitted as predefined options", () => {
     expect(crmLeadSchema.safeParse({ ...validLead, source: "Architecture expo" }).success).toBe(false);
+  });
+
+  it("normalizes optional email and validates email and Ukrainian phone values", () => {
+    const normalized = crmLeadSchema.parse({ ...validLead, source: "", email: "  NAME@Example.COM ", phone: "+380 (67) 123-45-67" });
+    expect(normalized.email).toBe("name@example.com");
+    expect(crmLeadSchema.safeParse({ ...validLead, source: "", email: "not-an-email" }).success).toBe(false);
+    expect(crmLeadSchema.safeParse({ ...validLead, source: "", phone: "+380 (67) 123" }).success).toBe(false);
+    expect(crmLeadSchema.safeParse({ ...validLead, source: "", phone: "+44 20 1234 5678" }).success).toBe(true);
   });
 });

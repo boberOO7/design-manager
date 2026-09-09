@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatUkrainianPhone, getUkrainianPhoneDigits, normalizeUkrainianPhone } from "./ukrainian-phone";
+import { formatUkrainianPhone, getUkrainianPhoneDigits, normalizePhoneForCountry, normalizeUkrainianPhone, shouldFormatAsUkrainianPhone } from "./ukrainian-phone";
 import { createContractorSchema } from "./validation/contractor";
 
 const contractorSchema = createContractorSchema({
@@ -32,5 +32,13 @@ describe("Ukrainian contractor phone numbers", () => {
 
   it("normalizes a submitted phone before persistence", () => {
     expect(contractorSchema.parse({ category: "Освітлення", name: "Світло", phone: "+380 (67) 123-45-67" }).phone).toBe("+380671234567");
+  });
+
+  it("uses the UA mask without capturing foreign Lead phone values", () => {
+    expect(shouldFormatAsUkrainianPhone("0671234567", "UA", true)).toBe(true);
+    expect(shouldFormatAsUkrainianPhone("+44 20 1234 5678", "UA", true)).toBe(false);
+    expect(shouldFormatAsUkrainianPhone("0671234567", "PL", true)).toBe(false);
+    expect(normalizePhoneForCountry("+380 (67) 123-45-67", "UA")).toBe("+380671234567");
+    expect(normalizePhoneForCountry(" +44 20 1234 5678 ", "UA")).toBe("+44 20 1234 5678");
   });
 });

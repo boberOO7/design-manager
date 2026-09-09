@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { formatUkrainianPhone } from "@/lib/ukrainian-phone";
 import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories } from "@/lib/contractor-subcategory-presentation";
@@ -241,7 +242,6 @@ function ContractorForm({ action, categories, contractor, mode, onCancel, onSucc
   const [state, formAction, isPending] = useActionState(action, initialState);
   const [category, setCategory] = useState(contractor?.category.name ?? "");
   const [subcategory, setSubcategory] = useState(contractor?.subcategory?.name ?? "");
-  const [phone, setPhone] = useState(() => formatUkrainianPhone(contractor?.phone));
   const selectedCategory = categories.find((item) => item.name.toLocaleLowerCase() === category.trim().toLocaleLowerCase());
   const subcategories = selectedCategory?.subcategories ?? [];
   function changeCategory(nextCategory: string) {
@@ -258,7 +258,7 @@ function ContractorForm({ action, categories, contractor, mode, onCancel, onSucc
     <FormField label={t("form.companyName")} error={error("name")}><Input required name="name" defaultValue={contractor?.name} {...errorProps("name")} /></FormField>
     <div className="hidden sm:block" />
     <FormField className="sm:col-span-2" label={<>{t("form.website")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("website_url")}><Input type="url" name="website_url" defaultValue={contractor?.website_url ?? ""} placeholder="https://" {...errorProps("website_url")} /></FormField>
-    <FormField label={<>{t("form.phone")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("phone")}><Input autoComplete="tel" inputMode="tel" name="phone" onChange={(event) => setPhone(formatUkrainianPhone(event.target.value))} placeholder="+380 (XX) XXX-XX-XX" type="tel" value={phone} {...errorProps("phone")} /></FormField>
+    <FormField label={<>{t("form.phone")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("phone")}><PhoneInput name="phone" defaultValue={contractor?.phone} placeholder="+380 (XX) XXX-XX-XX" {...errorProps("phone")} /></FormField>
     <div className="hidden sm:block" />
     <FormField className="sm:col-span-2" label={<>{t("form.description")} <span className="font-normal text-[var(--ui-text-muted)]">({t("form.optional")})</span></>} error={error("description")}><Textarea rows={4} name="description" defaultValue={contractor?.description ?? ""} {...errorProps("description")} /></FormField>
   </div>{state.formError ? <p role="alert" className="mt-4 text-sm text-[var(--ui-danger-text)]">{state.formError}</p> : null}<p role="status" aria-live="polite" className="sr-only">{state.contractorId ? t("saved") : ""}</p><div className="mt-6 flex justify-end gap-3 border-t border-[var(--ui-border)] pt-4"><Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>{t("cancel")}</Button><Button type="submit" disabled={isPending}>{isPending ? t("saving") : mode === "create" ? t("add") : t("save")}</Button></div></form>;

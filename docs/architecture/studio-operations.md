@@ -53,8 +53,9 @@ migrations/tests.
 - Lead project type, country, and city selection reuse the canonical Project
   metadata controls. New leads default to Ukraine; legacy free-text country and
   budget values remain readable until an administrator replaces them.
-- Lead budgets keep a single combined form input but persist a positive amount
-  and either UAH or USD as separate values for filtering and reporting.
+- Lead budgets use separate amount and compact currency controls and persist a
+  positive amount with UAH, USD, EUR, or PLN as separate values for filtering
+  and reporting. New leads default to UAH; no exchange conversion occurs.
 - Lead source choices persist stable canonical keys for built-in options while
   custom `Other` values remain free text, so labels can stay localized without
   losing older arbitrary source values.

@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(35);
 
 select is((select relrowsecurity from pg_class where oid = 'public.crm_leads'::regclass), true, 'lead RLS is enabled');
 select is((select relrowsecurity from pg_class where oid = 'public.crm_candidates'::regclass), true, 'candidate RLS is enabled');
@@ -29,6 +29,9 @@ select is((select country_code from public.crm_leads where client_name='Client O
 select is((select city_geonames_id::text from public.crm_leads where client_name='Client One'),'703448','lead stores the selected GeoNames city id');
 select is((select expected_project_type_custom from public.crm_leads where client_name='Client One'),'Cultural','lead preserves an Other project type label');
 select is((select budget_amount::text || ' ' || budget_currency from public.crm_leads where client_name='Client One'),'100000.00 UAH','lead budget persists amount and currency independently');
+select lives_ok($$update public.crm_leads set budget_amount=3000, budget_currency='EUR' where client_name='Client One'$$,'admin can persist an explicit EUR budget');
+select is((select budget_amount::text || ' ' || budget_currency from public.crm_leads where client_name='Client One'),'3000.00 EUR','EUR amount and currency remain independent');
+select throws_ok($$update public.crm_leads set budget_currency='GBP' where client_name='Client One'$$,'23514',null,'unsupported budget currencies are rejected');
 select throws_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, budget_amount, budget_currency) values ('51000000-0000-0000-0000-000000000001','Invalid budget','2025-01-02',0,'USD')$$,'23514',null,'invalid structured budgets are rejected');
 select throws_ok($$insert into public.crm_leads(studio_id, client_name, first_contact_date, expected_project_type, expected_project_type_custom) values ('51000000-0000-0000-0000-000000000001','Invalid type','2025-01-02','private','Custom')$$,'23514',null,'custom project type is limited to Other');
 select lives_ok($$select public.create_crm_candidate('Candidate One','candidate@test','','','','51000000-0000-0000-0000-000000000010','','Architect')$$,'admin creates candidate and first cycle atomically');

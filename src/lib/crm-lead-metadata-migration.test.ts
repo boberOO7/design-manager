@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = new URL("../../supabase/migrations/20260908165338_normalize_crm_lead_project_metadata.sql", import.meta.url);
 const constraintMigrationPath = new URL("../../supabase/migrations/20260908171623_tighten_crm_lead_project_type_constraint.sql", import.meta.url);
+const currencyMigrationPath = new URL("../../supabase/migrations/20260909204000_extend_crm_lead_budget_currencies.sql", import.meta.url);
 
 describe("CRM lead metadata migration", () => {
   it("adds structured project metadata and currency semantics without replacing legacy fields", async () => {
@@ -27,5 +28,13 @@ describe("CRM lead metadata migration", () => {
     const sql = await readFile(constraintMigrationPath, "utf8");
     expect(sql).toContain("expected_project_type_custom is null");
     expect(sql).toContain("coalesce(expected_project_type = 'other', false)");
+  });
+
+  it("extends explicit Lead budget currencies without changing storage or RLS", async () => {
+    const sql = await readFile(currencyMigrationPath, "utf8");
+    expect(sql).toContain("budget_currency in ('UAH', 'USD', 'EUR', 'PLN')");
+    expect(sql).toContain("budget_amount > 0");
+    expect(sql).not.toContain("disable row level security");
+    expect(sql).not.toContain("drop column");
   });
 });
