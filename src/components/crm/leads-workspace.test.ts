@@ -92,8 +92,9 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain("getLeadProjectDefaults(lead, defaultStartDate)");
     expect(workspace).toContain("client_name: lead.client_name");
     expect(workspace).toContain("description: lead.request_description ?? undefined");
-    expect(workspace).toContain('status !== "lost"');
-    expect(workspace).toContain("lead.project_id ? <Button asChild");
+    expect(workspace).toContain('if (lead.status === "lost") return null');
+    expect(workspace).toContain("function LeadProjectAction");
+    expect(workspace).toContain("if (lead.project_id)");
     expect(workspace).toContain("ml-[1.625rem]");
     expect(workspace).not.toContain('className="mt-0.5 size-4 text-[var(--ui-text-muted)]"');
     expect(en.Crm.conversion.action).toBeTruthy();
@@ -109,15 +110,61 @@ describe("CRM leads workspace contract", () => {
     const detailStart = workspace.indexOf("function LeadDetail");
     const header = workspace.slice(headerStart, detailStart);
     const detail = workspace.slice(detailStart, workspace.indexOf("function LeadHistoryPanel"));
-    expect(header).toContain("lead.project_id");
+    expect(header).toContain('<LeadProjectAction lead={lead} onConvert={() => onConvert()} presentation="header" />');
     expect(header).toContain('t("conversion.openProject")');
     expect(header).toContain('t("conversion.action")');
     expect(detail).not.toContain('t("conversion.openProject")');
     expect(detail).not.toContain('t("conversion.action")');
     expect(workspace).toContain("<PhoneInput");
-    expect(workspace).toContain('autoComplete="email"');
+    expect(workspace).toContain('autoComplete="off"');
     expect(workspace).toContain('name="budget_amount"');
     expect(workspace).toContain('name="budget_currency"');
     expect(Object.keys(en.Crm.fields).sort()).toEqual(Object.keys(uk.Crm.fields).sort());
+  });
+
+  it("reuses the detail conversion action from the Leads table without opening the record", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    const table = workspace.slice(workspace.indexOf("<table"), workspace.indexOf("</table>"));
+    const projectAction = workspace.slice(workspace.indexOf("function LeadProjectAction"), workspace.indexOf("function LeadDetail"));
+    expect(table).toContain('<LeadProjectAction lead={item} onConvert={openConversion} presentation="table" />');
+    expect(table).toContain('text-right"><span className="sr-only">{t("recordActions")}</span>');
+    expect(workspace).toContain('function openConversion(item: CrmLead)');
+    expect(workspace).toContain('setView("convert")');
+    expect(projectAction).toContain('if (lead.project_id)');
+    expect(projectAction).toContain('if (lead.status === "lost") return null');
+    expect(projectAction).toContain('event.stopPropagation()');
+    expect(projectAction).toContain('href={`/projects/${lead.project_id}`}');
+  });
+
+  it("keeps browser autofill out of Lead contact fields and uses a compact themed currency trigger", async () => {
+    const [workspace, actionForm, cityCombobox] = await Promise.all([
+      readFile(workspacePath, "utf8"),
+      readFile(new URL("./action-form.tsx", import.meta.url), "utf8"),
+      readFile(cityComboboxPath, "utf8"),
+    ]);
+    expect(actionForm).toContain('autoComplete="off"');
+    expect(workspace).toContain('<TextField name="email" label={t("fields.email")} type="email" autoComplete="off"');
+    expect(workspace).toContain('<PhoneInput autoComplete="off"');
+    expect(cityCombobox).toContain('autoComplete="off"');
+    expect(workspace).toContain('contentMinWidth="natural"');
+    expect(workspace).toContain('min-w-0 flex-1 rounded-r-none');
+    expect(workspace).toContain('data-currency-code className="text-[var(--ui-text-muted)]"');
+    expect(workspace).not.toContain('[&_[data-currency-code]]:hidden');
+    expect(workspace).toContain('bg-[var(--ui-action-primary)]');
+    expect(workspace).toContain('text-[var(--ui-action-primary-text)]');
+  });
+
+  it("renders responsible administrators with the shared avatar Select pattern", async () => {
+    const [fields, crmQuery] = await Promise.all([
+      readFile(new URL("./crm-fields.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../../data/queries/crm.ts", import.meta.url), "utf8"),
+    ]);
+    expect(fields).toContain('import { UserAvatar } from "@/components/ui/user-avatar"');
+    expect(fields).toContain('textValue={admin.name}');
+    expect(fields).toContain('imageUrl={admin.avatar_url}');
+    expect(fields).toContain('size="boardCard"');
+    expect(fields).toContain('<SelectItem value="">{emptyLabel}</SelectItem>');
+    expect(crmQuery).toContain("full_name, avatar_url");
+    expect(crmQuery).toContain("avatar_url: row.profile.avatar_url");
   });
 });

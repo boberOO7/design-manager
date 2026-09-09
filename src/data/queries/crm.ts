@@ -9,7 +9,7 @@ type CandidateRow = Database["public"]["Tables"]["crm_candidates"]["Row"];
 type CycleRow = Database["public"]["Tables"]["crm_recruiting_cycles"]["Row"];
 type LeadHistoryRow = Database["public"]["Tables"]["crm_lead_history"]["Row"];
 
-export type CrmAdmin = { id: string; name: string };
+export type CrmAdmin = { avatar_url: string | null; id: string; name: string };
 export type CrmLead = LeadRow & { responsibleAdmin: CrmAdmin | null };
 export type CrmLeadHistory = LeadHistoryRow & {
   actor: { full_name: string } | null;
@@ -29,13 +29,13 @@ export async function getCrmAdmins(): Promise<CrmAdmin[]> {
   if (!context) return [];
   const { data, error } = await context.supabase
     .from("studio_members")
-    .select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name)")
+    .select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)")
     .eq("studio_id", context.membership.studio_id)
     .eq("system_role", "admin")
     .eq("is_active", true)
     .order("joined_at");
   if (error) throw new Error("Unable to load CRM administrators.", { cause: error });
-  return data.map((row) => ({ id: row.user_id, name: row.profile.full_name }));
+  return data.map((row) => ({ avatar_url: row.profile.avatar_url, id: row.user_id, name: row.profile.full_name }));
 }
 
 export async function getCrmLeads(): Promise<{ error: boolean; leads: CrmLead[] }> {

@@ -24,7 +24,8 @@ describe("shared Select contract", () => {
     expect(source).toContain("min-w-[var(--radix-popover-trigger-width)]");
     expect(source).toContain("max-w-[calc(100vw-1rem)]");
     expect(source).toContain('width?: "content" | "full"');
-    expect(source).toContain('width === "content" ? "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full"');
+    expect(source).toContain('contentMinWidth?: "default" | "natural"');
+    expect(source).toContain('contentMinWidth === "natural" ? "w-fit max-w-[calc(100vw-2rem)]" : "w-fit min-w-32 max-w-[calc(100vw-2rem)]"');
     expect(source).toContain("grid-cols-[minmax(0,1fr)_2.5rem]");
     expect(source).toContain('className="grid min-w-0 pl-3 pr-2"');
     expect(source).toContain('className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180"');

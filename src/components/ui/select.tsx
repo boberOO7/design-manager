@@ -64,6 +64,7 @@ export type SelectProps = Omit<
   "defaultValue" | "onChange" | "value"
 > & {
   children: React.ReactNode;
+  contentMinWidth?: "default" | "natural";
   defaultValue?: string;
   name?: string;
   onValueChange?: (value: string) => void;
@@ -74,7 +75,7 @@ export type SelectProps = Omit<
   width?: "content" | "full";
 };
 
-const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, defaultValue, disabled, name, onClick, onKeyDown, onValueChange, placeholder, required, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, name, onClick, onKeyDown, onValueChange, placeholder, required, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
   const items = collectSelectItems(children);
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
@@ -212,7 +213,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           className={cn(
             "group grid min-w-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus-visible:ring-[var(--ui-danger-text)] data-[placeholder]:text-[var(--ui-text-muted)] data-[state=open]:border-[var(--ui-focus)] data-[state=open]:bg-[var(--ui-surface-subtle)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--ui-focus)] data-[state=open]:ring-offset-2",
             size === "compact" ? "h-8 text-xs" : "h-11",
-            width === "content" ? "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full",
+            width === "content" ? contentMinWidth === "natural" ? "w-fit max-w-[calc(100vw-2rem)]" : "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full",
             className,
           )}
           disabled={disabled}
