@@ -3,8 +3,25 @@ import { isCountryCode } from "@/lib/countries";
 import { PROJECT_TYPE_KEYS } from "@/lib/validation/project";
 
 export const CRM_LEAD_STATUSES = ["new", "contacted", "discussion", "proposal", "won", "lost"] as const;
+export const CRM_LEAD_SOURCE_KEYS = ["website", "instagram", "referral", "partner"] as const;
 export const RECRUITING_STAGES = ["new", "interview_scheduled", "interview_completed", "test_task", "decision"] as const;
 export const RECRUITING_OUTCOMES = ["hired", "reserve", "rejected"] as const;
+
+export type CrmLeadSourceKey = (typeof CRM_LEAD_SOURCE_KEYS)[number];
+export type CrmLeadSourceSelection = CrmLeadSourceKey | "" | "other";
+
+export function isCrmLeadSourceKey(value: string | null | undefined): value is CrmLeadSourceKey {
+  return CRM_LEAD_SOURCE_KEYS.some((key) => key === value);
+}
+
+export function getCrmLeadSourceFormValues(value: string | null | undefined): { source: CrmLeadSourceSelection; sourceCustom: string } {
+  if (isCrmLeadSourceKey(value)) return { source: value, sourceCustom: "" };
+  return value ? { source: "other", sourceCustom: value } : { source: "", sourceCustom: "" };
+}
+
+export function resolveCrmLeadSourceValue(source: CrmLeadSourceSelection, sourceCustom: string): string {
+  return source === "other" ? sourceCustom : source;
+}
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 const optionalUrl = z.union([z.literal(""), z.url().max(2000)]).optional().default("");
@@ -17,7 +34,8 @@ export const crmLeadSchema = z.object({
   company: optionalText(200),
   email: z.union([z.literal(""), z.email().max(320)]).optional().default(""),
   phone: optionalText(80),
-  source: optionalText(160),
+  source: z.union([z.literal(""), z.enum(CRM_LEAD_SOURCE_KEYS), z.literal("other")]),
+  source_custom: optionalText(160),
   request_description: optionalText(5000),
   expected_project_type: z.union([z.literal(""), z.enum(PROJECT_TYPE_KEYS)]).optional().default(""),
   expected_project_type_custom: optionalText(100),

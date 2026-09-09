@@ -106,7 +106,7 @@ export function CityCombobox({ className, countryCode, describedBy, invalid, nam
 
   return <PopoverPrimitive.Root modal={false} open={Boolean(countryCode && value.trim()) && open} onOpenChange={setOpen}>
     <PopoverPrimitive.Anchor asChild>
-      <div className={cn("relative mt-2", className)}>
+      <div className={cn("relative", className)}>
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
         <input
           ref={(node) => { inputRef.current = node; setInputNode(node); }}

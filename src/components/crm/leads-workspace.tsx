@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Mail, MoreHorizontal, Pencil, Phone, Plus, Search, Trash2 } from "lucide-react";
+import { Banknote, Building2, CalendarDays, CircleDot, FileText, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, type LucideIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { AdminField, NotesField, TextField } from "@/components/crm/crm-fields";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
@@ -19,7 +20,7 @@ import type { CrmAdmin, CrmLead } from "@/data/queries/crm";
 import { formatCrmBudget, getCrmBudgetInputValue } from "@/lib/crm-budget";
 import { filterLeads } from "@/lib/crm";
 import { getCountryName, isCountryCode } from "@/lib/countries";
-import { CRM_LEAD_STATUSES, type CrmActionState } from "@/lib/validation/crm";
+import { CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadSourceKey, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -90,7 +91,11 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
 
 function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: CrmLead | null; state: CrmActionState }) {
   const t = useTranslations("Crm");
+  const locale = useLocale();
   const legacyCountry = lead?.country_code === null && lead.country && !isCountryCode(lead.country) ? lead.country : null;
+  const sourceDefaults = getCrmLeadSourceFormValues(lead?.source);
+  const [source, setSource] = useState(sourceDefaults.source);
+  const [customSource, setCustomSource] = useState(sourceDefaults.sourceCustom);
   const metadata = useProjectMetadataControls({
     city: lead?.city,
     cityGeoNamesId: lead?.city_geonames_id,
@@ -104,15 +109,16 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
       <TextField name="company" label={t("fields.company")} defaultValue={lead?.company} error={state.fieldErrors?.company} />
       <TextField name="email" label={t("fields.email")} type="email" defaultValue={lead?.email} error={state.fieldErrors?.email} />
       <TextField name="phone" label={t("fields.phone")} type="tel" defaultValue={lead?.phone} error={state.fieldErrors?.phone} />
-      <TextField name="source" label={t("fields.source")} defaultValue={lead?.source} error={state.fieldErrors?.source} />
+      <FormField as="div" label={t("fields.source")} error={state.fieldErrors?.source} optional><Select name="source" value={source} onValueChange={(value) => { if (value === "" || value === "other" || isCrmLeadSourceKey(value)) setSource(value); if (value !== "other") setCustomSource(""); }}><SelectItem value="">{t("sourceOptions.notSpecified")}</SelectItem>{CRM_LEAD_SOURCE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`sourceOptions.${key}`)}</SelectItem>)}<SelectItem value="other">{t("sourceOptions.other")}</SelectItem></Select></FormField>
+      {source === "other" ? <FormField label={t("fields.sourceCustom")} error={state.fieldErrors?.source_custom} optional><Input name="source_custom" value={customSource} maxLength={160} onChange={(event) => setCustomSource(event.target.value)} aria-invalid={Boolean(state.fieldErrors?.source_custom)} /></FormField> : null}
       <FormField as="div" label={t("fields.projectType")} error={state.fieldErrors?.expected_project_type} optional><ProjectTypeSelect name="expected_project_type" value={metadata.projectType} onValueChange={metadata.changeProjectType} /></FormField>
       {metadata.projectType === "other" ? <FormField label={t("fields.projectTypeCustom")} error={state.fieldErrors?.expected_project_type_custom}><Input name="expected_project_type_custom" value={metadata.projectTypeCustom} onChange={(event) => metadata.changeProjectTypeCustom(event.target.value)} aria-invalid={Boolean(state.fieldErrors?.expected_project_type_custom)} /></FormField> : null}
       <FormField as="div" label={t("fields.country")} error={state.fieldErrors?.country_code}><ProjectCountrySelect legacyCountry={legacyCountry} name="country_code" required value={metadata.countryCode} onValueChange={metadata.changeCountry} /></FormField>
       <FormField as="div" label={t("fields.city")} error={state.fieldErrors?.city} optional><CityCombobox countryCode={metadata.countryCode} describedBy={state.fieldErrors?.city ? "city-error" : undefined} invalid={Boolean(state.fieldErrors?.city)} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} /><input type="hidden" name="city" value={metadata.city} /><input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} /></FormField>
       <TextField name="approximate_area" label={t("fields.area")} type="number" defaultValue={lead?.approximate_area?.toString()} error={state.fieldErrors?.approximate_area} />
       <FormField label={t("fields.budget")} error={state.fieldErrors?.budget} optional><Input name="budget" defaultValue={lead ? getCrmBudgetInputValue({ amount: lead.budget_amount, currency: lead.budget_currency, legacyNote: lead.budget_note }) : ""} inputMode="numeric" placeholder={t("fields.budgetPlaceholder")} aria-invalid={Boolean(state.fieldErrors?.budget)} /></FormField>
-      <TextField name="first_contact_date" label={t("fields.firstContact")} type="date" defaultValue={lead?.first_contact_date ?? today()} required error={state.fieldErrors?.first_contact_date} />
-      <TextField name="next_contact_date" label={t("fields.nextContact")} type="date" defaultValue={lead?.next_contact_date} error={state.fieldErrors?.next_contact_date} />
+      <FormField as="div" label={t("fields.firstContact")} error={state.fieldErrors?.first_contact_date}><DatePicker name="first_contact_date" defaultValue={lead?.first_contact_date ?? today()} locale={locale} invalid={Boolean(state.fieldErrors?.first_contact_date)} /></FormField>
+      <FormField as="div" label={t("fields.nextContact")} error={state.fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={lead?.next_contact_date ?? ""} locale={locale} invalid={Boolean(state.fieldErrors?.next_contact_date)} /></FormField>
       <AdminField admins={admins} defaultValue={lead?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
       <FormField as="div" label={t("fields.status")}><Select name="status" defaultValue={lead?.status ?? "new"}>{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select></FormField>
     </div>
@@ -134,26 +140,27 @@ function LeadDetail({ deleting, lead, locale, onClose, onDelete, onEdit }: { del
     ? formatCrmBudget(lead.budget_amount, lead.budget_currency)
     : lead.budget_note;
   const projectType = getProjectTypeDisplayName(lead.expected_project_type, lead.expected_project_type_custom, projectTypes);
+  const source = isCrmLeadSourceKey(lead.source) ? t(`sourceOptions.${lead.source}`) : lead.source;
 
   return <div className="flex min-h-0 flex-1 flex-col">
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-        <DetailField label={t("fields.company")} value={lead.company} />
-        <DetailField label={t("fields.status")} value={t(`leadStatus.${lead.status}`)} />
-        <DetailField label={t("fields.email")} value={lead.email ? <a className="inline-flex items-center gap-2 font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}><Mail className="size-4" aria-hidden="true" />{lead.email}</a> : null} />
-        <DetailField label={t("fields.phone")} value={lead.phone ? <a className="inline-flex items-center gap-2 font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}><Phone className="size-4" aria-hidden="true" />{lead.phone}</a> : null} />
-        <DetailField label={t("fields.source")} value={lead.source} />
-        <DetailField label={t("fields.responsible")} value={lead.responsibleAdmin?.name ?? t("notAssigned")} />
-        <DetailField label={t("fields.projectType")} value={projectType} />
-        <DetailField label={t("fields.location")} value={[lead.city, country].filter(Boolean).join(", ")} />
-        <DetailField label={t("fields.area")} value={lead.approximate_area !== null ? `${lead.approximate_area} m²` : null} />
-        <DetailField label={t("fields.budget")} value={budget} />
-        <DetailField label={t("fields.firstContact")} value={formatDate(lead.first_contact_date, locale)} />
-        <DetailField label={t("fields.nextContact")} value={formatDate(lead.next_contact_date, locale)} />
+        <DetailField icon={Building2} label={t("fields.company")} value={lead.company} />
+        <DetailField icon={CircleDot} label={t("fields.status")} value={t(`leadStatus.${lead.status}`)} />
+        <DetailField icon={Mail} label={t("fields.email")} value={lead.email ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a> : null} />
+        <DetailField icon={Phone} label={t("fields.phone")} value={lead.phone ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a> : null} />
+        <DetailField icon={Megaphone} label={t("fields.source")} value={source} />
+        <DetailField icon={UserRound} label={t("fields.responsible")} value={lead.responsibleAdmin?.name ?? t("notAssigned")} />
+        <DetailField icon={Shapes} label={t("fields.projectType")} value={projectType} />
+        <DetailField icon={MapPin} label={t("fields.location")} value={[lead.city, country].filter(Boolean).join(", ")} />
+        <DetailField icon={Ruler} label={t("fields.area")} value={lead.approximate_area !== null ? `${lead.approximate_area} m²` : null} />
+        <DetailField icon={Banknote} label={t("fields.budget")} value={budget} />
+        <DetailField icon={CalendarDays} label={t("fields.firstContact")} value={formatDate(lead.first_contact_date, locale)} />
+        <DetailField icon={CalendarDays} label={t("fields.nextContact")} value={formatDate(lead.next_contact_date, locale)} />
       </dl>
       <div className="mt-6 grid gap-5 border-t border-[var(--ui-border)] pt-5">
-        <DetailField label={t("fields.request")} value={lead.request_description} multiline />
-        <DetailField label={t("fields.notes")} value={lead.internal_notes} multiline />
+        <DetailField icon={FileText} label={t("fields.request")} value={lead.request_description} multiline />
+        <DetailField icon={StickyNote} label={t("fields.notes")} value={lead.internal_notes} multiline />
       </div>
     </div>
     <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6">
@@ -166,8 +173,9 @@ function LeadDetail({ deleting, lead, locale, onClose, onDelete, onEdit }: { del
   </div>;
 }
 
-function DetailField({ label, multiline = false, value }: { label: string; multiline?: boolean; value: React.ReactNode }) {
-  return <div className={multiline ? "sm:col-span-2" : undefined}><dt className="text-xs font-medium uppercase tracking-wide text-[var(--ui-text-muted)]">{label}</dt><dd className={`mt-1 text-sm text-[var(--ui-text-secondary)] ${multiline ? "whitespace-pre-wrap leading-6" : ""}`}>{value || "—"}</dd></div>;
+function DetailField({ icon: Icon, label, multiline = false, value }: { icon: LucideIcon; label: string; multiline?: boolean; value: React.ReactNode }) {
+  const hasValue = value !== null && value !== undefined && value !== "";
+  return <div className={multiline ? "sm:col-span-2" : undefined}><div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5"><Icon aria-hidden="true" className="mt-0.5 size-4 text-[var(--ui-text-muted)]" strokeWidth={1.8} /><div className="min-w-0"><dt className="text-xs font-medium text-[var(--ui-text-muted)]">{label}</dt><dd className={`mt-1 text-sm ${hasValue ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"} ${multiline ? "whitespace-pre-wrap leading-6" : "leading-5"}`}>{hasValue ? value : "—"}</dd></div></div></div>;
 }
 
 function formatDate(value: string | null, locale: string) {

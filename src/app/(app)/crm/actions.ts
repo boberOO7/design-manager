@@ -12,6 +12,7 @@ import {
   crmLeadSchema,
   crmRecruitingCycleSchema,
   formValues,
+  resolveCrmLeadSourceValue,
   type CrmActionState,
 } from "@/lib/validation/crm";
 
@@ -41,6 +42,7 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
   const parsed = crmLeadSchema.safeParse(formValues(formData));
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
+  const source = resolveCrmLeadSourceValue(value.source, value.source_custom);
   const budget = value.budget ? parseCrmBudgetInput(value.budget) : null;
   const needsLegacyRecord = value.country_code === "__legacy__" || (value.budget !== "" && budget === null);
   const legacyResult = needsLegacyRecord && leadId
@@ -60,7 +62,7 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     company: nullable(value.company),
     email: nullable(value.email),
     phone: nullable(value.phone),
-    source: nullable(value.source),
+    source: nullable(source),
     request_description: nullable(value.request_description),
     expected_project_type: nullable(value.expected_project_type),
     expected_project_type_custom: value.expected_project_type === "other" ? nullable(value.expected_project_type_custom) : null,

@@ -49,6 +49,9 @@ migrations/tests.
   budget values remain readable until an administrator replaces them.
 - Lead budgets keep a single combined form input but persist a positive amount
   and either UAH or USD as separate values for filtering and reporting.
+- Lead source choices persist stable canonical keys for built-in options while
+  custom `Other` values remain free text, so labels can stay localized without
+  losing older arbitrary source values.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
   lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
   preserves prior interview notes, test results, and outcomes.

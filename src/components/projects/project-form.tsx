@@ -116,7 +116,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
 
     <Field error={fieldError("city")} id="city" label={t("city")}>
-      <CityCombobox countryCode={metadata.countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} />
+      <CityCombobox className="mt-2" countryCode={metadata.countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} />
       <input type="hidden" name="city" value={metadata.city} />
       <input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} />
     </Field>
