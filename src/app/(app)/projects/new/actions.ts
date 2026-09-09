@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TEMPLATE_STAGES, isProjectTemplateStage } from "@/lib/project-templates";
@@ -16,10 +17,28 @@ export async function createProject(
   _previousState: ProjectFormActionState,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
+  return createProjectRecord(null, formData);
+}
+
+export async function createProjectFromLead(
+  leadId: string,
+  _previousState: ProjectFormActionState,
+  formData: FormData,
+): Promise<ProjectFormActionState> {
+  return createProjectRecord(leadId, formData);
+}
+
+async function createProjectRecord(
+  sourceLeadId: string | null,
+  formData: FormData,
+): Promise<ProjectFormActionState> {
   const membership = await getActiveStudioMembership();
 
   if (!membership || membership.system_role !== "admin") {
     return { formError: "Only active studio administrators can create projects." };
+  }
+  if (sourceLeadId && !z.uuid().safeParse(sourceLeadId).success) {
+    return { formError: "The source lead is invalid." };
   }
 
   const parsed = projectSchema.safeParse(getProjectFormInput(formData));
@@ -55,9 +74,10 @@ export async function createProject(
       priority: project.priority,
       start_date: project.start_date,
       due_date: project.due_date || null,
+      ...(sourceLeadId ? { source_lead_id: sourceLeadId } : {}),
     },
     p_stage_assignees: stageAssignees,
-    p_template_id: getSelectedTemplateId(formData),
+    p_template_id: getSelectedTemplateId(formData) ?? undefined,
   });
 
   if (insertError || !data) {
@@ -66,6 +86,7 @@ export async function createProject(
   }
 
   revalidatePath("/projects");
+  if (sourceLeadId) revalidatePath("/crm/leads");
   return { projectId: data };
 }
 

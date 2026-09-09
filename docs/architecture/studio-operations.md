@@ -58,13 +58,17 @@ migrations/tests.
 - Lead source choices persist stable canonical keys for built-in options while
   custom `Other` values remain free text, so labels can stay localized without
   losing older arbitrary source values.
+- A non-lost Lead can create one Project through the shared Project form. The
+  existing Project/template RPC locks the Lead, creates the Project and template
+  work, links both records, and marks the Lead Won in one transaction. The
+  normal status trigger and a project-linked lifecycle row preserve both events;
+  manual Won remains valid without a Project.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
   lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
   preserves prior interview notes, test results, and outcomes.
 - At most one recruiting cycle per candidate may be active (without a final
   outcome). Final outcomes are Hired, Reserve, and Rejected.
-- Candidate-to-member and lead-to-project conversion are intentionally manual in
-  this foundation.
+- Candidate-to-member conversion remains intentionally manual.
 
 Canonical paths: `src/app/(app)/crm/`, `src/data/queries/crm.ts`,
 `src/components/crm/`, CRM migrations, and `supabase/tests/crm*.test.sql`.
@@ -122,6 +126,7 @@ messages. They are not activity history.
 | Calendar invitation/update/cancellation/assignment | Relevant invitee or assignee; Calendar item |
 | Submission create/assign/status | Active admins, responsible member, or non-anonymous author; Office submission |
 | Office assignment assign/status | Responsible member or creator; Office assignment |
+| CRM Lead follow-up | Responsible administrator; CRM Lead |
 
 Invariants:
 

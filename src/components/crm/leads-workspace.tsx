@@ -1,27 +1,33 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarDays, CircleDot, FileText, History, LoaderCircle, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarDays, CircleDot, FileText, FolderKanban, History, LoaderCircle, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, type LucideIcon } from "lucide-react";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { deleteLead, loadLeadHistory, saveLead, updateLeadStatus } from "@/app/(app)/crm/actions";
+import { createProjectFromLead } from "@/app/(app)/projects/new/actions";
 import { CrmActionForm } from "@/components/crm/action-form";
 import { AdminField, NotesField, TextField } from "@/components/crm/crm-fields";
 import { CityCombobox } from "@/components/projects/city-combobox";
+import { ProjectForm, type ProjectFormDefaults } from "@/components/projects/project-form";
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Dialog } from "@/components/ui/dialog";
+import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { CrmAdmin, CrmLead, CrmLeadHistory } from "@/data/queries/crm";
+import type { ActiveStudioAssignee } from "@/data/queries/project-members";
 import { formatCrmBudget, getCrmBudgetInputValue } from "@/lib/crm-budget";
 import { filterLeads } from "@/lib/crm";
 import { getCountryName, isCountryCode } from "@/lib/countries";
 import { CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
+import type { ProjectTemplate } from "@/lib/project-templates";
+import { getProjectDialogCloseIntent } from "@/lib/project-dialog";
 
 function today() { return new Date().toISOString().slice(0, 10); }
 
@@ -31,17 +37,20 @@ function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement)
   return interactiveTarget !== null && interactiveTarget !== row;
 }
 
-export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: CrmLead[] }) {
+export function LeadsWorkspace({ admins, defaultStartDate, leads, members, templates }: { admins: CrmAdmin[]; defaultStartDate: string; leads: CrmLead[]; members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }) {
   const t = useTranslations("Crm");
+  const projectForm = useTranslations("ProjectForm");
   const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [openLead, setOpenLead] = useState<CrmLead | "new" | null>(null);
-  const [view, setView] = useState<"detail" | "edit" | "history">("detail");
+  const [view, setView] = useState<"convert" | "detail" | "edit" | "history">("detail");
   const [history, setHistory] = useState<CrmLeadHistory[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [conversionDirty, setConversionDirty] = useState(false);
+  const [conversionPending, setConversionPending] = useState(false);
   const visible = useMemo(() => filterLeads(leads, query, status), [leads, query, status]);
   const lead = openLead === "new" ? null : openLead;
 
@@ -55,12 +64,24 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
     setView("edit");
   }
 
-  function closeDialog() {
-    if (!deleting) {
-      setOpenLead(null);
-      setHistory(null);
-      setHistoryError(null);
+  function closeDialog(reason: DialogCloseReason) {
+    if (deleting || conversionPending) return;
+    if (view === "convert") {
+      const intent = getProjectDialogCloseIntent(conversionDirty, reason);
+      if (intent === "ignore") return;
+      if (intent === "confirm" && !window.confirm(projectForm("discardChanges"))) return;
     }
+    setOpenLead(null);
+    setHistory(null);
+    setHistoryError(null);
+    setConversionDirty(false);
+  }
+
+  function cancelConversion() {
+    if (conversionPending) return;
+    if (conversionDirty && !window.confirm(projectForm("discardChanges"))) return;
+    setConversionDirty(false);
+    setView("detail");
   }
 
   async function showHistory() {
@@ -112,8 +133,8 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
         ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><span className="rounded-full border border-[var(--ui-border)] px-2 py-1 text-xs">{t(`leadStatus.${item.status}`)}</span></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{formatDate(item.next_contact_date, locale) ?? "—"}</td></tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
-    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting} closeLabel={t("close")} title={lead ? lead.client_name : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
+    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onConvert={() => { setConversionDirty(false); setView("convert"); }} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onDirtyChange={setConversionDirty} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionDirty(false); setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : () => closeDialog("explicit")} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
   </>;
 }
@@ -172,7 +193,7 @@ function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory 
   </>;
 }
 
-function LeadDetail({ lead, locale, onStatusChange }: { lead: CrmLead; locale: string; onStatusChange: (status: CrmLead["status"]) => Promise<{ error?: string }> }) {
+function LeadDetail({ lead, locale, onConvert, onStatusChange }: { lead: CrmLead; locale: string; onConvert: () => void; onStatusChange: (status: CrmLead["status"]) => Promise<{ error?: string }> }) {
   const t = useTranslations("Crm");
   const projectTypes = useTranslations("ProjectTypes");
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -189,7 +210,7 @@ function LeadDetail({ lead, locale, onStatusChange }: { lead: CrmLead; locale: s
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
         <DetailField icon={Building2} label={t("fields.company")} value={lead.company} />
-        <DetailField icon={CircleDot} label={t("fields.status")} value={<div><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>{statusError ? <p role="alert" className="mt-1.5 text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}</div>} />
+        <DetailField icon={CircleDot} label={t("fields.status")} value={<div className="flex flex-col items-start gap-2"><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>{statusError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}{lead.project_id ? <Button asChild size="sm" variant="outline"><Link href={`/projects/${lead.project_id}`}><FolderKanban className="size-4" aria-hidden="true" />{t("conversion.openProject")}</Link></Button> : lead.status !== "lost" ? <Button type="button" size="sm" variant="outline" onClick={onConvert}><Plus className="size-4" aria-hidden="true" />{t("conversion.action")}</Button> : null}</div>} />
         <DetailField icon={Mail} label={t("fields.email")} value={lead.email ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a> : null} />
         <DetailField icon={Phone} label={t("fields.phone")} value={lead.phone ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a> : null} />
         <DetailField icon={Megaphone} label={t("fields.source")} value={source} />
@@ -214,12 +235,28 @@ function LeadHistoryPanel({ error, history, locale }: { error: string | null; hi
   if (!history) return <div className="flex min-h-48 items-center justify-center p-6 text-[var(--ui-text-muted)]"><LoaderCircle className="size-5 animate-spin" aria-hidden="true" /><span className="sr-only">{t("history.loading")}</span></div>;
   if (error) return <p role="alert" className="p-6 text-sm text-[var(--ui-danger-text)]">{error}</p>;
   if (!history.length) return <p className="p-6 text-sm text-[var(--ui-text-muted)]">{t("history.empty")}</p>;
-  return <div className="overflow-y-auto p-4 sm:p-6"><ol className="space-y-4">{history.map((event) => <li key={event.id} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-3"><span className="mt-1.5 size-2 rounded-full bg-[var(--ui-action-primary)]" aria-hidden="true" /><div className="min-w-0 border-b border-[var(--ui-border-subtle)] pb-4"><p className="text-sm font-medium text-[var(--ui-text)]">{event.event_type === "created" ? t("history.created", { status: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" }) : t("history.statusChanged", { from: event.previous_status ? t(`leadStatus.${event.previous_status}`) : "—", to: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" })}</p><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("history.meta", { actor: event.actor?.full_name ?? t("history.systemActor"), date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at)) })}</p></div></li>)}</ol></div>;
+  return <div className="overflow-y-auto p-4 sm:p-6"><ol className="space-y-4">{history.map((event) => <li key={event.id} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-3"><span className="mt-1.5 size-2 rounded-full bg-[var(--ui-action-primary)]" aria-hidden="true" /><div className="min-w-0 border-b border-[var(--ui-border-subtle)] pb-4"><p className="text-sm font-medium text-[var(--ui-text)]">{event.event_type === "created" ? t("history.created", { status: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" }) : event.event_type === "project_linked" ? t("history.projectLinked", { project: event.project?.name ?? t("history.unknownProject") }) : t("history.statusChanged", { from: event.previous_status ? t(`leadStatus.${event.previous_status}`) : "—", to: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" })}</p><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("history.meta", { actor: event.actor?.full_name ?? t("history.systemActor"), date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at)) })}</p></div></li>)}</ol></div>;
 }
 
 function DetailField({ icon: Icon, label, multiline = false, value }: { icon: LucideIcon; label: string; multiline?: boolean; value: React.ReactNode }) {
   const hasValue = value !== null && value !== undefined && value !== "";
-  return <div className={multiline ? "sm:col-span-2" : undefined}><div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5"><Icon aria-hidden="true" className="mt-0.5 size-4 text-[var(--ui-text-muted)]" strokeWidth={1.8} /><div className="min-w-0"><dt className="text-xs font-medium text-[var(--ui-text-muted)]">{label}</dt><dd className={`mt-1 text-sm ${hasValue ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"} ${multiline ? "whitespace-pre-wrap leading-6" : "leading-5"}`}>{hasValue ? value : "—"}</dd></div></div></div>;
+  return <div className={multiline ? "sm:col-span-2" : undefined}><dt className="flex min-w-0 items-center gap-2.5 text-xs font-medium text-[var(--ui-text-muted)]"><Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} /><span>{label}</span></dt><dd className={`ml-[1.625rem] mt-1 min-w-0 text-sm ${hasValue ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"} ${multiline ? "whitespace-pre-wrap leading-6" : "leading-5"}`}>{hasValue ? value : "—"}</dd></div>;
+}
+
+function getLeadProjectDefaults(lead: CrmLead, defaultStartDate: string): ProjectFormDefaults {
+  const countryCode = lead.country_code ?? (isCountryCode(lead.country) ? lead.country : "");
+  return {
+    city: lead.city ?? undefined,
+    city_geonames_id: lead.city_geonames_id ?? undefined,
+    client_name: lead.client_name,
+    country_code: countryCode,
+    description: lead.request_description ?? undefined,
+    priority: "normal",
+    project_type: lead.expected_project_type ?? undefined,
+    project_type_custom: lead.expected_project_type_custom ?? undefined,
+    start_date: defaultStartDate,
+    total_area_m2: lead.approximate_area && lead.approximate_area > 0 ? lead.approximate_area : undefined,
+  };
 }
 
 function formatDate(value: string | null, locale: string) {

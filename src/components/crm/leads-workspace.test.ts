@@ -85,4 +85,21 @@ describe("CRM leads workspace contract", () => {
     expect(Object.values(en.Crm.sourceOptions).every(Boolean)).toBe(true);
     expect(Object.values(uk.Crm.sourceOptions).every(Boolean)).toBe(true);
   });
+
+  it("reuses the Project form for atomic Lead conversion and aligns field values under labels", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("<ProjectForm action={createProjectFromLead.bind(null, lead.id)}");
+    expect(workspace).toContain("getLeadProjectDefaults(lead, defaultStartDate)");
+    expect(workspace).toContain("client_name: lead.client_name");
+    expect(workspace).toContain("description: lead.request_description ?? undefined");
+    expect(workspace).toContain('status !== "lost"');
+    expect(workspace).toContain("lead.project_id ? <Button asChild");
+    expect(workspace).toContain("ml-[1.625rem]");
+    expect(workspace).not.toContain('className="mt-0.5 size-4 text-[var(--ui-text-muted)]"');
+    expect(en.Crm.conversion.action).toBeTruthy();
+    expect(uk.Crm.conversion.action).toBeTruthy();
+    expect(Object.keys(en.Crm.conversion).sort()).toEqual(Object.keys(uk.Crm.conversion).sort());
+    expect(Object.keys(en.Crm.history).sort()).toEqual(Object.keys(uk.Crm.history).sort());
+    expect(uk.Crm.leadStatus.won).toBe("Виграно");
+  });
 });

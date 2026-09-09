@@ -11,7 +11,10 @@ type LeadHistoryRow = Database["public"]["Tables"]["crm_lead_history"]["Row"];
 
 export type CrmAdmin = { id: string; name: string };
 export type CrmLead = LeadRow & { responsibleAdmin: CrmAdmin | null };
-export type CrmLeadHistory = LeadHistoryRow & { actor: { full_name: string } | null };
+export type CrmLeadHistory = LeadHistoryRow & {
+  actor: { full_name: string } | null;
+  project: { name: string } | null;
+};
 export type CrmRecruitingCycle = CycleRow;
 export type CrmCandidate = CandidateRow & { responsibleAdmin: CrmAdmin | null; cycles: CrmRecruitingCycle[] };
 
@@ -57,7 +60,7 @@ export async function getCrmLeadHistory(leadId: string): Promise<CrmLeadHistory[
   if (!context) return [];
   const { data, error } = await context.supabase
     .from("crm_lead_history")
-    .select("*, actor:profiles!crm_lead_history_actor_id_fkey(full_name)")
+    .select("*, actor:profiles!crm_lead_history_actor_id_fkey(full_name), project:projects!crm_lead_history_project_id_fkey(name)")
     .eq("studio_id", context.membership.studio_id)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })

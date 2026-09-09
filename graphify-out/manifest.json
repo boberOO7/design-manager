@@ -205,9 +205,9 @@
     "semantic_hash": "54d7fef6684ded76958e22c0b4eb1bfe"
   },
   "src/app/(app)/projects/new/actions.ts": {
-    "mtime": 1787322961.3089495,
-    "ast_hash": "29364a37ceb5d5164becc86eeb2b9cbc",
-    "semantic_hash": "29364a37ceb5d5164becc86eeb2b9cbc"
+    "mtime": 1788954402.886358,
+    "ast_hash": "902b050436ef90bad4defbd75f733a6f",
+    "semantic_hash": "902b050436ef90bad4defbd75f733a6f"
   },
   "src/app/(app)/projects/new/page.tsx": {
     "mtime": 1785965408.8078177,
@@ -910,9 +910,9 @@
     "semantic_hash": "4c2ba5d9257f228edc76308fae96191e"
   },
   "src/types/database.types.ts": {
-    "mtime": 1788951487.0785034,
-    "ast_hash": "1329081e7fc262934cf475074701810d",
-    "semantic_hash": "1329081e7fc262934cf475074701810d"
+    "mtime": 1788954455.4037168,
+    "ast_hash": "f1f8fafe4d7835ef3156587fea1c48ac",
+    "semantic_hash": "f1f8fafe4d7835ef3156587fea1c48ac"
   },
   "src/types/index.ts": {
     "mtime": 1787857952.59377,
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788951547.0193422,
-    "ast_hash": "94f1db98006e1c6d9eaed7cc3abed46e",
-    "semantic_hash": "94f1db98006e1c6d9eaed7cc3abed46e"
+    "mtime": 1788954044.010095,
+    "ast_hash": "054944e3da818d58df172d8ed254458e",
+    "semantic_hash": "054944e3da818d58df172d8ed254458e"
   },
   "messages/uk.json": {
-    "mtime": 1788951547.183349,
-    "ast_hash": "fa98e2baf525887bbf91448769b0a0dc",
-    "semantic_hash": "fa98e2baf525887bbf91448769b0a0dc"
+    "mtime": 1788954044.1821017,
+    "ast_hash": "a85e88f97d24d51385b297e17cedc63a",
+    "semantic_hash": "a85e88f97d24d51385b297e17cedc63a"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -4295,9 +4295,9 @@
     "semantic_hash": "25e3cf00bd651bffa9cf6f8061b0d718"
   },
   "src/app/(app)/crm/leads/page.tsx": {
-    "mtime": 1788879513.061014,
-    "ast_hash": "45fb1b633f328e1268e40156e1a4ae72",
-    "semantic_hash": "45fb1b633f328e1268e40156e1a4ae72"
+    "mtime": 1788953984.5257497,
+    "ast_hash": "f408ec3ec5738f6c12b4c6eaa7c0dd04",
+    "semantic_hash": "f408ec3ec5738f6c12b4c6eaa7c0dd04"
   },
   "src/app/(app)/crm/loading.tsx": {
     "mtime": 1788880345.3258202,
@@ -4330,14 +4330,14 @@
     "semantic_hash": "0266cccad418ae143f7f76822461e653"
   },
   "src/components/crm/leads-workspace.test.ts": {
-    "mtime": 1788951106.82541,
-    "ast_hash": "2eb1cae69dee272e7314911866e67661",
-    "semantic_hash": "2eb1cae69dee272e7314911866e67661"
+    "mtime": 1788954789.0875573,
+    "ast_hash": "315f81a6b965ecf92eb563e9d26783d5",
+    "semantic_hash": "315f81a6b965ecf92eb563e9d26783d5"
   },
   "src/components/crm/leads-workspace.tsx": {
-    "mtime": 1788951546.8633358,
-    "ast_hash": "d50c3da0cb6c2a1560f62feb0dde4c07",
-    "semantic_hash": "d50c3da0cb6c2a1560f62feb0dde4c07"
+    "mtime": 1788954788.9355516,
+    "ast_hash": "54b380506d2012b22dd538c5293b2738",
+    "semantic_hash": "54b380506d2012b22dd538c5293b2738"
   },
   "src/components/projects/project-metadata-controls.tsx": {
     "mtime": 1788887434.0389917,
@@ -4345,9 +4345,9 @@
     "semantic_hash": "f051db5882c3716d4e62ebde0c894f27"
   },
   "src/data/queries/crm.ts": {
-    "mtime": 1788950441.0244927,
-    "ast_hash": "b1d3ef1e09ab9223a3dc781a20a60739",
-    "semantic_hash": "b1d3ef1e09ab9223a3dc781a20a60739"
+    "mtime": 1788953984.685756,
+    "ast_hash": "f429b2cb3907062adc4c0170f510109f",
+    "semantic_hash": "f429b2cb3907062adc4c0170f510109f"
   },
   "src/lib/crm-budget.test.ts": {
     "mtime": 1788886541.023147,
@@ -4438,5 +4438,20 @@
     "mtime": 1788951659.9603298,
     "ast_hash": "370ed0fd7b2ed01c1c5ecf23e5b5dc3c",
     "semantic_hash": "370ed0fd7b2ed01c1c5ecf23e5b5dc3c"
+  },
+  "src/lib/crm-lead-project-conversion-migration.test.ts": {
+    "mtime": 1788954403.0703652,
+    "ast_hash": "291792011b76b12e5f717b6f577d1bad",
+    "semantic_hash": "291792011b76b12e5f717b6f577d1bad"
+  },
+  "supabase/migrations/20260909113540_link_crm_leads_to_projects.sql": {
+    "mtime": 1788953830.870189,
+    "ast_hash": "d82053dd762bb8d75f1c82d51b4067c6",
+    "semantic_hash": "d82053dd762bb8d75f1c82d51b4067c6"
+  },
+  "supabase/tests/crm_lead_project_conversion.test.sql": {
+    "mtime": 1788954266.503031,
+    "ast_hash": "6a2a1379442ee7dc14b00b618c555619",
+    "semantic_hash": "6a2a1379442ee7dc14b00b618c555619"
   }
 }

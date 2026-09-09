@@ -49,7 +49,10 @@ Invariants:
 ## Creation and metadata
 
 - Project creation is a modal on `/projects`; `/projects/new` is a compatibility
-  redirect. Editing reuses the shared project form.
+  redirect. Editing and CRM Lead conversion reuse the shared project form.
+- A Project may be linked to at most one CRM Lead. Lead conversion extends the
+  normal template-aware creation RPC so Project creation, Lead linking, and the
+  Lead's Won transition either all succeed or all roll back.
 - Project codes are immutable UI references allocated atomically as
   `SPACE_{YEAR}_{NNN}` from a private studio/year counter. Manual legacy codes
   remain readable and codes are studio-unique.

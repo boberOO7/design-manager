@@ -564,6 +564,7 @@ export type Database = {
           lead_id: string
           new_status: Database["public"]["Enums"]["crm_lead_status"] | null
           previous_status: Database["public"]["Enums"]["crm_lead_status"] | null
+          project_id: string | null
           studio_id: string
         }
         Insert: {
@@ -576,6 +577,7 @@ export type Database = {
           previous_status?:
             | Database["public"]["Enums"]["crm_lead_status"]
             | null
+          project_id?: string | null
           studio_id: string
         }
         Update: {
@@ -588,6 +590,7 @@ export type Database = {
           previous_status?:
             | Database["public"]["Enums"]["crm_lead_status"]
             | null
+          project_id?: string | null
           studio_id?: string
         }
         Relationships: [
@@ -604,6 +607,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "crm_leads"
             referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "crm_lead_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "crm_lead_history_studio_id_fkey"
@@ -635,6 +645,7 @@ export type Database = {
           internal_notes: string | null
           next_contact_date: string | null
           phone: string | null
+          project_id: string | null
           request_description: string | null
           responsible_admin_id: string | null
           source: string | null
@@ -662,6 +673,7 @@ export type Database = {
           internal_notes?: string | null
           next_contact_date?: string | null
           phone?: string | null
+          project_id?: string | null
           request_description?: string | null
           responsible_admin_id?: string | null
           source?: string | null
@@ -689,6 +701,7 @@ export type Database = {
           internal_notes?: string | null
           next_contact_date?: string | null
           phone?: string | null
+          project_id?: string | null
           request_description?: string | null
           responsible_admin_id?: string | null
           source?: string | null
@@ -697,6 +710,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_leads_project_studio_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
           {
             foreignKeyName: "crm_leads_studio_id_fkey"
             columns: ["studio_id"]

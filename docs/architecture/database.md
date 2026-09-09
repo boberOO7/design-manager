@@ -43,6 +43,11 @@ stores lead budget amount/currency separately. Legacy `country` and
 `budget_note` values remain compatibility fields for records created before the
 structured columns were introduced.
 
+Its optional `project_id` is a studio-safe, unique relationship. Conversion is
+handled inside `create_project_from_template`: the function locks the source
+Lead before creation and atomically writes the Project, link, Won transition,
+and Lead history.
+
 - Every browser-reachable tenant table requires explicit Data API grants and RLS.
   A grant permits an operation category; its policy limits eligible rows.
 - Prefer caller-context table writes when a simple RLS/column-grant boundary is
