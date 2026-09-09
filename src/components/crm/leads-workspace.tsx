@@ -1,11 +1,11 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Banknote, Building2, CalendarDays, CircleDot, FileText, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, type LucideIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarDays, CircleDot, FileText, History, LoaderCircle, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, type LucideIcon } from "lucide-react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { deleteLead, saveLead } from "@/app/(app)/crm/actions";
+import { deleteLead, loadLeadHistory, saveLead, updateLeadStatus } from "@/app/(app)/crm/actions";
 import { CrmActionForm } from "@/components/crm/action-form";
 import { AdminField, NotesField, TextField } from "@/components/crm/crm-fields";
 import { CityCombobox } from "@/components/projects/city-combobox";
@@ -16,11 +16,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
-import type { CrmAdmin, CrmLead } from "@/data/queries/crm";
+import type { CrmAdmin, CrmLead, CrmLeadHistory } from "@/data/queries/crm";
 import { formatCrmBudget, getCrmBudgetInputValue } from "@/lib/crm-budget";
 import { filterLeads } from "@/lib/crm";
 import { getCountryName, isCountryCode } from "@/lib/countries";
-import { CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadSourceKey, type CrmActionState } from "@/lib/validation/crm";
+import { CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -38,7 +38,9 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [openLead, setOpenLead] = useState<CrmLead | "new" | null>(null);
-  const [view, setView] = useState<"detail" | "edit">("detail");
+  const [view, setView] = useState<"detail" | "edit" | "history">("detail");
+  const [history, setHistory] = useState<CrmLeadHistory[] | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const visible = useMemo(() => filterLeads(leads, query, status), [leads, query, status]);
   const lead = openLead === "new" ? null : openLead;
@@ -54,7 +56,34 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
   }
 
   function closeDialog() {
-    if (!deleting) setOpenLead(null);
+    if (!deleting) {
+      setOpenLead(null);
+      setHistory(null);
+      setHistoryError(null);
+    }
+  }
+
+  async function showHistory() {
+    if (!lead) return;
+    setView("history");
+    setHistory(null);
+    setHistoryError(null);
+    const result = await loadLeadHistory(lead.id);
+    setHistory(result.history ?? []);
+    setHistoryError(result.error ?? null);
+  }
+
+  async function changeStatus(nextStatus: CrmLead["status"]) {
+    if (!lead || lead.status === nextStatus) return {};
+    const previousStatus = lead.status;
+    setOpenLead({ ...lead, status: nextStatus });
+    const result = await updateLeadStatus(lead.id, nextStatus);
+    if (result.error) {
+      setOpenLead((current) => current && current !== "new" && current.id === lead.id ? { ...current, status: previousStatus } : current);
+    } else {
+      router.refresh();
+    }
+    return result;
   }
 
   async function remove() {
@@ -83,8 +112,8 @@ export function LeadsWorkspace({ admins, leads }: { admins: CrmAdmin[]; leads: C
         ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><span className="rounded-full border border-[var(--ui-border)] px-2 py-1 text-xs">{t(`leadStatus.${item.status}`)}</span></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{formatDate(item.next_contact_date, locale) ?? "—"}</td></tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
-    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting} closeLabel={t("close")} title={lead ? lead.client_name : t("leads.add")} description={lead && view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} deleting={deleting} onDelete={() => void remove()} onEdit={() => setView("edit")} onClose={closeDialog} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
+    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting} closeLabel={t("close")} title={lead ? lead.client_name : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
   </>;
 }
@@ -120,7 +149,6 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
       <FormField as="div" label={t("fields.firstContact")} error={state.fieldErrors?.first_contact_date}><DatePicker name="first_contact_date" defaultValue={lead?.first_contact_date ?? today()} locale={locale} invalid={Boolean(state.fieldErrors?.first_contact_date)} /></FormField>
       <FormField as="div" label={t("fields.nextContact")} error={state.fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={lead?.next_contact_date ?? ""} locale={locale} invalid={Boolean(state.fieldErrors?.next_contact_date)} /></FormField>
       <AdminField admins={admins} defaultValue={lead?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
-      <FormField as="div" label={t("fields.status")}><Select name="status" defaultValue={lead?.status ?? "new"}>{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select></FormField>
     </div>
     <p aria-live="polite" className={metadata.countryResetMessage ? "text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{metadata.countryResetMessage}</p>
     <NotesField name="request_description" label={t("fields.request")} defaultValue={lead?.request_description} error={state.fieldErrors?.request_description} />
@@ -128,12 +156,27 @@ function LeadFormFields({ admins, lead, state }: { admins: CrmAdmin[]; lead: Crm
   </>;
 }
 
-function LeadDetail({ deleting, lead, locale, onClose, onDelete, onEdit }: { deleting: boolean; lead: CrmLead; locale: string; onClose: () => void; onDelete: () => void; onEdit: () => void }) {
+function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory }: { deleting: boolean; historyOpen: boolean; onDelete: () => void; onEdit: () => void; onHistory: () => void }) {
   const t = useTranslations("Crm");
-  const projectTypes = useTranslations("ProjectTypes");
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const setMenuTriggerRef = useCallback((node: HTMLButtonElement | null) => setPortalContainer(node?.closest<HTMLElement>("dialog, [role='dialog']") ?? null), []);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  return <>
+    <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onHistory} aria-label={t(historyOpen ? "history.back" : "history.action")}>{historyOpen ? <ArrowLeft className="size-4" aria-hidden="true" /> : <History className="size-4" aria-hidden="true" />}<span className="hidden sm:inline">{t(historyOpen ? "history.back" : "history.action")}</span></Button>
+    <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onEdit} aria-label={t("edit")}><Pencil className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{t("edit")}</span></Button>
+    <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
+      <Popover.Trigger asChild><Button ref={setMenuTriggerRef} type="button" variant="ghost" className="size-11 p-0" aria-label={t("recordActions")}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger>
+      <Popover.Portal container={portalContainer ?? undefined}><Popover.Content align="end" sideOffset={6} className="z-[80] min-w-48 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" disabled={deleting} onClick={() => { setMenuOpen(false); onDelete(); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] outline-none transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:bg-[var(--ui-danger-surface)] disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />{deleting ? t("deleting") : t("delete")}</button></Popover.Content></Popover.Portal>
+    </Popover.Root>
+  </>;
+}
+
+function LeadDetail({ lead, locale, onStatusChange }: { lead: CrmLead; locale: string; onStatusChange: (status: CrmLead["status"]) => Promise<{ error?: string }> }) {
+  const t = useTranslations("Crm");
+  const projectTypes = useTranslations("ProjectTypes");
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusPending, startStatusTransition] = useTransition();
   const countryCode = lead.country_code ?? (isCountryCode(lead.country) ? lead.country : null);
   const country = countryCode ? getCountryName(countryCode, locale) : lead.country;
   const budget = lead.budget_amount !== null && (lead.budget_currency === "UAH" || lead.budget_currency === "USD")
@@ -146,7 +189,7 @@ function LeadDetail({ deleting, lead, locale, onClose, onDelete, onEdit }: { del
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
         <DetailField icon={Building2} label={t("fields.company")} value={lead.company} />
-        <DetailField icon={CircleDot} label={t("fields.status")} value={t(`leadStatus.${lead.status}`)} />
+        <DetailField icon={CircleDot} label={t("fields.status")} value={<div><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>{statusError ? <p role="alert" className="mt-1.5 text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}</div>} />
         <DetailField icon={Mail} label={t("fields.email")} value={lead.email ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a> : null} />
         <DetailField icon={Phone} label={t("fields.phone")} value={lead.phone ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a> : null} />
         <DetailField icon={Megaphone} label={t("fields.source")} value={source} />
@@ -156,21 +199,22 @@ function LeadDetail({ deleting, lead, locale, onClose, onDelete, onEdit }: { del
         <DetailField icon={Ruler} label={t("fields.area")} value={lead.approximate_area !== null ? `${lead.approximate_area} m²` : null} />
         <DetailField icon={Banknote} label={t("fields.budget")} value={budget} />
         <DetailField icon={CalendarDays} label={t("fields.firstContact")} value={formatDate(lead.first_contact_date, locale)} />
-        <DetailField icon={CalendarDays} label={t("fields.nextContact")} value={formatDate(lead.next_contact_date, locale)} />
+        <DetailField icon={CalendarDays} label={t("fields.nextContact")} value={lead.next_contact_date ? <>{formatDate(lead.next_contact_date, locale)}{!lead.responsible_admin_id ? <span className="mt-1 flex items-center gap-1.5 text-xs text-[var(--ui-warning-text)]"><AlertCircle className="size-3.5" aria-hidden="true" />{t("reminder.needsResponsible")}</span> : null}</> : null} />
       </dl>
       <div className="mt-6 grid gap-5 border-t border-[var(--ui-border)] pt-5">
         <DetailField icon={FileText} label={t("fields.request")} value={lead.request_description} multiline />
         <DetailField icon={StickyNote} label={t("fields.notes")} value={lead.internal_notes} multiline />
       </div>
     </div>
-    <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6">
-      <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
-        <Popover.Trigger asChild><Button ref={setMenuTriggerRef} type="button" variant="ghost" className="size-11 p-0" aria-label={t("recordActions")}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger>
-        <Popover.Portal container={portalContainer ?? undefined}><Popover.Content align="start" sideOffset={6} className="z-[80] min-w-48 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" disabled={deleting} onClick={() => { setMenuOpen(false); onDelete(); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] outline-none transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:bg-[var(--ui-danger-surface)] disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />{deleting ? t("deleting") : t("delete")}</button></Popover.Content></Popover.Portal>
-      </Popover.Root>
-      <div className="flex gap-2"><Button type="button" variant="outline" onClick={onClose}>{t("close")}</Button><Button type="button" onClick={onEdit}><Pencil className="size-4" aria-hidden="true" />{t("edit")}</Button></div>
-    </footer>
   </div>;
+}
+
+function LeadHistoryPanel({ error, history, locale }: { error: string | null; history: CrmLeadHistory[] | null; locale: string }) {
+  const t = useTranslations("Crm");
+  if (!history) return <div className="flex min-h-48 items-center justify-center p-6 text-[var(--ui-text-muted)]"><LoaderCircle className="size-5 animate-spin" aria-hidden="true" /><span className="sr-only">{t("history.loading")}</span></div>;
+  if (error) return <p role="alert" className="p-6 text-sm text-[var(--ui-danger-text)]">{error}</p>;
+  if (!history.length) return <p className="p-6 text-sm text-[var(--ui-text-muted)]">{t("history.empty")}</p>;
+  return <div className="overflow-y-auto p-4 sm:p-6"><ol className="space-y-4">{history.map((event) => <li key={event.id} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-3"><span className="mt-1.5 size-2 rounded-full bg-[var(--ui-action-primary)]" aria-hidden="true" /><div className="min-w-0 border-b border-[var(--ui-border-subtle)] pb-4"><p className="text-sm font-medium text-[var(--ui-text)]">{event.event_type === "created" ? t("history.created", { status: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" }) : t("history.statusChanged", { from: event.previous_status ? t(`leadStatus.${event.previous_status}`) : "—", to: event.new_status ? t(`leadStatus.${event.new_status}`) : "—" })}</p><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("history.meta", { actor: event.actor?.full_name ?? t("history.systemActor"), date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at)) })}</p></div></li>)}</ol></div>;
 }
 
 function DetailField({ icon: Icon, label, multiline = false, value }: { icon: LucideIcon; label: string; multiline?: boolean; value: React.ReactNode }) {

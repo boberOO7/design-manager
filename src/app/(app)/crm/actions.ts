@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
+import { getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -11,6 +12,7 @@ import {
   crmCandidateSchema,
   crmLeadSchema,
   crmRecruitingCycleSchema,
+  CRM_LEAD_STATUSES,
   formValues,
   resolveCrmLeadSourceValue,
   type CrmActionState,
@@ -78,11 +80,10 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     first_contact_date: value.first_contact_date,
     next_contact_date: nullable(value.next_contact_date),
     internal_notes: nullable(value.internal_notes),
-    status: value.status,
   };
   const result = leadId
     ? await crm.supabase.from("crm_leads").update(record).eq("id", leadId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle()
-    : await crm.supabase.from("crm_leads").insert({ ...record, studio_id: crm.admin.studio_id }).select("id").single();
+    : await crm.supabase.from("crm_leads").insert({ ...record, status: value.status, studio_id: crm.admin.studio_id }).select("id").single();
   if (result.error || !result.data) {
     console.error("Unable to save CRM lead", result.error);
     return { error: t("errors.saveLead") };
@@ -101,6 +102,36 @@ export async function deleteLead(leadId: string): Promise<{ error?: string }> {
   }
   revalidatePath("/crm/leads");
   return {};
+}
+
+export async function updateLeadStatus(leadId: string, status: string): Promise<{ error?: string }> {
+  const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
+  const parsed = z.object({ leadId: z.uuid(), status: z.enum(CRM_LEAD_STATUSES) }).safeParse({ leadId, status });
+  if (!crm || !parsed.success) return { error: t("errors.permission") };
+  const { data, error } = await crm.supabase
+    .from("crm_leads")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.leadId)
+    .eq("studio_id", crm.admin.studio_id)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Unable to update CRM lead status", error);
+    return { error: t("errors.updateLeadStatus") };
+  }
+  revalidatePath("/crm/leads");
+  return {};
+}
+
+export async function loadLeadHistory(leadId: string): Promise<{ error?: string; history?: CrmLeadHistory[] }> {
+  const t = await getTranslations("Crm");
+  if (!z.uuid().safeParse(leadId).success) return { error: t("errors.loadLeadHistory") };
+  try {
+    return { history: await getCrmLeadHistory(leadId) };
+  } catch (error) {
+    console.error("Unable to load CRM lead history", error);
+    return { error: t("errors.loadLeadHistory") };
+  }
 }
 
 export async function createCandidate(_state: CrmActionState, formData: FormData): Promise<CrmActionState> {

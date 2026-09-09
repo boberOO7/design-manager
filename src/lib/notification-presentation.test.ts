@@ -85,6 +85,17 @@ describe("notification panel localization", () => {
     });
   });
 
+  it("localizes a Lead follow-up reminder while preserving the client name", () => {
+    const notification = item({
+      notification_type: "crm_lead_follow_up",
+      title: "Lead follow-up reminder",
+      body: "Reminder: contact Vasyl.",
+      metadata: { leadName: "Vasyl", contactDate: "2026-09-10" },
+    });
+    expect(presentation("en", notification)).toEqual({ title: "Lead follow-up reminder", body: "Reminder: contact Vasyl." });
+    expect(presentation("uk", notification)).toEqual({ title: "Нагадування про контакт із лідом", body: "Нагадування: зв'язатися з Vasyl." });
+  });
+
   it("localizes complaint and request labels but preserves their user-authored subjects", () => {
     const complaint = item({
       notification_type: "submission_created",

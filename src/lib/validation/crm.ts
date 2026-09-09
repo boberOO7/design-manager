@@ -10,6 +10,10 @@ export const RECRUITING_OUTCOMES = ["hired", "reserve", "rejected"] as const;
 export type CrmLeadSourceKey = (typeof CRM_LEAD_SOURCE_KEYS)[number];
 export type CrmLeadSourceSelection = CrmLeadSourceKey | "" | "other";
 
+export function isCrmLeadStatus(value: string): value is (typeof CRM_LEAD_STATUSES)[number] {
+  return CRM_LEAD_STATUSES.some((status) => status === value);
+}
+
 export function isCrmLeadSourceKey(value: string | null | undefined): value is CrmLeadSourceKey {
   return CRM_LEAD_SOURCE_KEYS.some((key) => key === value);
 }
@@ -48,7 +52,7 @@ export const crmLeadSchema = z.object({
   first_contact_date: z.iso.date(),
   next_contact_date: optionalDate,
   internal_notes: optionalText(10000),
-  status: z.enum(CRM_LEAD_STATUSES),
+  status: z.enum(CRM_LEAD_STATUSES).optional().default("new"),
 });
 
 export const crmCandidateSchema = z.object({

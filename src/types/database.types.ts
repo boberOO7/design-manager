@@ -555,6 +555,65 @@ export type Database = {
           },
         ]
       }
+      crm_lead_history: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          lead_id: string
+          new_status: Database["public"]["Enums"]["crm_lead_status"] | null
+          previous_status: Database["public"]["Enums"]["crm_lead_status"] | null
+          studio_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          lead_id: string
+          new_status?: Database["public"]["Enums"]["crm_lead_status"] | null
+          previous_status?:
+            | Database["public"]["Enums"]["crm_lead_status"]
+            | null
+          studio_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          lead_id?: string
+          new_status?: Database["public"]["Enums"]["crm_lead_status"] | null
+          previous_status?:
+            | Database["public"]["Enums"]["crm_lead_status"]
+            | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_history_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_history_lead_studio_fkey"
+            columns: ["lead_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "crm_lead_history_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_leads: {
         Row: {
           approximate_area: number | null
@@ -2623,6 +2682,7 @@ export type Database = {
         | "submission_status_changed"
         | "office_assignment_assigned"
         | "office_assignment_status_changed"
+        | "crm_lead_follow_up"
       office_assignment_status:
         | "assigned"
         | "in_progress"
@@ -2820,6 +2880,7 @@ export const Constants = {
         "submission_status_changed",
         "office_assignment_assigned",
         "office_assignment_status_changed",
+        "crm_lead_follow_up",
       ],
       office_assignment_status: [
         "assigned",

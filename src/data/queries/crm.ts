@@ -7,9 +7,11 @@ import type { Database } from "@/types/database.types";
 type LeadRow = Database["public"]["Tables"]["crm_leads"]["Row"];
 type CandidateRow = Database["public"]["Tables"]["crm_candidates"]["Row"];
 type CycleRow = Database["public"]["Tables"]["crm_recruiting_cycles"]["Row"];
+type LeadHistoryRow = Database["public"]["Tables"]["crm_lead_history"]["Row"];
 
 export type CrmAdmin = { id: string; name: string };
 export type CrmLead = LeadRow & { responsibleAdmin: CrmAdmin | null };
+export type CrmLeadHistory = LeadHistoryRow & { actor: { full_name: string } | null };
 export type CrmRecruitingCycle = CycleRow;
 export type CrmCandidate = CandidateRow & { responsibleAdmin: CrmAdmin | null; cycles: CrmRecruitingCycle[] };
 
@@ -48,6 +50,20 @@ export async function getCrmLeads(): Promise<{ error: boolean; leads: CrmLead[] 
   const admins = await getCrmAdmins();
   const adminNames = new Map(admins.map((admin) => [admin.id, admin]));
   return { error: false, leads: data.map((lead) => ({ ...lead, responsibleAdmin: lead.responsible_admin_id ? adminNames.get(lead.responsible_admin_id) ?? null : null })) };
+}
+
+export async function getCrmLeadHistory(leadId: string): Promise<CrmLeadHistory[]> {
+  const context = await getCrmContext();
+  if (!context) return [];
+  const { data, error } = await context.supabase
+    .from("crm_lead_history")
+    .select("*, actor:profiles!crm_lead_history_actor_id_fkey(full_name)")
+    .eq("studio_id", context.membership.studio_id)
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+  if (error) throw new Error("Unable to load CRM lead history.", { cause: error });
+  return data;
 }
 
 export async function getCrmCandidates(): Promise<{ candidates: CrmCandidate[]; error: boolean }> {

@@ -14,11 +14,14 @@
     "sourceOptions": { "notSpecified": "Not specified", "website": "Website", "instagram": "Instagram", "referral": "Referral / Recommendation", "partner": "Partner / Personal contact", "other": "Other" },
     "filters": { "all": "All statuses", "active": "Active / in process", "reserve": "Reserve", "hired": "Hired", "rejected": "Rejected", "allPositions": "All positions" },
     "leadStatus": { "new": "New", "contacted": "Contacted", "discussion": "Discussion", "proposal": "Proposal", "won": "Won", "lost": "Lost" },
+    "status": { "changeLabel": "Change lead status" },
+    "history": { "action": "History", "back": "Details", "description": "Lead lifecycle and status chronology.", "loading": "Loading history…", "empty": "No history yet.", "created": "Lead created with status {status}", "statusChanged": "Status changed from {from} to {to}", "meta": "{actor} · {date}", "systemActor": "StudioFlow" },
+    "reminder": { "needsResponsible": "Assign a responsible admin to schedule this reminder." },
     "candidateStage": { "new": "New", "interview_scheduled": "Interview scheduled", "interview_completed": "Interview completed", "test_task": "Test task", "decision": "Decision" },
     "candidateOutcome": { "hired": "Hired", "reserve": "Reserve", "rejected": "Rejected" },
     "empty": { "filteredTitle": "No matching records", "filteredDescription": "Change the search or filters and try again." },
     "validation": { "correctFields": "Please correct the highlighted fields.", "invalidField": "Enter a valid value.", "invalidBudget": "Enter a whole amount in UAH, or add $ for USD." },
-    "errors": { "permission": "Only active studio administrators can manage CRM records.", "loadTitle": "Could not load CRM", "loadDescription": "Refresh the page or try again later.", "saveLead": "Could not save the lead. Please try again.", "deleteLead": "Could not delete the lead.", "saveCandidate": "Could not save the candidate. Please try again.", "deleteCandidate": "Could not delete the candidate.", "saveCycle": "Could not save the recruiting cycle. Please try again.", "activeCycle": "Complete the active recruiting cycle before starting another one." }
+    "errors": { "permission": "Only active studio administrators can manage CRM records.", "loadTitle": "Could not load CRM", "loadDescription": "Refresh the page or try again later.", "saveLead": "Could not save the lead. Please try again.", "deleteLead": "Could not delete the lead.", "updateLeadStatus": "Could not update the lead status. Try again.", "loadLeadHistory": "Could not load the lead history. Try again.", "saveCandidate": "Could not save the candidate. Please try again.", "deleteCandidate": "Could not delete the candidate.", "saveCycle": "Could not save the recruiting cycle. Please try again.", "activeCycle": "Complete the active recruiting cycle before starting another one." }
   },
   "Contractors": {
     "metadata": "Contractors",
@@ -992,6 +995,8 @@
     "officeAssignmentAssignedBody": "You are responsible for “{subject}”.",
     "officeAssignmentUpdatedTitle": "Office assignment updated",
     "officeAssignmentUpdatedBody": "“{subject}” is now {status}.",
+    "crmLeadFollowUpTitle": "Lead follow-up reminder",
+    "crmLeadFollowUpBody": "Reminder: contact {lead}.",
     "requestTypeVacation": "Vacation",
     "requestTypeDayOff": "Day Off",
     "requestTypeMedicalAppointment": "Medical Appointment",

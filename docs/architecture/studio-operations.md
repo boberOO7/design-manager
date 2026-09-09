@@ -44,6 +44,12 @@ migrations/tests.
   route/server-action layer and the database RLS boundary.
 - Leads retain an explicit first-contact date independently from status and
   follow-up changes.
+- Lead creation and status changes append actor-attributed lifecycle rows in
+  `crm_lead_history`; ordinary field edits are intentionally not audited there.
+- A Lead next-contact date schedules one future in-app notification for its
+  responsible active administrator. Date or assignee changes replace the unread
+  reminder, while clearing either side or deleting the Lead removes it. This is
+  intentionally independent of Calendar and Google Calendar.
 - Lead project type, country, and city selection reuse the canonical Project
   metadata controls. New leads default to Ukraine; legacy free-text country and
   budget values remain readable until an administrator replaces them.
@@ -61,7 +67,7 @@ migrations/tests.
   this foundation.
 
 Canonical paths: `src/app/(app)/crm/`, `src/data/queries/crm.ts`,
-`src/components/crm/`, CRM migrations, and `supabase/tests/crm_rls.test.sql`.
+`src/components/crm/`, CRM migrations, and `supabase/tests/crm*.test.sql`.
 
 ## Office
 

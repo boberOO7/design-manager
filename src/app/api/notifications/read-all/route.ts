@@ -6,8 +6,9 @@ export async function POST() {
   const membership = await getActiveStudioMembership();
   if (!membership) return NextResponse.json({ success: false, error: "Authentication is required." }, { status: 401 });
   const supabase = await createClient();
-  const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() })
-    .eq("recipient_id", membership.authenticatedUserId).is("read_at", null);
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("notifications").update({ read_at: now })
+    .eq("recipient_id", membership.authenticatedUserId).lte("created_at", now).is("read_at", null);
   if (error) return NextResponse.json({ success: false, error: "Notifications could not be updated." }, { status: 400 });
   return NextResponse.json({ success: true });
 }

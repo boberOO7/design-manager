@@ -14,11 +14,14 @@
     "sourceOptions": { "notSpecified": "Не вказано", "website": "Вебсайт", "instagram": "Instagram", "referral": "Рекомендація", "partner": "Партнер / Особистий контакт", "other": "Інше" },
     "filters": { "all": "Усі статуси", "active": "Активні / у процесі", "reserve": "Резерв", "hired": "Найняті", "rejected": "Відхилені", "allPositions": "Усі посади" },
     "leadStatus": { "new": "Новий", "contacted": "Контакт встановлено", "discussion": "Обговорення", "proposal": "Пропозиція", "won": "Успішний", "lost": "Втрачений" },
+    "status": { "changeLabel": "Змінити статус ліда" },
+    "history": { "action": "Історія", "back": "Деталі", "description": "Життєвий цикл і хронологія статусів ліда.", "loading": "Завантаження історії…", "empty": "Історії ще немає.", "created": "Лід створено зі статусом «{status}»", "statusChanged": "Статус змінено: «{from}» → «{to}»", "meta": "{actor} · {date}", "systemActor": "StudioFlow" },
+    "reminder": { "needsResponsible": "Призначте відповідального адміністратора, щоб запланувати нагадування." },
     "candidateStage": { "new": "Новий", "interview_scheduled": "Співбесіду заплановано", "interview_completed": "Співбесіду завершено", "test_task": "Тестове завдання", "decision": "Рішення" },
     "candidateOutcome": { "hired": "Найнято", "reserve": "Резерв", "rejected": "Відхилено" },
     "empty": { "filteredTitle": "Збігів не знайдено", "filteredDescription": "Змініть пошук або фільтри та спробуйте ще раз." },
     "validation": { "correctFields": "Виправте виділені поля.", "invalidField": "Введіть коректне значення.", "invalidBudget": "Введіть цілу суму в гривнях або додайте $ для доларів США." },
-    "errors": { "permission": "Керувати CRM можуть лише активні адміністратори студії.", "loadTitle": "Не вдалося завантажити CRM", "loadDescription": "Оновіть сторінку або спробуйте пізніше.", "saveLead": "Не вдалося зберегти лід. Спробуйте ще раз.", "deleteLead": "Не вдалося видалити лід.", "saveCandidate": "Не вдалося зберегти кандидата. Спробуйте ще раз.", "deleteCandidate": "Не вдалося видалити кандидата.", "saveCycle": "Не вдалося зберегти цикл найму. Спробуйте ще раз.", "activeCycle": "Завершіть активний цикл найму, перш ніж починати новий." }
+    "errors": { "permission": "Керувати CRM можуть лише активні адміністратори студії.", "loadTitle": "Не вдалося завантажити CRM", "loadDescription": "Оновіть сторінку або спробуйте пізніше.", "saveLead": "Не вдалося зберегти лід. Спробуйте ще раз.", "deleteLead": "Не вдалося видалити лід.", "updateLeadStatus": "Не вдалося змінити статус ліда. Спробуйте ще раз.", "loadLeadHistory": "Не вдалося завантажити історію ліда. Спробуйте ще раз.", "saveCandidate": "Не вдалося зберегти кандидата. Спробуйте ще раз.", "deleteCandidate": "Не вдалося видалити кандидата.", "saveCycle": "Не вдалося зберегти цикл найму. Спробуйте ще раз.", "activeCycle": "Завершіть активний цикл найму, перш ніж починати новий." }
   },
   "Contractors": {
     "metadata": "Підрядники",
@@ -992,6 +995,8 @@
     "officeAssignmentAssignedBody": "Ви відповідаєте за «{subject}».",
     "officeAssignmentUpdatedTitle": "Офісне доручення оновлено",
     "officeAssignmentUpdatedBody": "«{subject}»: новий статус — {status}.",
+    "crmLeadFollowUpTitle": "Нагадування про контакт із лідом",
+    "crmLeadFollowUpBody": "Нагадування: зв'язатися з {lead}.",
     "requestTypeVacation": "Відпустка",
     "requestTypeDayOff": "Відгул",
     "requestTypeMedicalAppointment": "Медичний прийом",

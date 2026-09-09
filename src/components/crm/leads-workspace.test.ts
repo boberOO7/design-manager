@@ -34,7 +34,26 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain("tel:");
     expect(workspace).toContain("<Popover.Root");
     expect(workspace).toContain("window.confirm");
+    expect(workspace).toContain("headerActions=");
+    expect(workspace).toContain("<History");
+    expect(workspace).not.toContain("<footer");
     expect(workspace).not.toContain("ExternalLink");
+  });
+
+  it("edits status directly and opens lifecycle history outside the detail body", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("updateLeadStatus");
+    expect(workspace).toContain("loadLeadHistory");
+    expect(workspace).toContain('setView("history")');
+    expect(workspace).toContain("<LeadHistoryPanel");
+    expect(workspace).not.toContain('name="status"');
+  });
+
+  it("explains when a follow-up date cannot schedule a reminder", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("!lead.responsible_admin_id ?");
+    expect(en.Crm.reminder.needsResponsible).toBeTruthy();
+    expect(uk.Crm.reminder.needsResponsible).toBeTruthy();
   });
 
   it("uses aligned shared city and date controls in the Lead form", async () => {
