@@ -17,6 +17,20 @@ type MyTaskRow = Omit<MyTask, "collaborators"> & {
   collaborators: TaskCollaboratorRelation[];
 };
 
+type DeadlineCompletionRow = { task_id: string; target_status: string; due_date: string; completed_at: string; completed_on: string };
+
+async function attachDeadlineCompletions<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
+  if (!tasks.length) return tasks;
+  const { data, error } = await supabase.from("task_deadline_completions")
+    .select("task_id, target_status, due_date, completed_at, completed_on")
+    .in("task_id", tasks.map((task) => task.id))
+    .is("voided_at", null)
+    .overrideTypes<DeadlineCompletionRow[], { merge: false }>();
+  if (error) throw new Error("Unable to load task deadline completion history.", { cause: error });
+  const completionByMilestone = new Map((data ?? []).map((completion) => [`${completion.task_id}:${completion.target_status}`, completion]));
+  return tasks.map((task) => ({ ...task, deadlines: task.deadlines?.map((deadline) => ({ ...deadline, completion: completionByMilestone.get(`${task.id}:${deadline.target_status}`) ?? null })) }));
+}
+
 function normalizeProjectTask({ collaborators, ...task }: ProjectTaskRow): ProjectTask {
   const deadlines = task.deadlines ?? [];
   return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
@@ -42,7 +56,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
     throw new Error(`Unable to load tasks for project ${projectId}.`, { cause: error });
   }
 
-  return data.map(normalizeProjectTask);
+  return attachDeadlineCompletions(supabase, data.map(normalizeProjectTask));
 }
 
 export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
@@ -55,7 +69,7 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
     .overrideTypes<ProjectTaskRow, { merge: false }>();
 
   if (error) throw new Error(`Unable to load task ${taskId}.`, { cause: error });
-  return data ? normalizeProjectTask(data) : null;
+  return data ? (await attachDeadlineCompletions(supabase, [normalizeProjectTask(data)]))[0] ?? null : null;
 }
 
 export async function getMyTasks(): Promise<MyTask[]> {
@@ -78,7 +92,7 @@ export async function getMyTasks(): Promise<MyTask[]> {
     throw new Error("Unable to load tasks assigned to the current user.", { cause: error });
   }
 
-  return data.map(normalizeMyTask).sort((left, right) => {
+  return (await attachDeadlineCompletions(supabase, data.map(normalizeMyTask))).sort((left, right) => {
     const leftRank = isTaskFinished(left.status) ? 2 : isTaskOverdue(left) ? 0 : 1;
     const rightRank = isTaskFinished(right.status) ? 2 : isTaskOverdue(right) ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;

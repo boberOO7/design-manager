@@ -2077,6 +2077,56 @@ export type Database = {
           },
         ]
       }
+      task_deadline_completions: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string
+          completed_on: string
+          created_at: string
+          due_date: string
+          id: string
+          project_id: string
+          studio_id: string
+          target_status: string
+          task_id: string
+          voided_at: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string
+          completed_on?: string
+          created_at?: string
+          due_date: string
+          id?: string
+          project_id: string
+          studio_id: string
+          target_status: string
+          task_id: string
+          voided_at?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string
+          completed_on?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          project_id?: string
+          studio_id?: string
+          target_status?: string
+          task_id?: string
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_deadline_completions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_deadlines: {
         Row: {
           created_at: string

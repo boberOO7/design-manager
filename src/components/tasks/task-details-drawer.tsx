@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, CircleX, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
@@ -548,12 +548,13 @@ function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, stat
   return <ul className="space-y-1.5">
     {deadlinesWithState.map(({ deadline, state }) => {
       const workflowStyle = getTaskStatusBadgeStyle(deadline.target_status);
-      const isCompleted = state === "completed";
+      const isCompleted = state === "completed_on_time" || state === "completed_late";
+      const isCompletedLate = state === "completed_late";
       const isOverdue = state === "overdue";
       return <li key={deadline.id} className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", isCompleted && "text-[var(--ui-text-muted)]")}>
-        {isCompleted ? <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : null}
+        {isCompletedLate ? <CircleX aria-label="Completed late" className="size-4 shrink-0 text-[var(--ui-danger-text)]" /> : isCompleted ? <Check aria-label="Completed on time" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : null}
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", workflowStyle.className, isCompleted && "opacity-70")}>{statusLabel(deadline.target_status)}</span>
-        <span className={cn("ui-numeric font-medium", isCompleted && "line-through", isOverdue && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
+        <span className={cn("ui-numeric font-medium", isCompleted && "line-through", (isOverdue || isCompletedLate) && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
       </li>;
     })}
   </ul>;

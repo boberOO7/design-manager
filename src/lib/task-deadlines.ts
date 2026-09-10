@@ -14,6 +14,7 @@ export type TaskDeadline = {
   due_date: string;
   created_at?: string;
   updated_at?: string;
+  completion?: { completed_at: string; completed_on: string; due_date: string } | null;
 };
 
 /** The task-details RPC accepts only these persisted deadline values. */
@@ -40,7 +41,7 @@ export function isTaskMilestoneStatus(value: string): value is TaskDeadlineInput
 
 export type TaskDeadlinePresentation = {
   deadline: TaskDeadline;
-  state: "upcoming" | "overdue" | "completed";
+  state: "upcoming" | "overdue" | "completed_on_time" | "completed_late";
 };
 
 export function getTaskDeadlinePresentation(
@@ -53,9 +54,9 @@ export function getTaskDeadlinePresentation(
     .sort((left, right) => (statusOrder.get(left.target_status) ?? 0) - (statusOrder.get(right.target_status) ?? 0))
     .map((deadline) => ({
       deadline,
-      state: (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder
-        ? "completed"
-        : deadline.due_date < today ? "overdue" : "upcoming",
+      state: deadline.completion
+        ? deadline.completion.completed_on > deadline.completion.due_date ? "completed_late" : "completed_on_time"
+        : (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder ? "completed_on_time" : deadline.due_date < today ? "overdue" : "upcoming",
     }));
 }
 

@@ -39,10 +39,17 @@ describe("task milestone deadlines", () => {
 
   it("keeps all known milestones in workflow order with their reached, overdue, and upcoming states", () => {
     expect(getTaskDeadlinePresentation({ status: "internal_review", deadlines }, "2026-09-11")).toEqual([
-      { deadline: deadlines[0], state: "completed" },
+      { deadline: deadlines[0], state: "completed_on_time" },
       { deadline: deadlines[1], state: "upcoming" },
       { deadline: deadlines[2], state: "upcoming" },
     ]);
     expect(getTaskDeadlinePresentation({ status: "in_progress", deadlines }, "2026-09-11")[0]?.state).toBe("overdue");
+  });
+
+  it("preserves a late completion separately from an active overdue deadline", () => {
+    const late = { ...deadlines[2]!, completion: { due_date: "2026-09-18", completed_on: "2026-09-19", completed_at: "2026-09-19T08:00:00Z" } };
+    const onTime = { ...deadlines[2]!, completion: { due_date: "2026-09-18", completed_on: "2026-09-18", completed_at: "2026-09-18T08:00:00Z" } };
+    expect(getTaskDeadlinePresentation({ status: "completed", deadlines: [late] }, "2026-09-20")[0]?.state).toBe("completed_late");
+    expect(getTaskDeadlinePresentation({ status: "completed", deadlines: [onTime] }, "2026-09-20")[0]?.state).toBe("completed_on_time");
   });
 });

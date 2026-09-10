@@ -465,9 +465,9 @@
     "semantic_hash": "3c66442091c35e842902bed82113cd9c"
   },
   "src/components/tasks/task-details-drawer.tsx": {
-    "mtime": 1788816193.6647685,
-    "ast_hash": "1447b762280dda75aac9b6b1ff34ad0a",
-    "semantic_hash": "1447b762280dda75aac9b6b1ff34ad0a"
+    "mtime": 1789042002.5117385,
+    "ast_hash": "bda343be2db1faa162b89b1f469169fc",
+    "semantic_hash": ""
   },
   "src/components/tasks/task-status-control.tsx": {
     "mtime": 1787007543.5488749,
@@ -605,9 +605,9 @@
     "semantic_hash": "aa7192cc96708983fbb699ff97cd1fa0"
   },
   "src/data/queries/tasks.ts": {
-    "mtime": 1788438161.7818027,
-    "ast_hash": "032a1d16d3a4b6f55737bc74bd50e97d",
-    "semantic_hash": "032a1d16d3a4b6f55737bc74bd50e97d"
+    "mtime": 1789042025.3671336,
+    "ast_hash": "2d8b7313595f23a009a7687f4ca4979c",
+    "semantic_hash": ""
   },
   "src/data/queries/team.ts": {
     "mtime": 1787854575.510965,
@@ -910,8 +910,8 @@
     "semantic_hash": "4c2ba5d9257f228edc76308fae96191e"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789041031.249689,
-    "ast_hash": "07bb086aac77a4aab224f19536cee007",
+    "mtime": 1789042123.4888196,
+    "ast_hash": "3fec4a00bf931f56904c14bc5be4e155",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -925,7 +925,7 @@
     "semantic_hash": "3c7f0ea934932bf52aa84a7645ccee38"
   },
   "src/types/tasks.ts": {
-    "mtime": 1788381959.9459822,
+    "mtime": 1789042002.1277225,
     "ast_hash": "af69e870dd1f74d1cf87d1f52921bbd7",
     "semantic_hash": "af69e870dd1f74d1cf87d1f52921bbd7"
   },
@@ -3660,14 +3660,14 @@
     "semantic_hash": "035222983e833345a742051a614d653a"
   },
   "src/lib/task-deadlines.test.ts": {
-    "mtime": 1788425615.6237159,
-    "ast_hash": "07cf26f3aa2754fb8b78cd2de68bd3e0",
-    "semantic_hash": "07cf26f3aa2754fb8b78cd2de68bd3e0"
+    "mtime": 1789042062.2394598,
+    "ast_hash": "fc386af1a547ec398d00c1a8f9ce4f4d",
+    "semantic_hash": ""
   },
   "src/lib/task-deadlines.ts": {
-    "mtime": 1788425666.3650928,
-    "ast_hash": "c0eaa7efcae55f7380c9d40a048b12c9",
-    "semantic_hash": "c0eaa7efcae55f7380c9d40a048b12c9"
+    "mtime": 1789042025.1871262,
+    "ast_hash": "d5386c23bf87344cbea080443d0578df",
+    "semantic_hash": ""
   },
   "src/lib/task-workflow.ts": {
     "mtime": 1788382093.857551,
@@ -4517,6 +4517,16 @@
   "supabase/migrations/20260910114858_fix_time_off_approval_notification_read_state.sql": {
     "mtime": 1789040978.5178742,
     "ast_hash": "15a376a2b7e3dc32bd43c716b3e11899",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260910120551_task_deadline_completion_history.sql": {
+    "mtime": 1789042025.0311198,
+    "ast_hash": "a7632ae9f97a1bba0b9ae40f9743e178",
+    "semantic_hash": ""
+  },
+  "supabase/tests/task_deadline_completion_history.test.sql": {
+    "mtime": 1789042108.2201908,
+    "ast_hash": "83a4a9a0d5192a42fe84717160118848",
     "semantic_hash": ""
   }
 }
