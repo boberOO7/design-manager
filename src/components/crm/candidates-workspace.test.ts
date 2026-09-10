@@ -48,6 +48,8 @@ describe("CRM candidates workspace contract", () => {
     expect(Object.keys(en.Crm.candidates).sort()).toEqual(Object.keys(uk.Crm.candidates).sort());
     expect(en.Crm.candidates.openRecord).toBeTruthy();
     expect(uk.Crm.candidates.editDescription).toBeTruthy();
+    expect(en.Crm.fields.interviewNotes).toBe("First impression");
+    expect(uk.Crm.fields.interviewNotes).toBe("Перше враження");
   });
 
   it("keeps the editor focused on structured fields with one Save action", async () => {
@@ -60,10 +62,12 @@ describe("CRM candidates workspace contract", () => {
     expect(workspace).not.toContain("saveContact");
     expect(workspace).not.toContain("saveCycle");
     expect(workspace).not.toContain("internal_notes");
-    expect(workspace).not.toContain("interview_notes");
     expect(workspace).not.toContain("decision_notes");
     expect(actions).toContain("function saveCandidateEditor");
-    expect(actions).not.toContain("interview_notes: nullable");
+    expect(workspace).toContain('<Textarea className="resize-y" name="interview_notes" rows={3}');
+    expect(workspace).toContain('<Textarea className="resize-y" name="test_task_result" rows={3}');
+    expect(workspace).toContain('label={t("fields.interviewNotes")} value={cycle.interview_notes} multiline');
+    expect(actions).toContain("interview_notes: nullable(value.interview_notes)");
     expect(actions).not.toContain("decision_notes: nullable");
   });
 });

@@ -83,6 +83,7 @@ export const crmRecruitingCycleSchema = z.object({
   outcome: z.union([z.literal(""), z.enum(RECRUITING_OUTCOMES)]),
   next_contact_date: optionalDate,
   interview_at: optionalDateTime,
+  interview_notes: optionalText(10000),
   test_task_result: optionalText(10000),
 });
 

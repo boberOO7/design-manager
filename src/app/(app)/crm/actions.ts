@@ -57,6 +57,7 @@ function recruitingCycleRecord(value: z.infer<typeof crmRecruitingCycleSchema>) 
     outcome: value.outcome || null,
     next_contact_date: nullable(value.next_contact_date),
     interview_at: value.interview_at ? new Date(value.interview_at).toISOString() : null,
+    interview_notes: nullable(value.interview_notes),
     test_task_result: nullable(value.test_task_result),
     completed_at: value.outcome ? new Date().toISOString() : null,
   };
