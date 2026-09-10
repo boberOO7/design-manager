@@ -910,8 +910,8 @@
     "semantic_hash": "4c2ba5d9257f228edc76308fae96191e"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789042123.4888196,
-    "ast_hash": "3fec4a00bf931f56904c14bc5be4e155",
+    "mtime": 1789042932.6355944,
+    "ast_hash": "cb93fdfbd474f1d9d84f63ecc0ee9bf3",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -3795,9 +3795,9 @@
     "semantic_hash": "c85f90533e068daf9de94dee83c751a7"
   },
   "src/app/(app)/office/assignments/actions.ts": {
-    "mtime": 1788530209.418901,
-    "ast_hash": "98a718ea5fd04ec8dad51afb4ef77b13",
-    "semantic_hash": "98a718ea5fd04ec8dad51afb4ef77b13"
+    "mtime": 1789042909.0828211,
+    "ast_hash": "119aaaf4d0a02ec394d4b98636dd744b",
+    "semantic_hash": ""
   },
   "src/app/(app)/office/assignments/page.tsx": {
     "mtime": 1788549312.0397775,
@@ -3840,9 +3840,9 @@
     "semantic_hash": "604868b42f469a12c6fdf512d385bf9b"
   },
   "src/lib/office-assignments-migration.test.ts": {
-    "mtime": 1788530554.7529995,
-    "ast_hash": "9d9c95fba95675a67fbc2d6c3f2b897d",
-    "semantic_hash": "9d9c95fba95675a67fbc2d6c3f2b897d"
+    "mtime": 1789042909.2588286,
+    "ast_hash": "55f116bfb8608df4335c97189e2dcd10",
+    "semantic_hash": ""
   },
   "src/lib/office-assignments.test.ts": {
     "mtime": 1788643373.1825652,
@@ -4527,6 +4527,16 @@
   "supabase/tests/task_deadline_completion_history.test.sql": {
     "mtime": 1789042108.2201908,
     "ast_hash": "83a4a9a0d5192a42fe84717160118848",
+    "semantic_hash": ""
+  },
+  "src/lib/validation/office-assignment.test.ts": {
+    "mtime": 1789042909.4308362,
+    "ast_hash": "d18a6f3e92fa38aedd90325f4b0f8f9e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260910123000_make_office_assignment_deadlines_optional.sql": {
+    "mtime": 1789042908.9348147,
+    "ast_hash": "f750ec0756ae878994eb84d17fabd0bb",
     "semantic_hash": ""
   }
 }

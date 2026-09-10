@@ -2517,7 +2517,7 @@ export type Database = {
       }
       create_office_assignment: {
         Args: {
-          p_deadline: string
+          p_deadline?: string
           p_description: string
           p_priority: string
           p_responsible_id: string
@@ -2590,7 +2590,7 @@ export type Database = {
       manage_office_assignment: {
         Args: {
           p_assignment_id: string
-          p_deadline: string
+          p_deadline?: string
           p_priority: string
           p_responsible_id: string
           p_status: Database["public"]["Enums"]["office_assignment_status"]

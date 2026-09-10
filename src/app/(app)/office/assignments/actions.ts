@@ -20,10 +20,12 @@ export async function createOfficeAssignment(_state: OfficeAssignmentActionState
   });
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_office_assignment", {
+  const createInput = {
     p_title: parsed.data.title, p_description: parsed.data.description, p_responsible_id: parsed.data.responsibleId,
-    p_priority: parsed.data.priority, p_deadline: parsed.data.deadline,
-  });
+    p_priority: parsed.data.priority,
+    ...(parsed.data.deadline === null ? {} : { p_deadline: parsed.data.deadline }),
+  };
+  const { data, error } = await supabase.rpc("create_office_assignment", createInput);
   if (error || !data) { console.error("Unable to create office assignment", error); return { error: "create" }; }
   refreshOffice();
   return { success: true, assignmentId: data };
@@ -45,10 +47,12 @@ export async function manageOfficeAssignment(input: { assignmentId: string; stat
   if (!admin) return { error: "permission" };
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("manage_office_assignment", {
+  const manageInput = {
     p_assignment_id: parsed.data.assignmentId, p_status: parsed.data.status, p_responsible_id: parsed.data.responsibleId,
-    p_priority: parsed.data.priority, p_deadline: parsed.data.deadline,
-  });
+    p_priority: parsed.data.priority,
+    ...(parsed.data.deadline === null ? {} : { p_deadline: parsed.data.deadline }),
+  };
+  const { error } = await supabase.rpc("manage_office_assignment", manageInput);
   if (error) { console.error("Unable to manage office assignment", error); return { error: error.message.includes("transition") ? "transition" : "manage" }; }
   refreshOffice(); return {};
 }

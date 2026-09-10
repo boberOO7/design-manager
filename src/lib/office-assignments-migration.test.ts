@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20260904135441_office_assignments.sql", "utf8");
+const optionalDeadlinesMigration = readFileSync("supabase/migrations/20260910123000_make_office_assignment_deadlines_optional.sql", "utf8");
 
 describe("office assignments migration", () => {
   it("uses a dedicated table and canonical workflow", () => {
@@ -20,5 +21,10 @@ describe("office assignments migration", () => {
   it("does not reference production work or metrics", () => {
     const table = migration.slice(migration.indexOf("create table public.office_assignments"), migration.indexOf("create index office_assignments"));
     expect(table).not.toMatch(/project_id|task_id|productivity|area_m2|rating|progress/i);
+  });
+
+  it("keeps deadline optional in the RPC contract without making priority optional", () => {
+    expect(optionalDeadlinesMigration).toMatch(/p_priority text,\s+p_deadline date default null/);
+    expect(optionalDeadlinesMigration).toContain("if p_priority not in ('low', 'normal', 'high', 'urgent') then raise exception 'invalid_priority'; end if;");
   });
 });
