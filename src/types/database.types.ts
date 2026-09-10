@@ -2599,10 +2599,10 @@ export type Database = {
       }
       manage_submission: {
         Args: {
-          p_deadline: string
-          p_internal_note: string
-          p_priority: string
-          p_responsible_id: string
+          p_deadline?: string
+          p_internal_note?: string
+          p_priority?: string
+          p_responsible_id?: string
           p_status: Database["public"]["Enums"]["submission_status"]
           p_submission_id: string
         }

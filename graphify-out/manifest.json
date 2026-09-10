@@ -910,8 +910,8 @@
     "semantic_hash": "4c2ba5d9257f228edc76308fae96191e"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789042932.6355944,
-    "ast_hash": "cb93fdfbd474f1d9d84f63ecc0ee9bf3",
+    "mtime": 1789043732.3731508,
+    "ast_hash": "e4759c69ec35719ce04cbc7f716e2aa7",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -3735,9 +3735,9 @@
     "semantic_hash": "bbae8b529cb5bf86f5b3d187b6429e8a"
   },
   "src/app/(app)/submissions/actions.ts": {
-    "mtime": 1788641557.1718433,
-    "ast_hash": "594d224cc187e3137f4c9f2f27c918f8",
-    "semantic_hash": "594d224cc187e3137f4c9f2f27c918f8"
+    "mtime": 1789043708.4849887,
+    "ast_hash": "e1c32e120adb73aafc1bbf60f5cbe133",
+    "semantic_hash": ""
   },
   "src/app/(app)/submissions/page.tsx": {
     "mtime": 1788530266.6449578,
@@ -3870,9 +3870,9 @@
     "semantic_hash": "0fbb36f71049628fef3029d81570d0dc"
   },
   "src/lib/submission-operational-inbox-migration.test.ts": {
-    "mtime": 1788543441.6582243,
-    "ast_hash": "10b82a8fe2119d32a9adec66401518ae",
-    "semantic_hash": "10b82a8fe2119d32a9adec66401518ae"
+    "mtime": 1789043708.8210037,
+    "ast_hash": "16b9c8132b8fbdf72c34055c841b722f",
+    "semantic_hash": ""
   },
   "supabase/migrations/20260904173557_submission_operational_inbox.sql": {
     "mtime": 1788543441.498219,
@@ -4120,9 +4120,9 @@
     "semantic_hash": "b934a67ace6bf0772217c02c246f2faf"
   },
   "src/lib/submission-request-categories-migration.test.ts": {
-    "mtime": 1788641608.1691172,
-    "ast_hash": "11adae3d815d65265f1176bbbd5f5850",
-    "semantic_hash": "11adae3d815d65265f1176bbbd5f5850"
+    "mtime": 1789043742.6296089,
+    "ast_hash": "ed6cd812546c4a46e52265f2fd8cad67",
+    "semantic_hash": ""
   },
   "src/lib/submission-validation.test.ts": {
     "mtime": 1788641608.317118,
@@ -4537,6 +4537,11 @@
   "supabase/migrations/20260910123000_make_office_assignment_deadlines_optional.sql": {
     "mtime": 1789042908.9348147,
     "ast_hash": "f750ec0756ae878994eb84d17fabd0bb",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260910123423_make_submission_management_optional_arguments.sql": {
+    "mtime": 1789043708.648996,
+    "ast_hash": "897348c39db5763442e035581b33c16b",
     "semantic_hash": ""
   }
 }

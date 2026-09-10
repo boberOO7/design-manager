@@ -22,10 +22,11 @@ export async function createSubmission(_state: SubmissionActionState, formData: 
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "invalid" };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_submission", {
+  const createInput = {
     p_type: parsed.data.type, p_title: parsed.data.title, p_description: parsed.data.description, p_anonymous: parsed.data.anonymous,
-    p_request_category: parsed.data.requestCategory,
-  });
+    ...(parsed.data.requestCategory === null ? {} : { p_request_category: parsed.data.requestCategory }),
+  };
+  const { data, error } = await supabase.rpc("create_submission", createInput);
   if (error || !data) { console.error("Unable to create submission", error); return { error: "create" }; }
   refresh();
   return parsed.data.anonymous ? { success: true, anonymousSubmitted: true } : { success: true, submissionId: data };
@@ -79,11 +80,13 @@ export async function manageSubmission(input: { submissionId: string; status: st
   if (!admin) return { error: "permission" };
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("manage_submission", {
+  const manageInput = {
     p_submission_id: parsed.data.submissionId, p_status: parsed.data.status,
-    p_responsible_id: parsed.data.responsibleId, p_priority: parsed.data.priority,
-    p_deadline: parsed.data.deadline, p_internal_note: parsed.data.internalNote,
-  });
+    p_priority: parsed.data.priority, p_internal_note: parsed.data.internalNote,
+    ...(parsed.data.responsibleId === null ? {} : { p_responsible_id: parsed.data.responsibleId }),
+    ...(parsed.data.deadline === null ? {} : { p_deadline: parsed.data.deadline }),
+  };
+  const { error } = await supabase.rpc("manage_submission", manageInput);
   if (error) { console.error("Unable to manage submission", error); return { error: error.message.includes("invalid_submission_transition") ? "transition" : error.message.includes("responsible_required_for_work") || error.message.includes("responsible_must_be_active_studio_member") ? "responsible" : "manage" }; }
   refresh(); return {};
 }

@@ -18,4 +18,10 @@ describe("submission request categories migration", () => {
     expect(migration).toContain("grant execute on function public.create_submission(public.submission_type, text, text, boolean, text) to authenticated");
     expect(migration).not.toMatch(/create policy|drop policy|disable row level security/i);
   });
+
+  it("leaves the category optional only when the submission type does not use it", () => {
+    expect(migration).toContain("p_request_category text default null");
+    expect(migration).toContain("if p_type = 'request' and (p_request_category is null or p_request_category not in ('equipment', 'office', 'software', 'other')) then");
+    expect(migration).toContain("if p_type <> 'request' and p_request_category is not null then");
+  });
 });
