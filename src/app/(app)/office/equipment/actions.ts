@@ -1,0 +1,158 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
+import { createClient } from "@/lib/supabase/server";
+import {
+  equipmentAssignmentSchema,
+  equipmentDeleteSchema,
+  equipmentInputSchema,
+  equipmentUpdateSchema,
+  workstationDeleteSchema,
+  workstationInputSchema,
+  workstationUpdateSchema,
+  type EquipmentActionState,
+  type EquipmentInput,
+} from "@/lib/validation/equipment";
+
+function refreshEquipment() {
+  revalidatePath("/office");
+  revalidatePath("/office/equipment");
+}
+
+function formValue(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function workstationValues(formData: FormData) {
+  return { name: formValue(formData, "name"), assignedEmployeeId: formValue(formData, "assignedEmployeeId") };
+}
+
+function equipmentValues(formData: FormData) {
+  return {
+    equipmentType: formValue(formData, "equipmentType"), lifecycleState: formValue(formData, "lifecycleState"),
+    displayName: formValue(formData, "displayName"), workstationId: formValue(formData, "workstationId"),
+    manufacturer: formValue(formData, "manufacturer"), model: formValue(formData, "model"),
+    serialNumber: formValue(formData, "serialNumber"), assetTag: formValue(formData, "assetTag"),
+    cpu: formValue(formData, "cpu"), gpu: formValue(formData, "gpu"), ram: formValue(formData, "ram"),
+    storage: formValue(formData, "storage"), notes: formValue(formData, "notes"),
+  };
+}
+
+function equipmentPayload(input: EquipmentInput) {
+  return {
+    equipment_type: input.equipmentType,
+    lifecycle_state: input.lifecycleState,
+    display_name: input.displayName,
+    workstation_id: input.workstationId,
+    manufacturer: input.manufacturer,
+    model: input.model,
+    serial_number: input.serialNumber,
+    asset_tag: input.assetTag,
+    cpu: input.cpu,
+    gpu: input.gpu,
+    ram: input.ram,
+    storage: input.storage,
+    notes: input.notes,
+  };
+}
+
+function databaseError(error: { code?: string; message: string } | null, fallback: NonNullable<EquipmentActionState["error"]>): EquipmentActionState["error"] {
+  if (!error) return fallback;
+  if (error.code === "23505") return "duplicate";
+  if (error.code === "23503") return "location";
+  if (error.code === "23514") return "invalid";
+  if (error.code === "42501") return "permission";
+  if (error.message.includes("assigned_employee_must_be_an_active_studio_member")) return "member";
+  return fallback;
+}
+
+export async function createWorkstation(_state: EquipmentActionState, formData: FormData): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = workstationInputSchema.safeParse(workstationValues(formData));
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("workstations").insert({ studio_id: admin.studio_id, name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).select("id").single();
+  if (error || !data) return { error: databaseError(error, "create") };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function updateWorkstation(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = workstationUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("workstations").update({ name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "update") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function deleteWorkstation(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = workstationDeleteSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("workstations").delete().eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "delete") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true };
+}
+
+export async function createEquipment(_state: EquipmentActionState, formData: FormData): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentInputSchema.safeParse(equipmentValues(formData));
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").insert({ studio_id: admin.studio_id, ...equipmentPayload(parsed.data) }).select("id").single();
+  if (error || !data) return { error: databaseError(error, "create") };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function updateEquipment(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").update(equipmentPayload(parsed.data)).eq("id", parsed.data.equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "update") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function assignEquipment(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentAssignmentSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").update({ workstation_id: parsed.data.workstationId }).eq("id", parsed.data.equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "assign") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function deleteEquipment(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentDeleteSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").delete().eq("id", parsed.data.equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "delete") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true };
+}

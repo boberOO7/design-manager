@@ -1,0 +1,48 @@
+import type { Database } from "@/types/database.types";
+
+export type EquipmentType = Database["public"]["Enums"]["equipment_type"];
+export type EquipmentLifecycleState = Database["public"]["Enums"]["equipment_lifecycle_state"];
+
+export const EQUIPMENT_TYPES = [
+  "pc",
+  "laptop",
+  "monitor",
+  "mouse",
+  "keyboard",
+  "headphones",
+  "webcam",
+  "air_conditioner",
+  "printer",
+  "coffee_machine",
+  "other",
+] as const satisfies readonly EquipmentType[];
+
+export const EQUIPMENT_LIFECYCLE_STATES = ["active", "spare", "in_service", "retired"] as const satisfies readonly EquipmentLifecycleState[];
+export const COMPUTER_EQUIPMENT_TYPES = ["pc", "laptop"] as const satisfies readonly EquipmentType[];
+export const PERIPHERAL_EQUIPMENT_TYPES = ["mouse", "keyboard", "headphones", "webcam"] as const satisfies readonly EquipmentType[];
+export const OTHER_EQUIPMENT_TYPES = ["air_conditioner", "printer", "coffee_machine", "other"] as const satisfies readonly EquipmentType[];
+
+const equipmentTypes: ReadonlySet<string> = new Set(EQUIPMENT_TYPES);
+const computerEquipmentTypes: ReadonlySet<EquipmentType> = new Set(COMPUTER_EQUIPMENT_TYPES);
+const peripheralEquipmentTypes: ReadonlySet<EquipmentType> = new Set(PERIPHERAL_EQUIPMENT_TYPES);
+const otherEquipmentTypes: ReadonlySet<EquipmentType> = new Set(OTHER_EQUIPMENT_TYPES);
+
+export function isEquipmentType(type: string): type is EquipmentType {
+  return equipmentTypes.has(type);
+}
+
+export function isComputerEquipment(type: EquipmentType): type is (typeof COMPUTER_EQUIPMENT_TYPES)[number] {
+  return computerEquipmentTypes.has(type);
+}
+
+export function isPeripheralEquipment(type: EquipmentType): type is (typeof PERIPHERAL_EQUIPMENT_TYPES)[number] {
+  return peripheralEquipmentTypes.has(type);
+}
+
+export function isOtherEquipment(type: EquipmentType): type is (typeof OTHER_EQUIPMENT_TYPES)[number] {
+  return otherEquipmentTypes.has(type);
+}
+
+export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null }) {
+  return [item.cpu, item.gpu, item.ram, item.storage].filter((value): value is string => Boolean(value)).join(" · ");
+}

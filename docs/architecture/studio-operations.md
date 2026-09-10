@@ -115,7 +115,7 @@ Canonical paths: `src/app/(app)/office/`, `src/data/queries/submissions.ts`,
 `src/data/queries/office-assignments.ts`, `src/lib/submissions.ts`, and the
 submission/office-assignment migrations and RLS tests.
 
-### Equipment foundation
+### Equipment
 
 - `workstations` are studio-owned physical positions with a unique human-readable
   name and an optional current active studio-member assignment. Assignment
@@ -129,9 +129,19 @@ submission/office-assignment migrations and RLS tests.
 - Workstations and equipment are administrator-only at both grants and RLS
   boundaries. Maintenance schedules, service history, movement history, and
   notifications are not part of this foundation.
+- The admin-only `/office/equipment` workspace provides Workstations and Other
+  equipment views. Workstation details group computers, monitors, and
+  peripherals while keeping every attached device as an independent equipment
+  row.
+- Server Actions use the caller-context Supabase client after resolving the
+  active studio administrator. Equipment can be attached, detached, or moved by
+  updating its nullable workstation relationship; lifecycle changes do not
+  delete retired inventory.
 
-Canonical paths: the equipment foundation migration,
-`supabase/tests/equipment_domain_rls.test.sql`, and the generated database types.
+Canonical paths: `src/app/(app)/office/equipment/`,
+`src/components/office/equipment-workspace.tsx`,
+`src/data/queries/equipment.ts`, the equipment foundation migration, and focused
+Equipment application/RLS tests.
 
 ## Notifications
 

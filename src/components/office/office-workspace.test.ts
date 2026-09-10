@@ -9,10 +9,12 @@ const routing = readFileSync("src/components/office/use-office-overlay-routing.t
 const dialog = readFileSync("src/components/ui/dialog.tsx", "utf8");
 
 describe("Office workspace presentation", () => {
-  it("provides Overview, Submissions, and Assignments routes", () => {
+  it("provides Overview, Submissions, Assignments, and admin-only Equipment routes", () => {
     expect(shell).toContain('href: "/office"');
     expect(shell).toContain('href: "/office/submissions"');
     expect(shell).toContain('href: "/office/assignments"');
+    expect(shell).toContain('href: "/office/equipment"');
+    expect(shell).toContain("tabs.filter((tab) => !tab.adminOnly || isAdmin)");
   });
 
   it("offers assignment creation only to admins", () => {

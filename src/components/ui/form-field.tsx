@@ -15,10 +15,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   },
 );
 
-export function FormField({ children, className, error, label, optional = false, as = "label" }: { as?: "div" | "label"; children: ReactNode; className?: string; error?: string; label: ReactNode; optional?: boolean }) {
+export function FormField({ children, className, error, label, optional = false, optionalLabel = "optional", as = "label" }: { as?: "div" | "label"; children: ReactNode; className?: string; error?: string; label: ReactNode; optional?: boolean; optionalLabel?: string }) {
   const Tag = as;
   return <Tag className={cn("grid self-start gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]", className)}>
-    <span>{label}{optional ? <span className="ml-1 font-normal text-[var(--ui-text-muted)]">(optional)</span> : null}</span>
+    <span>{label}{optional ? <span className="ml-1 font-normal text-[var(--ui-text-muted)]">({optionalLabel})</span> : null}</span>
     {children}
     {error ? <span className="text-sm text-[var(--ui-danger-text)]">{error}</span> : null}
   </Tag>;
