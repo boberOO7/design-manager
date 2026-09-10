@@ -61,7 +61,7 @@ export function ProjectTemplateManager({ initialTemplates, studioId }: { initial
   async function save() {
     if (!draft || saving) return;
     setSaving(true); setError("");
-    const { data, error: saveError } = await createClient().rpc("save_project_template", { p_template_id: draft.id, p_studio_id: studioId, p_name: draft.name.trim(), p_project_type: draft.projectType, p_is_active: draft.isActive, p_is_default: draft.isDefault, p_tasks: draft.tasks.map(({ stage, title }) => ({ stage, title, priority: "normal" })) });
+    const { data, error: saveError } = await createClient().rpc("save_project_template", { p_studio_id: studioId, p_name: draft.name.trim(), p_project_type: draft.projectType, p_is_active: draft.isActive, p_is_default: draft.isDefault, p_tasks: draft.tasks.map(({ stage, title }) => ({ stage, title, priority: "normal" })), ...(draft.id === null ? {} : { p_template_id: draft.id }) });
     if (saveError || !data) { setError(saveError?.message ?? "Не вдалося зберегти шаблон."); setSaving(false); return; }
     const next: ProjectTemplate = { id: data, name: draft.name.trim(), projectType: draft.projectType, isActive: draft.isActive, isDefault: draft.isDefault, tasks: draft.tasks.map((task, position) => ({ id: task.id, stage: task.stage, title: task.title, priority: "normal", position })) };
     setTemplates((current) => mergeSavedProjectTemplate(current, next));

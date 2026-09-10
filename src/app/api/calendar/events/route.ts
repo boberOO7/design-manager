@@ -51,24 +51,25 @@ export async function POST(request: Request) {
     isActive: true,
   });
 
-  const { data: eventId, error } = await supabase.rpc("create_calendar_event_with_invites", {
+  const eventInput = {
     p_studio_id: payload.studio_id,
-    p_project_id: payload.project_id,
     p_title: payload.title,
-    p_description: payload.description,
     p_event_type: payload.event_type,
     p_starts_at: payload.starts_at,
     p_ends_at: payload.ends_at,
     p_all_day: payload.all_day,
-    p_location: payload.location,
-    p_meeting_url: payload.meeting_url,
-    p_meeting_mode: payload.meeting_mode,
     p_attendee_ids: value.attendeeIds,
-    p_recurrence_rule: payload.recurrence_rule,
-    p_compensates_time_off_request_id: payload.compensates_time_off_request_id,
-    p_assignee_id: payload.assignee_id,
     p_participant_ids: value.participantIds,
-  });
+    ...(payload.project_id === null ? {} : { p_project_id: payload.project_id }),
+    ...(payload.description === null ? {} : { p_description: payload.description }),
+    ...(payload.location === null ? {} : { p_location: payload.location }),
+    ...(payload.meeting_url === null ? {} : { p_meeting_url: payload.meeting_url }),
+    ...(payload.meeting_mode === null ? {} : { p_meeting_mode: payload.meeting_mode }),
+    ...(payload.recurrence_rule === null ? {} : { p_recurrence_rule: payload.recurrence_rule }),
+    ...(payload.compensates_time_off_request_id === null ? {} : { p_compensates_time_off_request_id: payload.compensates_time_off_request_id }),
+    ...(payload.assignee_id === null ? {} : { p_assignee_id: payload.assignee_id }),
+  };
+  const { data: eventId, error } = await supabase.rpc("create_calendar_event_with_invites", eventInput);
   if (error || !eventId) {
     console.error("calendar event and invitation creation error", {
       code: error?.code,

@@ -2487,14 +2487,14 @@ export type Database = {
           p_assignee_id?: string
           p_attendee_ids?: string[]
           p_compensates_time_off_request_id?: string
-          p_description: string
+          p_description?: string
           p_ends_at: string
           p_event_type: Database["public"]["Enums"]["calendar_event_type"]
-          p_location: string
+          p_location?: string
           p_meeting_mode?: string
-          p_meeting_url: string
+          p_meeting_url?: string
           p_participant_ids?: string[]
-          p_project_id: string
+          p_project_id?: string
           p_recurrence_rule?: Json
           p_starts_at: string
           p_studio_id: string
@@ -2652,7 +2652,7 @@ export type Database = {
           p_name: string
           p_stages: Json
           p_studio_id: string
-          p_template_id: string
+          p_template_id?: string
         }
         Returns: string
       }
@@ -2668,7 +2668,7 @@ export type Database = {
           p_project_type: string
           p_studio_id: string
           p_tasks: Json
-          p_template_id: string
+          p_template_id?: string
         }
         Returns: string
       }
@@ -2695,18 +2695,18 @@ export type Database = {
         Args: { p_category_id: string; p_color_key: string }
         Returns: undefined
       }
-      update_my_avatar: { Args: { p_avatar_path: string }; Returns: string }
+      update_my_avatar: { Args: { p_avatar_path?: string }; Returns: string }
       update_my_profile_birthday: {
         Args: { p_birth_date: string }
         Returns: undefined
       }
       update_my_profile_details: {
         Args: {
-          p_birth_date: string
-          p_city: string
-          p_city_geonames_id: number
-          p_country_code: string
-          p_joined_at: string
+          p_birth_date?: string
+          p_city?: string
+          p_city_geonames_id?: number
+          p_country_code?: string
+          p_joined_at?: string
         }
         Returns: undefined
       }
@@ -2728,13 +2728,13 @@ export type Database = {
       }
       update_studio_member_profile: {
         Args: {
-          p_birth_date: string
-          p_city: string
-          p_city_geonames_id: number
-          p_country_code: string
+          p_birth_date?: string
+          p_city?: string
+          p_city_geonames_id?: number
+          p_country_code?: string
           p_full_name: string
           p_job_title: string
-          p_joined_at: string
+          p_joined_at?: string
           p_system_role: string
           p_user_id: string
         }

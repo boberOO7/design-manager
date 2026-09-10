@@ -100,7 +100,7 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
   }
 
   async function persistAvatar(path: string | null) {
-    const { error: updateError } = await createClient().rpc("update_my_avatar", { p_avatar_path: path });
+    const { error: updateError } = await createClient().rpc("update_my_avatar", path === null ? {} : { p_avatar_path: path });
     if (updateError) throw updateError;
   }
 
@@ -198,13 +198,14 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
 
     setProfileError(null);
     setIsSavingProfile(true);
-    const { error: updateError } = await createClient().rpc("update_my_profile_details", {
-      p_birth_date: currentBirthDate || null,
-      p_city: normalizedCity || null,
-      p_city_geonames_id: normalizedCity ? currentCityGeoNamesId ?? null : null,
-      p_country_code: currentCountryCode || null,
-      p_joined_at: canEditStartDate ? currentJoinedAt || null : null,
-    });
+    const profileInput = {
+      ...(currentBirthDate ? { p_birth_date: currentBirthDate } : {}),
+      ...(normalizedCity ? { p_city: normalizedCity } : {}),
+      ...(normalizedCity && currentCityGeoNamesId !== null ? { p_city_geonames_id: currentCityGeoNamesId } : {}),
+      ...(currentCountryCode ? { p_country_code: currentCountryCode } : {}),
+      ...(canEditStartDate && currentJoinedAt ? { p_joined_at: currentJoinedAt } : {}),
+    };
+    const { error: updateError } = await createClient().rpc("update_my_profile_details", profileInput);
 
     if (updateError) {
       setProfileError(t("profileSaveFailed"));

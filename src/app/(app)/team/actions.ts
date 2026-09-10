@@ -202,17 +202,18 @@ export async function updateStudioMemberProfile(_previousState: StudioMemberProf
   if (parsed.data.userId === profile.id) return { formError: "Administrators cannot edit their own access through this form." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("update_studio_member_profile", {
+  const updateInput = {
     p_full_name: getFullName(parsed.data),
     p_job_title: parsed.data.jobTitle,
     p_system_role: parsed.data.systemRole,
     p_user_id: parsed.data.userId,
-    p_joined_at: parsed.data.joinedAt,
-    p_birth_date: parsed.data.birthDate,
-    p_country_code: parsed.data.countryCode,
-    p_city: parsed.data.city,
-    p_city_geonames_id: parsed.data.cityGeoNamesId,
-  });
+    ...(parsed.data.joinedAt === null ? {} : { p_joined_at: parsed.data.joinedAt }),
+    ...(parsed.data.birthDate === null ? {} : { p_birth_date: parsed.data.birthDate }),
+    ...(parsed.data.countryCode === null ? {} : { p_country_code: parsed.data.countryCode }),
+    ...(parsed.data.city === null ? {} : { p_city: parsed.data.city }),
+    ...(parsed.data.cityGeoNamesId === null ? {} : { p_city_geonames_id: parsed.data.cityGeoNamesId }),
+  };
+  const { error } = await supabase.rpc("update_studio_member_profile", updateInput);
   if (error) {
     console.error("Unable to update studio member profile", error);
     return { formError: "The team member profile could not be updated. Please try again." };

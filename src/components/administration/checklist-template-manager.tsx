@@ -38,7 +38,7 @@ export function ChecklistTemplateManager({ studioId, templates }: { studioId: st
   async function save() {
     if (!draft || isSaving) return;
     setIsSaving(true); setError("");
-    const { data, error: saveError } = await createClient().rpc("save_checklist_template", { p_template_id: draft.id, p_studio_id: studioId, p_name: draft.name.trim(), p_stages: draft.stages.map(({ title, weight }) => ({ title, weight })) });
+    const { data, error: saveError } = await createClient().rpc("save_checklist_template", { p_studio_id: studioId, p_name: draft.name.trim(), p_stages: draft.stages.map(({ title, weight }) => ({ title, weight })), ...(draft.id === null ? {} : { p_template_id: draft.id }) });
     if (saveError || !data) { setError(t("saveFailed")); setIsSaving(false); return; }
     const next: StudioChecklistTemplate = { id: data, name: draft.name.trim(), archivedAt: selected?.archivedAt ?? null, stages: draft.stages.map((stage) => ({ ...stage, title: stage.title.trim() })) };
     setItems((current) => draft.id ? current.map((template) => template.id === data ? next : template) : [...current, next].sort((left, right) => left.name.localeCompare(right.name)));

@@ -8,7 +8,7 @@ import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/ca
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { getDayOffCompensation } from "@/lib/time-off-compensation";
-import type { CalendarCompensableDayOff, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, TimeOffRequestType, TimeOffStatus } from "@/types/calendar";
+import { normalizeMeetingMode, type CalendarCompensableDayOff, type CalendarItem, type CalendarPageData, type CalendarPerson, type CalendarProject, type TimeOffRequestType, type TimeOffStatus } from "@/types/calendar";
 
 type CalendarQueryInput = { start: string; end: string };
 
@@ -183,7 +183,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       title: event.title, startDate: instantToDateOnly(event.starts_at), endDate: event.all_day ? getInclusiveAllDayEndDate(event.ends_at) : instantToDateOnly(event.ends_at),
       allDay: event.all_day, projectId: event.project_id, personIds: [...new Set(personIds)],
       eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
-      description: event.description, location: event.location, meetingUrl: event.meeting_url, meetingMode: event.meeting_mode,
+      description: event.description, location: event.location, meetingUrl: event.meeting_url, meetingMode: normalizeMeetingMode(event.meeting_mode),
       recurrenceRule: parseRecurrenceRule(event.recurrence_rule), seriesId: null, occurrenceStart: null,
       compensatesTimeOffRequestId: event.compensates_time_off_request_id, compensationDayOff: event.compensates_time_off_request_id ? linkedDayOffById.get(event.compensates_time_off_request_id) ?? null : null,
       assigneeId: event.assignee_id, assignee: event.assignee ? { ...event.assignee, projectIds: [] } : null,
@@ -198,7 +198,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       if (override) {
         const overrideInvitees = override.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
         const overrideParticipants = override.participants.map((participant) => ({ ...participant.profile, projectIds: [] }));
-        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, meetingMode: override.meeting_mode, recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, assigneeId: override.assignee_id, assignee: override.assignee ? { ...override.assignee, projectIds: [] } : null, invitees: overrideInvitees, participants: overrideParticipants, personIds: [...new Set([...overrideInvitees.map((invitee) => invitee.id), ...overrideParticipants.map((participant) => participant.id), override.organizer_id, ...(override.assignee_id ? [override.assignee_id] : [])])] });
+        items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, meetingMode: normalizeMeetingMode(override.meeting_mode), recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, assigneeId: override.assignee_id, assignee: override.assignee ? { ...override.assignee, projectIds: [] } : null, invitees: overrideInvitees, participants: overrideParticipants, personIds: [...new Set([...overrideInvitees.map((invitee) => invitee.id), ...overrideParticipants.map((participant) => participant.id), override.organizer_id, ...(override.assignee_id ? [override.assignee_id] : [])])] });
       } else items.push({ ...baseItem, key: `calendar_event:${event.id}:${originalStart}`, id: event.id, startsAt: bounds.startsAt, endsAt: bounds.endsAt, startDate: instantToDateOnly(bounds.startsAt), endDate: event.all_day ? getInclusiveAllDayEndDate(bounds.endsAt) : instantToDateOnly(bounds.endsAt), seriesId: event.id, occurrenceStart: originalStart });
     }
   }

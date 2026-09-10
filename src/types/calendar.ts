@@ -9,6 +9,10 @@ export const TIME_OFF_STATUSES = ["pending", "approved", "rejected", "cancelled"
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
 export type CalendarTimeFormat = (typeof CALENDAR_TIME_FORMATS)[number];
 export type MeetingMode = "offline" | "online";
+
+export function normalizeMeetingMode(value: string | null): MeetingMode | null {
+  return value === "offline" || value === "online" ? value : null;
+}
 export type CalendarEventInvitationStatus = (typeof CALENDAR_EVENT_INVITATION_STATUSES)[number];
 export type TimeOffRequestType = (typeof TIME_OFF_REQUEST_TYPES)[number];
 export type TimeOffStatus = (typeof TIME_OFF_STATUSES)[number];
