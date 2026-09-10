@@ -55,7 +55,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const timeOffPromise = supabase
     .from("time_off_requests")
-    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, review_note, subject:profiles!time_off_requests_user_id_fkey!inner(full_name)")
+    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, subject:profiles!time_off_requests_user_id_fkey!inner(full_name)")
     .eq("studio_id", membership.studio_id)
     .lte("start_date", end)
     .gte("end_date", start)
@@ -111,6 +111,12 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   }
 
   const projects: CalendarProject[] = projectsResult.data ?? [];
+  const reviewRequestIds = isAdmin ? (timeOffResult.data ?? []).map((request) => request.id) : [];
+  const reviewNotesResult = reviewRequestIds.length
+    ? await supabase.from("time_off_request_reviews").select("request_id, note").in("request_id", reviewRequestIds)
+    : { data: [], error: null };
+  if (reviewNotesResult.error) throw new Error("Unable to load private time-off review notes.");
+  const reviewNoteByRequestId = new Map((reviewNotesResult.data ?? []).map((review) => [review.request_id, review.note]));
   const detailDayOffs = (timeOffResult.data ?? []).filter((request) => request.request_type === "day_off" && request.status === "approved");
   const linkedRequestIds = (eventsResult.data ?? []).map((event) => event.compensates_time_off_request_id).filter((id): id is string => id !== null);
   const linkedDayOffsResult = linkedRequestIds.length ? await supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").in("id", linkedRequestIds).eq("request_type", "day_off").eq("status", "approved") : { data: [], error: null };
@@ -203,7 +209,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       requestType: request.request_type as TimeOffRequestType, status: request.status as TimeOffStatus,
       startDate: request.start_date, endDate: request.end_date, startTime: request.start_time,
       endTime: request.end_time, allDay: request.all_day, privateNote: request.private_note,
-      reviewNote: request.review_note, reviewedBy: request.reviewed_by, reviewedAt: request.reviewed_at,
+      reviewNote: reviewNoteByRequestId.get(request.id) ?? null, reviewedBy: request.reviewed_by, reviewedAt: request.reviewed_at,
       currentUserId: membership.authenticatedUserId,
     });
     if (item) items.push({ ...item, compensation: request.request_type === "day_off" && request.status === "approved" ? compensationFor(request) : null });

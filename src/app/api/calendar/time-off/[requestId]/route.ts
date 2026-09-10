@@ -25,14 +25,46 @@ export async function PATCH(request: Request, context: Context) {
     if (membership.system_role !== "admin") return NextResponse.json({ success: false, formError: "This time-off action is not allowed." }, { status: 403 });
     const { data: approval, error: approvalError } = await supabase.rpc("approve_time_off_request", {
       p_request_id: requestId,
-      p_review_note: parsed.data.reviewNote,
+      p_review_note: parsed.data.reviewNote ?? undefined,
     });
     if (approvalError || !approval?.[0]) {
-      return NextResponse.json({ success: false, formError: approvalError?.message ?? "The request could not be approved." }, { status: 400 });
+      const postgresContext = approvalError && "context" in approvalError && typeof approvalError.context === "string" ? approvalError.context : null;
+      const postgresWhere = approvalError && "where" in approvalError && typeof approvalError.where === "string" ? approvalError.where : null;
+      console.error("time_off_requests approval failed", {
+        error: approvalError ? { code: approvalError.code, message: approvalError.message, details: approvalError.details, hint: approvalError.hint, context: postgresContext, where: postgresWhere } : null,
+        approvalReturnedRow: Boolean(approval?.[0]),
+        requestId,
+        studioId: membership.studio_id,
+        authenticatedUserId: membership.authenticatedUserId,
+        reviewNotePresent: parsed.data.reviewNote !== null,
+      });
+      return NextResponse.json({ success: false, formError: "The request could not be approved." }, { status: approvalError?.code === "P0001" ? 400 : 500 });
     }
     const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
     if (!item) return NextResponse.json({ success: true, item: null, removedKey: null, requiresRefresh: true });
     return NextResponse.json({ success: true, item, removedKey: null, approvalCount: approval[0].approval_count, requiredApprovalCount: approval[0].required_approval_count, hasCurrentAdminApproved: true });
+  }
+
+  if (parsed.data.action === "reject") {
+    if (membership.system_role !== "admin") return NextResponse.json({ success: false, formError: "This time-off action is not allowed." }, { status: 403 });
+    const { error: rejectionError } = await supabase.rpc("reject_time_off_request", {
+      p_request_id: requestId,
+      p_review_note: parsed.data.reviewNote ?? undefined,
+    });
+    if (rejectionError) {
+      const postgresContext = "context" in rejectionError && typeof rejectionError.context === "string" ? rejectionError.context : null;
+      const postgresWhere = "where" in rejectionError && typeof rejectionError.where === "string" ? rejectionError.where : null;
+      console.error("time_off_requests rejection failed", {
+        error: { code: rejectionError.code, message: rejectionError.message, details: rejectionError.details, hint: rejectionError.hint, context: postgresContext, where: postgresWhere },
+        requestId,
+        studioId: membership.studio_id,
+        authenticatedUserId: membership.authenticatedUserId,
+        reviewNotePresent: parsed.data.reviewNote !== null,
+      });
+      return NextResponse.json({ success: false, formError: "The request could not be rejected." }, { status: rejectionError.code === "P0001" ? 400 : 500 });
+    }
+    const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
+    return NextResponse.json({ success: true, item, removedKey: null });
   }
 
   const update = deriveTimeOffUpdate({
@@ -41,7 +73,6 @@ export async function PATCH(request: Request, context: Context) {
     actorRole: membership.system_role,
     ownerId: existing.user_id,
     currentStatus: existing.status,
-    reviewNote: parsed.data.reviewNote,
     now: new Date().toISOString(),
   });
   if (!update) {

@@ -4,9 +4,7 @@ import type { TimeOffStatus } from "@/types/calendar";
 export type TimeOffAction = "approve" | "reject" | "cancel";
 export type TimeOffActorRole = "admin" | "employee";
 
-export type TimeOffUpdate =
-  | { status: "approved" | "rejected"; reviewed_by: string; reviewed_at: string; review_note: string | null }
-  | { status: "cancelled"; cancelled_at: string };
+export type TimeOffUpdate = { status: "cancelled"; cancelled_at: string };
 
 export function deriveTimeOffUpdate(input: {
   action: TimeOffAction;
@@ -14,7 +12,6 @@ export function deriveTimeOffUpdate(input: {
   actorRole: TimeOffActorRole;
   ownerId: string;
   currentStatus: TimeOffStatus;
-  reviewNote: string | null;
   now: string;
 }): TimeOffUpdate | null {
   const nextStatus: TimeOffStatus = input.action === "approve"
@@ -30,16 +27,7 @@ export function deriveTimeOffUpdate(input: {
     return null;
   }
 
-  if (nextStatus === "cancelled") {
-    return { status: nextStatus, cancelled_at: input.now };
-  }
-
-  return {
-    status: nextStatus,
-    reviewed_by: input.actorId,
-    reviewed_at: input.now,
-    review_note: input.reviewNote,
-  };
+  return nextStatus === "cancelled" ? { status: nextStatus, cancelled_at: input.now } : null;
 }
 
 export function timeOffUpdateFields(update: TimeOffUpdate): string[] {

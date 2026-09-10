@@ -66,8 +66,9 @@ server guard before changing a write.
 - Project-member and studio-member removal use atomic RPCs so impact checks,
   reassignment, and deactivation cannot diverge.
 - Notification reads constrain both notification ID and current recipient.
-- Private time-off notes and review notes never enter coworker availability or
-  notification content.
+- Private time-off notes never enter coworker availability or notification
+  content. Review notes are stored in an administrator-only RLS surface and
+  never enter employee-accessible request rows, availability, or notifications.
 - Privileged `security definer` functions must use an empty `search_path`, verify
   the actor internally, and have `PUBLIC`/`anon` execution revoked. Private
   helpers are not browser APIs.

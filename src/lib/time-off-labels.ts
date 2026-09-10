@@ -14,7 +14,7 @@ const TIME_OFF_REQUEST_PRESENTATION: Record<TimeOffRequestType, TimeOffRequestPr
   vacation: { fieldLabelKey: "note", requiresReason: false, supportsPartialDay: false },
   day_off: { fieldLabelKey: "reason", placeholderKey: "dayOffReasonPlaceholder", requiresReason: true, supportsPartialDay: true },
   medical_appointment: { fieldLabelKey: "reason", requiresReason: false, supportsPartialDay: true },
-  sick_leave: { fieldLabelKey: "note", requiresReason: false, supportsPartialDay: true },
+  sick_leave: { fieldLabelKey: "reason", requiresReason: true, supportsPartialDay: true },
   other: { fieldLabelKey: "reason", requiresReason: true, supportsPartialDay: true },
 };
 

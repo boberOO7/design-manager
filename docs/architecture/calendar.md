@@ -68,8 +68,9 @@ relevance.
 - Request types and their approval thresholds are domain rules; inspect the
   current time-off migrations and `src/lib/administration.ts` before changing
   them.
-- Request type, private note, review note, pending state, and rejection state are
-  limited to the requester and active administrators.
+- Request type, private note, pending state, and rejection state are limited to
+  the requester and active administrators. Review notes are stored separately
+  and are readable only by active administrators.
 - Coworkers receive only approved interval, display name, and “Out of office”
   through `get_calendar_coworker_availability`.
 - Administration and Calendar share the same Route Handler review workflow.

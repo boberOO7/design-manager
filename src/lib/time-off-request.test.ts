@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveTimeOffUpdate, timeOffUpdateFields } from "./time-off-request";
+import { deriveTimeOffUpdate } from "./time-off-request";
 
 const base = {
   action: "approve" as const,
@@ -12,23 +12,9 @@ const base = {
 };
 
 describe("canonical server time-off transitions", () => {
-  it("derives trusted reviewer fields for admin approval", () => {
-    const update = deriveTimeOffUpdate({ ...base, action: "approve", reviewNote: "Approved" });
-    expect(update).toEqual({
-      status: "approved",
-      reviewed_by: "admin-1",
-      reviewed_at: base.now,
-      review_note: "Approved",
-    });
-    expect(update && timeOffUpdateFields(update)).toEqual(["review_note", "reviewed_at", "reviewed_by", "status"]);
-  });
-
-  it("derives trusted reviewer fields for admin rejection", () => {
-    expect(deriveTimeOffUpdate({ ...base, action: "reject" })).toMatchObject({
-      status: "rejected",
-      reviewed_by: "admin-1",
-      reviewed_at: base.now,
-    });
+  it("leaves approval and rejection to guarded review RPCs", () => {
+    expect(deriveTimeOffUpdate({ ...base, action: "approve" })).toBeNull();
+    expect(deriveTimeOffUpdate({ ...base, action: "reject" })).toBeNull();
   });
 
   it("allows an employee to cancel only their own pending request", () => {

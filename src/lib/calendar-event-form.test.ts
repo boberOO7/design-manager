@@ -190,7 +190,7 @@ describe("Calendar event and time-off payload validation", () => {
     expect(getTimeOffRequestPresentation("day_off")).toMatchObject({ fieldLabelKey: "reason", placeholderKey: "dayOffReasonPlaceholder", requiresReason: true, supportsPartialDay: true });
     expect(getTimeOffRequestPresentation("other")).toMatchObject({ fieldLabelKey: "reason", requiresReason: true, supportsPartialDay: true });
     expect(getTimeOffRequestPresentation("vacation")).toMatchObject({ fieldLabelKey: "note", requiresReason: false, supportsPartialDay: false });
-    expect(getTimeOffRequestPresentation("sick_leave")).toMatchObject({ fieldLabelKey: "note", requiresReason: false, supportsPartialDay: true });
+    expect(getTimeOffRequestPresentation("sick_leave")).toMatchObject({ fieldLabelKey: "reason", requiresReason: true, supportsPartialDay: true });
   });
 
   it("requires a non-whitespace reason only for day-off and other requests", () => {
@@ -200,7 +200,8 @@ describe("Calendar event and time-off payload validation", () => {
       expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType, privateNote: "   " }).success).toBe(false);
       expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType, privateNote: "Family commitment" }).success).toBe(true);
     }
-    expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "sick_leave", privateNote: "" }).success).toBe(true);
+    expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "sick_leave", privateNote: "" }).success).toBe(false);
+    expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "sick_leave", privateNote: "Sick leave" }).success).toBe(true);
     expect(timeOffRequestSchema.safeParse({ ...baseRequest, requestType: "vacation", allDay: true, startTime: null, endTime: null, privateNote: "" }).success).toBe(true);
   });
 

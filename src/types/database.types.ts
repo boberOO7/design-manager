@@ -2233,6 +2233,45 @@ export type Database = {
           },
         ]
       }
+      time_off_request_reviews: {
+        Row: {
+          created_at: string
+          created_by: string
+          note: string
+          request_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          note: string
+          request_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          note?: string
+          request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_request_reviews_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_request_reviews_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "time_off_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_off_requests: {
         Row: {
           all_day: boolean
@@ -2243,7 +2282,6 @@ export type Database = {
           id: string
           private_note: string | null
           request_type: Database["public"]["Enums"]["time_off_request_type"]
-          review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           start_date: string
@@ -2262,7 +2300,6 @@ export type Database = {
           id?: string
           private_note?: string | null
           request_type: Database["public"]["Enums"]["time_off_request_type"]
-          review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date: string
@@ -2281,7 +2318,6 @@ export type Database = {
           id?: string
           private_note?: string | null
           request_type?: Database["public"]["Enums"]["time_off_request_type"]
-          review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date?: string
@@ -2520,6 +2556,10 @@ export type Database = {
           p_status: Database["public"]["Enums"]["submission_status"]
           p_submission_id: string
         }
+        Returns: undefined
+      }
+      reject_time_off_request: {
+        Args: { p_request_id: string; p_review_note?: string }
         Returns: undefined
       }
       remove_project_member: {

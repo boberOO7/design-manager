@@ -32,16 +32,21 @@ export async function getNormalizedTimeOffRequest(requestId: string, currentUser
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("time_off_requests")
-    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, review_note, profile:profiles!time_off_requests_user_id_fkey!inner(full_name)")
+    .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, profile:profiles!time_off_requests_user_id_fkey!inner(full_name)")
     .eq("id", requestId)
     .maybeSingle();
   if (error || !data || data.status === "cancelled") return null;
+  const { data: review } = await supabase
+    .from("time_off_request_reviews")
+    .select("note")
+    .eq("request_id", data.id)
+    .maybeSingle();
   return normalizePrivateTimeOff({
     id: data.id, userId: data.user_id, employeeName: data.profile.full_name,
     requestType: data.request_type as TimeOffRequestType, status: data.status as TimeOffStatus,
     startDate: data.start_date, endDate: data.end_date, startTime: data.start_time,
     endTime: data.end_time, allDay: data.all_day, privateNote: data.private_note,
-    reviewNote: data.review_note, reviewedBy: data.reviewed_by, reviewedAt: data.reviewed_at,
+    reviewNote: review?.note ?? null, reviewedBy: data.reviewed_by, reviewedAt: data.reviewed_at,
     currentUserId,
   });
 }
