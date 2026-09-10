@@ -47,6 +47,7 @@ server guard before changing a write.
 | Calendar events | Subject to event/project rules | Subject to event/project rules |
 | Submissions | Type/workflow-dependent management | Create and participate where authorized |
 | Office assignments | Create/manage/cancel; read all in studio | Read and transition assignments for which responsible |
+| Workstations and equipment | Read and manage within active studio | No access |
 | Notifications | Own recipient rows only | Own recipient rows only |
 
 ## Invariants

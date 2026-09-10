@@ -115,6 +115,24 @@ Canonical paths: `src/app/(app)/office/`, `src/data/queries/submissions.ts`,
 `src/data/queries/office-assignments.ts`, `src/lib/submissions.ts`, and the
 submission/office-assignment migrations and RLS tests.
 
+### Equipment foundation
+
+- `workstations` are studio-owned physical positions with a unique human-readable
+  name and an optional current active studio-member assignment. Assignment
+  history is intentionally not modeled.
+- `equipment` rows have stable identities independent of workstation placement.
+  The nullable, studio-safe workstation relationship supports attachment,
+  detachment, and reassignment without replacing the equipment row.
+- Equipment stores its type, lifecycle state, common identifying metadata, and
+  optional CPU, GPU, RAM, and storage fields for PCs and laptops. Retired items
+  remain inventory records.
+- Workstations and equipment are administrator-only at both grants and RLS
+  boundaries. Maintenance schedules, service history, movement history, and
+  notifications are not part of this foundation.
+
+Canonical paths: the equipment foundation migration,
+`supabase/tests/equipment_domain_rls.test.sql`, and the generated database types.
+
 ## Notifications
 
 Notifications are persistent, recipient-private, database-generated operational

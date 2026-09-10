@@ -802,6 +802,81 @@ export type Database = {
           },
         ]
       }
+      equipment: {
+        Row: {
+          asset_tag: string | null
+          cpu: string | null
+          created_at: string
+          display_name: string
+          equipment_type: Database["public"]["Enums"]["equipment_type"]
+          gpu: string | null
+          id: string
+          lifecycle_state: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          manufacturer: string | null
+          model: string | null
+          notes: string | null
+          ram: string | null
+          serial_number: string | null
+          storage: string | null
+          studio_id: string
+          updated_at: string
+          workstation_id: string | null
+        }
+        Insert: {
+          asset_tag?: string | null
+          cpu?: string | null
+          created_at?: string
+          display_name: string
+          equipment_type: Database["public"]["Enums"]["equipment_type"]
+          gpu?: string | null
+          id?: string
+          lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          manufacturer?: string | null
+          model?: string | null
+          notes?: string | null
+          ram?: string | null
+          serial_number?: string | null
+          storage?: string | null
+          studio_id: string
+          updated_at?: string
+          workstation_id?: string | null
+        }
+        Update: {
+          asset_tag?: string | null
+          cpu?: string | null
+          created_at?: string
+          display_name?: string
+          equipment_type?: Database["public"]["Enums"]["equipment_type"]
+          gpu?: string | null
+          id?: string
+          lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          manufacturer?: string | null
+          model?: string | null
+          notes?: string | null
+          ram?: string | null
+          serial_number?: string | null
+          storage?: string | null
+          studio_id?: string
+          updated_at?: string
+          workstation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_studio_id_workstation_id_fkey"
+            columns: ["studio_id", "workstation_id"]
+            isOneToOne: false
+            referencedRelation: "workstations"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       google_calendar_connections: {
         Row: {
           created_at: string
@@ -2401,6 +2476,48 @@ export type Database = {
           },
         ]
       }
+      workstations: {
+        Row: {
+          assigned_employee_id: string | null
+          created_at: string
+          id: string
+          name: string
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_employee_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_employee_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workstations_studio_id_assigned_employee_id_fkey"
+            columns: ["studio_id", "assigned_employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "workstations_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2776,6 +2893,19 @@ export type Database = {
         | "proposal"
         | "won"
         | "lost"
+      equipment_lifecycle_state: "active" | "spare" | "in_service" | "retired"
+      equipment_type:
+        | "pc"
+        | "laptop"
+        | "monitor"
+        | "mouse"
+        | "keyboard"
+        | "headphones"
+        | "webcam"
+        | "air_conditioner"
+        | "printer"
+        | "coffee_machine"
+        | "other"
       notification_type:
         | "time_off_request_submitted"
         | "time_off_request_approved"
@@ -2973,6 +3103,20 @@ export const Constants = {
         "proposal",
         "won",
         "lost",
+      ],
+      equipment_lifecycle_state: ["active", "spare", "in_service", "retired"],
+      equipment_type: [
+        "pc",
+        "laptop",
+        "monitor",
+        "mouse",
+        "keyboard",
+        "headphones",
+        "webcam",
+        "air_conditioner",
+        "printer",
+        "coffee_machine",
+        "other",
       ],
       notification_type: [
         "time_off_request_submitted",
