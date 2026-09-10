@@ -4,6 +4,7 @@ import { CandidatesWorkspace } from "@/components/crm/candidates-workspace";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCrmAdmins, getCrmCandidates } from "@/data/queries/crm";
+import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Crm.candidates");
@@ -12,5 +13,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function CrmCandidatesPage() {
   const [result, admins, t] = await Promise.all([getCrmCandidates(), getCrmAdmins(), getTranslations("Crm")]);
-  return <div className="space-y-6"><PageHeader title={t("candidates.title")} description={t("candidates.description")} />{result.error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <CandidatesWorkspace candidates={result.candidates} admins={admins} />}</div>;
+  return <div className="space-y-6"><PageHeader title={t("candidates.title")} description={t("candidates.description")} />{result.error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <CandidatesWorkspace candidates={result.candidates} admins={admins} positions={PROFESSIONAL_ROLES} />}</div>;
 }

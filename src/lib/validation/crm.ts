@@ -68,7 +68,8 @@ export const crmCandidateSchema = z.object({
   email: optionalEmail,
   phone: optionalText(80),
   external_profile_url: optionalUrl,
-  source: optionalText(160),
+  source: z.union([z.literal(""), z.enum(CRM_LEAD_SOURCE_KEYS), z.literal("other")]),
+  source_custom: optionalText(160),
   responsible_admin_id: optionalUuid,
   internal_notes: optionalText(10000),
   target_position: z.string().trim().min(1).max(200),
@@ -82,9 +83,7 @@ export const crmRecruitingCycleSchema = z.object({
   outcome: z.union([z.literal(""), z.enum(RECRUITING_OUTCOMES)]),
   next_contact_date: optionalDate,
   interview_at: optionalDateTime,
-  interview_notes: optionalText(10000),
   test_task_result: optionalText(10000),
-  decision_notes: optionalText(10000),
 });
 
 export type CrmActionState = {

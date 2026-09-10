@@ -39,6 +39,29 @@ async function context(): Promise<{ admin: NonNullable<Awaited<ReturnType<typeof
   return { admin, supabase: await createClient() };
 }
 
+function candidateContactRecord(value: z.infer<typeof crmCandidateContactSchema>) {
+  return {
+    full_name: value.full_name,
+    email: nullable(value.email),
+    phone: nullable(normalizePhoneForCountry(value.phone, "UA")),
+    external_profile_url: nullable(value.external_profile_url),
+    source: nullable(resolveCrmLeadSourceValue(value.source, value.source_custom)),
+    responsible_admin_id: nullable(value.responsible_admin_id),
+  };
+}
+
+function recruitingCycleRecord(value: z.infer<typeof crmRecruitingCycleSchema>) {
+  return {
+    target_position: value.target_position,
+    stage: value.outcome ? "decision" : value.stage,
+    outcome: value.outcome || null,
+    next_contact_date: nullable(value.next_contact_date),
+    interview_at: value.interview_at ? new Date(value.interview_at).toISOString() : null,
+    test_task_result: nullable(value.test_task_result),
+    completed_at: value.outcome ? new Date().toISOString() : null,
+  };
+}
+
 export async function saveLead(leadId: string | null, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
   if (!crm) return { error: t("errors.permission") };
@@ -138,21 +161,28 @@ export async function loadLeadHistory(leadId: string): Promise<{ error?: string;
 export async function createCandidate(_state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
   if (!crm) return { error: t("errors.permission") };
-  const parsed = crmCandidateSchema.safeParse(formValues(formData));
-  if (!parsed.success) return failure(parsed.error);
-  const value = parsed.data;
-  const { error } = await crm.supabase.rpc("create_crm_candidate", {
-    p_full_name: value.full_name,
-    p_email: value.email,
-    p_phone: value.phone,
-    p_external_profile_url: value.external_profile_url,
-    p_source: value.source,
-    p_responsible_admin_id: value.responsible_admin_id || crm.admin.authenticatedUserId,
-    p_internal_notes: value.internal_notes,
-    p_target_position: value.target_position,
+  const values = formValues(formData);
+  const candidate = crmCandidateSchema.safeParse(values);
+  const cycle = crmRecruitingCycleSchema.safeParse(values);
+  if (!candidate.success) return failure(candidate.error);
+  if (!cycle.success) return failure(cycle.error);
+  const { data: candidateId, error } = await crm.supabase.rpc("create_crm_candidate", {
+    p_full_name: candidate.data.full_name,
+    p_email: candidate.data.email,
+    p_phone: normalizePhoneForCountry(candidate.data.phone, "UA"),
+    p_external_profile_url: candidate.data.external_profile_url,
+    p_source: resolveCrmLeadSourceValue(candidate.data.source, candidate.data.source_custom),
+    p_responsible_admin_id: candidate.data.responsible_admin_id || crm.admin.authenticatedUserId,
+    p_internal_notes: "",
+    p_target_position: cycle.data.target_position,
   });
-  if (error) {
+  if (error || !candidateId) {
     console.error("Unable to create CRM candidate", error);
+    return { error: t("errors.saveCandidate") };
+  }
+  const { error: cycleError } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(cycle.data)).eq("candidate_id", candidateId).eq("studio_id", crm.admin.studio_id).is("outcome", null);
+  if (cycleError) {
+    console.error("Unable to save initial CRM recruiting cycle", cycleError);
     return { error: t("errors.saveCandidate") };
   }
   revalidatePath("/crm/candidates");
@@ -165,15 +195,7 @@ export async function updateCandidate(candidateId: string, _state: CrmActionStat
   const parsed = crmCandidateContactSchema.safeParse(formValues(formData));
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
-  const { data, error } = await crm.supabase.from("crm_candidates").update({
-    full_name: value.full_name,
-    email: nullable(value.email),
-    phone: nullable(value.phone),
-    external_profile_url: nullable(value.external_profile_url),
-    source: nullable(value.source),
-    responsible_admin_id: nullable(value.responsible_admin_id),
-    internal_notes: nullable(value.internal_notes),
-  }).eq("id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
+  const { data, error } = await crm.supabase.from("crm_candidates").update(candidateContactRecord(value)).eq("id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
   if (error || !data) {
     console.error("Unable to update CRM candidate", error);
     return { error: t("errors.saveCandidate") };
@@ -188,19 +210,31 @@ export async function updateRecruitingCycle(cycleId: string, _state: CrmActionSt
   const parsed = crmRecruitingCycleSchema.safeParse(formValues(formData));
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
-  const { data, error } = await crm.supabase.from("crm_recruiting_cycles").update({
-    target_position: value.target_position,
-    stage: value.outcome ? "decision" : value.stage,
-    outcome: value.outcome || null,
-    next_contact_date: nullable(value.next_contact_date),
-    interview_at: value.interview_at ? new Date(value.interview_at).toISOString() : null,
-    interview_notes: nullable(value.interview_notes),
-    test_task_result: nullable(value.test_task_result),
-    decision_notes: nullable(value.decision_notes),
-    completed_at: value.outcome ? new Date().toISOString() : null,
-  }).eq("id", cycleId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
+  const { data, error } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(value)).eq("id", cycleId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
   if (error || !data) {
     console.error("Unable to update CRM recruiting cycle", error);
+    return { error: t("errors.saveCycle") };
+  }
+  revalidatePath("/crm/candidates");
+  return { success: true };
+}
+
+export async function saveCandidateEditor(candidateId: string, cycleId: string, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
+  const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
+  if (!crm || !z.uuid().safeParse(candidateId).success || !z.uuid().safeParse(cycleId).success) return { error: t("errors.permission") };
+  const values = formValues(formData);
+  const candidate = crmCandidateContactSchema.safeParse(values);
+  const cycle = crmRecruitingCycleSchema.safeParse(values);
+  if (!candidate.success) return failure(candidate.error);
+  if (!cycle.success) return failure(cycle.error);
+  const { data: updatedCandidate, error: candidateError } = await crm.supabase.from("crm_candidates").update(candidateContactRecord(candidate.data)).eq("id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
+  if (candidateError || !updatedCandidate) {
+    console.error("Unable to update CRM candidate", candidateError);
+    return { error: t("errors.saveCandidate") };
+  }
+  const { data: updatedCycle, error: cycleError } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(cycle.data)).eq("id", cycleId).eq("candidate_id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
+  if (cycleError || !updatedCycle) {
+    console.error("Unable to update CRM recruiting cycle", cycleError);
     return { error: t("errors.saveCycle") };
   }
   revalidatePath("/crm/candidates");

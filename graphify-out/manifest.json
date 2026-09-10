@@ -1485,13 +1485,13 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1788975260.9498115,
-    "ast_hash": "2e45cd1cff67af11333e6aee14dda3e6",
+    "mtime": 1789030014.4293466,
+    "ast_hash": "22a6bcd9f55ab6b435fa7386e26a334d",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1788975261.133819,
-    "ast_hash": "26a66fb201a8ea019b1a0d1cc6f008a0",
+    "mtime": 1789030014.573352,
+    "ast_hash": "34083a563626ae9a71536bc34a077ca5",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -4275,14 +4275,14 @@
     "semantic_hash": "8ee6e3a1067a83ec2b0ce98f14fc0a3d"
   },
   "src/app/(app)/crm/actions.ts": {
-    "mtime": 1788975093.1975133,
-    "ast_hash": "ed4a832e78611a26e5e2654b9a75d4ab",
+    "mtime": 1789031213.791046,
+    "ast_hash": "7b010195f480d276dc4f37044f1e971d",
     "semantic_hash": ""
   },
   "src/app/(app)/crm/candidates/page.tsx": {
-    "mtime": 1788879513.3530273,
-    "ast_hash": "b901ce04b67fe7f00dcbbc1f32ad8a00",
-    "semantic_hash": "b901ce04b67fe7f00dcbbc1f32ad8a00"
+    "mtime": 1789031131.0139325,
+    "ast_hash": "714bdee0193404d8b907c91463438002",
+    "semantic_hash": ""
   },
   "src/app/(app)/crm/crm-route-authorization.test.ts": {
     "mtime": 1788879514.181065,
@@ -4315,9 +4315,9 @@
     "semantic_hash": ""
   },
   "src/components/crm/candidates-workspace.tsx": {
-    "mtime": 1788887175.7959976,
-    "ast_hash": "b8a0f7b3ca2063e97229e681c6dbdb2a",
-    "semantic_hash": "b8a0f7b3ca2063e97229e681c6dbdb2a"
+    "mtime": 1789031389.5721881,
+    "ast_hash": "7a44176ed0d15f6a2c966c70492791e3",
+    "semantic_hash": ""
   },
   "src/components/crm/crm-fields.tsx": {
     "mtime": 1788976989.6547425,
@@ -4330,13 +4330,13 @@
     "semantic_hash": "0266cccad418ae143f7f76822461e653"
   },
   "src/components/crm/leads-workspace.test.ts": {
-    "mtime": 1788977018.2835808,
-    "ast_hash": "da33323a3e8ded5595321461ff41d88d",
+    "mtime": 1788977488.4539604,
+    "ast_hash": "e79673fbce22c4f8e1d36e702536c189",
     "semantic_hash": ""
   },
   "src/components/crm/leads-workspace.tsx": {
-    "mtime": 1788976579.7521882,
-    "ast_hash": "e11731d704175ca3baff4c185f9d4d61",
+    "mtime": 1788977484.1777763,
+    "ast_hash": "035aece539e71d28023158ae4ff910a3",
     "semantic_hash": ""
   },
   "src/components/projects/project-metadata-controls.tsx": {
@@ -4345,7 +4345,7 @@
     "semantic_hash": "f051db5882c3716d4e62ebde0c894f27"
   },
   "src/data/queries/crm.ts": {
-    "mtime": 1788976989.474735,
+    "mtime": 1789031131.1619377,
     "ast_hash": "bdf115ce16a59792288c8fa340069601",
     "semantic_hash": ""
   },
@@ -4375,8 +4375,8 @@
     "semantic_hash": "049560318d3aa3f876d08a7e760f6b44"
   },
   "src/lib/validation/crm.ts": {
-    "mtime": 1788975283.757815,
-    "ast_hash": "7fb996b7d1aaafffe27e73473c2bdb83",
+    "mtime": 1789031131.3219438,
+    "ast_hash": "54857bee0d740f0595daa4b3bbc4640d",
     "semantic_hash": ""
   },
   "supabase/migrations/20260908144506_create_crm_foundation.sql": {
@@ -4487,6 +4487,11 @@
   "graphify-out/memory/query_20260908_083330_fix_the_leaderboard_previous_period_leader_calcula.md": {
     "mtime": 1788856410.1249619,
     "ast_hash": "48e2827fe3cb3111bf1e8eb44a19a305",
+    "semantic_hash": ""
+  },
+  "src/components/crm/candidates-workspace.test.ts": {
+    "mtime": 1789031429.5736575,
+    "ast_hash": "25e926629137f5226a60d46eea78d0f0",
     "semantic_hash": ""
   }
 }
