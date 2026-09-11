@@ -26,14 +26,28 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('<SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>');
   });
 
+  it("creates numbered workstations atomically with compact optional bulk assignment", () => {
+    expect(actions).toContain("export async function createWorkstations");
+    expect(actions).toContain('rpc("create_workstations"');
+    expect(workspace).toContain('t("workstation.form.quantity")');
+    expect(workspace).toContain('t("workstation.form.startingNumber")');
+    expect(workspace).toContain('t("workstation.form.assignEmployees")');
+    expect(workspace).toContain('drafts.length > 5 && "max-h-80"');
+    expect(workspace).toContain('hidden gap-3 border-b');
+    expect(workspace).toContain('className="sm:sr-only"');
+    expect(workspace).toContain('t("workstation.numberLabel", { number: item.number })');
+  });
+
   it("provides equipment CRUD, lifecycle changes, and persistent retired records", () => {
     expect(actions).toContain("export async function createEquipment");
     expect(actions).toContain("export async function updateEquipment");
     expect(actions).toContain("export async function deleteEquipment");
+    expect(actions).toContain("display_name: equipmentDisplayName(input)");
     expect(actions).toContain("lifecycle_state: input.lifecycleState");
     expect(workspace).toContain("EQUIPMENT_LIFECYCLE_STATES.filter");
     expect(workspace).toContain('t(`states.${item.lifecycleState}`)');
     expect(workspace).not.toContain('item.lifecycleState === "retired" ? null');
+    expect(workspace).toContain('name="displayName" maxLength={160}');
   });
 
   it("supports attach, detach, and reassignment without duplicating equipment", () => {
@@ -49,11 +63,21 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('t("groups.computers")');
     expect(workspace).toContain('t("groups.monitors")');
     expect(workspace).toContain('t("groups.peripherals")');
-    expect(workspace).toContain("isComputerEquipment(type) ? <fieldset");
+    expect(workspace).toContain("<AnimatedOptionalSection isVisible={computer}>");
     expect(workspace).toContain('name="cpu"');
     expect(workspace).toContain('name="gpu"');
     expect(workspace).toContain('name="ram"');
     expect(workspace).toContain('name="storage"');
+  });
+
+  it("keeps workstation identity singular and limits collapsible equipment fields to identification", () => {
+    expect(workspace).not.toContain('t("workstation.eyebrow")}</span><strong');
+    expect(workspace).toContain("function CollapsibleFormSection");
+    expect(workspace).toContain('aria-expanded={isOpen}');
+    expect(workspace).toContain("motion-reduce:transition-none");
+    expect(workspace).toContain('title={t("form.identification")}');
+    expect(workspace).toContain('<fieldset className="rounded-[var(--ui-radius-control)] border');
+    expect(workspace).toContain('<FormField label={t("form.notes")} optional');
   });
 
   it("uses caller-context Supabase mutations with explicit studio and record filters", () => {

@@ -9,6 +9,7 @@ import {
   Boxes,
   Coffee,
   Cpu,
+  ChevronDown,
   Headphones,
   Keyboard,
   Laptop,
@@ -32,7 +33,7 @@ import {
   assignEquipment,
   completeEquipmentService,
   createEquipment,
-  createWorkstation,
+  createWorkstations,
   deleteEquipment,
   deleteWorkstation,
   recordEquipmentHistory,
@@ -118,7 +119,7 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
   const routing = useEquipmentRouting();
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
   const selectedEquipment = selectedWorkstation ? null : equipment.find((item) => item.id === routing.selectedItemId) ?? null;
-  const workstationNames = useMemo(() => new Map(workstations.map((item) => [item.id, item.name])), [workstations]);
+  const workstationNames = useMemo(() => new Map(workstations.map((item) => [item.id, `${t("workstation.numberLabel", { number: item.number })}${item.name ? ` · ${item.name}` : ""}`])), [t, workstations]);
   const inventoryItems = equipment.filter((item) => isOtherEquipment(item.equipmentType) || !item.workstationId);
 
   return <div className="space-y-5">
@@ -140,7 +141,7 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
       : initialView === "other" ? <EquipmentInventory items={inventoryItems} workstationNames={workstationNames} onOpen={routing.openItem} />
       : <MaintenanceQueue items={equipment} workstationNames={workstationNames} today={today} onOpen={routing.openItem} />}
 
-    <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} onClose={routing.closeCreate} onCreated={routing.openItem} />
+    <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openItem} />
     <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} today={today} workstations={workstations} onClose={routing.closeItem} />
@@ -156,7 +157,7 @@ function WorkstationList({ items, onOpen }: { items: WorkstationItem[]; onOpen: 
     const peripheralCount = item.equipment.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType)).length;
     const specs = computer ? equipmentSpecificationSummary(computer) : "";
     return <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="min-h-44 cursor-pointer rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-left shadow-[var(--ui-shadow-panel)] transition-colors hover:border-[var(--ui-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:p-5">
-      <span className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t("workstation.eyebrow")}</span><strong className="mt-0.5 block truncate text-base text-[var(--ui-text)]">{item.name}</strong></span></span><Pencil className="size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /></span>
+      <span className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><span className="min-w-0"><strong className="block truncate text-base text-[var(--ui-text)]">{t("workstation.numberLabel", { number: item.number })}</strong>{item.name ? <span className="mt-0.5 block truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</span> : null}</span></span><Pencil className="size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /></span>
       <span className="mt-4 flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]">{item.assignedEmployee ? <><UserAvatar decorative imageUrl={item.assignedEmployee.avatarUrl} name={item.assignedEmployee.fullName} size="boardCard" /><span className="truncate font-medium">{item.assignedEmployee.fullName}</span></> : <><UserRound className="size-4" aria-hidden="true" /><span>{t("workstation.unassigned")}</span></>}</span>
       <span className="mt-4 block border-t border-[var(--ui-border-subtle)] pt-3"><span className="block truncate text-sm font-semibold text-[var(--ui-text)]">{computer ? computer.displayName : t("workstation.noComputer")}</span>{specs ? <span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]" title={specs}>{specs}</span> : null}<span className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--ui-text-muted)]"><span>{t("workstation.monitorCount", { count: monitorCount })}</span><span aria-hidden="true">·</span><span>{t("workstation.peripheralCount", { count: peripheralCount })}</span></span></span>
     </button>;
@@ -214,19 +215,45 @@ function EmptyState({ Icon, title, description }: { Icon: LucideIcon; title: str
   return <div className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-6 py-14 text-center"><Icon className="mx-auto size-8 text-[var(--ui-text-muted)]" aria-hidden="true" /><h3 className="mt-3 font-semibold">{title}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{description}</p></div>;
 }
 
-function CreateWorkstationDialog({ isOpen, members, onClose, onCreated }: { isOpen: boolean; members: EquipmentMember[]; onClose: () => void; onCreated: (id: string) => void }) {
+type WorkstationDraft = { number: number; name: string; assignedEmployeeId: string };
+
+function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCreated }: { isOpen: boolean; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
   const t = useTranslations("Equipment");
-  const processed = useRef(false);
-  const [state, action, pending] = useActionState(createWorkstation, initialActionState);
-  useEffect(() => { if (state.success && state.id && !processed.current) { processed.current = true; onCreated(state.id); } }, [onCreated, state.id, state.success]);
+  const router = useRouter();
+  const nextNumber = Math.max(0, ...workstations.map((workstation) => workstation.number)) + 1;
+  const [quantity, setQuantity] = useState(1);
+  const [startingNumber, setStartingNumber] = useState(nextNumber);
+  const [drafts, setDrafts] = useState<WorkstationDraft[]>(() => [{ number: nextNumber, name: "", assignedEmployeeId: "__none" }]);
+  const [assignEmployees, setAssignEmployees] = useState(false);
+  const [error, setError] = useState<EquipmentActionState["error"]>();
+  const [pending, startTransition] = useTransition();
+  const existingAssignments = new Map(workstations.flatMap((workstation) => workstation.assignedEmployee ? [[workstation.assignedEmployee.id, workstation]] : []));
+  function regenerate(nextQuantity: number, nextStartingNumber: number) {
+    setQuantity(nextQuantity);
+    setStartingNumber(nextStartingNumber);
+    setDrafts(Array.from({ length: nextQuantity }, (_, index) => ({ number: nextStartingNumber + index, name: "", assignedEmployeeId: "__none" })));
+  }
+  function updateDraft(index: number, patch: Partial<WorkstationDraft>) { setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft)); }
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(undefined);
+    startTransition(async () => {
+      const result = await createWorkstations({ workstations: drafts.map((draft) => ({ ...draft, assignedEmployeeId: assignEmployees ? draft.assignedEmployeeId : "__none" })) });
+      if (result.error) setError(result.error);
+      else if (quantity === 1 && result.id) onCreated(result.id);
+      else { onClose(); router.refresh(); }
+    });
+  }
+  const rowColumns = assignEmployees ? "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(12rem,1fr)]" : "sm:grid-cols-[7rem_minmax(0,1fr)]";
   return <Dialog closeDisabled={pending} closeLabel={t("close")} description={t("workstation.form.createDescription")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
-    <form action={action} className="grid gap-5 overflow-y-auto p-5 sm:p-6"><WorkstationFields members={members} /><ActionError error={state.error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createWorkstation")}</Button></div></form>
+    <form onSubmit={submit} className="grid gap-5 overflow-y-auto p-5 sm:p-6"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("workstation.form.quantity")}><Input data-dialog-initial-focus type="number" min={1} max={50} value={quantity} onChange={(event) => regenerate(Math.max(1, Math.min(50, Number(event.target.value) || 1)), startingNumber)} /></FormField><FormField label={t("workstation.form.startingNumber")}><Input type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => regenerate(quantity, Math.max(1, Number(event.target.value) || 1))} /></FormField></div><p className="-mt-2 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.bulkHelp")}</p><div className={cn("overflow-y-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]", drafts.length > 5 && "max-h-80")}><div className="divide-y divide-[var(--ui-border-subtle)]"><div className={cn("hidden gap-3 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-muted)] sm:grid", rowColumns)}><span>{t("workstation.form.number")}</span><span>{t("workstation.form.name")} <span className="font-normal">({t("optional")})</span></span>{assignEmployees ? <span>{t("workstation.form.employee")} <span className="font-normal">({t("optional")})</span></span> : null}</div>{drafts.map((draft, index) => { const selectedEmployees = new Set(drafts.filter((_, draftIndex) => draftIndex !== index).map((item) => item.assignedEmployeeId)); return <div key={index} className={cn("grid gap-3 p-3", rowColumns)}><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.number")}</span><Input type="number" min={1} max={1_000_000} value={draft.number} onChange={(event) => updateDraft(index, { number: Number(event.target.value) || 0 })} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.name")} ({t("optional")})</span><Input maxLength={120} value={draft.name} onChange={(event) => updateDraft(index, { name: event.target.value })} /></label>{assignEmployees ? <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.employee")} ({t("optional")})</span><Select value={draft.assignedEmployeeId} onValueChange={(assignedEmployeeId) => updateDraft(index, { assignedEmployeeId })}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = existingAssignments.get(member.id); const unavailable = Boolean(assigned) || selectedEmployees.has(member.id); return <SelectItem key={member.id} value={member.id} disabled={unavailable && draft.assignedEmployeeId !== member.id} textValue={member.fullName}>{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</SelectItem>; })}</Select></label> : null}</div>; })}</div></div><label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" checked={assignEmployees} onChange={(event) => setAssignEmployees(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("workstation.form.assignEmployees")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.assignEmployeesHelp")}</span></span></label><ActionError error={error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createWorkstations", { count: quantity })}</Button></div></form>
   </Dialog>;
 }
 
-function WorkstationFields({ item, members }: { item?: WorkstationItem; members: EquipmentMember[] }) {
+function WorkstationFields({ item, members, workstations }: { item?: WorkstationItem; members: EquipmentMember[]; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
-  return <><FormField label={t("workstation.form.name")}><Input data-dialog-initial-focus={!item || undefined} name="name" required maxLength={120} defaultValue={item?.name} /></FormField><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select name="assignedEmployeeId" defaultValue={item?.assignedEmployee?.id ?? "__none"}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => <SelectItem key={member.id} value={member.id} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}</span></SelectItem>)}</Select></FormField></>;
+  const assignments = new Map(workstations.filter((workstation) => workstation.id !== item?.id && workstation.assignedEmployee).map((workstation) => [workstation.assignedEmployee!.id, workstation]));
+  return <><div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)]"><FormField label={t("workstation.form.number")}><Input data-dialog-initial-focus={!item || undefined} name="number" required type="number" min={1} max={1_000_000} defaultValue={item?.number} /></FormField><FormField label={t("workstation.form.name")} optional optionalLabel={t("optional")}><Input name="name" maxLength={120} defaultValue={item?.name ?? ""} /></FormField></div><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select name="assignedEmployeeId" defaultValue={item?.assignedEmployee?.id ?? "__none"}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = assignments.get(member.id); return <SelectItem key={member.id} value={member.id} disabled={Boolean(assigned)} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</span></SelectItem>; })}</Select></FormField></>;
 }
 
 function CreateEquipmentDialog({ isOpen, workstations, onClose, onCreated }: { isOpen: boolean; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
@@ -243,21 +270,50 @@ function EquipmentFormFields({ item, initialType, workstations }: { item?: Equip
   const t = useTranslations("Equipment");
   const [type, setType] = useState<EquipmentType>(item?.equipmentType ?? initialType ?? "other");
   const [recurring, setRecurring] = useState(item?.recurringMaintenanceEnabled ?? false);
+  const computer = isComputerEquipment(type);
   const lifecycleStates = EQUIPMENT_LIFECYCLE_STATES.filter((value) => value !== "in_service");
   return <>
     <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("form.type")}><Select name="equipmentType" value={type} onValueChange={(value) => { if (isEquipmentType(value)) setType(value); }}>{EQUIPMENT_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`types.${value}`)}</SelectItem>)}</Select></FormField><FormField label={t("form.state")}>{item?.lifecycleState === "in_service" ? <><input type="hidden" name="lifecycleState" value="in_service" /><div className="flex min-h-11 items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 text-sm text-[var(--ui-text-secondary)]">{t("states.in_service")}</div></> : <Select name="lifecycleState" defaultValue={item?.lifecycleState ?? "active"}>{lifecycleStates.map((value) => <SelectItem key={value} value={value}>{t(`states.${value}`)}</SelectItem>)}</Select>}</FormField></div>
-    <FormField label={t("form.displayName")}><Input data-dialog-initial-focus={!item || undefined} name="displayName" required maxLength={160} defaultValue={item?.displayName} /></FormField>
-    <FormField label={t("form.workstation")} optional optionalLabel={t("optional")}><Select name="workstationId" defaultValue={item?.workstationId ?? "__none"}><SelectItem value="__none">{t("location.unattached")}</SelectItem>{workstations.map((workstation) => <SelectItem key={workstation.id} value={workstation.id}>{workstation.name}</SelectItem>)}</Select></FormField>
-    <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("form.identification")}</legend><div className="grid gap-4 sm:grid-cols-2"><OptionalInput name="manufacturer" label={t("form.manufacturer")} value={item?.manufacturer} maxLength={160} /><OptionalInput name="model" label={t("form.model")} value={item?.model} maxLength={160} /><OptionalInput name="serialNumber" label={t("form.serialNumber")} value={item?.serialNumber} maxLength={160} /><OptionalInput name="assetTag" label={t("form.assetTag")} value={item?.assetTag} maxLength={160} /></div></fieldset>
-    {isComputerEquipment(type) ? <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("form.specifications")}</legend><p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("form.specificationsDescription")}</p><div className="grid gap-4 sm:grid-cols-2"><OptionalInput name="cpu" label={t("form.cpu")} value={item?.cpu} maxLength={500} /><OptionalInput name="gpu" label={t("form.gpu")} value={item?.gpu} maxLength={500} /><OptionalInput name="ram" label={t("form.ram")} value={item?.ram} maxLength={500} /><OptionalInput name="storage" label={t("form.storage")} value={item?.storage} maxLength={500} /></div></fieldset> : null}
-    <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("maintenance.recurringTitle")}</legend><label className="flex min-h-11 cursor-pointer items-start gap-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" name="recurringMaintenanceEnabled" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><span className="block text-sm font-medium">{t("maintenance.enabled")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("maintenance.enabledDescription")}</span></span></label>{recurring ? <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="maintenanceIntervalMonths" min={1} max={120} required defaultValue={item?.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><Input type="date" name="nextMaintenanceDueDate" required defaultValue={item?.nextMaintenanceDueDate ?? ""} /></FormField></div> : null}</fieldset>
+    <FormField label={t("form.displayName")} optional optionalLabel={t("optional")}><Input data-dialog-initial-focus={!item || undefined} name="displayName" maxLength={160} defaultValue={item?.displayName} /></FormField>
+    <FormField label={t("form.workstation")} optional optionalLabel={t("optional")}><Select name="workstationId" defaultValue={item?.workstationId ?? "__none"}><SelectItem value="__none">{t("location.unattached")}</SelectItem>{workstations.map((workstation) => <SelectItem key={workstation.id} value={workstation.id}>{t("workstation.numberLabel", { number: workstation.number })}{workstation.name ? ` · ${workstation.name}` : ""}</SelectItem>)}</Select></FormField>
+    <CollapsibleFormSection title={t("form.identification")} summary={t("form.identificationSummary")}><div className="grid gap-4 sm:grid-cols-2"><OptionalInput name="manufacturer" label={t("form.manufacturer")} value={item?.manufacturer} maxLength={160} /><OptionalInput name="model" label={t("form.model")} value={item?.model} maxLength={160} /><OptionalInput name="serialNumber" label={t("form.serialNumber")} value={item?.serialNumber} maxLength={160} /><OptionalInput name="assetTag" label={t("form.assetTag")} hint={t("form.assetTagDescription")} value={item?.assetTag} maxLength={160} /></div></CollapsibleFormSection>
+    <AnimatedOptionalSection isVisible={computer}><fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("form.specifications")}</legend><p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("form.specificationsDescription")}</p><div className="grid gap-4 sm:grid-cols-2"><OptionalInput disabled={!computer} name="cpu" label={t("form.cpu")} value={item?.cpu} maxLength={500} /><OptionalInput disabled={!computer} name="gpu" label={t("form.gpu")} value={item?.gpu} maxLength={500} /><OptionalInput disabled={!computer} name="ram" label={t("form.ram")} value={item?.ram} maxLength={500} /><OptionalInput disabled={!computer} name="storage" label={t("form.storage")} value={item?.storage} maxLength={500} /></div></fieldset></AnimatedOptionalSection>
+    <fieldset className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("maintenance.recurringTitle")}</legend><label className="flex min-h-11 cursor-pointer items-start gap-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" name="recurringMaintenanceEnabled" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><span className="block text-sm font-medium">{t("maintenance.enabled")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("maintenance.enabledDescription")}</span></span></label><AnimatedFormContent isOpen={recurring}><div className="grid gap-4 pt-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="maintenanceIntervalMonths" min={1} max={120} required={recurring} defaultValue={item?.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><Input type="date" name="nextMaintenanceDueDate" required={recurring} defaultValue={item?.nextMaintenanceDueDate ?? ""} /></FormField></div></AnimatedFormContent></fieldset>
     <FormField label={t("form.notes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={4} maxLength={5000} defaultValue={item?.notes ?? ""} /></FormField>
   </>;
 }
 
-function OptionalInput({ label, maxLength, name, value }: { label: string; maxLength: number; name: string; value?: string | null }) {
+function AnimatedFormContent({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
+  return <div className={cn("grid transition-[grid-template-rows,opacity] duration-[220ms] ease-out motion-reduce:transition-none", isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}><div className="min-h-0 overflow-hidden">{children}</div></div>;
+}
+
+function AnimatedOptionalSection({ children, isVisible }: { children: React.ReactNode; isVisible: boolean }) {
+  const [isRendered, setIsRendered] = useState(isVisible);
+  const [isOpen, setIsOpen] = useState(isVisible);
+  useEffect(() => {
+    if (isVisible) {
+      let openFrame: number | undefined;
+      const renderFrame = requestAnimationFrame(() => {
+        setIsRendered(true);
+        openFrame = requestAnimationFrame(() => setIsOpen(true));
+      });
+      return () => { cancelAnimationFrame(renderFrame); if (openFrame) cancelAnimationFrame(openFrame); };
+    }
+    const closeFrame = requestAnimationFrame(() => setIsOpen(false));
+    const timeout = window.setTimeout(() => setIsRendered(false), 220);
+    return () => { cancelAnimationFrame(closeFrame); window.clearTimeout(timeout); };
+  }, [isVisible]);
+  return isRendered ? <AnimatedFormContent isOpen={isOpen}>{children}</AnimatedFormContent> : null;
+}
+
+function CollapsibleFormSection({ children, defaultOpen = false, summary, title }: { children: React.ReactNode; defaultOpen?: boolean; summary: string; title: string }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return <section className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)]"><button type="button" aria-expanded={isOpen} onClick={() => setIsOpen((open) => !open)} className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]"><span className="min-w-0"><span className="block text-sm font-semibold text-[var(--ui-text)]">{title}</span><span className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{summary}</span></span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 text-[var(--ui-text-muted)] transition-transform duration-200 motion-reduce:transition-none", isOpen && "rotate-180")} /></button><AnimatedFormContent isOpen={isOpen}><div className="border-t border-[var(--ui-border-subtle)] p-4">{children}</div></AnimatedFormContent></section>;
+}
+
+function OptionalInput({ disabled, hint, label, maxLength, name, value }: { disabled?: boolean; hint?: string; label: string; maxLength: number; name: string; value?: string | null }) {
   const t = useTranslations("Equipment");
-  return <FormField label={label} optional optionalLabel={t("optional")}><Input name={name} maxLength={maxLength} defaultValue={value ?? ""} /></FormField>;
+  return <FormField label={label} optional optionalLabel={t("optional")}><Input disabled={disabled} name={name} maxLength={maxLength} defaultValue={value ?? ""} />{hint ? <span className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{hint}</span> : null}</FormField>;
 }
 
 function WorkstationDrawer({ allEquipment, item, members, workstations, onClose, onOpenEquipment }: { allEquipment: EquipmentItem[]; item: WorkstationItem | null; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onOpenEquipment: (id: string) => void }) {
@@ -269,20 +325,20 @@ function WorkstationDrawer({ allEquipment, item, members, workstations, onClose,
   const [attachId, setAttachId] = useState("__none");
   if (!item) return null;
   const candidates = allEquipment.filter((equipmentItem) => equipmentItem.workstationId !== item.id);
-  const locationNames = new Map(workstations.map((workstation) => [workstation.id, workstation.name]));
+  const locationNames = new Map(workstations.map((workstation) => [workstation.id, `${t("workstation.numberLabel", { number: workstation.number })}${workstation.name ? ` · ${workstation.name}` : ""}`]));
   const computers = item.equipment.filter((equipmentItem) => isComputerEquipment(equipmentItem.equipmentType));
   const monitors = item.equipment.filter((equipmentItem) => equipmentItem.equipmentType === "monitor");
   const peripherals = item.equipment.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType));
   const other = item.equipment.filter((equipmentItem) => isOtherEquipment(equipmentItem.equipmentType));
   const workstationId = item.id;
-  const workstationName = item.name;
+  const workstationName = t("workstation.numberLabel", { number: item.number });
   function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }
-  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateWorkstation({ workstationId, name: data.get("name"), assignedEmployeeId: data.get("assignedEmployeeId") })); }
+  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateWorkstation({ workstationId, number: data.get("number"), name: data.get("name"), assignedEmployeeId: data.get("assignedEmployeeId") })); }
   function remove() { if (!window.confirm(t("workstation.deleteConfirm", { name: workstationName }))) return; run(() => deleteWorkstation({ workstationId }), onClose); }
-  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.name} className="w-full max-w-[38rem]">
-    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t("workstation.eyebrow")}</p><h2 className="mt-1 truncate text-lg font-bold">{item.name}</h2></div></div><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
+  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={workstationName} className="w-full max-w-[38rem]">
+    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t("workstation.eyebrow")}</p><h2 className="mt-1 truncate text-lg font-bold">{workstationName}</h2>{item.name ? <p className="mt-1 truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</p> : null}</div></div><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><WorkstationFields item={item} members={members} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveWorkstation")}</Button></div></form>
+      <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><WorkstationFields item={item} members={members} workstations={workstations} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveWorkstation")}</Button></div></form>
       <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold">{t("workstation.attached")}</h3><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("workstation.attachedDescription")}</p></div><span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-text-muted)]">{item.equipment.length}</span></div>
         <div className="mt-5 space-y-5"><EquipmentGroup title={t("groups.computers")} items={computers} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /><EquipmentGroup title={t("groups.monitors")} items={monitors} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /><EquipmentGroup title={t("groups.peripherals")} items={peripherals} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} />{other.length ? <EquipmentGroup title={t("groups.other")} items={other} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /> : null}</div>
         <div className="mt-6 border-t border-[var(--ui-border)] pt-5"><h4 className="text-sm font-semibold">{t("assignment.attach")}</h4><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{t("assignment.moveNotice")}</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><Select value={attachId} onValueChange={setAttachId} disabled={pending}><SelectItem value="__none">{t("assignment.choose")}</SelectItem>{candidates.map((candidate) => <SelectItem key={candidate.id} value={candidate.id} textValue={candidate.displayName}>{candidate.displayName} · {candidate.workstationId ? locationNames.get(candidate.workstationId) ?? t("location.unknown") : t("location.unattached")}</SelectItem>)}</Select><Button type="button" disabled={pending || attachId === "__none"} onClick={() => run(() => assignEquipment({ equipmentId: attachId, workstationId }), () => setAttachId("__none"))}>{pending ? t("actions.moving") : t("assignment.attachAction")}</Button></div></div>
@@ -304,7 +360,8 @@ function EquipmentDrawer({ item, today, workstations, onClose }: { item: Equipme
   const [pending, startTransition] = useTransition();
   if (!item) return null;
   const Icon = equipmentIcons[item.equipmentType];
-  const workstationName = item.workstationId ? workstations.find((workstation) => workstation.id === item.workstationId)?.name ?? t("location.unknown") : t("location.unattached");
+  const currentWorkstation = item.workstationId ? workstations.find((workstation) => workstation.id === item.workstationId) : null;
+  const workstationName = currentWorkstation ? `${t("workstation.numberLabel", { number: currentWorkstation.number })}${currentWorkstation.name ? ` · ${currentWorkstation.name}` : ""}` : item.workstationId ? t("location.unknown") : t("location.unattached");
   const equipmentId = item.id;
   const equipmentName = item.displayName;
   function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
+import { equipmentDisplayName } from "@/lib/equipment";
 import {
   equipmentAssignmentSchema,
   equipmentDeleteSchema,
@@ -12,7 +13,7 @@ import {
   recordEquipmentHistorySchema,
   startEquipmentServiceSchema,
   workstationDeleteSchema,
-  workstationInputSchema,
+  workstationBulkCreateSchema,
   workstationUpdateSchema,
   type EquipmentActionState,
   type EquipmentInput,
@@ -29,7 +30,7 @@ function formValue(formData: FormData, key: string) {
 }
 
 function workstationValues(formData: FormData) {
-  return { name: formValue(formData, "name"), assignedEmployeeId: formValue(formData, "assignedEmployeeId") };
+  return { number: formValue(formData, "number"), name: formValue(formData, "name"), assignedEmployeeId: formValue(formData, "assignedEmployeeId") };
 }
 
 function equipmentValues(formData: FormData) {
@@ -50,7 +51,7 @@ function equipmentPayload(input: EquipmentInput) {
   return {
     equipment_type: input.equipmentType,
     lifecycle_state: input.lifecycleState,
-    display_name: input.displayName,
+    display_name: equipmentDisplayName(input),
     workstation_id: input.workstationId,
     manufacturer: input.manufacturer,
     model: input.model,
@@ -69,6 +70,9 @@ function equipmentPayload(input: EquipmentInput) {
 
 function databaseError(error: { code?: string; message: string } | null, fallback: NonNullable<EquipmentActionState["error"]>): EquipmentActionState["error"] {
   if (!error) return fallback;
+  if (error.message.includes("workstation_number_conflict") || error.message.includes("duplicate_workstation_number") || error.message.includes("workstations_studio_number_unique_idx")) return "numberConflict";
+  if (error.message.includes("workstation_employee_unavailable") || error.message.includes("duplicate_workstation_employee") || error.message.includes("workstations_studio_assigned_employee_unique_idx")) return "employeeAssigned";
+  if (error.message.includes("workstation_create")) return "batch";
   if (error.code === "23505") return "duplicate";
   if (error.code === "23503") return "location";
   if (error.code === "23514") return "invalid";
@@ -79,15 +83,22 @@ function databaseError(error: { code?: string; message: string } | null, fallbac
 }
 
 export async function createWorkstation(_state: EquipmentActionState, formData: FormData): Promise<EquipmentActionState> {
+  return createWorkstations({ workstations: [workstationValues(formData)] });
+}
+
+export async function createWorkstations(input: unknown): Promise<EquipmentActionState> {
   const admin = await getActiveStudioAdmin();
   if (!admin) return { error: "permission" };
-  const parsed = workstationInputSchema.safeParse(workstationValues(formData));
+  const parsed = workstationBulkCreateSchema.safeParse(input);
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { data, error } = await supabase.from("workstations").insert({ studio_id: admin.studio_id, name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).select("id").single();
-  if (error || !data) return { error: databaseError(error, "create") };
+  const { data, error } = await supabase.rpc("create_workstations", {
+    p_studio_id: admin.studio_id,
+    p_workstations: parsed.data.workstations.map((workstation) => ({ number: workstation.number, name: workstation.name, assigned_employee_id: workstation.assignedEmployeeId })),
+  });
+  if (error || !data?.length) return { error: databaseError(error, "create") };
   refreshEquipment();
-  return { success: true, id: data.id };
+  return { success: true, id: data[0] };
 }
 
 export async function updateWorkstation(input: unknown): Promise<EquipmentActionState> {
@@ -96,7 +107,7 @@ export async function updateWorkstation(input: unknown): Promise<EquipmentAction
   const parsed = workstationUpdateSchema.safeParse(input);
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { data, error } = await supabase.from("workstations").update({ name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  const { data, error } = await supabase.from("workstations").update({ number: parsed.data.number, name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
   if (error) return { error: databaseError(error, "update") };
   if (!data) return { error: "notFound" };
   refreshEquipment();

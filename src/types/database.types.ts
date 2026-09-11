@@ -2559,7 +2559,8 @@ export type Database = {
           assigned_employee_id: string | null
           created_at: string
           id: string
-          name: string
+          name: string | null
+          number: number
           studio_id: string
           updated_at: string
         }
@@ -2567,7 +2568,8 @@ export type Database = {
           assigned_employee_id?: string | null
           created_at?: string
           id?: string
-          name: string
+          name?: string | null
+          number: number
           studio_id: string
           updated_at?: string
         }
@@ -2575,7 +2577,8 @@ export type Database = {
           assigned_employee_id?: string | null
           created_at?: string
           id?: string
-          name?: string
+          name?: string | null
+          number?: number
           studio_id?: string
           updated_at?: string
         }
@@ -2752,6 +2755,10 @@ export type Database = {
       create_task_with_checklist: {
         Args: { p_checklist_items?: Json; p_task: Json }
         Returns: string
+      }
+      create_workstations: {
+        Args: { p_studio_id: string; p_workstations: Json }
+        Returns: string[]
       }
       delete_contractor_category: {
         Args: { p_category_id: string }

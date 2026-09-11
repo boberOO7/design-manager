@@ -8,17 +8,30 @@ const optionalDate = z.union([z.iso.date(), z.literal(""), z.null()]).transform(
 const optionalCost = z.union([z.coerce.number().positive().max(9_999_999_999.99), z.literal(""), z.null()]).transform((value) => value === "" ? null : value);
 
 export const workstationInputSchema = z.object({
-  name: z.string().trim().min(1).max(120),
+  number: z.coerce.number().int().min(1).max(1_000_000),
+  name: optionalText(120),
   assignedEmployeeId: nullableUuid,
 });
 
 export const workstationUpdateSchema = workstationInputSchema.extend({ workstationId: z.string().uuid() });
 export const workstationDeleteSchema = z.object({ workstationId: z.string().uuid() });
+export const workstationBulkCreateSchema = z.object({
+  workstations: z.array(workstationInputSchema).min(1).max(50),
+}).superRefine((value, context) => {
+  const numbers = new Set<number>();
+  const employees = new Set<string>();
+  value.workstations.forEach((workstation, index) => {
+    if (numbers.has(workstation.number)) context.addIssue({ code: "custom", path: ["workstations", index, "number"], message: "duplicate_number" });
+    numbers.add(workstation.number);
+    if (workstation.assignedEmployeeId && employees.has(workstation.assignedEmployeeId)) context.addIssue({ code: "custom", path: ["workstations", index, "assignedEmployeeId"], message: "duplicate_employee" });
+    if (workstation.assignedEmployeeId) employees.add(workstation.assignedEmployeeId);
+  });
+});
 
 export const equipmentInputSchema = z.object({
   equipmentType: z.enum(EQUIPMENT_TYPES),
   lifecycleState: z.enum(EQUIPMENT_LIFECYCLE_STATES),
-  displayName: z.string().trim().min(1).max(160),
+  displayName: optionalText(160),
   workstationId: nullableUuid,
   manufacturer: optionalText(160),
   model: optionalText(160),
@@ -89,5 +102,5 @@ export type EquipmentInput = z.infer<typeof equipmentInputSchema>;
 export type EquipmentActionState = {
   success?: true;
   id?: string;
-  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign" | "service" | "completeService" | "history" | "serviceState";
+  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign" | "service" | "completeService" | "history" | "serviceState" | "numberConflict" | "employeeAssigned" | "batch";
 };

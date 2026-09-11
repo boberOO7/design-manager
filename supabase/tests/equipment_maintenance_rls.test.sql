@@ -26,8 +26,8 @@ insert into public.studio_members(studio_id, user_id, system_role, is_active) va
   ('48000000-0000-0000-0000-000000000001', '48000000-0000-0000-0000-000000000013', 'admin', true),
   ('48000000-0000-0000-0000-000000000002', '48000000-0000-0000-0000-000000000014', 'admin', true);
 
-insert into public.workstations(id, studio_id, name) values
-  ('48000000-0000-0000-0000-000000000100', '48000000-0000-0000-0000-000000000001', 'Maintenance Desk');
+insert into public.workstations(id, studio_id, number, name) values
+  ('48000000-0000-0000-0000-000000000100', '48000000-0000-0000-0000-000000000001', 1, 'Maintenance Desk');
 insert into public.equipment(id, studio_id, workstation_id, equipment_type, display_name, recurring_maintenance_enabled, maintenance_interval_months, next_maintenance_due_date) values
   ('48000000-0000-0000-0000-000000000200', '48000000-0000-0000-0000-000000000001', '48000000-0000-0000-0000-000000000100', 'pc', 'Maintenance PC', true, 2, '2026-09-30'),
   ('48000000-0000-0000-0000-000000000201', '48000000-0000-0000-0000-000000000001', null, 'printer', 'Overdue Printer', true, 6, '2026-08-30');

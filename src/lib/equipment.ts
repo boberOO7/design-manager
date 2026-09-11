@@ -50,6 +50,13 @@ export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: s
   return [item.cpu, item.gpu, item.ram, item.storage].filter((value): value is string => Boolean(value)).join(" · ");
 }
 
+export function equipmentDisplayName(item: { assetTag: string | null; displayName: string | null; equipmentType: EquipmentType; manufacturer: string | null; model: string | null }) {
+  if (item.displayName) return item.displayName;
+  if (item.assetTag) return item.assetTag;
+  const modelIdentity = [item.manufacturer, item.model].filter((value): value is string => Boolean(value)).join(" ");
+  return modelIdentity || item.equipmentType.replaceAll("_", " ");
+}
+
 export function getMaintenanceUrgency(enabled: boolean, dueDate: string | null, today: string): MaintenanceUrgency {
   if (!enabled || !dueDate) return null;
   if (dueDate < today) return "overdue";

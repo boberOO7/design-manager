@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(36);
 
 insert into public.studios(id, name) values
   ('47000000-0000-0000-0000-000000000001', 'Equipment Studio A'),
@@ -46,27 +46,32 @@ select set_config('request.jwt.claim.sub', '47000000-0000-0000-0000-000000000010
 set local role authenticated;
 
 select lives_ok(
-  $$insert into public.workstations(id, studio_id, name) values ('47000000-0000-0000-0000-000000000100', '47000000-0000-0000-0000-000000000001', 'Desk 1')$$,
+  $$insert into public.workstations(id, studio_id, number, name) values ('47000000-0000-0000-0000-000000000100', '47000000-0000-0000-0000-000000000001', 1, 'Desk 1')$$,
   'an admin can create an unassigned workstation'
 );
 select lives_ok(
-  $$insert into public.workstations(id, studio_id, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000101', '47000000-0000-0000-0000-000000000001', 'Desk 2', '47000000-0000-0000-0000-000000000011')$$,
+  $$insert into public.workstations(id, studio_id, number, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000101', '47000000-0000-0000-0000-000000000001', 2, 'Desk 2', '47000000-0000-0000-0000-000000000011')$$,
   'a workstation stores at most one current employee in its nullable assignment column'
 );
 select throws_like(
-  $$insert into public.workstations(studio_id, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000001', 'Desk 3', '47000000-0000-0000-0000-000000000012')$$,
+  $$insert into public.workstations(studio_id, number, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000001', 3, 'Desk 3', '47000000-0000-0000-0000-000000000012')$$,
   '%assigned_employee_must_be_an_active_studio_member%',
   'an inactive member cannot be newly assigned'
 );
 select throws_like(
-  $$insert into public.workstations(studio_id, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000001', 'Desk 4', '47000000-0000-0000-0000-000000000013')$$,
+  $$insert into public.workstations(studio_id, number, name, assigned_employee_id) values ('47000000-0000-0000-0000-000000000001', 4, 'Desk 4', '47000000-0000-0000-0000-000000000013')$$,
   '%assigned_employee_must_be_an_active_studio_member%',
   'an employee from another studio cannot be assigned'
 );
 select throws_like(
-  $$insert into public.workstations(studio_id, name) values ('47000000-0000-0000-0000-000000000001', 'desk 1')$$,
+  $$insert into public.workstations(studio_id, number) values ('47000000-0000-0000-0000-000000000001', 1)$$,
   '%duplicate key%',
-  'workstation names are unique within a studio regardless of case'
+  'workstation numbers are unique within a studio'
+);
+select throws_like(
+  $$insert into public.workstations(studio_id, number, assigned_employee_id) values ('47000000-0000-0000-0000-000000000001', 5, '47000000-0000-0000-0000-000000000011')$$,
+  '%duplicate key%',
+  'an employee can be assigned to at most one workstation in a studio'
 );
 
 select lives_ok(
@@ -106,8 +111,8 @@ select is(
 );
 
 set local role postgres;
-insert into public.workstations(id, studio_id, name) values
-  ('47000000-0000-0000-0000-000000000102', '47000000-0000-0000-0000-000000000002', 'Desk B');
+insert into public.workstations(id, studio_id, number, name) values
+  ('47000000-0000-0000-0000-000000000102', '47000000-0000-0000-0000-000000000002', 1, 'Desk B');
 select set_config('request.jwt.claim.sub', '47000000-0000-0000-0000-000000000010', true);
 set local role authenticated;
 select throws_like(
@@ -127,7 +132,7 @@ set local role authenticated;
 select is((select count(*)::integer from public.workstations), 0, 'employees cannot read workstations');
 select is((select count(*)::integer from public.equipment), 0, 'employees cannot read equipment');
 select throws_like(
-  $$insert into public.workstations(studio_id, name) values ('47000000-0000-0000-0000-000000000001', 'Employee desk')$$,
+  $$insert into public.workstations(studio_id, number, name) values ('47000000-0000-0000-0000-000000000001', 6, 'Employee desk')$$,
   '%row-level security policy%',
   'employees cannot insert workstations'
 );

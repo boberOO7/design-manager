@@ -39,7 +39,8 @@ export type EquipmentItem = Omit<EquipmentRow, "studio_id" | "workstation_id" | 
 export type WorkstationItem = {
   id: string;
   studioId: string;
-  name: string;
+  number: number;
+  name: string | null;
   assignedEmployee: EquipmentMember | null;
   equipment: EquipmentItem[];
   createdAt: string;
@@ -91,7 +92,7 @@ function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[])
 export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{ members: EquipmentMember[]; workstations: WorkstationItem[]; equipment: EquipmentItem[]; today: string }> {
   const supabase = await createClient();
   const [workstationsResult, equipmentResult, serviceEventsResult, membersResult] = await Promise.all([
-    supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("name"),
+    supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("number"),
     supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name"),
     supabase.from("equipment_service_events").select("*").eq("studio_id", admin.studio_id).order("completed_on", { ascending: false, nullsFirst: true }).order("started_on", { ascending: false }),
     supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
@@ -123,6 +124,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
     workstations: (workstationsResult.data ?? []).map((row: WorkstationRow) => ({
       id: row.id,
       studioId: row.studio_id,
+      number: row.number,
       name: row.name,
       assignedEmployee: row.assigned_employee_id ? memberById.get(row.assigned_employee_id) ?? null : null,
       equipment: equipmentByWorkstation.get(row.id) ?? [],

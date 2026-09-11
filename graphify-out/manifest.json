@@ -910,9 +910,9 @@
     "semantic_hash": "6927b11d31c605adbf24abddbdd7c056"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789079698.4743125,
-    "ast_hash": "279fd56e7cb04e1bd90f24104a482e69",
-    "semantic_hash": "279fd56e7cb04e1bd90f24104a482e69"
+    "mtime": 1789124738.1409214,
+    "ast_hash": "b79c1967623e534281917126821ad8aa",
+    "semantic_hash": "b79c1967623e534281917126821ad8aa"
   },
   "src/types/index.ts": {
     "mtime": 1787857952.59377,
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1789122894.0163193,
-    "ast_hash": "58b8f79ae894dbe51e0516b9456d5946",
-    "semantic_hash": "58b8f79ae894dbe51e0516b9456d5946"
+    "mtime": 1789124785.793436,
+    "ast_hash": "3e965f10f87a0cbc0787f16dbfd179ab",
+    "semantic_hash": "3e965f10f87a0cbc0787f16dbfd179ab"
   },
   "messages/uk.json": {
-    "mtime": 1789122894.1363235,
-    "ast_hash": "2fb1e576c43c8f2c1ae86cd0aab7b605",
-    "semantic_hash": "2fb1e576c43c8f2c1ae86cd0aab7b605"
+    "mtime": 1789124785.9614427,
+    "ast_hash": "0c1e40b5411a3f823d609394a5d76d69",
+    "semantic_hash": "0c1e40b5411a3f823d609394a5d76d69"
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -4570,14 +4570,14 @@
     "semantic_hash": "ca69135ae3f9d493fe87a91d5ef9de6a"
   },
   "supabase/tests/equipment_domain_rls.test.sql": {
-    "mtime": 1789079536.8628943,
-    "ast_hash": "fbe42444bb1cd2f1d033bcadab807fdd",
-    "semantic_hash": "fbe42444bb1cd2f1d033bcadab807fdd"
+    "mtime": 1789124645.829583,
+    "ast_hash": "a2397380b08a95924061e392eeac42aa",
+    "semantic_hash": "a2397380b08a95924061e392eeac42aa"
   },
   "src/app/(app)/office/equipment/actions.ts": {
-    "mtime": 1789078850.9435298,
-    "ast_hash": "00e57bb0311dbf7cbc454386aa0931d3",
-    "semantic_hash": "00e57bb0311dbf7cbc454386aa0931d3"
+    "mtime": 1789124754.2124841,
+    "ast_hash": "84e0cda69a979e41fc84c65d5f885b3c",
+    "semantic_hash": "84e0cda69a979e41fc84c65d5f885b3c"
   },
   "src/app/(app)/office/equipment/page.tsx": {
     "mtime": 1789079143.65629,
@@ -4595,14 +4595,14 @@
     "semantic_hash": "6def7c0c72e9cc0d7b638eb1d0ba7e70"
   },
   "src/components/office/equipment-workspace.tsx": {
-    "mtime": 1789123024.9354997,
-    "ast_hash": "f49dba097a8676e596c283151cd71d92",
-    "semantic_hash": "f49dba097a8676e596c283151cd71d92"
+    "mtime": 1789124576.6562862,
+    "ast_hash": "6b267b3a4ef079efcf974acf35b6474b",
+    "semantic_hash": "6b267b3a4ef079efcf974acf35b6474b"
   },
   "src/data/queries/equipment.ts": {
-    "mtime": 1789079501.6455023,
-    "ast_hash": "c941c2926cdfd46e3561b9f9bc2028ff",
-    "semantic_hash": "c941c2926cdfd46e3561b9f9bc2028ff"
+    "mtime": 1789124359.429031,
+    "ast_hash": "7767461ee3616e1b191dc06b3951b23a",
+    "semantic_hash": "7767461ee3616e1b191dc06b3951b23a"
   },
   "src/lib/equipment.ts": {
     "mtime": 1789078773.2188075,
@@ -4610,14 +4610,14 @@
     "semantic_hash": "67a3f38a96a70acc126e1b60f6bcbf67"
   },
   "src/lib/validation/equipment.test.ts": {
-    "mtime": 1789079339.6653178,
-    "ast_hash": "809f690df3f54ec4cd38583f48222b5f",
-    "semantic_hash": "809f690df3f54ec4cd38583f48222b5f"
+    "mtime": 1789124660.0738516,
+    "ast_hash": "aef400c3b310da6ae991e98dfc9054f2",
+    "semantic_hash": "aef400c3b310da6ae991e98dfc9054f2"
   },
   "src/lib/validation/equipment.ts": {
-    "mtime": 1789078821.2348804,
-    "ast_hash": "3b4af7b641378943311aa371887be82a",
-    "semantic_hash": "3b4af7b641378943311aa371887be82a"
+    "mtime": 1789124359.0690167,
+    "ast_hash": "c319a025aab718dd08f23bc70c5f51b6",
+    "semantic_hash": "c319a025aab718dd08f23bc70c5f51b6"
   },
   "src/app/api/equipment/maintenance-notifications/route.ts": {
     "mtime": 1789078904.296887,
@@ -4640,8 +4640,18 @@
     "semantic_hash": "e68ed9506090e46ec4f1a1ea03be9fc9"
   },
   "supabase/tests/equipment_maintenance_rls.test.sql": {
-    "mtime": 1789079456.9321415,
-    "ast_hash": "5a96784c988d073987fc112acf1d9474",
-    "semantic_hash": "5a96784c988d073987fc112acf1d9474"
+    "mtime": 1789124645.9575884,
+    "ast_hash": "7d82f3cc1038989e87292b1558908124",
+    "semantic_hash": "7d82f3cc1038989e87292b1558908124"
+  },
+  "supabase/migrations/20260911105717_workstation_number_bulk_creation.sql": {
+    "mtime": 1789124282.0683074,
+    "ast_hash": "89b02ca7b818fb78912712c0bcb80f28",
+    "semantic_hash": "89b02ca7b818fb78912712c0bcb80f28"
+  },
+  "supabase/tests/workstation_bulk_creation_rls.test.sql": {
+    "mtime": 1789124686.1588817,
+    "ast_hash": "229101486e548d7913c5352e602d10ac",
+    "semantic_hash": "229101486e548d7913c5352e602d10ac"
   }
 }

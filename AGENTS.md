@@ -123,6 +123,10 @@ Use specialized skills only when they are relevant to the task.
   use `brand`
 - Presentation/slide work:
   use `slides`
+- Animation / motion work in React or Next.js:
+  use `gsap-core` + `gsap-react`; add `gsap-timeline` for sequencing and
+  `gsap-performance` when performance or smoothness matters.
+  Prefer CSS/native transitions for simple hover/focus/state animations.
 
 Do not load multiple overlapping design skills unless the task genuinely requires
 their distinct roles.

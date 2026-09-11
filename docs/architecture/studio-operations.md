@@ -117,9 +117,11 @@ submission/office-assignment migrations and RLS tests.
 
 ### Equipment
 
-- `workstations` are studio-owned physical positions with a unique human-readable
-  name and an optional current active studio-member assignment. Assignment
-  history is intentionally not modeled.
+- `workstations` are studio-owned physical positions with a unique required
+  positive number, an optional name, and an optional current active
+  studio-member assignment. One employee may hold at most one current
+  workstation assignment per studio; assignment history is intentionally not
+  modeled. Admin bulk creation is an atomic guarded RPC.
 - `equipment` rows have stable identities independent of workstation placement.
   The nullable, studio-safe workstation relationship supports attachment,
   detachment, and reassignment without replacing the equipment row.

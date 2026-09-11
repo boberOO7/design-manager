@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationInputSchema } from "./equipment";
+import { equipmentDisplayName } from "@/lib/equipment";
+import { completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
 const baseEquipment = {
   equipmentType: "printer",
@@ -23,6 +24,9 @@ describe("equipment validation", () => {
     expect(parsed.workstationId).toBeNull();
     expect(parsed.manufacturer).toBeNull();
     expect(parsed.notes).toBeNull();
+    expect(equipmentInputSchema.parse({ ...baseEquipment, displayName: "" }).displayName).toBeNull();
+    expect(equipmentDisplayName({ equipmentType: "pc", displayName: null, assetTag: "PC-01", manufacturer: null, model: null })).toBe("PC-01");
+    expect(equipmentDisplayName({ equipmentType: "headphones", displayName: null, assetTag: null, manufacturer: null, model: null })).toBe("headphones");
   });
 
   it("accepts optional structured specifications for PCs and laptops", () => {
@@ -36,9 +40,15 @@ describe("equipment validation", () => {
     if (!parsed.success) expect(parsed.error.issues[0].path).toEqual(["cpu"]);
   });
 
-  it("supports employee assignment and explicit unassignment", () => {
-    expect(workstationInputSchema.parse({ name: " Desk 04 ", assignedEmployeeId: "__none" })).toEqual({ name: "Desk 04", assignedEmployeeId: null });
-    expect(workstationInputSchema.safeParse({ name: "", assignedEmployeeId: null }).success).toBe(false);
+  it("requires a workstation number while keeping its name and employee optional", () => {
+    expect(workstationInputSchema.parse({ number: "4", name: " Desk 04 ", assignedEmployeeId: "__none" })).toEqual({ number: 4, name: "Desk 04", assignedEmployeeId: null });
+    expect(workstationInputSchema.safeParse({ number: 0, name: "", assignedEmployeeId: null }).success).toBe(false);
+  });
+
+  it("rejects duplicate numbers and employees in one atomic workstation batch", () => {
+    const employeeId = "47000000-0000-4000-8000-000000000101";
+    expect(workstationBulkCreateSchema.safeParse({ workstations: [{ number: 7, name: "", assignedEmployeeId: employeeId }, { number: 7, name: "Window desk", assignedEmployeeId: "__none" }] }).success).toBe(false);
+    expect(workstationBulkCreateSchema.safeParse({ workstations: [{ number: 7, name: "", assignedEmployeeId: employeeId }, { number: 8, name: "", assignedEmployeeId: employeeId }] }).success).toBe(false);
   });
 
   it("supports attaching, moving, and detaching one equipment identity", () => {
