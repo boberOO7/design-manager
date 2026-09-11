@@ -126,13 +126,18 @@ submission/office-assignment migrations and RLS tests.
 - Equipment stores its type, lifecycle state, common identifying metadata, and
   optional CPU, GPU, RAM, and storage fields for PCs and laptops. Retired items
   remain inventory records.
-- Workstations and equipment are administrator-only at both grants and RLS
-  boundaries. Maintenance schedules, service history, movement history, and
-  notifications are not part of this foundation.
-- The admin-only `/office/equipment` workspace provides Workstations and Other
-  equipment views. Workstation details group computers, monitors, and
-  peripherals while keeping every attached device as an independent equipment
-  row.
+- Workstations, equipment, maintenance configuration, and service history are
+  administrator-only at grants, RLS, Server Action, and route boundaries.
+- Optional recurring maintenance stores an interval and an explicit next due
+  date. Completing regular maintenance advances the due date from the actual
+  completion date; disabling the schedule does not remove history.
+- `equipment_service_events` is append-oriented history for regular maintenance,
+  repair, and upgrade. Atomic RPCs coordinate the single open service event with
+  the equipment `in_service` lifecycle; return explicitly selects Active or Spare.
+- The admin-only `/office/equipment` workspace provides Workstations, Other
+  equipment, and a service-first maintenance queue. Workstation details group
+  computers, monitors, and peripherals while keeping every attached device as
+  an independent equipment row.
 - Server Actions use the caller-context Supabase client after resolving the
   active studio administrator. Equipment can be attached, detached, or moved by
   updating its nullable workstation relationship; lifecycle changes do not
@@ -140,7 +145,7 @@ submission/office-assignment migrations and RLS tests.
 
 Canonical paths: `src/app/(app)/office/equipment/`,
 `src/components/office/equipment-workspace.tsx`,
-`src/data/queries/equipment.ts`, the equipment foundation migration, and focused
+`src/data/queries/equipment.ts`, the equipment migrations, and focused
 Equipment application/RLS tests.
 
 ## Notifications
@@ -156,6 +161,7 @@ messages. They are not activity history.
 | Submission create/assign/status | Active admins, responsible member, or non-anonymous author; Office submission |
 | Office assignment assign/status | Responsible member or creator; Office assignment |
 | CRM Lead follow-up | Responsible administrator; CRM Lead |
+| Equipment maintenance upcoming / overdue | Every active studio administrator; Equipment |
 
 Invariants:
 
@@ -173,8 +179,10 @@ Invariants:
   recipient.
 - Pending Administration counts and notification unread counts are different
   concepts.
-- Scheduled deadline reminders, email, push, and realtime subscriptions are not
-  implemented.
+- A protected daily Vercel cron calls the idempotent equipment-maintenance
+  notification RPC. Per-cycle due-date markers deduplicate upcoming and overdue
+  thresholds and reset when a new due date is established.
+- Email, push, and realtime subscriptions are not implemented.
 
 Canonical paths: `src/data/queries/notifications.ts`,
 `src/components/layout/notification-bell.tsx`, `src/app/api/notifications/`, and

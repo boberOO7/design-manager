@@ -96,6 +96,17 @@ describe("notification panel localization", () => {
     expect(presentation("uk", notification)).toEqual({ title: "Нагадування про контакт із лідом", body: "Нагадування: зв'язатися з Vasyl." });
   });
 
+  it("localizes equipment maintenance thresholds while preserving equipment identity", () => {
+    const notification = item({
+      notification_type: "equipment_maintenance_overdue",
+      title: "Equipment maintenance overdue",
+      body: "Render PC was due for maintenance.",
+      metadata: { equipmentName: "Render PC", dueDate: "2026-09-10", threshold: "overdue" },
+    });
+    expect(presentation("en", notification)).toEqual({ title: "Equipment maintenance overdue", body: "Render PC was due for maintenance on Sep 10." });
+    expect(presentation("uk", notification)).toEqual({ title: "Обслуговування обладнання прострочено", body: "Обладнання «Render PC» потрібно було обслужити 10 вер." });
+  });
+
   it("localizes complaint and request labels but preserves their user-authored subjects", () => {
     const complaint = item({
       notification_type: "submission_created",

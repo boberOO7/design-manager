@@ -1,8 +1,11 @@
 import { z } from "zod";
-import { EQUIPMENT_LIFECYCLE_STATES, EQUIPMENT_TYPES, isComputerEquipment } from "@/lib/equipment";
+import { CRM_BUDGET_CURRENCIES } from "@/lib/crm-budget";
+import { EQUIPMENT_LIFECYCLE_STATES, EQUIPMENT_SERVICE_EVENT_TYPES, EQUIPMENT_TYPES, isComputerEquipment } from "@/lib/equipment";
 
 const nullableUuid = z.union([z.string().uuid(), z.literal(""), z.literal("__none"), z.null()]).transform((value) => value === "" || value === "__none" ? null : value);
 const optionalText = (max: number) => z.union([z.string().trim().min(1).max(max), z.literal(""), z.null()]).transform((value) => value || null);
+const optionalDate = z.union([z.iso.date(), z.literal(""), z.null()]).transform((value) => value || null);
+const optionalCost = z.union([z.coerce.number().positive().max(9_999_999_999.99), z.literal(""), z.null()]).transform((value) => value === "" ? null : value);
 
 export const workstationInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -26,21 +29,65 @@ export const equipmentInputSchema = z.object({
   ram: optionalText(500),
   storage: optionalText(500),
   notes: optionalText(5000),
+  recurringMaintenanceEnabled: z.boolean().optional().default(false),
+  maintenanceIntervalMonths: z.preprocess((value) => value ?? null, z.union([z.coerce.number().int().min(1).max(120), z.literal(""), z.null()]).transform((value) => value === "" ? null : value)),
+  nextMaintenanceDueDate: z.preprocess((value) => value ?? null, optionalDate),
 }).superRefine((value, context) => {
-  if (isComputerEquipment(value.equipmentType)) return;
-  for (const field of ["cpu", "gpu", "ram", "storage"] as const) {
-    if (value[field] !== null) context.addIssue({ code: "custom", path: [field], message: "computer_specification" });
+  if (!isComputerEquipment(value.equipmentType)) {
+    for (const field of ["cpu", "gpu", "ram", "storage"] as const) {
+      if (value[field] !== null) context.addIssue({ code: "custom", path: [field], message: "computer_specification" });
+    }
   }
+  if (!value.recurringMaintenanceEnabled) return;
+  if (!value.maintenanceIntervalMonths) context.addIssue({ code: "custom", path: ["maintenanceIntervalMonths"], message: "maintenance_interval_required" });
+  if (!value.nextMaintenanceDueDate) context.addIssue({ code: "custom", path: ["nextMaintenanceDueDate"], message: "maintenance_date_required" });
 });
 
 export const equipmentUpdateSchema = equipmentInputSchema.and(z.object({ equipmentId: z.string().uuid() }));
 export const equipmentDeleteSchema = z.object({ equipmentId: z.string().uuid() });
 export const equipmentAssignmentSchema = z.object({ equipmentId: z.string().uuid(), workstationId: nullableUuid });
 
+const serviceDetails = {
+  serviceProvider: optionalText(160),
+  notes: optionalText(5000),
+};
+
+export const startEquipmentServiceSchema = z.object({
+  equipmentId: z.string().uuid(),
+  eventType: z.enum(EQUIPMENT_SERVICE_EVENT_TYPES),
+  startedOn: z.iso.date(),
+  ...serviceDetails,
+});
+
+export const completeEquipmentServiceSchema = z.object({
+  serviceEventId: z.string().uuid(),
+  completedOn: z.iso.date(),
+  returnState: z.enum(["active", "spare"]),
+  costAmount: optionalCost,
+  costCurrency: z.union([z.enum(CRM_BUDGET_CURRENCIES), z.literal(""), z.null()]).transform((value) => value || null),
+  notes: optionalText(5000),
+}).superRefine((value, context) => {
+  if ((value.costAmount === null) !== (value.costCurrency === null)) context.addIssue({ code: "custom", path: ["costAmount"], message: "cost_pair_required" });
+});
+
+export const recordEquipmentHistorySchema = z.object({
+  equipmentId: z.string().uuid(),
+  eventType: z.enum(["repair", "upgrade"]),
+  startedOn: optionalDate,
+  completedOn: z.iso.date(),
+  serviceProvider: optionalText(160),
+  costAmount: optionalCost,
+  costCurrency: z.union([z.enum(CRM_BUDGET_CURRENCIES), z.literal(""), z.null()]).transform((value) => value || null),
+  notes: optionalText(5000),
+}).superRefine((value, context) => {
+  if (value.startedOn && value.startedOn > value.completedOn) context.addIssue({ code: "custom", path: ["completedOn"], message: "invalid_date_order" });
+  if ((value.costAmount === null) !== (value.costCurrency === null)) context.addIssue({ code: "custom", path: ["costAmount"], message: "cost_pair_required" });
+});
+
 export type WorkstationInput = z.infer<typeof workstationInputSchema>;
 export type EquipmentInput = z.infer<typeof equipmentInputSchema>;
 export type EquipmentActionState = {
   success?: true;
   id?: string;
-  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign";
+  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign" | "service" | "completeService" | "history" | "serviceState";
 };

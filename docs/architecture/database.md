@@ -33,7 +33,7 @@ Use this map instead of duplicating their fields here.
 | Google projection | `google_calendar_connections`, `google_calendar_server_credentials`, `google_calendar_event_mappings`, `google_calendar_reconciliation_jobs` |
 | Contractors | `contractors`, `contractor_categories`, `contractor_subcategories` |
 | CRM | `crm_leads`, `crm_lead_history`, `crm_candidates`, `crm_recruiting_cycles` |
-| Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments`, `workstations`, `equipment` |
+| Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments`, `workstations`, `equipment`, `equipment_service_events` |
 | Delivery | `notifications` |
 
 ## Database boundary patterns

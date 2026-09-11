@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   AirVent,
   Boxes,
@@ -19,19 +19,24 @@ import {
   Pencil,
   Plus,
   Printer,
+  RotateCcw,
   Trash2,
   Unplug,
   UserRound,
   Video,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
 import {
   assignEquipment,
+  completeEquipmentService,
   createEquipment,
   createWorkstation,
   deleteEquipment,
   deleteWorkstation,
+  recordEquipmentHistory,
+  startEquipmentService,
   updateEquipment,
   updateWorkstation,
 } from "@/app/(app)/office/equipment/actions";
@@ -42,21 +47,25 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { EquipmentItem, EquipmentMember, WorkstationItem } from "@/data/queries/equipment";
+import { CRM_BUDGET_CURRENCIES, formatCrmBudget, isCrmBudgetCurrency } from "@/lib/crm-budget";
 import {
   EQUIPMENT_LIFECYCLE_STATES,
   EQUIPMENT_TYPES,
   equipmentSpecificationSummary,
+  getMaintenanceUrgency,
   isComputerEquipment,
   isEquipmentType,
   isOtherEquipment,
   isPeripheralEquipment,
+  maintenanceDayOffset,
   type EquipmentLifecycleState,
   type EquipmentType,
 } from "@/lib/equipment";
+import { formatDateOnly } from "@/lib/utils";
 import type { EquipmentActionState } from "@/lib/validation/equipment";
 import { cn } from "@/lib/utils";
 
-type EquipmentView = "workstations" | "other";
+type EquipmentView = "workstations" | "other" | "maintenance";
 type CreateKind = "workstation" | "equipment";
 const initialActionState: EquipmentActionState = {};
 
@@ -104,7 +113,7 @@ function useEquipmentRouting() {
   };
 }
 
-export function EquipmentWorkspace({ equipment, initialView, members, workstations }: { equipment: EquipmentItem[]; initialView: EquipmentView; members: EquipmentMember[]; workstations: WorkstationItem[] }) {
+export function EquipmentWorkspace({ equipment, initialView, members, today, workstations }: { equipment: EquipmentItem[]; initialView: EquipmentView; members: EquipmentMember[]; today: string; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
   const routing = useEquipmentRouting();
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
@@ -122,19 +131,19 @@ export function EquipmentWorkspace({ equipment, initialView, members, workstatio
     </div>
 
     <nav aria-label={t("views.label")} className="flex gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">
-      {(["workstations", "other"] as const).map((view) => <Link key={view} href={`/office/equipment?view=${view}`} aria-current={initialView === view ? "page" : undefined} className={cn("flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:flex-none", initialView === view ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]")}>
-        {view === "workstations" ? <MonitorCog className="size-4" aria-hidden="true" /> : <Boxes className="size-4" aria-hidden="true" />}{t(`views.${view}`)}
+      {(["workstations", "other", "maintenance"] as const).map((view) => <Link key={view} href={`/office/equipment?view=${view}`} aria-current={initialView === view ? "page" : undefined} className={cn("flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:flex-none", initialView === view ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]")}>
+        {view === "workstations" ? <MonitorCog className="size-4" aria-hidden="true" /> : view === "other" ? <Boxes className="size-4" aria-hidden="true" /> : <Wrench className="size-4" aria-hidden="true" />}{t(`views.${view}`)}
       </Link>)}
     </nav>
 
-    {initialView === "workstations"
-      ? <WorkstationList items={workstations} onOpen={routing.openItem} />
-      : <EquipmentInventory items={inventoryItems} workstationNames={workstationNames} onOpen={routing.openItem} />}
+    {initialView === "workstations" ? <WorkstationList items={workstations} onOpen={routing.openItem} />
+      : initialView === "other" ? <EquipmentInventory items={inventoryItems} workstationNames={workstationNames} onOpen={routing.openItem} />
+      : <MaintenanceQueue items={equipment} workstationNames={workstationNames} today={today} onOpen={routing.openItem} />}
 
     <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openItem} />
-    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} workstations={workstations} onClose={routing.closeItem} />
+    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} today={today} workstations={workstations} onClose={routing.closeItem} />
   </div>;
 }
 
@@ -166,6 +175,39 @@ function EquipmentInventory({ items, workstationNames, onOpen }: { items: Equipm
       <Pencil className="size-4 text-[var(--ui-text-subtle)]" aria-hidden="true" />
     </button>;
   })}</div>;
+}
+
+function MaintenanceQueue({ items, onOpen, today, workstationNames }: { items: EquipmentItem[]; onOpen: (id: string) => void; today: string; workstationNames: Map<string, string> }) {
+  const t = useTranslations("Equipment");
+  const locale = useLocale();
+  const queue = items.flatMap((item) => {
+    const urgency = getMaintenanceUrgency(item.recurringMaintenanceEnabled, item.nextMaintenanceDueDate, today);
+    if (item.lifecycleState !== "in_service" && !urgency) return [];
+    return [{ item, urgency, priority: item.lifecycleState === "in_service" ? 0 : urgency === "overdue" ? 1 : 2 }];
+  }).sort((a, b) => a.priority - b.priority || (a.item.nextMaintenanceDueDate ?? "9999").localeCompare(b.item.nextMaintenanceDueDate ?? "9999") || a.item.displayName.localeCompare(b.item.displayName));
+  if (!queue.length) return <EmptyState Icon={Wrench} title={t("maintenance.emptyTitle")} description={t("maintenance.emptyDescription")} />;
+  return <section aria-labelledby="maintenance-queue-heading">
+    <div className="mb-3"><h3 id="maintenance-queue-heading" className="font-semibold text-[var(--ui-text)]">{t("maintenance.queueTitle")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("maintenance.queueDescription")}</p></div>
+    <div className="divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{queue.map(({ item, urgency }) => {
+      const Icon = equipmentIcons[item.equipmentType];
+      const location = item.workstationId ? workstationNames.get(item.workstationId) ?? t("location.unknown") : t("location.unattached");
+      const due = item.nextMaintenanceDueDate ? formatDateOnly(item.nextMaintenanceDueDate, locale) : null;
+      const offset = item.nextMaintenanceDueDate && urgency ? maintenanceDayOffset(item.nextMaintenanceDueDate, today) : null;
+      const timing = offset === null ? t("maintenance.currentlyInService") : offset < 0 ? t("maintenance.overdueBy", { count: -offset }) : offset === 0 ? t("maintenance.dueToday") : t("maintenance.dueIn", { count: offset });
+      return <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="grid min-h-20 w-full cursor-pointer gap-2 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-5">
+        <span className="hidden size-9 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)] sm:flex"><Icon className="size-[1.125rem]" aria-hidden="true" /></span>
+        <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm text-[var(--ui-text)]">{item.displayName}</strong><MaintenanceBadge item={item} urgency={urgency} /></span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)} · {location}{item.assetTag ? ` · ${item.assetTag}` : ""}</span></span>
+        <span className="text-xs text-[var(--ui-text-muted)] sm:text-right">{due ? <><span className="block font-semibold text-[var(--ui-text-secondary)]">{t("maintenance.due", { date: due })}</span><span>{timing}</span></> : timing}</span>
+      </button>;
+    })}</div>
+  </section>;
+}
+
+function MaintenanceBadge({ item, urgency }: { item: EquipmentItem; urgency: ReturnType<typeof getMaintenanceUrgency> }) {
+  const t = useTranslations("Equipment");
+  if (item.lifecycleState === "in_service") return <span className="rounded-full bg-[var(--ui-warning-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--ui-warning-text)]">{t("maintenance.currentlyInService")}</span>;
+  if (!urgency) return null;
+  return <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", urgency === "overdue" ? "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]" : "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]")}>{t(`maintenance.${urgency}`)}</span>;
 }
 
 function EmptyState({ Icon, title, description }: { Icon: LucideIcon; title: string; description: string }) {
@@ -200,12 +242,15 @@ function CreateEquipmentDialog({ isOpen, workstations, onClose, onCreated }: { i
 function EquipmentFormFields({ item, initialType, workstations }: { item?: EquipmentItem; initialType?: EquipmentType; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
   const [type, setType] = useState<EquipmentType>(item?.equipmentType ?? initialType ?? "other");
+  const [recurring, setRecurring] = useState(item?.recurringMaintenanceEnabled ?? false);
+  const lifecycleStates = EQUIPMENT_LIFECYCLE_STATES.filter((value) => value !== "in_service");
   return <>
-    <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("form.type")}><Select name="equipmentType" value={type} onValueChange={(value) => { if (isEquipmentType(value)) setType(value); }}>{EQUIPMENT_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`types.${value}`)}</SelectItem>)}</Select></FormField><FormField label={t("form.state")}><Select name="lifecycleState" defaultValue={item?.lifecycleState ?? "active"}>{EQUIPMENT_LIFECYCLE_STATES.map((value) => <SelectItem key={value} value={value}>{t(`states.${value}`)}</SelectItem>)}</Select></FormField></div>
+    <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("form.type")}><Select name="equipmentType" value={type} onValueChange={(value) => { if (isEquipmentType(value)) setType(value); }}>{EQUIPMENT_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`types.${value}`)}</SelectItem>)}</Select></FormField><FormField label={t("form.state")}>{item?.lifecycleState === "in_service" ? <><input type="hidden" name="lifecycleState" value="in_service" /><div className="flex min-h-11 items-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-3 text-sm text-[var(--ui-text-secondary)]">{t("states.in_service")}</div></> : <Select name="lifecycleState" defaultValue={item?.lifecycleState ?? "active"}>{lifecycleStates.map((value) => <SelectItem key={value} value={value}>{t(`states.${value}`)}</SelectItem>)}</Select>}</FormField></div>
     <FormField label={t("form.displayName")}><Input data-dialog-initial-focus={!item || undefined} name="displayName" required maxLength={160} defaultValue={item?.displayName} /></FormField>
     <FormField label={t("form.workstation")} optional optionalLabel={t("optional")}><Select name="workstationId" defaultValue={item?.workstationId ?? "__none"}><SelectItem value="__none">{t("location.unattached")}</SelectItem>{workstations.map((workstation) => <SelectItem key={workstation.id} value={workstation.id}>{workstation.name}</SelectItem>)}</Select></FormField>
     <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("form.identification")}</legend><div className="grid gap-4 sm:grid-cols-2"><OptionalInput name="manufacturer" label={t("form.manufacturer")} value={item?.manufacturer} maxLength={160} /><OptionalInput name="model" label={t("form.model")} value={item?.model} maxLength={160} /><OptionalInput name="serialNumber" label={t("form.serialNumber")} value={item?.serialNumber} maxLength={160} /><OptionalInput name="assetTag" label={t("form.assetTag")} value={item?.assetTag} maxLength={160} /></div></fieldset>
     {isComputerEquipment(type) ? <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("form.specifications")}</legend><p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("form.specificationsDescription")}</p><div className="grid gap-4 sm:grid-cols-2"><OptionalInput name="cpu" label={t("form.cpu")} value={item?.cpu} maxLength={500} /><OptionalInput name="gpu" label={t("form.gpu")} value={item?.gpu} maxLength={500} /><OptionalInput name="ram" label={t("form.ram")} value={item?.ram} maxLength={500} /><OptionalInput name="storage" label={t("form.storage")} value={item?.storage} maxLength={500} /></div></fieldset> : null}
+    <fieldset className="grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("maintenance.recurringTitle")}</legend><label className="flex min-h-11 cursor-pointer items-start gap-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" name="recurringMaintenanceEnabled" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><span className="block text-sm font-medium">{t("maintenance.enabled")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("maintenance.enabledDescription")}</span></span></label>{recurring ? <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="maintenanceIntervalMonths" min={1} max={120} required defaultValue={item?.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><Input type="date" name="nextMaintenanceDueDate" required defaultValue={item?.nextMaintenanceDueDate ?? ""} /></FormField></div> : null}</fieldset>
     <FormField label={t("form.notes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={4} maxLength={5000} defaultValue={item?.notes ?? ""} /></FormField>
   </>;
 }
@@ -251,7 +296,7 @@ function EquipmentGroup({ items, onDetach, onOpen, pending, title }: { items: Eq
   return <div><h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{title}</h4>{items.length ? <div className="mt-2 divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{items.map((item) => { const Icon = equipmentIcons[item.equipmentType]; const specs = isComputerEquipment(item.equipmentType) ? equipmentSpecificationSummary(item) : ""; return <div key={item.id} className="flex items-center gap-3 px-3 py-2.5"><button type="button" onClick={() => onOpen(item.id)} className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-[var(--ui-radius-control)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /><span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.displayName}</span><span className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{specs || t(`types.${item.equipmentType}`)}</span></span></button><button type="button" disabled={pending} onClick={() => onDetach(item.id)} aria-label={t("assignment.detachNamed", { name: item.displayName })} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><Unplug className="size-4" aria-hidden="true" /></button></div>; })}</div> : <p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("groups.empty")}</p>}</div>;
 }
 
-function EquipmentDrawer({ item, workstations, onClose }: { item: EquipmentItem | null; workstations: WorkstationItem[]; onClose: () => void }) {
+function EquipmentDrawer({ item, today, workstations, onClose }: { item: EquipmentItem | null; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
   const t = useTranslations("Equipment");
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -263,12 +308,42 @@ function EquipmentDrawer({ item, workstations, onClose }: { item: EquipmentItem 
   const equipmentId = item.id;
   const equipmentName = item.displayName;
   function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }
-  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateEquipment({ equipmentId, equipmentType: data.get("equipmentType"), lifecycleState: data.get("lifecycleState"), displayName: data.get("displayName"), workstationId: data.get("workstationId"), manufacturer: data.get("manufacturer"), model: data.get("model"), serialNumber: data.get("serialNumber"), assetTag: data.get("assetTag"), cpu: data.get("cpu") ?? "", gpu: data.get("gpu") ?? "", ram: data.get("ram") ?? "", storage: data.get("storage") ?? "", notes: data.get("notes") })); }
+  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateEquipment({ equipmentId, equipmentType: data.get("equipmentType"), lifecycleState: data.get("lifecycleState"), displayName: data.get("displayName"), workstationId: data.get("workstationId"), manufacturer: data.get("manufacturer"), model: data.get("model"), serialNumber: data.get("serialNumber"), assetTag: data.get("assetTag"), cpu: data.get("cpu") ?? "", gpu: data.get("gpu") ?? "", ram: data.get("ram") ?? "", storage: data.get("storage") ?? "", notes: data.get("notes"), recurringMaintenanceEnabled: data.get("recurringMaintenanceEnabled") === "on", maintenanceIntervalMonths: data.get("maintenanceIntervalMonths") ?? "", nextMaintenanceDueDate: data.get("nextMaintenanceDueDate") ?? "" })); }
   function remove() { if (!window.confirm(t("deleteConfirm", { name: equipmentName }))) return; run(() => deleteEquipment({ equipmentId }), onClose); }
-  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.displayName} className="w-full max-w-[38rem]">
+  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.displayName} className="w-full max-w-[42rem]">
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)}</p><div className="mt-1 flex min-w-0 flex-wrap items-center gap-2"><h2 className="truncate text-lg font-bold">{item.displayName}</h2><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{workstationName}</p></div></div><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
-    <form onSubmit={submit} className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 sm:p-6"><EquipmentFormFields item={item} workstations={workstations} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3 border-t border-[var(--ui-border)] pt-5"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveEquipment")}</Button></div></form>
+    <div className="min-h-0 flex-1 overflow-y-auto"><form onSubmit={submit} className="grid gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} workstations={workstations} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3 border-t border-[var(--ui-border)] pt-5"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveEquipment")}</Button></div></form><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></div>
   </Drawer>;
+}
+
+function ServicePanel({ item, pending, run, today }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>, after?: () => void) => void; today: string }) {
+  const t = useTranslations("Equipment");
+  const locale = useLocale();
+  const [showHistoryForm, setShowHistoryForm] = useState(false);
+  const openService = item.serviceEvents.find((event) => !event.completedOn);
+  function start(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => startEquipmentService({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), serviceProvider: data.get("serviceProvider"), notes: data.get("notes") })); }
+  function complete(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if (!openService) return; const data = new FormData(event.currentTarget); const costAmount = data.get("costAmount"); run(() => completeEquipmentService({ serviceEventId: openService.id, completedOn: data.get("completedOn"), returnState: data.get("returnState"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") })); }
+  function record(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); const costAmount = data.get("costAmount"); run(() => recordEquipmentHistory({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), completedOn: data.get("completedOn"), serviceProvider: data.get("serviceProvider"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") }), () => { form.reset(); setShowHistoryForm(false); }); }
+  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{t("service.title")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : t("service.description")}</p></div><Wrench className="size-5 text-[var(--ui-text-muted)]" aria-hidden="true" /></div>
+    {openService ? <form onSubmit={complete} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><p className="text-sm font-semibold">{t(`history.types.${openService.eventType}`)}</p><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.returnDate")}><Input type="date" name="completedOn" min={openService.startedOn} max={today} required defaultValue={today} /></FormField><FormField label={t("service.returnState")}><Select name="returnState" defaultValue="active"><SelectItem value="active">{t("states.active")}</SelectItem><SelectItem value="spare">{t("states.spare")}</SelectItem></Select></FormField></div><CostFields /><FormField label={t("service.completionNotes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("service.complete")}</Button></form>
+      : item.lifecycleState !== "retired" ? <form onSubmit={start} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.type")}><Select name="eventType" defaultValue="regular_maintenance"><SelectItem value="regular_maintenance">{t("history.types.regular_maintenance")}</SelectItem><SelectItem value="repair">{t("history.types.repair")}</SelectItem><SelectItem value="upgrade">{t("history.types.upgrade")}</SelectItem></Select></FormField><FormField label={t("service.sentDate")}><Input type="date" name="startedOn" max={today} required defaultValue={today} /></FormField></div><OptionalInput name="serviceProvider" label={t("service.provider")} maxLength={160} /><FormField label={t("service.startNotes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("service.send")}</Button></form> : <p className="mt-4 text-sm text-[var(--ui-text-muted)]">{t("service.retired")}</p>}
+    <div className="mt-5 border-t border-[var(--ui-border)] pt-5"><Button type="button" variant="outline" disabled={pending} onClick={() => setShowHistoryForm((value) => !value)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("history.record")}</Button>{showHistoryForm ? <form onSubmit={record} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.type")}><Select name="eventType" defaultValue="repair"><SelectItem value="repair">{t("history.types.repair")}</SelectItem><SelectItem value="upgrade">{t("history.types.upgrade")}</SelectItem></Select></FormField><FormField label={t("history.completedDate")}><Input type="date" name="completedOn" max={today} required defaultValue={today} /></FormField></div><FormField label={t("history.startedDate")} optional optionalLabel={t("optional")}><Input type="date" name="startedOn" max={today} /></FormField><OptionalInput name="serviceProvider" label={t("service.provider")} maxLength={160} /><CostFields /><FormField label={t("history.details")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => setShowHistoryForm(false)}>{t("cancel")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("history.save")}</Button></div></form> : null}</div>
+  </section>;
+}
+
+function CostFields() {
+  const t = useTranslations("Equipment");
+  return <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]"><FormField label={t("service.cost")} optional optionalLabel={t("optional")}><Input type="number" name="costAmount" min="0.01" step="0.01" /></FormField><FormField label={t("service.currency")}><Select name="costCurrency" defaultValue="UAH">{CRM_BUDGET_CURRENCIES.map((currency) => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}</Select></FormField></div>;
+}
+
+function HistoryPanel({ item }: { item: EquipmentItem }) {
+  const t = useTranslations("Equipment");
+  const locale = useLocale();
+  const completed = item.serviceEvents.filter((event) => event.completedOn);
+  return <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><div className="flex items-center gap-2"><RotateCcw className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" /><h3 className="font-semibold">{t("history.title")}</h3></div>{completed.length ? <ol className="mt-4 space-y-3">{completed.map((event) => {
+    const cost = event.costAmount !== null && event.costCurrency && isCrmBudgetCurrency(event.costCurrency) ? formatCrmBudget(event.costAmount, event.costCurrency) : null;
+    return <li key={event.id} className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-4"><div className="flex flex-wrap items-start justify-between gap-2"><strong className="text-sm">{t(`history.types.${event.eventType}`)}</strong><time className="text-xs text-[var(--ui-text-muted)]" dateTime={event.completedOn ?? undefined}>{formatDateOnly(event.completedOn, locale)}</time></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{event.startedOn !== event.completedOn ? t("history.dateRange", { start: formatDateOnly(event.startedOn, locale), end: formatDateOnly(event.completedOn, locale) }) : null}{event.serviceProvider ? `${event.startedOn !== event.completedOn ? " · " : ""}${event.serviceProvider}` : ""}{cost ? ` · ${cost}` : ""}</p>{event.startedNotes ? <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--ui-text-secondary)]">{event.startedNotes}</p> : null}{event.completionNotes ? <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--ui-text-secondary)]">{event.completionNotes}</p> : null}</li>;
+  })}</ol> : <p className="mt-3 text-sm text-[var(--ui-text-muted)]">{t("history.empty")}</p>}</section>;
 }
 
 function ActionError({ error }: { error?: EquipmentActionState["error"] }) {

@@ -6,6 +6,7 @@ const actions = readFileSync("src/app/(app)/office/equipment/actions.ts", "utf8"
 const page = readFileSync("src/app/(app)/office/equipment/page.tsx", "utf8");
 const query = readFileSync("src/data/queries/equipment.ts", "utf8");
 const shell = readFileSync("src/components/office/office-shell.tsx", "utf8");
+const cron = readFileSync("src/app/api/equipment/maintenance-notifications/route.ts", "utf8");
 
 describe("Equipment application flow", () => {
   it("keeps navigation and page loading admin-only", () => {
@@ -30,7 +31,7 @@ describe("Equipment application flow", () => {
     expect(actions).toContain("export async function updateEquipment");
     expect(actions).toContain("export async function deleteEquipment");
     expect(actions).toContain("lifecycle_state: input.lifecycleState");
-    expect(workspace).toContain("EQUIPMENT_LIFECYCLE_STATES.map");
+    expect(workspace).toContain("EQUIPMENT_LIFECYCLE_STATES.filter");
     expect(workspace).toContain('t(`states.${item.lifecycleState}`)');
     expect(workspace).not.toContain('item.lifecycleState === "retired" ? null');
   });
@@ -60,5 +61,23 @@ describe("Equipment application flow", () => {
     expect(actions).toContain('.eq("studio_id", admin.studio_id)');
     expect(actions).toContain("revalidatePath(\"/office/equipment\")");
     expect(actions).not.toContain("createAdminClient");
+  });
+
+  it("provides the recurring maintenance queue and guarded service workflow", () => {
+    expect(workspace).toContain('"maintenance"');
+    expect(workspace).toContain("getMaintenanceUrgency");
+    expect(workspace).toContain("startEquipmentService");
+    expect(workspace).toContain("completeEquipmentService");
+    expect(workspace).toContain("recordEquipmentHistory");
+    expect(workspace).toContain('name="recurringMaintenanceEnabled"');
+    expect(query).toContain('from("equipment_service_events")');
+    expect(actions.match(/getActiveStudioAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(10);
+    expect(actions).not.toContain("createAdminClient");
+  });
+
+  it("protects the idempotent notification worker with the existing cron secret pattern", () => {
+    expect(cron).toContain("timingSafeEqual");
+    expect(cron).toContain("process.env.CRON_SECRET");
+    expect(cron).toContain('rpc("generate_equipment_maintenance_notifications")');
   });
 });

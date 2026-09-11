@@ -8,6 +8,9 @@ import {
   equipmentDeleteSchema,
   equipmentInputSchema,
   equipmentUpdateSchema,
+  completeEquipmentServiceSchema,
+  recordEquipmentHistorySchema,
+  startEquipmentServiceSchema,
   workstationDeleteSchema,
   workstationInputSchema,
   workstationUpdateSchema,
@@ -37,6 +40,9 @@ function equipmentValues(formData: FormData) {
     serialNumber: formValue(formData, "serialNumber"), assetTag: formValue(formData, "assetTag"),
     cpu: formValue(formData, "cpu"), gpu: formValue(formData, "gpu"), ram: formValue(formData, "ram"),
     storage: formValue(formData, "storage"), notes: formValue(formData, "notes"),
+    recurringMaintenanceEnabled: formData.get("recurringMaintenanceEnabled") === "on",
+    maintenanceIntervalMonths: formValue(formData, "maintenanceIntervalMonths"),
+    nextMaintenanceDueDate: formValue(formData, "nextMaintenanceDueDate"),
   };
 }
 
@@ -55,6 +61,9 @@ function equipmentPayload(input: EquipmentInput) {
     ram: input.ram,
     storage: input.storage,
     notes: input.notes,
+    recurring_maintenance_enabled: input.recurringMaintenanceEnabled,
+    maintenance_interval_months: input.recurringMaintenanceEnabled ? input.maintenanceIntervalMonths : null,
+    next_maintenance_due_date: input.recurringMaintenanceEnabled ? input.nextMaintenanceDueDate : null,
   };
 }
 
@@ -65,6 +74,7 @@ function databaseError(error: { code?: string; message: string } | null, fallbac
   if (error.code === "23514") return "invalid";
   if (error.code === "42501") return "permission";
   if (error.message.includes("assigned_employee_must_be_an_active_studio_member")) return "member";
+  if (error.message.includes("service") || error.message.includes("history")) return "serviceState";
   return fallback;
 }
 
@@ -155,4 +165,62 @@ export async function deleteEquipment(input: unknown): Promise<EquipmentActionSt
   if (!data) return { error: "notFound" };
   refreshEquipment();
   return { success: true };
+}
+
+export async function startEquipmentService(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = startEquipmentServiceSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("start_equipment_service", {
+    p_equipment_id: parsed.data.equipmentId,
+    p_event_type: parsed.data.eventType,
+    p_started_on: parsed.data.startedOn,
+    p_service_provider: parsed.data.serviceProvider ?? undefined,
+    p_notes: parsed.data.notes ?? undefined,
+  });
+  if (error || !data) return { error: databaseError(error, "service") };
+  refreshEquipment();
+  return { success: true, id: data };
+}
+
+export async function completeEquipmentService(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = completeEquipmentServiceSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("complete_equipment_service", {
+    p_service_event_id: parsed.data.serviceEventId,
+    p_completed_on: parsed.data.completedOn,
+    p_return_state: parsed.data.returnState,
+    p_cost_amount: parsed.data.costAmount ?? undefined,
+    p_cost_currency: parsed.data.costCurrency ?? undefined,
+    p_notes: parsed.data.notes ?? undefined,
+  });
+  if (error || !data) return { error: databaseError(error, "completeService") };
+  refreshEquipment();
+  return { success: true, id: data };
+}
+
+export async function recordEquipmentHistory(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = recordEquipmentHistorySchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_equipment_history_event", {
+    p_equipment_id: parsed.data.equipmentId,
+    p_event_type: parsed.data.eventType,
+    p_started_on: parsed.data.startedOn ?? undefined,
+    p_completed_on: parsed.data.completedOn,
+    p_service_provider: parsed.data.serviceProvider ?? undefined,
+    p_cost_amount: parsed.data.costAmount ?? undefined,
+    p_cost_currency: parsed.data.costCurrency ?? undefined,
+    p_notes: parsed.data.notes ?? undefined,
+  });
+  if (error || !data) return { error: databaseError(error, "history") };
+  refreshEquipment();
+  return { success: true, id: data };
 }

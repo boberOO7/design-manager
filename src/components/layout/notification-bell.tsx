@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Building2, CalendarDays, CheckSquare, Clock3, MessagesSquare, X } from "lucide-react";
+import { Bell, Building2, CalendarDays, CheckSquare, Clock3, MessagesSquare, Wrench, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -12,7 +12,7 @@ import { markAllNotificationsRead, markNotificationRead, unreadNotificationCount
 import { formatNotificationRelativeTime, getNotificationPresentation } from "@/lib/notification-presentation";
 
 function iconFor(type: NotificationItem["notification_type"]) {
-  return type.startsWith("task_") ? CheckSquare : type.startsWith("calendar_") ? CalendarDays : type.startsWith("submission_") ? MessagesSquare : type.startsWith("office_assignment_") ? Building2 : Clock3;
+  return type.startsWith("task_") ? CheckSquare : type.startsWith("calendar_") ? CalendarDays : type.startsWith("submission_") ? MessagesSquare : type.startsWith("office_assignment_") ? Building2 : type.startsWith("equipment_") ? Wrench : Clock3;
 }
 
 export function NotificationBell({ initialData }: { initialData: NotificationData }) {

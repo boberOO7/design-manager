@@ -812,10 +812,15 @@ export type Database = {
           gpu: string | null
           id: string
           lifecycle_state: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          maintenance_interval_months: number | null
+          maintenance_overdue_notified_for: string | null
+          maintenance_upcoming_notified_for: string | null
           manufacturer: string | null
           model: string | null
+          next_maintenance_due_date: string | null
           notes: string | null
           ram: string | null
+          recurring_maintenance_enabled: boolean
           serial_number: string | null
           storage: string | null
           studio_id: string
@@ -831,10 +836,15 @@ export type Database = {
           gpu?: string | null
           id?: string
           lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          maintenance_interval_months?: number | null
+          maintenance_overdue_notified_for?: string | null
+          maintenance_upcoming_notified_for?: string | null
           manufacturer?: string | null
           model?: string | null
+          next_maintenance_due_date?: string | null
           notes?: string | null
           ram?: string | null
+          recurring_maintenance_enabled?: boolean
           serial_number?: string | null
           storage?: string | null
           studio_id: string
@@ -850,10 +860,15 @@ export type Database = {
           gpu?: string | null
           id?: string
           lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          maintenance_interval_months?: number | null
+          maintenance_overdue_notified_for?: string | null
+          maintenance_upcoming_notified_for?: string | null
           manufacturer?: string | null
           model?: string | null
+          next_maintenance_due_date?: string | null
           notes?: string | null
           ram?: string | null
+          recurring_maintenance_enabled?: boolean
           serial_number?: string | null
           storage?: string | null
           studio_id?: string
@@ -874,6 +889,69 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workstations"
             referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      equipment_service_events: {
+        Row: {
+          completed_on: string | null
+          completion_notes: string | null
+          cost_amount: number | null
+          cost_currency: string | null
+          created_at: string
+          equipment_id: string
+          event_type: Database["public"]["Enums"]["equipment_service_event_type"]
+          id: string
+          service_provider: string | null
+          started_notes: string | null
+          started_on: string
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_on?: string | null
+          completion_notes?: string | null
+          cost_amount?: number | null
+          cost_currency?: string | null
+          created_at?: string
+          equipment_id: string
+          event_type: Database["public"]["Enums"]["equipment_service_event_type"]
+          id?: string
+          service_provider?: string | null
+          started_notes?: string | null
+          started_on: string
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_on?: string | null
+          completion_notes?: string | null
+          cost_amount?: number | null
+          cost_currency?: string | null
+          created_at?: string
+          equipment_id?: string
+          event_type?: Database["public"]["Enums"]["equipment_service_event_type"]
+          id?: string
+          service_provider?: string | null
+          started_notes?: string | null
+          started_on?: string
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_service_events_equipment_studio_fkey"
+            columns: ["studio_id", "equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "equipment_service_events_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2598,6 +2676,17 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      complete_equipment_service: {
+        Args: {
+          p_completed_on: string
+          p_cost_amount?: number
+          p_cost_currency?: string
+          p_notes?: string
+          p_return_state: Database["public"]["Enums"]["equipment_lifecycle_state"]
+          p_service_event_id: string
+        }
+        Returns: string
+      }
       create_calendar_event_with_invites: {
         Args: {
           p_all_day: boolean
@@ -2672,6 +2761,10 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      generate_equipment_maintenance_notifications: {
+        Args: { p_today?: string }
+        Returns: number
+      }
       get_calendar_coworker_availability: {
         Args: {
           range_end: string
@@ -2724,6 +2817,19 @@ export type Database = {
           p_submission_id: string
         }
         Returns: undefined
+      }
+      record_equipment_history_event: {
+        Args: {
+          p_completed_on: string
+          p_cost_amount?: number
+          p_cost_currency?: string
+          p_equipment_id: string
+          p_event_type: Database["public"]["Enums"]["equipment_service_event_type"]
+          p_notes?: string
+          p_service_provider?: string
+          p_started_on?: string
+        }
+        Returns: string
       }
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
@@ -2799,6 +2905,16 @@ export type Database = {
       }
       start_crm_recruiting_cycle: {
         Args: { p_candidate_id: string; p_target_position: string }
+        Returns: string
+      }
+      start_equipment_service: {
+        Args: {
+          p_equipment_id: string
+          p_event_type: Database["public"]["Enums"]["equipment_service_event_type"]
+          p_notes?: string
+          p_service_provider?: string
+          p_started_on: string
+        }
         Returns: string
       }
       transition_office_assignment: {
@@ -2894,6 +3010,7 @@ export type Database = {
         | "won"
         | "lost"
       equipment_lifecycle_state: "active" | "spare" | "in_service" | "retired"
+      equipment_service_event_type: "regular_maintenance" | "repair" | "upgrade"
       equipment_type:
         | "pc"
         | "laptop"
@@ -2923,6 +3040,8 @@ export type Database = {
         | "office_assignment_assigned"
         | "office_assignment_status_changed"
         | "crm_lead_follow_up"
+        | "equipment_maintenance_upcoming"
+        | "equipment_maintenance_overdue"
       office_assignment_status:
         | "assigned"
         | "in_progress"
@@ -3105,6 +3224,11 @@ export const Constants = {
         "lost",
       ],
       equipment_lifecycle_state: ["active", "spare", "in_service", "retired"],
+      equipment_service_event_type: [
+        "regular_maintenance",
+        "repair",
+        "upgrade",
+      ],
       equipment_type: [
         "pc",
         "laptop",
@@ -3135,6 +3259,8 @@ export const Constants = {
         "office_assignment_assigned",
         "office_assignment_status_changed",
         "crm_lead_follow_up",
+        "equipment_maintenance_upcoming",
+        "equipment_maintenance_overdue",
       ],
       office_assignment_status: [
         "assigned",

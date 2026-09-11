@@ -2,6 +2,8 @@ import type { Database } from "@/types/database.types";
 
 export type EquipmentType = Database["public"]["Enums"]["equipment_type"];
 export type EquipmentLifecycleState = Database["public"]["Enums"]["equipment_lifecycle_state"];
+export type EquipmentServiceEventType = Database["public"]["Enums"]["equipment_service_event_type"];
+export type MaintenanceUrgency = "overdue" | "upcoming" | null;
 
 export const EQUIPMENT_TYPES = [
   "pc",
@@ -18,6 +20,7 @@ export const EQUIPMENT_TYPES = [
 ] as const satisfies readonly EquipmentType[];
 
 export const EQUIPMENT_LIFECYCLE_STATES = ["active", "spare", "in_service", "retired"] as const satisfies readonly EquipmentLifecycleState[];
+export const EQUIPMENT_SERVICE_EVENT_TYPES = ["regular_maintenance", "repair", "upgrade"] as const satisfies readonly EquipmentServiceEventType[];
 export const COMPUTER_EQUIPMENT_TYPES = ["pc", "laptop"] as const satisfies readonly EquipmentType[];
 export const PERIPHERAL_EQUIPMENT_TYPES = ["mouse", "keyboard", "headphones", "webcam"] as const satisfies readonly EquipmentType[];
 export const OTHER_EQUIPMENT_TYPES = ["air_conditioner", "printer", "coffee_machine", "other"] as const satisfies readonly EquipmentType[];
@@ -45,4 +48,16 @@ export function isOtherEquipment(type: EquipmentType): type is (typeof OTHER_EQU
 
 export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null }) {
   return [item.cpu, item.gpu, item.ram, item.storage].filter((value): value is string => Boolean(value)).join(" · ");
+}
+
+export function getMaintenanceUrgency(enabled: boolean, dueDate: string | null, today: string): MaintenanceUrgency {
+  if (!enabled || !dueDate) return null;
+  if (dueDate < today) return "overdue";
+  const upcomingLimit = new Date(`${today}T00:00:00.000Z`);
+  upcomingLimit.setUTCDate(upcomingLimit.getUTCDate() + 30);
+  return dueDate <= upcomingLimit.toISOString().slice(0, 10) ? "upcoming" : null;
+}
+
+export function maintenanceDayOffset(dueDate: string, today: string) {
+  return Math.round((Date.parse(`${dueDate}T00:00:00.000Z`) - Date.parse(`${today}T00:00:00.000Z`)) / 86_400_000);
 }

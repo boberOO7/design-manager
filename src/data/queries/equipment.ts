@@ -2,13 +2,26 @@ import "server-only";
 
 import type { ActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
+import { getKyivDateOnly } from "@/lib/validation/project";
 import type { Database } from "@/types/database.types";
 
 type EquipmentRow = Database["public"]["Tables"]["equipment"]["Row"];
+type EquipmentServiceEventRow = Database["public"]["Tables"]["equipment_service_events"]["Row"];
 type WorkstationRow = Database["public"]["Tables"]["workstations"]["Row"];
 
 export type EquipmentMember = { id: string; fullName: string; avatarUrl: string | null };
-export type EquipmentItem = Omit<EquipmentRow, "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "created_at" | "updated_at"> & {
+export type EquipmentServiceEvent = {
+  id: string;
+  eventType: EquipmentServiceEventRow["event_type"];
+  startedOn: string;
+  completedOn: string | null;
+  serviceProvider: string | null;
+  costAmount: number | null;
+  costCurrency: string | null;
+  startedNotes: string | null;
+  completionNotes: string | null;
+};
+export type EquipmentItem = Omit<EquipmentRow, "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "recurring_maintenance_enabled" | "maintenance_interval_months" | "next_maintenance_due_date" | "maintenance_upcoming_notified_for" | "maintenance_overdue_notified_for" | "created_at" | "updated_at"> & {
   studioId: string;
   workstationId: string | null;
   equipmentType: EquipmentRow["equipment_type"];
@@ -16,6 +29,10 @@ export type EquipmentItem = Omit<EquipmentRow, "studio_id" | "workstation_id" | 
   displayName: string;
   serialNumber: string | null;
   assetTag: string | null;
+  recurringMaintenanceEnabled: boolean;
+  maintenanceIntervalMonths: number | null;
+  nextMaintenanceDueDate: string | null;
+  serviceEvents: EquipmentServiceEvent[];
   createdAt: string;
   updatedAt: string;
 };
@@ -31,7 +48,21 @@ export type WorkstationItem = {
 
 type MemberRow = { user_id: string; profile: { full_name: string; avatar_url: string | null } };
 
-function mapEquipment(row: EquipmentRow): EquipmentItem {
+function mapServiceEvent(row: EquipmentServiceEventRow): EquipmentServiceEvent {
+  return {
+    id: row.id,
+    eventType: row.event_type,
+    startedOn: row.started_on,
+    completedOn: row.completed_on,
+    serviceProvider: row.service_provider,
+    costAmount: row.cost_amount,
+    costCurrency: row.cost_currency,
+    startedNotes: row.started_notes,
+    completionNotes: row.completion_notes,
+  };
+}
+
+function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[]): EquipmentItem {
   return {
     id: row.id,
     studioId: row.studio_id,
@@ -43,6 +74,10 @@ function mapEquipment(row: EquipmentRow): EquipmentItem {
     model: row.model,
     serialNumber: row.serial_number,
     assetTag: row.asset_tag,
+    recurringMaintenanceEnabled: row.recurring_maintenance_enabled,
+    maintenanceIntervalMonths: row.maintenance_interval_months,
+    nextMaintenanceDueDate: row.next_maintenance_due_date,
+    serviceEvents,
     cpu: row.cpu,
     gpu: row.gpu,
     ram: row.ram,
@@ -53,19 +88,26 @@ function mapEquipment(row: EquipmentRow): EquipmentItem {
   };
 }
 
-export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{ members: EquipmentMember[]; workstations: WorkstationItem[]; equipment: EquipmentItem[] }> {
+export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{ members: EquipmentMember[]; workstations: WorkstationItem[]; equipment: EquipmentItem[]; today: string }> {
   const supabase = await createClient();
-  const [workstationsResult, equipmentResult, membersResult] = await Promise.all([
+  const [workstationsResult, equipmentResult, serviceEventsResult, membersResult] = await Promise.all([
     supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("name"),
     supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name"),
+    supabase.from("equipment_service_events").select("*").eq("studio_id", admin.studio_id).order("completed_on", { ascending: false, nullsFirst: true }).order("started_on", { ascending: false }),
     supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
   ]);
-  const failure = workstationsResult.error ?? equipmentResult.error ?? membersResult.error;
+  const failure = workstationsResult.error ?? equipmentResult.error ?? serviceEventsResult.error ?? membersResult.error;
   if (failure) throw new Error("Unable to load equipment inventory.", { cause: failure });
 
   const members = (membersResult.data ?? []).map((row) => ({ id: row.user_id, fullName: row.profile.full_name, avatarUrl: row.profile.avatar_url })).sort((a, b) => a.fullName.localeCompare(b.fullName));
   const memberById = new Map(members.map((member) => [member.id, member]));
-  const equipment = (equipmentResult.data ?? []).map(mapEquipment);
+  const eventsByEquipment = new Map<string, EquipmentServiceEvent[]>();
+  for (const row of serviceEventsResult.data ?? []) {
+    const events = eventsByEquipment.get(row.equipment_id) ?? [];
+    events.push(mapServiceEvent(row));
+    eventsByEquipment.set(row.equipment_id, events);
+  }
+  const equipment = (equipmentResult.data ?? []).map((row) => mapEquipment(row, eventsByEquipment.get(row.id) ?? []));
   const equipmentByWorkstation = new Map<string, EquipmentItem[]>();
   for (const item of equipment) {
     if (!item.workstationId) continue;
@@ -77,6 +119,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
   return {
     members,
     equipment,
+    today: getKyivDateOnly(),
     workstations: (workstationsResult.data ?? []).map((row: WorkstationRow) => ({
       id: row.id,
       studioId: row.studio_id,

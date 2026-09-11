@@ -8,7 +8,7 @@ describe("Equipment localization", () => {
   it("keeps English and Ukrainian Equipment keys in parity", () => {
     const english = createTranslator({ locale: "en", messages: en, namespace: "Equipment" });
     const ukrainian = createTranslator({ locale: "uk", messages: uk, namespace: "Equipment" });
-    for (const key of ["title", "description", "views.workstations", "views.other", "actions.addWorkstation", "actions.addEquipment", "workstation.unassigned", "form.displayName", "form.workstation", "assignment.attach", "errors.permission"] as const) {
+    for (const key of ["title", "description", "views.workstations", "views.other", "views.maintenance", "actions.addWorkstation", "actions.addEquipment", "workstation.unassigned", "form.displayName", "form.workstation", "assignment.attach", "maintenance.queueTitle", "maintenance.upcoming", "maintenance.overdue", "service.send", "service.complete", "history.title", "history.types.regular_maintenance", "history.types.repair", "history.types.upgrade", "errors.permission"] as const) {
       expect(english(key)).toBeTruthy();
       expect(ukrainian(key)).toBeTruthy();
     }

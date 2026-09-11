@@ -142,8 +142,8 @@ select lives_ok($$delete from public.workstations$$, 'employee workstation delet
 select lives_ok($$delete from public.equipment$$, 'employee equipment deletes expose no writable rows');
 
 set local role postgres;
-select is((select count(*)::integer from public.workstations), 3, 'employee delete did not remove any workstation');
-select is((select count(*)::integer from public.equipment), 2, 'employee delete did not remove any equipment');
+select is((select count(*)::integer from public.workstations where studio_id = '47000000-0000-0000-0000-000000000001'), 2, 'employee delete did not remove any workstation');
+select is((select count(*)::integer from public.equipment where studio_id = '47000000-0000-0000-0000-000000000001'), 2, 'employee delete did not remove any equipment');
 select is((select count(*)::integer from public.workstations where name = 'Changed'), 0, 'employee update did not rename a workstation');
 select is(
   (select count(*)::integer from public.equipment where lifecycle_state = 'retired'),

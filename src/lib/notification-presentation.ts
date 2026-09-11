@@ -11,6 +11,10 @@ export type NotificationMessageKey =
   | "calendarInvitationTitle"
   | "crmLeadFollowUpBody"
   | "crmLeadFollowUpTitle"
+  | "equipmentMaintenanceOverdueBody"
+  | "equipmentMaintenanceOverdueTitle"
+  | "equipmentMaintenanceUpcomingBody"
+  | "equipmentMaintenanceUpcomingTitle"
   | "officeAssignmentAssignedBody"
   | "officeAssignmentAssignedTitle"
   | "officeAssignmentUpdatedBody"
@@ -189,6 +193,16 @@ export function getNotificationPresentation(item: NotificationItem, locale: stri
   const subject = metadataString(metadata, "subject") ?? metadataString(metadata, "taskTitle") ?? metadataString(metadata, "eventTitle") ?? quotedValue(item.body);
 
   switch (item.notification_type) {
+    case "equipment_maintenance_upcoming":
+    case "equipment_maintenance_overdue": {
+      const equipment = metadataString(metadata, "equipmentName") ?? subject;
+      const dueDate = metadataString(metadata, "dueDate");
+      const overdue = item.notification_type === "equipment_maintenance_overdue";
+      const title = t(overdue ? "equipmentMaintenanceOverdueTitle" : "equipmentMaintenanceUpcomingTitle");
+      return equipment && dueDate
+        ? { title, body: t(overdue ? "equipmentMaintenanceOverdueBody" : "equipmentMaintenanceUpcomingBody", { date: formatDateOnly(dueDate, locale), equipment }) }
+        : { title, body: item.body };
+    }
     case "crm_lead_follow_up": {
       const lead = metadataString(metadata, "leadName") ?? subject;
       return {
