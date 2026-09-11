@@ -1,4 +1,5 @@
 import "server-only";
+import { pcConfigurationSchema, type PcConfiguration } from "@/lib/pc-configuration";
 
 import type { ActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +22,8 @@ export type EquipmentServiceEvent = {
   startedNotes: string | null;
   completionNotes: string | null;
 };
-export type EquipmentItem = Omit<EquipmentRow, "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "recurring_maintenance_enabled" | "maintenance_interval_months" | "next_maintenance_due_date" | "maintenance_upcoming_notified_for" | "maintenance_overdue_notified_for" | "created_at" | "updated_at"> & {
+export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "recurring_maintenance_enabled" | "maintenance_interval_months" | "next_maintenance_due_date" | "maintenance_upcoming_notified_for" | "maintenance_overdue_notified_for" | "created_at" | "updated_at"> & {
+  pcConfiguration: PcConfiguration | null;
   studioId: string;
   workstationId: string | null;
   equipmentType: EquipmentRow["equipment_type"];
@@ -79,6 +81,7 @@ function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[])
     maintenanceIntervalMonths: row.maintenance_interval_months,
     nextMaintenanceDueDate: row.next_maintenance_due_date,
     serviceEvents,
+    pcConfiguration: row.pc_configuration === null ? null : pcConfigurationSchema.parse(row.pc_configuration),
     cpu: row.cpu,
     gpu: row.gpu,
     ram: row.ram,

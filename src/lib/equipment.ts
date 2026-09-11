@@ -1,3 +1,4 @@
+import type { PcConfiguration, pcConfigurationSummaries } from "@/lib/pc-configuration";
 import type { Database } from "@/types/database.types";
 
 export type EquipmentType = Database["public"]["Enums"]["equipment_type"];
@@ -46,8 +47,9 @@ export function isOtherEquipment(type: EquipmentType): type is (typeof OTHER_EQU
   return otherEquipmentTypes.has(type);
 }
 
-export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null }) {
-  return [item.cpu, item.gpu, item.ram, item.storage].filter((value): value is string => Boolean(value)).join(" · ");
+export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null; pcConfiguration?: PcConfiguration | null }, summarize: (config: PcConfiguration) => ReturnType<typeof pcConfigurationSummaries>) {
+  const structured = item.pcConfiguration ? summarize(item.pcConfiguration) : null;
+  return [structured?.processor || item.cpu, structured?.graphics || item.gpu, structured?.memory || item.ram, structured?.drives || item.storage].filter(Boolean).join(" · ");
 }
 
 export function equipmentDisplayName(item: { assetTag: string | null; displayName: string | null; equipmentType: EquipmentType; manufacturer: string | null; model: string | null }) {

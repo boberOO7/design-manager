@@ -125,9 +125,20 @@ submission/office-assignment migrations and RLS tests.
 - `equipment` rows have stable identities independent of workstation placement.
   The nullable, studio-safe workstation relationship supports attachment,
   detachment, and reassignment without replacing the equipment row.
-- Equipment stores its type, lifecycle state, common identifying metadata, and
-  optional CPU, GPU, RAM, and storage fields for PCs and laptops. Retired items
-  remain inventory records.
+- Equipment stores its type, lifecycle state and category-specific identity.
+  PCs own a schema-validated `pc_configuration` JSON document for processor,
+  integrated/discrete graphics, memory and ordered storage drives; components
+  have no separate inventory identities. Updates are atomic on the equipment row
+  under its existing grants/RLS. Laptop retains the optional text specifications.
+- Legacy CPU/GPU/RAM/storage and whole-PC manufacturer/model remain verbatim;
+  no migration guesses structured values. PC editing shows saved text as a
+  reference, and inventory summaries prefer structured values per section with
+  legacy fallback. The form keeps a saved computer's category fixed to avoid
+  silently discarding its configuration. Name is optional (existing display-name
+  fallback applies); retired items remain inventory records.
+- Create/edit uses one open identification/configuration accordion section, with
+  measured height and opacity transitions and reduced-motion support. Regular
+  maintenance stays visible; notes and service history remain outside the accordion.
 - Workstations, equipment, maintenance configuration, and service history are
   administrator-only at grants, RLS, Server Action, and route boundaries.
 - Optional recurring maintenance stores an interval and an explicit next due

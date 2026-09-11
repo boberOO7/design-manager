@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workspace = readFileSync("src/components/office/equipment-workspace.tsx", "utf8");
+const form = readFileSync("src/components/office/equipment-form.tsx", "utf8");
 const actions = readFileSync("src/app/(app)/office/equipment/actions.ts", "utf8");
 const page = readFileSync("src/app/(app)/office/equipment/page.tsx", "utf8");
 const query = readFileSync("src/data/queries/equipment.ts", "utf8");
@@ -44,10 +45,10 @@ describe("Equipment application flow", () => {
     expect(actions).toContain("export async function deleteEquipment");
     expect(actions).toContain("display_name: equipmentDisplayName(input)");
     expect(actions).toContain("lifecycle_state: input.lifecycleState");
-    expect(workspace).toContain("EQUIPMENT_LIFECYCLE_STATES.filter");
+    expect(form).toContain("EQUIPMENT_LIFECYCLE_STATES.filter");
     expect(workspace).toContain('t(`states.${item.lifecycleState}`)');
     expect(workspace).not.toContain('item.lifecycleState === "retired" ? null');
-    expect(workspace).toContain('name="displayName" maxLength={160}');
+    expect(form).toContain('name="displayName" maxLength={160}');
   });
 
   it("supports attach, detach, and reassignment without duplicating equipment", () => {
@@ -63,21 +64,24 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('t("groups.computers")');
     expect(workspace).toContain('t("groups.monitors")');
     expect(workspace).toContain('t("groups.peripherals")');
-    expect(workspace).toContain("<AnimatedOptionalSection isVisible={computer}>");
-    expect(workspace).toContain('name="cpu"');
-    expect(workspace).toContain('name="gpu"');
-    expect(workspace).toContain('name="ram"');
-    expect(workspace).toContain('name="storage"');
+    expect(form).toContain('type === "laptop"');
+    expect(form).toContain('name="pcConfiguration"');
+    expect(form).toContain('CPU_FAMILIES[cpu.manufacturer]');
+    expect(form).toContain('GPU_FAMILIES[gpu.vendor]');
+    expect(form).toContain('config.drives.map');
   });
 
-  it("keeps workstation identity singular and limits collapsible equipment fields to identification", () => {
+  it("keeps maintenance visible, notes optional, and configuration in one animated accordion", () => {
     expect(workspace).not.toContain('t("workstation.eyebrow")}</span><strong');
-    expect(workspace).toContain("function CollapsibleFormSection");
-    expect(workspace).toContain('aria-expanded={isOpen}');
-    expect(workspace).toContain("motion-reduce:transition-none");
-    expect(workspace).toContain('title={t("form.identification")}');
-    expect(workspace).toContain('<fieldset className="rounded-[var(--ui-radius-control)] border');
-    expect(workspace).toContain('<FormField label={t("form.notes")} optional');
+    expect(form).toContain('aria-expanded={isOpen}');
+    expect(form).toContain('aria-controls={id}');
+    expect(form).toContain('inert={!isOpen}');
+    expect(form).toContain('ResizeObserver');
+    expect(form).toContain('transition-[height,opacity]');
+    expect(form).toContain('motion-reduce:transition-none');
+    expect(form).toContain('openSection === key');
+    expect(form).toContain('<fieldset className="shrink-0 rounded-');
+    expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');
   });
 
   it("uses caller-context Supabase mutations with explicit studio and record filters", () => {
@@ -93,7 +97,7 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain("startEquipmentService");
     expect(workspace).toContain("completeEquipmentService");
     expect(workspace).toContain("recordEquipmentHistory");
-    expect(workspace).toContain('name="recurringMaintenanceEnabled"');
+    expect(form).toContain('name="recurringMaintenanceEnabled"');
     expect(query).toContain('from("equipment_service_events")');
     expect(actions.match(/getActiveStudioAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(10);
     expect(actions).not.toContain("createAdminClient");

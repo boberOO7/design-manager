@@ -14,6 +14,20 @@ describe("Equipment localization", () => {
     }
   });
 
+  it("translates every structured configuration label and summary in both locales", () => {
+    expect(Object.keys(uk.Equipment.configuration).sort()).toEqual(Object.keys(en.Equipment.configuration).sort());
+    expect(Object.keys(uk.Equipment.configuration.driveTypes).sort()).toEqual(Object.keys(en.Equipment.configuration.driveTypes).sort());
+    for (const [locale, messages] of [["en", en], ["uk", uk]] as const) {
+      const t = createTranslator({ locale, messages, namespace: "Equipment" });
+      expect(t("configuration.modules", { count: 2 })).toBe(locale === "uk" ? "2 модулі" : "2 modules");
+      expect(t("configuration.driveNumber", { number: 2 })).toContain("2");
+      expect(t("configuration.removeDrive", { number: 2 })).toContain("2");
+      for (const value of Object.values(messages.Equipment.configuration)) {
+        if (typeof value === "string") expect(value.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("localizes every equipment type and lifecycle state", () => {
     const english = createTranslator({ locale: "en", messages: en, namespace: "Equipment" });
     const ukrainian = createTranslator({ locale: "uk", messages: uk, namespace: "Equipment" });

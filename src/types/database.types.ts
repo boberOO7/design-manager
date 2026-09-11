@@ -819,6 +819,7 @@ export type Database = {
           model: string | null
           next_maintenance_due_date: string | null
           notes: string | null
+          pc_configuration: Json | null
           ram: string | null
           recurring_maintenance_enabled: boolean
           serial_number: string | null
@@ -843,6 +844,7 @@ export type Database = {
           model?: string | null
           next_maintenance_due_date?: string | null
           notes?: string | null
+          pc_configuration?: Json | null
           ram?: string | null
           recurring_maintenance_enabled?: boolean
           serial_number?: string | null
@@ -867,6 +869,7 @@ export type Database = {
           model?: string | null
           next_maintenance_due_date?: string | null
           notes?: string | null
+          pc_configuration?: Json | null
           ram?: string | null
           recurring_maintenance_enabled?: boolean
           serial_number?: string | null

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EMPTY_PC_CONFIGURATION } from "@/lib/pc-configuration";
 import { equipmentDisplayName } from "@/lib/equipment";
 import { completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
@@ -38,6 +39,15 @@ describe("equipment validation", () => {
     const parsed = equipmentInputSchema.safeParse({ ...baseEquipment, equipmentType: "monitor", cpu: "Not applicable" });
     expect(parsed.success).toBe(false);
     if (!parsed.success) expect(parsed.error.issues[0].path).toEqual(["cpu"]);
+  });
+
+  it("accepts structured PC form JSON, preserves text, and rejects other categories or malformed JSON", () => {
+    const pcConfiguration = { ...EMPTY_PC_CONFIGURATION, graphics: { mode: "integrated" }, drives: [{ type: "hdd", capacity: 2, unit: "TB" }] };
+    const input = { ...baseEquipment, equipmentType: "pc", displayName: "", cpu: "unparsed CPU", storage: "unparsed disks", pcConfiguration: JSON.stringify(pcConfiguration) };
+    expect(equipmentInputSchema.parse(input)).toMatchObject({ displayName: null, cpu: "unparsed CPU", storage: "unparsed disks", pcConfiguration });
+    expect(equipmentInputSchema.safeParse({ ...input, equipmentType: "laptop" }).success).toBe(false);
+    expect(equipmentInputSchema.safeParse({ ...input, pcConfiguration: "{invalid" }).success).toBe(false);
+    expect(equipmentInputSchema.parse({ ...input, pcConfiguration: undefined }).pcConfiguration).toBeUndefined();
   });
 
   it("requires a workstation number while keeping its name and employee optional", () => {
