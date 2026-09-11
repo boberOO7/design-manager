@@ -24,8 +24,23 @@ describe("Equipment application flow", () => {
     expect(actions).toContain("export async function updateWorkstation");
     expect(actions).toContain("export async function deleteWorkstation");
     expect(actions).toContain("assigned_employee_id: parsed.data.assignedEmployeeId");
-    expect(workspace).toContain('name="assignedEmployeeId"');
+    expect(workspace).toContain('value={assignedEmployeeId}');
     expect(workspace).toContain('<SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>');
+    expect(workspace).toContain('t("workstation.actions.renumber")');
+    expect(workspace).toContain('aria-invalid={workstationError === "numberConflict" || undefined}');
+    expect(workspace).toContain('onBlur={(event) => { const name = event.currentTarget.value.trim();');
+    expect(workspace).not.toContain('t("actions.saveWorkstation")');
+  });
+
+  it("uses category-filtered searchable equipment attachment flows", () => {
+    expect(workspace).toContain("const computerCandidates = candidates.filter((equipmentItem) => isComputerEquipment(equipmentItem.equipmentType))");
+    expect(workspace).toContain('const monitorCandidates = candidates.filter((equipmentItem) => equipmentItem.equipmentType === "monitor")');
+    expect(workspace).toContain("const peripheralCandidates = candidates.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType))");
+    expect(workspace).toContain("function EquipmentAttachPicker");
+    expect(workspace).toContain('type="search"');
+    expect(workspace).toContain('window.confirm(t("assignment.moveConfirm"');
+    expect(workspace).not.toContain('<Select value={attachId}');
+    expect(workspace).not.toContain('t("groups.empty")');
   });
 
   it("creates numbered workstations atomically with compact optional bulk assignment", () => {
@@ -65,7 +80,7 @@ describe("Equipment application flow", () => {
     expect(actions).toContain(".update({ workstation_id: parsed.data.workstationId })");
     expect(workspace).toContain("equipmentItem.workstationId !== item.id");
     expect(workspace).toContain("assignEquipment({ equipmentId, workstationId: null })");
-    expect(workspace).toContain("assignEquipment({ equipmentId: attachId, workstationId })");
+    expect(workspace).toContain("assignEquipment({ equipmentId, workstationId })");
     expect(query).toContain("equipmentByWorkstation");
   });
 
@@ -91,6 +106,16 @@ describe("Equipment application flow", () => {
     expect(form).toContain('openSection === key');
     expect(form).toContain('<fieldset className="shrink-0 rounded-');
     expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');
+    expect(workspace).toContain('maintenanceMode={initialView === "maintenance" && !selectedWorkstation}');
+    expect(workspace).toContain('<EquipmentMaintenanceSummary item={item} today={today} />');
+    expect(workspace).toContain('view=maintenance&item=${item.id}');
+    expect(form).toContain('showMaintenanceFields ? <fieldset');
+  });
+
+  it("keeps workstation context mounted under a nested equipment drawer", () => {
+    expect(workspace).toContain('next.set("equipment", id)');
+    expect(workspace).toContain('isTopLayer={!selectedEquipment}');
+    expect(workspace).toContain('nestedEquipmentId ? next.delete("equipment") : next.delete("item")');
   });
 
   it("uses caller-context Supabase mutations with explicit studio and record filters", () => {

@@ -29,7 +29,7 @@ export function getDrawerTabFocusTarget({ activeElement, focusable, shiftKey, pa
   return null;
 }
 
-export function Drawer({ children, className, description, focusKey, initialFocusRef, isOpen, onClose, onExited, returnFocusRef, side = "right", title }: { children: ReactNode; className?: string; description?: string; focusKey?: string | number; initialFocusRef?: RefObject<HTMLElement | null>; isOpen: boolean; onClose: () => void; onExited?: () => void; returnFocusRef?: RefObject<HTMLElement | null>; side?: "left" | "right"; title: string }) {
+export function Drawer({ children, className, description, focusKey, initialFocusRef, isOpen, isTopLayer = true, onClose, onExited, returnFocusRef, side = "right", title }: { children: ReactNode; className?: string; description?: string; focusKey?: string | number; initialFocusRef?: RefObject<HTMLElement | null>; isOpen: boolean; isTopLayer?: boolean; onClose: () => void; onExited?: () => void; returnFocusRef?: RefObject<HTMLElement | null>; side?: "left" | "right"; title: string }) {
   const panelRef = useRef<HTMLElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -58,7 +58,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
   }, []);
 
   useEffect(() => {
-    if (!isOpen || !portalTarget) return;
+    if (!isOpen || !isTopLayer || !portalTarget) return;
     const { initial: initialFocusElement, returnTo: returnFocusElement } = getFocusElements();
     const panel = panelRef.current;
     initialFocusElement?.focus({ preventScroll: true });
@@ -96,7 +96,7 @@ export function Drawer({ children, className, description, focusKey, initialFocu
       autofillObserver.disconnect();
       returnFocusElement?.focus({ preventScroll: true });
     };
-  }, [focusKey, isOpen, portalTarget]);
+  }, [focusKey, isOpen, isTopLayer, portalTarget]);
 
   const completeExit = useCallback(() => {
     if (hasExitedRef.current) return;
@@ -133,9 +133,9 @@ export function Drawer({ children, className, description, focusKey, initialFocu
 
   if (!portalTarget) return null;
 
-  return createPortal(<div aria-hidden={!isOpen} inert={!isOpen} className={cn("fixed inset-0 z-50", !isVisible && "pointer-events-none")}>
+  return createPortal(<div aria-hidden={!isOpen || !isTopLayer} inert={!isOpen || !isTopLayer} className={cn("fixed inset-0 z-50", (!isVisible || !isTopLayer) && "pointer-events-none")}>
     <div aria-hidden="true" className={cn("absolute inset-0 bg-[var(--ui-overlay)] transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isVisible ? "opacity-100" : "opacity-0")} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} onTransitionCancel={handleExitTransition} onTransitionEnd={handleExitTransition} />
-    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-hidden={!isOpen} aria-labelledby={titleId} aria-modal="true" role="dialog" tabIndex={-1} onTransitionCancel={handleExitTransition} onTransitionEnd={handleExitTransition} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none transition-transform duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", side === "left" ? (isVisible ? "left-0 translate-x-0 rounded-r-[var(--ui-radius-drawer)]" : "left-0 -translate-x-full rounded-r-[var(--ui-radius-drawer)]") : (isVisible ? "right-0 translate-x-0 rounded-l-[var(--ui-radius-drawer)]" : "right-0 translate-x-full rounded-l-[var(--ui-radius-drawer)]"), className)}>
+    <section ref={panelRef} aria-describedby={description ? descriptionId : undefined} aria-hidden={!isOpen || !isTopLayer} aria-labelledby={titleId} aria-modal={isTopLayer ? "true" : undefined} role="dialog" tabIndex={-1} onTransitionCancel={handleExitTransition} onTransitionEnd={handleExitTransition} className={cn("absolute top-0 flex h-dvh w-[min(22rem,calc(100%-1rem))] flex-col bg-[var(--ui-surface)] shadow-2xl outline-none transition-transform duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", side === "left" ? (isVisible ? "left-0 translate-x-0 rounded-r-[var(--ui-radius-drawer)]" : "left-0 -translate-x-full rounded-r-[var(--ui-radius-drawer)]") : (isVisible ? "right-0 translate-x-0 rounded-l-[var(--ui-radius-drawer)]" : "right-0 translate-x-full rounded-l-[var(--ui-radius-drawer)]"), className)}>
       <h2 id={titleId} className="sr-only">{title}</h2>
       {description ? <p id={descriptionId} className="sr-only">{description}</p> : null}
       {children}

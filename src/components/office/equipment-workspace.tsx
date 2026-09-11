@@ -1,8 +1,9 @@
 "use client";
 
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AirVent,
@@ -14,6 +15,7 @@ import {
   Laptop,
   Monitor,
   MonitorCog,
+  MoreHorizontal,
   Mouse,
   Minus,
   Package,
@@ -21,6 +23,7 @@ import {
   Plus,
   Printer,
   RotateCcw,
+  Search,
   Trash2,
   Unplug,
   UserRound,
@@ -101,6 +104,7 @@ function useEquipmentRouting() {
   const createValue = searchParams.get("create");
   const createKind: CreateKind | null = createValue === "workstation" || createValue === "equipment" ? createValue : null;
   const selectedItemId = createKind ? null : searchParams.get("item");
+  const nestedEquipmentId = selectedItemId ? searchParams.get("equipment") : null;
 
   function updateSearchParams(update: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams.toString());
@@ -111,10 +115,13 @@ function useEquipmentRouting() {
 
   return {
     createKind,
+    nestedEquipmentId,
     selectedItemId,
     closeCreate: () => updateSearchParams((next) => next.delete("create")),
-    closeItem: () => updateSearchParams((next) => next.delete("item")),
-    openItem: (id: string) => updateSearchParams((next) => { next.delete("create"); next.set("item", id); }),
+    closeEquipment: () => updateSearchParams((next) => nestedEquipmentId ? next.delete("equipment") : next.delete("item")),
+    closeItem: () => updateSearchParams((next) => { next.delete("equipment"); next.delete("item"); }),
+    openEquipment: (id: string) => updateSearchParams((next) => next.set("equipment", id)),
+    openItem: (id: string) => updateSearchParams((next) => { next.delete("create"); next.delete("equipment"); next.set("item", id); }),
   };
 }
 
@@ -122,7 +129,7 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
   const t = useTranslations("Equipment");
   const routing = useEquipmentRouting();
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
-  const selectedEquipment = selectedWorkstation ? null : equipment.find((item) => item.id === routing.selectedItemId) ?? null;
+  const selectedEquipment = equipment.find((item) => item.id === (selectedWorkstation ? routing.nestedEquipmentId : routing.selectedItemId)) ?? null;
   const workstationNames = useMemo(() => new Map(workstations.map((item) => [item.id, `${t("workstation.numberLabel", { number: item.number })}${item.name ? ` · ${item.name}` : ""}`])), [t, workstations]);
   const inventoryItems = equipment.filter((item) => isOtherEquipment(item.equipmentType) || !item.workstationId);
 
@@ -147,8 +154,8 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
 
     <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
-    <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openItem} />
-    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} today={today} workstations={workstations} onClose={routing.closeItem} />
+    <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} isTopLayer={!selectedEquipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openEquipment} />
+    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} maintenanceMode={initialView === "maintenance" && !selectedWorkstation} today={today} workstations={workstations} onClose={routing.closeEquipment} />
   </div>;
 }
 
@@ -309,12 +316,6 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
   </Dialog>;
 }
 
-function WorkstationFields({ item, members, workstations }: { item?: WorkstationItem; members: EquipmentMember[]; workstations: WorkstationItem[] }) {
-  const t = useTranslations("Equipment");
-  const assignments = new Map(workstations.filter((workstation) => workstation.id !== item?.id && workstation.assignedEmployee).map((workstation) => [workstation.assignedEmployee!.id, workstation]));
-  return <><div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)]"><FormField label={t("workstation.form.number")}><Input data-dialog-initial-focus={!item || undefined} name="number" required type="number" min={1} max={1_000_000} defaultValue={item?.number} /></FormField><FormField label={t("workstation.form.name")} optional optionalLabel={t("optional")}><Input name="name" maxLength={120} defaultValue={item?.name ?? ""} /></FormField></div><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select name="assignedEmployeeId" defaultValue={item?.assignedEmployee?.id ?? "__none"}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = assignments.get(member.id); return <SelectItem key={member.id} value={member.id} disabled={Boolean(assigned)} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</span></SelectItem>; })}</Select></FormField></>;
-}
-
 function CreateEquipmentDialog({ isOpen, workstations, onClose, onCreated }: { isOpen: boolean; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
   const t = useTranslations("Equipment");
   const processed = useRef(false);
@@ -330,47 +331,87 @@ function OptionalInput({ disabled, hint, label, maxLength, name, value }: { disa
   return <FormField label={label} optional optionalLabel={t("optional")}><Input disabled={disabled} name={name} maxLength={maxLength} defaultValue={value ?? ""} />{hint ? <span className="text-xs font-normal leading-5 text-[var(--ui-text-muted)]">{hint}</span> : null}</FormField>;
 }
 
-function WorkstationDrawer({ allEquipment, item, members, workstations, onClose, onOpenEquipment }: { allEquipment: EquipmentItem[]; item: WorkstationItem | null; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onOpenEquipment: (id: string) => void }) {
+function WorkstationDrawer({ allEquipment, isTopLayer, item, members, workstations, onClose, onOpenEquipment }: { allEquipment: EquipmentItem[]; isTopLayer: boolean; item: WorkstationItem | null; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onOpenEquipment: (id: string) => void }) {
   const t = useTranslations("Equipment");
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [error, setError] = useState<EquipmentActionState["error"]>();
+  const nameRef = useRef(item?.name ?? "");
+  const savedNameRef = useRef(item?.name ?? "");
+  const [workstationError, setWorkstationError] = useState<EquipmentActionState["error"]>();
+  const [equipmentError, setEquipmentError] = useState<EquipmentActionState["error"]>();
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState(item?.assignedEmployee?.id ?? "__none");
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionsTrigger, setActionsTrigger] = useState<HTMLButtonElement | null>(null);
+  const [renumberOpen, setRenumberOpen] = useState(false);
+  const [number, setNumber] = useState(String(item?.number ?? 1));
   const [pending, startTransition] = useTransition();
-  const [attachId, setAttachId] = useState("__none");
   if (!item) return null;
+  const assignments = new Map(workstations.filter((workstation) => workstation.id !== item.id && workstation.assignedEmployee).map((workstation) => [workstation.assignedEmployee!.id, workstation]));
   const candidates = allEquipment.filter((equipmentItem) => equipmentItem.workstationId !== item.id);
   const locationNames = new Map(workstations.map((workstation) => [workstation.id, `${t("workstation.numberLabel", { number: workstation.number })}${workstation.name ? ` · ${workstation.name}` : ""}`]));
   const computers = item.equipment.filter((equipmentItem) => isComputerEquipment(equipmentItem.equipmentType));
   const monitors = item.equipment.filter((equipmentItem) => equipmentItem.equipmentType === "monitor");
   const peripherals = item.equipment.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType));
   const other = item.equipment.filter((equipmentItem) => isOtherEquipment(equipmentItem.equipmentType));
+  const computerCandidates = candidates.filter((equipmentItem) => isComputerEquipment(equipmentItem.equipmentType));
+  const monitorCandidates = candidates.filter((equipmentItem) => equipmentItem.equipmentType === "monitor");
+  const peripheralCandidates = candidates.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType));
   const workstationId = item.id;
+  const workstationNumber = item.number;
   const workstationName = t("workstation.numberLabel", { number: item.number });
-  function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }
-  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateWorkstation({ workstationId, number: data.get("number"), name: data.get("name"), assignedEmployeeId: data.get("assignedEmployeeId") })); }
-  function remove() { if (!window.confirm(t("workstation.deleteConfirm", { name: workstationName }))) return; run(() => deleteWorkstation({ workstationId }), onClose); }
-  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={workstationName} className="w-full max-w-[38rem]">
-    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t("workstation.eyebrow")}</p><h2 className="mt-1 truncate text-lg font-bold">{workstationName}</h2>{item.name ? <p className="mt-1 truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</p> : null}</div></div><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
+  function run(operation: () => Promise<EquipmentActionState>, setOperationError: (error: EquipmentActionState["error"]) => void, after?: () => void) { setOperationError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setOperationError(result.error); else { after?.(); router.refresh(); } }); }
+  function saveDetails(name: string, employeeId: string, after?: () => void) { run(() => updateWorkstation({ workstationId, number: workstationNumber, name, assignedEmployeeId: employeeId }), setWorkstationError, after); }
+  function renumber(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); run(() => updateWorkstation({ workstationId, number, name: nameRef.current, assignedEmployeeId }), setWorkstationError, () => setRenumberOpen(false)); }
+  function remove() { if (!window.confirm(t("workstation.deleteConfirm", { name: workstationName }))) return; run(() => deleteWorkstation({ workstationId }), setWorkstationError, onClose); }
+  function attach(equipmentId: string) { run(() => assignEquipment({ equipmentId, workstationId }), setEquipmentError); }
+  function detach(equipmentId: string) { run(() => assignEquipment({ equipmentId, workstationId: null }), setEquipmentError); }
+  const actionsPortal = actionsTrigger?.closest("dialog, [role='dialog']") ?? undefined;
+  return <><Drawer isOpen isTopLayer={isTopLayer} onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={workstationName} className="w-full max-w-[38rem]">
+    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-start gap-3"><span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><div className="min-w-0"><h2 className="truncate text-lg font-bold text-[var(--ui-text)]">{workstationName}</h2>{item.name ? <p className="mt-0.5 truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</p> : null}<div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-[var(--ui-text-muted)]">{item.assignedEmployee ? <><UserAvatar decorative imageUrl={item.assignedEmployee.avatarUrl} name={item.assignedEmployee.fullName} size="board" /><span className="truncate">{item.assignedEmployee.fullName}</span></> : <><UserRound className="size-4 shrink-0" aria-hidden="true" /><span>{t("workstation.unassigned")}</span></>}</div></div></div><div className="flex shrink-0 items-center"><PopoverPrimitive.Root open={actionsOpen} onOpenChange={setActionsOpen}><PopoverPrimitive.Trigger asChild><button ref={setActionsTrigger} type="button" disabled={pending} aria-label={t("actions.more")} aria-haspopup="menu" className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><MoreHorizontal className="size-5" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal container={actionsPortal}><PopoverPrimitive.Content role="menu" align="end" sideOffset={6} className="z-[80] min-w-48 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); setWorkstationError(undefined); setNumber(String(item.number)); setRenumberOpen(true); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Pencil className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t("workstation.actions.renumber")}</button><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); remove(); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("actions.delete")}</button></PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><WorkstationFields item={item} members={members} workstations={workstations} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveWorkstation")}</Button></div></form>
-      <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold">{t("workstation.attached")}</h3><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("workstation.attachedDescription")}</p></div><span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-text-muted)]">{item.equipment.length}</span></div>
-        <div className="mt-5 space-y-5"><EquipmentGroup title={t("groups.computers")} items={computers} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /><EquipmentGroup title={t("groups.monitors")} items={monitors} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /><EquipmentGroup title={t("groups.peripherals")} items={peripherals} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} />{other.length ? <EquipmentGroup title={t("groups.other")} items={other} onOpen={onOpenEquipment} onDetach={(equipmentId) => run(() => assignEquipment({ equipmentId, workstationId: null }))} pending={pending} /> : null}</div>
-        <div className="mt-6 border-t border-[var(--ui-border)] pt-5"><h4 className="text-sm font-semibold">{t("assignment.attach")}</h4><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{t("assignment.moveNotice")}</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><Select value={attachId} onValueChange={setAttachId} disabled={pending}><SelectItem value="__none">{t("assignment.choose")}</SelectItem>{candidates.map((candidate) => <SelectItem key={candidate.id} value={candidate.id} textValue={candidate.displayName}>{candidate.displayName} · {candidate.workstationId ? locationNames.get(candidate.workstationId) ?? t("location.unknown") : t("location.unattached")}</SelectItem>)}</Select><Button type="button" disabled={pending || attachId === "__none"} onClick={() => run(() => assignEquipment({ equipmentId: attachId, workstationId }), () => setAttachId("__none"))}>{pending ? t("actions.moving") : t("assignment.attachAction")}</Button></div></div>
+      <div className="grid gap-4 p-5 sm:p-6"><FormField label={t("workstation.form.name")} optional optionalLabel={t("optional")}><Input maxLength={120} defaultValue={item.name ?? ""} onChange={(event) => { nameRef.current = event.target.value; }} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name === savedNameRef.current) return; nameRef.current = name; saveDetails(name, assignedEmployeeId, () => { savedNameRef.current = name; }); }} /></FormField><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select value={assignedEmployeeId} onValueChange={(value) => { setAssignedEmployeeId(value); saveDetails(nameRef.current, value); }}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = assignments.get(member.id); return <SelectItem key={member.id} value={member.id} disabled={Boolean(assigned)} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</span></SelectItem>; })}</Select></FormField><ActionError error={workstationError === "numberConflict" ? undefined : workstationError} /></div>
+      <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{t("workstation.attached")}</h3><span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-text-muted)]">{item.equipment.length}</span></div>
+        <ActionError error={equipmentError} />
+        <div className="mt-5 space-y-5"><EquipmentGroup title={t("groups.computers")} attachLabel={t("assignment.attachComputer")} candidates={computerCandidates} items={computers} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /><EquipmentGroup title={t("groups.monitors")} attachLabel={t("assignment.attachMonitor")} candidates={monitorCandidates} items={monitors} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /><EquipmentGroup title={t("groups.peripherals")} attachLabel={t("assignment.attachPeripheral")} candidates={peripheralCandidates} items={peripherals} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} />{other.length ? <EquipmentGroup title={t("groups.other")} items={other} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /> : null}</div>
       </section>
     </div>
-  </Drawer>;
+  </Drawer><Dialog className="h-auto max-w-sm" closeDisabled={pending} closeLabel={t("close")} isOpen={renumberOpen} onRequestClose={() => { if (!pending) setRenumberOpen(false); }} title={t("workstation.actions.renumber")}><form onSubmit={renumber} className="grid gap-4 p-5 sm:p-6"><FormField label={t("workstation.form.number")}><Input data-dialog-initial-focus type="number" min={1} max={1_000_000} required value={number} aria-invalid={workstationError === "numberConflict" || undefined} onChange={(event) => { setNumber(event.target.value); if (workstationError === "numberConflict") setWorkstationError(undefined); }} />{workstationError === "numberConflict" ? <span role="alert" className="text-sm font-normal text-[var(--ui-danger-text)]">{t("workstation.form.numberConflict")}</span> : null}</FormField><ActionError error={workstationError === "numberConflict" ? undefined : workstationError} /><div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => setRenumberOpen(false)}>{t("cancel")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("workstation.actions.renumber")}</Button></div></form></Dialog></>;
 }
 
-function EquipmentGroup({ items, onDetach, onOpen, pending, title }: { items: EquipmentItem[]; onDetach: (id: string) => void; onOpen: (id: string) => void; pending: boolean; title: string }) {
+function EquipmentGroup({ attachLabel, candidates, items, locationNames, onAttach, onDetach, onOpen, pending, title }: { attachLabel?: string; candidates?: EquipmentItem[]; items: EquipmentItem[]; locationNames?: Map<string, string>; onAttach?: (id: string) => void; onDetach: (id: string) => void; onOpen: (id: string) => void; pending: boolean; title: string }) {
   const t = useTranslations("Equipment");
-  return <div><h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{title}</h4>{items.length ? <div className="mt-2 divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{items.map((item) => { const Icon = equipmentIcons[item.equipmentType]; const specs = isComputerEquipment(item.equipmentType) ? equipmentSpecificationSummary(item, (config) => pcConfigurationSummaries(config, configurationLabels(t))) : ""; return <div key={item.id} className="flex items-center gap-3 px-3 py-2.5"><button type="button" onClick={() => onOpen(item.id)} className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-[var(--ui-radius-control)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /><span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.displayName}</span><span className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{specs || t(`types.${item.equipmentType}`)}</span></span></button><button type="button" disabled={pending} onClick={() => onDetach(item.id)} aria-label={t("assignment.detachNamed", { name: item.displayName })} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><Unplug className="size-4" aria-hidden="true" /></button></div>; })}</div> : <p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("groups.empty")}</p>}</div>;
+  const attachAction = attachLabel && candidates && locationNames && onAttach ? <EquipmentAttachPicker candidates={candidates} label={attachLabel} locationNames={locationNames} onAttach={onAttach} pending={pending} /> : null;
+  return <div><div className="flex min-h-10 items-center justify-between gap-3"><h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{title}</h4>{attachAction}</div>{items.length ? <div className="mt-2 divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{items.map((item) => { const Icon = equipmentIcons[item.equipmentType]; const specs = isComputerEquipment(item.equipmentType) ? equipmentSpecificationSummary(item, (config) => pcConfigurationSummaries(config, configurationLabels(t))) : ""; return <div key={item.id} className="flex items-center gap-3 px-3 py-2.5"><button type="button" onClick={() => onOpen(item.id)} className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-[var(--ui-radius-control)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /><span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.displayName}</span><span className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{specs || t(`types.${item.equipmentType}`)}</span></span></button><button type="button" disabled={pending} onClick={() => onDetach(item.id)} aria-label={t("assignment.detachNamed", { name: item.displayName })} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><Unplug className="size-4" aria-hidden="true" /></button></div>; })}</div> : null}</div>;
 }
 
-function EquipmentDrawer({ item, today, workstations, onClose }: { item: EquipmentItem | null; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
+function EquipmentAttachPicker({ candidates, label, locationNames, onAttach, pending }: { candidates: EquipmentItem[]; label: string; locationNames: Map<string, string>; onAttach: (id: string) => void; pending: boolean }) {
+  const t = useTranslations("Equipment");
+  const listId = useId();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [triggerNode, setTriggerNode] = useState<HTMLButtonElement | null>(null);
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleCandidates = candidates.filter((candidate) => {
+    const location = candidate.workstationId ? locationNames.get(candidate.workstationId) ?? t("location.unknown") : t("location.unattached");
+    return `${candidate.displayName} ${t(`types.${candidate.equipmentType}`)} ${location}`.toLocaleLowerCase().includes(normalizedQuery);
+  });
+  const portalContainer = triggerNode?.closest("dialog, [role='dialog']") ?? undefined;
+  return <PopoverPrimitive.Root modal={false} open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setQuery(""); }}>
+    <PopoverPrimitive.Trigger asChild><Button ref={setTriggerNode} type="button" variant="ghost" className="size-9 shrink-0 p-0" disabled={pending} aria-label={label} title={label}><Plus className="size-4" aria-hidden="true" /></Button></PopoverPrimitive.Trigger>
+    <PopoverPrimitive.Portal container={portalContainer}><PopoverPrimitive.Content data-equipment-attach-picker aria-label={label} align="end" sideOffset={6} collisionPadding={12} className="z-[80] w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-popover)]">
+      <div className="border-b border-[var(--ui-border-subtle)] p-3"><label className="relative block"><span className="sr-only">{t("assignment.search")}</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" aria-hidden="true" /><Input autoFocus type="search" value={query} onChange={(event) => setQuery(event.target.value)} aria-controls={listId} placeholder={t("assignment.searchPlaceholder")} className="pl-9" /></label></div>
+      <div id={listId} aria-label={label} className="max-h-[min(20rem,var(--radix-popover-content-available-height))] overflow-y-auto p-1.5">{visibleCandidates.length ? visibleCandidates.map((candidate) => { const Icon = equipmentIcons[candidate.equipmentType]; const currentWorkstation = candidate.workstationId ? locationNames.get(candidate.workstationId) ?? t("location.unknown") : null; return <button key={candidate.id} type="button" onClick={() => { if (currentWorkstation && !window.confirm(t("assignment.moveConfirm", { name: candidate.displayName, workstation: currentWorkstation }))) return; setOpen(false); onAttach(candidate.id); }} className="flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-4" aria-hidden="true" /></span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-[var(--ui-text)]">{candidate.displayName}</span><span className="mt-1 block text-xs text-[var(--ui-text-muted)]">{t(`types.${candidate.equipmentType}`)} · {currentWorkstation ?? t("location.unattached")}</span></span></button>; }) : <p role="status" className="px-3 py-5 text-center text-sm leading-5 text-[var(--ui-text-muted)]">{t("assignment.noMatches")}</p>}</div>
+    </PopoverPrimitive.Content></PopoverPrimitive.Portal>
+  </PopoverPrimitive.Root>;
+}
+
+function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
   const t = useTranslations("Equipment");
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<EquipmentActionState["error"]>();
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionsTrigger, setActionsTrigger] = useState<HTMLButtonElement | null>(null);
   const [pending, startTransition] = useTransition();
   if (!item) return null;
   const Icon = equipmentIcons[item.equipmentType];
@@ -381,10 +422,20 @@ function EquipmentDrawer({ item, today, workstations, onClose }: { item: Equipme
   function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateEquipment({ equipmentId, equipmentType: data.get("equipmentType"), lifecycleState: data.get("lifecycleState"), displayName: data.get("displayName"), workstationId: data.get("workstationId"), manufacturer: data.get("manufacturer"), model: data.get("model"), serialNumber: data.get("serialNumber"), assetTag: data.get("assetTag"), cpu: data.get("cpu") ?? "", gpu: data.get("gpu") ?? "", ram: data.get("ram") ?? "", storage: data.get("storage") ?? "", pcConfiguration: data.get("pcConfiguration"), notes: data.get("notes"), recurringMaintenanceEnabled: data.get("recurringMaintenanceEnabled") === "on", maintenanceIntervalMonths: data.get("maintenanceIntervalMonths") ?? "", nextMaintenanceDueDate: data.get("nextMaintenanceDueDate") ?? "" })); }
   function remove() { if (!window.confirm(t("deleteConfirm", { name: equipmentName }))) return; run(() => deleteEquipment({ equipmentId }), onClose); }
+  const actionsPortal = actionsTrigger?.closest("dialog, [role='dialog']") ?? undefined;
   return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.displayName} className="w-full max-w-[42rem]">
-    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)}</p><div className="mt-1 flex min-w-0 flex-wrap items-center gap-2"><h2 className="truncate text-lg font-bold">{item.displayName}</h2><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{workstationName}</p></div></div><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
-    <div className="min-h-0 flex-1 overflow-y-auto"><form onSubmit={submit} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} workstations={workstations} /><ActionError error={error} /><div className="flex flex-wrap justify-between gap-3 border-t border-[var(--ui-border)] pt-5"><Button type="button" variant="ghost" className="text-[var(--ui-danger-text)]" disabled={pending} onClick={remove}><Trash2 className="mr-2 size-4" aria-hidden="true" />{t("actions.delete")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveEquipment")}</Button></div></form><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></div>
+    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)}</p><div className="mt-1 flex min-w-0 flex-wrap items-center gap-2"><h2 className="truncate text-lg font-bold">{item.displayName}</h2><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{workstationName}</p></div></div><div className="flex shrink-0 items-center"><PopoverPrimitive.Root open={actionsOpen} onOpenChange={setActionsOpen}><PopoverPrimitive.Trigger asChild><button ref={setActionsTrigger} type="button" disabled={pending} aria-label={t("actions.more")} aria-haspopup="menu" className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><MoreHorizontal className="size-5" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal container={actionsPortal}><PopoverPrimitive.Content role="menu" align="end" sideOffset={6} className="z-[80] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); remove(); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("actions.delete")}</button></PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
+    <div className="min-h-0 flex-1 overflow-y-auto"><form onSubmit={submit} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={maintenanceMode} workstations={workstations} /><ActionError error={error} /><div className="flex justify-end border-t border-[var(--ui-border)] pt-5"><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveEquipment")}</Button></div></form>{maintenanceMode ? <><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></> : <EquipmentMaintenanceSummary item={item} today={today} />}</div>
   </Drawer>;
+}
+
+function EquipmentMaintenanceSummary({ item, today }: { item: EquipmentItem; today: string }) {
+  const t = useTranslations("Equipment");
+  const locale = useLocale();
+  const openService = item.serviceEvents.find((event) => !event.completedOn);
+  const urgency = getMaintenanceUrgency(item.recurringMaintenanceEnabled, item.nextMaintenanceDueDate, today);
+  const status = openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : item.nextMaintenanceDueDate ? t("maintenance.due", { date: formatDateOnly(item.nextMaintenanceDueDate, locale) }) : t("maintenance.notScheduled");
+  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]"><Wrench className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="text-sm font-semibold">{t("maintenance.summaryTitle")}</h3><div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]"><span>{status}</span><MaintenanceBadge item={item} urgency={urgency} /></div></div></div><Button asChild variant="outline"><Link href={`/office/equipment?view=maintenance&item=${item.id}`}>{t("maintenance.openWorkspace")}</Link></Button></div></section>;
 }
 
 function ServicePanel({ item, pending, run, today }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>, after?: () => void) => void; today: string }) {

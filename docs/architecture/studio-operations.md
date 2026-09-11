@@ -137,8 +137,9 @@ submission/office-assignment migrations and RLS tests.
   silently discarding its configuration. Name is optional (existing display-name
   fallback applies); retired items remain inventory records.
 - Create/edit uses one open identification/configuration accordion section, with
-  measured height and opacity transitions and reduced-motion support. Regular
-  maintenance stays visible; notes and service history remain outside the accordion.
+  measured height and opacity transitions and reduced-motion support. Equipment
+  details show a concise maintenance summary; recurring scheduling, service
+  operations, and history management live in the Maintenance view.
 - Workstations, equipment, maintenance configuration, and service history are
   administrator-only at grants, RLS, Server Action, and route boundaries.
 - Optional recurring maintenance stores an interval and an explicit next due
@@ -150,7 +151,9 @@ submission/office-assignment migrations and RLS tests.
 - The admin-only `/office/equipment` workspace provides Workstations, Other
   equipment, and a service-first maintenance queue. Workstation details group
   computers, monitors, and peripherals while keeping every attached device as
-  an independent equipment row.
+  an independent equipment row. Workstation name and employee changes autosave;
+  renumbering and deletion remain explicit secondary actions. Opening attached
+  equipment stacks its drawer over the mounted workstation drawer.
 - Server Actions use the caller-context Supabase client after resolving the
   active studio administrator. Equipment can be attached, detached, or moved by
   updating its nullable workstation relationship; lifecycle changes do not

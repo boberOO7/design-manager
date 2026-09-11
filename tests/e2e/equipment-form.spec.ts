@@ -286,6 +286,97 @@ test("workstation bulk dialog keeps compact controls and stable geometry", async
   expect(errors).toEqual([]);
 });
 
+test("workstation details preserves relationships and uses contextual equipment pickers", async ({ page }, testInfo) => {
+  const t = en.Equipment;
+  const workstationId = randomUUID();
+  const occupiedWorkstationId = randomUUID();
+  const connectedPcId = randomUUID();
+  const movableMonitorId = randomUUID();
+  const unattachedMouseId = randomUUID();
+  const unrelatedPrinterId = randomUUID();
+  localSql(`
+    insert into public.workstations(id, studio_id, number, name, assigned_employee_id) values
+      (${sqlId(workstationId)}, ${sqlId(studioId)}, 801, 'Focus desk', ${sqlId(userId)}),
+      (${sqlId(occupiedWorkstationId)}, ${sqlId(studioId)}, 802, 'Window desk', null);
+    insert into public.equipment(id, studio_id, equipment_type, display_name, workstation_id) values
+      (${sqlId(connectedPcId)}, ${sqlId(studioId)}, 'pc', 'Connected PC', ${sqlId(workstationId)}),
+      (${sqlId(movableMonitorId)}, ${sqlId(studioId)}, 'monitor', 'Move Monitor', ${sqlId(occupiedWorkstationId)}),
+      (${sqlId(unattachedMouseId)}, ${sqlId(studioId)}, 'mouse', 'Ready Mouse', null),
+      (${sqlId(unrelatedPrinterId)}, ${sqlId(studioId)}, 'printer', 'Office Printer', null);
+  `);
+  await login(page);
+  await page.goto(`/office/equipment?item=${workstationId}`);
+  const drawer = page.getByRole("dialog", { name: /^Workstation #/ });
+  const group = (title: string) => drawer.getByRole("heading", { name: title, exact: true }).locator("..").locator("..");
+
+  await expect(drawer.locator("header h2")).toHaveText(t.workstation.numberLabel.replace("{number}", "801"));
+  await expect(drawer.locator("header")).toContainText("Focus desk");
+  await expect(drawer.locator("header")).toContainText("Equipment UI Admin");
+  await expect(drawer.locator("button[type='submit']")).toHaveCount(0);
+  await expect(group(t.groups.computers)).toContainText("Connected PC");
+  await expect(group(t.groups.monitors).locator("[class*='border-dashed']")).toHaveCount(0);
+
+  const name = drawer.getByLabel(t.workstation.form.name, { exact: true });
+  await name.fill("Quiet desk");
+  await name.press("Tab");
+  await expect.poll(() => localSql(`select name from public.workstations where id = ${sqlId(workstationId)};`)).toBe("Quiet desk");
+
+  await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
+  await page.getByRole("menuitem", { name: t.workstation.actions.renumber, exact: true }).click();
+  const renumberDialog = page.getByRole("dialog", { name: t.workstation.actions.renumber, exact: true });
+  const number = renumberDialog.getByLabel(t.workstation.form.number, { exact: true });
+  await number.fill("802");
+  await renumberDialog.getByRole("button", { name: t.workstation.actions.renumber, exact: true }).click();
+  await expect(renumberDialog.getByRole("alert")).toHaveText(t.workstation.form.numberConflict);
+  expect(localSql(`select number from public.workstations where id = ${sqlId(workstationId)};`)).toBe("801");
+
+  await number.fill("803");
+  await expect(renumberDialog.getByRole("alert")).toHaveCount(0);
+  await renumberDialog.getByRole("button", { name: t.workstation.actions.renumber, exact: true }).click();
+  await expect(renumberDialog).toHaveCount(0);
+  await expect.poll(() => localSql(`select number from public.workstations where id = ${sqlId(workstationId)};`)).toBe("803");
+  expect(localSql(`select assigned_employee_id from public.workstations where id = ${sqlId(workstationId)};`)).toBe(userId);
+  expect(localSql(`select workstation_id from public.equipment where id = ${sqlId(connectedPcId)};`)).toBe(workstationId);
+
+  await group(t.groups.monitors).getByRole("button", { name: t.assignment.attachMonitor, exact: true }).click();
+  let picker = drawer.locator("[data-equipment-attach-picker]");
+  await expect(picker).toContainText("Move Monitor");
+  await expect(picker).toContainText(`${t.workstation.numberLabel.replace("{number}", "802")} · Window desk`);
+  await expect(picker).not.toContainText("Ready Mouse");
+  await expect(picker).not.toContainText("Office Printer");
+  page.once("dialog", (dialog) => dialog.accept());
+  await picker.getByRole("button", { name: /Move Monitor/ }).click();
+  await expect.poll(() => localSql(`select workstation_id from public.equipment where id = ${sqlId(movableMonitorId)};`)).toBe(workstationId);
+  await expect(group(t.groups.monitors)).toContainText("Move Monitor");
+
+  await group(t.groups.peripherals).getByRole("button", { name: t.assignment.attachPeripheral, exact: true }).click();
+  picker = drawer.locator("[data-equipment-attach-picker]");
+  await picker.getByRole("searchbox", { name: t.assignment.search, exact: true }).fill("Ready");
+  await expect(picker).toContainText("Ready Mouse");
+  await expect(picker).not.toContainText("Move Monitor");
+  await expect(picker).not.toContainText("Office Printer");
+  await picker.getByRole("button", { name: /Ready Mouse/ }).click();
+  await expect.poll(() => localSql(`select workstation_id from public.equipment where id = ${sqlId(unattachedMouseId)};`)).toBe(workstationId);
+  await expect(group(t.groups.peripherals)).toContainText("Ready Mouse");
+
+  await group(t.groups.computers).getByRole("button", { name: t.assignment.attachComputer, exact: true }).click();
+  await expect(drawer.locator("[data-equipment-attach-picker]")).toContainText(t.assignment.noMatches);
+  await group(t.groups.computers).getByRole("button", { name: t.assignment.attachComputer, exact: true }).click();
+  await drawer.evaluate((element) => { element.querySelector("div.min-h-0.flex-1")!.scrollTop = 120; });
+  const savedScrollTop = await drawer.evaluate((element) => element.querySelector("div.min-h-0.flex-1")!.scrollTop);
+  await group(t.groups.computers).getByRole("button", { name: /Connected PC/ }).click();
+  await expect(page.locator("[role='dialog']")).toHaveCount(2);
+  const equipmentDrawer = page.getByRole("dialog", { name: "Connected PC", exact: true });
+  await expect(equipmentDrawer).toBeVisible();
+  await equipmentDrawer.getByRole("button", { name: t.close, exact: true }).click();
+  await expect(drawer).toBeVisible();
+  expect(await drawer.evaluate((element) => element.querySelector("div.min-h-0.flex-1")!.scrollTop)).toBe(savedScrollTop);
+  await drawer.screenshot({ path: testInfo.outputPath("workstation-details-contextual-attach.png") });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect.poll(() => drawer.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await drawer.screenshot({ path: testInfo.outputPath("workstation-details-contextual-attach-mobile.png") });
+});
+
 test("legacy values, category identity, mobile and reduced motion", async ({ page }, testInfo) => {
   const t = en.Equipment;
   const id = randomUUID();
