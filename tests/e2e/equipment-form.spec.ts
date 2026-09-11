@@ -67,6 +67,12 @@ async function motionFrames(button: Locator) {
     return frames;
   });
 }
+function expectVisibleLayoutMotion(frames: Awaited<ReturnType<typeof motionFrames>>) {
+  const full = frames.at(-1)?.height ?? 0;
+  expect(full).toBeGreaterThan(50);
+  expect(frames.filter((frame) => frame.height > 2 && frame.height < full - 2).length).toBeGreaterThanOrEqual(3);
+  expect(new Set(frames.map((frame) => Math.round(frame.nextTop))).size).toBeGreaterThan(3);
+}
 
 // Disposable local fixtures; inventory that predates this run is never changed.
 test.beforeAll(async () => {
@@ -90,6 +96,7 @@ for (const locale of ["en", "uk"] as const) {
     const t = (locale === "en" ? en : uk).Equipment;
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     await login(page, locale);
     await page.goto("/office/equipment?create=equipment");
     let dialog = page.getByRole("dialog");
@@ -98,9 +105,7 @@ for (const locale of ["en", "uk"] as const) {
     const cpuButton = trigger(dialog, t.form.cpu);
     const opening = await motionFrames(cpuButton);
     const full = opening.at(-1)?.height ?? 0;
-    expect(full).toBeGreaterThan(50);
-    expect(opening.filter((frame) => frame.height > 2 && frame.height < full - 2).length).toBeGreaterThanOrEqual(3);
-    expect(new Set(opening.map((frame) => Math.round(frame.nextTop))).size).toBeGreaterThan(3);
+    expectVisibleLayoutMotion(opening);
     expect(opening.some((frame) => frame.opacity > 0.05 && frame.opacity < 0.95)).toBe(true);
     const closing = await motionFrames(cpuButton);
     expect(closing.at(-1)?.height).toBe(0);
@@ -173,14 +178,18 @@ test("legacy values, category identity, mobile and reduced motion", async ({ pag
   const t = en.Equipment;
   const id = randomUUID();
   localSql(`insert into public.equipment(id,studio_id,equipment_type,display_name,manufacturer,model,cpu,gpu,ram,storage) values (${sqlId(id)},${sqlId(studioId)},'pc','Legacy PC','Saved builder','Saved build','intel core i7-4790k','GTX 1080ti','32gb','unknown disks');`);
+  await page.addInitScript(() => localStorage.setItem("studioflow-motion", "system"));
   await login(page);
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/office/equipment?item=${id}`);
   let dialog = page.getByRole("dialog");
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "system");
   await expect(trigger(dialog, t.form.cpu)).toContainText("intel core i7-4790k");
-  const frames = await motionFrames(trigger(dialog, t.form.cpu));
-  expect(new Set(frames.slice(2).map((frame) => Math.round(frame.height))).size).toBe(1);
+  for (const title of [t.form.identification, t.form.cpu, t.form.gpu, t.form.ram, t.form.storage]) {
+    expectVisibleLayoutMotion(await motionFrames(trigger(dialog, title)));
+  }
+  await open(dialog, t.form.cpu);
   await expect(panel(dialog, t.form.cpu)).toContainText(t.configuration.savedTextHint);
   const identity = await open(dialog, t.form.identification);
   await expect(identity.getByLabel(t.form.manufacturer, { exact: false })).toHaveValue("Saved builder");

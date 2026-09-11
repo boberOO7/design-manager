@@ -25,7 +25,7 @@ function AnimatedFormContent({ children, isOpen, id, labelledBy }: { children: R
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  return <div id={id} role={id ? "region" : undefined} aria-labelledby={labelledBy} aria-hidden={!isOpen} inert={!isOpen} style={{ height: isOpen ? height : 0 }} className={cn("shrink-0 overflow-hidden transition-[height,opacity] duration-[220ms] ease-out motion-reduce:transition-none", isOpen ? "opacity-100" : "opacity-0")}><div ref={content} className="flow-root">{children}</div></div>;
+  return <div id={id} role={id ? "region" : undefined} aria-labelledby={labelledBy} aria-hidden={!isOpen} inert={!isOpen} style={{ height: isOpen ? height : 0 }} className={cn("shrink-0 overflow-hidden transition-[height,opacity] duration-[220ms] ease-out", isOpen ? "opacity-100" : "opacity-0")}><div ref={content} className="flow-root">{children}</div></div>;
 }
 
 function AccordionSection({ children, title, summary, isOpen, onOpen }: { children: ReactNode; title: string; summary: string; isOpen: boolean; onOpen: () => void }) {
@@ -39,7 +39,7 @@ function AccordionSection({ children, title, summary, isOpen, onOpen }: { childr
     const target = event.target;
     if (target instanceof HTMLElement) window.setTimeout(() => target.focus(), 230);
   }} onChange={() => setInvalid(false)}>
-    <h3><button id={`${id}-trigger`} type="button" aria-expanded={isOpen} aria-controls={id} onClick={onOpen} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]"><span className="min-w-0"><span className="block text-sm font-semibold text-[var(--ui-text)]">{title}</span><span className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-muted)]" title={summary}>{summary || t("configuration.empty")}</span></span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform duration-[220ms] motion-reduce:transition-none", isOpen && "rotate-180")} /></button></h3>
+    <h3><button id={`${id}-trigger`} type="button" aria-expanded={isOpen} aria-controls={id} onClick={onOpen} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]"><span className="min-w-0"><span className="block text-sm font-semibold text-[var(--ui-text)]">{title}</span><span className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-muted)]" title={summary}>{summary || t("configuration.empty")}</span></span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform duration-[220ms]", isOpen && "rotate-180")} /></button></h3>
     <AnimatedFormContent id={id} labelledBy={`${id}-trigger`} isOpen={isOpen}><div className="grid gap-4 border-t border-[var(--ui-border-subtle)] p-4">{invalid ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("configuration.invalid")}</p> : null}{children}</div></AnimatedFormContent>
   </section>;
 }

@@ -78,7 +78,7 @@ describe("Equipment application flow", () => {
     expect(form).toContain('inert={!isOpen}');
     expect(form).toContain('ResizeObserver');
     expect(form).toContain('transition-[height,opacity]');
-    expect(form).toContain('motion-reduce:transition-none');
+    expect(form).not.toContain('motion-reduce:transition-none');
     expect(form).toContain('openSection === key');
     expect(form).toContain('<fieldset className="shrink-0 rounded-');
     expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');

@@ -91,6 +91,15 @@ describe("application shell cleanup", () => {
     expect(styles).toContain("height: var(--ui-scrollbar-size)");
   });
 
+  it("keeps functional transitions when system reduced motion is active", async () => {
+    const styles = await readFile(stylesPath, "utf8");
+
+    const reducedMotion = styles.slice(styles.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reducedMotion).toContain("animation-duration: 0.01ms !important");
+    expect(reducedMotion).not.toContain("transition-duration");
+    expect(reducedMotion).not.toContain("transition: none");
+  });
+
   it("derives authenticated page titles from the active studio context", async () => {
     const [layout, dashboard] = await Promise.all([
       readFile(layoutPath, "utf8"),
