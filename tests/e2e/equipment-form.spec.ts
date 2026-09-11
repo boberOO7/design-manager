@@ -174,6 +174,118 @@ for (const locale of ["en", "uk"] as const) {
   });
 }
 
+test("workstation bulk dialog keeps compact controls and stable geometry", async ({ page }, testInfo) => {
+  const t = en.Equipment;
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason instanceof Error ? `${event.reason.name}: ${event.reason.message}` : String(event.reason);
+    document.documentElement.dataset.testUnhandledRejection = reason;
+  }));
+  await login(page);
+  await page.goto("/office/equipment?create=workstation");
+  const dialog = page.getByRole("dialog");
+  const quantity = dialog.getByLabel(t.workstation.form.quantity, { exact: true });
+  const startingNumber = dialog.getByLabel(t.workstation.form.startingNumber, { exact: true });
+  const increase = dialog.getByRole("button", { name: t.workstation.form.increaseQuantity, exact: true });
+  const decrease = dialog.getByRole("button", { name: t.workstation.form.decreaseQuantity, exact: true });
+  const rows = dialog.locator("[data-workstation-draft]");
+  const editor = dialog.locator("[data-workstation-editor]");
+  const firstName = rows.first().locator('input:not([type="number"])');
+  const initialDialogBox = await dialog.boundingBox();
+  const initialIncreaseBox = await increase.boundingBox();
+  if (!initialDialogBox || !initialIncreaseBox) throw new Error("Missing workstation dialog geometry");
+  const baselineDialogBox = initialDialogBox;
+  const baselineIncreaseBox = initialIncreaseBox;
+  expect(baselineIncreaseBox.width).toBeGreaterThanOrEqual(44);
+  expect(baselineIncreaseBox.height).toBeGreaterThanOrEqual(44);
+  await firstName.fill("Keep this name");
+
+  async function verifyQuantity(value: number) {
+    await expect(quantity).toHaveValue(String(value));
+    await expect(rows).toHaveCount(value);
+    await page.waitForTimeout(220);
+    const dialogBox = await dialog.boundingBox();
+    const increaseBox = await increase.boundingBox();
+    expect(dialogBox?.x).toBeCloseTo(baselineDialogBox.x, 0);
+    expect(dialogBox?.y).toBeCloseTo(baselineDialogBox.y, 0);
+    expect(dialogBox?.width).toBeCloseTo(baselineDialogBox.width, 0);
+    expect(dialogBox?.height).toBeCloseTo(baselineDialogBox.height, 0);
+    expect(increaseBox?.x).toBeCloseTo(baselineIncreaseBox.x, 0);
+    expect(increaseBox?.y).toBeCloseTo(baselineIncreaseBox.y, 0);
+    await dialog.screenshot({ path: testInfo.outputPath(`workstations-${value}.png`) });
+  }
+  async function captureContainedTransition(name: string, requireAnimation = true) {
+    if (requireAnimation) {
+      await expect.poll(() => page.evaluate(() => document.getAnimations().filter((animation) => animation.effect instanceof KeyframeEffect && animation.effect.pseudoElement?.startsWith("::view-transition")).length)).toBeGreaterThan(0);
+      expect(await editor.evaluate((element) => getComputedStyle(element).getPropertyValue("view-transition-group"))).toBe("contain");
+      expect(await editor.evaluate((element) => getComputedStyle(element, "::view-transition-group-children(root)").overflow)).toBe("clip");
+    }
+    await page.screenshot({ path: testInfo.outputPath(name) });
+  }
+
+  await verifyQuantity(1);
+  await increase.click();
+  await expect(rows).toHaveCount(2);
+  expect(await page.evaluate(() => document.getAnimations().filter((animation) => animation.effect instanceof KeyframeEffect && animation.effect.pseudoElement?.startsWith("::view-transition")).length)).toBeGreaterThan(0);
+  await verifyQuantity(2);
+  await increase.focus();
+  await page.keyboard.press("Enter");
+  await verifyQuantity(3);
+  await quantity.fill("10");
+  await verifyQuantity(10);
+  for (let value = 11; value <= 20; value += 1) {
+    await increase.click();
+    await expect(quantity).toHaveValue(String(value));
+  }
+  await verifyQuantity(20);
+  expect(await editor.evaluate((element) => element.scrollHeight > element.clientHeight && getComputedStyle(element).overflowY === "auto")).toBe(true);
+
+  await quantity.fill("5");
+  await expect(rows).toHaveCount(5);
+  await captureContainedTransition("workstations-rapid-20-to-5.png");
+  await verifyQuantity(5);
+  await quantity.fill("1");
+  await verifyQuantity(1);
+  await quantity.fill("20");
+  await expect(rows).toHaveCount(20);
+  await captureContainedTransition("workstations-rapid-1-to-20.png");
+  await verifyQuantity(20);
+  await quantity.fill("1");
+  await verifyQuantity(1);
+  for (let value = 2; value <= 15; value += 1) {
+    await increase.click();
+    await expect(quantity).toHaveValue(String(value));
+  }
+  await captureContainedTransition("workstations-rapid-plus.png", false);
+  await expect(rows).toHaveCount(15);
+  for (let value = 14; value >= 10; value -= 1) {
+    await decrease.click();
+    await expect(quantity).toHaveValue(String(value));
+  }
+  await verifyQuantity(10);
+
+  await expect(firstName).toHaveValue("Keep this name");
+  await startingNumber.fill("4");
+  await expect(rows.first().locator('input[type="number"]')).toHaveValue("4");
+  await expect(rows.last().locator('input[type="number"]')).toHaveValue("13");
+  expect(await quantity.evaluate((element) => getComputedStyle(element).appearance)).toBe("none");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.locator("html").evaluate((element) => element.setAttribute("data-motion", "system"));
+  await decrease.click();
+  await expect(rows).toHaveCount(9);
+  expect(await page.evaluate(() => document.getAnimations().filter((animation) => animation.effect instanceof KeyframeEffect && animation.effect.pseudoElement?.startsWith("::view-transition")).length)).toBe(0);
+  await quantity.fill("20");
+  await expect(rows).toHaveCount(20);
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await editor.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await dialog.screenshot({ path: testInfo.outputPath("workstations-mobile.png") });
+  expect(await page.locator("html").getAttribute("data-test-unhandled-rejection")).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test("legacy values, category identity, mobile and reduced motion", async ({ page }, testInfo) => {
   const t = en.Equipment;
   const id = randomUUID();

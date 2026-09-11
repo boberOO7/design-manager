@@ -8,6 +8,7 @@ const page = readFileSync("src/app/(app)/office/equipment/page.tsx", "utf8");
 const query = readFileSync("src/data/queries/equipment.ts", "utf8");
 const shell = readFileSync("src/components/office/office-shell.tsx", "utf8");
 const cron = readFileSync("src/app/api/equipment/maintenance-notifications/route.ts", "utf8");
+const styles = readFileSync("src/app/globals.css", "utf8");
 
 describe("Equipment application flow", () => {
   it("keeps navigation and page loading admin-only", () => {
@@ -33,10 +34,18 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('t("workstation.form.quantity")');
     expect(workspace).toContain('t("workstation.form.startingNumber")');
     expect(workspace).toContain('t("workstation.form.assignEmployees")');
-    expect(workspace).toContain('drafts.length > 5 && "max-h-80"');
-    expect(workspace).toContain('hidden gap-3 border-b');
+    expect(workspace).toContain("data-quantity-stepper");
+    expect(workspace).toContain("data-workstation-editor");
+    expect(workspace).toContain('types: ["workstation-rows"]');
+    expect(workspace).toContain('sticky top-0 z-10 hidden gap-3 border-b');
     expect(workspace).toContain('className="sm:sr-only"');
     expect(workspace).toContain('t("workstation.numberLabel", { number: item.number })');
+    expect(workspace).toContain("editor.startViewTransition");
+    expect(workspace).toContain("activeTransition.skipTransition()");
+    expect(workspace).toContain("transition.ready.catch");
+    expect(workspace).toContain("if (!expectedCancellation) reportError(reason)");
+    expect(styles).toContain("[data-workstation-editor]:active-view-transition-type(workstation-rows)");
+    expect(styles).not.toContain(":root:active-view-transition-type(workstation-rows)");
   });
 
   it("provides equipment CRUD, lifecycle changes, and persistent retired records", () => {

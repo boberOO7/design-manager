@@ -15,6 +15,7 @@ import {
   Monitor,
   MonitorCog,
   Mouse,
+  Minus,
   Package,
   Pencil,
   Plus,
@@ -28,6 +29,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { flushSync } from "react-dom";
 import {
   assignEquipment,
   completeEquipmentService,
@@ -218,6 +220,7 @@ function EmptyState({ Icon, title, description }: { Icon: LucideIcon; title: str
 }
 
 type WorkstationDraft = { number: number; name: string; assignedEmployeeId: string };
+interface WorkstationEditorElement extends HTMLDivElement { startViewTransition?: Document["startViewTransition"] }
 
 function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCreated }: { isOpen: boolean; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
   const t = useTranslations("Equipment");
@@ -229,11 +232,43 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
   const [assignEmployees, setAssignEmployees] = useState(false);
   const [error, setError] = useState<EquipmentActionState["error"]>();
   const [pending, startTransition] = useTransition();
+  const editorRef = useRef<WorkstationEditorElement>(null);
+  const activeRowTransitionRef = useRef<ViewTransition | null>(null);
   const existingAssignments = new Map(workstations.flatMap((workstation) => workstation.assignedEmployee ? [[workstation.assignedEmployee.id, workstation]] : []));
-  function regenerate(nextQuantity: number, nextStartingNumber: number) {
-    setQuantity(nextQuantity);
+  function changeQuantity(value: number) {
+    const nextQuantity = Math.max(1, Math.min(50, value || 1));
+    if (nextQuantity === quantity) return;
+    const update = () => {
+      setQuantity(nextQuantity);
+      setDrafts((current) => Array.from({ length: nextQuantity }, (_, index) => current[index] ?? { number: startingNumber + index, name: "", assignedEmployeeId: "__none" }));
+    };
+    const motion = document.documentElement.dataset.motion;
+    const editor = editorRef.current;
+    if (!editor?.startViewTransition || motion === "off" || (motion === "system" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) update();
+    else {
+      const activeTransition = activeRowTransitionRef.current;
+      if (activeTransition) {
+        activeTransition.skipTransition();
+        update();
+        return;
+      }
+      const transition = editor.startViewTransition({ types: ["workstation-rows"], update: () => flushSync(update) });
+      activeRowTransitionRef.current = transition;
+      void transition.ready.catch((reason: unknown) => {
+        const expectedCancellation = reason instanceof DOMException
+          && (reason.name === "AbortError" || reason.name === "InvalidStateError");
+        if (!expectedCancellation) reportError(reason);
+      });
+      void transition.finished.then(
+        () => { if (activeRowTransitionRef.current === transition) activeRowTransitionRef.current = null; },
+        () => { if (activeRowTransitionRef.current === transition) activeRowTransitionRef.current = null; },
+      );
+    }
+  }
+  function changeStartingNumber(value: number) {
+    const nextStartingNumber = Math.max(1, value || 1);
     setStartingNumber(nextStartingNumber);
-    setDrafts(Array.from({ length: nextQuantity }, (_, index) => ({ number: nextStartingNumber + index, name: "", assignedEmployeeId: "__none" })));
+    setDrafts((current) => current.map((draft, index) => ({ ...draft, number: nextStartingNumber + index })));
   }
   function updateDraft(index: number, patch: Partial<WorkstationDraft>) { setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft)); }
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -247,8 +282,30 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
     });
   }
   const rowColumns = assignEmployees ? "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(12rem,1fr)]" : "sm:grid-cols-[7rem_minmax(0,1fr)]";
-  return <Dialog closeDisabled={pending} closeLabel={t("close")} description={t("workstation.form.createDescription")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
-    <form onSubmit={submit} className="flex min-h-0 flex-col gap-5 overflow-y-auto p-5 sm:p-6"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("workstation.form.quantity")}><Input data-dialog-initial-focus type="number" min={1} max={50} value={quantity} onChange={(event) => regenerate(Math.max(1, Math.min(50, Number(event.target.value) || 1)), startingNumber)} /></FormField><FormField label={t("workstation.form.startingNumber")}><Input type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => regenerate(quantity, Math.max(1, Number(event.target.value) || 1))} /></FormField></div><p className="-mt-2 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.bulkHelp")}</p><div className={cn("overflow-y-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]", drafts.length > 5 && "max-h-80")}><div className="divide-y divide-[var(--ui-border-subtle)]"><div className={cn("hidden gap-3 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-muted)] sm:grid", rowColumns)}><span>{t("workstation.form.number")}</span><span>{t("workstation.form.name")} <span className="font-normal">({t("optional")})</span></span>{assignEmployees ? <span>{t("workstation.form.employee")} <span className="font-normal">({t("optional")})</span></span> : null}</div>{drafts.map((draft, index) => { const selectedEmployees = new Set(drafts.filter((_, draftIndex) => draftIndex !== index).map((item) => item.assignedEmployeeId)); return <div key={index} className={cn("grid gap-3 p-3", rowColumns)}><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.number")}</span><Input type="number" min={1} max={1_000_000} value={draft.number} onChange={(event) => updateDraft(index, { number: Number(event.target.value) || 0 })} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.name")} ({t("optional")})</span><Input maxLength={120} value={draft.name} onChange={(event) => updateDraft(index, { name: event.target.value })} /></label>{assignEmployees ? <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.employee")} ({t("optional")})</span><Select value={draft.assignedEmployeeId} onValueChange={(assignedEmployeeId) => updateDraft(index, { assignedEmployeeId })}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = existingAssignments.get(member.id); const unavailable = Boolean(assigned) || selectedEmployees.has(member.id); return <SelectItem key={member.id} value={member.id} disabled={unavailable && draft.assignedEmployeeId !== member.id} textValue={member.fullName}>{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</SelectItem>; })}</Select></label> : null}</div>; })}</div></div><label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" checked={assignEmployees} onChange={(event) => setAssignEmployees(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("workstation.form.assignEmployees")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.assignEmployeesHelp")}</span></span></label><ActionError error={error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createWorkstations", { count: quantity })}</Button></div></form>
+  return <Dialog className="max-w-3xl sm:h-[min(48rem,calc(100dvh-2rem))]" closeDisabled={pending} closeLabel={t("close")} description={t("workstation.form.createDescription")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
+    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 sm:p-6">
+      <div className="flex shrink-0 flex-wrap items-end gap-4">
+        <fieldset className="grid gap-1.5">
+          <legend className="mb-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("workstation.form.quantity")}</legend>
+          <div className="inline-flex overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]" data-quantity-stepper>
+            <Button type="button" variant="ghost" className="size-11 rounded-none p-0" aria-label={t("workstation.form.decreaseQuantity")} disabled={quantity <= 1} onClick={() => changeQuantity(quantity - 1)}><Minus className="size-4" aria-hidden="true" /></Button>
+            <input data-dialog-initial-focus aria-label={t("workstation.form.quantity")} className="h-11 w-14 appearance-none border-x border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-1 text-center text-sm font-semibold tabular-nums text-[var(--ui-text)] focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" inputMode="numeric" type="number" min={1} max={50} value={quantity} onChange={(event) => changeQuantity(Number(event.target.value))} />
+            <Button type="button" variant="ghost" className="size-11 rounded-none p-0" aria-label={t("workstation.form.increaseQuantity")} disabled={quantity >= 50} onClick={() => changeQuantity(quantity + 1)}><Plus className="size-4" aria-hidden="true" /></Button>
+          </div>
+        </fieldset>
+        <FormField className="w-28" label={t("workstation.form.startingNumber")}><Input className="appearance-none text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" inputMode="numeric" type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => changeStartingNumber(Number(event.target.value))} /></FormField>
+      </div>
+      <p className="shrink-0 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.bulkHelp")}</p>
+      <div ref={editorRef} data-workstation-editor className="min-h-52 max-h-72 shrink-0 overflow-y-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] sm:max-h-none sm:min-h-0 sm:flex-1">
+        <div className="divide-y divide-[var(--ui-border-subtle)]">
+          <div className={cn("sticky top-0 z-10 hidden gap-3 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-muted)] sm:grid", rowColumns)}><span>{t("workstation.form.number")}</span><span>{t("workstation.form.name")} <span className="font-normal">({t("optional")})</span></span>{assignEmployees ? <span>{t("workstation.form.employee")} <span className="font-normal">({t("optional")})</span></span> : null}</div>
+          {drafts.map((draft, index) => { const selectedEmployees = new Set(drafts.filter((_, draftIndex) => draftIndex !== index).map((item) => item.assignedEmployeeId)); return <div key={index} data-workstation-draft style={{ viewTransitionName: `workstation-draft-${index}` }} className={cn("grid gap-3 p-3", rowColumns)}><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.number")}</span><Input type="number" min={1} max={1_000_000} value={draft.number} onChange={(event) => updateDraft(index, { number: Number(event.target.value) || 0 })} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.name")} ({t("optional")})</span><Input maxLength={120} value={draft.name} onChange={(event) => updateDraft(index, { name: event.target.value })} /></label>{assignEmployees ? <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.employee")} ({t("optional")})</span><Select value={draft.assignedEmployeeId} onValueChange={(assignedEmployeeId) => updateDraft(index, { assignedEmployeeId })}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = existingAssignments.get(member.id); const unavailable = Boolean(assigned) || selectedEmployees.has(member.id); return <SelectItem key={member.id} value={member.id} disabled={unavailable && draft.assignedEmployeeId !== member.id} textValue={member.fullName}>{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</SelectItem>; })}</Select></label> : null}</div>; })}
+        </div>
+      </div>
+      <label className="flex min-h-11 shrink-0 cursor-pointer items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" checked={assignEmployees} onChange={(event) => setAssignEmployees(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("workstation.form.assignEmployees")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.assignEmployeesHelp")}</span></span></label>
+      <ActionError error={error} />
+      <div className="flex shrink-0 justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createWorkstations", { count: quantity })}</Button></div>
+    </form>
   </Dialog>;
 }
 

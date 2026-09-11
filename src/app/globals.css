@@ -422,3 +422,14 @@ body,
     scroll-behavior: auto !important;
   }
 }
+
+[data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-group(root),
+[data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-old(root),
+[data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-new(root) {
+  animation: none;
+}
+
+[data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-group(*) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
