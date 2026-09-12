@@ -63,8 +63,7 @@ export const equipmentInputSchema = z.object({
 export const equipmentUpdateSchema = equipmentInputSchema.and(z.object({ equipmentId: z.string().uuid() }));
 // Single-field writes cannot overwrite a concurrent service transition or schedule.
 export const equipmentFieldUpdateSchema = z.discriminatedUnion("field", [
-  z.object({ equipmentId: z.uuid(), field: z.literal("equipmentType"), value: z.enum(EQUIPMENT_TYPES) }),
-  z.object({ equipmentId: z.uuid(), field: z.literal("displayName"), value: z.string().trim().min(1).max(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("displayName"), value: optionalText(160) }),
   z.object({ equipmentId: z.uuid(), field: z.literal("lifecycleState"), value: z.enum(["active", "spare", "retired"]) }),
   z.object({ equipmentId: z.uuid(), field: z.literal("workstationId"), value: nullableUuid }),
   z.object({ equipmentId: z.uuid(), field: z.literal("assetTag"), value: z.string().trim().min(1).max(160) }),

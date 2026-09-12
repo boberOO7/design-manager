@@ -4,7 +4,6 @@ import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { equipmentDisplayName } from "@/lib/equipment";
 import {
   equipmentAssignmentSchema,
   equipmentFieldUpdateSchema,
@@ -55,7 +54,7 @@ function equipmentPayload(input: EquipmentInput) {
   return {
     equipment_type: input.equipmentType,
     lifecycle_state: input.lifecycleState,
-    display_name: equipmentDisplayName(input),
+    display_name: input.displayName,
     workstation_id: input.workstationId,
     manufacturer: input.manufacturer,
     model: input.model,
@@ -163,7 +162,7 @@ export async function updateEquipmentField(input: unknown): Promise<EquipmentAct
   const parsed = equipmentFieldUpdateSchema.safeParse(input);
   if (!parsed.success) return { error: "invalid" };
   const { equipmentId, field, value } = parsed.data;
-  const columns = { equipmentType: "equipment_type", displayName: "display_name", lifecycleState: "lifecycle_state", workstationId: "workstation_id", assetTag: "asset_tag", manufacturer: "manufacturer", model: "model", serialNumber: "serial_number", notes: "notes", cpu: "cpu", gpu: "gpu", ram: "ram", storage: "storage", pcConfiguration: "pc_configuration" } as const;
+  const columns = { displayName: "display_name", lifecycleState: "lifecycle_state", workstationId: "workstation_id", assetTag: "asset_tag", manufacturer: "manufacturer", model: "model", serialNumber: "serial_number", notes: "notes", cpu: "cpu", gpu: "gpu", ram: "ram", storage: "storage", pcConfiguration: "pc_configuration" } as const;
   const payload: Database["public"]["Tables"]["equipment"]["Update"] = { [columns[field]]: value };
   const supabase = await createClient();
   const { data, error } = await supabase.from("equipment").update(payload).eq("id", equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();

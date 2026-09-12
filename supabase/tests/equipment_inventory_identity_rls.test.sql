@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(31);
 insert into public.studios(id,name) values
 ('59000000-0000-0000-0000-000000000001','Inventory A'),
 ('59000000-0000-0000-0000-000000000002','Inventory B');
@@ -19,21 +19,25 @@ insert into public.equipment(studio_id,equipment_type,display_name,asset_tag) va
 insert into public.equipment(studio_id,equipment_type,display_name)
 select '59000000-0000-0000-0000-000000000001', value, value::text
 from unnest(enum_range(null::public.equipment_type)) value;
-select is((select asset_tag from public.equipment where display_name='Legacy PC'),'pC-01','explicit existing identifiers are preserved verbatim');
+select is((select asset_tag from public.equipment where display_name='Legacy PC'),'PC-01','new explicit identifiers use the fixed uppercase type prefix');
 select is((select asset_tag from public.equipment where display_name='pc'),'PC-02','generation skips a reserved code case-insensitively');
 select results_eq($$select asset_tag from public.equipment where display_name <> 'Legacy PC' order by equipment_type$$,
 $$values ('PC-02'),('LAP-01'),('MON-01'),('MOU-01'),('KBD-01'),('HEAD-01'),('CAM-01'),('AC-01'),('PRN-01'),('COF-01'),('EQ-01')$$,'every supported type has a prefix');
 update public.equipment set notes='Keep identity',lifecycle_state='retired' where display_name='pc';
 select is((select asset_tag from public.equipment where display_name='pc'),'PC-02','ordinary edits and retirement preserve identity');
 select throws_ok($$update public.equipment set asset_tag=null where display_name='pc'$$,'23514','inventory_code_required','identifiers cannot be cleared');
-select lives_ok($$update public.equipment set asset_tag='CUSTOM-PC' where display_name='pc'$$,'admins can rename codes');
+select throws_ok($$update public.equipment set asset_tag='CUSTOM-PC' where display_name='pc'$$,'23514','inventory_code_format','inventory codes keep their type prefix and numeric suffix');
+select lives_ok($$update public.equipment set asset_tag='PC-0009' where display_name='pc'$$,'admins can edit the numeric portion');
+select is((select asset_tag from public.equipment where display_name='pc'),'PC-0009','manual numbering preserves leading zeroes');
 select throws_like($$insert into public.equipment(studio_id,equipment_type,display_name,asset_tag) values ('59000000-0000-0000-0000-000000000001','pc','Reuse','pc-02')$$,'%duplicate key%','renamed codes stay reserved');
 delete from public.equipment where display_name='pc';
-select throws_like($$insert into public.equipment(studio_id,equipment_type,display_name,asset_tag) values ('59000000-0000-0000-0000-000000000001','pc','Reuse','custom-pc')$$,'%duplicate key%','deleted identifiers stay reserved');
+select throws_like($$insert into public.equipment(studio_id,equipment_type,display_name,asset_tag) values ('59000000-0000-0000-0000-000000000001','pc','Reuse','pc-0009')$$,'%duplicate key%','deleted identifiers stay reserved');
 insert into public.equipment(studio_id,equipment_type,display_name) values ('59000000-0000-0000-0000-000000000001','pc','Next PC');
 select is((select asset_tag from public.equipment where display_name='Next PC'),'PC-03','automatic numbering never reuses renamed or deleted codes');
-select lives_ok($$update public.equipment set equipment_type='other' where display_name='Next PC'$$,'type changes do not replace identity');
-select is((select asset_tag from public.equipment where display_name='Next PC'),'PC-03','identity survives type changes');
+select throws_ok($$update public.equipment set equipment_type='other' where display_name='Next PC'$$,'23514','equipment_type_is_immutable','saved equipment type is immutable');
+select is((select equipment_type::text || ':' || asset_tag from public.equipment where display_name='Next PC'),'pc:PC-03','a rejected type change preserves identity');
+select lives_ok($$insert into public.equipment(studio_id,equipment_type,display_name) values ('59000000-0000-0000-0000-000000000001','printer',null)$$,'custom equipment name is optional');
+select is((select count(*)::integer from public.equipment where equipment_type='printer' and display_name is null),1,'an omitted custom name remains null');
 insert into public.equipment(studio_id,equipment_type,display_name)
 select '59000000-0000-0000-0000-000000000001','mouse','Mouse '||value from generate_series(2,101) value;
 select is((select asset_tag from public.equipment where display_name='Mouse 101'),'MOU-101','codes expand beyond two digits without truncation');

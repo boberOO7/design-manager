@@ -126,21 +126,28 @@ submission/office-assignment migrations and RLS tests.
   The nullable, studio-safe workstation relationship supports attachment,
   detachment, and reassignment without replacing the equipment row.
 - `equipment.asset_tag` is the inventory code. A private trigger automatically
-  allocates a studio/type-prefixed code when omitted; existing asset tags remain
-  verbatim. Case-insensitive reservations survive renaming, retirement, and
-  deletion. Only an administrator can rename a code; old codes cannot be reused.
-  The private counters and reservation ledger have no client grants.
+  allocates a studio/type-prefixed code when omitted. Editing keeps that type
+  prefix fixed and changes only the numeric suffix, including its leading zeros.
+  Case-insensitive reservations survive renaming, retirement, and deletion. Only
+  an administrator can rename a code; old codes cannot be reused. The private
+  counters and reservation ledger have no client grants.
 - Equipment stores its type, lifecycle state and category-specific identity.
+  Type is immutable after creation. `display_name` is a nullable custom alias;
+  inventory code is the primary displayed identity when the alias is absent.
+  Exact historical generated names matching the code or type are normalized to
+  null, while other names are preserved.
   PCs own a schema-validated `pc_configuration` JSON document for processor,
   integrated/discrete graphics, memory and ordered storage drives; components
   have no separate inventory identities. Updates are atomic on the equipment row
-  under its existing grants/RLS. Laptop retains the optional text specifications.
+  under its existing grants/RLS. Custom PC serial data is preserved but omitted
+  from normal editing; manufactured devices retain serial-number fields. Laptop
+  retains the optional text specifications.
 - Legacy CPU/GPU/RAM/storage and whole-PC manufacturer/model remain verbatim;
-  no migration guesses structured values. PC editing shows saved text as a
-  reference, and inventory summaries prefer structured values per section with
-  legacy fallback. The form keeps a saved computer's category fixed to avoid
-  silently discarding its configuration. Name is optional (existing display-name
-  fallback applies); retired items remain inventory records.
+  no migration guesses structured values. PC editing shows each saved text value
+  only until the matching structured component has been saved, while summaries
+  retain legacy fallback. A repository-owned reference catalog provides optional
+  creatable manufacturer/model suggestions independently of studio inventory;
+  arbitrary values remain valid. Retired items remain inventory records.
 - Create/edit uses one open identification/configuration accordion section, with
   measured height and opacity transitions and reduced-motion support. Equipment
   details autosave isolated fields on blur/selection; PC configuration remains

@@ -27,7 +27,8 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('value={assignedEmployeeId}');
     expect(workspace).toContain('<SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>');
     expect(workspace).toContain('t("workstation.actions.renumber")');
-    expect(workspace).toContain('aria-invalid={workstationError === "numberConflict" || undefined}');
+    expect(workspace).toContain('invalid={workstationError === "numberConflict"}');
+    expect(workspace).toContain('<NumericStepper initialFocus ariaLabel={t("workstation.form.number")}');
     expect(workspace).toContain('onBlur={(event) => { const name = event.currentTarget.value.trim();');
     expect(workspace).not.toContain('t("actions.saveWorkstation")');
   });
@@ -67,7 +68,7 @@ describe("Equipment application flow", () => {
     expect(actions).toContain("export async function createEquipment");
     expect(actions).toContain("export async function updateEquipment");
     expect(actions).toContain("export async function deleteEquipment");
-    expect(actions).toContain("display_name: equipmentDisplayName(input)");
+    expect(actions).toContain("display_name: input.displayName");
     expect(actions).toContain("lifecycle_state: input.lifecycleState");
     expect(form).toContain("EQUIPMENT_LIFECYCLE_STATES.filter");
     expect(workspace).toContain('t(`states.${item.lifecycleState}`)');
@@ -92,6 +93,11 @@ describe("Equipment application flow", () => {
     expect(form).toContain('name="pcConfiguration"');
     expect(form).toContain('CPU_FAMILIES[cpu.manufacturer]');
     expect(form).toContain('GPU_FAMILIES[gpu.vendor]');
+    expect(form).toContain('cpuModelSuggestions(cpu.manufacturer, cpu.family)');
+    expect(form).toContain('gpuModelSuggestions(gpu.vendor, gpu.family)');
+    expect(form).toContain('<CreatableCombobox');
+    expect(form).toContain('key === "serialNumber"');
+    expect(form).toContain('!hasStructured[key]');
     expect(form).toContain('config.drives.map');
   });
 
@@ -153,6 +159,10 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('function MaintenanceSchedule');
     expect(form).toContain('t("configuration.save")');
     expect(workspace).toContain('pc: Computer');
+    expect(form).toContain('type="hidden" name="equipmentType"');
+    expect(workspace).toContain('<SegmentedControl disabled={pending}');
+    expect(workspace).toContain('<WorkstationTypeBadge type={item.workstationType} />');
+    expect(workspace).toContain('prefix={codePrefix} preserveWidth');
   });
 
 });

@@ -43,11 +43,16 @@ select is((select count(*)::integer from public.equipment), 2, 'admin can read m
 select throws_like($$update public.equipment set lifecycle_state = 'in_service' where id = '48000000-0000-0000-0000-000000000200'$$, '%equipment_service_event_required%', 'in-service lifecycle requires an open service event');
 
 set local role postgres;
+update public.equipment
+set recurring_maintenance_enabled = false,
+    maintenance_interval_months = null,
+    next_maintenance_due_date = null
+where studio_id <> '48000000-0000-0000-0000-000000000001';
 select is(public.generate_equipment_maintenance_notifications('2026-08-31'), 4, '30-day boundary and overdue boundary notify each active admin');
 select is(public.generate_equipment_maintenance_notifications('2026-08-31'), 0, 'same threshold run is deduplicated');
-select is((select count(distinct recipient_id)::integer from public.notifications where entity_type = 'equipment'), 2, 'only active admin recipients are selected');
-select is((select count(*)::integer from public.notifications where notification_type = 'equipment_maintenance_upcoming'), 2, 'upcoming notifications use the upcoming type');
-select is((select count(*)::integer from public.notifications where notification_type = 'equipment_maintenance_overdue'), 2, 'past due dates use the overdue type');
+select is((select count(distinct recipient_id)::integer from public.notifications where studio_id = '48000000-0000-0000-0000-000000000001' and entity_type = 'equipment'), 2, 'only active admin recipients are selected');
+select is((select count(*)::integer from public.notifications where studio_id = '48000000-0000-0000-0000-000000000001' and notification_type = 'equipment_maintenance_upcoming'), 2, 'upcoming notifications use the upcoming type');
+select is((select count(*)::integer from public.notifications where studio_id = '48000000-0000-0000-0000-000000000001' and notification_type = 'equipment_maintenance_overdue'), 2, 'past due dates use the overdue type');
 
 select set_config('request.jwt.claim.sub', '48000000-0000-0000-0000-000000000010', true);
 set local role authenticated;

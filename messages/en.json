@@ -920,6 +920,11 @@
       "typePreserved": "The equipment type is retained to protect its saved computer configuration.",
       "save": "Save configuration"
     },
+    "autocomplete": {
+      "show": "Show suggestions",
+      "empty": "No catalog suggestions",
+      "useValue": "Use “{value}”"
+    },
     "title": "Equipment",
     "description": "Workstations and independent office inventory",
     "optional": "optional",
@@ -966,6 +971,8 @@
         "quantity": "Quantity",
         "decreaseQuantity": "Decrease quantity",
         "increaseQuantity": "Increase quantity",
+        "decreaseNumber": "Decrease workstation number",
+        "increaseNumber": "Increase workstation number",
         "startingNumber": "Starting number",
         "bulkHelp": "Numbers are proposed sequentially and can be adjusted before creating.",
         "number": "Number",
@@ -1024,6 +1031,10 @@
       "model": "Model",
       "serialNumber": "Serial number",
       "assetTag": "Inventory code",
+      "assetTagNumber": "Inventory code number",
+      "decreaseAssetTag": "Decrease inventory code number",
+      "increaseAssetTag": "Increase inventory code number",
+      "codeUnavailable": "This inventory code is unavailable.",
       "assetTagDescription": "Your studio’s internal identifier, such as PC-01.",
       "specifications": "Computer configuration",
       "specificationsDescription": "Only the useful headline specifications; detailed component inventory is not tracked.",

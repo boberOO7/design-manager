@@ -28,9 +28,9 @@ export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" 
   workstationId: string | null;
   equipmentType: EquipmentRow["equipment_type"];
   lifecycleState: EquipmentRow["lifecycle_state"];
-  displayName: string;
+  displayName: string | null;
   serialNumber: string | null;
-  assetTag: string | null;
+  assetTag: string;
   recurringMaintenanceEnabled: boolean;
   maintenanceIntervalMonths: number | null;
   nextMaintenanceDueDate: string | null;
@@ -97,7 +97,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
   const supabase = await createClient();
   const [workstationsResult, equipmentResult, serviceEventsResult, membersResult] = await Promise.all([
     supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("number"),
-    supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name"),
+    supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name", { nullsFirst: false }).order("asset_tag"),
     supabase.from("equipment_service_events").select("*").eq("studio_id", admin.studio_id).order("completed_on", { ascending: false, nullsFirst: true }).order("started_on", { ascending: false }),
     supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
   ]);

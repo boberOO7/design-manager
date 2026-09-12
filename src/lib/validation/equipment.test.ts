@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PC_CONFIGURATION } from "@/lib/pc-configuration";
-import { equipmentDisplayName } from "@/lib/equipment";
+import { equipmentDisplayName, equipmentInventoryNumber, equipmentInventoryPrefix } from "@/lib/equipment";
 import { equipmentFieldUpdateSchema, equipmentMaintenanceSchema, completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
 const baseEquipment = {
@@ -28,6 +28,9 @@ describe("equipment validation", () => {
     expect(equipmentInputSchema.parse({ ...baseEquipment, displayName: "" }).displayName).toBeNull();
     expect(equipmentDisplayName({ equipmentType: "pc", displayName: null, assetTag: "PC-01", manufacturer: null, model: null })).toBe("PC-01");
     expect(equipmentDisplayName({ equipmentType: "headphones", displayName: null, assetTag: null, manufacturer: null, model: null })).toBe("headphones");
+    expect(equipmentInventoryPrefix("air_conditioner")).toBe("AC-");
+    expect(equipmentInventoryNumber("PC-002", "pc")).toBe("002");
+    expect(equipmentInventoryNumber("CUSTOM", "pc")).toBe("");
   });
 
   it("accepts optional structured specifications for PCs and laptops", () => {
@@ -85,6 +88,8 @@ describe("equipment validation", () => {
   it("validates isolated field writes and atomic schedules without accepting identity or service overrides", () => {
     const equipmentId = "59000000-0000-4000-8000-000000000201";
     expect(equipmentFieldUpdateSchema.parse({ equipmentId, field: "assetTag", value: " PC-99 " }).value).toBe("PC-99");
+    expect(equipmentFieldUpdateSchema.parse({ equipmentId, field: "displayName", value: "" }).value).toBeNull();
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "equipmentType", value: "monitor" }).success).toBe(false);
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "assetTag", value: "" }).success).toBe(false);
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "studioId", value: equipmentId }).success).toBe(false);
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "lifecycleState", value: "in_service" }).success).toBe(false);
@@ -93,6 +98,7 @@ describe("equipment validation", () => {
     expect(equipmentMaintenanceSchema.safeParse({ equipmentId, enabled: false, interval: null, dueDate: null }).success).toBe(true);
     expect(workstationInputSchema.parse({ number: 8, workstationType: "remote", name: "", assignedEmployeeId: null }).workstationType).toBe("remote");
     expect(workstationInputSchema.safeParse({ number: 8, workstationType: "unknown", name: "", assignedEmployeeId: null }).success).toBe(false);
+    expect(equipmentInputSchema.parse({ ...baseEquipment, model: "Unknown custom model" }).model).toBe("Unknown custom model");
   });
 
 });

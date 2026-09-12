@@ -26,6 +26,20 @@ export const COMPUTER_EQUIPMENT_TYPES = ["pc", "laptop"] as const satisfies read
 export const PERIPHERAL_EQUIPMENT_TYPES = ["mouse", "keyboard", "headphones", "webcam"] as const satisfies readonly EquipmentType[];
 export const OTHER_EQUIPMENT_TYPES = ["air_conditioner", "printer", "coffee_machine", "other"] as const satisfies readonly EquipmentType[];
 
+const EQUIPMENT_INVENTORY_PREFIXES = {
+  pc: "PC",
+  laptop: "LAP",
+  monitor: "MON",
+  mouse: "MOU",
+  keyboard: "KBD",
+  headphones: "HEAD",
+  webcam: "CAM",
+  air_conditioner: "AC",
+  printer: "PRN",
+  coffee_machine: "COF",
+  other: "EQ",
+} as const satisfies Record<EquipmentType, string>;
+
 const equipmentTypes: ReadonlySet<string> = new Set(EQUIPMENT_TYPES);
 const computerEquipmentTypes: ReadonlySet<EquipmentType> = new Set(COMPUTER_EQUIPMENT_TYPES);
 const peripheralEquipmentTypes: ReadonlySet<EquipmentType> = new Set(PERIPHERAL_EQUIPMENT_TYPES);
@@ -57,6 +71,15 @@ export function equipmentDisplayName(item: { assetTag: string | null; displayNam
   if (item.assetTag) return item.assetTag;
   const modelIdentity = [item.manufacturer, item.model].filter((value): value is string => Boolean(value)).join(" ");
   return modelIdentity || item.equipmentType.replaceAll("_", " ");
+}
+
+export function equipmentInventoryPrefix(type: EquipmentType) {
+  return `${EQUIPMENT_INVENTORY_PREFIXES[type]}-`;
+}
+
+export function equipmentInventoryNumber(code: string, type: EquipmentType) {
+  const prefix = equipmentInventoryPrefix(type);
+  return code.slice(0, prefix.length).toUpperCase() === prefix && /^\d+$/.test(code.slice(prefix.length)) ? code.slice(prefix.length) : "";
 }
 
 export function getMaintenanceUrgency(enabled: boolean, dueDate: string | null, today: string): MaintenanceUrgency {

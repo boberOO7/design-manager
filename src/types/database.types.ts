@@ -807,7 +807,7 @@ export type Database = {
           asset_tag: string
           cpu: string | null
           created_at: string
-          display_name: string
+          display_name: string | null
           equipment_type: Database["public"]["Enums"]["equipment_type"]
           gpu: string | null
           id: string
@@ -832,7 +832,7 @@ export type Database = {
           asset_tag?: string
           cpu?: string | null
           created_at?: string
-          display_name: string
+          display_name?: string | null
           equipment_type: Database["public"]["Enums"]["equipment_type"]
           gpu?: string | null
           id?: string
@@ -857,7 +857,7 @@ export type Database = {
           asset_tag?: string
           cpu?: string | null
           created_at?: string
-          display_name?: string
+          display_name?: string | null
           equipment_type?: Database["public"]["Enums"]["equipment_type"]
           gpu?: string | null
           id?: string
