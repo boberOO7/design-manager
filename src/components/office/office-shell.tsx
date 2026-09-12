@@ -37,8 +37,8 @@ export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; 
       <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
         <CreateChoice initialFocus href="/office/submissions?create=submission" icon={MessageSquareText} title={t("chooser.submission")} description={t("chooser.submissionDescription")} onClick={() => setChooserOpen(false)} />
         <CreateChoice href="/office/assignments?create=assignment" icon={ClipboardCheck} title={t("chooser.assignment")} description={t("chooser.assignmentDescription")} onClick={() => setChooserOpen(false)} />
-        <CreateChoice href="/office/equipment?create=workstation" icon={MonitorCog} title={t("chooser.workstation")} description={t("chooser.workstationDescription")} onClick={() => setChooserOpen(false)} />
-        <CreateChoice href="/office/equipment?view=other&create=equipment" icon={Boxes} title={t("chooser.equipment")} description={t("chooser.equipmentDescription")} onClick={() => setChooserOpen(false)} />
+        <CreateChoice href="/office/equipment?view=workstations&create=workstation" icon={MonitorCog} title={t("chooser.workstation")} description={t("chooser.workstationDescription")} onClick={() => setChooserOpen(false)} />
+        <CreateChoice href="/office/equipment?view=inventory&create=equipment" icon={Boxes} title={t("chooser.equipment")} description={t("chooser.equipmentDescription")} onClick={() => setChooserOpen(false)} />
       </div>
     </Dialog> : null}
   </div>;

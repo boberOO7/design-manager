@@ -9,7 +9,7 @@ import {
   AirVent,
   Boxes,
   Coffee,
-  Cpu,
+  Computer,
   Headphones,
   Keyboard,
   Laptop,
@@ -42,7 +42,8 @@ import {
   deleteWorkstation,
   recordEquipmentHistory,
   startEquipmentService,
-  updateEquipment,
+  updateEquipmentField,
+  updateEquipmentMaintenance,
   updateWorkstation,
 } from "@/app/(app)/office/equipment/actions";
 import { EquipmentFormFields } from "@/components/office/equipment-form";
@@ -55,6 +56,9 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import type { EquipmentItem, EquipmentMember, WorkstationItem } from "@/data/queries/equipment";
 import { CRM_BUDGET_CURRENCIES, formatCrmBudget, isCrmBudgetCurrency } from "@/lib/crm-budget";
 import {
+  EQUIPMENT_TYPES,
+  EQUIPMENT_LIFECYCLE_STATES,
+  OTHER_EQUIPMENT_TYPES,
   equipmentSpecificationSummary,
   getMaintenanceUrgency,
   isComputerEquipment,
@@ -66,15 +70,15 @@ import {
 } from "@/lib/equipment";
 import { pcConfigurationSummaries, type PcConfiguration } from "@/lib/pc-configuration";
 import { formatDateOnly } from "@/lib/utils";
-import type { EquipmentActionState } from "@/lib/validation/equipment";
+import type { EquipmentActionState, EquipmentFieldUpdate } from "@/lib/validation/equipment";
 import { cn } from "@/lib/utils";
 
-type EquipmentView = "workstations" | "other" | "maintenance";
+type EquipmentView = "inventory" | "workstations" | "maintenance";
 type CreateKind = "workstation" | "equipment";
 const initialActionState: EquipmentActionState = {};
 
 const equipmentIcons: Record<EquipmentType, LucideIcon> = {
-  pc: Cpu,
+  pc: Computer,
   laptop: Laptop,
   monitor: Monitor,
   mouse: Mouse,
@@ -131,25 +135,25 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
   const selectedEquipment = equipment.find((item) => item.id === (selectedWorkstation ? routing.nestedEquipmentId : routing.selectedItemId)) ?? null;
   const workstationNames = useMemo(() => new Map(workstations.map((item) => [item.id, `${t("workstation.numberLabel", { number: item.number })}${item.name ? ` · ${item.name}` : ""}`])), [t, workstations]);
-  const inventoryItems = equipment.filter((item) => isOtherEquipment(item.equipmentType) || !item.workstationId);
 
-  return <div className="space-y-5">
+
+  return <div className="min-w-0 space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div><h2 className="text-lg font-bold text-[var(--ui-text)]">{t("title")}</h2><p className="mt-1 text-sm leading-6 text-[var(--ui-text-secondary)]">{t("description")}</p></div>
+      <div><h2 className="text-lg font-bold text-[var(--ui-text)]">{t("title")}</h2></div>
       <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline"><Link href={`/office/equipment?view=${initialView}&create=workstation`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button>
-        <Button asChild><Link href={`/office/equipment?view=${initialView}&create=equipment`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addEquipment")}</Link></Button>
+        {initialView === "workstations" ? <Button asChild><Link href={`/office/equipment?view=${initialView}&create=workstation`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button> : null}
+        <Button asChild variant={initialView === "workstations" ? "outline" : "default"}><Link href={`/office/equipment?view=${initialView}&create=equipment`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addEquipment")}</Link></Button>
       </div>
     </div>
 
-    <nav aria-label={t("views.label")} className="flex gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">
-      {(["workstations", "other", "maintenance"] as const).map((view) => <Link key={view} href={`/office/equipment?view=${view}`} aria-current={initialView === view ? "page" : undefined} className={cn("flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:flex-none", initialView === view ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]")}>
-        {view === "workstations" ? <MonitorCog className="size-4" aria-hidden="true" /> : view === "other" ? <Boxes className="size-4" aria-hidden="true" /> : <Wrench className="size-4" aria-hidden="true" />}{t(`views.${view}`)}
+    <nav aria-label={t("views.label")} className="flex gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">
+      {(["inventory", "workstations", "maintenance"] as const).map((view) => <Link key={view} href={`/office/equipment?view=${view}`} aria-current={initialView === view ? "page" : undefined} className={cn("flex min-h-11 shrink-0 flex-1 items-center justify-center gap-1 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-2 text-xs font-semibold sm:gap-2 sm:px-3 sm:text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:flex-none", initialView === view ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm" : "text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]")}>
+        {view === "workstations" ? <MonitorCog className="size-4" aria-hidden="true" /> : view === "inventory" ? <Boxes className="size-4" aria-hidden="true" /> : <Wrench className="size-4" aria-hidden="true" />}{t(`views.${view}`)}
       </Link>)}
     </nav>
 
     {initialView === "workstations" ? <WorkstationList items={workstations} onOpen={routing.openItem} />
-      : initialView === "other" ? <EquipmentInventory items={inventoryItems} workstationNames={workstationNames} onOpen={routing.openItem} />
+      : initialView === "inventory" ? <EquipmentInventory items={equipment} workstationNames={workstationNames} onOpen={routing.openItem} />
       : <MaintenanceQueue items={equipment} workstationNames={workstationNames} today={today} onOpen={routing.openItem} />}
 
     <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
@@ -168,7 +172,7 @@ function WorkstationList({ items, onOpen }: { items: WorkstationItem[]; onOpen: 
     const peripheralCount = item.equipment.filter((equipmentItem) => isPeripheralEquipment(equipmentItem.equipmentType)).length;
     const specs = computer ? equipmentSpecificationSummary(computer, (config) => pcConfigurationSummaries(config, configurationLabels(t))) : "";
     return <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="min-h-44 cursor-pointer rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-left shadow-[var(--ui-shadow-panel)] transition-colors hover:border-[var(--ui-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:p-5">
-      <span className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><span className="min-w-0"><strong className="block truncate text-base text-[var(--ui-text)]">{t("workstation.numberLabel", { number: item.number })}</strong>{item.name ? <span className="mt-0.5 block truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</span> : null}</span></span><Pencil className="size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /></span>
+      <span className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><span className="min-w-0"><strong className="block truncate text-base text-[var(--ui-text)]">{t("workstation.numberLabel", { number: item.number })}</strong>{item.name ? <span className="mt-0.5 block truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</span> : null}</span></span><span className="text-xs text-[var(--ui-text-muted)]">{t(`workstation.types.${item.workstationType}`)}</span></span>
       <span className="mt-4 flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]">{item.assignedEmployee ? <><UserAvatar decorative imageUrl={item.assignedEmployee.avatarUrl} name={item.assignedEmployee.fullName} size="boardCard" /><span className="truncate font-medium">{item.assignedEmployee.fullName}</span></> : <><UserRound className="size-4" aria-hidden="true" /><span>{t("workstation.unassigned")}</span></>}</span>
       <span className="mt-4 block border-t border-[var(--ui-border-subtle)] pt-3"><span className="block truncate text-sm font-semibold text-[var(--ui-text)]">{computer ? computer.displayName : t("workstation.noComputer")}</span>{specs ? <span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]" title={specs}>{specs}</span> : null}<span className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--ui-text-muted)]"><span>{t("workstation.monitorCount", { count: monitorCount })}</span><span aria-hidden="true">·</span><span>{t("workstation.peripheralCount", { count: peripheralCount })}</span></span></span>
     </button>;
@@ -177,13 +181,45 @@ function WorkstationList({ items, onOpen }: { items: WorkstationItem[]; onOpen: 
 
 function EquipmentInventory({ items, workstationNames, onOpen }: { items: EquipmentItem[]; workstationNames: Map<string, string>; onOpen: (id: string) => void }) {
   const t = useTranslations("Equipment");
+  const [group, setGroup] = useState("all");
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState("all");
+  const [state, setState] = useState("all");
+  const [location, setLocation] = useState("all");
+  const visible = items.filter((item) => {
+    if (group === "computers" && !isComputerEquipment(item.equipmentType)) return false;
+    if (group === "peripherals" && item.equipmentType !== "monitor" && !isPeripheralEquipment(item.equipmentType)) return false;
+    if (group === "office" && !isOtherEquipment(item.equipmentType)) return false;
+    if (type !== "all" && type !== item.equipmentType) return false;
+    if (state !== "all" && state !== item.lifecycleState) return false;
+    if (location === "unattached" ? Boolean(item.workstationId) : location !== "all" && location !== item.workstationId) return false;
+    return [item.displayName, item.assetTag, item.serialNumber, item.manufacturer, item.model, t(`types.${item.equipmentType}`), item.workstationId ? workstationNames.get(item.workstationId) : ""].join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+  });
+  return <div className="space-y-4">
+    <div className="flex flex-wrap gap-1" aria-label={t("inventory.categories")}>{(["all", "computers", "peripherals", "office"] as const).map((value) => <Button key={value} variant="ghost" aria-pressed={group === value} className={cn(group === value && "bg-[var(--ui-surface-muted)] text-[var(--ui-text)]")} onClick={() => { setGroup(value); setType("all"); }}>{t(`inventory.${value}`)}</Button>)}</div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_11rem_10rem_14rem]">
+      <label className="relative"><span className="sr-only">{t("inventory.search")}</span><Search aria-hidden="true" className="absolute left-3 top-3.5 size-4 text-[var(--ui-text-muted)]" /><Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("inventory.search")} className="pl-9" /></label>
+      <Select aria-label={t("form.type")} value={type} onValueChange={setType}><SelectItem value="all">{t("inventory.allTypes")}</SelectItem>{EQUIPMENT_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`types.${value}`)}</SelectItem>)}</Select>
+      <Select aria-label={t("form.state")} value={state} onValueChange={setState}><SelectItem value="all">{t("inventory.allStates")}</SelectItem>{EQUIPMENT_LIFECYCLE_STATES.map((value) => <SelectItem key={value} value={value}>{t(`states.${value}`)}</SelectItem>)}</Select>
+      <Select aria-label={t("form.workstation")} value={location} onValueChange={setLocation}><SelectItem value="all">{t("inventory.allLocations")}</SelectItem><SelectItem value="unattached">{t("location.unattached")}</SelectItem>{Array.from(workstationNames, ([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}</Select>
+    </div>
+    <p role="status" className="text-xs text-[var(--ui-text-muted)]">{t("inventory.count", { count: visible.length })}</p>
+    {!visible.length ? <EmptyState Icon={Boxes} title={t("inventory.noMatches")} description={t("inventory.noMatchesDescription")} /> : group === "office" ? OTHER_EQUIPMENT_TYPES.map((value) => {
+      const grouped = visible.filter((item) => item.equipmentType === value);
+      return grouped.length ? <section key={value} aria-label={t(`types.${value}`)} className="space-y-2"><h3 className="text-sm font-semibold text-[var(--ui-text-secondary)]">{t(`types.${value}`)} <span className="ml-1 font-normal text-[var(--ui-text-muted)]">{grouped.length}</span></h3><EquipmentRows items={grouped} workstationNames={workstationNames} onOpen={onOpen} /></section> : null;
+    }) : <EquipmentRows items={visible} workstationNames={workstationNames} onOpen={onOpen} />}
+  </div>;
+}
+
+function EquipmentRows({ items, workstationNames, onOpen }: { items: EquipmentItem[]; workstationNames: Map<string, string>; onOpen: (id: string) => void }) {
+  const t = useTranslations("Equipment");
   if (!items.length) return <EmptyState Icon={Boxes} title={t("empty.equipmentTitle")} description={t("empty.equipmentDescription")} />;
   return <div className="divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{items.map((item) => {
     const Icon = equipmentIcons[item.equipmentType];
     const location = item.workstationId ? workstationNames.get(item.workstationId) ?? t("location.unknown") : t("location.unattached");
     return <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="grid min-h-16 w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] sm:px-5">
       <span className="flex size-9 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-[1.125rem]" aria-hidden="true" /></span>
-      <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm text-[var(--ui-text)]">{item.displayName}</strong><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)} · {location}{item.assetTag ? ` · ${item.assetTag}` : ""}</span></span>
+      <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><span className="shrink-0 font-mono text-xs text-[var(--ui-text-muted)]">{item.assetTag}</span><strong className="truncate text-sm text-[var(--ui-text)]">{item.displayName}</strong><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)} · {location}</span></span>
       <Pencil className="size-4 text-[var(--ui-text-subtle)]" aria-hidden="true" />
     </button>;
   })}</div>;
@@ -192,23 +228,25 @@ function EquipmentInventory({ items, workstationNames, onOpen }: { items: Equipm
 function MaintenanceQueue({ items, onOpen, today, workstationNames }: { items: EquipmentItem[]; onOpen: (id: string) => void; today: string; workstationNames: Map<string, string> }) {
   const t = useTranslations("Equipment");
   const locale = useLocale();
+  const [showAll, setShowAll] = useState(false);
   const queue = items.flatMap((item) => {
     const urgency = getMaintenanceUrgency(item.recurringMaintenanceEnabled, item.nextMaintenanceDueDate, today);
-    if (item.lifecycleState !== "in_service" && !urgency) return [];
+    if (!showAll && (item.lifecycleState === "retired" || (item.lifecycleState !== "in_service" && !urgency))) return [];
     return [{ item, urgency, priority: item.lifecycleState === "in_service" ? 0 : urgency === "overdue" ? 1 : 2 }];
   }).sort((a, b) => a.priority - b.priority || (a.item.nextMaintenanceDueDate ?? "9999").localeCompare(b.item.nextMaintenanceDueDate ?? "9999") || a.item.displayName.localeCompare(b.item.displayName));
-  if (!queue.length) return <EmptyState Icon={Wrench} title={t("maintenance.emptyTitle")} description={t("maintenance.emptyDescription")} />;
+
   return <section aria-labelledby="maintenance-queue-heading">
-    <div className="mb-3"><h3 id="maintenance-queue-heading" className="font-semibold text-[var(--ui-text)]">{t("maintenance.queueTitle")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("maintenance.queueDescription")}</p></div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 id="maintenance-queue-heading" className="font-semibold text-[var(--ui-text)]">{t("maintenance.queueTitle")}</h3><div className="flex gap-1"><Button variant="ghost" aria-pressed={!showAll} onClick={() => setShowAll(false)}>{t("maintenance.needsAttention")}</Button><Button variant="ghost" aria-pressed={showAll} onClick={() => setShowAll(true)}>{t("inventory.all")}</Button></div></div>
+    {!queue.length ? <EmptyState Icon={Wrench} title={t("maintenance.emptyTitle")} description={t("maintenance.emptyDescription")} /> : null}
     <div className="divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{queue.map(({ item, urgency }) => {
       const Icon = equipmentIcons[item.equipmentType];
       const location = item.workstationId ? workstationNames.get(item.workstationId) ?? t("location.unknown") : t("location.unattached");
       const due = item.nextMaintenanceDueDate ? formatDateOnly(item.nextMaintenanceDueDate, locale) : null;
-      const offset = item.nextMaintenanceDueDate && urgency ? maintenanceDayOffset(item.nextMaintenanceDueDate, today) : null;
-      const timing = offset === null ? t("maintenance.currentlyInService") : offset < 0 ? t("maintenance.overdueBy", { count: -offset }) : offset === 0 ? t("maintenance.dueToday") : t("maintenance.dueIn", { count: offset });
+      const offset = item.nextMaintenanceDueDate ? maintenanceDayOffset(item.nextMaintenanceDueDate, today) : null;
+      const timing = offset === null ? (item.lifecycleState === "in_service" ? t("maintenance.currentlyInService") : t("maintenance.notScheduled")) : offset < 0 ? t("maintenance.overdueBy", { count: -offset }) : offset === 0 ? t("maintenance.dueToday") : t("maintenance.dueIn", { count: offset });
       return <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="grid min-h-20 w-full cursor-pointer gap-2 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-5">
         <span className="hidden size-9 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)] sm:flex"><Icon className="size-[1.125rem]" aria-hidden="true" /></span>
-        <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm text-[var(--ui-text)]">{item.displayName}</strong><MaintenanceBadge item={item} urgency={urgency} /></span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)} · {location}{item.assetTag ? ` · ${item.assetTag}` : ""}</span></span>
+        <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><span className="shrink-0 font-mono text-xs text-[var(--ui-text-muted)]">{item.assetTag}</span><strong className="truncate text-sm text-[var(--ui-text)]">{item.displayName}</strong><MaintenanceBadge item={item} urgency={urgency} /></span><span className="mt-1 block truncate text-xs text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)} · {location}</span></span>
         <span className="text-xs text-[var(--ui-text-muted)] sm:text-right">{due ? <><span className="block font-semibold text-[var(--ui-text-secondary)]">{t("maintenance.due", { date: due })}</span><span>{timing}</span></> : timing}</span>
       </button>;
     })}</div>
@@ -233,6 +271,7 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
   const t = useTranslations("Equipment");
   const router = useRouter();
   const nextNumber = Math.max(0, ...workstations.map((workstation) => workstation.number)) + 1;
+  const [workstationType, setWorkstationType] = useState<WorkstationItem["workstationType"]>("office");
   const [quantity, setQuantity] = useState(1);
   const [startingNumber, setStartingNumber] = useState(nextNumber);
   const [drafts, setDrafts] = useState<WorkstationDraft[]>(() => [{ number: nextNumber, name: "", assignedEmployeeId: "__none" }]);
@@ -282,14 +321,14 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
     event.preventDefault();
     setError(undefined);
     startTransition(async () => {
-      const result = await createWorkstations({ workstations: drafts.map((draft) => ({ ...draft, assignedEmployeeId: assignEmployees ? draft.assignedEmployeeId : "__none" })) });
+      const result = await createWorkstations({ workstations: drafts.map((draft) => ({ ...draft, workstationType, assignedEmployeeId: assignEmployees ? draft.assignedEmployeeId : "__none" })) });
       if (result.error) setError(result.error);
       else if (quantity === 1 && result.id) onCreated(result.id);
       else { onClose(); router.refresh(); }
     });
   }
   const rowColumns = assignEmployees ? "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(12rem,1fr)]" : "sm:grid-cols-[7rem_minmax(0,1fr)]";
-  return <Dialog className="max-w-3xl sm:h-[min(48rem,calc(100dvh-2rem))]" closeDisabled={pending} closeLabel={t("close")} description={t("workstation.form.createDescription")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
+  return <Dialog className="max-w-3xl sm:h-[min(48rem,calc(100dvh-2rem))]" closeDisabled={pending} closeLabel={t("close")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
     <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 sm:p-6">
       <div className="flex shrink-0 flex-wrap items-end gap-4">
         <fieldset className="grid gap-1.5">
@@ -302,14 +341,15 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
         </fieldset>
         <FormField className="w-28" label={t("workstation.form.startingNumber")}><Input className="appearance-none text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" inputMode="numeric" type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => changeStartingNumber(Number(event.target.value))} /></FormField>
       </div>
-      <p className="shrink-0 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.bulkHelp")}</p>
+
+      <FormField className="max-w-48" label={t("workstation.form.type")}><Select value={workstationType} onValueChange={(value) => { if (value === "office" || value === "remote") setWorkstationType(value); }}>{(["office", "remote"] as const).map((value) => <SelectItem key={value} value={value}>{t(`workstation.types.${value}`)}</SelectItem>)}</Select></FormField>
       <div ref={editorRef} data-workstation-editor className="min-h-52 max-h-72 shrink-0 overflow-y-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] sm:max-h-none sm:min-h-0 sm:flex-1">
         <div className="divide-y divide-[var(--ui-border-subtle)]">
           <div className={cn("sticky top-0 z-10 hidden gap-3 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-muted)] sm:grid", rowColumns)}><span>{t("workstation.form.number")}</span><span>{t("workstation.form.name")} <span className="font-normal">({t("optional")})</span></span>{assignEmployees ? <span>{t("workstation.form.employee")} <span className="font-normal">({t("optional")})</span></span> : null}</div>
           {drafts.map((draft, index) => { const selectedEmployees = new Set(drafts.filter((_, draftIndex) => draftIndex !== index).map((item) => item.assignedEmployeeId)); return <div key={index} data-workstation-draft style={{ viewTransitionName: `workstation-draft-${index}` }} className={cn("grid gap-3 p-3", rowColumns)}><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.number")}</span><Input type="number" min={1} max={1_000_000} value={draft.number} onChange={(event) => updateDraft(index, { number: Number(event.target.value) || 0 })} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.name")} ({t("optional")})</span><Input maxLength={120} value={draft.name} onChange={(event) => updateDraft(index, { name: event.target.value })} /></label>{assignEmployees ? <label className="grid gap-1.5 text-sm font-medium text-[var(--ui-text-secondary)]"><span className="sm:sr-only">{t("workstation.form.employee")} ({t("optional")})</span><Select value={draft.assignedEmployeeId} onValueChange={(assignedEmployeeId) => updateDraft(index, { assignedEmployeeId })}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = existingAssignments.get(member.id); const unavailable = Boolean(assigned) || selectedEmployees.has(member.id); return <SelectItem key={member.id} value={member.id} disabled={unavailable && draft.assignedEmployeeId !== member.id} textValue={member.fullName}>{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</SelectItem>; })}</Select></label> : null}</div>; })}
         </div>
       </div>
-      <label className="flex min-h-11 shrink-0 cursor-pointer items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" checked={assignEmployees} onChange={(event) => setAssignEmployees(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("workstation.form.assignEmployees")}</span><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{t("workstation.form.assignEmployeesHelp")}</span></span></label>
+      <label className="flex min-h-11 shrink-0 cursor-pointer items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" checked={assignEmployees} onChange={(event) => setAssignEmployees(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("workstation.form.assignEmployees")}</span></span></label>
       <ActionError error={error} />
       <div className="flex shrink-0 justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createWorkstations", { count: quantity })}</Button></div>
     </form>
@@ -321,7 +361,7 @@ function CreateEquipmentDialog({ isOpen, workstations, onClose, onCreated }: { i
   const processed = useRef(false);
   const [state, action, pending] = useActionState(createEquipment, initialActionState);
   useEffect(() => { if (state.success && state.id && !processed.current) { processed.current = true; onCreated(state.id); } }, [onCreated, state.id, state.success]);
-  return <Dialog className="max-w-2xl" closeDisabled={pending} closeLabel={t("close")} description={t("form.createDescription")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("form.createTitle")}>
+  return <Dialog className="max-w-2xl" closeDisabled={pending} closeLabel={t("close")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("form.createTitle")}>
     <form action={action} className="flex min-h-0 flex-col gap-5 overflow-y-auto p-5 sm:p-6"><EquipmentFormFields workstations={workstations} initialType="other" /><ActionError error={state.error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createEquipment")}</Button></div></form>
   </Dialog>;
 }
@@ -339,6 +379,7 @@ function WorkstationDrawer({ allEquipment, isTopLayer, item, members, workstatio
   const savedNameRef = useRef(item?.name ?? "");
   const [workstationError, setWorkstationError] = useState<EquipmentActionState["error"]>();
   const [equipmentError, setEquipmentError] = useState<EquipmentActionState["error"]>();
+  const [workstationType, setWorkstationType] = useState(item?.workstationType ?? "office");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(item?.assignedEmployee?.id ?? "__none");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsTrigger, setActionsTrigger] = useState<HTMLButtonElement | null>(null);
@@ -359,17 +400,17 @@ function WorkstationDrawer({ allEquipment, isTopLayer, item, members, workstatio
   const workstationId = item.id;
   const workstationNumber = item.number;
   const workstationName = t("workstation.numberLabel", { number: item.number });
-  function run(operation: () => Promise<EquipmentActionState>, setOperationError: (error: EquipmentActionState["error"]) => void, after?: () => void) { setOperationError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setOperationError(result.error); else { after?.(); router.refresh(); } }); }
-  function saveDetails(name: string, employeeId: string, after?: () => void) { run(() => updateWorkstation({ workstationId, number: workstationNumber, name, assignedEmployeeId: employeeId }), setWorkstationError, after); }
-  function renumber(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); run(() => updateWorkstation({ workstationId, number, name: nameRef.current, assignedEmployeeId }), setWorkstationError, () => setRenumberOpen(false)); }
+  function run(operation: () => Promise<EquipmentActionState>, setOperationError: (error: EquipmentActionState["error"]) => void, after?: () => void) { setOperationError(undefined); startTransition(async () => { try { const result = await operation(); if (result.error) setOperationError(result.error); else { after?.(); router.refresh(); } } catch { setOperationError("update"); } }); }
+  function saveDetails(name: string, employeeId: string, after?: () => void, type = workstationType) { run(() => updateWorkstation({ workstationId, number: workstationNumber, workstationType: type, name, assignedEmployeeId: employeeId }), setWorkstationError, after); }
+  function renumber(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); run(() => updateWorkstation({ workstationId, number, workstationType, name: nameRef.current, assignedEmployeeId }), setWorkstationError, () => setRenumberOpen(false)); }
   function remove() { if (!window.confirm(t("workstation.deleteConfirm", { name: workstationName }))) return; run(() => deleteWorkstation({ workstationId }), setWorkstationError, onClose); }
   function attach(equipmentId: string) { run(() => assignEquipment({ equipmentId, workstationId }), setEquipmentError); }
   function detach(equipmentId: string) { run(() => assignEquipment({ equipmentId, workstationId: null }), setEquipmentError); }
   const actionsPortal = actionsTrigger?.closest("dialog, [role='dialog']") ?? undefined;
-  return <><Drawer isOpen isTopLayer={isTopLayer} onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={workstationName} className="w-full max-w-[38rem]">
+  return <><Drawer isOpen isTopLayer={isTopLayer && !renumberOpen} onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={workstationName} className="w-full max-w-[38rem]">
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-start gap-3"><span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]"><MonitorCog className="size-5" aria-hidden="true" /></span><div className="min-w-0"><h2 className="truncate text-lg font-bold text-[var(--ui-text)]">{workstationName}</h2>{item.name ? <p className="mt-0.5 truncate text-sm text-[var(--ui-text-secondary)]">{item.name}</p> : null}<div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-[var(--ui-text-muted)]">{item.assignedEmployee ? <><UserAvatar decorative imageUrl={item.assignedEmployee.avatarUrl} name={item.assignedEmployee.fullName} size="board" /><span className="truncate">{item.assignedEmployee.fullName}</span></> : <><UserRound className="size-4 shrink-0" aria-hidden="true" /><span>{t("workstation.unassigned")}</span></>}</div></div></div><div className="flex shrink-0 items-center"><PopoverPrimitive.Root open={actionsOpen} onOpenChange={setActionsOpen}><PopoverPrimitive.Trigger asChild><button ref={setActionsTrigger} type="button" disabled={pending} aria-label={t("actions.more")} aria-haspopup="menu" className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><MoreHorizontal className="size-5" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal container={actionsPortal}><PopoverPrimitive.Content role="menu" align="end" sideOffset={6} className="z-[80] min-w-48 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); setWorkstationError(undefined); setNumber(String(item.number)); setRenumberOpen(true); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Pencil className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t("workstation.actions.renumber")}</button><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); remove(); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("actions.delete")}</button></PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="grid gap-4 p-5 sm:p-6"><FormField label={t("workstation.form.name")} optional optionalLabel={t("optional")}><Input maxLength={120} defaultValue={item.name ?? ""} onChange={(event) => { nameRef.current = event.target.value; }} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name === savedNameRef.current) return; nameRef.current = name; saveDetails(name, assignedEmployeeId, () => { savedNameRef.current = name; }); }} /></FormField><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select value={assignedEmployeeId} onValueChange={(value) => { setAssignedEmployeeId(value); saveDetails(nameRef.current, value); }}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = assignments.get(member.id); return <SelectItem key={member.id} value={member.id} disabled={Boolean(assigned)} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</span></SelectItem>; })}</Select></FormField><ActionError error={workstationError === "numberConflict" ? undefined : workstationError} /></div>
+      <div className="grid gap-4 p-5 sm:p-6"><FormField label={t("workstation.form.type")}><Select disabled={pending} value={workstationType} onValueChange={(value) => { if (value !== "office" && value !== "remote") return; saveDetails(nameRef.current, assignedEmployeeId, () => setWorkstationType(value), value); }}>{(["office", "remote"] as const).map((value) => <SelectItem key={value} value={value}>{t(`workstation.types.${value}`)}</SelectItem>)}</Select></FormField><FormField label={t("workstation.form.name")} optional optionalLabel={t("optional")}><Input disabled={pending} maxLength={120} defaultValue={item.name ?? ""} onChange={(event) => { nameRef.current = event.target.value; }} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name === savedNameRef.current) return; nameRef.current = name; saveDetails(name, assignedEmployeeId, () => { savedNameRef.current = name; }); }} /></FormField><FormField label={t("workstation.form.employee")} optional optionalLabel={t("optional")}><Select disabled={pending} value={assignedEmployeeId} onValueChange={(value) => { saveDetails(nameRef.current, value, () => setAssignedEmployeeId(value)); }}><SelectItem value="__none">{t("workstation.unassigned")}</SelectItem>{members.map((member) => { const assigned = assignments.get(member.id); return <SelectItem key={member.id} value={member.id} disabled={Boolean(assigned)} textValue={member.fullName}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatarUrl} name={member.fullName} size="boardCard" />{member.fullName}{assigned ? ` · ${t("workstation.form.assignedElsewhere", { workstation: t("workstation.numberLabel", { number: assigned.number }) })}` : ""}</span></SelectItem>; })}</Select></FormField><ActionError error={workstationError === "numberConflict" ? undefined : workstationError} /></div>
       <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{t("workstation.attached")}</h3><span className="rounded-full bg-[var(--ui-surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-text-muted)]">{item.equipment.length}</span></div>
         <ActionError error={equipmentError} />
         <div className="mt-5 space-y-5"><EquipmentGroup title={t("groups.computers")} attachLabel={t("assignment.attachComputer")} candidates={computerCandidates} items={computers} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /><EquipmentGroup title={t("groups.monitors")} attachLabel={t("assignment.attachMonitor")} candidates={monitorCandidates} items={monitors} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /><EquipmentGroup title={t("groups.peripherals")} attachLabel={t("assignment.attachPeripheral")} candidates={peripheralCandidates} items={peripherals} locationNames={locationNames} onAttach={attach} onOpen={onOpenEquipment} onDetach={detach} pending={pending} />{other.length ? <EquipmentGroup title={t("groups.other")} items={other} onOpen={onOpenEquipment} onDetach={detach} pending={pending} /> : null}</div>
@@ -410,32 +451,96 @@ function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<EquipmentActionState["error"]>();
+  const dirtyConfiguration = useRef(false);
+  const inFlight = useRef(0);
+  const writeQueue = useRef(Promise.resolve());
+  const failures = useRef(new Map<string, { error: EquipmentActionState["error"]; retry: () => void }>());
+  const retryRef = useRef<(() => void) | null>(null);
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsTrigger, setActionsTrigger] = useState<HTMLButtonElement | null>(null);
   const [pending, startTransition] = useTransition();
+  useEffect(() => {
+    const preventLoss = (event: BeforeUnloadEvent) => {
+      if (dirtyConfiguration.current || failures.current.size || inFlight.current) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", preventLoss);
+    return () => window.removeEventListener("beforeunload", preventLoss);
+  }, []);
   if (!item) return null;
   const Icon = equipmentIcons[item.equipmentType];
   const currentWorkstation = item.workstationId ? workstations.find((workstation) => workstation.id === item.workstationId) : null;
   const workstationName = currentWorkstation ? `${t("workstation.numberLabel", { number: currentWorkstation.number })}${currentWorkstation.name ? ` · ${currentWorkstation.name}` : ""}` : item.workstationId ? t("location.unknown") : t("location.unattached");
   const equipmentId = item.id;
   const equipmentName = item.displayName;
-  function run(operation: () => Promise<EquipmentActionState>, after?: () => void) { setError(undefined); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else { after?.(); router.refresh(); } }); }
-  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => updateEquipment({ equipmentId, equipmentType: data.get("equipmentType"), lifecycleState: data.get("lifecycleState"), displayName: data.get("displayName"), workstationId: data.get("workstationId"), manufacturer: data.get("manufacturer"), model: data.get("model"), serialNumber: data.get("serialNumber"), assetTag: data.get("assetTag"), cpu: data.get("cpu") ?? "", gpu: data.get("gpu") ?? "", ram: data.get("ram") ?? "", storage: data.get("storage") ?? "", pcConfiguration: data.get("pcConfiguration"), notes: data.get("notes"), recurringMaintenanceEnabled: data.get("recurringMaintenanceEnabled") === "on", maintenanceIntervalMonths: data.get("maintenanceIntervalMonths") ?? "", nextMaintenanceDueDate: data.get("nextMaintenanceDueDate") ?? "" })); }
+  function canLeave() {
+    if (inFlight.current || ((dirtyConfiguration.current || failures.current.size) && !window.confirm(t("form.discardChanges")))) return false;
+    dirtyConfiguration.current = false;
+    return true;
+  }
+  function close() { if (canLeave()) onClose(); }
+  function run(operation: () => Promise<EquipmentActionState>, after?: () => void, key = "operation") {
+    setSaved(false);
+    inFlight.current += 1;
+    const resultPromise = writeQueue.current.then(operation);
+    writeQueue.current = resultPromise.then(() => undefined, () => undefined);
+    startTransition(async () => {
+      let result: EquipmentActionState;
+      try { result = await resultPromise; } catch { result = { error: "update" }; }
+      inFlight.current -= 1;
+      if (result.error) failures.current.set(key, { error: result.error, retry: () => run(operation, after, key) });
+      else { failures.current.delete(key); after?.(); router.refresh(); }
+      const failure = failures.current.values().next().value;
+      setError(failure?.error);
+      retryRef.current = failure?.retry ?? null;
+      setSaved(!failure && !result.error);
+    });
+  }
+  function saveField(patch: EquipmentFieldUpdate) { run(() => updateEquipmentField(patch), undefined, patch.field); }
+  function renameCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = new FormData(event.currentTarget).get("assetTag");
+    run(() => updateEquipmentField({ equipmentId, field: "assetTag", value }), () => setCodeOpen(false));
+  }
   function remove() { if (!window.confirm(t("deleteConfirm", { name: equipmentName }))) return; run(() => deleteEquipment({ equipmentId }), onClose); }
   const actionsPortal = actionsTrigger?.closest("dialog, [role='dialog']") ?? undefined;
-  return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.displayName} className="w-full max-w-[42rem]">
-    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.equipmentType}`)}</p><div className="mt-1 flex min-w-0 flex-wrap items-center gap-2"><h2 className="truncate text-lg font-bold">{item.displayName}</h2><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{workstationName}</p></div></div><div className="flex shrink-0 items-center"><PopoverPrimitive.Root open={actionsOpen} onOpenChange={setActionsOpen}><PopoverPrimitive.Trigger asChild><button ref={setActionsTrigger} type="button" disabled={pending} aria-label={t("actions.more")} aria-haspopup="menu" className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><MoreHorizontal className="size-5" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal container={actionsPortal}><PopoverPrimitive.Content role="menu" align="end" sideOffset={6} className="z-[80] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); remove(); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("actions.delete")}</button></PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root><button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
-    <div className="min-h-0 flex-1 overflow-y-auto"><form onSubmit={submit} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={maintenanceMode} workstations={workstations} /><ActionError error={error} /><div className="flex justify-end border-t border-[var(--ui-border)] pt-5"><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("actions.saveEquipment")}</Button></div></form>{maintenanceMode ? <><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></> : <EquipmentMaintenanceSummary item={item} today={today} />}</div>
-  </Drawer>;
+  return <><Drawer isOpen isTopLayer={!serviceOpen && !codeOpen} onClose={close} initialFocusRef={closeRef} focusKey={item.id} title={item.displayName} className="w-full max-w-[42rem]">
+    <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{item.assetTag} · {t(`types.${item.equipmentType}`)}</p><div className="mt-1 flex min-w-0 flex-wrap items-center gap-2"><h2 className="truncate text-lg font-bold">{item.displayName}</h2><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", lifecycleStyle(item.lifecycleState))}>{t(`states.${item.lifecycleState}`)}</span></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{workstationName}</p></div></div><div className="flex shrink-0 items-center"><PopoverPrimitive.Root open={actionsOpen} onOpenChange={setActionsOpen}><PopoverPrimitive.Trigger asChild><button ref={setActionsTrigger} type="button" disabled={pending} aria-label={t("actions.more")} aria-haspopup="menu" className="flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-50"><MoreHorizontal className="size-5" aria-hidden="true" /></button></PopoverPrimitive.Trigger><PopoverPrimitive.Portal container={actionsPortal}><PopoverPrimitive.Content role="menu" align="end" sideOffset={6} className="z-[80] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); setCodeOpen(true); }} className="flex min-h-10 w-full items-center gap-2 rounded-[var(--ui-radius-control)] px-3 text-left text-sm hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Pencil className="size-4" aria-hidden="true" />{t("actions.changeCode")}</button><button type="button" role="menuitem" onClick={() => { setActionsOpen(false); remove(); }} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("actions.delete")}</button></PopoverPrimitive.Content></PopoverPrimitive.Portal></PopoverPrimitive.Root><button ref={closeRef} type="button" disabled={pending} onClick={close} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="px-5 pt-3 sm:px-6" role="status" aria-live="polite">{pending ? <span className="text-xs text-[var(--ui-text-muted)]">{t("actions.saving")}</span> : saved ? <span className="text-xs text-[var(--ui-text-muted)]">{t("actions.saved")}</span> : null}<ActionError error={error} />{error && retryRef.current ? <Button variant="ghost" onClick={() => retryRef.current?.()}>{t("actions.retry")}</Button> : null}</div>
+      {maintenanceMode ? <><MaintenanceSchedule item={item} pending={pending} run={run} /><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></> : <><fieldset aria-busy={pending} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields pending={pending} item={item} showMaintenanceFields={false} workstations={workstations} onSave={saveField} onDirtyChange={(dirty) => { dirtyConfiguration.current = dirty; }} /></fieldset><EquipmentMaintenanceSummary item={item} today={today} onNavigate={canLeave} onStartService={() => setServiceOpen(true)} /></>}
+    </div>
+  </Drawer>
+  <Dialog className="max-w-lg" isOpen={serviceOpen} closeDisabled={pending} closeLabel={t("close")} title={t("service.send")} onRequestClose={(reason) => { if (!pending && reason !== "outside") setServiceOpen(false); }}><div className="overflow-y-auto p-5 sm:p-6"><p className="mb-4 text-sm text-[var(--ui-text-muted)]">{item.assetTag} · {item.displayName}</p><StartServiceForm item={item} pending={pending} today={today} run={(operation) => run(operation, () => setServiceOpen(false))} /><ActionError error={error} /></div></Dialog>
+  <Dialog className="max-w-sm" isOpen={codeOpen} closeDisabled={pending} closeLabel={t("close")} title={t("actions.changeCode")} onRequestClose={() => { if (!pending) setCodeOpen(false); }}><form onSubmit={renameCode} className="grid gap-4 p-5 sm:p-6"><FormField label={t("form.assetTag")}><Input data-dialog-initial-focus name="assetTag" required maxLength={160} defaultValue={item.assetTag ?? ""} /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("form.codeChangeHint")}</span></FormField><ActionError error={error} /><Button type="submit" disabled={pending}>{t("actions.changeCode")}</Button></form></Dialog></>;
 }
 
-function EquipmentMaintenanceSummary({ item, today }: { item: EquipmentItem; today: string }) {
+function MaintenanceSchedule({ item, pending, run }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>) => void }) {
+  const t = useTranslations("Equipment");
+  const [enabled, setEnabled] = useState(item.recurringMaintenanceEnabled);
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    run(() => updateEquipmentMaintenance({ equipmentId: item.id, enabled, interval: enabled ? data.get("interval") : null, dueDate: enabled ? data.get("dueDate") : null }));
+  }
+  return <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><h3 className="text-sm font-semibold">{t("maintenance.recurringTitle")}</h3><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-5 accent-[var(--ui-action-primary)]" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />{t("maintenance.enabled")}</label>{enabled ? <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="interval" min={1} max={120} required defaultValue={item.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><Input type="date" name="dueDate" required defaultValue={item.nextMaintenanceDueDate ?? ""} /></FormField></div> : null}<Button className="justify-self-end" type="submit" disabled={pending}>{t("maintenance.saveSchedule")}</Button></form>;
+}
+
+function EquipmentMaintenanceSummary({ item, today, onStartService, onNavigate }: { item: EquipmentItem; today: string; onStartService: () => void; onNavigate: () => boolean }) {
   const t = useTranslations("Equipment");
   const locale = useLocale();
   const openService = item.serviceEvents.find((event) => !event.completedOn);
   const urgency = getMaintenanceUrgency(item.recurringMaintenanceEnabled, item.nextMaintenanceDueDate, today);
   const status = openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : item.nextMaintenanceDueDate ? t("maintenance.due", { date: formatDateOnly(item.nextMaintenanceDueDate, locale) }) : t("maintenance.notScheduled");
-  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]"><Wrench className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="text-sm font-semibold">{t("maintenance.summaryTitle")}</h3><div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]"><span>{status}</span><MaintenanceBadge item={item} urgency={urgency} /></div></div></div><Button asChild variant="outline"><Link href={`/office/equipment?view=maintenance&item=${item.id}`}>{t("maintenance.openWorkspace")}</Link></Button></div></section>;
+  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]"><Wrench className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="text-sm font-semibold">{t("maintenance.summaryTitle")}</h3><div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]"><span>{status}</span><MaintenanceBadge item={item} urgency={urgency} /></div></div></div><div className="flex flex-wrap gap-2">{!openService && item.lifecycleState !== "retired" ? <Button variant="outline" onClick={onStartService}>{t("service.send")}</Button> : null}<Button asChild variant="ghost"><Link onClick={(event) => { if (!onNavigate()) event.preventDefault(); }} href={`/office/equipment?view=maintenance&item=${item.id}`}>{t("maintenance.openWorkspace")}</Link></Button></div></div></section>;
+}
+
+function StartServiceForm({ item, pending, run, today }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>) => void; today: string }) {
+  const t = useTranslations("Equipment");
+  function start(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => startEquipmentService({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), serviceProvider: data.get("serviceProvider"), notes: data.get("notes") })); }
+  return <form onSubmit={start} className="mt-4 grid gap-4"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.type")}><Select name="eventType" defaultValue="regular_maintenance"><SelectItem value="regular_maintenance">{t("history.types.regular_maintenance")}</SelectItem><SelectItem value="repair">{t("history.types.repair")}</SelectItem><SelectItem value="upgrade">{t("history.types.upgrade")}</SelectItem></Select></FormField><FormField label={t("service.sentDate")}><Input type="date" name="startedOn" max={today} required defaultValue={today} /></FormField></div><OptionalInput name="serviceProvider" label={t("service.provider")} maxLength={160} /><FormField label={t("service.startNotes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("service.send")}</Button></form>;
 }
 
 function ServicePanel({ item, pending, run, today }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>, after?: () => void) => void; today: string }) {
@@ -443,12 +548,12 @@ function ServicePanel({ item, pending, run, today }: { item: EquipmentItem; pend
   const locale = useLocale();
   const [showHistoryForm, setShowHistoryForm] = useState(false);
   const openService = item.serviceEvents.find((event) => !event.completedOn);
-  function start(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); run(() => startEquipmentService({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), serviceProvider: data.get("serviceProvider"), notes: data.get("notes") })); }
+
   function complete(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if (!openService) return; const data = new FormData(event.currentTarget); const costAmount = data.get("costAmount"); run(() => completeEquipmentService({ serviceEventId: openService.id, completedOn: data.get("completedOn"), returnState: data.get("returnState"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") })); }
   function record(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); const costAmount = data.get("costAmount"); run(() => recordEquipmentHistory({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), completedOn: data.get("completedOn"), serviceProvider: data.get("serviceProvider"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") }), () => { form.reset(); setShowHistoryForm(false); }); }
-  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{t("service.title")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : t("service.description")}</p></div><Wrench className="size-5 text-[var(--ui-text-muted)]" aria-hidden="true" /></div>
+  return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{t("service.title")}</h3><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : null}</p></div><Wrench className="size-5 text-[var(--ui-text-muted)]" aria-hidden="true" /></div>
     {openService ? <form onSubmit={complete} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><p className="text-sm font-semibold">{t(`history.types.${openService.eventType}`)}</p><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.returnDate")}><Input type="date" name="completedOn" min={openService.startedOn} max={today} required defaultValue={today} /></FormField><FormField label={t("service.returnState")}><Select name="returnState" defaultValue="active"><SelectItem value="active">{t("states.active")}</SelectItem><SelectItem value="spare">{t("states.spare")}</SelectItem></Select></FormField></div><CostFields /><FormField label={t("service.completionNotes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("service.complete")}</Button></form>
-      : item.lifecycleState !== "retired" ? <form onSubmit={start} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.type")}><Select name="eventType" defaultValue="regular_maintenance"><SelectItem value="regular_maintenance">{t("history.types.regular_maintenance")}</SelectItem><SelectItem value="repair">{t("history.types.repair")}</SelectItem><SelectItem value="upgrade">{t("history.types.upgrade")}</SelectItem></Select></FormField><FormField label={t("service.sentDate")}><Input type="date" name="startedOn" max={today} required defaultValue={today} /></FormField></div><OptionalInput name="serviceProvider" label={t("service.provider")} maxLength={160} /><FormField label={t("service.startNotes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("service.send")}</Button></form> : <p className="mt-4 text-sm text-[var(--ui-text-muted)]">{t("service.retired")}</p>}
+      : item.lifecycleState !== "retired" ? <StartServiceForm item={item} pending={pending} run={run} today={today} /> : <p className="mt-4 text-sm text-[var(--ui-text-muted)]">{t("service.retired")}</p>}
     <div className="mt-5 border-t border-[var(--ui-border)] pt-5"><Button type="button" variant="outline" disabled={pending} onClick={() => setShowHistoryForm((value) => !value)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("history.record")}</Button>{showHistoryForm ? <form onSubmit={record} className="mt-4 grid gap-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4"><div className="grid gap-4 sm:grid-cols-2"><FormField label={t("service.type")}><Select name="eventType" defaultValue="repair"><SelectItem value="repair">{t("history.types.repair")}</SelectItem><SelectItem value="upgrade">{t("history.types.upgrade")}</SelectItem></Select></FormField><FormField label={t("history.completedDate")}><Input type="date" name="completedOn" max={today} required defaultValue={today} /></FormField></div><FormField label={t("history.startedDate")} optional optionalLabel={t("optional")}><Input type="date" name="startedOn" max={today} /></FormField><OptionalInput name="serviceProvider" label={t("service.provider")} maxLength={160} /><CostFields /><FormField label={t("history.details")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} /></FormField><div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => setShowHistoryForm(false)}>{t("cancel")}</Button><Button type="submit" disabled={pending}>{pending ? t("actions.saving") : t("history.save")}</Button></div></form> : null}</div>
   </section>;
 }

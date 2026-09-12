@@ -117,14 +117,19 @@ submission/office-assignment migrations and RLS tests.
 
 ### Equipment
 
-- `workstations` are studio-owned physical positions with a unique required
-  positive number, an optional name, and an optional current active
+- `workstations` are studio-owned Office or Remote positions sharing a unique
+  required positive number, an optional name, and an optional current active
   studio-member assignment. One employee may hold at most one current
   workstation assignment per studio; assignment history is intentionally not
   modeled. Admin bulk creation is an atomic guarded RPC.
 - `equipment` rows have stable identities independent of workstation placement.
   The nullable, studio-safe workstation relationship supports attachment,
   detachment, and reassignment without replacing the equipment row.
+- `equipment.asset_tag` is the inventory code. A private trigger automatically
+  allocates a studio/type-prefixed code when omitted; existing asset tags remain
+  verbatim. Case-insensitive reservations survive renaming, retirement, and
+  deletion. Only an administrator can rename a code; old codes cannot be reused.
+  The private counters and reservation ledger have no client grants.
 - Equipment stores its type, lifecycle state and category-specific identity.
   PCs own a schema-validated `pc_configuration` JSON document for processor,
   integrated/discrete graphics, memory and ordered storage drives; components
@@ -138,8 +143,11 @@ submission/office-assignment migrations and RLS tests.
   fallback applies); retired items remain inventory records.
 - Create/edit uses one open identification/configuration accordion section, with
   measured height and opacity transitions and reduced-motion support. Equipment
-  details show a concise maintenance summary; recurring scheduling, service
-  operations, and history management live in the Maintenance view.
+  details autosave isolated fields on blur/selection; PC configuration remains
+  an explicit atomic save. They show a concise maintenance summary with a focused
+  service-start dialog. Recurring scheduling, service completion, and history
+  management live in the Maintenance view; schedule writes are atomic and do not
+  submit other equipment fields.
 - Workstations, equipment, maintenance configuration, and service history are
   administrator-only at grants, RLS, Server Action, and route boundaries.
 - Optional recurring maintenance stores an interval and an explicit next due
@@ -148,8 +156,11 @@ submission/office-assignment migrations and RLS tests.
 - `equipment_service_events` is append-oriented history for regular maintenance,
   repair, and upgrade. Atomic RPCs coordinate the single open service event with
   the equipment `in_service` lifecycle; return explicitly selects Active or Spare.
-- The admin-only `/office/equipment` workspace provides Workstations, Other
-  equipment, and a service-first maintenance queue. Workstation details group
+- The admin-only `/office/equipment` workspace provides Inventory, Workstations,
+  and Maintenance. Inventory includes every item, with category, type, lifecycle,
+  location, and search filters; office equipment is grouped by existing types.
+  Maintenance defaults to operational attention and can show all items to access
+  schedules/history even when nothing is due. Workstation details group
   computers, monitors, and peripherals while keeping every attached device as
   an independent equipment row. Workstation name and employee changes autosave;
   renumbering and deletion remain explicit secondary actions. Opening attached

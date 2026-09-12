@@ -10,6 +10,7 @@ const optionalCost = z.union([z.coerce.number().positive().max(9_999_999_999.99)
 
 export const workstationInputSchema = z.object({
   number: z.coerce.number().int().min(1).max(1_000_000),
+  workstationType: z.enum(["office", "remote"]).default("office"),
   name: optionalText(120),
   assignedEmployeeId: nullableUuid,
 });
@@ -60,6 +61,28 @@ export const equipmentInputSchema = z.object({
 });
 
 export const equipmentUpdateSchema = equipmentInputSchema.and(z.object({ equipmentId: z.string().uuid() }));
+// Single-field writes cannot overwrite a concurrent service transition or schedule.
+export const equipmentFieldUpdateSchema = z.discriminatedUnion("field", [
+  z.object({ equipmentId: z.uuid(), field: z.literal("equipmentType"), value: z.enum(EQUIPMENT_TYPES) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("displayName"), value: z.string().trim().min(1).max(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("lifecycleState"), value: z.enum(["active", "spare", "retired"]) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("workstationId"), value: nullableUuid }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("assetTag"), value: z.string().trim().min(1).max(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("manufacturer"), value: optionalText(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("model"), value: optionalText(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("serialNumber"), value: optionalText(160) }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("notes"), value: optionalText(5000) }),
+  ...(["cpu", "gpu", "ram", "storage"] as const).map((field) => z.object({ equipmentId: z.uuid(), field: z.literal(field), value: optionalText(500) })),
+  z.object({ equipmentId: z.uuid(), field: z.literal("pcConfiguration"), value: pcConfigurationSchema.nullable() }),
+]);
+export type EquipmentFieldUpdate = z.infer<typeof equipmentFieldUpdateSchema>;
+export const equipmentMaintenanceSchema = z.object({
+  equipmentId: z.uuid(),
+  enabled: z.boolean(),
+  interval: z.coerce.number().int().min(1).max(120).nullable(),
+  dueDate: z.iso.date().nullable(),
+}).refine((value) => !value.enabled || (value.interval !== null && value.dueDate !== null));
+
 export const equipmentDeleteSchema = z.object({ equipmentId: z.string().uuid() });
 export const equipmentAssignmentSchema = z.object({ equipmentId: z.string().uuid(), workstationId: nullableUuid });
 

@@ -804,7 +804,7 @@ export type Database = {
       }
       equipment: {
         Row: {
-          asset_tag: string | null
+          asset_tag: string
           cpu: string | null
           created_at: string
           display_name: string
@@ -829,7 +829,7 @@ export type Database = {
           workstation_id: string | null
         }
         Insert: {
-          asset_tag?: string | null
+          asset_tag?: string
           cpu?: string | null
           created_at?: string
           display_name: string
@@ -854,7 +854,7 @@ export type Database = {
           workstation_id?: string | null
         }
         Update: {
-          asset_tag?: string | null
+          asset_tag?: string
           cpu?: string | null
           created_at?: string
           display_name?: string
@@ -2566,6 +2566,7 @@ export type Database = {
           number: number
           studio_id: string
           updated_at: string
+          workstation_type: Database["public"]["Enums"]["workstation_type"]
         }
         Insert: {
           assigned_employee_id?: string | null
@@ -2575,6 +2576,7 @@ export type Database = {
           number: number
           studio_id: string
           updated_at?: string
+          workstation_type?: Database["public"]["Enums"]["workstation_type"]
         }
         Update: {
           assigned_employee_id?: string | null
@@ -2584,6 +2586,7 @@ export type Database = {
           number?: number
           studio_id?: string
           updated_at?: string
+          workstation_type?: Database["public"]["Enums"]["workstation_type"]
         }
         Relationships: [
           {
@@ -3084,6 +3087,7 @@ export type Database = {
         | "medical_appointment"
         | "sick_leave"
         | "other"
+      workstation_type: "office" | "remote"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3308,6 +3312,7 @@ export const Constants = {
         "sick_leave",
         "other",
       ],
+      workstation_type: ["office", "remote"],
     },
   },
 } as const

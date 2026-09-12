@@ -1,11 +1,14 @@
 "use server";
 
+import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { equipmentDisplayName } from "@/lib/equipment";
 import {
   equipmentAssignmentSchema,
+  equipmentFieldUpdateSchema,
+  equipmentMaintenanceSchema,
   equipmentDeleteSchema,
   equipmentInputSchema,
   equipmentUpdateSchema,
@@ -30,7 +33,7 @@ function formValue(formData: FormData, key: string) {
 }
 
 function workstationValues(formData: FormData) {
-  return { number: formValue(formData, "number"), name: formValue(formData, "name"), assignedEmployeeId: formValue(formData, "assignedEmployeeId") };
+  return { number: formValue(formData, "number"), workstationType: formValue(formData, "workstationType") || "office", name: formValue(formData, "name"), assignedEmployeeId: formValue(formData, "assignedEmployeeId") };
 }
 
 function equipmentValues(formData: FormData) {
@@ -57,7 +60,7 @@ function equipmentPayload(input: EquipmentInput) {
     manufacturer: input.manufacturer,
     model: input.model,
     serial_number: input.serialNumber,
-    asset_tag: input.assetTag,
+    ...(input.assetTag ? { asset_tag: input.assetTag } : {}),
     ...(input.pcConfiguration !== undefined ? { pc_configuration: input.pcConfiguration } : {}),
     cpu: input.cpu,
     gpu: input.gpu,
@@ -96,7 +99,7 @@ export async function createWorkstations(input: unknown): Promise<EquipmentActio
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_workstations", {
     p_studio_id: admin.studio_id,
-    p_workstations: parsed.data.workstations.map((workstation) => ({ number: workstation.number, name: workstation.name, assigned_employee_id: workstation.assignedEmployeeId })),
+    p_workstations: parsed.data.workstations.map((workstation) => ({ number: workstation.number, name: workstation.name, assigned_employee_id: workstation.assignedEmployeeId, workstation_type: workstation.workstationType })),
   });
   if (error || !data?.length) return { error: databaseError(error, "create") };
   refreshEquipment();
@@ -109,7 +112,7 @@ export async function updateWorkstation(input: unknown): Promise<EquipmentAction
   const parsed = workstationUpdateSchema.safeParse(input);
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
-  const { data, error } = await supabase.from("workstations").update({ number: parsed.data.number, name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId }).eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  const { data, error } = await supabase.from("workstations").update({ number: parsed.data.number, name: parsed.data.name, assigned_employee_id: parsed.data.assignedEmployeeId, workstation_type: parsed.data.workstationType }).eq("id", parsed.data.workstationId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
   if (error) return { error: databaseError(error, "update") };
   if (!data) return { error: "notFound" };
   refreshEquipment();
@@ -148,6 +151,36 @@ export async function updateEquipment(input: unknown): Promise<EquipmentActionSt
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
   const { data, error } = await supabase.from("equipment").update(equipmentPayload(parsed.data)).eq("id", parsed.data.equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "update") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function updateEquipmentField(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentFieldUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const { equipmentId, field, value } = parsed.data;
+  const columns = { equipmentType: "equipment_type", displayName: "display_name", lifecycleState: "lifecycle_state", workstationId: "workstation_id", assetTag: "asset_tag", manufacturer: "manufacturer", model: "model", serialNumber: "serial_number", notes: "notes", cpu: "cpu", gpu: "gpu", ram: "ram", storage: "storage", pcConfiguration: "pc_configuration" } as const;
+  const payload: Database["public"]["Tables"]["equipment"]["Update"] = { [columns[field]]: value };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").update(payload).eq("id", equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  if (error) return { error: databaseError(error, "update") };
+  if (!data) return { error: "notFound" };
+  refreshEquipment();
+  return { success: true, id: data.id };
+}
+
+export async function updateEquipmentMaintenance(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = equipmentMaintenanceSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const { equipmentId, enabled, interval, dueDate } = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("equipment").update({ recurring_maintenance_enabled: enabled, maintenance_interval_months: enabled ? interval : null, next_maintenance_due_date: enabled ? dueDate : null }).eq("id", equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
   if (error) return { error: databaseError(error, "update") };
   if (!data) return { error: "notFound" };
   refreshEquipment();

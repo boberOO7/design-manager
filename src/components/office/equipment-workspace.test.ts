@@ -107,7 +107,7 @@ describe("Equipment application flow", () => {
     expect(form).toContain('<fieldset className="shrink-0 rounded-');
     expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');
     expect(workspace).toContain('maintenanceMode={initialView === "maintenance" && !selectedWorkstation}');
-    expect(workspace).toContain('<EquipmentMaintenanceSummary item={item} today={today} />');
+    expect(workspace).toContain('<EquipmentMaintenanceSummary item={item} today={today} onNavigate=');
     expect(workspace).toContain('view=maintenance&item=${item.id}');
     expect(form).toContain('showMaintenanceFields ? <fieldset');
   });
@@ -142,4 +142,17 @@ describe("Equipment application flow", () => {
     expect(cron).toContain("process.env.CRON_SECRET");
     expect(cron).toContain('rpc("generate_equipment_maintenance_notifications")');
   });
+  it("uses the complete inventory and isolates autosave from service and scheduling writes", () => {
+    expect(workspace).toContain('["inventory", "workstations", "maintenance"]');
+    expect(workspace).toContain('<EquipmentInventory items={equipment}');
+    expect(workspace).toContain('OTHER_EQUIPMENT_TYPES.map');
+    expect(workspace).toContain('onSave={saveField}');
+    expect(workspace).not.toContain('t("actions.saveEquipment")');
+    expect(workspace).toContain('isTopLayer={!serviceOpen && !codeOpen}');
+    expect(workspace).toContain('function StartServiceForm');
+    expect(workspace).toContain('function MaintenanceSchedule');
+    expect(form).toContain('t("configuration.save")');
+    expect(workspace).toContain('pc: Computer');
+  });
+
 });

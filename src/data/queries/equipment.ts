@@ -42,6 +42,7 @@ export type WorkstationItem = {
   id: string;
   studioId: string;
   number: number;
+  workstationType: WorkstationRow["workstation_type"];
   name: string | null;
   assignedEmployee: EquipmentMember | null;
   equipment: EquipmentItem[];
@@ -128,6 +129,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
       id: row.id,
       studioId: row.studio_id,
       number: row.number,
+      workstationType: row.workstation_type,
       name: row.name,
       assignedEmployee: row.assigned_employee_id ? memberById.get(row.assigned_employee_id) ?? null : null,
       equipment: equipmentByWorkstation.get(row.id) ?? [],

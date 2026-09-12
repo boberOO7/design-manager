@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PC_CONFIGURATION } from "@/lib/pc-configuration";
 import { equipmentDisplayName } from "@/lib/equipment";
-import { completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
+import { equipmentFieldUpdateSchema, equipmentMaintenanceSchema, completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
 const baseEquipment = {
   equipmentType: "printer",
@@ -51,7 +51,7 @@ describe("equipment validation", () => {
   });
 
   it("requires a workstation number while keeping its name and employee optional", () => {
-    expect(workstationInputSchema.parse({ number: "4", name: " Desk 04 ", assignedEmployeeId: "__none" })).toEqual({ number: 4, name: "Desk 04", assignedEmployeeId: null });
+    expect(workstationInputSchema.parse({ number: "4", name: " Desk 04 ", assignedEmployeeId: "__none" })).toEqual({ number: 4, workstationType: "office", name: "Desk 04", assignedEmployeeId: null });
     expect(workstationInputSchema.safeParse({ number: 0, name: "", assignedEmployeeId: null }).success).toBe(false);
   });
 
@@ -82,4 +82,17 @@ describe("equipment validation", () => {
     expect(recordEquipmentHistorySchema.safeParse({ equipmentId, eventType: "regular_maintenance", startedOn: "", completedOn: "2026-09-12", serviceProvider: "", costAmount: "", costCurrency: "", notes: "" }).success).toBe(false);
     expect(recordEquipmentHistorySchema.safeParse({ equipmentId, eventType: "upgrade", startedOn: "2026-09-13", completedOn: "2026-09-12", serviceProvider: "", costAmount: "", costCurrency: "", notes: "" }).success).toBe(false);
   });
+  it("validates isolated field writes and atomic schedules without accepting identity or service overrides", () => {
+    const equipmentId = "59000000-0000-4000-8000-000000000201";
+    expect(equipmentFieldUpdateSchema.parse({ equipmentId, field: "assetTag", value: " PC-99 " }).value).toBe("PC-99");
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "assetTag", value: "" }).success).toBe(false);
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "studioId", value: equipmentId }).success).toBe(false);
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "lifecycleState", value: "in_service" }).success).toBe(false);
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "pcConfiguration", value: { ...EMPTY_PC_CONFIGURATION, drives: [{ type: "ssd", capacity: 0, unit: "TB" }] } }).success).toBe(false);
+    expect(equipmentMaintenanceSchema.safeParse({ equipmentId, enabled: true, interval: 6, dueDate: null }).success).toBe(false);
+    expect(equipmentMaintenanceSchema.safeParse({ equipmentId, enabled: false, interval: null, dueDate: null }).success).toBe(true);
+    expect(workstationInputSchema.parse({ number: 8, workstationType: "remote", name: "", assignedEmployeeId: null }).workstationType).toBe("remote");
+    expect(workstationInputSchema.safeParse({ number: 8, workstationType: "unknown", name: "", assignedEmployeeId: null }).success).toBe(false);
+  });
+
 });

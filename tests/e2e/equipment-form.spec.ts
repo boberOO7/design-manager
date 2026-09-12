@@ -1,5 +1,6 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { promisify } from "node:util";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -51,7 +52,8 @@ async function motionFrames(button: Locator) {
   return button.evaluate(async (element) => {
     const id = element.getAttribute("aria-controls");
     const content = id ? document.getElementById(id) : null;
-    const next = element.closest("section")?.nextElementSibling;
+    let next = element.closest("section")?.nextElementSibling;
+    while (next && next.getBoundingClientRect().height === 0) next = next.nextElementSibling;
     if (!content || !next) throw new Error("Missing accordion layout");
     const frames: { height: number; nextTop: number; opacity: number; time: number }[] = [];
     const start = performance.now();
@@ -87,7 +89,7 @@ test.beforeAll(async () => {
   await admin.from("studio_members").insert({ studio_id: studioId, user_id: userId, system_role: "admin", is_active: true }).throwOnError();
 });
 test.afterAll(async () => {
-  if (studioId) localSql(`delete from public.studios where id = ${sqlId(studioId)};`);
+  if (studioId) localSql(`delete from public.equipment_service_events where studio_id = ${sqlId(studioId)}; delete from public.studios where id = ${sqlId(studioId)};`);
   if (userId) { const result = await admin.auth.admin.deleteUser(userId); if (result.error) throw result.error; }
 });
 
@@ -140,7 +142,8 @@ for (const locale of ["en", "uk"] as const) {
     await expect(trigger(dialog, t.form.storage)).toContainText(`2 ${t.configuration.tb} SATA SSD + 1 ${t.configuration.tb} NVMe SSD`);
     const identity = await open(dialog, t.form.identification);
     await expect(identity.getByLabel(t.form.manufacturer, { exact: false })).toHaveCount(0);
-    await identity.getByLabel(t.form.assetTag, { exact: false }).fill(`UI-PC-${locale}`);
+    await expect(identity.getByLabel(t.form.assetTag, { exact: false })).toHaveCount(0);
+    await dialog.locator('[name="displayName"]').fill(`UI-PC-${locale}`);
     await dialog.getByRole("button", { name: t.actions.createEquipment, exact: true }).click();
     await expect(page).toHaveURL(/item=/);
     const id = new URL(page.url()).searchParams.get("item");
@@ -148,6 +151,7 @@ for (const locale of ["en", "uk"] as const) {
     dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     expect(localSql(`select display_name from public.equipment where id = ${sqlId(id)};`)).toBe(`UI-PC-${locale}`);
+    expect(localSql(`select asset_tag from public.equipment where id = ${sqlId(id)};`)).toMatch(/^PC-\d{2,}$/);
     const stored = pcConfigurationSchema.parse(readConfiguration(id));
     expect(stored.drives).toEqual([{ type: "sata_ssd", capacity: 2, unit: "TB" }, { type: "nvme_ssd", capacity: 1, unit: "TB" }]);
     expect(stored.graphics).toEqual({ mode: "integrated" });
@@ -166,7 +170,7 @@ for (const locale of ["en", "uk"] as const) {
     await trigger(dialog, t.form.gpu).click();
     await expect(trigger(dialog, t.form.gpu)).toContainText(`NVIDIA GeForce RTX 4070 Ti · 12 ${t.configuration.gb}`);
     await dialog.screenshot({ path: testInfo.outputPath(`equipment-${locale}.png`) });
-    await dialog.getByRole("button", { name: t.actions.saveEquipment, exact: true }).click();
+    await dialog.getByRole("button", { name: t.configuration.save, exact: true }).click();
     await expect.poll(() => readConfiguration(id)).toMatchObject({ processor: { manufacturer: "AMD", family: "Ryzen 7", model: "7800X3D" }, graphics: { mode: "discrete", details: { vendor: "NVIDIA", model: "4070 Ti", vramGb: 12 } } });
     await page.reload();
     await expect(trigger(page.getByRole("dialog"), t.form.cpu)).toContainText("AMD Ryzen 7 7800X3D");
@@ -316,15 +320,18 @@ test("workstation details preserves relationships and uses contextual equipment 
   await expect(group(t.groups.computers)).toContainText("Connected PC");
   await expect(group(t.groups.monitors).locator("[class*='border-dashed']")).toHaveCount(0);
 
-  const name = drawer.getByLabel(t.workstation.form.name, { exact: true });
+  const name = drawer.getByLabel(t.workstation.form.name, { exact: false });
   await name.fill("Quiet desk");
   await name.press("Tab");
   await expect.poll(() => localSql(`select name from public.workstations where id = ${sqlId(workstationId)};`)).toBe("Quiet desk");
 
+  await choose(page, drawer, t.workstation.form.type, t.workstation.types.remote);
+  await expect.poll(() => localSql(`select workstation_type from public.workstations where id = ${sqlId(workstationId)};`)).toBe("remote");
+
   await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
   await page.getByRole("menuitem", { name: t.workstation.actions.renumber, exact: true }).click();
   const renumberDialog = page.getByRole("dialog", { name: t.workstation.actions.renumber, exact: true });
-  const number = renumberDialog.getByLabel(t.workstation.form.number, { exact: true });
+  const number = renumberDialog.getByRole("spinbutton");
   await number.fill("802");
   await renumberDialog.getByRole("button", { name: t.workstation.actions.renumber, exact: true }).click();
   await expect(renumberDialog.getByRole("alert")).toHaveText(t.workstation.form.numberConflict);
@@ -360,12 +367,15 @@ test("workstation details preserves relationships and uses contextual equipment 
   await expect(group(t.groups.peripherals)).toContainText("Ready Mouse");
 
   await group(t.groups.computers).getByRole("button", { name: t.assignment.attachComputer, exact: true }).click();
+  await drawer.locator("[data-equipment-attach-picker]").getByRole("searchbox").fill("__no_matching_pc__");
   await expect(drawer.locator("[data-equipment-attach-picker]")).toContainText(t.assignment.noMatches);
   await group(t.groups.computers).getByRole("button", { name: t.assignment.attachComputer, exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 700 });
   await drawer.evaluate((element) => { element.querySelector("div.min-h-0.flex-1")!.scrollTop = 120; });
   const savedScrollTop = await drawer.evaluate((element) => element.querySelector("div.min-h-0.flex-1")!.scrollTop);
-  await group(t.groups.computers).getByRole("button", { name: /Connected PC/ }).click();
-  await expect(page.locator("[role='dialog']")).toHaveCount(2);
+  expect(savedScrollTop).toBeGreaterThan(0);
+  await group(t.groups.computers).getByRole("button", { name: /^Connected PC/ }).click();
+  await expect(page.locator("section[role='dialog']").filter({ has: page.locator("header h2", { hasText: "Workstation #803" }) })).toHaveCount(1);
   const equipmentDrawer = page.getByRole("dialog", { name: "Connected PC", exact: true });
   await expect(equipmentDrawer).toBeVisible();
   await equipmentDrawer.getByRole("button", { name: t.close, exact: true }).click();
@@ -396,8 +406,9 @@ test("legacy values, category identity, mobile and reduced motion", async ({ pag
   await expect(panel(dialog, t.form.cpu)).toContainText(t.configuration.savedTextHint);
   const identity = await open(dialog, t.form.identification);
   await expect(identity.getByLabel(t.form.manufacturer, { exact: false })).toHaveValue("Saved builder");
-  await dialog.getByRole("button", { name: t.actions.saveEquipment, exact: true }).click();
-  await expect(dialog.getByRole("button", { name: t.actions.saveEquipment, exact: true })).toBeEnabled();
+  await dialog.locator('[name="notes"]').fill("Preserve legacy configuration");
+  await dialog.locator('[name="notes"]').press("Tab");
+  await expect.poll(() => localSql(`select notes from public.equipment where id = ${sqlId(id)};`)).toBe("Preserve legacy configuration");
   const row: unknown = JSON.parse(localSql(`select row_to_json(e) from (select manufacturer,model,cpu,gpu,ram,storage from public.equipment where id = ${sqlId(id)}) e;`));
   expect(row).toEqual({ manufacturer: "Saved builder", model: "Saved build", cpu: "intel core i7-4790k", gpu: "GTX 1080ti", ram: "32gb", storage: "unknown disks" });
   await page.goto("/office/equipment?create=equipment");
@@ -421,4 +432,129 @@ test("legacy values, category identity, mobile and reduced motion", async ({ pag
   await expect(trigger(dialog, t.form.identification)).toHaveAttribute("aria-expanded", "false");
   await page.keyboard.press("Tab");
   await expect(dialog.locator('[name="recurringMaintenanceEnabled"]')).toBeFocused();
+});
+
+test("inventory filters, isolated autosave, inventory code changes, and contextual maintenance", async ({ page }, testInfo) => {
+  const t = en.Equipment;
+  const pcId = randomUUID();
+  const printerId = randomUUID();
+  const coffeeId = randomUUID();
+  const workstationId = randomUUID();
+  localSql(`
+    insert into public.workstations(id,studio_id,number,workstation_type) values (${sqlId(workstationId)},${sqlId(studioId)},901,'remote');
+    insert into public.equipment(id,studio_id,equipment_type,display_name,workstation_id) values
+      (${sqlId(pcId)},${sqlId(studioId)},'pc','Inventory attached PC',${sqlId(workstationId)}),
+      (${sqlId(printerId)},${sqlId(studioId)},'printer','Inventory printer',null),
+      (${sqlId(coffeeId)},${sqlId(studioId)},'coffee_machine','Inventory coffee',null);
+  `);
+  await login(page);
+  await expect(page.getByRole("link", { name: t.views.inventory, exact: true })).toHaveAttribute("aria-current", "page");
+  const search = page.getByRole("searchbox", { name: t.inventory.search });
+  await search.fill("Inventory");
+  await expect(page.getByRole("button", { name: /Inventory attached PC/ })).toBeVisible();
+  await page.getByRole("button", { name: t.inventory.office, exact: true }).click();
+  await expect(page.getByRole("button", { name: /Inventory attached PC/ })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: t.types.printer, exact: true })).toContainText("Inventory printer");
+  await expect(page.getByRole("region", { name: t.types.coffee_machine, exact: true })).toContainText("Inventory coffee");
+  await page.screenshot({ path: testInfo.outputPath("inventory-office-groups.png") });
+  await page.getByRole("button", { name: /Inventory printer/ }).click();
+  let drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("button", { name: t.actions.saveEquipment, exact: true })).toHaveCount(0);
+  await expect(drawer.getByRole("heading", { name: t.history.title, exact: true })).toHaveCount(0);
+  const name = drawer.locator('[name="displayName"]');
+  await name.fill("Inventory printer updated");
+  expect(localSql(`select display_name from public.equipment where id=${sqlId(printerId)};`)).toBe("Inventory printer");
+  await name.press("Tab");
+  await expect.poll(() => localSql(`select display_name from public.equipment where id=${sqlId(printerId)};`)).toBe("Inventory printer updated");
+  await page.route("**/office/equipment**", async (route) => {
+    if (route.request().headers()["next-action"]) await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.continue();
+  });
+  await name.fill("Temporary queued name");
+  await name.press("Tab");
+  await name.fill("Inventory printer updated");
+  await name.press("Tab");
+  await expect(drawer.getByText(t.actions.saving, { exact: true })).toHaveCount(0);
+  expect(localSql(`select display_name from public.equipment where id=${sqlId(printerId)};`)).toBe("Inventory printer updated");
+  await page.unroute("**/office/equipment**");
+  await choose(page, drawer, t.form.state, t.states.spare);
+  await expect.poll(() => localSql(`select lifecycle_state from public.equipment where id=${sqlId(printerId)};`)).toBe("spare");
+  // A notes autosave must not restore a stale maintenance date held by the drawer.
+  localSql(`update public.equipment set recurring_maintenance_enabled=true,maintenance_interval_months=6,next_maintenance_due_date='2027-01-05' where id=${sqlId(printerId)};`);
+  await drawer.locator('[name="notes"]').fill("Quiet notes");
+  await drawer.locator('[name="notes"]').press("Tab");
+  await expect.poll(() => localSql(`select notes from public.equipment where id=${sqlId(printerId)};`)).toBe("Quiet notes");
+  expect(localSql(`select next_maintenance_due_date from public.equipment where id=${sqlId(printerId)};`)).toBe("2027-01-05");
+
+  const originalCode = localSql(`select asset_tag from public.equipment where id=${sqlId(printerId)};`);
+  const takenCode = localSql(`select asset_tag from public.equipment where id=${sqlId(coffeeId)};`);
+  await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
+  await page.getByRole("menuitem", { name: t.actions.changeCode }).click();
+  const codeDialog = page.getByRole("dialog", { name: t.actions.changeCode, exact: true });
+  await codeDialog.getByLabel(t.form.assetTag).fill(takenCode);
+  await codeDialog.getByRole("button", { name: t.actions.changeCode, exact: true }).click();
+  await expect(codeDialog.getByRole("alert")).toContainText(t.errors.duplicate);
+  expect(localSql(`select asset_tag from public.equipment where id=${sqlId(printerId)};`)).toBe(originalCode);
+  await codeDialog.getByLabel(t.form.assetTag).fill("PRINT-CUSTOM");
+  await codeDialog.getByRole("button", { name: t.actions.changeCode, exact: true }).click();
+  await expect(codeDialog).toHaveCount(0);
+  drawer = page.getByRole("dialog");
+  await expect(drawer.locator("header")).toContainText("PRINT-CUSTOM");
+
+  await drawer.getByRole("button", { name: t.service.send, exact: true }).click();
+  const serviceDialog = page.getByRole("dialog", { name: t.service.send, exact: true });
+  await expect(page.locator('section[role="dialog"]').filter({ has: page.locator("header h2", { hasText: "Inventory printer updated" }) })).toHaveCount(1);
+  await expect(serviceDialog.getByRole("heading", { name: t.history.title })).toHaveCount(0);
+  await choose(page, serviceDialog, t.service.type, t.history.types.repair);
+  await serviceDialog.getByRole("button", { name: t.service.send, exact: true }).click();
+  await expect(serviceDialog).toHaveCount(0);
+  drawer = page.getByRole("dialog");
+  await expect(drawer).toContainText(t.maintenance.currentlyInService);
+  await expect(drawer.getByRole("button", { name: t.service.complete, exact: true })).toHaveCount(0);
+  await drawer.getByRole("link", { name: t.maintenance.openWorkspace }).click();
+  await expect(page).toHaveURL(/view=maintenance/);
+  drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("heading", { name: t.history.title, exact: true })).toBeVisible();
+  await expect(drawer.locator('[name="displayName"]')).toHaveCount(0);
+  await drawer.getByRole("button", { name: t.service.complete, exact: true }).click();
+  await expect.poll(() => localSql(`select lifecycle_state from public.equipment where id=${sqlId(printerId)};`)).toBe("active");
+  await expect(drawer.getByRole("list")).toContainText(t.history.types.repair);
+  expect(localSql(`select next_maintenance_due_date from public.equipment where id=${sqlId(printerId)};`)).toBe("2027-01-05");
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: t.inventory.all, exact: true }).click();
+  await expect(page.getByRole("button", { name: /Inventory printer updated/ })).toBeVisible();
+
+  await page.goto("/office/equipment");
+  await page.getByRole("searchbox", { name: t.inventory.search }).fill("PRINT-CUSTOM");
+  await expect(page.getByRole("button", { name: /Inventory printer updated/ })).toBeVisible();
+  await choose(page, page.locator("main"), t.form.state, t.states.retired);
+  await expect(page.getByRole("heading", { name: t.inventory.noMatches })).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(await page.locator("main").evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("inventory-mobile.png") });
+});
+
+test("creates remote workstations with normal numbering", async ({ page }) => {
+  const t = en.Equipment;
+  await login(page);
+  await page.goto("/office/equipment?view=workstations&create=workstation");
+  const dialog = page.getByRole("dialog");
+  await choose(page, dialog, t.workstation.form.type, t.workstation.types.remote);
+  await dialog.getByRole("button", { name: "Create workstation", exact: true }).click();
+  await expect(page).toHaveURL(/item=/);
+  const id = new URL(page.url()).searchParams.get("item");
+  if (!id) throw new Error("Missing workstation");
+  expect(localSql(`select workstation_type from public.workstations where id=${sqlId(id)};`)).toBe("remote");
+  expect(Number(localSql(`select number from public.workstations where id=${sqlId(id)};`))).toBeGreaterThan(0);
+});
+
+
+test("concurrent inventory allocations cannot collide", async () => {
+  const fixtureStudio = randomUUID();
+  localSql(`insert into public.studios(id,name) values (${sqlId(fixtureStudio)},'Concurrent inventory test');`);
+  try {
+    const results = await Promise.all(Array.from({ length: 12 }, (_, index) => promisify(execFile)("docker", ["exec", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-Atc", `insert into public.equipment(studio_id,equipment_type,display_name) values (${sqlId(fixtureStudio)},'pc','Concurrent ${index}') returning asset_tag;`])));
+    const codes = results.map((result) => result.stdout.trim().split("\n")[0]);
+    expect(new Set(codes)).toEqual(new Set(Array.from({ length: 12 }, (_, index) => `PC-${String(index + 1).padStart(2, "0")}`)));
+  } finally { localSql(`delete from public.studios where id=${sqlId(fixtureStudio)};`); }
 });
