@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_PC_CONFIGURATION } from "@/lib/pc-configuration";
+import { EMPTY_COMPUTER_CONFIGURATION } from "@/lib/pc-configuration";
 import { equipmentDisplayName, equipmentInventoryNumber, equipmentInventoryPrefix } from "@/lib/equipment";
 import { equipmentFieldUpdateSchema, equipmentMaintenanceSchema, completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, floorPlanLayoutSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
@@ -45,10 +45,11 @@ describe("equipment validation", () => {
   });
 
   it("accepts structured PC form JSON, preserves text, and rejects other categories or malformed JSON", () => {
-    const pcConfiguration = { ...EMPTY_PC_CONFIGURATION, graphics: { mode: "integrated" }, drives: [{ type: "hdd", capacity: 2, unit: "TB" }] };
+    const pcConfiguration = { ...EMPTY_COMPUTER_CONFIGURATION, graphics: { mode: "integrated" }, drives: [{ type: "hdd", capacity: 2, unit: "TB" }] };
     const input = { ...baseEquipment, equipmentType: "pc", displayName: "", cpu: "unparsed CPU", storage: "unparsed disks", pcConfiguration: JSON.stringify(pcConfiguration) };
     expect(equipmentInputSchema.parse(input)).toMatchObject({ displayName: null, cpu: "unparsed CPU", storage: "unparsed disks", pcConfiguration });
-    expect(equipmentInputSchema.safeParse({ ...input, equipmentType: "laptop" }).success).toBe(false);
+    expect(equipmentInputSchema.safeParse({ ...input, equipmentType: "laptop" }).success).toBe(true);
+    expect(equipmentInputSchema.safeParse({ ...input, equipmentType: "laptop", pcConfiguration: JSON.stringify({ ...pcConfiguration, motherboard: { manufacturer: "ASUS", model: null, chipset: null } }) }).success).toBe(false);
     expect(equipmentInputSchema.safeParse({ ...input, pcConfiguration: "{invalid" }).success).toBe(false);
     expect(equipmentInputSchema.parse({ ...input, pcConfiguration: undefined }).pcConfiguration).toBeUndefined();
   });
@@ -100,7 +101,7 @@ describe("equipment validation", () => {
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "assetTag", value: "" }).success).toBe(false);
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "studioId", value: equipmentId }).success).toBe(false);
     expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "lifecycleState", value: "in_service" }).success).toBe(false);
-    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "pcConfiguration", value: { ...EMPTY_PC_CONFIGURATION, drives: [{ type: "ssd", capacity: 0, unit: "TB" }] } }).success).toBe(false);
+    expect(equipmentFieldUpdateSchema.safeParse({ equipmentId, field: "pcConfiguration", value: { ...EMPTY_COMPUTER_CONFIGURATION, drives: [{ type: "ssd", capacity: 0, unit: "TB" }] } }).success).toBe(false);
     expect(equipmentMaintenanceSchema.safeParse({ equipmentId, enabled: true, interval: 6, dueDate: null }).success).toBe(false);
     expect(equipmentMaintenanceSchema.safeParse({ equipmentId, enabled: false, interval: null, dueDate: null }).success).toBe(true);
     expect(workstationInputSchema.parse({ number: 8, workstationType: "remote", name: "", assignedEmployeeId: null }).workstationType).toBe("remote");

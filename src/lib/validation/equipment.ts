@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pcConfigurationSchema, parsePcConfigurationFormValue } from "@/lib/pc-configuration";
+import { computerConfigurationSchema, parseComputerConfigurationFormValue } from "@/lib/pc-configuration";
 import { CRM_BUDGET_CURRENCIES } from "@/lib/crm-budget";
 import { EQUIPMENT_LIFECYCLE_STATES, EQUIPMENT_SERVICE_EVENT_TYPES, EQUIPMENT_TYPES, isComputerEquipment } from "@/lib/equipment";
 
@@ -39,7 +39,7 @@ export const equipmentInputSchema = z.object({
   model: optionalText(160),
   serialNumber: optionalText(160),
   assetTag: optionalText(160),
-  pcConfiguration: z.preprocess(parsePcConfigurationFormValue, pcConfigurationSchema.nullable().optional()),
+  pcConfiguration: z.preprocess(parseComputerConfigurationFormValue, computerConfigurationSchema.nullable().optional()),
   cpu: optionalText(500),
   gpu: optionalText(500),
   ram: optionalText(500),
@@ -49,7 +49,8 @@ export const equipmentInputSchema = z.object({
   maintenanceIntervalMonths: z.preprocess((value) => value ?? null, z.union([z.coerce.number().int().min(1).max(120), z.literal(""), z.null()]).transform((value) => value === "" ? null : value)),
   nextMaintenanceDueDate: z.preprocess((value) => value ?? null, optionalDate),
 }).superRefine((value, context) => {
-  if (value.pcConfiguration && value.equipmentType !== "pc") context.addIssue({ code: "custom", path: ["pcConfiguration"], message: "pc_configuration" });
+  if (value.pcConfiguration && !isComputerEquipment(value.equipmentType)) context.addIssue({ code: "custom", path: ["pcConfiguration"], message: "computer_configuration" });
+  if (value.equipmentType === "laptop" && (value.pcConfiguration?.motherboard || value.pcConfiguration?.powerSupply)) context.addIssue({ code: "custom", path: ["pcConfiguration"], message: "pc_components" });
   if (!isComputerEquipment(value.equipmentType)) {
     for (const field of ["cpu", "gpu", "ram", "storage"] as const) {
       if (value[field] !== null) context.addIssue({ code: "custom", path: [field], message: "computer_specification" });
@@ -72,7 +73,7 @@ export const equipmentFieldUpdateSchema = z.discriminatedUnion("field", [
   z.object({ equipmentId: z.uuid(), field: z.literal("serialNumber"), value: optionalText(160) }),
   z.object({ equipmentId: z.uuid(), field: z.literal("notes"), value: optionalText(5000) }),
   ...(["cpu", "gpu", "ram", "storage"] as const).map((field) => z.object({ equipmentId: z.uuid(), field: z.literal(field), value: optionalText(500) })),
-  z.object({ equipmentId: z.uuid(), field: z.literal("pcConfiguration"), value: pcConfigurationSchema.nullable() }),
+  z.object({ equipmentId: z.uuid(), field: z.literal("pcConfiguration"), value: computerConfigurationSchema.nullable() }),
 ]);
 export type EquipmentFieldUpdate = z.infer<typeof equipmentFieldUpdateSchema>;
 export const equipmentMaintenanceSchema = z.object({

@@ -28,6 +28,7 @@ describe("equipment maintenance migration", () => {
     expect(migration).toContain("maintenance_overdue_notified_for is distinct from equipment.next_maintenance_due_date");
     expect(migration).toContain("reset_equipment_maintenance_notification_cycle_before_update");
     expect(migration).toContain("for update skip locked");
+    expect(migration).toContain("p_today date default (now() at time zone 'Europe/Kyiv')::date");
   });
 
   it("keeps history admin-readable and mutations behind guarded RPCs", () => {

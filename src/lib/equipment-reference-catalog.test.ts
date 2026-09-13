@@ -11,6 +11,8 @@ it("validates bounded provider-neutral catalog queries", () => {
 it("supplements catalog manufacturers with creatable common brand references", () => {
   expect(equipmentManufacturerSuggestions("mouse", "Logi", ["LogiLink", "Case Logic"])).toEqual(["Logitech", "LogiLink", "Case Logic"]);
   expect(equipmentManufacturerSuggestions("air_conditioner", "TOS", [])).toEqual(["TOSOT"]);
+  expect(equipmentManufacturerSuggestions("motherboard", "AS", [])).toEqual(["ASUS", "ASRock"]);
+  expect(equipmentManufacturerSuggestions("power_supply", "Sea", [])).toEqual(["Seasonic"]);
   expect(equipmentManufacturerSuggestions("mouse", "", ["Logitech", "HP", "Trust"])).toEqual([
     "Logitech", "Razer", "Microsoft", "SteelSeries", "Corsair", "HP", "Dell", "Trust",
   ]);

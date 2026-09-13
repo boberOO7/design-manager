@@ -7,7 +7,7 @@ import { z } from "zod";
 import en from "../../messages/en.json";
 import uk from "../../messages/uk.json";
 import type { Database } from "../../src/types/database.types";
-import { pcConfigurationSchema } from "../../src/lib/pc-configuration";
+import { computerConfigurationSchema } from "../../src/lib/pc-configuration";
 
 const settings = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SERVICE_KEY: z.string() }).parse(process.env);
 if (!["localhost", "127.0.0.1"].includes(new URL(settings.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local fixtures only");
@@ -118,13 +118,20 @@ for (const locale of ["en", "uk"] as const) {
     await testInfo.attach("accordion-frame-measurements", { body: JSON.stringify({ opening, closing }, null, 2), contentType: "application/json" });
 
     let cpu = await open(dialog, t.form.cpu);
-    await cpu.getByRole("radio", { name: "Intel", exact: true }).check();
+    const cpuSwitch = cpu.getByRole("switch");
+    await cpuSwitch.click();
+    await cpuSwitch.click();
+    await expect(cpuSwitch).toHaveAttribute("aria-checked", "true");
+    await expect(cpuSwitch.locator("[data-binary-switch-thumb]")).toHaveCSS("transform", /matrix\(1, 0, 0, 1, [1-9]/);
     await choose(page, cpu, t.configuration.family, "Core i7");
     await cpu.getByLabel(t.form.model, { exact: false }).fill("14700K");
     const gpu = await open(dialog, t.form.gpu);
     await expect(cpuButton).toHaveAttribute("aria-expanded", "false");
     await expect(dialog.locator('button[aria-expanded="true"][aria-controls]')).toHaveCount(1);
-    await gpu.getByRole("radio", { name: t.configuration.integrated, exact: true }).check();
+    const graphicsSwitch = gpu.getByRole("switch");
+    await graphicsSwitch.click();
+    await expect(graphicsSwitch).toHaveAttribute("aria-checked", "false");
+    await expect(graphicsSwitch).toHaveAttribute("data-binary-switch-state", "left");
     await expect(gpu.getByRole("group", { name: t.configuration.vendor, exact: true })).toHaveCount(0);
     const ram = await open(dialog, t.form.ram);
     await ram.getByLabel(t.configuration.totalMemory).fill("64");
@@ -140,12 +147,20 @@ for (const locale of ["en", "uk"] as const) {
     await expect(drives.getByLabel(t.configuration.capacity, { exact: true })).toHaveValue("2");
     await drives.getByRole("button", { name: t.configuration.addDrive }).click();
     await trigger(dialog, t.form.storage).click();
+    const motherboard = await open(dialog, t.configuration.motherboard);
+    await motherboard.getByLabel(t.form.manufacturer, { exact: false }).fill("ASUS");
+    await motherboard.getByLabel(t.form.model, { exact: false }).fill("ProArt Z790");
+    await motherboard.getByLabel(t.configuration.chipset).fill("Z790");
+    const powerSupply = await open(dialog, t.configuration.powerSupply);
+    await powerSupply.getByLabel(t.form.manufacturer, { exact: false }).fill("Seasonic");
+    await powerSupply.getByLabel(t.form.model, { exact: false }).fill("Focus GX");
+    await powerSupply.getByLabel(t.configuration.wattage).fill("850");
+    await choose(page, powerSupply, t.configuration.efficiency, "80 PLUS Gold");
+    await trigger(dialog, t.configuration.powerSupply).click();
     await expect(trigger(dialog, t.form.cpu)).toContainText("Intel Core i7 14700K");
     await expect(trigger(dialog, t.form.ram)).toContainText(`64 ${t.configuration.gb} · DDR5`);
     await expect(trigger(dialog, t.form.storage)).toContainText(`2 ${t.configuration.tb} SATA SSD + 1 ${t.configuration.tb} NVMe SSD`);
-    const identity = await open(dialog, t.form.identification);
-    await expect(identity.getByLabel(t.form.manufacturer, { exact: false })).toHaveCount(0);
-    await expect(identity.getByLabel(t.form.assetTag, { exact: false })).toHaveCount(0);
+    await expect(trigger(dialog, t.form.identification)).toHaveCount(0);
     await dialog.locator('[name="displayName"]').fill(`UI-PC-${locale}`);
     await dialog.getByRole("button", { name: t.actions.createEquipment, exact: true }).click();
     await expect(page).toHaveURL(/item=/);
@@ -155,27 +170,33 @@ for (const locale of ["en", "uk"] as const) {
     await expect(dialog).toBeVisible();
     expect(localSql(`select display_name from public.equipment where id = ${sqlId(id)};`)).toBe(`UI-PC-${locale}`);
     expect(localSql(`select asset_tag from public.equipment where id = ${sqlId(id)};`)).toMatch(/^PC-\d{2,}$/);
-    const stored = pcConfigurationSchema.parse(readConfiguration(id));
+    const stored = computerConfigurationSchema.parse(readConfiguration(id));
     expect(stored.drives).toEqual([{ type: "sata_ssd", capacity: 2, unit: "TB" }, { type: "nvme_ssd", capacity: 1, unit: "TB" }]);
     expect(stored.graphics).toEqual({ mode: "integrated" });
+    expect(stored.motherboard).toEqual({ manufacturer: "ASUS", model: "ProArt Z790", chipset: "Z790" });
+    expect(stored.powerSupply).toEqual({ manufacturer: "Seasonic", model: "Focus GX", wattage: 850, efficiency: "80 PLUS Gold" });
 
     cpu = await open(dialog, t.form.cpu);
-    await cpu.getByRole("radio", { name: "AMD", exact: true }).check();
+    await cpu.getByRole("switch").click();
     await cpu.getByRole("combobox", { name: t.configuration.family }).click();
     await expect(page.getByRole("option", { name: "Core i7", exact: true })).toHaveCount(0);
     await page.getByRole("option", { name: "Ryzen 7", exact: true }).click();
     await cpu.getByLabel(t.form.model, { exact: false }).fill("7800X3D");
     const editGpu = await open(dialog, t.form.gpu);
-    await editGpu.getByRole("radio", { name: t.configuration.discrete, exact: true }).check();
+    await editGpu.getByRole("switch").click();
     await choose(page, editGpu, t.configuration.family, "GeForce RTX");
     await editGpu.getByLabel(t.form.model, { exact: false }).fill("4070 Ti");
     await editGpu.getByLabel(t.configuration.vram).fill("12");
     await trigger(dialog, t.form.gpu).click();
     await expect(trigger(dialog, t.form.gpu)).toContainText(`NVIDIA GeForce RTX 4070 Ti · 12 ${t.configuration.gb}`);
     await dialog.screenshot({ path: testInfo.outputPath(`equipment-${locale}.png`) });
-    await dialog.getByRole("button", { name: t.configuration.save, exact: true }).click();
+    await expect(dialog.getByRole("button", { name: t.configuration.save, exact: true })).toHaveCount(0);
     await expect.poll(() => readConfiguration(id)).toMatchObject({ processor: { manufacturer: "AMD", family: "Ryzen 7", model: "7800X3D" }, graphics: { mode: "discrete", details: { vendor: "NVIDIA", model: "4070 Ti", vramGb: 12 } } });
-    await page.reload();
+    await page.evaluate(() => { window.confirm = () => { document.documentElement.dataset.confirmCalled = "true"; return true; }; });
+    await dialog.getByRole("button", { name: t.close, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator("html")).not.toHaveAttribute("data-confirm-called", "true");
+    await page.goto(`/office/equipment?item=${id}`);
     await expect(trigger(page.getByRole("dialog"), t.form.cpu)).toContainText("AMD Ryzen 7 7800X3D");
     expect(errors).toEqual([]);
   });
@@ -190,6 +211,8 @@ test("workstation bulk dialog keeps compact controls and stable geometry", async
     document.documentElement.dataset.testUnhandledRejection = reason;
   }));
   await login(page);
+  await expect(page.getByRole("button", { name: en.Office.create, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: t.actions.addEquipment, exact: true })).toBeVisible();
   await page.goto("/office/equipment?create=workstation");
   const dialog = page.getByRole("dialog");
   const quantity = dialog.getByLabel(t.workstation.form.quantity, { exact: true });
@@ -199,6 +222,10 @@ test("workstation bulk dialog keeps compact controls and stable geometry", async
   const rows = dialog.locator("[data-workstation-draft]");
   const editor = dialog.locator("[data-workstation-editor]");
   const firstName = rows.first().locator('input:not([type="number"])');
+  await expect(dialog).toBeFocused();
+  await expect(quantity).not.toBeFocused();
+  await expect(rows.first().getByRole("combobox", { name: t.workstation.form.employee, exact: false })).toBeVisible();
+  await expect(dialog.locator('input[type="checkbox"]')).toHaveCount(0);
   const initialDialogBox = await dialog.boundingBox();
   const initialIncreaseBox = await increase.boundingBox();
   if (!initialDialogBox || !initialIncreaseBox) throw new Error("Missing workstation dialog geometry");
@@ -328,7 +355,7 @@ test("workstation details preserves relationships and uses contextual equipment 
   await name.press("Tab");
   await expect.poll(() => localSql(`select name from public.workstations where id = ${sqlId(workstationId)};`)).toBe("Quiet desk");
 
-  await drawer.getByRole("group", { name: t.workstation.form.type, exact: true }).getByRole("button", { name: t.workstation.types.remote, exact: true }).click();
+  await drawer.getByRole("switch", { name: new RegExp(`^${t.workstation.form.type}`) }).click();
   await expect.poll(() => localSql(`select workstation_type from public.workstations where id = ${sqlId(workstationId)};`)).toBe("remote");
 
   await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
@@ -390,10 +417,10 @@ test("workstation details preserves relationships and uses contextual equipment 
   await drawer.screenshot({ path: testInfo.outputPath("workstation-details-contextual-attach-mobile.png") });
 });
 
-test("legacy values, category identity, mobile and reduced motion", async ({ page }, testInfo) => {
+test("legacy values, laptop configuration, mobile and reduced motion", async ({ page }, testInfo) => {
   const t = en.Equipment;
   const id = randomUUID();
-  localSql(`insert into public.equipment(id,studio_id,equipment_type,display_name,manufacturer,model,cpu,gpu,ram,storage) values (${sqlId(id)},${sqlId(studioId)},'pc','Legacy PC','Saved builder','Saved build','intel core i7-4790k','GTX 1080ti','32gb','unknown disks');`);
+  localSql(`insert into public.equipment(id,studio_id,equipment_type,display_name,manufacturer,model,serial_number,cpu,gpu,ram,storage) values (${sqlId(id)},${sqlId(studioId)},'pc','Legacy PC','Saved builder','Saved build','LEGACY-SERIAL','intel core i7-4790k','GTX 1080ti','32gb','unknown disks');`);
   await page.addInitScript(() => localStorage.setItem("studioflow-motion", "system"));
   await login(page);
   await page.setViewportSize({ width: 375, height: 812 });
@@ -409,20 +436,28 @@ test("legacy values, category identity, mobile and reduced motion", async ({ pag
   await expect(panel(dialog, t.form.cpu)).toContainText(t.configuration.savedTextHint);
   const identity = await open(dialog, t.form.identification);
   await expect(identity.getByLabel(t.form.manufacturer, { exact: false })).toHaveValue("Saved builder");
+  await expect(identity.getByLabel(t.form.serialNumber, { exact: false })).toHaveValue("LEGACY-SERIAL");
   await dialog.locator('[name="notes"]').fill("Preserve legacy configuration");
   await dialog.locator('[name="notes"]').press("Tab");
   await expect.poll(() => localSql(`select notes from public.equipment where id = ${sqlId(id)};`)).toBe("Preserve legacy configuration");
-  const row: unknown = JSON.parse(localSql(`select row_to_json(e) from (select manufacturer,model,cpu,gpu,ram,storage from public.equipment where id = ${sqlId(id)}) e;`));
-  expect(row).toEqual({ manufacturer: "Saved builder", model: "Saved build", cpu: "intel core i7-4790k", gpu: "GTX 1080ti", ram: "32gb", storage: "unknown disks" });
+  const row: unknown = JSON.parse(localSql(`select row_to_json(e) from (select manufacturer,model,serial_number,cpu,gpu,ram,storage from public.equipment where id = ${sqlId(id)}) e;`));
+  expect(row).toEqual({ manufacturer: "Saved builder", model: "Saved build", serial_number: "LEGACY-SERIAL", cpu: "intel core i7-4790k", gpu: "GTX 1080ti", ram: "32gb", storage: "unknown disks" });
   await page.goto("/office/equipment?create=equipment");
   dialog = page.getByRole("dialog");
   await choose(page, dialog, t.form.type, t.types.laptop);
   const laptopIdentity = await open(dialog, t.form.identification);
   await expect(laptopIdentity.getByLabel(t.form.manufacturer, { exact: false })).toBeVisible();
   await expect(laptopIdentity.getByLabel(t.form.model, { exact: false })).toBeVisible();
-  const laptopSpecs = await open(dialog, t.form.specifications);
-  await expect(laptopSpecs.locator('[name="cpu"]')).toBeVisible();
-  await expect(dialog.getByRole("button", { name: t.configuration.addDrive })).toHaveCount(0);
+  const laptopGraphics = await open(dialog, t.form.gpu);
+  await expect(laptopGraphics.getByRole("switch")).toBeVisible();
+  await expect(laptopGraphics.getByRole("switch")).toContainText(t.configuration.integrated);
+  await expect(laptopGraphics.getByRole("switch")).toContainText(t.configuration.discrete);
+  const laptopStorage = await open(dialog, t.form.storage);
+  await laptopStorage.getByRole("button", { name: t.configuration.addDrive }).click();
+  await laptopStorage.getByRole("button", { name: t.configuration.addDrive }).click();
+  await expect(laptopStorage.getByRole("group")).toHaveCount(2);
+  await expect(trigger(dialog, t.configuration.motherboard)).toHaveCount(0);
+  await expect(trigger(dialog, t.configuration.powerSupply)).toHaveCount(0);
   await choose(page, dialog, t.form.type, t.types.monitor);
   await expect(trigger(dialog, t.form.specifications)).toHaveCount(0);
   await open(dialog, t.form.identification);
@@ -445,20 +480,27 @@ test("inventory filters, isolated autosave, inventory code changes, and contextu
   const workstationId = randomUUID();
   localSql(`
     insert into public.workstations(id,studio_id,number,workstation_type) values (${sqlId(workstationId)},${sqlId(studioId)},901,'remote');
-    insert into public.equipment(id,studio_id,equipment_type,display_name,workstation_id) values
-      (${sqlId(pcId)},${sqlId(studioId)},'pc','Inventory attached PC',${sqlId(workstationId)}),
-      (${sqlId(printerId)},${sqlId(studioId)},'printer','Inventory printer',null),
-      (${sqlId(coffeeId)},${sqlId(studioId)},'coffee_machine','Inventory coffee',null);
+    insert into public.equipment(id,studio_id,equipment_type,display_name,manufacturer,model,workstation_id,pc_configuration) values
+      (${sqlId(pcId)},${sqlId(studioId)},'pc','Inventory attached PC',null,null,${sqlId(workstationId)},'{"processor":{"manufacturer":"Intel","family":"Core i9","model":"13900K"},"graphics":{"mode":"integrated"},"memory":{"capacityGb":64,"generation":"DDR5","moduleCount":2},"drives":[{"type":"nvme_ssd","capacity":1,"unit":"TB"}]}'),
+      (${sqlId(printerId)},${sqlId(studioId)},'printer','Inventory printer','Brother','HL-L2350DW',null,null),
+      (${sqlId(coffeeId)},${sqlId(studioId)},'coffee_machine','Inventory coffee','Jura','E8',null,null);
   `);
   await login(page);
   await expect(page.getByRole("link", { name: t.views.inventory, exact: true })).toHaveAttribute("aria-current", "page");
   const search = page.getByRole("searchbox", { name: t.inventory.search });
   await search.fill("Inventory");
-  await expect(page.getByRole("button", { name: /Inventory attached PC/ })).toBeVisible();
+  const pcRow = page.getByRole("button", { name: /Inventory attached PC/ });
+  await expect(pcRow).toContainText("Intel Core i9 13900K");
+  await expect(pcRow).toContainText(`64 ${t.configuration.gb}`);
+  await expect(pcRow.locator("[data-workstation-badge]")).toHaveText("#901");
+  await expect(pcRow.locator("[data-workstation-badge]")).toHaveAttribute("title", t.workstation.numberLabel.replace("{number}", "901"));
+  await expect(page.getByRole("button", { name: /Inventory printer/ }).locator("[data-workstation-badge]")).toHaveCount(0);
   await page.getByRole("button", { name: t.inventory.office, exact: true }).click();
   await expect(page.getByRole("button", { name: /Inventory attached PC/ })).toHaveCount(0);
   await expect(page.getByRole("region", { name: t.types.printer, exact: true })).toContainText("Inventory printer");
+  await expect(page.getByRole("region", { name: t.types.printer, exact: true })).toContainText("Brother HL-L2350DW");
   await expect(page.getByRole("region", { name: t.types.coffee_machine, exact: true })).toContainText("Inventory coffee");
+  await expect(page.getByRole("region", { name: t.types.coffee_machine, exact: true })).toContainText("Jura E8");
   await page.screenshot({ path: testInfo.outputPath("inventory-office-groups.png") });
   await page.getByRole("button", { name: /Inventory printer/ }).click();
   let drawer = page.getByRole("dialog");
@@ -542,7 +584,7 @@ test("creates remote workstations with normal numbering", async ({ page }) => {
   await login(page);
   await page.goto("/office/equipment?view=workstations&create=workstation");
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("group", { name: t.workstation.form.type, exact: true }).getByRole("button", { name: t.workstation.types.remote, exact: true }).click();
+  await dialog.getByRole("switch", { name: new RegExp(`^${t.workstation.form.type}`) }).click();
   await dialog.getByRole("button", { name: "Create workstation", exact: true }).click();
   await expect(page).toHaveURL(/item=/);
   const id = new URL(page.url()).searchParams.get("item");

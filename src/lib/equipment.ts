@@ -1,4 +1,4 @@
-import type { PcConfiguration, pcConfigurationSummaries } from "@/lib/pc-configuration";
+import type { ComputerConfiguration, computerConfigurationSummaries } from "@/lib/pc-configuration";
 import type { Database } from "@/types/database.types";
 
 export type EquipmentType = Database["public"]["Enums"]["equipment_type"];
@@ -61,9 +61,18 @@ export function isOtherEquipment(type: EquipmentType): type is (typeof OTHER_EQU
   return otherEquipmentTypes.has(type);
 }
 
-export function equipmentSpecificationSummary(item: { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null; pcConfiguration?: PcConfiguration | null }, summarize: (config: PcConfiguration) => ReturnType<typeof pcConfigurationSummaries>) {
+type ComputerSummaryItem = { cpu: string | null; gpu: string | null; ram: string | null; storage: string | null; pcConfiguration?: ComputerConfiguration | null };
+
+export function equipmentSpecificationSummary(item: ComputerSummaryItem, summarize: (config: ComputerConfiguration) => ReturnType<typeof computerConfigurationSummaries>) {
   const structured = item.pcConfiguration ? summarize(item.pcConfiguration) : null;
   return [structured?.processor || item.cpu, structured?.graphics || item.gpu, structured?.memory || item.ram, structured?.drives || item.storage].filter(Boolean).join(" · ");
+}
+
+export function equipmentInventorySummary(item: ComputerSummaryItem & { equipmentType: EquipmentType; manufacturer: string | null; model: string | null }, summarize: (config: ComputerConfiguration) => ReturnType<typeof computerConfigurationSummaries>) {
+  const identity = [item.manufacturer, item.model].filter(Boolean).join(" ");
+  if (item.equipmentType === "pc") return equipmentSpecificationSummary(item, summarize);
+  if (item.equipmentType === "laptop") return [identity, equipmentSpecificationSummary(item, summarize)].filter(Boolean).join(" · ");
+  return identity;
 }
 
 export function equipmentDisplayName(item: { assetTag: string | null; displayName: string | null; equipmentType: EquipmentType; manufacturer: string | null; model: string | null }) {

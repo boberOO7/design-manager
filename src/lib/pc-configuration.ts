@@ -13,6 +13,7 @@ export const GPU_FAMILIES = {
 export const MEMORY_TYPES = ["DDR3", "DDR4", "DDR5", "Other"] as const;
 export const DRIVE_TYPES = ["nvme_ssd", "sata_ssd", "hdd", "other"] as const;
 export const CAPACITY_UNITS = ["GB", "TB"] as const;
+export const POWER_SUPPLY_EFFICIENCIES = ["80 PLUS", "80 PLUS Bronze", "80 PLUS Silver", "80 PLUS Gold", "80 PLUS Platinum", "80 PLUS Titanium", "Other"] as const;
 const model = z.string().max(160).nullable();
 const capacity = z.number().positive().max(1_000_000);
 const processor = z.discriminatedUnion("manufacturer", [
@@ -26,8 +27,9 @@ const graphics = z.discriminatedUnion("vendor", [
   z.strictObject({ vendor: z.literal("Other"), family: z.enum(GPU_FAMILIES.Other).nullable(), model, vramGb: capacity.nullable() }),
 ]);
 
-// A PC-owned document: component configuration has no independent inventory lifecycle.
-export const pcConfigurationSchema = z.strictObject({
+// The historic database column is named pc_configuration, but the shared
+// computer components apply to both PCs and laptops.
+export const computerConfigurationSchema = z.strictObject({
   processor: processor.nullable(),
   graphics: z.discriminatedUnion("mode", [
     z.strictObject({ mode: z.literal("integrated") }),
@@ -35,21 +37,27 @@ export const pcConfigurationSchema = z.strictObject({
   ]).nullable(),
   memory: z.strictObject({ capacityGb: capacity.nullable(), generation: z.enum(MEMORY_TYPES).nullable(), moduleCount: z.number().int().min(1).max(128).nullable() }),
   drives: z.array(z.strictObject({ type: z.enum(DRIVE_TYPES), capacity, unit: z.enum(CAPACITY_UNITS) })).max(32),
+  motherboard: z.strictObject({ manufacturer: model, model, chipset: model }).nullable().optional(),
+  powerSupply: z.strictObject({ manufacturer: model, model, wattage: z.number().int().positive().max(100_000).nullable(), efficiency: z.enum(POWER_SUPPLY_EFFICIENCIES).nullable() }).nullable().optional(),
 });
-export type PcConfiguration = z.infer<typeof pcConfigurationSchema>;
-export const EMPTY_PC_CONFIGURATION: PcConfiguration = { processor: null, graphics: null, memory: { capacityGb: null, generation: null, moduleCount: null }, drives: [] };
+export type ComputerConfiguration = z.infer<typeof computerConfigurationSchema>;
+export const EMPTY_COMPUTER_CONFIGURATION: ComputerConfiguration = { processor: null, graphics: null, memory: { capacityGb: null, generation: null, moduleCount: null }, drives: [], motherboard: null, powerSupply: null };
 
-export function hasPcConfiguration(config: PcConfiguration) {
-  return Boolean(config.processor || config.graphics || config.drives.length || Object.values(config.memory).some((value) => value !== null));
+export function normalizeComputerConfiguration(config?: ComputerConfiguration | null): ComputerConfiguration {
+  return { ...EMPTY_COMPUTER_CONFIGURATION, ...config };
 }
 
-export function parsePcConfigurationFormValue(value: unknown): unknown {
+export function hasComputerConfiguration(config: ComputerConfiguration) {
+  return Boolean(config.processor || config.graphics || config.drives.length || (config.motherboard && Object.values(config.motherboard).some((value) => value !== null)) || (config.powerSupply && Object.values(config.powerSupply).some((value) => value !== null)) || Object.values(config.memory).some((value) => value !== null));
+}
+
+export function parseComputerConfigurationFormValue(value: unknown): unknown {
   if (typeof value !== "string") return value;
   if (!value) return null;
   try { return JSON.parse(value); } catch { return value; }
 }
 
-export function pcConfigurationSummaries(config: PcConfiguration, labels: { integrated: string; other: string; professional: string; gb: string; tb: string; modules: (count: number) => string; drive: (type: PcConfiguration["drives"][number]["type"]) => string }) {
+export function computerConfigurationSummaries(config: ComputerConfiguration, labels: { integrated: string; other: string; professional: string; gb: string; tb: string; watts: string; modules: (count: number) => string; drive: (type: ComputerConfiguration["drives"][number]["type"]) => string }) {
   const family = (value: string | null) => value === "Other" ? labels.other : value === "Professional" ? labels.professional : value;
   const cpu = config.processor;
   const gpu = config.graphics?.mode === "discrete" ? config.graphics.details : null;
@@ -58,5 +66,7 @@ export function pcConfigurationSummaries(config: PcConfiguration, labels: { inte
     graphics: config.graphics?.mode === "integrated" ? labels.integrated : gpu ? [[gpu.vendor === "Other" ? labels.other : gpu.vendor, family(gpu.family), gpu.model].filter(Boolean).join(" "), gpu.vramGb && `${gpu.vramGb} ${labels.gb}`].filter(Boolean).join(" · ") : "",
     memory: [config.memory.capacityGb && `${config.memory.capacityGb} ${labels.gb}`, family(config.memory.generation), config.memory.moduleCount && labels.modules(config.memory.moduleCount)].filter(Boolean).join(" · "),
     drives: config.drives.map((drive) => `${drive.capacity} ${drive.unit === "TB" ? labels.tb : labels.gb} ${labels.drive(drive.type)}`).join(" + "),
+    motherboard: config.motherboard ? [config.motherboard.manufacturer, config.motherboard.model, config.motherboard.chipset].filter(Boolean).join(" · ") : "",
+    powerSupply: config.powerSupply ? [config.powerSupply.manufacturer, config.powerSupply.model, config.powerSupply.wattage && `${config.powerSupply.wattage} ${labels.watts}`, family(config.powerSupply.efficiency)].filter(Boolean).join(" · ") : "",
   };
 }

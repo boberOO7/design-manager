@@ -23,6 +23,12 @@ describe("Office workspace presentation", () => {
     expect(assignments).toContain("createRequested && isAdmin");
   });
 
+  it("defers to contextual creation actions on Equipment", () => {
+    expect(shell).toContain('pathname.startsWith("/office/equipment")');
+    expect(shell).toContain("!equipmentRoute ? isAdmin ?");
+    expect(shell).toContain("isAdmin && !equipmentRoute ? <Dialog");
+  });
+
   it("keeps stable component-specific overlay keys", () => {
     expect(assignments).toContain('assignment-create-${createOpen ? "open" : "closed"}');
     expect(assignments).toContain('assignment-detail-${selected?.id ?? "closed"}');

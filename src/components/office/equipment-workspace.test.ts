@@ -44,12 +44,14 @@ describe("Equipment application flow", () => {
     expect(workspace).not.toContain('t("groups.empty")');
   });
 
-  it("creates numbered workstations atomically with compact optional bulk assignment", () => {
+  it("creates numbered workstations atomically with employee assignment in every row", () => {
     expect(actions).toContain("export async function createWorkstations");
     expect(actions).toContain('rpc("create_workstations"');
     expect(workspace).toContain('t("workstation.form.quantity")');
     expect(workspace).toContain('t("workstation.form.startingNumber")');
-    expect(workspace).toContain('t("workstation.form.assignEmployees")');
+    expect(workspace).toContain('t("workstation.form.employee")');
+    expect(workspace).not.toContain("assignEmployees");
+    expect(workspace).not.toContain('<NumericStepper initialFocus ariaLabel={t("workstation.form.quantity")}');
     expect(workspace).toContain("data-quantity-stepper");
     expect(workspace).toContain("data-workstation-editor");
     expect(workspace).toContain('types: ["workstation-rows"]');
@@ -96,9 +98,15 @@ describe("Equipment application flow", () => {
     expect(form).toContain('type="cpu" manufacturer={cpu.manufacturer} family={cpu.family ?? ""}');
     expect(form).toContain('type="gpu" manufacturer={gpu.vendor} family={gpu.family ?? ""}');
     expect(form).toContain('<EquipmentCatalogCombobox');
-    expect(form).toContain('key === "serialNumber"');
+    expect(form).toContain('if (pc && !item?.[key])');
     expect(form).toContain('!hasStructured[key]');
     expect(form).toContain('config.drives.map');
+    expect(form).toContain('{computer ? <>');
+    expect(form).toContain('section("motherboard"');
+    expect(form).toContain('section("powerSupply"');
+    expect(form).toContain('type="motherboard"');
+    expect(form).toContain('type="power_supply"');
+    expect(form).toContain('!pc || Object.values(identity).some(Boolean)');
   });
 
   it("keeps maintenance visible, notes optional, and configuration in one animated accordion", () => {
@@ -108,7 +116,6 @@ describe("Equipment application flow", () => {
     expect(form).toContain('inert={!isOpen}');
     expect(form).toContain('ResizeObserver');
     expect(form).toContain('transition-[height,opacity]');
-    expect(form).not.toContain('motion-reduce:transition-none');
     expect(form).toContain('openSection === key');
     expect(form).toContain('<fieldset className="shrink-0 rounded-');
     expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');
@@ -151,17 +158,33 @@ describe("Equipment application flow", () => {
   it("uses the complete inventory and isolates autosave from service and scheduling writes", () => {
     expect(workspace).toContain('["inventory", "workstations", "maintenance"]');
     expect(workspace).toContain('<EquipmentInventory items={equipment}');
+    expect(workspace).toContain('equipmentInventorySummary(item');
+    expect(workspace).toContain('{urgency ? <MaintenanceBadge');
     expect(workspace).toContain('OTHER_EQUIPMENT_TYPES.map');
+    expect(workspace).toContain('initialView === "inventory" ? <Button asChild>');
     expect(workspace).toContain('onSave={saveField}');
     expect(workspace).not.toContain('t("actions.saveEquipment")');
     expect(workspace).toContain('isTopLayer={!serviceOpen && !codeOpen}');
     expect(workspace).toContain('function StartServiceForm');
     expect(workspace).toContain('function MaintenanceSchedule');
-    expect(form).toContain('t("configuration.save")');
+    expect(form).toContain("persistConfiguration");
+    expect(form).toContain("updateConfiguration");
+    expect(form).toContain("<BinarySwitch");
+    expect(form).toContain('role="switch"');
+    expect(form).toContain("aria-checked={selectedIndex === 1}");
+    expect(form).toContain("onClick={() => onChange(selectedIndex === 0 ? options[1] : options[0])}");
+    expect(form).toContain("data-binary-switch-thumb");
+    expect(form).toContain("duration-200");
+    expect(form).toContain("motion-reduce:transition-none");
+    expect(form).not.toContain("<SegmentedControl");
+    expect(form).not.toContain('t("configuration.save")');
+    expect(workspace).not.toContain("dirtyConfiguration");
     expect(workspace).toContain('pc: Computer');
     expect(form).toContain('type="hidden" name="equipmentType"');
-    expect(workspace).toContain('<SegmentedControl disabled={pending}');
+    expect(workspace).toContain('<BinarySwitch disabled={pending}');
     expect(workspace).toContain('<WorkstationTypeBadge type={item.workstationType} />');
+    expect(workspace).toContain("data-workstation-badge");
+    expect(workspace).toContain("workstationBadges.get(item.workstationId)");
     expect(workspace).toContain('prefix={codePrefix} preserveWidth');
   });
 

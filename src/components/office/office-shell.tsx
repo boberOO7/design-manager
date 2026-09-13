@@ -20,11 +20,12 @@ const tabs = [
 export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; isAdmin: boolean }) {
   const t = useTranslations("Office");
   const pathname = usePathname();
+  const equipmentRoute = pathname.startsWith("/office/equipment");
   const [chooserOpen, setChooserOpen] = useState(false);
   return <div className="space-y-6">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div><h1 className="text-2xl font-bold tracking-tight text-[var(--ui-text)] sm:text-3xl">{t("title")}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--ui-text-secondary)]">{t("description")}</p></div>
-      {isAdmin ? <Button type="button" size="lg" onClick={() => setChooserOpen(true)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Button> : <Button asChild size="lg"><Link href="/office/submissions?create=submission"><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Link></Button>}
+      {!equipmentRoute ? isAdmin ? <Button type="button" size="lg" onClick={() => setChooserOpen(true)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Button> : <Button asChild size="lg"><Link href="/office/submissions?create=submission"><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Link></Button> : null}
     </header>
     <nav aria-label={t("tabs.label")} className="flex gap-1 overflow-x-auto border-b border-[var(--ui-border)]">
       {tabs.filter((tab) => !tab.adminOnly || isAdmin).map(({ href, key, icon: Icon }) => {
@@ -33,7 +34,7 @@ export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; 
       })}
     </nav>
     {children}
-    {isAdmin ? <Dialog isOpen={chooserOpen} onRequestClose={() => setChooserOpen(false)} closeLabel={t("close")} title={t("chooser.title")} description={t("chooser.description")} className="max-w-lg">
+    {isAdmin && !equipmentRoute ? <Dialog isOpen={chooserOpen} onRequestClose={() => setChooserOpen(false)} closeLabel={t("close")} title={t("chooser.title")} description={t("chooser.description")} className="max-w-lg">
       <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
         <CreateChoice initialFocus href="/office/submissions?create=submission" icon={MessageSquareText} title={t("chooser.submission")} description={t("chooser.submissionDescription")} onClick={() => setChooserOpen(false)} />
         <CreateChoice href="/office/assignments?create=assignment" icon={ClipboardCheck} title={t("chooser.assignment")} description={t("chooser.assignmentDescription")} onClick={() => setChooserOpen(false)} />
