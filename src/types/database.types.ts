@@ -895,6 +895,161 @@ export type Database = {
           },
         ]
       }
+      equipment_catalog_manufacturers: {
+        Row: {
+          catalog_type: string
+          name: string
+          popularity: number
+          product_count: number
+          search_name: string | null
+        }
+        Insert: {
+          catalog_type: string
+          name: string
+          popularity: number
+          product_count: number
+          search_name?: string | null
+        }
+        Update: {
+          catalog_type?: string
+          name?: string
+          popularity?: number
+          product_count?: number
+          search_name?: string | null
+        }
+        Relationships: []
+      }
+      equipment_catalog_models: {
+        Row: {
+          catalog_type: string
+          family: string | null
+          first_seen_at: string
+          id: number
+          is_current: boolean
+          last_seen_at: string
+          manufacturer: string
+          model: string
+          on_market: boolean | null
+          popularity: number
+          provider_product_count: number
+          search_family: string | null
+          search_manufacturer: string | null
+          search_model: string | null
+          source_updated_at: string
+        }
+        Insert: {
+          catalog_type: string
+          family?: string | null
+          first_seen_at?: string
+          id?: never
+          is_current?: boolean
+          last_seen_at?: string
+          manufacturer: string
+          model: string
+          on_market?: boolean | null
+          popularity?: number
+          provider_product_count?: number
+          search_family?: string | null
+          search_manufacturer?: string | null
+          search_model?: string | null
+          source_updated_at: string
+        }
+        Update: {
+          catalog_type?: string
+          family?: string | null
+          first_seen_at?: string
+          id?: never
+          is_current?: boolean
+          last_seen_at?: string
+          manufacturer?: string
+          model?: string
+          on_market?: boolean | null
+          popularity?: number
+          provider_product_count?: number
+          search_family?: string | null
+          search_manufacturer?: string | null
+          search_model?: string | null
+          source_updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_catalog_provider_products: {
+        Row: {
+          catalog_model_id: number
+          first_seen_at: string
+          is_current: boolean
+          last_seen_at: string
+          on_market: boolean | null
+          popularity: number
+          source: string
+          source_product_id: string
+          source_seen_at: string
+          source_updated_at: string
+        }
+        Insert: {
+          catalog_model_id: number
+          first_seen_at?: string
+          is_current?: boolean
+          last_seen_at?: string
+          on_market?: boolean | null
+          popularity?: number
+          source: string
+          source_product_id: string
+          source_seen_at: string
+          source_updated_at: string
+        }
+        Update: {
+          catalog_model_id?: number
+          first_seen_at?: string
+          is_current?: boolean
+          last_seen_at?: string
+          on_market?: boolean | null
+          popularity?: number
+          source?: string
+          source_product_id?: string
+          source_seen_at?: string
+          source_updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_catalog_provider_products_catalog_model_id_fkey"
+            columns: ["catalog_model_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_catalog_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_catalog_sync_state: {
+        Row: {
+          completed_generation: string | null
+          last_completed_at: string | null
+          last_error: string | null
+          last_started_at: string | null
+          lease_until: string | null
+          run_id: string | null
+          source: string
+        }
+        Insert: {
+          completed_generation?: string | null
+          last_completed_at?: string | null
+          last_error?: string | null
+          last_started_at?: string | null
+          lease_until?: string | null
+          run_id?: string | null
+          source: string
+        }
+        Update: {
+          completed_generation?: string | null
+          last_completed_at?: string | null
+          last_error?: string | null
+          last_started_at?: string | null
+          lease_until?: string | null
+          run_id?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       equipment_service_events: {
         Row: {
           completed_on: string | null
@@ -2664,6 +2819,24 @@ export type Database = {
           id: string
         }[]
       }
+      claim_equipment_catalog_sync: {
+        Args: { p_run_id: string; p_source: string }
+        Returns: {
+          completed_generation: string | null
+          last_completed_at: string | null
+          last_error: string | null
+          last_started_at: string | null
+          lease_until: string | null
+          run_id: string | null
+          source: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "equipment_catalog_sync_state"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_google_calendar_reconciliation_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -2774,6 +2947,15 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      finish_equipment_catalog_sync: {
+        Args: {
+          p_error?: string
+          p_generation: string
+          p_run_id: string
+          p_source: string
+        }
+        Returns: undefined
+      }
       generate_equipment_maintenance_notifications: {
         Args: { p_today?: string }
         Returns: number
@@ -2809,6 +2991,15 @@ export type Database = {
       get_studio_member_removal_impact: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      import_equipment_catalog_batch: {
+        Args: {
+          p_generation: string
+          p_rows: Json
+          p_run_id: string
+          p_source: string
+        }
+        Returns: undefined
       }
       manage_office_assignment: {
         Args: {
@@ -2907,6 +3098,18 @@ export type Database = {
           p_template_id?: string
         }
         Returns: string
+      }
+      search_equipment_catalog: {
+        Args: {
+          p_family?: string
+          p_field?: string
+          p_manufacturer?: string
+          p_query: string
+          p_type: string
+        }
+        Returns: {
+          value: string
+        }[]
       }
       set_checklist_template_archived: {
         Args: { p_archived: boolean; p_template_id: string }

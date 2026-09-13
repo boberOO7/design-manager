@@ -145,7 +145,7 @@ submission/office-assignment migrations and RLS tests.
 - Legacy CPU/GPU/RAM/storage and whole-PC manufacturer/model remain verbatim;
   no migration guesses structured values. PC editing shows each saved text value
   only until the matching structured component has been saved, while summaries
-  retain legacy fallback. A repository-owned reference catalog provides optional
+  retain legacy fallback. A local reference catalog synchronized from Open Icecat provides optional
   creatable manufacturer/model suggestions independently of studio inventory;
   arbitrary values remain valid. Retired items remain inventory records.
 - Create/edit uses one open identification/configuration accordion section, with
@@ -180,7 +180,8 @@ submission/office-assignment migrations and RLS tests.
 Canonical paths: `src/app/(app)/office/equipment/`,
 `src/components/office/equipment-workspace.tsx`,
 `src/data/queries/equipment.ts`, the equipment migrations, and focused
-Equipment application/RLS tests.
+Equipment application/RLS tests. See [Equipment reference catalog](equipment-catalog.md)
+for local search boundaries, category mapping, historical retention and sync operations.
 
 ## Notifications
 

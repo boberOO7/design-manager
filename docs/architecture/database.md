@@ -114,3 +114,13 @@ and Lead history.
   compatibility. New deadline behavior is owned by `task_deadlines`.
 - `src/data/queries/index.ts` still exposes some mock-data compatibility helpers;
   authenticated product authorization must never use mock identity or mock rows.
+
+## Shared equipment reference data
+
+`equipment_catalog_models` and its manufacturer ranking table are shared,
+admin-readable autocomplete references independent of studio inventory.
+`equipment_catalog_provider_products` holds admin-readable, worker-written provider
+identity/state needed for incremental synchronization and points only to canonical
+models. The service-only `equipment_catalog_sync_state` coordinates idempotent imports; deletion
+from either catalog table is not granted even to the worker. See
+[Equipment catalog](equipment-catalog.md).

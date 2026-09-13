@@ -61,7 +61,10 @@ async function motionFrames(button: Locator) {
     element.click();
     await new Promise<void>((resolve) => {
       const sample = () => {
-        frames.push({ height: content.getBoundingClientRect().height, nextTop: next.getBoundingClientRect().top, opacity: Number(getComputedStyle(content).opacity), time: performance.now() - start });
+        // Measure layout independently of the drawer's automatic scroll anchoring.
+        let nextTop = next.getBoundingClientRect().top;
+        for (let parent = next.parentElement; parent; parent = parent.parentElement) nextTop += parent.scrollTop;
+        frames.push({ height: content.getBoundingClientRect().height, nextTop, opacity: Number(getComputedStyle(content).opacity), time: performance.now() - start });
         if (performance.now() - start < 350) requestAnimationFrame(sample); else resolve();
       };
       requestAnimationFrame(sample);
@@ -325,13 +328,13 @@ test("workstation details preserves relationships and uses contextual equipment 
   await name.press("Tab");
   await expect.poll(() => localSql(`select name from public.workstations where id = ${sqlId(workstationId)};`)).toBe("Quiet desk");
 
-  await choose(page, drawer, t.workstation.form.type, t.workstation.types.remote);
+  await drawer.getByRole("group", { name: t.workstation.form.type, exact: true }).getByRole("button", { name: t.workstation.types.remote, exact: true }).click();
   await expect.poll(() => localSql(`select workstation_type from public.workstations where id = ${sqlId(workstationId)};`)).toBe("remote");
 
   await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
   await page.getByRole("menuitem", { name: t.workstation.actions.renumber, exact: true }).click();
   const renumberDialog = page.getByRole("dialog", { name: t.workstation.actions.renumber, exact: true });
-  const number = renumberDialog.getByRole("spinbutton");
+  const number = renumberDialog.getByRole("textbox");
   await number.fill("802");
   await renumberDialog.getByRole("button", { name: t.workstation.actions.renumber, exact: true }).click();
   await expect(renumberDialog.getByRole("alert")).toHaveText(t.workstation.form.numberConflict);
@@ -487,19 +490,19 @@ test("inventory filters, isolated autosave, inventory code changes, and contextu
   expect(localSql(`select next_maintenance_due_date from public.equipment where id=${sqlId(printerId)};`)).toBe("2027-01-05");
 
   const originalCode = localSql(`select asset_tag from public.equipment where id=${sqlId(printerId)};`);
-  const takenCode = localSql(`select asset_tag from public.equipment where id=${sqlId(coffeeId)};`);
+  const takenCode = localSql(`with inserted as (insert into public.equipment(studio_id,equipment_type) values (${sqlId(studioId)},'printer') returning asset_tag) select asset_tag from inserted;`);
   await drawer.getByRole("button", { name: t.actions.more, exact: true }).click();
   await page.getByRole("menuitem", { name: t.actions.changeCode }).click();
   const codeDialog = page.getByRole("dialog", { name: t.actions.changeCode, exact: true });
-  await codeDialog.getByLabel(t.form.assetTag).fill(takenCode);
+  await codeDialog.getByRole("textbox", { name: t.form.assetTagNumber, exact: true }).fill(takenCode.slice(4));
   await codeDialog.getByRole("button", { name: t.actions.changeCode, exact: true }).click();
-  await expect(codeDialog.getByRole("alert")).toContainText(t.errors.duplicate);
+  await expect(codeDialog.getByRole("alert")).toContainText(t.form.codeUnavailable);
   expect(localSql(`select asset_tag from public.equipment where id=${sqlId(printerId)};`)).toBe(originalCode);
-  await codeDialog.getByLabel(t.form.assetTag).fill("PRINT-CUSTOM");
+  await codeDialog.getByRole("textbox", { name: t.form.assetTagNumber, exact: true }).fill("0099");
   await codeDialog.getByRole("button", { name: t.actions.changeCode, exact: true }).click();
   await expect(codeDialog).toHaveCount(0);
   drawer = page.getByRole("dialog");
-  await expect(drawer.locator("header")).toContainText("PRINT-CUSTOM");
+  await expect(drawer.locator("header")).toContainText("PRN-0099");
 
   await drawer.getByRole("button", { name: t.service.send, exact: true }).click();
   const serviceDialog = page.getByRole("dialog", { name: t.service.send, exact: true });
@@ -525,7 +528,7 @@ test("inventory filters, isolated autosave, inventory code changes, and contextu
   await expect(page.getByRole("button", { name: /Inventory printer updated/ })).toBeVisible();
 
   await page.goto("/office/equipment");
-  await page.getByRole("searchbox", { name: t.inventory.search }).fill("PRINT-CUSTOM");
+  await page.getByRole("searchbox", { name: t.inventory.search }).fill("PRN-0099");
   await expect(page.getByRole("button", { name: /Inventory printer updated/ })).toBeVisible();
   await choose(page, page.locator("main"), t.form.state, t.states.retired);
   await expect(page.getByRole("heading", { name: t.inventory.noMatches })).toBeVisible();
@@ -539,7 +542,7 @@ test("creates remote workstations with normal numbering", async ({ page }) => {
   await login(page);
   await page.goto("/office/equipment?view=workstations&create=workstation");
   const dialog = page.getByRole("dialog");
-  await choose(page, dialog, t.workstation.form.type, t.workstation.types.remote);
+  await dialog.getByRole("group", { name: t.workstation.form.type, exact: true }).getByRole("button", { name: t.workstation.types.remote, exact: true }).click();
   await dialog.getByRole("button", { name: "Create workstation", exact: true }).click();
   await expect(page).toHaveURL(/item=/);
   const id = new URL(page.url()).searchParams.get("item");
@@ -557,4 +560,106 @@ test("concurrent inventory allocations cannot collide", async () => {
     const codes = results.map((result) => result.stdout.trim().split("\n")[0]);
     expect(new Set(codes)).toEqual(new Set(Array.from({ length: 12 }, (_, index) => `PC-${String(index + 1).padStart(2, "0")}`)));
   } finally { localSql(`delete from public.studios where id=${sqlId(fixtureStudio)};`); }
+});
+
+for (const locale of ["en", "uk"] as const) {
+  test(`${locale}: local catalog search and manual fallback survive provider/search unavailability`, async ({ page }) => {
+    const t = (locale === "en" ? en : uk).Equipment;
+    const source = `ui_catalog_${randomUUID().replaceAll("-", "").slice(0,16)}`;
+    // Synthetic references are confined to this test's source and removed in finally.
+    localSql(`with catalog_model as (
+        insert into public.equipment_catalog_models(catalog_type,manufacturer,model,is_current,on_market,popularity,provider_product_count,source_updated_at)
+        values ('monitor','Catalog UI Dell','U2723UI',true,false,0,1,'2026-09-10') returning id
+      ) insert into public.equipment_catalog_provider_products(source,source_product_id,catalog_model_id,is_current,on_market,popularity,source_updated_at,source_seen_at)
+        select '${source}','1',id,true,false,0,'2026-09-10','2026-09-12' from catalog_model;
+      insert into public.equipment_catalog_manufacturers(catalog_type,name,popularity,product_count) values ('monitor','Catalog UI Dell',999999999999,1) on conflict do nothing;`);
+    const queries: URL[] = [];
+    const external: string[] = [];
+    page.on("request", request => {
+      if (request.url().includes("/api/equipment/catalog?")) queries.push(new URL(request.url()));
+      if (request.url().includes("icecat")) external.push(request.url());
+    });
+    try {
+      await login(page, locale);
+      await page.goto("/office/equipment?create=equipment");
+      let dialog = page.getByRole("dialog");
+      await choose(page, dialog, t.form.type, t.types.monitor);
+      await dialog.locator('[name="displayName"]').fill(`Catalog selection ${locale}`);
+      let identity = await open(dialog, t.form.identification);
+      const manufacturer = identity.locator('input[name="manufacturer"]');
+      await manufacturer.click();
+      await expect(page.getByRole("option", { name: "Catalog UI Dell", exact: true })).toBeVisible();
+      expect(await page.getByRole("listbox").getByRole("option").count()).toBeLessThanOrEqual(10);
+      await manufacturer.fill("Catalog UI");
+      await expect(page.getByRole("option", { name: "Catalog UI Dell", exact: true })).toBeVisible();
+      await page.getByRole("option", { name: "Catalog UI Dell", exact: true }).click();
+      const model = identity.locator('input[name="model"]');
+      await model.fill("U");
+      await page.waitForTimeout(350);
+      expect(queries.filter(url => url.searchParams.get("field") === "model")).toHaveLength(0);
+      await model.fill("U27");
+      await expect(page.getByRole("option", { name: "U2723UI", exact: true })).toBeVisible();
+      expect(queries.at(-1)?.searchParams.get("manufacturer")).toBe("Catalog UI Dell");
+      await page.getByRole("option", { name: "U2723UI", exact: true }).click();
+      await dialog.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/item=/);
+      expect(localSql(`select model from public.equipment where studio_id=${sqlId(studioId)} and display_name='Catalog selection ${locale}'`)).toBe("U2723UI");
+
+      await page.route("**/api/equipment/catalog?**", route => route.fulfill({ status: 503, json: { error: "Unavailable" } }));
+      await page.goto("/office/equipment?create=equipment");
+      dialog = page.getByRole("dialog");
+      await choose(page, dialog, t.form.type, t.types.printer);
+      await dialog.locator('[name="displayName"]').fill(`Manual catalog fallback ${locale}`);
+      identity = await open(dialog, t.form.identification);
+      await identity.locator('input[name="manufacturer"]').click();
+      await expect(page.getByRole("option", { name: "HP", exact: true })).toBeVisible();
+      const unavailable = page.waitForResponse(response => response.url().includes("/api/equipment/catalog?") && response.status() === 503);
+      await identity.locator('input[name="manufacturer"]').fill("Workshop 1985");
+      await unavailable;
+      await page.getByRole("option", { name: t.autocomplete.useValue.replace("{value}", "Workshop 1985"), exact: true }).click();
+      await identity.locator('input[name="model"]').fill("Custom press Mk IV");
+      await page.getByRole("option", { name: t.autocomplete.useValue.replace("{value}", "Custom press Mk IV"), exact: true }).click();
+      await dialog.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/item=/);
+      expect(localSql(`select manufacturer || ':' || model from public.equipment where studio_id=${sqlId(studioId)} and display_name='Manual catalog fallback ${locale}'`)).toBe("Workshop 1985:Custom press Mk IV");
+      dialog = page.getByRole("dialog", { name: `Manual catalog fallback ${locale}`, exact: true });
+      identity = await open(dialog, t.form.identification);
+      await identity.locator('input[name="model"]').fill("Restored press Mk V");
+      await identity.locator('input[name="model"]').press("Tab");
+      await expect.poll(() => localSql(`select model from public.equipment where studio_id=${sqlId(studioId)} and display_name='Manual catalog fallback ${locale}'`)).toBe("Restored press Mk V");
+      expect(external).toEqual([]);
+    } finally {
+      localSql(`delete from public.equipment_catalog_provider_products where source='${source}'; delete from public.equipment_catalog_models where manufacturer='Catalog UI Dell' and model='U2723UI'; delete from public.equipment_catalog_manufacturers where name='Catalog UI Dell';`);
+    }
+  });
+}
+
+test("catalog combobox cancels stale context and preserves server fuzzy results", async ({ page }) => {
+  const t = en.Equipment;
+  await login(page);
+  await page.route("**/api/equipment/catalog?**", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("field") === "manufacturer") return route.fulfill({ json: { suggestions: [] } });
+    if (url.searchParams.get("query") === "old") {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return route.fulfill({ json: { suggestions: ["Stale result"] } }).catch(() => {});
+    }
+    return route.fulfill({ json: { suggestions: ["Fuzzy server result"] } });
+  });
+  await page.goto("/office/equipment?create=equipment");
+  const dialog = page.getByRole("dialog");
+  await choose(page, dialog, t.form.type, t.types.monitor);
+  const identity = await open(dialog, t.form.identification);
+  const input = identity.locator('input[name="model"]');
+  const oldRequest = page.waitForRequest(request => new URL(request.url()).searchParams.get("query") === "old");
+  await input.fill("old");
+  await oldRequest;
+  await input.fill("fzy");
+  await expect(page.getByRole("option", { name: "Fuzzy server result", exact: true })).toBeVisible();
+  await page.waitForTimeout(900);
+  await expect(page.getByRole("option", { name: "Stale result", exact: true })).toHaveCount(0);
+  await input.press("ArrowDown");
+  await input.press("ArrowUp");
+  await input.press("Enter");
+  await expect(input).toHaveValue("Fuzzy server result");
 });

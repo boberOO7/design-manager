@@ -93,9 +93,9 @@ describe("Equipment application flow", () => {
     expect(form).toContain('name="pcConfiguration"');
     expect(form).toContain('CPU_FAMILIES[cpu.manufacturer]');
     expect(form).toContain('GPU_FAMILIES[gpu.vendor]');
-    expect(form).toContain('cpuModelSuggestions(cpu.manufacturer, cpu.family)');
-    expect(form).toContain('gpuModelSuggestions(gpu.vendor, gpu.family)');
-    expect(form).toContain('<CreatableCombobox');
+    expect(form).toContain('type="cpu" manufacturer={cpu.manufacturer} family={cpu.family ?? ""}');
+    expect(form).toContain('type="gpu" manufacturer={gpu.vendor} family={gpu.family ?? ""}');
+    expect(form).toContain('<EquipmentCatalogCombobox');
     expect(form).toContain('key === "serialNumber"');
     expect(form).toContain('!hasStructured[key]');
     expect(form).toContain('config.drives.map');
