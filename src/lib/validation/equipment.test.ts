@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PC_CONFIGURATION } from "@/lib/pc-configuration";
 import { equipmentDisplayName, equipmentInventoryNumber, equipmentInventoryPrefix } from "@/lib/equipment";
-import { equipmentFieldUpdateSchema, equipmentMaintenanceSchema, completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
+import { equipmentFieldUpdateSchema, equipmentMaintenanceSchema, completeEquipmentServiceSchema, equipmentAssignmentSchema, equipmentInputSchema, floorPlanLayoutSchema, recordEquipmentHistorySchema, startEquipmentServiceSchema, workstationBulkCreateSchema, workstationInputSchema } from "./equipment";
 
 const baseEquipment = {
   equipmentType: "printer",
@@ -69,6 +69,13 @@ describe("equipment validation", () => {
     const workstationId = "47000000-0000-4000-8000-000000000101";
     expect(equipmentAssignmentSchema.parse({ equipmentId, workstationId })).toEqual({ equipmentId, workstationId });
     expect(equipmentAssignmentSchema.parse({ equipmentId, workstationId: "" })).toEqual({ equipmentId, workstationId: null });
+  });
+
+  it("accepts only bounded quarter-turn floor-plan appearance metadata", () => {
+    const placement = { entityType: "workstation", entityId: "47000000-0000-4000-8000-000000000101", floor: 1, x: 0.5, y: 0.5 };
+    expect(floorPlanLayoutSchema.safeParse({ placements: [{ ...placement, displayMetadata: { rotation: 90, width: 34, height: 15, future: "kept" } }] }).success).toBe(true);
+    expect(floorPlanLayoutSchema.safeParse({ placements: [{ ...placement, displayMetadata: { rotation: 45 } }] }).success).toBe(false);
+    expect(floorPlanLayoutSchema.safeParse({ placements: [{ ...placement, displayMetadata: { width: 34 } }] }).success).toBe(false);
   });
 
   it("requires an interval and explicit due date only when recurrence is enabled", () => {

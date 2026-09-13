@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20260913164707_add_office_floor_plan_layout.sql", "utf8");
+const metadataMigration = readFileSync("supabase/migrations/20260913172714_validate_office_floor_plan_display_metadata.sql", "utf8");
 
 describe("office floor-plan migration", () => {
   it("stores one tenant-safe entity per normalized placement", () => {
@@ -26,5 +27,12 @@ describe("office floor-plan migration", () => {
   it("limits placement to office workstations and useful standalone equipment", () => {
     expect(migration).toContain("workstation.workstation_type = 'office'");
     expect(migration).toContain("item.equipment_type in ('air_conditioner', 'printer', 'coffee_machine', 'other')");
+  });
+
+  it("constrains persisted rotation and dimensions without rewriting placement identity", () => {
+    expect(metadataMigration).toContain("add constraint office_floor_plan_placements_display_metadata_shape");
+    expect(metadataMigration).toContain("in (0, 90, 180, 270)");
+    expect(metadataMigration).toContain("between 6 and 120");
+    expect(metadataMigration).not.toContain("drop table");
   });
 });

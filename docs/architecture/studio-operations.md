@@ -186,7 +186,11 @@ submission/office-assignment migrations and RLS tests.
 - Layout editing is administrator-only. A guarded atomic RPC replaces the
   studio's placement snapshot so floor changes, moves, and removals cannot save
   partially; removing a placement never changes or deletes the underlying
-  workstation or equipment row.
+  workstation or equipment row. Placement display metadata stores bounded
+  marker dimensions and quarter-turn rotation without changing equipment or
+  workstation business data. The editor uses a logical grid, nearby-object
+  anchors, and explicit floor-specific wall guides; it does not infer walls
+  from the flattened architectural SVG paths.
 
 Canonical paths: `src/app/(app)/office/equipment/`,
 `src/components/office/equipment-workspace.tsx`,

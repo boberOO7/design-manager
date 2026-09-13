@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(20);
 
 insert into public.studios(id, name) values
   ('69000000-0000-0000-0000-000000000001', 'Floor plan A'),
@@ -41,7 +41,7 @@ set local role authenticated;
 select is(
   public.save_office_floor_plan_layout(
     '69000000-0000-0000-0000-000000000001',
-    '[{"entity_type":"workstation","entity_id":"69000000-0000-0000-0000-000000000100","floor":1,"x":0.25,"y":0.3},{"entity_type":"equipment","entity_id":"69000000-0000-0000-0000-000000000200","floor":2,"x":0.7,"y":0.8}]'
+    '[{"entity_type":"workstation","entity_id":"69000000-0000-0000-0000-000000000100","floor":1,"x":0.25,"y":0.3,"display_metadata":{"rotation":90,"width":34,"height":15}},{"entity_type":"equipment","entity_id":"69000000-0000-0000-0000-000000000200","floor":2,"x":0.7,"y":0.8,"display_metadata":{"rotation":0,"width":22,"height":14}}]'
   ),
   2,
   'an admin atomically saves office workstations and locatable equipment'
@@ -49,6 +49,20 @@ select is(
 select is((select count(*)::integer from public.office_floor_plan_placements), 2, 'the saved layout is readable');
 select is((select floor::integer from public.office_floor_plan_placements where equipment_id is not null), 2, 'placements retain their floor');
 select is((select x from public.office_floor_plan_placements where workstation_id is not null), 0.25::double precision, 'placements retain normalized coordinates');
+select is((select (display_metadata ->> 'rotation')::integer from public.office_floor_plan_placements where workstation_id is not null), 90, 'placements retain quarter-turn rotation');
+select is((select (display_metadata ->> 'width')::numeric from public.office_floor_plan_placements where workstation_id is not null), 34::numeric, 'placements retain logical marker dimensions');
+select throws_ok(
+  $$select public.save_office_floor_plan_layout('69000000-0000-0000-0000-000000000001', '[{"entity_type":"workstation","entity_id":"69000000-0000-0000-0000-000000000100","floor":1,"x":0.2,"y":0.2,"display_metadata":{"rotation":45}}]')$$,
+  '23514',
+  null,
+  'arbitrary rotation is rejected'
+);
+select throws_ok(
+  $$select public.save_office_floor_plan_layout('69000000-0000-0000-0000-000000000001', '[{"entity_type":"workstation","entity_id":"69000000-0000-0000-0000-000000000100","floor":1,"x":0.2,"y":0.2,"display_metadata":{"width":34}}]')$$,
+  '23514',
+  null,
+  'marker dimensions must be saved as a pair'
+);
 select throws_ok(
   $$select public.save_office_floor_plan_layout('69000000-0000-0000-0000-000000000001', '[{"entity_type":"workstation","entity_id":"69000000-0000-0000-0000-000000000101","floor":1,"x":0.2,"y":0.2}]')$$,
   '23503',

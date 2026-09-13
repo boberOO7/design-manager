@@ -4,7 +4,7 @@ import { pcConfigurationSchema, type PcConfiguration } from "@/lib/pc-configurat
 import type { ActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
-import type { FloorPlanPlacement } from "@/lib/office-floor-plan";
+import { readFloorPlanDisplayMetadata, type FloorPlanPlacement } from "@/lib/office-floor-plan";
 import type { Database } from "@/types/database.types";
 
 type EquipmentRow = Database["public"]["Tables"]["equipment"]["Row"];
@@ -105,7 +105,7 @@ function mapFloorPlanPlacement(row: FloorPlanPlacementRow): FloorPlanPlacement {
     floor: row.floor === 1 ? 1 : 2,
     x: row.x,
     y: row.y,
-    displayMetadata: row.display_metadata,
+    displayMetadata: readFloorPlanDisplayMetadata(row.display_metadata),
   };
 }
 

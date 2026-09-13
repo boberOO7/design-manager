@@ -33,6 +33,29 @@ describe("Office floor-plan application flow", () => {
     expect(floorPlan).not.toMatch(/three|dnd-kit/i);
   });
 
+  it("adds native magnetic snapping, explicit wall guides, and a temporary bypass", () => {
+    expect(floorPlan).toContain("snapFloorPlanRect");
+    expect(floorPlan).toContain("walls: { x:");
+    expect(floorPlan).toContain("data-snap-guide");
+    expect(floorPlan).toContain("event.altKey");
+    expect(floorPlan).toContain("FLOOR_PLAN_GRID_STEP");
+  });
+
+  it("persists restrained rotation and reusable type sizing in display metadata", () => {
+    expect(floorPlan).toContain("nextFloorPlanRotation");
+    expect(floorPlan).toContain('event.key.toLowerCase() === "r"');
+    expect(floorPlan).toContain("rememberedSizes");
+    expect(floorPlan).toContain("applySizeToKind");
+    expect(floorPlan).toContain("metadataWithAppearance");
+  });
+
+  it("isolates wheel zoom, restores fit, and keeps the legend progressive", () => {
+    expect(floorPlan).toContain('addEventListener("wheel", handleWheel, { passive: false })');
+    expect(floorPlan).toContain("event.preventDefault()");
+    expect(floorPlan).toContain("fitFloor");
+    expect(floorPlan).toContain("<Popover.Root>");
+  });
+
   it("opens the existing URL-driven workstation and equipment sheets", () => {
     expect(workspace).toContain("onOpenEquipment={routing.openItem}");
     expect(workspace).toContain("onOpenWorkstation={routing.openItem}");

@@ -582,10 +582,23 @@ test("floor plan places, moves, opens, and removes spatial entities", async ({ p
   await page.getByRole("button", { name: t.floorPlan.placeCenter, exact: true }).click();
   const workstationMarker = page.locator('svg [role="button"][aria-label^="Workstation #951"]');
   await workstationMarker.focus();
+  await page.keyboard.press("r");
   await page.keyboard.press("Shift+ArrowRight");
+  await page.getByRole("button", { name: t.floorPlan.larger, exact: true }).click();
+  const floorCanvas = page.getByRole("group", { name: t.floorPlan.canvasLabel.replace("{floor}", "1"), exact: true });
+  const initialViewBox = await floorCanvas.getAttribute("viewBox");
+  const pageScroll = await page.evaluate(() => window.scrollY);
+  await floorCanvas.hover();
+  await page.mouse.wheel(0, -180);
+  await expect(floorCanvas).not.toHaveAttribute("viewBox", initialViewBox ?? "");
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageScroll);
+  await page.getByRole("button", { name: t.floorPlan.fitFloor, exact: true }).click();
+  await expect(floorCanvas).toHaveAttribute("viewBox", "0 0 337.572 562.115");
   await page.getByRole("button", { name: t.floorPlan.save, exact: true }).click();
   await expect.poll(() => Number(localSql(`select count(*) from public.office_floor_plan_placements where studio_id=${sqlId(studioId)};`))).toBe(2);
   expect(Number(localSql(`select x from public.office_floor_plan_placements where workstation_id=${sqlId(officeId)};`))).toBeCloseTo(0.55, 4);
+  expect(Number(localSql(`select display_metadata->>'rotation' from public.office_floor_plan_placements where workstation_id=${sqlId(officeId)};`))).toBe(90);
+  expect(Number(localSql(`select display_metadata->>'width' from public.office_floor_plan_placements where workstation_id=${sqlId(officeId)};`))).toBeGreaterThan(34);
 
   await page.getByRole("button", { name: t.floorPlan.edit, exact: true }).click();
   await page.locator('svg [role="button"][aria-label="Floor printer"]').click();

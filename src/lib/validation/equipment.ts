@@ -84,6 +84,11 @@ export const equipmentMaintenanceSchema = z.object({
 
 export const equipmentDeleteSchema = z.object({ equipmentId: z.string().uuid() });
 export const equipmentAssignmentSchema = z.object({ equipmentId: z.string().uuid(), workstationId: nullableUuid });
+const floorPlanDisplayMetadataSchema = z.object({
+  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
+  width: z.number().min(6).max(120).optional(),
+  height: z.number().min(6).max(120).optional(),
+}).catchall(z.json()).refine((metadata) => (metadata.width === undefined) === (metadata.height === undefined));
 export const floorPlanLayoutSchema = z.object({
   placements: z.array(z.object({
     entityType: z.enum(["workstation", "equipment"]),
@@ -91,7 +96,7 @@ export const floorPlanLayoutSchema = z.object({
     floor: z.union([z.literal(1), z.literal(2)]),
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
-    displayMetadata: z.record(z.string(), z.json()).default({}),
+    displayMetadata: floorPlanDisplayMetadataSchema.default({}),
   })).max(1000),
 }).superRefine((value, context) => {
   const entities = new Set<string>();

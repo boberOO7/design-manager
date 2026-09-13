@@ -32,6 +32,8 @@ describe("Equipment localization", () => {
     expect(Object.keys(uk.Equipment.floorPlan).sort()).toEqual(Object.keys(en.Equipment.floorPlan).sort());
     expect(Object.keys(uk.Equipment.floorPlan.views).sort()).toEqual(Object.keys(en.Equipment.floorPlan.views).sort());
     expect(Object.keys(uk.Equipment.floorPlan.floors).sort()).toEqual(Object.keys(en.Equipment.floorPlan.floors).sort());
+    expect(Object.keys(uk.Equipment.floorPlan.objectKinds).sort()).toEqual(Object.keys(en.Equipment.floorPlan.objectKinds).sort());
+    expect(Object.keys(uk.Equipment.floorPlan.legendItems).sort()).toEqual(Object.keys(en.Equipment.floorPlan.legendItems).sort());
   });
 
   it("localizes every equipment type and lifecycle state", () => {
