@@ -551,6 +551,73 @@ test("creates remote workstations with normal numbering", async ({ page }) => {
   expect(Number(localSql(`select number from public.workstations where id=${sqlId(id)};`))).toBeGreaterThan(0);
 });
 
+test("floor plan places, moves, opens, and removes spatial entities", async ({ page }) => {
+  const t = en.Equipment;
+  const officeId = randomUUID();
+  const remoteId = randomUUID();
+  const printerId = randomUUID();
+  const mouseId = randomUUID();
+  localSql(`
+    insert into public.workstations(id,studio_id,number,name,workstation_type) values
+      (${sqlId(officeId)},${sqlId(studioId)},951,'Floor desk','office'),
+      (${sqlId(remoteId)},${sqlId(studioId)},952,'Remote desk','remote');
+    insert into public.equipment(id,studio_id,equipment_type,display_name) values
+      (${sqlId(printerId)},${sqlId(studioId)},'printer','Floor printer'),
+      (${sqlId(mouseId)},${sqlId(studioId)},'mouse','Floor mouse');
+  `);
+  await login(page);
+  await page.goto("/office/equipment?view=workstations&layout=floor-plan");
+  await expect(page.getByRole("link", { name: t.floorPlan.views.floorPlan, exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('svg image[href="/floor-1.svg"]')).toBeVisible();
+
+  await page.getByRole("button", { name: t.floorPlan.edit, exact: true }).click();
+  await expect(page.getByRole("button", { name: "Floor desk", exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remote desk", exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Floor printer", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Floor mouse", exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Floor printer", exact: true }).click();
+  await page.getByRole("button", { name: t.floorPlan.placeCenter, exact: true }).click();
+  await page.getByRole("button", { name: /Workstation #951/ }).click();
+  await page.getByRole("button", { name: t.floorPlan.placeCenter, exact: true }).click();
+  const workstationMarker = page.locator('svg [role="button"][aria-label^="Workstation #951"]');
+  await workstationMarker.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.getByRole("button", { name: t.floorPlan.save, exact: true }).click();
+  await expect.poll(() => Number(localSql(`select count(*) from public.office_floor_plan_placements where studio_id=${sqlId(studioId)};`))).toBe(2);
+  expect(Number(localSql(`select x from public.office_floor_plan_placements where workstation_id=${sqlId(officeId)};`))).toBeCloseTo(0.55, 4);
+
+  await page.getByRole("button", { name: t.floorPlan.edit, exact: true }).click();
+  await page.locator('svg [role="button"][aria-label="Floor printer"]').click();
+  await page.getByRole("button", { name: t.floorPlan.floors["2"], exact: true }).last().click();
+  await expect(page.locator('svg image[href="/floor-2.svg"]')).toBeVisible();
+  const printerMarker = page.locator('svg [role="button"][aria-label="Floor printer"]');
+  const markerBox = await printerMarker.boundingBox();
+  if (!markerBox) throw new Error("Missing printer marker geometry");
+  await page.mouse.move(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(markerBox.x + markerBox.width / 2 + 28, markerBox.y + markerBox.height / 2 + 18, { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: t.floorPlan.save, exact: true }).click();
+  await expect.poll(() => localSql(`select floor::text from public.office_floor_plan_placements where equipment_id=${sqlId(printerId)};`)).toBe("2");
+  expect(Number(localSql(`select x from public.office_floor_plan_placements where equipment_id=${sqlId(printerId)};`))).toBeGreaterThan(0.5);
+
+  await page.locator('svg [role="button"][aria-label="Floor printer"]').click();
+  const drawer = page.getByRole("dialog", { name: "Floor printer", exact: true });
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+
+  await page.getByRole("button", { name: t.floorPlan.edit, exact: true }).click();
+  await page.locator('svg [role="button"][aria-label="Floor printer"]').click();
+  await page.getByRole("button", { name: t.floorPlan.remove, exact: true }).click();
+  await page.getByRole("button", { name: t.floorPlan.save, exact: true }).click();
+  await expect.poll(() => Number(localSql(`select count(*) from public.office_floor_plan_placements where equipment_id=${sqlId(printerId)};`))).toBe(0);
+  expect(localSql(`select display_name from public.equipment where id=${sqlId(printerId)};`)).toBe("Floor printer");
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(await page.locator("main").evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});
+
 
 test("concurrent inventory allocations cannot collide", async () => {
   const fixtureStudio = randomUUID();

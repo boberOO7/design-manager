@@ -4,11 +4,13 @@ import { pcConfigurationSchema, type PcConfiguration } from "@/lib/pc-configurat
 import type { ActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
+import type { FloorPlanPlacement } from "@/lib/office-floor-plan";
 import type { Database } from "@/types/database.types";
 
 type EquipmentRow = Database["public"]["Tables"]["equipment"]["Row"];
 type EquipmentServiceEventRow = Database["public"]["Tables"]["equipment_service_events"]["Row"];
 type WorkstationRow = Database["public"]["Tables"]["workstations"]["Row"];
+type FloorPlanPlacementRow = Database["public"]["Tables"]["office_floor_plan_placements"]["Row"];
 
 export type EquipmentMember = { id: string; fullName: string; avatarUrl: string | null };
 export type EquipmentServiceEvent = {
@@ -93,15 +95,30 @@ function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[])
   };
 }
 
-export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{ members: EquipmentMember[]; workstations: WorkstationItem[]; equipment: EquipmentItem[]; today: string }> {
+function mapFloorPlanPlacement(row: FloorPlanPlacementRow): FloorPlanPlacement {
+  const entityId = row.workstation_id ?? row.equipment_id;
+  if (!entityId) throw new Error("Floor-plan placement is missing its entity.");
+  return {
+    id: row.id,
+    entityType: row.workstation_id ? "workstation" : "equipment",
+    entityId,
+    floor: row.floor === 1 ? 1 : 2,
+    x: row.x,
+    y: row.y,
+    displayMetadata: row.display_metadata,
+  };
+}
+
+export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{ members: EquipmentMember[]; workstations: WorkstationItem[]; equipment: EquipmentItem[]; floorPlanPlacements: FloorPlanPlacement[]; today: string }> {
   const supabase = await createClient();
-  const [workstationsResult, equipmentResult, serviceEventsResult, membersResult] = await Promise.all([
+  const [workstationsResult, equipmentResult, serviceEventsResult, membersResult, floorPlanResult] = await Promise.all([
     supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("number"),
     supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name", { nullsFirst: false }).order("asset_tag"),
     supabase.from("equipment_service_events").select("*").eq("studio_id", admin.studio_id).order("completed_on", { ascending: false, nullsFirst: true }).order("started_on", { ascending: false }),
     supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
+    supabase.from("office_floor_plan_placements").select("*").eq("studio_id", admin.studio_id).order("created_at"),
   ]);
-  const failure = workstationsResult.error ?? equipmentResult.error ?? serviceEventsResult.error ?? membersResult.error;
+  const failure = workstationsResult.error ?? equipmentResult.error ?? serviceEventsResult.error ?? membersResult.error ?? floorPlanResult.error;
   if (failure) throw new Error("Unable to load equipment inventory.", { cause: failure });
 
   const members = (membersResult.data ?? []).map((row) => ({ id: row.user_id, fullName: row.profile.full_name, avatarUrl: row.profile.avatar_url })).sort((a, b) => a.fullName.localeCompare(b.fullName));
@@ -124,6 +141,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
   return {
     members,
     equipment,
+    floorPlanPlacements: (floorPlanResult.data ?? []).map(mapFloorPlanPlacement),
     today: getKyivDateOnly(),
     workstations: (workstationsResult.data ?? []).map((row: WorkstationRow) => ({
       id: row.id,

@@ -1,6 +1,7 @@
 "use client";
 
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
@@ -13,6 +14,8 @@ import {
   Headphones,
   Keyboard,
   Laptop,
+  LayoutGrid,
+  Map as MapIcon,
   Monitor,
   MonitorCog,
   MoreHorizontal,
@@ -55,6 +58,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { EquipmentItem, EquipmentMember, WorkstationItem } from "@/data/queries/equipment";
+import type { FloorPlanPlacement } from "@/lib/office-floor-plan";
 import { CRM_BUDGET_CURRENCIES, formatCrmBudget, isCrmBudgetCurrency } from "@/lib/crm-budget";
 import {
   EQUIPMENT_TYPES,
@@ -78,8 +82,10 @@ import type { EquipmentActionState, EquipmentFieldUpdate } from "@/lib/validatio
 import { cn } from "@/lib/utils";
 
 type EquipmentView = "inventory" | "workstations" | "maintenance";
+type WorkstationView = "cards" | "floorPlan";
 type CreateKind = "workstation" | "equipment";
 const initialActionState: EquipmentActionState = {};
+const FloorPlanView = dynamic(() => import("@/components/office/floor-plan-view"));
 
 const equipmentIcons: Record<EquipmentType, LucideIcon> = {
   pc: Computer,
@@ -148,7 +154,7 @@ function useEquipmentRouting() {
   };
 }
 
-export function EquipmentWorkspace({ equipment, initialView, members, today, workstations }: { equipment: EquipmentItem[]; initialView: EquipmentView; members: EquipmentMember[]; today: string; workstations: WorkstationItem[] }) {
+export function EquipmentWorkspace({ equipment, floorPlanPlacements, initialView, initialWorkstationView, members, today, workstations }: { equipment: EquipmentItem[]; floorPlanPlacements: FloorPlanPlacement[]; initialView: EquipmentView; initialWorkstationView: WorkstationView; members: EquipmentMember[]; today: string; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
   const routing = useEquipmentRouting();
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
@@ -160,7 +166,7 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div><h2 className="text-lg font-bold text-[var(--ui-text)]">{t("title")}</h2></div>
       <div className="flex flex-wrap gap-2">
-        {initialView === "workstations" ? <Button asChild><Link href={`/office/equipment?view=${initialView}&create=workstation`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button> : null}
+        {initialView === "workstations" ? <Button asChild><Link href={`/office/equipment?view=${initialView}&layout=${initialWorkstationView === "floorPlan" ? "floor-plan" : "cards"}&create=workstation`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button> : null}
         <Button asChild variant={initialView === "workstations" ? "outline" : "default"}><Link href={`/office/equipment?view=${initialView}&create=equipment`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addEquipment")}</Link></Button>
       </div>
     </div>
@@ -171,7 +177,7 @@ export function EquipmentWorkspace({ equipment, initialView, members, today, wor
       </Link>)}
     </nav>
 
-    {initialView === "workstations" ? <WorkstationList items={workstations} onOpen={routing.openItem} />
+    {initialView === "workstations" ? <div className="space-y-4"><nav aria-label={t("floorPlan.viewLabel")} className="inline-flex rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">{(["cards", "floorPlan"] as const).map((view) => <Link key={view} href={`/office/equipment?view=workstations&layout=${view === "floorPlan" ? "floor-plan" : "cards"}`} aria-current={initialWorkstationView === view ? "page" : undefined} className={cn("flex min-h-11 items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", initialWorkstationView === view ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-[var(--ui-shadow-panel)]" : "text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)]")}>{view === "cards" ? <LayoutGrid className="size-4" aria-hidden="true" /> : <MapIcon className="size-4" aria-hidden="true" />}{t(`floorPlan.views.${view}`)}</Link>)}</nav>{initialWorkstationView === "floorPlan" ? <FloorPlanView equipment={equipment} placements={floorPlanPlacements} today={today} workstations={workstations} onOpenEquipment={routing.openItem} onOpenWorkstation={routing.openItem} /> : <WorkstationList items={workstations} onOpen={routing.openItem} />}</div>
       : initialView === "inventory" ? <EquipmentInventory items={equipment} workstationNames={workstationNames} onOpen={routing.openItem} />
       : <MaintenanceQueue items={equipment} workstationNames={workstationNames} today={today} onOpen={routing.openItem} />}
 

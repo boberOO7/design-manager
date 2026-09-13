@@ -84,6 +84,23 @@ export const equipmentMaintenanceSchema = z.object({
 
 export const equipmentDeleteSchema = z.object({ equipmentId: z.string().uuid() });
 export const equipmentAssignmentSchema = z.object({ equipmentId: z.string().uuid(), workstationId: nullableUuid });
+export const floorPlanLayoutSchema = z.object({
+  placements: z.array(z.object({
+    entityType: z.enum(["workstation", "equipment"]),
+    entityId: z.uuid(),
+    floor: z.union([z.literal(1), z.literal(2)]),
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    displayMetadata: z.record(z.string(), z.json()).default({}),
+  })).max(1000),
+}).superRefine((value, context) => {
+  const entities = new Set<string>();
+  value.placements.forEach((placement, index) => {
+    const key = `${placement.entityType}:${placement.entityId}`;
+    if (entities.has(key)) context.addIssue({ code: "custom", path: ["placements", index], message: "duplicate_entity" });
+    entities.add(key);
+  });
+});
 
 const serviceDetails = {
   serviceProvider: optionalText(160),
@@ -127,5 +144,5 @@ export type EquipmentInput = z.infer<typeof equipmentInputSchema>;
 export type EquipmentActionState = {
   success?: true;
   id?: string;
-  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign" | "service" | "completeService" | "history" | "serviceState" | "numberConflict" | "employeeAssigned" | "batch";
+  error?: "permission" | "invalid" | "duplicate" | "member" | "location" | "notFound" | "create" | "update" | "delete" | "assign" | "service" | "completeService" | "history" | "serviceState" | "numberConflict" | "employeeAssigned" | "batch" | "layout";
 };

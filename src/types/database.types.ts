@@ -1472,6 +1472,67 @@ export type Database = {
           },
         ]
       }
+      office_floor_plan_placements: {
+        Row: {
+          created_at: string
+          display_metadata: Json
+          equipment_id: string | null
+          floor: number
+          id: string
+          studio_id: string
+          updated_at: string
+          workstation_id: string | null
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          display_metadata?: Json
+          equipment_id?: string | null
+          floor: number
+          id?: string
+          studio_id: string
+          updated_at?: string
+          workstation_id?: string | null
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          display_metadata?: Json
+          equipment_id?: string | null
+          floor?: number
+          id?: string
+          studio_id?: string
+          updated_at?: string
+          workstation_id?: string | null
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_floor_plan_placements_studio_id_equipment_id_fkey"
+            columns: ["studio_id", "equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "office_floor_plan_placements_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_floor_plan_placements_studio_id_workstation_id_fkey"
+            columns: ["studio_id", "workstation_id"]
+            isOneToOne: false
+            referencedRelation: "workstations"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       productivity_attributions: {
         Row: {
           completed_at: string
@@ -3086,6 +3147,10 @@ export type Database = {
       save_leaderboard_bonus_rules: {
         Args: { p_enabled: boolean; p_rules: Json; p_studio_id: string }
         Returns: undefined
+      }
+      save_office_floor_plan_layout: {
+        Args: { p_placements: Json; p_studio_id: string }
+        Returns: number
       }
       save_project_template: {
         Args: {

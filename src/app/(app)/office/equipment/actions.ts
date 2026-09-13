@@ -10,6 +10,7 @@ import {
   equipmentMaintenanceSchema,
   equipmentDeleteSchema,
   equipmentInputSchema,
+  floorPlanLayoutSchema,
   equipmentUpdateSchema,
   completeEquipmentServiceSchema,
   recordEquipmentHistorySchema,
@@ -197,6 +198,28 @@ export async function assignEquipment(input: unknown): Promise<EquipmentActionSt
   if (!data) return { error: "notFound" };
   refreshEquipment();
   return { success: true, id: data.id };
+}
+
+export async function saveFloorPlanLayout(input: unknown): Promise<EquipmentActionState> {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { error: "permission" };
+  const parsed = floorPlanLayoutSchema.safeParse(input);
+  if (!parsed.success) return { error: "invalid" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_office_floor_plan_layout", {
+    p_studio_id: admin.studio_id,
+    p_placements: parsed.data.placements.map((placement) => ({
+      entity_type: placement.entityType,
+      entity_id: placement.entityId,
+      floor: placement.floor,
+      x: placement.x,
+      y: placement.y,
+      display_metadata: placement.displayMetadata,
+    })),
+  });
+  if (error) return { error: databaseError(error, "layout") };
+  refreshEquipment();
+  return { success: true };
 }
 
 export async function deleteEquipment(input: unknown): Promise<EquipmentActionState> {

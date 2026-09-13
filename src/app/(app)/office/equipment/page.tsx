@@ -15,5 +15,5 @@ export default async function EquipmentPage({ searchParams }: { searchParams: Pr
   if (!admin) redirect("/office");
   const params = await searchParams;
   const data = await getEquipmentData(admin);
-  return <EquipmentWorkspace {...data} initialView={params.view === "workstations" || params.view === "maintenance" ? params.view : "inventory"} />;
+  return <EquipmentWorkspace {...data} initialView={params.view === "workstations" || params.view === "maintenance" ? params.view : "inventory"} initialWorkstationView={params.layout === "floor-plan" ? "floorPlan" : "cards"} />;
 }

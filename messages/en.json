@@ -1107,7 +1107,7 @@
       "peripherals": "Peripherals",
       "other": "Other"
     },
-    "assignment": {
+  "assignment": {
       "attachComputer": "Add PC or laptop",
       "attachMonitor": "Add monitor",
       "attachPeripheral": "Add peripheral",
@@ -1115,9 +1115,38 @@
       "searchPlaceholder": "Search by name, type, or workstation",
       "noMatches": "No matching equipment in this category.",
       "moveConfirm": "Move {name} from {workstation} to this workstation?",
-      "detachNamed": "Detach {name}"
+    "detachNamed": "Detach {name}"
+  },
+  "floorPlan": {
+    "viewLabel": "Workstation view",
+    "views": {
+      "cards": "Cards",
+      "floorPlan": "Floor plan"
     },
-    "deleteConfirm": "Delete equipment “{name}” permanently? Retire it instead if the record should remain available.",
+    "floorLabel": "Office floor",
+    "floors": {
+      "1": "1st floor",
+      "2": "2nd floor"
+    },
+    "zoomLabel": "Floor plan zoom",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "resetZoom": "Fit floor plan",
+    "canvasLabel": "Office floor plan, floor {floor}",
+    "itemsLabel": "Placed workstations and equipment",
+    "emptyFloor": "No items placed on this floor",
+    "edit": "Edit layout",
+    "editing": "Editing",
+    "discardConfirm": "Discard unsaved layout changes?",
+    "placeHint": "Click the floor plan to place the selected item.",
+    "placeCenter": "Place in center",
+    "onFloor": "On this floor",
+    "unplaced": "Unplaced",
+    "noneUnplaced": "Everything is placed.",
+    "remove": "Remove from floor plan",
+    "save": "Save layout"
+  },
+  "deleteConfirm": "Delete equipment “{name}” permanently? Retire it instead if the record should remain available.",
     "errors": {
       "permission": "Only active studio administrators can manage equipment.",
       "invalid": "Check the entered information.",
@@ -1135,7 +1164,8 @@
       "service": "Could not start service. Try again.",
       "completeService": "Could not complete service. Try again.",
       "history": "Could not save the history entry. Try again.",
-      "serviceState": "The equipment service state changed. Refresh and try again."
+    "serviceState": "The equipment service state changed. Refresh and try again.",
+    "layout": "Could not save the floor plan. Refresh and try again."
     },
     "inventory": {
       "categories": "Inventory categories",

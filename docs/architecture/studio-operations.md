@@ -166,6 +166,13 @@ submission/office-assignment migrations and RLS tests.
 - The admin-only `/office/equipment` workspace provides Inventory, Workstations,
   and Maintenance. Inventory includes every item, with category, type, lifecycle,
   location, and search filters; office equipment is grouped by existing types.
+  Workstations also provides Cards and Floor plan views. The floor plan renders
+  the two repository-owned architectural SVGs without modifying them and stores
+  normalized, viewport-independent placements separately in
+  `office_floor_plan_placements`. Only Office workstations and independently
+  locatable office equipment (air conditioners, printers, coffee machines, and
+  Other) are eligible; Remote workstations and attached component/peripheral
+  inventory remain outside the spatial layer.
   Maintenance defaults to operational attention and can show all items to access
   schedules/history even when nothing is due. Workstation details group
   computers, monitors, and peripherals while keeping every attached device as
@@ -176,6 +183,10 @@ submission/office-assignment migrations and RLS tests.
   active studio administrator. Equipment can be attached, detached, or moved by
   updating its nullable workstation relationship; lifecycle changes do not
   delete retired inventory.
+- Layout editing is administrator-only. A guarded atomic RPC replaces the
+  studio's placement snapshot so floor changes, moves, and removals cannot save
+  partially; removing a placement never changes or deletes the underlying
+  workstation or equipment row.
 
 Canonical paths: `src/app/(app)/office/equipment/`,
 `src/components/office/equipment-workspace.tsx`,
