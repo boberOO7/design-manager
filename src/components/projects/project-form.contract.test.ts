@@ -9,6 +9,8 @@ const contextPath = new URL("./project-context-band.tsx", import.meta.url);
 const actionPath = new URL("../../app/(app)/projects/new/actions.ts", import.meta.url);
 const editActionPath = new URL("../../app/(app)/projects/[projectId]/actions.ts", import.meta.url);
 const metadataControlsPath = new URL("./project-metadata-controls.tsx", import.meta.url);
+const completionDateFormPath = new URL("./project-completion-date-form.tsx", import.meta.url);
+const projectPagePath = new URL("../../app/(app)/projects/[projectId]/page.tsx", import.meta.url);
 
 describe("compact project creation contract", () => {
   it("uses one shared ordered form and omits manual project code entry", async () => {
@@ -59,5 +61,21 @@ describe("compact project creation contract", () => {
     expect(source).toContain('<input type="hidden" name="city" value={metadata.city} />');
     expect(source).toContain('<input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} />');
     expect(metadataControls).toContain("setCityGeoNamesId(undefined);");
+  });
+
+  it("exposes only the authoritative completion date for completed-project corrections", async () => {
+    const [completionForm, page, editAction] = await Promise.all([readFile(completionDateFormPath, "utf8"), readFile(projectPagePath, "utf8"), readFile(editActionPath, "utf8")]);
+    const correctionAction = editAction.slice(editAction.indexOf("export async function updateProjectCompletionDate"), editAction.indexOf("export async function archiveProject"));
+
+    expect(page).toContain('project.status === "completed" && canManage');
+    expect(page).toContain("<ProjectCompletionDateForm");
+    expect(completionForm).toContain('name="completed_at"');
+    expect(completionForm).toContain("defaultValue={completedAt}");
+    expect(completionForm).toContain('useTranslations("ProjectForm")');
+    expect(completionForm).toContain('form("saving") : form("save")');
+    expect(correctionAction).toContain("project.status !== \"completed\"");
+    expect(correctionAction).toContain(".update({ completed_at: parsed.data.completed_at })");
+    expect(correctionAction).toContain('.eq("status", "completed")');
+    expect(correctionAction).not.toContain("status:");
   });
 });

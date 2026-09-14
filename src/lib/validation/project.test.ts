@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, PROJECT_TYPE_KEYS, projectSchema } from "./project";
+import { editProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, PROJECT_TYPE_KEYS, projectCompletionDateSchema, projectSchema } from "./project";
 
 const project = {
   name: "Apartment renovation",
@@ -53,5 +53,11 @@ describe("project form metadata", () => {
     formData.set("project_type_custom", "Auto showroom");
     expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city, city_geonames_id: String(project.city_geonames_id), project_type_custom: "Auto showroom" });
     expect(getProjectFormInput(formData)).not.toHaveProperty("project_name");
+  });
+
+  it("accepts historical completion dates but rejects invalid or future dates", () => {
+    expect(projectCompletionDateSchema.safeParse({ completed_at: "2025-02-14" }).success).toBe(true);
+    expect(projectCompletionDateSchema.safeParse({ completed_at: "2025-02-30" }).success).toBe(false);
+    expect(projectCompletionDateSchema.safeParse({ completed_at: "9999-01-01" }).success).toBe(false);
   });
 });

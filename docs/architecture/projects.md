@@ -41,6 +41,8 @@ Invariants:
 - Returning a paused project to planned is allowed only when no eligible
   production task has progressed beyond To do.
 - Reopening a completed project clears its completion date.
+- Administrators may correct a completed project's authoritative `completed_at`
+  date without replaying a lifecycle transition or reopening the project.
 - Restoring an archived project returns it to completed when it retains a
   completion date; otherwise it returns to paused.
 - Completed project metadata and production-stage tasks are read-only. New or

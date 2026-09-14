@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   editProjectSchema,
   getProjectFormInput,
+  projectCompletionDateSchema,
   type ProjectFormActionState,
   type ProjectFormField,
 } from "@/lib/validation/project";
@@ -88,6 +89,48 @@ export async function updateProject(
   }
 
   revalidateProjectRoutes(project.id);
+  return { projectId: project.id };
+}
+
+export async function updateProjectCompletionDate(
+  projectId: string,
+  _previousState: ProjectFormActionState,
+  formData: FormData,
+): Promise<ProjectFormActionState> {
+  const parsed = projectCompletionDateSchema.safeParse({ completed_at: formData.get("completed_at") });
+  if (!parsed.success) {
+    return {
+      formError: "Please correct the highlighted field.",
+      fieldErrors: { completed_at: parsed.error.issues[0]?.message ?? "Enter a valid completion date." },
+    };
+  }
+
+  const membership = await getActiveStudioAdmin();
+  if (!membership) return { formError: "Only active studio administrators can edit projects." };
+  const project = await getProjectById(projectId);
+  if (!project || project.studio_id !== membership.studio_id || project.status !== "completed" || project.archived_at) {
+    return { formError: unavailableProjectError };
+  }
+  if (project.completed_at === parsed.data.completed_at) return { projectId: project.id };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ completed_at: parsed.data.completed_at })
+    .eq("id", project.id)
+    .eq("studio_id", membership.studio_id)
+    .eq("status", "completed")
+    .is("archived_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Unable to update project completion date", error);
+    return { formError: "The project completion date could not be updated. Please try again." };
+  }
+
+  revalidateProjectRoutes(project.id);
+  revalidatePath("/leaderboard");
   return { projectId: project.id };
 }
 

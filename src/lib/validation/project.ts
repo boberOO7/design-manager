@@ -68,13 +68,18 @@ function validateDateOrder(
 export const projectSchema = z.object(projectFields).superRefine(validateDateOrder);
 
 export const editProjectSchema = z.object(projectFields).strict().superRefine(validateDateOrder);
+export const projectCompletionDateSchema = z.object({ completed_at: dateSchema }).strict().superRefine((project, context) => {
+  if (project.completed_at > getKyivDateOnly()) {
+    context.addIssue({ code: "custom", message: "Completion date cannot be in the future", path: ["completed_at"] });
+  }
+});
 export type ProjectFormValues = z.infer<typeof projectSchema>;
 export type EditProjectFormValues = z.infer<typeof editProjectSchema>;
 export type ProjectFormField = keyof EditProjectFormValues;
 
 export type ProjectFormActionState = {
   formError?: string;
-  fieldErrors?: Partial<Record<ProjectFormField, string>>;
+  fieldErrors?: Partial<Record<ProjectFormField | "completed_at", string>>;
   projectId?: string;
 };
 
