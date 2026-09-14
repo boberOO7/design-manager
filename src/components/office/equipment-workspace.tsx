@@ -3,7 +3,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -129,24 +129,25 @@ function WorkstationTypeBadge({ type }: { type: WorkstationItem["workstationType
 }
 
 function useEquipmentRouting() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const createValue = searchParams.get("create");
   const createKind: CreateKind | null = createValue === "workstation" || createValue === "equipment" ? createValue : null;
   const selectedItemId = createKind ? null : searchParams.get("item");
   const nestedEquipmentId = selectedItemId ? searchParams.get("equipment") : null;
 
-  function updateSearchParams(update: (next: URLSearchParams) => void) {
-    const next = new URLSearchParams(searchParams.toString());
+  function updateSearchParams(update: (next: URLSearchParams) => void, replace = true) {
+    const next = new URLSearchParams(window.location.search);
     update(next);
     const query = next.toString();
-    router.replace(query ? `/office/equipment?${query}` : "/office/equipment", { scroll: false });
+    // Next synchronizes native history with useSearchParams without reloading inventory.
+    window.history[replace ? "replaceState" : "pushState"](null, "", `${query ? `/office/equipment?${query}` : "/office/equipment"}${window.location.hash}`);
   }
 
   return {
     createKind,
     nestedEquipmentId,
     selectedItemId,
+    openCreate: (kind: CreateKind) => updateSearchParams((next) => { next.delete("item"); next.delete("equipment"); next.set("create", kind); }, false),
     closeCreate: () => updateSearchParams((next) => next.delete("create")),
     closeEquipment: () => updateSearchParams((next) => nestedEquipmentId ? next.delete("equipment") : next.delete("item")),
     closeItem: () => updateSearchParams((next) => { next.delete("equipment"); next.delete("item"); }),
@@ -163,9 +164,9 @@ export function EquipmentWorkspace({ equipment, floorPlanPlacements, initialView
   const workstationNames = useMemo(() => new Map(workstations.map((item) => [item.id, `${t("workstation.numberLabel", { number: item.number })}${item.name ? ` · ${item.name}` : ""}`])), [t, workstations]);
   const workstationBadges = useMemo(() => new Map(workstations.map((item) => [item.id, `#${item.number}`])), [workstations]);
   const action = initialView === "workstations"
-    ? <Button asChild><Link href={`/office/equipment?view=${initialView}&layout=${initialWorkstationView === "floorPlan" ? "floor-plan" : "cards"}&create=workstation`}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button>
+    ? <Button asChild><Link href={`/office/equipment?view=${initialView}&layout=${initialWorkstationView === "floorPlan" ? "floor-plan" : "cards"}&create=workstation`} prefetch={false} onNavigate={(event) => { event.preventDefault(); routing.openCreate("workstation"); }}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addWorkstation")}</Link></Button>
     : initialView === "inventory"
-      ? <Button asChild><Link href="/office/equipment?view=inventory&create=equipment"><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addEquipment")}</Link></Button>
+      ? <Button asChild><Link href="/office/equipment?view=inventory&create=equipment" prefetch={false} onNavigate={(event) => { event.preventDefault(); routing.openCreate("equipment"); }}><Plus className="mr-2 size-4" aria-hidden="true" />{t("actions.addEquipment")}</Link></Button>
       : null;
 
 
@@ -302,7 +303,6 @@ interface WorkstationEditorElement extends HTMLDivElement { startViewTransition?
 
 function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCreated }: { isOpen: boolean; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
   const t = useTranslations("Equipment");
-  const router = useRouter();
   const nextNumber = Math.max(0, ...workstations.map((workstation) => workstation.number)) + 1;
   const [workstationType, setWorkstationType] = useState<WorkstationItem["workstationType"]>("office");
   const [quantity, setQuantity] = useState(1);
@@ -356,7 +356,7 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
       const result = await createWorkstations({ workstations: drafts.map((draft) => ({ ...draft, workstationType })) });
       if (result.error) setError(result.error);
       else if (quantity === 1 && result.id) onCreated(result.id);
-      else { onClose(); router.refresh(); }
+      else onClose();
     });
   }
   const rowColumns = "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(12rem,1fr)]";
@@ -409,7 +409,6 @@ function OptionalInput({ disabled, hint, label, maxLength, name, value }: { disa
 
 function WorkstationDrawer({ allEquipment, isTopLayer, item, members, workstations, onClose, onOpenEquipment }: { allEquipment: EquipmentItem[]; isTopLayer: boolean; item: WorkstationItem | null; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onOpenEquipment: (id: string) => void }) {
   const t = useTranslations("Equipment");
-  const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const nameRef = useRef(item?.name ?? "");
   const savedNameRef = useRef(item?.name ?? "");
@@ -436,7 +435,7 @@ function WorkstationDrawer({ allEquipment, isTopLayer, item, members, workstatio
   const workstationId = item.id;
   const workstationNumber = item.number;
   const workstationName = t("workstation.numberLabel", { number: item.number });
-  function run(operation: () => Promise<EquipmentActionState>, setOperationError: (error: EquipmentActionState["error"]) => void, after?: () => void) { setOperationError(undefined); startTransition(async () => { try { const result = await operation(); if (result.error) setOperationError(result.error); else { after?.(); router.refresh(); } } catch { setOperationError("update"); } }); }
+  function run(operation: () => Promise<EquipmentActionState>, setOperationError: (error: EquipmentActionState["error"]) => void, after?: () => void) { setOperationError(undefined); startTransition(async () => { try { const result = await operation(); if (result.error) setOperationError(result.error); else after?.(); } catch { setOperationError("update"); } }); }
   function saveDetails(name: string, employeeId: string, after?: () => void, type = workstationType) { run(() => updateWorkstation({ workstationId, number: workstationNumber, workstationType: type, name, assignedEmployeeId: employeeId }), setWorkstationError, after); }
   function renumber(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); run(() => updateWorkstation({ workstationId, number, workstationType, name: nameRef.current, assignedEmployeeId }), setWorkstationError, () => setRenumberOpen(false)); }
   function remove() { if (!window.confirm(t("workstation.deleteConfirm", { name: workstationName }))) return; run(() => deleteWorkstation({ workstationId }), setWorkstationError, onClose); }
@@ -487,7 +486,6 @@ function EquipmentAttachPicker({ candidates, label, locationNames, onAttach, pen
 
 function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
   const t = useTranslations("Equipment");
-  const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<EquipmentActionState["error"]>();
   const inFlight = useRef(0);
@@ -530,7 +528,7 @@ function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }
       try { result = await resultPromise; } catch { result = { error: "update" }; }
       inFlight.current -= 1;
       if (result.error) failures.current.set(key, { error: result.error, retry: () => run(operation, after, key) });
-      else { failures.current.delete(key); after?.(); router.refresh(); }
+      else { failures.current.delete(key); after?.(); }
       const failure = failures.current.values().next().value;
       setError(failure?.error);
       retryRef.current = failure?.retry ?? null;

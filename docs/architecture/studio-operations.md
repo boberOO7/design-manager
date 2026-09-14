@@ -179,6 +179,12 @@ submission/office-assignment migrations and RLS tests.
   submit other equipment fields.
 - Workstations, equipment, maintenance configuration, and service history are
   administrator-only at grants, RLS, Server Action, and route boundaries.
+- Equipment item and creation overlays stay URL-addressable without reloading
+  inventory: selection/dismissal replaces the history entry, while opening a
+  creation dialog pushes one. Native history stays synchronized with the client
+  workspace, including nested equipment drawers and Back/Forward navigation.
+  Successful Equipment Server Actions revalidate the workspace; clients consume
+  that updated render without issuing an additional refresh.
 - Optional recurring maintenance stores an interval and an explicit next due
   date. Completing regular maintenance advances the due date from the actual
   completion date; disabling the schedule does not remove history.

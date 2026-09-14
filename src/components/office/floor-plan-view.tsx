@@ -2,7 +2,6 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { Info, Maximize2, Minus, Move, Plus, RotateCw, Save, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { useTranslations } from "next-intl";
 import { saveFloorPlanLayout } from "@/app/(app)/office/equipment/actions";
@@ -72,7 +71,6 @@ function metadataWithAppearance(metadata: FloorPlanDisplayMetadata, rotation: Fl
 
 export default function FloorPlanView({ equipment, placements, today, workstations, onOpenEquipment, onOpenWorkstation }: { equipment: EquipmentItem[]; placements: FloorPlanPlacement[]; today: string; workstations: WorkstationItem[]; onOpenEquipment: (id: string) => void; onOpenWorkstation: (id: string) => void }) {
   const t = useTranslations("Equipment");
-  const router = useRouter();
   const [floor, setFloor] = useState<FloorPlanFloor>(1);
   const [editMode, setEditMode] = useState(false);
   const [placingKey, setPlacingKey] = useState<string | null>(null);
@@ -293,7 +291,6 @@ export default function FloorPlanView({ equipment, placements, today, workstatio
       if (result.error) { setError(true); return; }
       setEditMode(false);
       setSelectedKey(null);
-      router.refresh();
     });
   }
 

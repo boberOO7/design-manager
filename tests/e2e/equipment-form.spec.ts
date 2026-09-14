@@ -525,6 +525,128 @@ test("legacy values, laptop configuration, mobile and reduced motion", async ({ 
   await expect(dialog.locator('[name="recurringMaintenanceEnabled"]')).toBeFocused();
 });
 
+test("equipment URL presentation avoids navigation and reconciles each edit once", async ({ page }) => {
+  const t = en.Equipment;
+  const firstId = randomUUID();
+  const secondId = randomUUID();
+  const workstationId = randomUUID();
+  localSql(`
+    insert into public.workstations(id,studio_id,number) values (${sqlId(workstationId)},${sqlId(studioId)},9901);
+    insert into public.equipment(id,studio_id,equipment_type,display_name,serial_number,workstation_id) values
+      (${sqlId(firstId)},${sqlId(studioId)},'monitor','Routing monitor A','routing-serial-a',${sqlId(workstationId)}),
+      (${sqlId(secondId)},${sqlId(studioId)},'monitor','Routing monitor B','routing-serial-b',${sqlId(workstationId)});
+  `);
+  await login(page);
+  await expect(page.getByRole("button", { name: /Routing monitor A/ })).toBeVisible();
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    // Automatic Link prefetches are separate from navigation/action requests.
+    if (new URL(request.url()).pathname === "/office/equipment" && !request.headers()["next-router-prefetch"]) {
+      requests.push(request.headers()["next-action"] ? "action" : request.method());
+    }
+  });
+  const historyLength = await page.evaluate(() => history.length);
+  await page.getByRole("button", { name: /Routing monitor A/ }).click();
+  let drawer = page.getByRole("dialog", { name: "Routing monitor A", exact: true });
+  await expect(drawer).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`item=${firstId}`));
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: /Routing monitor A/ }).click();
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Routing monitor B/ }).click();
+  drawer = page.getByRole("dialog", { name: "Routing monitor B", exact: true });
+  await expect(drawer).toBeVisible();
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+
+  // The revalidated Server Action payload must update the mounted drawer and list.
+  await drawer.locator('[name="displayName"]').fill("Routing monitor saved");
+  await drawer.locator('[name="displayName"]').press("Tab");
+  drawer = page.getByRole("dialog", { name: "Routing monitor saved", exact: true });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText(t.actions.saved, { exact: true })).toBeVisible();
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Routing monitor saved/ }).click();
+  await expect(drawer.locator('[name="displayName"]')).toHaveValue("Routing monitor saved");
+  await drawer.locator('[name="displayName"]').focus();
+  await drawer.locator('[name="displayName"]').press("Tab");
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+
+  // Creation keeps Link's push semantics; item selection/closing keep replace semantics.
+  await page.getByRole("link", { name: t.actions.addEquipment, exact: true }).click();
+  await expect(page).toHaveURL(/create=equipment/);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(await page.evaluate(() => history.length)).toBe(historyLength + 1);
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goForward();
+  await expect(page).toHaveURL(/create=equipment/);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Routing monitor A/ }).click();
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goForward();
+  await expect(page.getByRole("dialog", { name: "Routing monitor A", exact: true })).toBeVisible();
+  // Allow any erroneously scheduled refresh/navigation to reach the request observer.
+  await page.waitForTimeout(300);
+  expect(requests).toEqual(["action"]);
+  expect(localSql(`select display_name from public.equipment where id=${sqlId(secondId)};`)).toBe("Routing monitor saved");
+
+  // A real document load still initializes a nested deep link correctly.
+  await page.goto(`/office/equipment?item=${workstationId}&equipment=${firstId}`);
+  await expect(page.getByRole("dialog", { name: "Routing monitor A", exact: true })).toBeVisible();
+  requests.length = 0;
+  await page.getByRole("dialog", { name: "Routing monitor A", exact: true }).getByRole("button", { name: t.close, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`item=${workstationId}$`));
+  const workstation = page.getByRole("dialog", { name: "Workstation #9901", exact: true });
+  await expect(workstation).toBeVisible();
+  await workstation.getByRole("button", { name: /^Routing monitor saved/ }).click();
+  await expect(page).toHaveURL(new RegExp(`equipment=${secondId}`));
+  await expect(page.getByRole("dialog", { name: "Routing monitor saved", exact: true })).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(requests).toEqual([]);
+});
+
+test("equipment failed autosave keeps its error and discard protection without refreshing", async ({ page }) => {
+  const t = en.Equipment;
+  const id = randomUUID();
+  localSql(`insert into public.equipment(id,studio_id,equipment_type,display_name) values (${sqlId(id)},${sqlId(studioId)},'printer','Failed routing save');`);
+  await login(page);
+  await page.goto(`/office/equipment?item=${id}`);
+  const drawer = page.getByRole("dialog", { name: "Failed routing save", exact: true });
+  await expect(drawer).toBeVisible();
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/office/equipment" && !request.headers()["next-router-prefetch"]) requests.push(request.headers()["next-action"] ? "action" : request.method());
+  });
+  await page.route("**/office/equipment**", async (route) => {
+    if (!route.request().headers()["next-action"]) return route.continue();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.abort("failed");
+  });
+  await drawer.locator('[name="displayName"]').fill("Unsaved routing name");
+  await drawer.locator('[name="displayName"]').press("Tab");
+  await expect(drawer.getByText(t.actions.saving, { exact: true })).toBeVisible();
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("alert")).toBeVisible();
+  await expect(drawer.getByText(t.actions.saved, { exact: true })).toHaveCount(0);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await expect(drawer).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await page.unroute("**/office/equipment**");
+  await page.getByRole("button", { name: /Failed routing save/ }).click();
+  await expect(drawer.locator('[name="displayName"]')).toHaveValue("Failed routing save");
+  expect(localSql(`select display_name from public.equipment where id=${sqlId(id)};`)).toBe("Failed routing save");
+  await page.waitForTimeout(300);
+  expect(requests).toEqual(["action"]);
+});
+
 test("inventory filters, isolated autosave, inventory code changes, and contextual maintenance", async ({ page }, testInfo) => {
   const t = en.Equipment;
   const pcId = randomUUID();
