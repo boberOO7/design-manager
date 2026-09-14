@@ -2,6 +2,7 @@
 
 import { inviteEmployee } from "@/app/(app)/team/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import {
   PROFESSIONAL_ROLES,
@@ -12,9 +13,6 @@ import { ChevronDown, UserPlus } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]";
 
 export function InviteEmployeeForm() {
   const t = useTranslations("Team");
@@ -83,12 +81,12 @@ export function InviteEmployeeForm() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
                 {t("email")} <span className="text-[var(--ui-danger-text)]">*</span>
-                <input
+                <Input
                   name="email"
                   type="email"
                   required
                   autoComplete="off"
-                  className={inputClassName}
+                  className="mt-2"
                   {...errorAttributes("email")}
                 />
                 {fieldError("email") ? (
@@ -100,11 +98,11 @@ export function InviteEmployeeForm() {
 
               <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
                 {t("fullName")} <span className="text-[var(--ui-danger-text)]">*</span>
-                <input
+                <Input
                   name="full_name"
                   required
                   autoComplete="off"
-                  className={inputClassName}
+                  className="mt-2"
                   {...errorAttributes("full_name")}
                 />
                 {fieldError("full_name") ? (

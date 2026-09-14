@@ -10,12 +10,15 @@ describe("studio member profile editor", () => {
     expect(source).toContain('import { Dialog } from "@/components/ui/dialog"');
     expect(source).toContain('import { Select, SelectItem } from "@/components/ui/select"');
     expect(source).toContain('import { DatePicker } from "@/components/ui/date-picker"');
+    expect(source).toContain('import { Input } from "@/components/ui/form-field"');
     expect(source).toContain("useActionState<StudioMemberProfileActionState, FormData>");
     expect(source).toContain("router.refresh()");
     expect(source).toContain("hasRefreshedAfterSave.current");
     expect(source).toContain('name="systemRole"');
     expect(source).toContain('name="joinedAt"');
     expect(source).toContain('name="birthDate"');
+    expect(source).not.toContain("const inputClassName");
+    expect(source).not.toContain("border-[var(--ui-border)] bg-[var(--ui-surface)] px-3");
   });
 
   it("adds Edit profile alongside the existing active-member overflow actions", async () => {

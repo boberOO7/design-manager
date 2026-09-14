@@ -2,11 +2,9 @@
 
 import { requestPasswordRecovery } from "@/app/(auth)/forgot-password/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form-field";
 import type { PasswordRecoveryActionState } from "@/lib/validation/password-recovery";
 import { useActionState } from "react";
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]";
 
 export function ForgotPasswordForm() {
   const [state, formAction, isPending] = useActionState<PasswordRecoveryActionState, FormData>(
@@ -19,7 +17,7 @@ export function ForgotPasswordForm() {
     <form action={formAction} className="mt-6 space-y-5" noValidate>
       <label className="block text-left text-sm font-medium text-[var(--ui-text-secondary)]">
         Email
-        <input
+        <Input
           name="email"
           type="email"
           required
@@ -27,7 +25,7 @@ export function ForgotPasswordForm() {
           disabled={isPending}
           aria-invalid={emailError ? true : undefined}
           aria-describedby={emailError ? "recovery-email-error" : undefined}
-          className={inputClassName}
+          className="mt-2"
         />
         {emailError ? (
           <p id="recovery-email-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">{emailError}</p>

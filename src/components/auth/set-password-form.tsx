@@ -2,14 +2,12 @@
 
 import { setUserPassword } from "@/app/(auth)/set-password/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form-field";
 import type {
   SetPasswordActionState,
   SetPasswordField,
 } from "@/lib/validation/set-password";
 import { useActionState } from "react";
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm text-[var(--ui-text)] outline-none transition focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]";
 
 export function SetPasswordForm() {
   const [state, formAction, isPending] = useActionState<SetPasswordActionState, FormData>(
@@ -22,7 +20,7 @@ export function SetPasswordForm() {
     <form action={formAction} className="mt-6 space-y-5" noValidate>
       <label className="block text-left text-sm font-medium text-[var(--ui-text-secondary)]">
         Password
-        <input
+        <Input
           name="password"
           type="password"
           required
@@ -31,7 +29,7 @@ export function SetPasswordForm() {
           disabled={isPending}
           aria-invalid={fieldError("password") ? true : undefined}
           aria-describedby={fieldError("password") ? "password-error" : "password-help"}
-          className={inputClassName}
+          className="mt-2"
         />
         <p id="password-help" className="mt-1.5 text-xs text-[var(--ui-text-muted)]">Use at least 6 characters.</p>
         {fieldError("password") ? (
@@ -41,7 +39,7 @@ export function SetPasswordForm() {
 
       <label className="block text-left text-sm font-medium text-[var(--ui-text-secondary)]">
         Confirm password
-        <input
+        <Input
           name="password_confirmation"
           type="password"
           required
@@ -50,7 +48,7 @@ export function SetPasswordForm() {
           disabled={isPending}
           aria-invalid={fieldError("password_confirmation") ? true : undefined}
           aria-describedby={fieldError("password_confirmation") ? "password-confirmation-error" : undefined}
-          className={inputClassName}
+          className="mt-2"
         />
         {fieldError("password_confirmation") ? (
           <p id="password-confirmation-error" className="mt-1.5 text-sm text-[var(--ui-danger-text)]">

@@ -30,6 +30,7 @@ describe("shared Select contract", () => {
     expect(source).toContain('className="grid min-w-0 pl-3 pr-2"');
     expect(source).toContain('className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180"');
     expect(source).toContain("var(--ui-shadow-popover)");
+    expect(source).toContain("border-[var(--ui-border-strong)]");
   });
 
   it("sizes from every option while wrapping only multi-word labels on narrow screens", async () => {
