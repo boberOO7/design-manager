@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
@@ -22,7 +22,7 @@ import {
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments, getMonthMobileDayItems,
   getMonthItemTop, getCalendarItemDisplayTitle, itemOccursOn, mergeCalendarItem, MONTH_EVENT_GEOMETRY, MONTH_LANE_GAP, MONTH_LANE_HEIGHT, parseDateOnly,
-  removeCalendarItem, startOfMondayWeek, toDateOnly,
+  reconcileCalendarItems, removeCalendarItem, startOfMondayWeek, toDateOnly,
 } from "@/lib/calendar";
 import { createCalendarEventFormValues, getBusinessTripTitle, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime } from "@/lib/calendar-event-form";
 import { updateLinkedStartDate, updateLinkedStartTime } from "@/lib/calendar-form-range";
@@ -35,7 +35,6 @@ import { getTimeOffRequestPresentation, timeOffRequestTypeKey, timeOffStatusKey 
 import { getCalendarEventDetailConfig, getCalendarEventTypeConfig } from "@/lib/calendar-event-types";
 import type { CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, CalendarTimeFormat, CalendarView, MeetingMode, TimeOffRequestType } from "@/types/calendar";
 
-type SearchParams = Record<string, string | string[] | undefined>;
 type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string } | { kind: "time-off-form"; date?: string } | { kind: "days-off" } | null;
 
 const fieldClass = inputClassName;
@@ -49,7 +48,6 @@ function recurrenceText(locale: string, rule: RecurrenceRule | null) {
   const names = uk ? { daily: "Щодня", weekly: "Щотижня", monthly: "Щомісяця", yearly: "Щороку" } : { daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
   return rule.interval === 1 ? names[rule.frequency] : `${uk ? "Кожні" : "Every"} ${rule.interval} ${uk ? "рази" : rule.frequency}`;
 }
-function param(params: SearchParams, key: string) { const value = params[key]; return typeof value === "string" ? value : ""; }
 function itemTone(item: CalendarItem) {
   if (item.source === "calendar_event") return getCalendarEventTypeConfig(item.eventType).tone;
   if (item.source === "crm_follow_up") return "border-l-[var(--ui-info-accent)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]";
@@ -125,31 +123,45 @@ function CalendarPill({ item, month = false, mobile = false, onClick, timeFormat
   </button>;
 }
 
-export function CalendarWorkspace({ initialData, initialView, initialDate, searchParams }: { initialData: CalendarPageData; initialView: CalendarView; initialDate: string; searchParams: SearchParams }) {
+export function CalendarWorkspace({ initialData, initialView, initialDate }: { initialData: CalendarPageData; initialView: CalendarView; initialDate: string }) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
   const router = useRouter();
-  const [items, setItems] = useState(() => [...initialData.items]);
+  const searchParams = useSearchParams();
+  const param = (key: string) => searchParams.getAll(key).length === 1 ? searchParams.get(key) ?? "" : "";
+  const [itemState, setItemState] = useState<{ snapshot: CalendarItem[]; items: CalendarItem[]; refreshBase: CalendarItem[] | null }>(() => ({ snapshot: initialData.items, items: initialData.items, refreshBase: null }));
+  const { items } = itemState;
+  // URL-only changes keep the snapshot. A real refresh owns the collection,
+  // except for mutation results that arrived after its request began.
+  if (itemState.snapshot !== initialData.items) {
+    setItemState({ snapshot: initialData.items, items: itemState.refreshBase ? reconcileCalendarItems(initialData.items, itemState.refreshBase, items) : initialData.items, refreshBase: null });
+  }
+  function setItems(update: (current: CalendarItem[]) => CalendarItem[], refresh = false) {
+    setItemState((current) => {
+      const items = update(current.items);
+      return { ...current, items, refreshBase: refresh ? items : current.refreshBase };
+    });
+  }
   const [timeFormat, setTimeFormat] = useState<CalendarTimeFormat>(initialData.timeFormat);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
   const [drawer, setDrawer] = useState<Drawer>(() => {
-    const eventId = param(searchParams, "event");
-    const requestId = param(searchParams, "request");
+    const eventId = param("event");
+    const requestId = param("request");
     const item = initialData.items.find((candidate) => candidate.id === (eventId || requestId) && (eventId ? candidate.source === "calendar_event" : candidate.source === "time_off_request_admin"));
     return item ? { kind: "item", item } : null;
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(() => drawer !== null);
   const filters: CalendarFilters = {
-    events: param(searchParams, "events") !== "0",
-    projectDeadlines: param(searchParams, "projects") !== "0",
-    taskDeadlines: param(searchParams, "tasks") === "1",
-    timeOff: param(searchParams, "timeOff") !== "0",
-    birthdays: param(searchParams, "birthdays") !== "0",
-    teamAnniversaries: param(searchParams, "anniversaries") !== "0",
-    salaryPayments: initialData.isAdmin && param(searchParams, "payments") !== "0",
-    studioDaysOff: param(searchParams, "daysOff") !== "0",
-    projectId: param(searchParams, "project"), personId: param(searchParams, "person"), mine: param(searchParams, "mine") === "1",
+    events: param("events") !== "0",
+    projectDeadlines: param("projects") !== "0",
+    taskDeadlines: param("tasks") === "1",
+    timeOff: param("timeOff") !== "0",
+    birthdays: param("birthdays") !== "0",
+    teamAnniversaries: param("anniversaries") !== "0",
+    salaryPayments: initialData.isAdmin && param("payments") !== "0",
+    studioDaysOff: param("daysOff") !== "0",
+    projectId: param("project"), personId: param("person"), mine: param("mine") === "1",
   };
 
 
@@ -169,7 +181,9 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
   }
 
   function navigate(next: { view?: CalendarView; date?: string }, replace = false, filterPatch?: Partial<CalendarFilters>) {
-    const nextParams = new URLSearchParams();
+    const nextParams = new URLSearchParams(window.location.search);
+    for (const key of ["events", "projects", "tasks", "timeOff", "birthdays", "anniversaries", "payments", "daysOff", "project", "person", "mine"]) nextParams.delete(key);
+    if (!replace) for (const key of ["event", "request", "refresh"]) nextParams.delete(key);
     nextParams.set("view", next.view ?? initialView); nextParams.set("date", next.date ?? initialDate);
     const merged = { ...filters, ...filterPatch };
     if (!merged.events) nextParams.set("events", "0");
@@ -184,7 +198,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
     if (merged.personId) nextParams.set("person", merged.personId);
     if (merged.mine) nextParams.set("mine", "1");
     const href = `/calendar?${nextParams.toString()}`;
-    if (replace) router.replace(href);
+    if (replace) window.history.replaceState(null, "", `${href}${window.location.hash}`);
     else router.push(href);
   }
 
@@ -230,10 +244,10 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, searc
       <DayDetails date={drawer.date} items={getDayItems(visibleItems, drawer.date)} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} />
       <div className="mt-6 flex flex-wrap gap-2"><Button size="sm" onClick={() => openDrawer({ kind: "event-form", date: drawer.date })}>{t("addEventOnDay")}</Button><Button size="sm" variant="outline" onClick={() => openDrawer({ kind: "time-off-form", date: drawer.date })}>{t("requestTimeOff")}</Button></div>
     </DetailPanel> : null}
-    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} item={drawer.item} data={initialData} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { if (removedKey) setItems((current) => removeCalendarItem(current, removedKey)); if (item) { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); } else closeDrawer(); router.refresh(); }} /> : null}
+    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen && items.some((item) => item.key === drawer.item.key)} onExited={clearExitedDrawer} item={items.find((item) => item.key === drawer.item.key) ?? drawer.item} data={initialData} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { setItems((current) => { const remaining = removedKey ? removeCalendarItem(current, removedKey) : current; return item ? mergeCalendarItem(remaining, item) : remaining; }, true); if (item) openDrawer({ kind: "item", item }); else closeDrawer(); router.refresh(); }} /> : null}
     {drawer?.kind === "event-form" ? <EventForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} item={drawer.item} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
     {drawer?.kind === "time-off-form" ? <TimeOffForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
-    {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current); router.refresh(); }} /> : null}
+    {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current, true); router.refresh(); }} /> : null}
     {settingsOpen ? <CalendarSettingsDialog isOpen returnFocusRef={settingsTriggerRef} timeFormat={timeFormat} onClose={() => setSettingsOpen(false)} onSaved={(next) => { setTimeFormat(next); setSettingsOpen(false); }} /> : null}
   </div>;
 }

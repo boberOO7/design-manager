@@ -103,7 +103,6 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
       setOpenLead((current) => current && current !== "new" && current.id === lead.id ? previousLead : current);
     } else {
       if (result.lead) setOpenLead((current) => current && current !== "new" && current.id === lead.id ? { ...current, ...result.lead } : current);
-      router.refresh();
     }
     return result;
   }
@@ -112,7 +111,6 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
     if (!lead) return {};
     const result = await updateLeadFollowUp(lead.id, action, followUp);
     if (result.lead) setOpenLead((current) => current && current !== "new" && current.id === lead.id ? { ...current, ...result.lead } : current);
-    if (!result.error) router.refresh();
     return result;
   }
 
@@ -123,7 +121,6 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
     setDeleting(false);
     if (result.error) { window.alert(result.error); return; }
     setOpenLead(null);
-    router.refresh();
   }
 
   return <>
@@ -144,7 +141,7 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
       </table></div> : <EmptyState title={query || status !== "all" || attentionOnly ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" || attentionOnly ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
     <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => setOpenLead(null)}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
     {lead && followUpMode ? <LeadFollowUpDialog defaultStartDate={defaultStartDate} lead={lead} mode={followUpMode} onClose={() => setFollowUpMode(null)} onSave={(followUp) => changeFollowUp("schedule", followUp)} /> : null}
   </>;

@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 type OfficeCreateKind = "assignment" | "submission";
 
 export function useOfficeOverlayRouting(basePath: `/office/${string}`, createKind: OfficeCreateKind) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const createOpen = searchParams.get("create") === createKind;
   // A malformed/shared URL may contain both overlays. Creation wins so focus
@@ -13,10 +12,11 @@ export function useOfficeOverlayRouting(basePath: `/office/${string}`, createKin
   const selectedItemId = createOpen ? null : searchParams.get("item");
 
   function updateSearchParams(update: (next: URLSearchParams) => void) {
-    const next = new URLSearchParams(searchParams.toString());
+    const next = new URLSearchParams(window.location.search);
     update(next);
     const query = next.toString();
-    router.replace(query ? `${basePath}?${query}` : basePath, { scroll: false });
+    // Next synchronizes native history with useSearchParams without reloading the workspace.
+    window.history.replaceState(null, "", `${query ? `${basePath}?${query}` : basePath}${window.location.hash}`);
   }
 
   function openItem(id: string) {

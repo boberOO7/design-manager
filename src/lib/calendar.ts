@@ -549,6 +549,16 @@ export function removeCalendarItem(items: CalendarItem[], key: string): Calendar
   return items.filter((item) => item.key !== key);
 }
 
+/** Adopt a refresh, retaining only mutations completed after that refresh began. */
+export function reconcileCalendarItems(incoming: CalendarItem[], refreshBase: CalendarItem[], current: CalendarItem[]): CalendarItem[] {
+  const baseByKey = new Map(refreshBase.map((item) => [item.key, item]));
+  const currentByKey = new Map(current.map((item) => [item.key, item]));
+  const result = new Map(incoming.map((item) => [item.key, item]));
+  for (const item of refreshBase) if (!currentByKey.has(item.key)) result.delete(item.key);
+  for (const item of current) if (baseByKey.get(item.key) !== item) result.set(item.key, item);
+  return deduplicateCalendarItems([...result.values()]);
+}
+
 export function deduplicateCalendarItems(items: CalendarItem[]): CalendarItem[] {
   const uniqueItems = new Map<string, CalendarItem>();
   for (const item of items) {

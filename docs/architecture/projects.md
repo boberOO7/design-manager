@@ -83,6 +83,15 @@ Invariants:
   columns, and Stage 1–3 progress methods are configuration; stable stage IDs are
   policy inputs and must not be repurposed.
 
+## List presentation
+
+The server loads the RLS-visible portfolio and calculates progress and health.
+Lifecycle, health, priority, and sort URL parameters filter/order that presented
+collection in the client using the canonical list helpers. Filter changes replace
+the current history entry without reloading the dataset; direct URLs and
+Back/Forward restore the controls and list. Project links and creation still use
+normal server navigation.
+
 ## Activity History
 
 - Activity History starts at the migration that introduced it; older changes are

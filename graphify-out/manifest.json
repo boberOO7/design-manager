@@ -150,9 +150,9 @@
     "semantic_hash": "c73fd0f5ab506f759bd616db357e2af1"
   },
   "src/app/(app)/calendar/page.tsx": {
-    "mtime": 1787738617.2842453,
-    "ast_hash": "2c87eeef8c610e216bbe33362846cce9",
-    "semantic_hash": "2c87eeef8c610e216bbe33362846cce9"
+    "mtime": 1789428522.9642632,
+    "ast_hash": "0e0db6200cf97330be753f6b881cf500",
+    "semantic_hash": ""
   },
   "src/app/(app)/dashboard/page.test.tsx": {
     "mtime": 1785715287.0562608,
@@ -215,9 +215,9 @@
     "semantic_hash": "827b0595892b9afe16d9bbcca3e16058"
   },
   "src/app/(app)/projects/page.tsx": {
-    "mtime": 1787318338.353241,
-    "ast_hash": "b1e7e8ad5957d0d0d25bcc46382809bc",
-    "semantic_hash": "b1e7e8ad5957d0d0d25bcc46382809bc"
+    "mtime": 1789429203.6613917,
+    "ast_hash": "c0cb0696d829e39a93f2c9682520be9f",
+    "semantic_hash": ""
   },
   "src/app/(app)/team/actions.ts": {
     "mtime": 1789048687.2696087,
@@ -345,8 +345,8 @@
     "semantic_hash": "767720cd55343b27bfaa1fa51f27b882"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1789392030.9660144,
-    "ast_hash": "b1645765e5220172958cb4877bfe6b75",
+    "mtime": 1789429203.6613917,
+    "ast_hash": "44193110a0e44a0cc78c30ede8c61b95",
     "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
@@ -405,14 +405,14 @@
     "semantic_hash": "c82368e631a240bc1e4f956701bb8a0f"
   },
   "src/components/projects/project-list-controls.tsx": {
-    "mtime": 1788809740.170399,
-    "ast_hash": "c8c0d5002a1d046c01e2f551e68ca9d7",
-    "semantic_hash": "c8c0d5002a1d046c01e2f551e68ca9d7"
+    "mtime": 1789429203.6613917,
+    "ast_hash": "8d0249d6857faed863b7a0fdf2fdf189",
+    "semantic_hash": ""
   },
   "src/components/projects/project-list.tsx": {
-    "mtime": 1788861324.760808,
-    "ast_hash": "b766ba74e1dab130260fa6c5bc845d74",
-    "semantic_hash": "b766ba74e1dab130260fa6c5bc845d74"
+    "mtime": 1789429203.6613917,
+    "ast_hash": "345720b024b6620e41dd9e4c87915100",
+    "semantic_hash": ""
   },
   "src/components/projects/project-status-action.tsx": {
     "mtime": 1785971918.6155467,
@@ -680,14 +680,14 @@
     "semantic_hash": "0d958d41fc2797b4bc4d4088f881852c"
   },
   "src/lib/calendar.test.ts": {
-    "mtime": 1789336575.9788477,
-    "ast_hash": "bb05041c3d58fa2260f1235987e9328d",
-    "semantic_hash": "bb05041c3d58fa2260f1235987e9328d"
+    "mtime": 1789428885.8362603,
+    "ast_hash": "784f907eaccd81ef3c9c51b4b0c6099e",
+    "semantic_hash": ""
   },
   "src/lib/calendar.ts": {
-    "mtime": 1789336286.0719752,
-    "ast_hash": "b43ae0596e4d743fd4a971343e30511d",
-    "semantic_hash": "b43ae0596e4d743fd4a971343e30511d"
+    "mtime": 1789428851.0841355,
+    "ast_hash": "f1af56c2fa83c6f613f9bc37a63bd6d9",
+    "semantic_hash": ""
   },
   "src/lib/dashboard-presentation.test.ts": {
     "mtime": 1785752449.20195,
@@ -745,9 +745,9 @@
     "semantic_hash": "e3a84975d3252ce98ff7c86c3f9f09c8"
   },
   "src/lib/project-list-presentation.ts": {
-    "mtime": 1788809671.793224,
-    "ast_hash": "439914216bab0088990a06b7afe5b384",
-    "semantic_hash": "439914216bab0088990a06b7afe5b384"
+    "mtime": 1789429203.6613917,
+    "ast_hash": "1dd9f7eb6f4c566c4e95dd25ffd92da5",
+    "semantic_hash": ""
   },
   "src/lib/project-progress.test.ts": {
     "mtime": 1788438593.9546936,
@@ -1530,9 +1530,9 @@
     "semantic_hash": "54b72cfcf913f026bf2fa2e5b476f473"
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1788797297.4708395,
-    "ast_hash": "3935d7e5849a4ca31f478571d3959560",
-    "semantic_hash": "3935d7e5849a4ca31f478571d3959560"
+    "mtime": 1789428787.4336643,
+    "ast_hash": "7ac5797df8eb13edff714fe2f0046914",
+    "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {
     "mtime": 1785761371.9473782,
@@ -3750,12 +3750,12 @@
     "semantic_hash": "7a38b06b57973377745ace5e0192c1e7"
   },
   "src/components/submissions/submissions-workspace.tsx": {
-    "mtime": 1788643123.9553735,
-    "ast_hash": "da7495ea6c7f88026e7bdecb76e7c528",
-    "semantic_hash": "da7495ea6c7f88026e7bdecb76e7c528"
+    "mtime": 1789425659.9724197,
+    "ast_hash": "99fb9a868f7e778e488b7327bf51dddf",
+    "semantic_hash": ""
   },
   "src/data/queries/submissions.ts": {
-    "mtime": 1788641557.363844,
+    "mtime": 1789426026.315376,
     "ast_hash": "c6f1069b8fb9619f489aaf9bb5338484",
     "semantic_hash": "c6f1069b8fb9619f489aaf9bb5338484"
   },
@@ -3800,7 +3800,7 @@
     "semantic_hash": "119aaaf4d0a02ec394d4b98636dd744b"
   },
   "src/app/(app)/office/assignments/page.tsx": {
-    "mtime": 1788549312.0397775,
+    "mtime": 1789426026.315376,
     "ast_hash": "6082fd0dbe103f3a60e54e22944aaafb",
     "semantic_hash": "6082fd0dbe103f3a60e54e22944aaafb"
   },
@@ -3815,19 +3815,19 @@
     "semantic_hash": "bf59ab4e33c80c6f1568532eea2e7c73"
   },
   "src/app/(app)/office/submissions/page.tsx": {
-    "mtime": 1788549311.8517668,
+    "mtime": 1789426026.315376,
     "ast_hash": "5f4b78c67b7b1c8bbedea984347b14b6",
     "semantic_hash": "5f4b78c67b7b1c8bbedea984347b14b6"
   },
   "src/components/office/assignments-workspace.tsx": {
-    "mtime": 1788643474.9885337,
-    "ast_hash": "8765f5730c38609a4af683d0a9137990",
-    "semantic_hash": "8765f5730c38609a4af683d0a9137990"
+    "mtime": 1789425620.7955904,
+    "ast_hash": "a5c4f8d2e951288bc51b8bf47b955715",
+    "semantic_hash": ""
   },
   "src/components/office/office-shell.tsx": {
-    "mtime": 1789331063.385536,
-    "ast_hash": "5b251f292b57a7d0127798860a939406",
-    "semantic_hash": "5b251f292b57a7d0127798860a939406"
+    "mtime": 1789425620.7955904,
+    "ast_hash": "f016d301386af38732d3464936e87cfe",
+    "semantic_hash": ""
   },
   "src/components/office/office-workspace.test.ts": {
     "mtime": 1789331063.8495595,
@@ -3835,7 +3835,7 @@
     "semantic_hash": "e97ed14bce060835eadbb3efadd672fa"
   },
   "src/data/queries/office-assignments.ts": {
-    "mtime": 1788530209.1668928,
+    "mtime": 1789426026.315376,
     "ast_hash": "604868b42f469a12c6fdf512d385bf9b",
     "semantic_hash": "604868b42f469a12c6fdf512d385bf9b"
   },
@@ -3880,9 +3880,9 @@
     "semantic_hash": "e1742f09109895a89aee7d2b7e90b056"
   },
   "src/components/office/use-office-overlay-routing.ts": {
-    "mtime": 1789070114.9483423,
-    "ast_hash": "8ce1d344ed0d996fef15355dd210200d",
-    "semantic_hash": "8ce1d344ed0d996fef15355dd210200d"
+    "mtime": 1789425620.7955904,
+    "ast_hash": "60c114cedbcad041e22646290f09eb72",
+    "semantic_hash": ""
   },
   "src/components/ui/dialog.test.ts": {
     "mtime": 1789343059.9949903,
@@ -4070,8 +4070,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/calendar.md": {
-    "mtime": 1789336769.8752723,
-    "ast_hash": "05efd9555f0e4f89290566d96286aee2",
+    "mtime": 1789429106.3291237,
+    "ast_hash": "a6c005ec8cd006604e72a13282b0cb58",
     "semantic_hash": ""
   },
   "docs/architecture/database.md": {
@@ -4095,13 +4095,13 @@
     "semantic_hash": ""
   },
   "docs/architecture/projects.md": {
-    "mtime": 1789387629.8845081,
-    "ast_hash": "e34391cee434e0140170f7e2813573d7",
+    "mtime": 1789429106.6571453,
+    "ast_hash": "cbc5c3c44b33e0853360f4a94184edb5",
     "semantic_hash": ""
   },
   "docs/architecture/studio-operations.md": {
-    "mtime": 1789416663.14752,
-    "ast_hash": "08e61f1d62e0579787d710bfeb241bb0",
+    "mtime": 1789426041.6402524,
+    "ast_hash": "e11fd9933fb312bbcd5ddfdb3c83dde1",
     "semantic_hash": ""
   },
   "docs/architecture/tasks.md": {
@@ -4280,7 +4280,7 @@
     "semantic_hash": "68b5be11ad03ad2b01dd654247ab9b60"
   },
   "src/app/(app)/crm/candidates/page.tsx": {
-    "mtime": 1789033713.862573,
+    "mtime": 1789426026.315376,
     "ast_hash": "714bdee0193404d8b907c91463438002",
     "semantic_hash": "714bdee0193404d8b907c91463438002"
   },
@@ -4295,7 +4295,7 @@
     "semantic_hash": "25e3cf00bd651bffa9cf6f8061b0d718"
   },
   "src/app/(app)/crm/leads/page.tsx": {
-    "mtime": 1789344819.9110754,
+    "mtime": 1789426026.315376,
     "ast_hash": "284442a9b71135b3f990dad362f86798",
     "semantic_hash": "284442a9b71135b3f990dad362f86798"
   },
@@ -4315,9 +4315,9 @@
     "semantic_hash": "98f95684ca6ad6a333630aa3d173952b"
   },
   "src/components/crm/candidates-workspace.tsx": {
-    "mtime": 1789380491.582219,
-    "ast_hash": "7b6f3e903fb585337209bdaa6c699836",
-    "semantic_hash": "7b6f3e903fb585337209bdaa6c699836"
+    "mtime": 1789425659.9684196,
+    "ast_hash": "dbea7fbdbbb3af3f5538094dcb1f55f0",
+    "semantic_hash": ""
   },
   "src/components/crm/crm-fields.tsx": {
     "mtime": 1789380440.8932996,
@@ -4335,9 +4335,9 @@
     "semantic_hash": "e30fdf25f27a9aaba3ffcbfc2ebdf01c"
   },
   "src/components/crm/leads-workspace.tsx": {
-    "mtime": 1789390967.348122,
-    "ast_hash": "51815ea541c9ef39728782ef5b45a7b1",
-    "semantic_hash": "51815ea541c9ef39728782ef5b45a7b1"
+    "mtime": 1789425659.9684196,
+    "ast_hash": "f49b451fc17c35c3775e17fe5800828f",
+    "semantic_hash": ""
   },
   "src/components/projects/project-metadata-controls.tsx": {
     "mtime": 1788887434.0389917,
@@ -4345,7 +4345,7 @@
     "semantic_hash": "f051db5882c3716d4e62ebde0c894f27"
   },
   "src/data/queries/crm.ts": {
-    "mtime": 1789344758.3948472,
+    "mtime": 1789426026.315376,
     "ast_hash": "d32ca05149261265b4105d1e2b3bdc62",
     "semantic_hash": "d32ca05149261265b4105d1e2b3bdc62"
   },
@@ -4690,8 +4690,8 @@
     "semantic_hash": "e8a0b4e877e1da7fa3d151882320e516"
   },
   "tests/e2e/equipment-form.spec.ts": {
-    "mtime": 1789416974.053148,
-    "ast_hash": "240db940d2f2a0f5f02c6031d306e957",
+    "mtime": 1789417195.5267823,
+    "ast_hash": "3ec2b8fac6643209ee92227703176f43",
     "semantic_hash": ""
   },
   ".agents/skills/gsap-core/SKILL.md": {
@@ -4715,8 +4715,8 @@
     "semantic_hash": ""
   },
   "tests/e2e/README.md": {
-    "mtime": 1789132039.1352005,
-    "ast_hash": "33c8d7c8a611bf270a5191f0be8146d9",
+    "mtime": 1789429106.6571453,
+    "ast_hash": "f225f882c1fe69ffff130b382fb8f65a",
     "semantic_hash": ""
   },
   "src/lib/equipment-inventory-migration.test.ts": {
@@ -5067,6 +5067,16 @@
   "graphify-out/memory/query_20260914_114245_investigate_and_fix_the_stale_session_auth_resume.md": {
     "mtime": 1789386165.1284094,
     "ast_hash": "ee14f4a802bf087f7471c6c95194af75",
+    "semantic_hash": ""
+  },
+  "tests/e2e/office-reconciliation.spec.ts": {
+    "mtime": 1789426447.6473794,
+    "ast_hash": "921843aeaee64599f78236dc75c79c96",
+    "semantic_hash": ""
+  },
+  "tests/e2e/calendar-projects-presentation.spec.ts": {
+    "mtime": 1789429049.7577758,
+    "ast_hash": "1f5939ce34231b503e5aef045b3f260f",
     "semantic_hash": ""
   }
 }

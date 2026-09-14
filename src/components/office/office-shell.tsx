@@ -25,7 +25,7 @@ export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; 
   return <div className="space-y-6">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div><h1 className="text-2xl font-bold tracking-tight text-[var(--ui-text)] sm:text-3xl">{t("title")}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--ui-text-secondary)]">{t("description")}</p></div>
-      {!equipmentRoute ? isAdmin ? <Button type="button" size="lg" onClick={() => setChooserOpen(true)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Button> : <Button asChild size="lg"><Link href="/office/submissions?create=submission"><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Link></Button> : null}
+      {!equipmentRoute ? isAdmin ? <Button type="button" size="lg" onClick={() => setChooserOpen(true)}><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</Button> : <Button asChild size="lg"><OfficeCreateLink href="/office/submissions?create=submission"><Plus className="mr-2 size-4" aria-hidden="true" />{t("create")}</OfficeCreateLink></Button> : null}
     </header>
     <nav aria-label={t("tabs.label")} className="flex gap-1 overflow-x-auto border-b border-[var(--ui-border)]">
       {tabs.filter((tab) => !tab.adminOnly || isAdmin).map(({ href, key, icon: Icon }) => {
@@ -46,5 +46,15 @@ export function OfficeShell({ children, isAdmin }: { children: React.ReactNode; 
 }
 
 function CreateChoice({ initialFocus = false, href, icon: Icon, title, description, onClick }: { initialFocus?: boolean; href: string; icon: LucideIcon; title: string; description: string; onClick: () => void }) {
-  return <Link data-dialog-initial-focus={initialFocus || undefined} href={href} onClick={onClick} className="group rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] p-4 transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex size-10 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)]/10 text-[var(--ui-action-primary)]"><Icon className="size-5" aria-hidden="true" /></span><strong className="mt-4 block text-sm text-[var(--ui-text)]">{title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{description}</span></Link>;
+  return <OfficeCreateLink data-dialog-initial-focus={initialFocus || undefined} href={href} onClick={onClick} className="group rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] p-4 transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex size-10 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)]/10 text-[var(--ui-action-primary)]"><Icon className="size-5" aria-hidden="true" /></span><strong className="mt-4 block text-sm text-[var(--ui-text)]">{title}</strong><span className="mt-1 block text-xs leading-5 text-[var(--ui-text-muted)]">{description}</span></OfficeCreateLink>;
+}
+
+function OfficeCreateLink({ href, ...props }: React.ComponentProps<typeof Link> & { href: string }) {
+  const pathname = usePathname();
+  const sameWorkspace = pathname === href.split("?")[0];
+  return <Link {...props} href={href} prefetch={sameWorkspace ? false : undefined} onNavigate={(event) => {
+    if (!sameWorkspace) return;
+    event.preventDefault();
+    window.history.pushState(null, "", href);
+  }} />;
 }

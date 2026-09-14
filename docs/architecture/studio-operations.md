@@ -90,6 +90,9 @@ migrations/tests.
 - At most one recruiting cycle per candidate may be active (without a final
   outcome). Final outcomes are Hired, Reserve, and Rejected.
 - Candidate-to-member conversion remains intentionally manual.
+- CRM mutation Server Actions revalidate their workspace. Clients retain local
+  detail/optimistic updates and consume the revalidated render without an
+  additional route refresh; reading Lead history remains a separate action.
 
 Canonical paths: `src/app/(app)/crm/`, `src/data/queries/crm.ts`,
 `src/components/crm/`, CRM migrations, and `supabase/tests/crm*.test.sql`.
@@ -98,6 +101,11 @@ Canonical paths: `src/app/(app)/crm/`, `src/data/queries/crm.ts`,
 
 Office is the canonical home for internal submissions and standalone assignments.
 Legacy `/submissions` entry points redirect to `/office/submissions`.
+
+Assignment and Submission selection/dismissal replace URL history without a
+server navigation. Creation links push history locally when their workspace is
+already open; links to another workspace still navigate. Deep links initialize
+the same overlays. Successful mutation Server Actions own workspace revalidation.
 
 ### Submissions
 
@@ -114,7 +122,8 @@ Legacy `/submissions` entry points redirect to `/office/submissions`.
 - Suggestions have support/reaction behavior distinct from managed request work.
 - Open non-anonymous submission discussions receive request-scoped comment
   inserts through Supabase Realtime; the existing submission visibility policy
-  remains the read boundary for delivery.
+  remains the read boundary for delivery. Comments received in an open discussion
+  stay available when its drawer is closed and reopened within that workspace.
 - Anonymous complaints store no author identity and expose no participant
   assignment or communication UI. Administrator details remain separately
   protected.

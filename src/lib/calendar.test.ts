@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems, formatCalendarClockTime, formatCalendarDateTime, formatCalendarTime, formatCalendarWallTime,
   filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
-  isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem,
+  isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem, reconcileCalendarItems,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
   MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
@@ -535,5 +535,29 @@ describe("Calendar input validation", () => {
     expect(isValidTimeOffRange({ startDate: "2026-07-29", endDate: "2026-07-28", allDay: true })).toBe(false);
     expect(isValidTimeOffRange({ startDate: "2026-07-28", endDate: "2026-07-29", allDay: false, startTime: "09:00", endTime: "10:00" })).toBe(false);
     expect(isValidTimeOffRange({ startDate: "2026-07-28", endDate: "2026-07-28", allDay: false, startTime: "10:00", endTime: "09:00" })).toBe(false);
+  });
+});
+
+
+describe("Calendar refresh reconciliation", () => {
+  it("adopts fresh edits, additions, and removals without retaining old mutation results", () => {
+    const base = [calendarEvent(), deadline()];
+    const incoming = [{ ...base[0], title: "Server edit" }, birthday()];
+    expect(reconcileCalendarItems(incoming, base, base)).toEqual(sortCalendarItems(incoming));
+  });
+
+  it("retains only local edits, additions, and removals completed after refresh started", () => {
+    const event = calendarEvent();
+    const removed = deadline();
+    const unchanged = birthday();
+    const added = anniversary();
+    const latest = { ...event, title: "Mutation completed during refresh" };
+    const base = [event, removed, unchanged];
+    const incoming = [{ ...event, title: "Earlier server snapshot" }, removed, { ...unchanged, title: "Fresh birthday" }];
+    const result = reconcileCalendarItems(incoming, base, [latest, unchanged, added]);
+    expect(result).toEqual(sortCalendarItems([latest, { ...unchanged, title: "Fresh birthday" }, added]));
+    expect(new Set(result.map((item) => item.key)).size).toBe(result.length);
+    expect(base).toEqual([event, removed, unchanged]);
+    expect(incoming).toHaveLength(3);
   });
 });

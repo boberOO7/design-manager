@@ -24,5 +24,5 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   if (!data) throw new Error("Calendar data is unavailable for the active studio.");
 
   const refreshKey = typeof params.refresh === "string" ? params.refresh : "";
-  return <CalendarWorkspace key={`${view}:${date}:${refreshKey}`} initialData={data} initialView={view} initialDate={date} searchParams={params} />;
+  return <CalendarWorkspace key={`${view}:${date}:${refreshKey}`} initialData={data} initialView={view} initialDate={date} />;
 }

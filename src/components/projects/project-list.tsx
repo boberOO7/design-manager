@@ -1,19 +1,38 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ProjectListControls, resetProjectListFilters } from "./project-list-controls";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { useLocale, useTranslations } from "next-intl";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
-import { getProjectHref, getProjectProgressLabel, type PresentedProject } from "@/lib/project-list-presentation";
+import { filterAndSortProjects, getProjectListEmptyState, getProjectListFilters, hasActiveProjectListFilters, getProjectHref, getProjectProgressLabel, type PresentedProject } from "@/lib/project-list-presentation";
 import { formatDateOnly } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AccessibleProjectWithTasks } from "@/data/queries/project-progress";
 
-type ProjectItem = PresentedProject<AccessibleProjectWithTasks>;
+type ProjectItem = Pick<PresentedProject<AccessibleProjectWithTasks>, "id" | "name" | "client_name" | "status" | "priority" | "due_date" | "participants" | "progress" | "health" | "healthReason">;
 
 const healthKeys = { on_track: "healthOnTrack", needs_attention: "healthNeedsAttention", deadline_soon: "healthDeadlineSoon", overdue: "healthOverdue", completed: "healthCompleted" } as const;
 
 const desktopGridClassName = "grid-cols-[minmax(16rem,3.25fr)_minmax(10.5rem,1.1fr)_minmax(17rem,17.5rem)_minmax(8rem,1.35fr)_minmax(4.5rem,0.95fr)_minmax(6.5rem,1fr)]";
 const deadlineContentClassName = "justify-self-center text-center";
+
+export function ProjectListWorkspace({ projects }: { projects: readonly ProjectItem[] }) {
+  const t = useTranslations("Projects");
+  const params = useSearchParams();
+  const filters = getProjectListFilters(Object.fromEntries(
+    ["lifecycle", "health", "priority", "sort"].map((key) => [key, params.getAll(key).length > 1 ? params.getAll(key) : params.get(key) ?? undefined]),
+  ));
+  const visibleProjects = filterAndSortProjects(projects, filters);
+  const emptyState = getProjectListEmptyState(filters);
+  return <>
+    <ProjectListControls filters={filters} />
+    {visibleProjects.length ? <ProjectList projects={visibleProjects} /> : <EmptyState title={t(emptyState.titleKey)} description={t("emptyFilteredDescription")} action={emptyState.canReset ? <Button variant="outline" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : undefined} />}
+    {hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">Showing {visibleProjects.length} of {projects.length} accessible projects.</p> : null}
+  </>;
+}
 
 export function ProjectList({ projects }: { projects: readonly ProjectItem[] }) {
   const t = useTranslations("Projects");

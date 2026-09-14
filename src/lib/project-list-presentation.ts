@@ -62,7 +62,7 @@ function compareNullableDate(left: string | null, right: string | null): number 
   return (left ?? "9999-12-31").localeCompare(right ?? "9999-12-31");
 }
 
-export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; tasks: readonly ProjectTaskForProgress[]; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly PresentedProject<T>[], filters: ProjectListFilters): PresentedProject<T>[] {
+export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; health: ProjectHealth; progress: ProjectProgress }>(projects: readonly T[], filters: ProjectListFilters): T[] {
   const filtered = projects.filter((project) =>
     (filters.lifecycle === "all" || project.status === filters.lifecycle)
     && (filters.health === "all" || project.health === filters.health)

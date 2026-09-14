@@ -28,6 +28,20 @@ The authenticated user's calendar time-format preference is stored in Supabase
 Auth user metadata and normalized to 24-hour time when absent or invalid. It is
 presentation-only and does not alter stored timestamps or Kyiv timezone rules.
 
+## URL state and refresh ownership
+
+Date and view select the server-loaded range. Person, project, mine, and source
+filters use that loaded collection and replace URL history locally; they do not
+request a new range. Direct URLs and Back/Forward restore those filters.
+Event/request notification links remain server navigation, including the explicit
+`refresh` token used to reopen refreshed details.
+
+Route Handler mutation results merge into the local collection by item key.
+A fresh same-range server snapshot replaces that collection, preserving only
+mutations completed after the workspace's refresh began. Open form drafts remain
+local. Calendar itself has no item realtime subscription; notification delivery
+belongs to the shell.
+
 ## Semantic event types
 
 Real events use language-neutral types: general, meeting, interview, site visit,

@@ -3,7 +3,6 @@
 import { useActionState, useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { Ban, CalendarCheck2, CalendarClock, Check, CheckCircle2, CircleAlert, Ellipsis, Eye, Lightbulb, LockKeyhole, MessageSquareText, Play, Send, ShieldCheck, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
 import { addSubmissionComment, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
 import { useOfficeOverlayRouting } from "@/components/office/use-office-overlay-routing";
@@ -64,6 +63,14 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }:
   const [createdNotice, setCreatedNotice] = useState<"named" | "anonymous" | null>(null);
   const { closeCreate, closeItem, createOpen, openItem, selectedItemId } = useOfficeOverlayRouting("/office/submissions", "submission");
   const selected = items.find((item) => item.id === selectedItemId) ?? null;
+  // Keep received comments across drawer unmounts without reloading the inbox.
+  const [receivedComments, setReceivedComments] = useState(new Map<string, SubmissionComment[]>());
+  const rememberComment = useCallback((submissionId: string, entry: SubmissionComment) => {
+    setReceivedComments((current) => new Map(current).set(submissionId, [...(current.get(submissionId) ?? []).filter((comment) => comment.id !== entry.id), entry]));
+  }, []);
+  const selectedComments = useMemo(() => selected
+    ? sortComments([...new Map([...(receivedComments.get(selected.id) ?? []), ...selected.comments].map((entry) => [entry.id, entry])).values()])
+    : [], [receivedComments, selected]);
   const filters: InboxFilter[] = ["active", "mine", "history"];
   const filtered = useMemo(() => items.filter((item) => {
     if (typeFilter !== "all" && item.type !== typeFilter) return false;
@@ -88,14 +95,13 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }:
     {createdNotice ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200">{t(createdNotice === "anonymous" ? "anonymousCreatedNotice" : "createdNotice")}</p> : null}
     {filtered.length ? <div className="divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{filtered.map((item) => <SubmissionRow key={item.id} currentUserId={currentUserId} isAdmin={isAdmin} item={item} members={members} onOpen={() => openItem(item.id)} />)}</div> : <div className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-6 py-14 text-center"><MessageSquareText className="mx-auto size-8 text-[var(--ui-text-muted)]" aria-hidden="true" /><h2 className="mt-3 font-semibold">{t("empty.title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("empty.description")}</p></div>}
     <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={closeCreate} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); else closeCreate(); }} />
-    <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onClose={closeItem} />
+    <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} comments={selectedComments} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onComment={rememberComment} onClose={closeItem} />
   </div>;
 }
 
 function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { currentUserId: string; isAdmin: boolean; item: SubmissionItem; members: SubmissionPerson[]; onOpen: () => void }) {
   const t = useTranslations("Submissions");
   const locale = useLocale();
-  const router = useRouter();
   const [optimisticSupport, setOptimisticSupport] = useOptimistic(
     { count: item.supportCount, supported: item.supportedByMe },
     (_current, next: { count: number; supported: boolean }) => next,
@@ -117,7 +123,6 @@ function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { curr
         setSupportError(true);
         return;
       }
-      router.refresh();
     });
   }
   function runWorkflow(status: SubmissionStatus, responsibleId: string | null) {
@@ -125,7 +130,6 @@ function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { curr
     startWorkflowTransition(async () => {
       const result = await manageSubmission({ submissionId: item.id, status, responsibleId, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" });
       if (result.error) setWorkflowError(result.error);
-      else router.refresh();
     });
   }
   const primaryAction = getPrimarySubmissionAction(item.type, item.status);
@@ -177,17 +181,15 @@ function CreateSubmissionDialog({ isOpen, onClose, onCreated }: { isOpen: boolea
   </Dialog>;
 }
 
-function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose }: { currentUserId: string; isAdmin: boolean; item: SubmissionItem | null; members: SubmissionPerson[]; onClose: () => void }) {
+function SubmissionDetailDrawer({ comments, currentUserId, isAdmin, item, members, onComment, onClose }: { comments: SubmissionComment[]; onComment: (submissionId: string, entry: SubmissionComment) => void; currentUserId: string; isAdmin: boolean; item: SubmissionItem | null; members: SubmissionPerson[]; onClose: () => void }) {
   const t = useTranslations("Submissions");
   const locale = useLocale();
-  const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const knownCommentIdsRef = useRef(new Set(item?.comments.map((entry) => entry.id) ?? []));
+  const knownCommentIdsRef = useRef(new Set(comments.map((entry) => entry.id)));
   const scrollToNewestCommentRef = useRef(false);
   const [comment, setComment] = useState("");
-  const [comments, setComments] = useState<SubmissionComment[]>(item?.comments ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const isComposingCommentRef = useRef(false);
@@ -200,8 +202,8 @@ function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose
   const upsertComment = useCallback((entry: SubmissionComment, keepNewestVisible: boolean) => {
     knownCommentIdsRef.current.add(entry.id);
     scrollToNewestCommentRef.current ||= keepNewestVisible;
-    setComments((current) => sortComments([...current.filter((commentEntry) => commentEntry.id !== entry.id), entry]));
-  }, []);
+    if (submissionId) onComment(submissionId, entry);
+  }, [onComment, submissionId]);
   useEffect(() => {
     if (!scrollToNewestCommentRef.current) return;
     scrollToNewestCommentRef.current = false;
@@ -250,7 +252,7 @@ function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose
   if (!item || !submissionId) return null;
   const openSubmissionId = submissionId;
   const Icon = typeIcons[item.type];
-  function refreshAfter(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else router.refresh(); }); }
+  function run(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); }); }
   function submitComment() {
     if (pending || !comment.trim()) return;
     const keepNewestVisible = isNearDiscussionBottom();
@@ -270,9 +272,9 @@ function SubmissionDetailDrawer({ currentUserId, isAdmin, item, members, onClose
     <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
       <section className="space-y-5 p-5 sm:p-6"><dl className="grid gap-x-6 gap-y-4 border-b border-[var(--ui-border-subtle)] pb-4 sm:grid-cols-2">{item.isAnonymous ? <AnonymousMeta label={t("author")} value={t("anonymousPrivate")} /> : item.author ? <PersonMeta label={t("author")} person={item.author} /> : <Meta label={t("author")} value="—" />}{item.responsible ? <PersonMeta label={t("responsible")} person={item.responsible} /> : <Meta label={t("responsible")} value={t("unassigned")} />}<Meta label={t("created")} value={new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(item.createdAt))} /><Meta label={t("deadline")} value={item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : "—"} /></dl>
         <div><h3 className="text-sm font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{item.description}</p></div>
-        {item.type === "suggestion" ? <Button type="button" size="lg" variant="outline" aria-pressed={item.supportedByMe} disabled={pending} onClick={() => refreshAfter(() => toggleSuggestionSupport(item.id, item.supportedByMe))} className={item.supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : undefined}><ThumbsUp className={cn("mr-2 size-4", item.supportedByMe && "fill-current")} aria-hidden="true" />{item.supportedByMe ? t("supported", { count: item.supportCount }) : t("support", { count: item.supportCount })}</Button> : null}
+        {item.type === "suggestion" ? <Button type="button" size="lg" variant="outline" aria-pressed={item.supportedByMe} disabled={pending} onClick={() => run(() => toggleSuggestionSupport(item.id, item.supportedByMe))} className={item.supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : undefined}><ThumbsUp className={cn("mr-2 size-4", item.supportedByMe && "fill-current")} aria-hidden="true" />{item.supportedByMe ? t("supported", { count: item.supportCount }) : t("support", { count: item.supportCount })}</Button> : null}
       </section>
-      {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={item} members={members} disabled={pending} onSave={(input) => refreshAfter(() => manageSubmission(input))} onReject={canRejectSubmission(item.type, item.status) ? () => refreshAfter(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" })) : undefined} /> : null}
+      {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={item} members={members} disabled={pending} onSave={(input) => run(() => manageSubmission(input))} onReject={canRejectSubmission(item.type, item.status) ? () => run(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" })) : undefined} /> : null}
       {!item.isAnonymous ? <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><h3 className="flex items-center gap-2 font-semibold"><MessageSquareText className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t(item.type === "suggestion" ? "discussion" : "communication")}</h3><div className="mt-4 grid gap-4">{comments.map((entry) => <div key={entry.id} className="flex gap-3"><UserAvatar imageUrl={entry.author.avatarUrl} name={entry.author.fullName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-semibold">{entry.author.id === currentUserId ? t("you") : entry.author.fullName}</span><time className="text-xs text-[var(--ui-text-muted)]">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{entry.body}</p></div></div>)}</div>
         <div className="mt-4 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea ref={commentRef} value={comment} onChange={(event) => setComment(event.target.value)} onCompositionStart={() => { isComposingCommentRef.current = true; }} onCompositionEnd={() => { isComposingCommentRef.current = false; }} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || isComposingCommentRef.current) return; event.preventDefault(); submitComment(); }} maxLength={3000} rows={1} className="min-h-11 max-h-28 resize-none overflow-y-auto py-2.5 leading-5" /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
       </section> : null}

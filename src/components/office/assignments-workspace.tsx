@@ -3,7 +3,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { Ban, CalendarClock, CheckCircle2, ClipboardCheck, Ellipsis, Play, UserRound, X } from "lucide-react";
 import { createOfficeAssignment, manageOfficeAssignment, transitionOfficeAssignment } from "@/app/(app)/office/assignments/actions";
 import { officeListDesktopGridClassName, officeWorkflowStyles } from "@/components/office/office-list-patterns";
@@ -62,7 +61,6 @@ export function AssignmentsWorkspace({ currentUserId, isAdmin, items, members, t
 function AssignmentRow({ currentUserId, isAdmin, item, today, onOpen }: { currentUserId: string; isAdmin: boolean; item: OfficeAssignmentItem; today: string; onOpen: () => void }) {
   const t = useTranslations("OfficeAssignments");
   const locale = useLocale();
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const overdue = isOfficeAssignmentOverdue(item.deadline, item.status, today);
@@ -71,7 +69,7 @@ function AssignmentRow({ currentUserId, isAdmin, item, today, onOpen }: { curren
   const displayedDate = terminal ? item.updatedAt : item.deadline ?? item.createdAt;
   const displayedDateTime = item.deadline && !terminal ? `${item.deadline}T00:00:00` : displayedDate;
   const dateLabel = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(displayedDateTime));
-  function run(status: OfficeAssignmentStatus) { setError(null); startTransition(async () => { const result = await transitionOfficeAssignment({ assignmentId: item.id, status }); if (result.error) setError(result.error); else router.refresh(); }); }
+  function run(status: OfficeAssignmentStatus) { setError(null); startTransition(async () => { const result = await transitionOfficeAssignment({ assignmentId: item.id, status }); if (result.error) setError(result.error); }); }
   return <article className="group relative bg-[var(--ui-surface)] px-3 py-2 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)] sm:px-4">
     <button type="button" aria-label={`${t("eyebrow")}: ${item.title}`} onClick={onOpen} className="absolute inset-0 cursor-pointer focus-visible:outline-none" />
     <div className={cn("pointer-events-none relative grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 xl:min-h-14 xl:gap-x-3", officeListDesktopGridClassName)}>
@@ -107,13 +105,12 @@ function CreateAssignmentDialog({ isOpen, members, onClose, onCreated }: { isOpe
 function AssignmentDetailDrawer({ currentUserId, isAdmin, item, members, today, onClose }: { currentUserId: string; isAdmin: boolean; item: OfficeAssignmentItem | null; members: SubmissionPerson[]; today: string; onClose: () => void }) {
   const t = useTranslations("OfficeAssignments");
   const locale = useLocale();
-  const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   if (!item) return null;
   const primaryStatus = getPrimaryOfficeAssignmentStatus(item.status);
-  function run(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); else router.refresh(); }); }
+  function run(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); }); }
   return <Drawer isOpen onClose={onClose} initialFocusRef={closeRef} focusKey={item.id} title={item.title} className="w-full max-w-[34rem]">
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-violet-surface)] text-[var(--ui-violet-text)]"><ClipboardCheck className="size-5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t("eyebrow")}</p><div className="mt-1 flex flex-wrap items-center gap-2"><h2 className="max-w-full break-words text-lg font-bold leading-6">{item.title}</h2><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold !border-0", getPriorityBadgeStyle(item.priority).className)}>{t(`priorities.${item.priority}`)}</span>{isOfficeAssignmentOverdue(item.deadline, item.status, today) ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-2.5 py-0.5 text-xs font-semibold text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}</div></div></div><div className="flex shrink-0 items-center gap-1">{isAdmin && !isTerminalOfficeAssignmentStatus(item.status) ? <AssignmentCancelAction disabled={pending} title={item.title} onCancel={() => run(() => transitionOfficeAssignment({ assignmentId: item.id, status: "cancelled" }))} /> : null}<button ref={closeRef} type="button" onClick={onClose} aria-label={t("close")} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></div></header>
     <div className="min-h-0 flex-1 overflow-y-auto"><section className="space-y-5 p-5 sm:p-6">
