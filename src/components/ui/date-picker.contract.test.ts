@@ -22,12 +22,23 @@ describe("DatePicker navigation", () => {
     expect(source).toContain('offset * 12');
   });
 
-  it("keeps the existing minimum-date boundary in every navigation level", async () => {
+  it("keeps minimum and maximum date boundaries in every navigation level", async () => {
     const source = await readFile(pickerPath, "utf8");
 
     expect(source).toContain('const isMonthAvailable');
     expect(source).toContain('const isYearAvailable');
-    expect(source).toContain('const unavailable = Boolean(minValue && dateValue < minValue)');
+    expect(source).toContain('const maxValue = max && DATE_ONLY.test(max) ? max : undefined');
+    expect(source).toContain('const unavailable = !isDateAvailable(dateValue)');
+    expect(source).toContain('disabled={todayUnavailable}');
+  });
+
+  it("preserves required form validation through the custom trigger", async () => {
+    const source = await readFile(pickerPath, "utf8");
+
+    expect(source).toContain('aria-required={required || undefined}');
+    expect(source).toContain('required={required}');
+    expect(source).toContain('setRequiredInvalid(true)');
+    expect(source).toContain('triggerRef.current?.focus({ preventScroll: true })');
   });
 
   it("uses readable shared typography for selected date values", async () => {

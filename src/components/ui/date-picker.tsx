@@ -60,22 +60,26 @@ export type DatePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   defaultValue?: string;
   invalid?: boolean;
   locale?: string;
+  max?: string;
   min?: string;
   name?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
   value?: string;
 };
 
-export function DatePicker({ className, defaultValue = "", disabled, invalid = false, locale = "en", min, name, onValueChange, placeholder, value, ...buttonProps }: DatePickerProps) {
+export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValue = "", disabled, invalid = false, locale = "en", max, min, name, onValueChange, placeholder, required, value, ...buttonProps }: DatePickerProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
+  const [requiredInvalid, setRequiredInvalid] = React.useState(false);
   const selectedValue = value ?? internalValue;
   const selectedDate = DATE_ONLY.test(selectedValue) ? parseDate(selectedValue) : null;
   const [viewDate, setViewDate] = React.useState(() => selectedDate ?? new Date());
   const [calendarView, setCalendarView] = React.useState<CalendarView>("day");
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [triggerNode, setTriggerNode] = React.useState<HTMLButtonElement | null>(null);
+  const popoverId = React.useId();
   const copy = labels(locale);
   const dateFormatter = React.useMemo(() => new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric" }), [locale]);
   const weekdayFormatter = React.useMemo(() => new Intl.DateTimeFormat(locale, { weekday: "short" }), [locale]);
@@ -85,13 +89,18 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
   React.useEffect(() => {
     const form = triggerRef.current?.closest("form");
     if (!form || value !== undefined) return;
-    const reset = () => setInternalValue(defaultValue);
+    const reset = () => {
+      setInternalValue(defaultValue);
+      setRequiredInvalid(false);
+      setOpen(false);
+    };
     form.addEventListener("reset", reset);
     return () => form.removeEventListener("reset", reset);
   }, [defaultValue, value]);
 
   function setDate(nextValue: string) {
     if (value === undefined) setInternalValue(nextValue);
+    setRequiredInvalid(false);
     onValueChange?.(nextValue);
     setOpen(false);
   }
@@ -105,14 +114,21 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
 
   const today = toDateOnly(new Date());
   const minValue = min && DATE_ONLY.test(min) ? min : undefined;
+  const maxValue = max && DATE_ONLY.test(max) ? max : undefined;
   const visibleDates = monthDates(viewDate);
   const currentYear = viewDate.getFullYear();
   const rangeStart = yearRangeStart(currentYear);
   const monthYear = monthYearLabel(viewDate, locale);
   const months = Array.from({ length: 12 }, (_, month) => new Date(currentYear, month, 1, 12));
   const years = Array.from({ length: 12 }, (_, index) => rangeStart + index);
-  const isMonthAvailable = (date: Date) => !minValue || toDateOnly(new Date(date.getFullYear(), date.getMonth() + 1, 0, 12)) >= minValue;
-  const isYearAvailable = (year: number) => !minValue || year >= Number(minValue.slice(0, 4));
+  const isDateAvailable = (date: string) => (!minValue || date >= minValue) && (!maxValue || date <= maxValue);
+  const isMonthAvailable = (date: Date) => {
+    const first = toDateOnly(date);
+    const last = toDateOnly(new Date(date.getFullYear(), date.getMonth() + 1, 0, 12));
+    return (!minValue || last >= minValue) && (!maxValue || first <= maxValue);
+  };
+  const isYearAvailable = (year: number) => (!minValue || year >= Number(minValue.slice(0, 4))) && (!maxValue || year <= Number(maxValue.slice(0, 4)));
+  const todayUnavailable = !isDateAvailable(today);
   const rangeLabel = `${rangeStart}–${rangeStart + 11}`;
   const currentRangeLabel = calendarView === "day" ? monthYear : calendarView === "month" ? String(currentYear) : rangeLabel;
 
@@ -123,15 +139,14 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
       setCalendarView("day");
     }
   }}>
-    {name ? <input type="hidden" name={name} value={selectedValue} /> : null}
     <Popover.Trigger asChild>
-      <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled} data-invalid={invalid || undefined} aria-label={buttonProps["aria-label"] ?? copy.chooseDate} className={cn(datePickerClassName, invalid && "border-[var(--ui-danger-border)]", className)} {...buttonProps}>
+      <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" role="combobox" disabled={disabled} data-invalid={invalid || requiredInvalid || undefined} aria-controls={popoverId} aria-expanded={open} aria-haspopup="dialog" aria-invalid={ariaInvalid || invalid || requiredInvalid || undefined} aria-label={buttonProps["aria-label"] ?? copy.chooseDate} aria-required={required || undefined} className={cn(datePickerClassName, (invalid || requiredInvalid) && "border-[var(--ui-danger-border)]", className)} {...buttonProps}>
         <span className={cn("truncate", selectedDate ? "font-medium" : "text-[var(--ui-text-muted)]")}>{selectedDate ? dateFormatter.format(selectedDate) : placeholder ?? ""}</span>
         <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-secondary)]" strokeWidth={1.8} />
       </button>
     </Popover.Trigger>
     <Popover.Portal container={portalContainer}>
-      <Popover.Content align="start" sideOffset={6} collisionPadding={8} className="z-[80] w-[min(20rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()}>
+      <Popover.Content id={popoverId} align="start" sideOffset={6} collisionPadding={8} className="z-[80] w-[min(20rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()}>
         <div className="mb-3 flex items-center justify-between gap-1">
           <button type="button" aria-label={`${copy.previous} ${currentRangeLabel}`} className="flex size-9 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => changeViewRange(-1)}><ChevronLeft aria-hidden="true" className="size-4" strokeWidth={1.8} /></button>
           {calendarView === "day" ? <button type="button" aria-label={copy.chooseMonth} aria-live="polite" className="min-h-9 rounded-[var(--ui-radius-control)] px-2 text-sm font-semibold capitalize transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => setCalendarView("month")}>{monthYear}</button> : calendarView === "month" ? <button type="button" aria-label={copy.chooseYear} aria-live="polite" className="min-h-9 rounded-[var(--ui-radius-control)] px-2 text-sm font-semibold transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => setCalendarView("year")}>{currentYear}</button> : <p aria-live="polite" className="min-h-9 px-2 pt-2 text-sm font-semibold">{rangeLabel}</p>}
@@ -144,7 +159,7 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
             const isCurrentMonth = date.getMonth() === viewDate.getMonth();
             const isSelected = dateValue === selectedValue;
             const isToday = dateValue === today;
-            const unavailable = Boolean(minValue && dateValue < minValue);
+            const unavailable = !isDateAvailable(dateValue);
             return <button key={dateValue} type="button" role="gridcell" disabled={unavailable} aria-current={isToday ? "date" : undefined} aria-selected={isSelected} className={cn("mx-auto flex size-9 items-center justify-center rounded-[var(--ui-radius-control)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", !isCurrentMonth && "text-[var(--ui-text-subtle)]", isToday && !isSelected && "ring-1 ring-inset ring-[var(--ui-border-strong)]", isSelected && "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]", !isSelected && !unavailable && "hover:bg-[var(--ui-surface-muted)]", unavailable && "cursor-not-allowed text-[var(--ui-text-subtle)] opacity-45")} onClick={() => setDate(dateValue)}>{date.getDate()}</button>;
           })}
         </div> : calendarView === "month" ? <div className="grid grid-cols-3 gap-1" role="grid" aria-label={`${copy.monthView}: ${currentYear}`}>
@@ -161,10 +176,11 @@ export function DatePicker({ className, defaultValue = "", disabled, invalid = f
           })}
         </div>}
         <div className="mt-3 flex items-center justify-between border-t border-[var(--ui-border-subtle)] pt-3">
-          <button type="button" className="min-h-9 rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { if (!minValue || today >= minValue) setDate(today); }}>{copy.today}</button>
+          <button type="button" disabled={todayUnavailable} className="min-h-9 rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setDate(today)}>{copy.today}</button>
           <button type="button" disabled={!selectedValue} className="min-h-9 rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setDate("")}>{copy.clear}</button>
         </div>
       </Popover.Content>
     </Popover.Portal>
+    {name ? <select aria-hidden="true" className="pointer-events-none absolute size-px overflow-hidden whitespace-nowrap opacity-0" disabled={disabled} name={name} required={required} tabIndex={-1} value={selectedValue} onChange={(event) => setDate(event.target.value)} onInvalid={(event) => { event.preventDefault(); setRequiredInvalid(true); triggerRef.current?.focus({ preventScroll: true }); }}><option value="" />{selectedValue ? <option value={selectedValue}>{selectedValue}</option> : null}</select> : null}
   </Popover.Root>;
 }

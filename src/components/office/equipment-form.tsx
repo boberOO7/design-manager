@@ -2,8 +2,9 @@
 
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { CircuitBoard, Cpu, Fingerprint, Gpu, HardDrive, MemoryStick, Power, ChevronDown, Plus, Trash2, type LucideIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { EquipmentCatalogCombobox } from "@/components/office/equipment-catalog-combobox";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -72,6 +73,7 @@ function CapacityInput({ label, value, onChange, onBlur, max = 1_000_000, intege
 
 export function EquipmentFormFields({ item, initialType, showMaintenanceFields = true, workstations, onSave }: { onSave?: (patch: EquipmentFieldUpdate) => void; item?: EquipmentItem; initialType?: EquipmentType; showMaintenanceFields?: boolean; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
+  const locale = useLocale();
   const requestedText = useRef(new Map<string, string>());
   const [type, setType] = useState<EquipmentType>(item?.equipmentType ?? initialType ?? "other");
   const [recurring, setRecurring] = useState(item?.recurringMaintenanceEnabled ?? false);
@@ -148,7 +150,7 @@ export function EquipmentFormFields({ item, initialType, showMaintenanceFields =
       </> : null}
     </> : null}
     {!computer ? (["cpu", "gpu", "ram", "storage"] as const).map((key) => <input key={key} type="hidden" name={key} value="" />) : null}
-    {showMaintenanceFields ? <fieldset className="shrink-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("maintenance.recurringTitle")}</legend><label className="flex min-h-11 cursor-pointer items-start gap-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" name="recurringMaintenanceEnabled" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><span className="block text-sm font-medium">{t("maintenance.enabled")}</span></span></label><AnimatedFormContent isOpen={recurring}><div className="grid gap-4 pt-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="maintenanceIntervalMonths" min={1} max={120} disabled={!recurring} required={recurring} defaultValue={item?.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><Input type="date" name="nextMaintenanceDueDate" disabled={!recurring} required={recurring} defaultValue={item?.nextMaintenanceDueDate ?? ""} /></FormField></div></AnimatedFormContent></fieldset> : <><input type="hidden" name="recurringMaintenanceEnabled" value={item?.recurringMaintenanceEnabled ? "on" : ""} /><input type="hidden" name="maintenanceIntervalMonths" value={item?.maintenanceIntervalMonths ?? ""} /><input type="hidden" name="nextMaintenanceDueDate" value={item?.nextMaintenanceDueDate ?? ""} /></>}
+    {showMaintenanceFields ? <fieldset className="shrink-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-4"><legend className="px-1 text-sm font-semibold text-[var(--ui-text)]">{t("maintenance.recurringTitle")}</legend><label className="flex min-h-11 cursor-pointer items-start gap-3"><input className="mt-0.5 size-5 accent-[var(--ui-action-primary)]" type="checkbox" name="recurringMaintenanceEnabled" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><span className="block text-sm font-medium">{t("maintenance.enabled")}</span></span></label><AnimatedFormContent isOpen={recurring}><div className="grid gap-4 pt-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="maintenanceIntervalMonths" min={1} max={120} disabled={!recurring} required={recurring} defaultValue={item?.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><DatePicker name="nextMaintenanceDueDate" aria-label={t("maintenance.nextDueDate")} disabled={!recurring} required={recurring} defaultValue={item?.nextMaintenanceDueDate ?? ""} locale={locale} /></FormField></div></AnimatedFormContent></fieldset> : <><input type="hidden" name="recurringMaintenanceEnabled" value={item?.recurringMaintenanceEnabled ? "on" : ""} /><input type="hidden" name="maintenanceIntervalMonths" value={item?.maintenanceIntervalMonths ?? ""} /><input type="hidden" name="nextMaintenanceDueDate" value={item?.nextMaintenanceDueDate ?? ""} /></>}
     <FormField className="w-full" label={t("form.notes")} optional optionalLabel={t("optional")}><Textarea name="notes" rows={3} maxLength={5000} defaultValue={item?.notes ?? ""} onBlur={(event) => saveText("notes", event.target.value)} /></FormField>
   </>;
 }

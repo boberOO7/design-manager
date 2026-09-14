@@ -150,6 +150,16 @@ describe("Equipment application flow", () => {
     expect(actions).not.toContain("createAdminClient");
   });
 
+  it("uses the shared localized date picker throughout equipment and maintenance forms", () => {
+    expect(form).toContain('import { DatePicker } from "@/components/ui/date-picker"');
+    expect(form).toContain('<DatePicker name="nextMaintenanceDueDate"');
+    expect(workspace).toContain('<DatePicker name="dueDate"');
+    expect(workspace).toMatch(/<DatePicker name="startedOn"[^>]*max=\{today\}/);
+    expect(workspace).toMatch(/<DatePicker name="completedOn"[^>]*min=\{openService\.startedOn\}[^>]*max=\{today\}/);
+    expect(form).not.toMatch(/type=["'](?:date|datetime-local)["']/);
+    expect(workspace).not.toMatch(/type=["'](?:date|datetime-local)["']/);
+  });
+
   it("protects the idempotent notification worker with the existing cron secret pattern", () => {
     expect(cron).toContain("timingSafeEqual");
     expect(cron).toContain("process.env.CRON_SECRET");
@@ -161,7 +171,8 @@ describe("Equipment application flow", () => {
     expect(workspace).toContain('equipmentInventorySummary(item');
     expect(workspace).toContain('{urgency ? <MaintenanceBadge');
     expect(workspace).toContain('OTHER_EQUIPMENT_TYPES.map');
-    expect(workspace).toContain('initialView === "inventory" ? <Button asChild>');
+    expect(workspace).toContain(': initialView === "inventory"');
+    expect(workspace).toContain('href="/office/equipment?view=inventory&create=equipment"');
     expect(workspace).toContain('onSave={saveField}');
     expect(workspace).not.toContain('t("actions.saveEquipment")');
     expect(workspace).toContain('isTopLayer={!serviceOpen && !codeOpen}');

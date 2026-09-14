@@ -345,9 +345,9 @@
     "semantic_hash": "767720cd55343b27bfaa1fa51f27b882"
   },
   "src/components/calendar/calendar-workspace.tsx": {
-    "mtime": 1789384423.0862727,
-    "ast_hash": "7abc7ea5208d81b7eaadb9d273b9337a",
-    "semantic_hash": "7abc7ea5208d81b7eaadb9d273b9337a"
+    "mtime": 1789391568.8114834,
+    "ast_hash": "4a591dd1d89eecef4bea93077091072f",
+    "semantic_hash": ""
   },
   "src/components/dashboard/dashboard-patterns.tsx": {
     "mtime": 1785752190.9020236,
@@ -2560,9 +2560,9 @@
     "semantic_hash": "fc7af12a966eb89c65ca1d2e65a0a59a"
   },
   "src/components/ui/date-picker.tsx": {
-    "mtime": 1788816193.8807783,
-    "ast_hash": "f0dadbb34331151aafb44c95fb4a84ae",
-    "semantic_hash": "f0dadbb34331151aafb44c95fb4a84ae"
+    "mtime": 1789391741.3094976,
+    "ast_hash": "324c45899eaee4392302361f6eae0c9d",
+    "semantic_hash": ""
   },
   "src/components/leaderboard/leaderboard-period-switcher.tsx": {
     "mtime": 1786657776.656872,
@@ -3335,9 +3335,9 @@
     "semantic_hash": "514c4e3893b099f37167beb5265ebbe2"
   },
   "src/components/ui/date-picker.contract.test.ts": {
-    "mtime": 1788816194.3968017,
-    "ast_hash": "52dc8c0eca865c862d6181a6e8247096",
-    "semantic_hash": "52dc8c0eca865c862d6181a6e8247096"
+    "mtime": 1789391601.2155752,
+    "ast_hash": "4f8c019ac27c43ef7f4d23e4a27e87ac",
+    "semantic_hash": ""
   },
   "src/lib/calendar-system-events.test.ts": {
     "mtime": 1787917223.7720246,
@@ -4095,8 +4095,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/projects.md": {
-    "mtime": 1788954529.916954,
-    "ast_hash": "fb1ec1d836a1fb2b4a18565543e0297e",
+    "mtime": 1789387629.8845081,
+    "ast_hash": "e34391cee434e0140170f7e2813573d7",
     "semantic_hash": ""
   },
   "docs/architecture/studio-operations.md": {
@@ -4590,14 +4590,14 @@
     "semantic_hash": "746b66f7c7285b0973782d20d4d0a73d"
   },
   "src/components/office/equipment-workspace.test.ts": {
-    "mtime": 1789332070.1718912,
-    "ast_hash": "436b8f71787bbe6c964e083e2c5ef15a",
-    "semantic_hash": "436b8f71787bbe6c964e083e2c5ef15a"
+    "mtime": 1789391639.4406407,
+    "ast_hash": "c02266dba09e0edf0621723aa3ce4032",
+    "semantic_hash": ""
   },
   "src/components/office/equipment-workspace.tsx": {
-    "mtime": 1789333634.8497806,
-    "ast_hash": "3c460ca43934ed9b7e289c72555842fa",
-    "semantic_hash": "3c460ca43934ed9b7e289c72555842fa"
+    "mtime": 1789391568.6314757,
+    "ast_hash": "e41dc9dd2721c66d77423262839b1bfd",
+    "semantic_hash": ""
   },
   "src/data/queries/equipment.ts": {
     "mtime": 1789323390.332305,
@@ -4660,9 +4660,9 @@
     "semantic_hash": "ed7cc8c7cbbb73feafc88a088d1f2173"
   },
   "src/components/office/equipment-form.tsx": {
-    "mtime": 1789332609.2741868,
-    "ast_hash": "f7989476eb5089074c6fb541e23ca735",
-    "semantic_hash": "f7989476eb5089074c6fb541e23ca735"
+    "mtime": 1789391568.3634639,
+    "ast_hash": "7ed0dd41e7724c309a7dfb64d5b0003c",
+    "semantic_hash": ""
   },
   "src/lib/pc-configuration.test.ts": {
     "mtime": 1789323627.581392,
@@ -5058,5 +5058,15 @@
     "mtime": 1789389820.1731703,
     "ast_hash": "f233ce487022acfa6c53b3fdd108ec80",
     "semantic_hash": "f233ce487022acfa6c53b3fdd108ec80"
+  },
+  "src/components/ui/date-field-consistency.test.ts": {
+    "mtime": 1789391601.4915874,
+    "ast_hash": "ae467aa4059888a4af68108cd8408e9f",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260914_114245_investigate_and_fix_the_stale_session_auth_resume.md": {
+    "mtime": 1789386165.1284094,
+    "ast_hash": "ee14f4a802bf087f7471c6c95194af75",
+    "semantic_hash": ""
   }
 }
