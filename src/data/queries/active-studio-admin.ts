@@ -1,20 +1,17 @@
 import "server-only";
 
 import {
-  getActiveStudioMembership,
+  resolveActiveStudioMembership,
   type ActiveStudioMembership,
 } from "@/data/queries/active-studio-membership";
 
 export async function getActiveStudioAdmin(): Promise<ActiveStudioMembership | null> {
-  try {
-    const membership = await getActiveStudioMembership();
-    if (!membership || membership.system_role !== "admin") {
-      return null;
-    }
-
-    return membership;
-  } catch (error) {
-    console.error("Unable to verify active studio administrator", error);
+  const resolution = await resolveActiveStudioMembership();
+  if (resolution.status === "AUTH_ERROR") {
+    throw new Error("Unable to verify the authenticated studio administrator.", { cause: resolution.cause });
+  }
+  if (resolution.status !== "ACTIVE_STUDIO" || resolution.membership.system_role !== "admin") {
     return null;
   }
+  return resolution.membership;
 }

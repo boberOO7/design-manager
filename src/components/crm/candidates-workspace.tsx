@@ -17,6 +17,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { TimePicker } from "@/components/ui/time-picker";
 import type { CrmAdmin, CrmCandidate, CrmRecruitingCycle } from "@/data/queries/crm";
+import { instantToWallInput } from "@/lib/calendar";
 import { filterCandidates, isCandidateStatusFilter, type CandidateStatusFilter } from "@/lib/crm";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { ProfessionalRole } from "@/lib/validation/employee-invitation";
@@ -26,12 +27,6 @@ function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement)
   if (!(target instanceof Element)) return false;
   const interactiveTarget = target.closest("a, button, input, select, textarea, [role='button'], [role='link'], [role='menuitem']");
   return interactiveTarget !== null && interactiveTarget !== row;
-}
-
-function localDateTime(value: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function positionLabel(value: string, roles: ReturnType<typeof useTranslations>) {
@@ -47,14 +42,14 @@ function PositionField({ defaultValue, error, positions }: { defaultValue?: stri
   return <FormField as="div" label={t("fields.position")} error={error}><input type="hidden" name="target_position" value={selection || preservedValue} /><Select value={selection} onValueChange={(value) => setSelection(value as ProfessionalRole | "")} placeholder={t("sourceOptions.notSpecified")}><SelectItem value="">{t("sourceOptions.notSpecified")}</SelectItem>{positions.map((position) => <SelectItem key={position} value={position}>{positionLabel(position, roles)}</SelectItem>)}</Select></FormField>;
 }
 
-function CandidateSourceField({ defaultValue, error }: { defaultValue?: string | null; error?: string }) {
+function CandidateSourceField({ customError, defaultValue, error }: { customError?: string; defaultValue?: string | null; error?: string }) {
   const t = useTranslations("Crm");
   const initial = getCrmLeadSourceFormValues(defaultValue);
   const [source, setSource] = useState(initial.source);
   const [customSource, setCustomSource] = useState(initial.sourceCustom);
   return <>
     <FormField as="div" label={t("fields.source")} error={error} optional><Select name="source" value={source} onValueChange={(value) => { if (value === "" || value === "other" || CRM_LEAD_SOURCE_KEYS.includes(value as typeof CRM_LEAD_SOURCE_KEYS[number])) setSource(value as typeof source); if (value !== "other") setCustomSource(""); }}><SelectItem value="">{t("sourceOptions.notSpecified")}</SelectItem>{CRM_LEAD_SOURCE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`sourceOptions.${key}`)}</SelectItem>)}<SelectItem value="other">{t("sourceOptions.other")}</SelectItem></Select></FormField>
-    {source === "other" ? <FormField label={t("fields.sourceCustom")} error={error}><Input name="source_custom" value={customSource} onChange={(event) => setCustomSource(event.target.value)} aria-invalid={Boolean(error)} /></FormField> : <input type="hidden" name="source_custom" value="" />}
+    {source === "other" ? <FormField label={t("fields.sourceCustom")} error={customError} optional><Input name="source_custom" value={customSource} maxLength={160} onChange={(event) => setCustomSource(event.target.value)} aria-invalid={Boolean(customError)} /></FormField> : <input type="hidden" name="source_custom" value="" />}
   </>;
 }
 
@@ -66,18 +61,18 @@ function CandidateContactFields({ admins, candidate, fieldErrors, includePositio
     <TextField name="email" label={t("fields.email")} type="email" autoComplete="off" placeholder={t("fields.emailPlaceholder")} defaultValue={candidate?.email} error={fieldErrors?.email} />
     <FormField label={t("fields.phone")} error={fieldErrors?.phone} optional><PhoneInput autoComplete="off" countryCode="UA" preserveInternational name="phone" defaultValue={candidate?.phone} placeholder="+380 (XX) XXX-XX-XX" aria-invalid={Boolean(fieldErrors?.phone)} /></FormField>
     <TextField name="external_profile_url" label={t("fields.profileLink")} type="url" autoComplete="off" placeholder="https://…" defaultValue={candidate?.external_profile_url} error={fieldErrors?.external_profile_url} />
-    <CandidateSourceField defaultValue={candidate?.source} error={fieldErrors?.source} />
-    <AdminField admins={admins} defaultValue={candidate?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
+    <CandidateSourceField customError={fieldErrors?.source_custom} defaultValue={candidate?.source} error={fieldErrors?.source} />
+    <AdminField admins={admins} defaultValue={candidate?.responsible_admin_id} error={fieldErrors?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
   </div>;
 }
 
 function CandidateCycleFields({ cycle, fieldErrors, positions }: { cycle?: CrmRecruitingCycle; fieldErrors?: Record<string, string>; positions: readonly ProfessionalRole[] }) {
   const t = useTranslations("Crm");
   const locale = useLocale();
-  const initialInterview = localDateTime(cycle?.interview_at ?? null);
+  const initialInterview = cycle?.interview_at ? instantToWallInput(cycle.interview_at) : "";
   const [interviewDate, setInterviewDate] = useState(initialInterview.slice(0, 10));
   const [interviewTime, setInterviewTime] = useState(initialInterview.slice(11) || "00:00");
-  return <><div className="grid gap-4 sm:grid-cols-2"><PositionField positions={positions} defaultValue={cycle?.target_position} error={fieldErrors?.target_position} /><FormField as="div" label={t("fields.stage")}><Select name="stage" defaultValue={cycle?.stage ?? "new"}>{RECRUITING_STAGES.map((value) => <SelectItem key={value} value={value}>{t(`candidateStage.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.outcome")} optional><Select name="outcome" defaultValue={cycle?.outcome ?? ""} placeholder="—"><SelectItem value="">—</SelectItem>{RECRUITING_OUTCOMES.map((value) => <SelectItem key={value} value={value}>{t(`candidateOutcome.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.nextContact")} error={fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={cycle?.next_contact_date ?? ""} locale={locale} invalid={Boolean(fieldErrors?.next_contact_date)} /></FormField><FormField as="div" label={t("fields.interviewDate")} error={fieldErrors?.interview_at} optional><input type="hidden" name="interview_at" value={interviewDate ? `${interviewDate}T${interviewTime}` : ""} /><div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]"><DatePicker aria-label={t("fields.interviewDate")} locale={locale} value={interviewDate} onValueChange={setInterviewDate} invalid={Boolean(fieldErrors?.interview_at)} /><TimePicker aria-label={t("fields.interviewDate")} className="min-w-0" locale={locale} value={interviewTime} disabled={!interviewDate} onValueChange={setInterviewTime} /></div></FormField></div><div className="mt-4 grid gap-4"><FormField label={t("fields.interviewNotes")} error={fieldErrors?.interview_notes} optional><Textarea className="resize-y" name="interview_notes" rows={3} defaultValue={cycle?.interview_notes ?? ""} aria-invalid={Boolean(fieldErrors?.interview_notes)} /></FormField><FormField label={t("fields.testResult")} error={fieldErrors?.test_task_result} optional><Textarea className="resize-y" name="test_task_result" rows={3} defaultValue={cycle?.test_task_result ?? ""} aria-invalid={Boolean(fieldErrors?.test_task_result)} /></FormField></div></>;
+  return <><div className="grid gap-4 sm:grid-cols-2"><PositionField positions={positions} defaultValue={cycle?.target_position} error={fieldErrors?.target_position} /><FormField as="div" label={t("fields.stage")} error={fieldErrors?.stage}><Select aria-invalid={Boolean(fieldErrors?.stage)} name="stage" defaultValue={cycle?.stage ?? "new"}>{RECRUITING_STAGES.map((value) => <SelectItem key={value} value={value}>{t(`candidateStage.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.outcome")} error={fieldErrors?.outcome} optional><Select aria-invalid={Boolean(fieldErrors?.outcome)} name="outcome" defaultValue={cycle?.outcome ?? ""} placeholder="—"><SelectItem value="">—</SelectItem>{RECRUITING_OUTCOMES.map((value) => <SelectItem key={value} value={value}>{t(`candidateOutcome.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.nextContact")} error={fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={cycle?.next_contact_date ?? ""} locale={locale} invalid={Boolean(fieldErrors?.next_contact_date)} /></FormField><FormField as="div" label={t("fields.interviewDate")} error={fieldErrors?.interview_at} optional><input type="hidden" name="interview_at" value={interviewDate ? `${interviewDate}T${interviewTime}` : ""} /><div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]"><DatePicker aria-label={t("fields.interviewDate")} locale={locale} value={interviewDate} onValueChange={setInterviewDate} invalid={Boolean(fieldErrors?.interview_at)} /><TimePicker aria-label={t("fields.interviewDate")} className="min-w-0" locale={locale} value={interviewTime} disabled={!interviewDate} onValueChange={setInterviewTime} /></div></FormField></div><div className="mt-4 grid gap-4"><FormField label={t("fields.interviewNotes")} error={fieldErrors?.interview_notes} optional><Textarea className="resize-y" name="interview_notes" rows={3} defaultValue={cycle?.interview_notes ?? ""} aria-invalid={Boolean(fieldErrors?.interview_notes)} /></FormField><FormField label={t("fields.testResult")} error={fieldErrors?.test_task_result} optional><Textarea className="resize-y" name="test_task_result" rows={3} defaultValue={cycle?.test_task_result ?? ""} aria-invalid={Boolean(fieldErrors?.test_task_result)} /></FormField></div></>;
 }
 
 export function CandidatesWorkspace({ admins, candidates, positions }: { admins: CrmAdmin[]; candidates: CrmCandidate[]; positions: readonly ProfessionalRole[] }) {

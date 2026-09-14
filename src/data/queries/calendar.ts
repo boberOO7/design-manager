@@ -5,6 +5,7 @@ import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
 import { buildCalendarSystemEvents } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
+import { CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS } from "@/lib/crm";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { getDayOffCompensation } from "@/lib/time-off-compensation";
@@ -58,6 +59,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
       .from("crm_leads")
       .select("id, client_name, next_contact_at, responsible_admin_id")
       .eq("studio_id", membership.studio_id)
+      .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
       .not("next_contact_at", "is", null)
       .gte("next_contact_at", rangeStartInstant)
       .lt("next_contact_at", rangeEndExclusive)

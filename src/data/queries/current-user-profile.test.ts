@@ -55,6 +55,8 @@ describe("getCurrentUserProfile", () => {
         job_title: "Designer",
         system_role: "admin",
         is_active: true,
+        notification_popups_enabled: true,
+        notification_sound_enabled: false,
         created_at: "2026-01-01T00:00:00.000Z",
         updated_at: "2026-01-01T00:00:00.000Z",
       },
@@ -62,7 +64,7 @@ describe("getCurrentUserProfile", () => {
     });
     const { getCurrentUserProfile } = await loadProfileQuery();
 
-    await expect(getCurrentUserProfile()).resolves.toMatchObject({ id: "current-user", system_role: "admin" });
+    await expect(getCurrentUserProfile()).resolves.toMatchObject({ id: "current-user", notification_popups_enabled: true, notification_sound_enabled: false, system_role: "admin" });
   });
 
   it("lets the authenticated layout recover when a stale session has no profile row", async () => {

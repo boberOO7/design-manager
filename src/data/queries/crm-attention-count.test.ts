@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -59,5 +60,11 @@ describe("CRM overdue lead follow-up count", () => {
 
     await expect(getCrmOverdueLeadFollowUpCount()).resolves.toBe(0);
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("uses the same inactive follow-up definition in Calendar", async () => {
+    const source = await readFile(new URL("./calendar.ts", import.meta.url), "utf8");
+    expect(source).toContain("CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS");
+    expect(source).toContain('.neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)');
   });
 });

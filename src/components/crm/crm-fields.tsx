@@ -13,6 +13,6 @@ export function NotesField({ defaultValue, error, label, name, rows = 3 }: { def
   return <FormField label={label} error={error} optional><Textarea defaultValue={defaultValue ?? ""} name={name} rows={rows} aria-invalid={Boolean(error)} /></FormField>;
 }
 
-export function AdminField({ admins, defaultValue, emptyLabel, label }: { admins: CrmAdmin[]; defaultValue?: string | null; emptyLabel: string; label: string }) {
-  return <FormField label={label} optional as="div"><Select name="responsible_admin_id" defaultValue={defaultValue ?? ""} placeholder={emptyLabel}><SelectItem value="">{emptyLabel}</SelectItem>{admins.map((admin) => <SelectItem key={admin.id} textValue={admin.name} value={admin.id}><span className="flex min-w-0 items-center gap-2"><UserAvatar decorative imageUrl={admin.avatar_url} name={admin.name} size="boardCard" /><span className="truncate">{admin.name}</span></span></SelectItem>)}</Select></FormField>;
+export function AdminField({ admins, defaultValue, emptyLabel, error, label }: { admins: CrmAdmin[]; defaultValue?: string | null; emptyLabel: string; error?: string; label: string }) {
+  return <FormField label={label} error={error} optional as="div"><Select aria-invalid={Boolean(error)} name="responsible_admin_id" defaultValue={defaultValue ?? ""} placeholder={emptyLabel}><SelectItem value="">{emptyLabel}</SelectItem>{admins.map((admin) => <SelectItem key={admin.id} textValue={admin.name} value={admin.id}><span className="flex min-w-0 items-center gap-2"><UserAvatar decorative imageUrl={admin.avatar_url} name={admin.name} size="boardCard" /><span className="truncate">{admin.name}</span></span></SelectItem>)}</Select></FormField>;
 }

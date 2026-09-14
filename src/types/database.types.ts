@@ -1614,6 +1614,8 @@ export type Database = {
           id: string
           is_active: boolean
           job_title: string
+          notification_popups_enabled: boolean
+          notification_sound_enabled: boolean
           system_role: string
           updated_at: string
         }
@@ -1629,6 +1631,8 @@ export type Database = {
           id: string
           is_active?: boolean
           job_title?: string
+          notification_popups_enabled?: boolean
+          notification_sound_enabled?: boolean
           system_role?: string
           updated_at?: string
         }
@@ -1644,6 +1648,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           job_title?: string
+          notification_popups_enabled?: boolean
+          notification_sound_enabled?: boolean
           system_role?: string
           updated_at?: string
         }
@@ -2976,6 +2982,24 @@ export type Database = {
         }
         Returns: string
       }
+      create_crm_candidate_with_cycle: {
+        Args: {
+          p_email: string
+          p_external_profile_url: string
+          p_full_name: string
+          p_interview_at: string
+          p_interview_notes: string
+          p_next_contact_date: string
+          p_outcome: string
+          p_phone: string
+          p_responsible_admin_id: string
+          p_source: string
+          p_stage: Database["public"]["Enums"]["recruiting_stage"]
+          p_target_position: string
+          p_test_task_result: string
+        }
+        Returns: string
+      }
       create_office_assignment: {
         Args: {
           p_deadline?: string
@@ -3221,6 +3245,26 @@ export type Database = {
         Args: { p_category_id: string; p_color_key: string }
         Returns: undefined
       }
+      update_crm_candidate_with_cycle: {
+        Args: {
+          p_candidate_id: string
+          p_cycle_id: string
+          p_email: string
+          p_external_profile_url: string
+          p_full_name: string
+          p_interview_at: string
+          p_interview_notes: string
+          p_next_contact_date: string
+          p_outcome: string
+          p_phone: string
+          p_responsible_admin_id: string
+          p_source: string
+          p_stage: Database["public"]["Enums"]["recruiting_stage"]
+          p_target_position: string
+          p_test_task_result: string
+        }
+        Returns: string
+      }
       update_my_avatar: { Args: { p_avatar_path?: string }; Returns: string }
       update_my_profile_birthday: {
         Args: { p_birth_date: string }
@@ -3233,6 +3277,8 @@ export type Database = {
           p_city_geonames_id?: number
           p_country_code?: string
           p_joined_at?: string
+          p_notification_popups_enabled?: boolean
+          p_notification_sound_enabled?: boolean
         }
         Returns: undefined
       }

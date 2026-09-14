@@ -19,6 +19,8 @@ export interface Profile {
   job_title: string;
   system_role: SystemRole;
   is_active: boolean;
+  notification_popups_enabled: boolean;
+  notification_sound_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

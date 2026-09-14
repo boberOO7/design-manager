@@ -21,6 +21,9 @@ Invariants:
 - Administration is an action queue, not a duplicate Dashboard. Time-off review
   uses the same backend workflow as Calendar.
 - Recent decisions are quiet history, not the general project Activity History.
+- Realtime popup and sound preferences are profile-level presentation settings
+  saved through the guarded self-service profile RPC; they do not affect
+  notification creation or read state.
 
 ## Contractors
 
@@ -52,6 +55,8 @@ migrations/tests.
   row. Date/time or assignee changes replace the unread reminder; read reminder
   history does not resolve the Lead follow-up. Completing or cancelling clears
   the active follow-up, and deleting the Lead removes its reminder history.
+- `invalid` is the one inactive follow-up status. Invalid Leads are excluded
+  consistently from CRM attention counts, Calendar projection, and reminders.
 - Overdue state derives from the active Lead follow-up timestamp and therefore
   persists independently of notification read state. Completion records
   `last_contacted_at`; the administrator may then schedule the next follow-up.
@@ -72,12 +77,16 @@ migrations/tests.
 - A Lead that is neither lost nor invalid can create one Project through the
   shared Project form. The existing Project/template RPC locks the Lead, creates
   the Project and template work, links both records, and marks the Lead Won in
-  one transaction. The
-  normal status trigger and a project-linked lifecycle row preserve both events;
-  manual Won remains valid without a Project.
+  one transaction. The normal status trigger and a project-linked lifecycle row
+  preserve both events; manual Won remains valid without a Project, while a
+  linked Lead cannot later drift away from Won.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
   lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
   preserves prior interview notes, test results, and outcomes.
+- Candidate creation and editor saves use guarded RPCs so contact and recruiting
+  cycle fields commit or roll back together. Empty responsible-admin selection
+  remains unassigned. Interview wall times are interpreted in StudioFlow's
+  `Europe/Kyiv` timezone before persistence.
 - At most one recruiting cycle per candidate may be active (without a final
   outcome). Final outcomes are Hired, Reserve, and Rejected.
 - Candidate-to-member conversion remains intentionally manual.
@@ -242,6 +251,13 @@ Invariants:
 - A recipient may select their own rows and change only `read_at`; notifications
   cannot be marked unread or have content/identity changed.
 - Header queries return the latest 30 items and a separate exact unread count.
+- The authenticated header subscribes only to new recipient-scoped inserts.
+  Session timestamps and notification IDs suppress historical/reconnected
+  duplicates; accepted inserts also merge into the persistent center state.
+- Up to three transient, localized toasts reuse the notification `href`, dismiss
+  after about five seconds, and never mark the notification read. Popup and
+  subtle Web Audio feedback are independently controlled by profile preferences;
+  blocked audio playback is ignored.
 - Mark-one and mark-all operations constrain updates to the authenticated
   recipient.
 - Pending Administration counts and notification unread counts are different
@@ -249,7 +265,7 @@ Invariants:
 - A protected daily Vercel cron calls the idempotent equipment-maintenance
   notification RPC. Per-cycle due-date markers deduplicate upcoming and overdue
   thresholds and reset when a new due date is established.
-- Email, push, and realtime subscriptions are not implemented.
+- Email, Web Push, service workers, and background delivery are not implemented.
 
 Canonical paths: `src/data/queries/notifications.ts`,
 `src/components/layout/notification-bell.tsx`, `src/app/api/notifications/`, and

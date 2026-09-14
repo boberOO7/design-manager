@@ -24,6 +24,8 @@ describe("CRM candidates workspace contract", () => {
     expect(workspace).toContain("<TimePicker");
     expect(workspace).not.toContain('type="datetime-local"');
     expect(workspace).not.toContain('type="date"');
+    expect(workspace).toContain("instantToWallInput");
+    expect(workspace).not.toContain("function localDateTime");
   });
 
   it("uses the supported localized StudioFlow positions and preserves legacy stored values", async () => {
@@ -64,10 +66,22 @@ describe("CRM candidates workspace contract", () => {
     expect(workspace).not.toContain("internal_notes");
     expect(workspace).not.toContain("decision_notes");
     expect(actions).toContain("function saveCandidateEditor");
+    expect(actions).toContain('.rpc("create_crm_candidate_with_cycle"');
+    expect(actions).toContain('.rpc("update_crm_candidate_with_cycle"');
+    expect(actions).toContain("zonedWallTimeToIso(value.interview_at)");
+    expect(actions).not.toContain("responsible_admin_id || crm.admin.authenticatedUserId");
     expect(workspace).toContain('<Textarea className="resize-y" name="interview_notes" rows={3}');
     expect(workspace).toContain('<Textarea className="resize-y" name="test_task_result" rows={3}');
     expect(workspace).toContain('label={t("fields.interviewNotes")} value={cycle.interview_notes} multiline');
-    expect(actions).toContain("interview_notes: nullable(value.interview_notes)");
+    expect(actions).toContain("p_interview_notes: value.interview_notes");
     expect(actions).not.toContain("decision_notes: nullable");
+  });
+
+  it("associates custom source and cycle validation with the affected controls", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("customError={fieldErrors?.source_custom}");
+    expect(workspace).toContain('error={fieldErrors?.stage}');
+    expect(workspace).toContain('error={fieldErrors?.outcome}');
+    expect(workspace).toContain('maxLength={160}');
   });
 });

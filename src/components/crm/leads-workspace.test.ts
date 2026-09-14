@@ -48,6 +48,10 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('setView("history")');
     expect(workspace).toContain("<LeadHistoryPanel");
     expect(workspace).not.toContain('name="status"');
+    expect(workspace).toContain("disabled={statusPending || Boolean(lead.project_id)}");
+    expect(workspace).toContain('t("status.linkedProjectLocked")');
+    expect(en.Crm.status.linkedProjectLocked).toBeTruthy();
+    expect(uk.Crm.status.linkedProjectLocked).toBeTruthy();
   });
 
   it("explains when a follow-up date cannot schedule a reminder", async () => {
@@ -62,6 +66,8 @@ describe("CRM leads workspace contract", () => {
     const followUpDialog = workspace.slice(workspace.indexOf("function LeadFollowUpDialog"), workspace.indexOf("function LeadHeaderActions"));
     expect(workspace).toContain("getCrmFollowUpQuickChoice");
     expect(workspace).toContain('<TimePicker name="next_contact_time"');
+    expect(workspace).toContain("timeError={state.fieldErrors?.next_contact_time}");
+    expect(workspace).toContain("aria-invalid={Boolean(timeError)}");
     expect(workspace).toContain("isCrmFollowUpOverdue");
     expect(workspace).toContain('onFollowUpAction("complete")');
     expect(workspace).toContain('onFollowUpAction("cancel")');
@@ -186,6 +192,8 @@ describe("CRM leads workspace contract", () => {
       readFile(cityComboboxPath, "utf8"),
     ]);
     expect(actionForm).toContain('autoComplete="off"');
+    expect(actionForm).toContain("noValidate");
+    expect(actionForm).toContain("[aria-invalid='true']");
     expect(workspace).toContain('<TextField name="email" label={t("fields.email")} type="email" autoComplete="off"');
     expect(workspace).toContain('<PhoneInput autoComplete="off"');
     expect(cityCombobox).toContain('autoComplete="off"');

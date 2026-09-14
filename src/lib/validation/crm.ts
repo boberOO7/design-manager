@@ -35,7 +35,10 @@ export function resolveCrmLeadSourceValue(source: CrmLeadSourceSelection, source
 }
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
-const optionalUrl = z.union([z.literal(""), z.url().max(2000)]).optional().default("");
+const optionalUrl = z.union([
+  z.literal(""),
+  z.url().max(2000).refine((value) => /^https?:\/\//i.test(value)),
+]).optional().default("");
 const optionalDate = z.union([z.literal(""), z.iso.date()]).optional().default("");
 const optionalTime = z.union([z.literal(""), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)]).optional().default("");
 const optionalDateTime = z.union([z.literal(""), z.iso.datetime({ local: true })]).optional().default("");
@@ -70,7 +73,7 @@ export const crmLeadSchema = z.object({
   }
 });
 
-export const crmCandidateSchema = z.object({
+const crmCandidateSchemaBase = z.object({
   full_name: z.string().trim().min(1).max(200),
   email: optionalEmail,
   phone: optionalText(80),
@@ -82,7 +85,14 @@ export const crmCandidateSchema = z.object({
   target_position: z.string().trim().min(1).max(200),
 });
 
-export const crmCandidateContactSchema = crmCandidateSchema.omit({ target_position: true });
+function validateCandidatePhone(value: { phone: string }, context: z.RefinementCtx) {
+  if (value.phone && shouldFormatAsUkrainianPhone(value.phone, "UA", true) && !normalizeUkrainianPhone(value.phone)) {
+    context.addIssue({ code: "custom", path: ["phone"], message: "Invalid Ukrainian phone number" });
+  }
+}
+
+export const crmCandidateSchema = crmCandidateSchemaBase.superRefine(validateCandidatePhone);
+export const crmCandidateContactSchema = crmCandidateSchemaBase.omit({ target_position: true }).superRefine(validateCandidatePhone);
 
 export const crmRecruitingCycleSchema = z.object({
   target_position: z.string().trim().min(1).max(200),

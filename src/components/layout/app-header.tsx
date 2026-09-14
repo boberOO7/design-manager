@@ -51,6 +51,8 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
           countryCode={profile.country_code}
           fullName={profile.full_name}
           joinedAt={joinedAt}
+          notificationPopupsEnabled={profile.notification_popups_enabled}
+          notificationSoundEnabled={profile.notification_sound_enabled}
           systemRole={systemRole}
           userId={profile.id}
         />
@@ -62,7 +64,7 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
       <div className="flex shrink-0 items-center gap-2">
         <LanguageSelector />
         <ThemeSwitch />
-        <NotificationBell initialData={notifications} />
+        <NotificationBell initialData={notifications} popupsEnabled={profile.notification_popups_enabled} soundEnabled={profile.notification_sound_enabled} userId={profile.id} />
         <SignOutButton />
       </div>
     </header>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { CrmActionState } from "@/lib/validation/crm";
@@ -17,10 +17,14 @@ export function CrmActionForm({ action, cancelLabel, children, onCancel, onSucce
 }) {
   const t = useTranslations("Crm");
   const [state, formAction, pending] = useActionState(action, {});
+  const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (state.success) onSuccess?.();
   }, [onSuccess, state.success]);
-  return <form action={formAction} autoComplete="off" className="contents" noValidate>
+  useEffect(() => {
+    if (state.fieldErrors) formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus();
+  }, [state.fieldErrors]);
+  return <form ref={formRef} action={formAction} autoComplete="off" className="contents" noValidate>
     <div className="grid gap-4">{children(state)}</div>
     {state.error ? <p role="alert" className="mt-4 text-sm text-[var(--ui-danger-text)]">{state.error}</p> : null}
     <div className="mt-6 flex justify-end gap-2 border-t border-[var(--ui-border)] pt-4">

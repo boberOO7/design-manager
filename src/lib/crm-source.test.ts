@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crmLeadSchema, getCrmLeadSourceFormValues, resolveCrmLeadSourceValue } from "@/lib/validation/crm";
+import { crmCandidateSchema, crmLeadSchema, getCrmLeadSourceFormValues, resolveCrmLeadSourceValue } from "@/lib/validation/crm";
 
 const validLead = {
   approximate_area: "",
@@ -46,5 +46,13 @@ describe("CRM lead source selection", () => {
     expect(crmLeadSchema.safeParse({ ...validLead, source: "", email: "not-an-email" }).success).toBe(false);
     expect(crmLeadSchema.safeParse({ ...validLead, source: "", phone: "+380 (67) 123" }).success).toBe(false);
     expect(crmLeadSchema.safeParse({ ...validLead, source: "", phone: "+44 20 1234 5678" }).success).toBe(true);
+  });
+
+  it("validates Candidate phone and profile link values before persistence", () => {
+    const candidate = { ...validLead, full_name: "Candidate", target_position: "Architect", source: "" };
+    expect(crmCandidateSchema.safeParse({ ...candidate, phone: "+380 (67) 123" }).success).toBe(false);
+    expect(crmCandidateSchema.safeParse({ ...candidate, phone: "+44 20 1234 5678" }).success).toBe(true);
+    expect(crmCandidateSchema.safeParse({ ...candidate, external_profile_url: "ftp://example.com/cv" }).success).toBe(false);
+    expect(crmCandidateSchema.safeParse({ ...candidate, external_profile_url: "https://example.com/cv" }).success).toBe(true);
   });
 });

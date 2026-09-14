@@ -10,7 +10,7 @@ describe("profile editor fields", () => {
     expect(source).toContain('rpc("update_my_profile_details"');
     expect(source).toContain('aria-labelledby="profile-dates-heading"');
     expect(source).toContain('const canEditStartDate = systemRole === "admin"');
-    expect(source).toContain('p_joined_at: canEditStartDate ? currentJoinedAt || null : null');
+    expect(source).toContain('p_joined_at: canEditStartDate ? currentJoinedAt || undefined : undefined');
     expect(source).toContain('t("startDateManagedByAdmin")');
     expect(source).toContain('sm:grid-cols-2');
     expect(source).toContain('disabled={isProfilePending || !isProfileDirty}');
@@ -23,5 +23,14 @@ describe("profile editor fields", () => {
     expect(source).not.toContain('t("saveBirthday")');
     expect(source).not.toContain('t("saveLocation")');
     expect(source).not.toContain('t("clearLocation")');
+  });
+
+  it("persists independent realtime notification preferences in the profile settings surface", async () => {
+    const source = await readFile(editorPath, "utf8");
+    expect(source).toContain('aria-labelledby="notification-settings-heading"');
+    expect(source).toContain("p_notification_popups_enabled: currentNotificationPopupsEnabled");
+    expect(source).toContain("p_notification_sound_enabled: currentNotificationSoundEnabled");
+    expect(source).toContain('t("notificationPopups")');
+    expect(source).toContain('t("notificationSound")');
   });
 });

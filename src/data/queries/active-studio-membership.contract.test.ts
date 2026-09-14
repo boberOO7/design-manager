@@ -12,6 +12,8 @@ describe("active studio membership resolution", () => {
     expect(source).toContain('status: "ACTIVE_STUDIO"');
     expect(source).toContain('status: "MULTIPLE_ACTIVE_STUDIOS"');
     expect(source).toContain('.limit(2)');
+    expect(source).toContain('profile:profiles!studio_members_user_id_fkey!inner(is_active)');
+    expect(source).toContain('.eq("profile.is_active", true)');
     expect(source).toContain('resolution.status === "ACTIVE_STUDIO" ? resolution.membership : null');
   });
 });

@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(19);
 
 insert into public.studios(id, name) values
   ('53000000-0000-0000-0000-000000000001', 'CRM conversion A'),
@@ -38,6 +38,8 @@ select is((select client_name from public.projects where id=(select project_id f
 select is((select count(*)::integer from public.crm_lead_history where lead_id='53000000-0000-0000-0000-000000000100' and event_type='status_changed' and previous_status='discussion' and new_status='won'),1,'normal status history records conversion to won');
 select is((select count(*)::integer from public.crm_lead_history where lead_id='53000000-0000-0000-0000-000000000100' and event_type='project_linked' and project_id is not null),1,'conversion records the Project link');
 select is((select actor_id from public.crm_lead_history where lead_id='53000000-0000-0000-0000-000000000100' and event_type='project_linked'),'53000000-0000-0000-0000-000000000010'::uuid,'link history retains the actor');
+select throws_ok($$update public.crm_leads set status='lost' where id='53000000-0000-0000-0000-000000000100'$$,'23514',null,'a linked Lead cannot drift away from Won');
+select is((select status::text from public.crm_leads where id='53000000-0000-0000-0000-000000000100'),'won','a rejected status change leaves the linked Lead Won');
 select throws_like($$
   select public.create_project_from_template(
     '{"studio_id":"53000000-0000-0000-0000-000000000001","source_lead_id":"53000000-0000-0000-0000-000000000100","name":"Duplicate","country_code":"UA","total_area_m2":1,"priority":"normal","start_date":"2026-09-10"}'::jsonb,
@@ -86,7 +88,7 @@ select throws_like($$
 $$,'%administrators%','other-studio admin cannot convert the Lead');
 
 set local role postgres;
-select throws_ok($$update public.crm_leads set project_id=(select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000100') where id='53000000-0000-0000-0000-000000000101'$$,'23505',null,'one Project cannot be linked to a second Lead');
+select throws_ok($$update public.crm_leads set project_id=(select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000100'), status='won', invalid_reason=null where id='53000000-0000-0000-0000-000000000101'$$,'23505',null,'one Project cannot be linked to a second Lead');
 select is((select count(*)::integer from public.crm_lead_history where lead_id in ('53000000-0000-0000-0000-000000000100','53000000-0000-0000-0000-000000000101','53000000-0000-0000-0000-000000000102') and event_type='project_linked'),1,'failed attempts do not append link history');
 
 select * from finish();

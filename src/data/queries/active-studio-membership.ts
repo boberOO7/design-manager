@@ -25,6 +25,7 @@ export type ActiveStudioMembershipResolution =
   | { status: "MULTIPLE_ACTIVE_STUDIOS"; authenticatedUserId: string; email: string | null };
 
 type ActiveStudioMembershipQuery = Pick<StudioMembershipRow, "joined_at" | "studio_id" | "system_role"> & {
+  profile: Pick<Database["public"]["Tables"]["profiles"]["Row"], "is_active">;
   studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "leaderboard_visible_to_employees" | "name">;
 };
 
@@ -43,9 +44,10 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
 
   const { data, error } = await supabase
     .from("studio_members")
-    .select("studio_id, system_role, joined_at, studio:studios!inner(name, leaderboard_visible_to_employees)")
+    .select("studio_id, system_role, joined_at, profile:profiles!studio_members_user_id_fkey!inner(is_active), studio:studios!inner(name, leaderboard_visible_to_employees)")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .eq("profile.is_active", true)
     .order("joined_at", { ascending: true })
     .limit(2)
     .overrideTypes<ActiveStudioMembershipQuery[], { merge: false }>();

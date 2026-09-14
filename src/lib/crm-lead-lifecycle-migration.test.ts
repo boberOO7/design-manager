@@ -50,7 +50,7 @@ describe("CRM lead lifecycle migration contract", () => {
   it("uses the existing notification table and hides future reminders until due", () => {
     expect(migration).toContain("insert into public.notifications");
     expect(migration).not.toContain("create table public.crm_lead_reminders");
-    expect(notificationsQuery).toContain('.lte("created_at", now)');
+    expect(notificationsQuery).toContain('.lte("created_at", realtimeStartedAt)');
     expect(markAllRoute).toContain('.lte("created_at", now)');
   });
 });

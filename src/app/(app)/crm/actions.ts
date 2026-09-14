@@ -7,6 +7,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
 import { resolveCrmFollowUpAt } from "@/lib/crm";
+import { zonedWallTimeToIso } from "@/lib/calendar";
 import { normalizePhoneForCountry } from "@/lib/ukrainian-phone";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -30,44 +31,48 @@ async function failure(error: z.ZodError): Promise<CrmActionState> {
   const fieldErrors: Record<string, string> = {};
   for (const issue of error.issues) {
     const field = issue.path[0];
-    if (typeof field === "string" && !fieldErrors[field]) fieldErrors[field] = t("validation.invalidField");
+    if (typeof field !== "string" || fieldErrors[field]) continue;
+    if (field === "email") fieldErrors[field] = t("validation.invalidEmail");
+    else if (field === "phone") fieldErrors[field] = t("validation.invalidPhone");
+    else if (field === "external_profile_url") fieldErrors[field] = t("validation.invalidUrl");
+    else if (field === "approximate_area") fieldErrors[field] = t("validation.invalidArea");
+    else if (field === "budget_amount") fieldErrors[field] = t("validation.invalidBudget");
+    else if (field === "country_code") fieldErrors[field] = t("validation.invalidCountry");
+    else if (field === "responsible_admin_id") fieldErrors[field] = t("validation.invalidResponsible");
+    else if (field === "next_contact_time") fieldErrors[field] = t("validation.invalidTime");
+    else if (field === "first_contact_date" || field === "next_contact_date") fieldErrors[field] = t("validation.invalidDate");
+    else if (field === "interview_at") fieldErrors[field] = t("validation.invalidDateTime");
+    else fieldErrors[field] = t("validation.invalidField");
   }
   return { error: t("validation.correctFields"), fieldErrors };
 }
 
-async function context(): Promise<{ admin: NonNullable<Awaited<ReturnType<typeof getActiveStudioAdmin>>>; supabase: Awaited<ReturnType<typeof createClient>> } | null> {
-  const admin = await getActiveStudioAdmin();
-  if (!admin) return null;
-  return { admin, supabase: await createClient() };
+async function context(): Promise<{ admin: NonNullable<Awaited<ReturnType<typeof getActiveStudioAdmin>>>; supabase: Awaited<ReturnType<typeof createClient>> } | { error: "permission" | "unavailable" }> {
+  try {
+    const admin = await getActiveStudioAdmin();
+    if (!admin) return { error: "permission" };
+    return { admin, supabase: await createClient() };
+  } catch (error) {
+    console.error("Unable to establish CRM action context", error);
+    return { error: "unavailable" };
+  }
 }
 
-function candidateContactRecord(value: z.infer<typeof crmCandidateContactSchema>) {
+function recruitingCycleParameters(value: z.infer<typeof crmRecruitingCycleSchema>) {
   return {
-    full_name: value.full_name,
-    email: nullable(value.email),
-    phone: nullable(normalizePhoneForCountry(value.phone, "UA")),
-    external_profile_url: nullable(value.external_profile_url),
-    source: nullable(resolveCrmLeadSourceValue(value.source, value.source_custom)),
-    responsible_admin_id: nullable(value.responsible_admin_id),
-  };
-}
-
-function recruitingCycleRecord(value: z.infer<typeof crmRecruitingCycleSchema>) {
-  return {
-    target_position: value.target_position,
-    stage: value.outcome ? "decision" : value.stage,
-    outcome: value.outcome || null,
-    next_contact_date: nullable(value.next_contact_date),
-    interview_at: value.interview_at ? new Date(value.interview_at).toISOString() : null,
-    interview_notes: nullable(value.interview_notes),
-    test_task_result: nullable(value.test_task_result),
-    completed_at: value.outcome ? new Date().toISOString() : null,
+    p_target_position: value.target_position,
+    p_stage: value.outcome ? "decision" as const : value.stage,
+    p_outcome: value.outcome,
+    p_next_contact_date: value.next_contact_date,
+    p_interview_at: value.interview_at ? zonedWallTimeToIso(value.interview_at) : "",
+    p_interview_notes: value.interview_notes,
+    p_test_task_result: value.test_task_result,
   };
 }
 
 export async function saveLead(leadId: string | null, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
   const parsed = crmLeadSchema.safeParse(formValues(formData));
   if (!parsed.success) return failure(parsed.error);
   const value = parsed.data;
@@ -113,6 +118,9 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     : await crm.supabase.from("crm_leads").insert({ ...record, status: value.status, studio_id: crm.admin.studio_id }).select("id").single();
   if (result.error || !result.data) {
     console.error("Unable to save CRM lead", result.error);
+    if (result.error?.message.includes("responsible_must_be_active_studio_admin")) {
+      return { error: t("validation.correctFields"), fieldErrors: { responsible_admin_id: t("validation.invalidResponsible") } };
+    }
     return { error: t("errors.saveLead") };
   }
   revalidatePath("/crm/leads");
@@ -122,7 +130,8 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
 
 export async function deleteLead(leadId: string): Promise<{ error?: string }> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(leadId).success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!z.uuid().safeParse(leadId).success) return { error: t("errors.deleteLead") };
   const { error } = await crm.supabase.from("crm_leads").delete().eq("id", leadId).eq("studio_id", crm.admin.studio_id);
   if (error) {
     console.error("Unable to delete CRM lead", error);
@@ -140,7 +149,8 @@ export async function updateLeadStatus(leadId: string, status: string, invalidRe
     status: z.enum(CRM_LEAD_STATUSES),
     invalidReason: z.union([z.enum(CRM_LEAD_INVALID_REASONS), z.null()]).optional(),
   }).safeParse({ leadId, status, invalidReason });
-  if (!crm || !parsed.success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!parsed.success) return { error: t("errors.updateLeadStatus") };
   const { data, error } = await crm.supabase
     .from("crm_leads")
     .update({
@@ -168,7 +178,8 @@ export async function updateLeadFollowUp(leadId: string, action: "complete" | "c
     z.object({ leadId: z.uuid(), action: z.literal("cancel") }),
     z.object({ leadId: z.uuid(), action: z.literal("schedule"), date: z.iso.date(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
   ]).safeParse({ leadId, action, ...followUp });
-  if (!crm || !parsed.success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!parsed.success) return { error: t("errors.updateFollowUp") };
   const nextContactAt = parsed.data.action === "schedule" ? resolveCrmFollowUpAt(parsed.data.date, parsed.data.time) : null;
   let query = crm.supabase
     .from("crm_leads")
@@ -201,60 +212,27 @@ export async function loadLeadHistory(leadId: string): Promise<{ error?: string;
 
 export async function createCandidate(_state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
   const values = formValues(formData);
   const candidate = crmCandidateSchema.safeParse(values);
   const cycle = crmRecruitingCycleSchema.safeParse(values);
   if (!candidate.success) return failure(candidate.error);
   if (!cycle.success) return failure(cycle.error);
-  const { data: candidateId, error } = await crm.supabase.rpc("create_crm_candidate", {
+  const { data: candidateId, error } = await crm.supabase.rpc("create_crm_candidate_with_cycle", {
     p_full_name: candidate.data.full_name,
     p_email: candidate.data.email,
     p_phone: normalizePhoneForCountry(candidate.data.phone, "UA"),
     p_external_profile_url: candidate.data.external_profile_url,
     p_source: resolveCrmLeadSourceValue(candidate.data.source, candidate.data.source_custom),
-    p_responsible_admin_id: candidate.data.responsible_admin_id || crm.admin.authenticatedUserId,
-    p_internal_notes: "",
-    p_target_position: cycle.data.target_position,
+    p_responsible_admin_id: candidate.data.responsible_admin_id,
+    ...recruitingCycleParameters(cycle.data),
   });
   if (error || !candidateId) {
     console.error("Unable to create CRM candidate", error);
+    if (error?.message.includes("responsible_must_be_active_studio_admin")) {
+      return { error: t("validation.correctFields"), fieldErrors: { responsible_admin_id: t("validation.invalidResponsible") } };
+    }
     return { error: t("errors.saveCandidate") };
-  }
-  const { error: cycleError } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(cycle.data)).eq("candidate_id", candidateId).eq("studio_id", crm.admin.studio_id).is("outcome", null);
-  if (cycleError) {
-    console.error("Unable to save initial CRM recruiting cycle", cycleError);
-    return { error: t("errors.saveCandidate") };
-  }
-  revalidatePath("/crm/candidates");
-  return { success: true };
-}
-
-export async function updateCandidate(candidateId: string, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
-  const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(candidateId).success) return { error: t("errors.permission") };
-  const parsed = crmCandidateContactSchema.safeParse(formValues(formData));
-  if (!parsed.success) return failure(parsed.error);
-  const value = parsed.data;
-  const { data, error } = await crm.supabase.from("crm_candidates").update(candidateContactRecord(value)).eq("id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
-  if (error || !data) {
-    console.error("Unable to update CRM candidate", error);
-    return { error: t("errors.saveCandidate") };
-  }
-  revalidatePath("/crm/candidates");
-  return { success: true };
-}
-
-export async function updateRecruitingCycle(cycleId: string, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
-  const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(cycleId).success) return { error: t("errors.permission") };
-  const parsed = crmRecruitingCycleSchema.safeParse(formValues(formData));
-  if (!parsed.success) return failure(parsed.error);
-  const value = parsed.data;
-  const { data, error } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(value)).eq("id", cycleId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
-  if (error || !data) {
-    console.error("Unable to update CRM recruiting cycle", error);
-    return { error: t("errors.saveCycle") };
   }
   revalidatePath("/crm/candidates");
   return { success: true };
@@ -262,21 +240,30 @@ export async function updateRecruitingCycle(cycleId: string, _state: CrmActionSt
 
 export async function saveCandidateEditor(candidateId: string, cycleId: string, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(candidateId).success || !z.uuid().safeParse(cycleId).success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!z.uuid().safeParse(candidateId).success || !z.uuid().safeParse(cycleId).success) return { error: t("errors.saveCandidate") };
   const values = formValues(formData);
   const candidate = crmCandidateContactSchema.safeParse(values);
   const cycle = crmRecruitingCycleSchema.safeParse(values);
   if (!candidate.success) return failure(candidate.error);
   if (!cycle.success) return failure(cycle.error);
-  const { data: updatedCandidate, error: candidateError } = await crm.supabase.from("crm_candidates").update(candidateContactRecord(candidate.data)).eq("id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
-  if (candidateError || !updatedCandidate) {
-    console.error("Unable to update CRM candidate", candidateError);
+  const { data: updatedCandidate, error } = await crm.supabase.rpc("update_crm_candidate_with_cycle", {
+    p_candidate_id: candidateId,
+    p_cycle_id: cycleId,
+    p_full_name: candidate.data.full_name,
+    p_email: candidate.data.email,
+    p_phone: normalizePhoneForCountry(candidate.data.phone, "UA"),
+    p_external_profile_url: candidate.data.external_profile_url,
+    p_source: resolveCrmLeadSourceValue(candidate.data.source, candidate.data.source_custom),
+    p_responsible_admin_id: candidate.data.responsible_admin_id,
+    ...recruitingCycleParameters(cycle.data),
+  });
+  if (error || !updatedCandidate) {
+    console.error("Unable to update CRM candidate and recruiting cycle", error);
+    if (error?.message.includes("responsible_must_be_active_studio_admin")) {
+      return { error: t("validation.correctFields"), fieldErrors: { responsible_admin_id: t("validation.invalidResponsible") } };
+    }
     return { error: t("errors.saveCandidate") };
-  }
-  const { data: updatedCycle, error: cycleError } = await crm.supabase.from("crm_recruiting_cycles").update(recruitingCycleRecord(cycle.data)).eq("id", cycleId).eq("candidate_id", candidateId).eq("studio_id", crm.admin.studio_id).select("id").maybeSingle();
-  if (cycleError || !updatedCycle) {
-    console.error("Unable to update CRM recruiting cycle", cycleError);
-    return { error: t("errors.saveCycle") };
   }
   revalidatePath("/crm/candidates");
   return { success: true };
@@ -284,7 +271,8 @@ export async function saveCandidateEditor(candidateId: string, cycleId: string, 
 
 export async function startRecruitingCycle(candidateId: string, _state: CrmActionState, formData: FormData): Promise<CrmActionState> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(candidateId).success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!z.uuid().safeParse(candidateId).success) return { error: t("errors.saveCycle") };
   const targetPosition = formData.get("target_position");
   const parsed = z.string().trim().min(1).max(200).safeParse(targetPosition);
   if (!parsed.success) return { error: t("validation.correctFields"), fieldErrors: { target_position: t("validation.invalidField") } };
@@ -299,7 +287,8 @@ export async function startRecruitingCycle(candidateId: string, _state: CrmActio
 
 export async function deleteCandidate(candidateId: string): Promise<{ error?: string }> {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  if (!crm || !z.uuid().safeParse(candidateId).success) return { error: t("errors.permission") };
+  if ("error" in crm) return { error: t(crm.error === "permission" ? "errors.permission" : "errors.unavailable") };
+  if (!z.uuid().safeParse(candidateId).success) return { error: t("errors.deleteCandidate") };
   const { error } = await crm.supabase.from("crm_candidates").delete().eq("id", candidateId).eq("studio_id", crm.admin.studio_id);
   if (error) {
     console.error("Unable to delete CRM candidate", error);

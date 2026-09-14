@@ -1,6 +1,6 @@
 "use client";
 
-import { CakeSlice, CalendarDays, Camera, LoaderCircle, LockKeyhole, MapPin, Trash2, Upload } from "lucide-react";
+import { BellRing, CakeSlice, CalendarDays, Camera, LoaderCircle, LockKeyhole, MapPin, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -27,6 +27,8 @@ type ProfileAvatarEditorProps = {
   countryCode?: string | null;
   fullName: string;
   joinedAt: string | null;
+  notificationPopupsEnabled: boolean;
+  notificationSoundEnabled: boolean;
   systemRole: SystemRole;
   userId: string;
 };
@@ -37,7 +39,7 @@ function getFileExtension(file: File): string {
   return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
 }
 
-export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCodeProp, fullName, joinedAt, systemRole, userId }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId, countryCode: initialCountryCodeProp, fullName, joinedAt, notificationPopupsEnabled, notificationSoundEnabled, systemRole, userId }: ProfileAvatarEditorProps) {
   const t = useTranslations("Account");
   const locale = useLocale();
   const router = useRouter();
@@ -61,11 +63,13 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
   const [currentCityGeoNamesId, setCurrentCityGeoNamesId] = useState<number | undefined>(initialCityGeoNamesId);
   const [currentBirthDate, setCurrentBirthDate] = useState(initialBirthDate);
   const [currentJoinedAt, setCurrentJoinedAt] = useState(initialJoinedAt);
+  const [currentNotificationPopupsEnabled, setCurrentNotificationPopupsEnabled] = useState(notificationPopupsEnabled);
+  const [currentNotificationSoundEnabled, setCurrentNotificationSoundEnabled] = useState(notificationSoundEnabled);
   const displayedAvatarUrl = previewUrl ?? currentAvatarUrl;
   const countryOptions = getCountryOptions(locale);
   const isProfilePending = isPending || isSavingProfile;
   const canEditStartDate = systemRole === "admin";
-  const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId || (canEditStartDate && currentJoinedAt !== initialJoinedAt);
+  const isProfileDirty = currentBirthDate !== initialBirthDate || currentCountryCode !== initialCountryCode || currentCity !== initialCity || currentCityGeoNamesId !== initialCityGeoNamesId || currentNotificationPopupsEnabled !== notificationPopupsEnabled || currentNotificationSoundEnabled !== notificationSoundEnabled || (canEditStartDate && currentJoinedAt !== initialJoinedAt);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -86,6 +90,8 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
     setCurrentCountryCode(initialCountryCode);
     setCurrentCity(initialCity);
     setCurrentCityGeoNamesId(initialCityGeoNamesId);
+    setCurrentNotificationPopupsEnabled(notificationPopupsEnabled);
+    setCurrentNotificationSoundEnabled(notificationSoundEnabled);
     setProfileError(null);
   }
 
@@ -203,7 +209,9 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
       ...(normalizedCity ? { p_city: normalizedCity } : {}),
       ...(normalizedCity && currentCityGeoNamesId !== null ? { p_city_geonames_id: currentCityGeoNamesId } : {}),
       ...(currentCountryCode ? { p_country_code: currentCountryCode } : {}),
-      ...(canEditStartDate && currentJoinedAt ? { p_joined_at: currentJoinedAt } : {}),
+      p_joined_at: canEditStartDate ? currentJoinedAt || undefined : undefined,
+      p_notification_popups_enabled: currentNotificationPopupsEnabled,
+      p_notification_sound_enabled: currentNotificationSoundEnabled,
     };
     const { error: updateError } = await createClient().rpc("update_my_profile_details", profileInput);
 
@@ -271,6 +279,16 @@ export function ProfileAvatarEditor({ avatarUrl, birthDate, city, cityGeoNamesId
               {t("city")}
               {isCountryCode(currentCountryCode) ? <CityCombobox className="mt-0" countryCode={currentCountryCode} name="profile-city" onGeoNamesIdChange={setCurrentCityGeoNamesId} onValueChange={(value) => { setCurrentCity(value); setProfileError(null); }} value={currentCity} /> : <p className="flex h-11 items-center rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] px-3 text-sm font-normal text-[var(--ui-text-muted)]">{t("selectCountryFirst")}</p>}
             </label>
+          </div>
+        </section>
+        <section aria-labelledby="notification-settings-heading" className="border-t border-[var(--ui-border-subtle)] pt-5">
+          <div className="flex items-start gap-3">
+            <BellRing aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" />
+            <div><h3 id="notification-settings-heading" className="font-medium text-[var(--ui-text)]">{t("notificationSettings")}</h3><p className="mt-1 text-sm leading-5 text-[var(--ui-text-muted)]">{t("notificationSettingsDescription")}</p></div>
+          </div>
+          <div className="mt-3 space-y-1 pl-7">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)]"><input checked={currentNotificationPopupsEnabled} className="size-5 shrink-0 accent-[var(--ui-action-primary)]" disabled={isProfilePending} onChange={(event) => setCurrentNotificationPopupsEnabled(event.target.checked)} type="checkbox" />{t("notificationPopups")}</label>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)]"><input checked={currentNotificationSoundEnabled} className="size-5 shrink-0 accent-[var(--ui-action-primary)]" disabled={isProfilePending} onChange={(event) => setCurrentNotificationSoundEnabled(event.target.checked)} type="checkbox" />{t("notificationSound")}</label>
           </div>
         </section>
         <GoogleCalendarIntegration active={isOpen} oauthResult={googleCalendarResult} />
