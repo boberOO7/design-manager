@@ -132,3 +132,16 @@ export function getTimeOffStatusBadgeStyle(status: TimeOffStatus | string): Sema
     default: return badge("Unknown", "neutral");
   }
 }
+
+export function getCrmLeadStatusBadgeStyle(status: string): SemanticBadgeStyle {
+  switch (status) {
+    case "new": return badge("New", "neutral");
+    case "contacted": return badge("Contacted", "info");
+    case "discussion": return badge("Discussion", "info");
+    case "proposal": return badge("Proposal", "warning");
+    case "won": return badge("Won", "success");
+    case "lost": return badge("Lost", "danger");
+    case "invalid": return badge("Invalid", "muted");
+    default: return badge("Unknown", "neutral");
+  }
+}

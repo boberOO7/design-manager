@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCrmLeadStatusBadgeStyle,
   getPriorityBadgeStyle,
   getProjectHealthBadgeStyle,
   getProjectLifecycleBadgeStyle,
@@ -45,11 +46,16 @@ describe("semantic badge styles", () => {
     expect(["pending", "approved", "rejected", "cancelled"].map((value) => getTimeOffStatusBadgeStyle(value).variant)).toEqual(["warning", "success", "danger", "muted"]);
   });
 
+  it("maps CRM Leads from neutral early stages to semantic outcomes", () => {
+    expect(["new", "contacted", "discussion", "proposal", "won", "lost", "invalid"].map((status) => getCrmLeadStatusBadgeStyle(status).variant)).toEqual(["neutral", "info", "info", "warning", "success", "danger", "muted"]);
+  });
+
   it("falls back to neutral for unknown values", () => {
     expect(getPriorityBadgeStyle("unexpected").variant).toBe("neutral");
     expect(getTaskStatusBadgeStyle("unexpected").variant).toBe("neutral");
     expect(getProjectLifecycleBadgeStyle("unexpected").variant).toBe("neutral");
     expect(getProjectHealthBadgeStyle("unexpected").variant).toBe("neutral");
     expect(getTimeOffStatusBadgeStyle("unexpected").variant).toBe("neutral");
+    expect(getCrmLeadStatusBadgeStyle("unexpected").variant).toBe("neutral");
   });
 });

@@ -52,6 +52,9 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('t("status.linkedProjectLocked")');
     expect(en.Crm.status.linkedProjectLocked).toBeTruthy();
     expect(uk.Crm.status.linkedProjectLocked).toBeTruthy();
+    expect(workspace).toContain("getCrmLeadStatusBadgeStyle");
+    expect(workspace).toContain("<LeadStatusPill status={item.status}");
+    expect(workspace).toContain("<LeadStatusPill status={value}");
   });
 
   it("explains when a follow-up date cannot schedule a reminder", async () => {
@@ -73,6 +76,7 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('onFollowUpAction("cancel")');
     expect(workspace).toContain("function LeadFollowUpDialog");
     expect(workspace).toContain('mode === "reschedule" ? lead.next_contact_at : null');
+    expect(workspace).toContain("lead.next_contact_at ? <FollowUpTime value={lead.next_contact_at} locale={locale} /> : null");
     expect(workspace).toContain('setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")');
     expect(workspace).toContain('onSave={(followUp) => changeFollowUp("schedule", followUp)}');
     expect(followUpDialog).not.toContain("AdminField");
