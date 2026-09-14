@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
+import { CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS } from "@/lib/crm";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
@@ -38,9 +39,9 @@ export async function getCrmAdmins(): Promise<CrmAdmin[]> {
   return data.map((row) => ({ avatar_url: row.profile.avatar_url, id: row.user_id, name: row.profile.full_name }));
 }
 
-export async function getCrmLeads(): Promise<{ error: boolean; leads: CrmLead[] }> {
+export async function getCrmLeads(): Promise<{ currentUserId: string | null; error: boolean; leads: CrmLead[] }> {
   const context = await getCrmContext();
-  if (!context) return { error: false, leads: [] };
+  if (!context) return { currentUserId: null, error: false, leads: [] };
   const { data, error } = await context.supabase
     .from("crm_leads")
     .select("*")
@@ -48,11 +49,29 @@ export async function getCrmLeads(): Promise<{ error: boolean; leads: CrmLead[] 
     .order("updated_at", { ascending: false });
   if (error) {
     console.error("Unable to load CRM leads", error);
-    return { error: true, leads: [] };
+    return { currentUserId: context.membership.authenticatedUserId, error: true, leads: [] };
   }
   const admins = await getCrmAdmins();
   const adminNames = new Map(admins.map((admin) => [admin.id, admin]));
-  return { error: false, leads: data.map((lead) => ({ ...lead, responsibleAdmin: lead.responsible_admin_id ? adminNames.get(lead.responsible_admin_id) ?? null : null })) };
+  return { currentUserId: context.membership.authenticatedUserId, error: false, leads: data.map((lead) => ({ ...lead, responsibleAdmin: lead.responsible_admin_id ? adminNames.get(lead.responsible_admin_id) ?? null : null })) };
+}
+
+export async function getCrmOverdueLeadFollowUpCount(now = new Date()): Promise<number> {
+  const context = await getCrmContext();
+  if (!context) return 0;
+  const { count, error } = await context.supabase
+    .from("crm_leads")
+    .select("id", { count: "exact", head: true })
+    .eq("studio_id", context.membership.studio_id)
+    .eq("responsible_admin_id", context.membership.authenticatedUserId)
+    .not("next_contact_at", "is", null)
+    .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
+    .lt("next_contact_at", now.toISOString());
+  if (error) {
+    console.error("Unable to load overdue CRM lead follow-up count", error);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export async function getCrmLeadHistory(leadId: string): Promise<CrmLeadHistory[]> {

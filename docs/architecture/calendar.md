@@ -4,8 +4,8 @@
 
 Calendar presents stored events and live projections through one normalized UI
 model. Only real studio events live in `calendar_events`; project deadlines,
-task milestone deadlines, availability, and people/studio events retain their
-own canonical sources.
+task milestone deadlines, CRM Lead follow-ups, availability, and people/studio
+events retain their own canonical sources.
 
 ## Calendar item sources
 
@@ -19,6 +19,7 @@ own canonical sources.
 | Birthday/anniversary | Profile and studio membership dates | Active studio membership rules |
 | Salary payment | Team membership dates, admin view | Administrator operational action |
 | Studio day off | `studio_days_off` | Active studio members |
+| CRM Lead follow-up | `crm_leads.next_contact_at` | Administrator-only; “mine” uses responsible administrator |
 
 Views are Month, Week, and Agenda. Task deadlines are hidden by default in dense
 views. Timed values are absolute `timestamptz` displayed in `Europe/Kyiv`;

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
+import { resolveCrmFollowUpAt } from "@/lib/crm";
 import { normalizePhoneForCountry } from "@/lib/ukrainian-phone";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -13,6 +14,7 @@ import {
   crmCandidateSchema,
   crmLeadSchema,
   crmRecruitingCycleSchema,
+  CRM_LEAD_INVALID_REASONS,
   CRM_LEAD_STATUSES,
   formValues,
   resolveCrmLeadSourceValue,
@@ -103,7 +105,7 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     budget_note: preservesLegacyBudget ? legacyLead?.budget_note ?? null : null,
     responsible_admin_id: nullable(value.responsible_admin_id),
     first_contact_date: value.first_contact_date,
-    next_contact_date: nullable(value.next_contact_date),
+    next_contact_at: resolveCrmFollowUpAt(value.next_contact_date, value.next_contact_time),
     internal_notes: nullable(value.internal_notes),
   };
   const result = leadId
@@ -114,6 +116,7 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     return { error: t("errors.saveLead") };
   }
   revalidatePath("/crm/leads");
+  revalidatePath("/calendar");
   return { success: true };
 }
 
@@ -126,26 +129,63 @@ export async function deleteLead(leadId: string): Promise<{ error?: string }> {
     return { error: t("errors.deleteLead") };
   }
   revalidatePath("/crm/leads");
+  revalidatePath("/calendar");
   return {};
 }
 
-export async function updateLeadStatus(leadId: string, status: string): Promise<{ error?: string }> {
+export async function updateLeadStatus(leadId: string, status: string, invalidReason?: string | null) {
   const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
-  const parsed = z.object({ leadId: z.uuid(), status: z.enum(CRM_LEAD_STATUSES) }).safeParse({ leadId, status });
+  const parsed = z.object({
+    leadId: z.uuid(),
+    status: z.enum(CRM_LEAD_STATUSES),
+    invalidReason: z.union([z.enum(CRM_LEAD_INVALID_REASONS), z.null()]).optional(),
+  }).safeParse({ leadId, status, invalidReason });
   if (!crm || !parsed.success) return { error: t("errors.permission") };
   const { data, error } = await crm.supabase
     .from("crm_leads")
-    .update({ status: parsed.data.status })
+    .update({
+      status: parsed.data.status,
+      invalid_reason: parsed.data.status === "invalid" ? parsed.data.invalidReason ?? null : null,
+      ...(parsed.data.status === "invalid" ? { next_contact_at: null } : {}),
+    })
     .eq("id", parsed.data.leadId)
     .eq("studio_id", crm.admin.studio_id)
-    .select("id")
+    .select("id, status, invalid_reason, next_contact_at, last_contacted_at")
     .maybeSingle();
   if (error || !data) {
     console.error("Unable to update CRM lead status", error);
     return { error: t("errors.updateLeadStatus") };
   }
   revalidatePath("/crm/leads");
-  return {};
+  revalidatePath("/calendar");
+  return { lead: data };
+}
+
+export async function updateLeadFollowUp(leadId: string, action: "complete" | "cancel" | "schedule", followUp?: { date: string; time: string }) {
+  const [crm, t] = await Promise.all([context(), getTranslations("Crm")]);
+  const parsed = z.discriminatedUnion("action", [
+    z.object({ leadId: z.uuid(), action: z.literal("complete") }),
+    z.object({ leadId: z.uuid(), action: z.literal("cancel") }),
+    z.object({ leadId: z.uuid(), action: z.literal("schedule"), date: z.iso.date(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
+  ]).safeParse({ leadId, action, ...followUp });
+  if (!crm || !parsed.success) return { error: t("errors.permission") };
+  const nextContactAt = parsed.data.action === "schedule" ? resolveCrmFollowUpAt(parsed.data.date, parsed.data.time) : null;
+  let query = crm.supabase
+    .from("crm_leads")
+    .update({ next_contact_at: nextContactAt, ...(parsed.data.action === "complete" ? { last_contacted_at: new Date().toISOString() } : {}) })
+    .eq("id", parsed.data.leadId)
+    .eq("studio_id", crm.admin.studio_id);
+  if (parsed.data.action === "schedule") query = query.neq("status", "invalid");
+  const { data, error } = await query
+    .select("id, next_contact_at, last_contacted_at")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Unable to update CRM lead follow-up", error);
+    return { error: t("errors.updateFollowUp") };
+  }
+  revalidatePath("/crm/leads");
+  revalidatePath("/calendar");
+  return { lead: data };
 }
 
 export async function loadLeadHistory(leadId: string): Promise<{ error?: string; history?: CrmLeadHistory[] }> {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const headerPath = new URL("./app-header.tsx", import.meta.url);
 const sidebarPath = new URL("./app-sidebar.tsx", import.meta.url);
+const mobileNavigationPath = new URL("./mobile-navigation.tsx", import.meta.url);
 const controlPath = new URL("./shell-control.tsx", import.meta.url);
 const dashboardPath = new URL("../../app/(app)/dashboard/page.tsx", import.meta.url);
 const layoutPath = new URL("../../app/(app)/layout.tsx", import.meta.url);
@@ -52,6 +53,20 @@ describe("application shell cleanup", () => {
     expect(sidebar).not.toContain('t("tagline")');
     expect(sidebar).toContain("overflow-y-auto");
     expect(dashboard).not.toContain("Welcome back, ${dashboard.profile.full_name}");
+  });
+
+  it("shows the CRM attention count in desktop and mobile navigation independently of notifications", async () => {
+    const [layout, sidebar, mobileNavigation] = await Promise.all([
+      readFile(layoutPath, "utf8"),
+      readFile(sidebarPath, "utf8"),
+      readFile(mobileNavigationPath, "utf8"),
+    ]);
+    expect(layout).toContain("getCrmOverdueLeadFollowUpCount");
+    expect(layout).toContain('studio.system_role === "admin"');
+    expect(sidebar).toContain('item.href === "/crm" ? crmAttentionCount : 0');
+    expect(mobileNavigation).toContain('item.href === "/crm" ? crmAttentionCount : 0');
+    expect(sidebar).toContain("formatNavigationAttentionCount(attentionCount)");
+    expect(sidebar).not.toContain("unreadNotificationCount");
   });
 
   it("uses one tokenized height and divider for both desktop shell headers", async () => {

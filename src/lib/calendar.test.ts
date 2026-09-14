@@ -49,6 +49,10 @@ function timedEvent(id: string, startsAt: string, endsAt: string): Extract<Calen
   return { source: "calendar_event", key: `calendar_event:${id}`, id, title: id, startDate: instantToDateOnly(startsAt), endDate: instantToDateOnly(endsAt), allDay: false, projectId: null, personIds: ["u1"], eventType: "general", startsAt, endsAt, description: null, location: null, meetingUrl: null, meetingMode: null, project: null, organizer: { id: "u1", full_name: "Organizer", job_title: "administrator", avatar_url: null, projectIds: [] }, invitees: [], participants: [] };
 }
 
+function crmFollowUp(id = "lead-1"): Extract<CalendarItem, { source: "crm_follow_up" }> {
+  return { source: "crm_follow_up", key: `crm_follow_up:${id}`, id, title: "Client", startDate: "2026-07-28", endDate: "2026-07-28", allDay: false, projectId: null, personIds: ["u1"], startsAt: "2026-07-28T12:00:00.000Z", endsAt: "2026-07-28T12:30:00.000Z", responsibleAdminId: "u1" };
+}
+
 function timedAbsence(id: string, startDate: string, startTime: string, endTime: string): Extract<CalendarItem, { source: "time_off" }> {
   const item = normalizeCoworkerTimeOff({ id, userId: "u2", employeeName: "Vasilios Genshin", startDate, endDate: startDate, startTime, endTime, allDay: false, status: "approved" });
   if (!item) throw new Error("Expected approved timed absence");
@@ -85,6 +89,13 @@ describe("Calendar dates and views", () => {
     const ordered = sortCalendarItems([task({ key: "task_deadline:late", startDate: "2026-07-30", endDate: "2026-07-30" }), deadline({ startDate: "2026-07-27", endDate: "2026-07-27" })]);
     expect(ordered.map((item) => item.startDate)).toEqual(["2026-07-27", "2026-07-30"]);
     expect(getDayItems(ordered, "2026-07-30").map((item) => item.key)).toEqual(["task_deadline:late"]);
+  });
+  it("projects CRM follow-ups as timed, responsible-admin calendar work", () => {
+    const followUp = crmFollowUp();
+    expect(getTimedWeekSegments([followUp], ["2026-07-28"])[0]).toMatchObject({ startMinute: 15 * 60, endMinute: 15 * 60 + 30 });
+    expect(isCalendarItemRelevantToUser(followUp, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(followUp, "u2")).toBe(false);
+    expect(filterCalendarItems([followUp], { ...DEFAULT_CALENDAR_FILTERS, events: false }, "u1")).toEqual([]);
   });
   it("includes a multi-day absence on each covered date", () => {
     const absence = normalizeCoworkerTimeOff({ id: "r1", userId: "u2", employeeName: "Taylor", startDate: "2026-07-28", endDate: "2026-07-30", startTime: null, endTime: null, allDay: true, status: "approved" });

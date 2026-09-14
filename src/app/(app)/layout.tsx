@@ -2,6 +2,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getCurrentUserProfile } from "@/data/queries";
 import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getCrmOverdueLeadFollowUpCount } from "@/data/queries/crm";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -35,17 +36,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     throw new Error("Authenticated user has multiple active studio memberships.");
   }
 
-  const profile = await getCurrentUserProfile();
-  if (!profile) throw new Error("Authenticated user with active studio membership is missing a Profile.");
-
   const studio = access.membership;
+  const [profile, crmAttentionCount] = await Promise.all([
+    getCurrentUserProfile(),
+    studio.system_role === "admin" ? getCrmOverdueLeadFollowUpCount() : Promise.resolve(0),
+  ]);
+  if (!profile) throw new Error("Authenticated user with active studio membership is missing a Profile.");
 
   return (
     <div className="flex min-h-screen bg-[var(--ui-page)] text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
       <a href="#main-content" className="sr-only z-[60] rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--ui-action-primary-text)] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skipToContent")}</a>
-      <AppSidebar leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} systemRole={studio.system_role} />
+      <AppSidebar crmAttentionCount={crmAttentionCount} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} systemRole={studio.system_role} />
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
-        <AppHeader joinedAt={studio.joined_at} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
+        <AppHeader crmAttentionCount={crmAttentionCount} joinedAt={studio.joined_at} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
         <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
       </div>
     </div>

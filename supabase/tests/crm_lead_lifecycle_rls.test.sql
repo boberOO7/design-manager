@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(36);
 
 select is((select relrowsecurity from pg_class where oid = 'public.crm_lead_history'::regclass), true, 'lead history RLS is enabled');
 
@@ -24,11 +24,12 @@ insert into public.studio_members(studio_id,user_id,system_role) values
 
 select set_config('request.jwt.claim.sub','52000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
-select lives_ok($$insert into public.crm_leads(id, studio_id, client_name, first_contact_date, next_contact_date, responsible_admin_id) values ('52000000-0000-0000-0000-000000000100','52000000-0000-0000-0000-000000000001','Vasyl','2026-09-09',current_date + 5,'52000000-0000-0000-0000-000000000010')$$, 'admin creates a lead with a follow-up');
+select lives_ok($$insert into public.crm_leads(id, studio_id, client_name, first_contact_date, next_contact_at, responsible_admin_id) values ('52000000-0000-0000-0000-000000000100','52000000-0000-0000-0000-000000000001','Vasyl','2026-09-09',((current_date + 5)::timestamp + time '15:00') at time zone 'Europe/Kyiv','52000000-0000-0000-0000-000000000010')$$, 'admin creates a lead with a timed follow-up');
 select is((select count(*)::integer from public.crm_lead_history where lead_id='52000000-0000-0000-0000-000000000100'),1,'lead creation creates one history row');
 select is((select actor_id from public.crm_lead_history where lead_id='52000000-0000-0000-0000-000000000100'),'52000000-0000-0000-0000-000000000010'::uuid,'creation history retains the actor');
 select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and notification_type='crm_lead_follow_up'),1,'lead has one reminder notification');
 select is((select (created_at at time zone 'Europe/Kyiv')::date from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),current_date + 5,'reminder is scheduled for the contact date');
+select is((select (created_at at time zone 'Europe/Kyiv')::time(0) from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),time '15:00','reminder is scheduled for the concrete contact time');
 
 select lives_ok($$update public.crm_leads set status='contacted' where id='52000000-0000-0000-0000-000000000100'$$,'admin changes status directly');
 select is((select count(*)::integer from public.crm_lead_history where lead_id='52000000-0000-0000-0000-000000000100'),2,'status change appends history');
@@ -36,19 +37,22 @@ select is((select previous_status::text || '>' || new_status::text from public.c
 select is((select actor_id from public.crm_lead_history where event_type='status_changed' and lead_id='52000000-0000-0000-0000-000000000100'),'52000000-0000-0000-0000-000000000010'::uuid,'status history retains the actor');
 select lives_ok($$update public.crm_leads set company='Studio' where id='52000000-0000-0000-0000-000000000100'$$,'ordinary lead edits still save');
 select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),1,'unrelated repeated saves do not duplicate reminders');
+select lives_ok($$update public.notifications set read_at=now() where entity_id='52000000-0000-0000-0000-000000000100'$$,'responsible admin may view the reminder');
+select ok((select next_contact_at is not null from public.crm_leads where id='52000000-0000-0000-0000-000000000100'),'viewing the notification does not resolve the follow-up');
 
-select lives_ok($$update public.crm_leads set next_contact_date=current_date + 7 where id='52000000-0000-0000-0000-000000000100'$$,'changing the date reschedules the reminder');
+select lives_ok($$update public.crm_leads set next_contact_at=((current_date + 7)::timestamp + time '16:00') at time zone 'Europe/Kyiv' where id='52000000-0000-0000-0000-000000000100'$$,'changing the timestamp reschedules the reminder');
 select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),1,'rescheduling keeps one pending reminder');
-select is((select (created_at at time zone 'Europe/Kyiv')::date from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),current_date + 7,'rescheduled reminder uses the new date');
+select is((select (created_at at time zone 'Europe/Kyiv')::date from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),current_date + 7,'rescheduled reminder uses the new date');
+select is((select (created_at at time zone 'Europe/Kyiv')::time(0) from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),time '16:00','rescheduled reminder uses the new time');
 select lives_ok($$update public.crm_leads set responsible_admin_id='52000000-0000-0000-0000-000000000011' where id='52000000-0000-0000-0000-000000000100'$$,'changing responsible admin transfers the reminder');
 set local role postgres;
-select is((select recipient_id from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),'52000000-0000-0000-0000-000000000011'::uuid,'pending reminder belongs to the new responsible admin');
+select is((select recipient_id from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),'52000000-0000-0000-0000-000000000011'::uuid,'pending reminder belongs to the new responsible admin');
 set local role authenticated;
-select lives_ok($$update public.crm_leads set next_contact_date=null where id='52000000-0000-0000-0000-000000000100'$$,'clearing the date cancels the reminder');
-select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),0,'clearing removes the pending reminder');
-select lives_ok($$update public.crm_leads set responsible_admin_id=null, next_contact_date=current_date + 8 where id='52000000-0000-0000-0000-000000000100'$$,'date remains valid without a responsible admin');
-select is((select next_contact_date from public.crm_leads where id='52000000-0000-0000-0000-000000000100'),current_date + 8,'date is preserved without silently assigning an admin');
-select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),0,'no reminder is created without a responsible admin');
+select lives_ok($$update public.crm_leads set next_contact_at=null where id='52000000-0000-0000-0000-000000000100'$$,'clearing the follow-up cancels the pending reminder');
+select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),0,'clearing removes the pending reminder');
+select lives_ok($$update public.crm_leads set responsible_admin_id=null, next_contact_at=((current_date + 8)::timestamp + time '09:00') at time zone 'Europe/Kyiv' where id='52000000-0000-0000-0000-000000000100'$$,'follow-up remains valid without a responsible admin');
+select is((select (next_contact_at at time zone 'Europe/Kyiv')::date from public.crm_leads where id='52000000-0000-0000-0000-000000000100'),current_date + 8,'follow-up is preserved without silently assigning an admin');
+select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),0,'no reminder is created without a responsible admin');
 
 set local role postgres;
 select set_config('request.jwt.claim.sub','52000000-0000-0000-0000-000000000012',true);
@@ -65,6 +69,10 @@ set local role postgres;
 select set_config('request.jwt.claim.sub','52000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
 select lives_ok($$update public.crm_leads set responsible_admin_id='52000000-0000-0000-0000-000000000010' where id='52000000-0000-0000-0000-000000000100'$$,'assigning an admin restores one reminder');
+select lives_ok($$update public.crm_leads set status='invalid', invalid_reason='spam' where id='52000000-0000-0000-0000-000000000100'$$,'admin marks an invalid lead with a structured reason');
+select is((select invalid_reason::text from public.crm_leads where id='52000000-0000-0000-0000-000000000100'),'spam','invalid reason is retained');
+select is((select next_contact_at from public.crm_leads where id='52000000-0000-0000-0000-000000000100'),null::timestamptz,'invalid status clears the active follow-up');
+select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100' and read_at is null),0,'invalid status cancels the pending reminder');
 select lives_ok($$delete from public.crm_leads where id='52000000-0000-0000-0000-000000000100'$$,'admin deletes the lead');
 select is((select count(*)::integer from public.notifications where entity_id='52000000-0000-0000-0000-000000000100'),0,'deleting the lead leaves no orphan reminder');
 

@@ -86,6 +86,12 @@ export type CalendarItem =
         assigneeName: string;
       };
     })
+  | (CalendarBase & {
+      source: "crm_follow_up";
+      startsAt: string;
+      endsAt: string;
+      responsibleAdminId: string | null;
+    })
   | (CalendarBase & CalendarTimeOffSubject & {
       source: "time_off";
       startTime: string | null;

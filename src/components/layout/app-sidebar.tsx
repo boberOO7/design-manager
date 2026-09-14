@@ -7,9 +7,9 @@ import { useTranslations } from "next-intl";
 import { SpaceLogoFull } from "@/components/brand/space-logo-full";
 import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { cn } from "@/lib/utils";
-import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
+import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 
-export function AppSidebar({ leaderboardVisibleToEmployees, systemRole }: { leaderboardVisibleToEmployees: boolean; systemRole: string }) {
+export function AppSidebar({ crmAttentionCount, leaderboardVisibleToEmployees, systemRole }: { crmAttentionCount: number; leaderboardVisibleToEmployees: boolean; systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
   const items = useMemo(() => getNavigationItems(systemRole, leaderboardVisibleToEmployees), [leaderboardVisibleToEmployees, systemRole]);
@@ -79,12 +79,14 @@ export function AppSidebar({ leaderboardVisibleToEmployees, systemRole }: { lead
           {items.map((item) => {
             const Icon = navigationIcons[item.href];
             const active = isNavigationItemActive(pathname, item.href);
+            const attentionCount = item.href === "/crm" ? crmAttentionCount : 0;
             return (
               <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} title={t(item.messageKey)} onPointerUp={blurAfterPointerNavigation} className={cn("relative flex min-h-11 items-center overflow-hidden rounded-[var(--ui-radius-control)] text-sm font-medium transition-[background-color,color] duration-[200ms] ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]")}>
                 <Icon className="absolute left-[23px] top-1/2 size-[18px] -translate-y-1/2" aria-hidden="true" />
                 <span className={cn("pointer-events-none ml-[52px] shrink-0 whitespace-nowrap transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isExpanded ? "opacity-100" : "opacity-0")}>
                   {t(item.messageKey)}
                 </span>
+                {attentionCount > 0 ? <><span aria-hidden="true" className="absolute right-3 top-1/2 min-w-4 -translate-y-1/2 rounded-full border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-1 text-center text-[10px] font-bold leading-[14px] text-[var(--ui-danger-text)]">{formatNavigationAttentionCount(attentionCount)}</span><span className="sr-only">{t("crmAttention", { count: attentionCount })}</span></> : null}
               </Link>
             );
           })}

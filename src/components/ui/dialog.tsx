@@ -22,6 +22,11 @@ function getServerPortalTarget() {
   return null;
 }
 
+function isTopmostDialog(panel: HTMLElement | null) {
+  const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]');
+  return panel === dialogs.item(dialogs.length - 1);
+}
+
 export function Dialog({ ariaLabel, children, className, closeDisabled = false, closeLabel, description, headerActions, hideHeader = false, isOpen, onRequestClose, returnFocusRef, title }: {
   ariaLabel?: string;
   children: ReactNode;
@@ -51,7 +56,7 @@ export function Dialog({ ariaLabel, children, className, closeDisabled = false, 
     initialFocus?.focus({ preventScroll: true });
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented || !isTopmostDialog(panel)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         requestClose("escape");

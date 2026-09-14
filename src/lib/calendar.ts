@@ -137,7 +137,7 @@ export function itemOccursOn(item: CalendarItem, date: string): boolean {
 }
 
 export function calendarItemTimestamp(item: CalendarItem): number {
-  if (item.source === "calendar_event" && !item.allDay) return new Date(item.startsAt).getTime();
+  if ((item.source === "calendar_event" || item.source === "crm_follow_up") && !item.allDay) return new Date(item.startsAt).getTime();
   return parseDateOnly(item.startDate).getTime();
 }
 
@@ -211,6 +211,8 @@ export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string)
       return item.personIds.includes(userId);
     case "task_deadline":
       return item.task.assigneeId === userId;
+    case "crm_follow_up":
+      return item.responsibleAdminId === userId;
     case "time_off":
     case "time_off_request_admin":
       return item.subjectUserId === userId;
@@ -231,6 +233,7 @@ export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string)
 export function filterCalendarItems(items: CalendarItem[], filters: CalendarFilters, currentUserId: string): CalendarItem[] {
   return sortCalendarItems(items.filter((item) => {
     if (item.source === "calendar_event" && !filters.events) return false;
+    if (item.source === "crm_follow_up" && !filters.events) return false;
     if (item.source === "project_deadline" && !filters.projectDeadlines) return false;
     if (item.source === "task_deadline" && !filters.taskDeadlines) return false;
     if ((item.source === "time_off" || item.source === "time_off_request_admin") && !filters.timeOff) return false;
@@ -442,7 +445,7 @@ function getKyivDateTime(value: string | Date): KyivDateTime {
   return { date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`, minute: parts.hour * 60 + parts.minute };
 }
 
-type TimedWeekItem = Extract<CalendarItem, { source: "calendar_event" | "time_off" | "time_off_request_admin" }>;
+type TimedWeekItem = Extract<CalendarItem, { source: "calendar_event" | "crm_follow_up" | "time_off" | "time_off_request_admin" }>;
 
 export type TimedWeekSegment = { itemId: string; segmentId: string; item: TimedWeekItem; date: string; startMinute: number; endMinute: number };
 export type TimedWeekLayoutSegment = TimedWeekSegment & { column: number; columnCount: number };
@@ -469,7 +472,7 @@ function timeToMinute(value: string): number | null {
 }
 
 function getTimedWeekItemRange(item: CalendarItem): { item: TimedWeekItem; start: KyivDateTime; end: KyivDateTime } | null {
-  if (item.source === "calendar_event") {
+  if (item.source === "calendar_event" || item.source === "crm_follow_up") {
     if (item.allDay) return null;
     return { item, start: getKyivDateTime(item.startsAt), end: getKyivDateTime(item.endsAt) };
   }

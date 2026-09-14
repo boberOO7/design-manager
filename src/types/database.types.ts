@@ -643,7 +643,11 @@ export type Database = {
           first_contact_date: string
           id: string
           internal_notes: string | null
-          next_contact_date: string | null
+          invalid_reason:
+            | Database["public"]["Enums"]["crm_invalid_reason"]
+            | null
+          last_contacted_at: string | null
+          next_contact_at: string | null
           phone: string | null
           project_id: string | null
           request_description: string | null
@@ -671,7 +675,11 @@ export type Database = {
           first_contact_date: string
           id?: string
           internal_notes?: string | null
-          next_contact_date?: string | null
+          invalid_reason?:
+            | Database["public"]["Enums"]["crm_invalid_reason"]
+            | null
+          last_contacted_at?: string | null
+          next_contact_at?: string | null
           phone?: string | null
           project_id?: string | null
           request_description?: string | null
@@ -699,7 +707,11 @@ export type Database = {
           first_contact_date?: string
           id?: string
           internal_notes?: string | null
-          next_contact_date?: string | null
+          invalid_reason?:
+            | Database["public"]["Enums"]["crm_invalid_reason"]
+            | null
+          last_contacted_at?: string | null
+          next_contact_at?: string | null
           phone?: string | null
           project_id?: string | null
           request_description?: string | null
@@ -3283,6 +3295,12 @@ export type Database = {
         | "business_trip"
         | "work_makeup"
         | "interview"
+      crm_invalid_reason:
+        | "not_submitted"
+        | "wrong_number"
+        | "spam"
+        | "duplicate"
+        | "other"
       crm_lead_status:
         | "new"
         | "contacted"
@@ -3290,6 +3308,7 @@ export type Database = {
         | "proposal"
         | "won"
         | "lost"
+        | "invalid"
       equipment_lifecycle_state: "active" | "spare" | "in_service" | "retired"
       equipment_service_event_type: "regular_maintenance" | "repair" | "upgrade"
       equipment_type:
@@ -3497,6 +3516,13 @@ export const Constants = {
         "work_makeup",
         "interview",
       ],
+      crm_invalid_reason: [
+        "not_submitted",
+        "wrong_number",
+        "spam",
+        "duplicate",
+        "other",
+      ],
       crm_lead_status: [
         "new",
         "contacted",
@@ -3504,6 +3530,7 @@ export const Constants = {
         "proposal",
         "won",
         "lost",
+        "invalid",
       ],
       equipment_lifecycle_state: ["active", "spare", "in_service", "retired"],
       equipment_service_event_type: [

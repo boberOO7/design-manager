@@ -4,7 +4,8 @@ import { PROJECT_TYPE_KEYS } from "@/lib/validation/project";
 import { CRM_BUDGET_CURRENCIES } from "@/lib/crm-budget";
 import { normalizeUkrainianPhone, shouldFormatAsUkrainianPhone } from "@/lib/ukrainian-phone";
 
-export const CRM_LEAD_STATUSES = ["new", "contacted", "discussion", "proposal", "won", "lost"] as const;
+export const CRM_LEAD_STATUSES = ["new", "contacted", "discussion", "proposal", "won", "lost", "invalid"] as const;
+export const CRM_LEAD_INVALID_REASONS = ["not_submitted", "wrong_number", "spam", "duplicate", "other"] as const;
 export const CRM_LEAD_SOURCE_KEYS = ["website", "instagram", "referral", "partner"] as const;
 export const RECRUITING_STAGES = ["new", "interview_scheduled", "interview_completed", "test_task", "decision"] as const;
 export const RECRUITING_OUTCOMES = ["hired", "reserve", "rejected"] as const;
@@ -14,6 +15,10 @@ export type CrmLeadSourceSelection = CrmLeadSourceKey | "" | "other";
 
 export function isCrmLeadStatus(value: string): value is (typeof CRM_LEAD_STATUSES)[number] {
   return CRM_LEAD_STATUSES.some((status) => status === value);
+}
+
+export function isCrmLeadInvalidReason(value: string): value is (typeof CRM_LEAD_INVALID_REASONS)[number] {
+  return CRM_LEAD_INVALID_REASONS.some((reason) => reason === value);
 }
 
 export function isCrmLeadSourceKey(value: string | null | undefined): value is CrmLeadSourceKey {
@@ -32,6 +37,7 @@ export function resolveCrmLeadSourceValue(source: CrmLeadSourceSelection, source
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 const optionalUrl = z.union([z.literal(""), z.url().max(2000)]).optional().default("");
 const optionalDate = z.union([z.literal(""), z.iso.date()]).optional().default("");
+const optionalTime = z.union([z.literal(""), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)]).optional().default("");
 const optionalDateTime = z.union([z.literal(""), z.iso.datetime({ local: true })]).optional().default("");
 const optionalUuid = z.union([z.literal(""), z.uuid()]).optional().default("");
 const optionalEmail = z.string().trim().toLowerCase().max(320).refine((value) => !value || z.email().safeParse(value).success).optional().default("");
@@ -55,6 +61,7 @@ export const crmLeadSchema = z.object({
   responsible_admin_id: optionalUuid,
   first_contact_date: z.iso.date(),
   next_contact_date: optionalDate,
+  next_contact_time: optionalTime,
   internal_notes: optionalText(10000),
   status: z.enum(CRM_LEAD_STATUSES).optional().default("new"),
 }).superRefine((value, context) => {

@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(17);
 
 insert into public.studios(id, name) values
   ('53000000-0000-0000-0000-000000000001', 'CRM conversion A'),
@@ -20,7 +20,8 @@ insert into public.studio_members(studio_id,user_id,system_role) values
 set local role postgres;
 insert into public.crm_leads(id, studio_id, client_name, first_contact_date, status) values
   ('53000000-0000-0000-0000-000000000100','53000000-0000-0000-0000-000000000001','Vasyl','2026-09-09','discussion'),
-  ('53000000-0000-0000-0000-000000000101','53000000-0000-0000-0000-000000000001','Lost Client','2026-09-09','lost');
+  ('53000000-0000-0000-0000-000000000101','53000000-0000-0000-0000-000000000001','Lost Client','2026-09-09','lost'),
+  ('53000000-0000-0000-0000-000000000102','53000000-0000-0000-0000-000000000001','Invalid Client','2026-09-09','invalid');
 
 select set_config('request.jwt.claim.sub','53000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
@@ -53,6 +54,14 @@ select throws_like($$
   )
 $$,'%lost lead%','a lost Lead cannot be converted');
 select is((select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000101'),null::uuid,'failed conversion leaves the lost Lead unlinked');
+select throws_like($$
+  select public.create_project_from_template(
+    '{"studio_id":"53000000-0000-0000-0000-000000000001","source_lead_id":"53000000-0000-0000-0000-000000000102","name":"Invalid","country_code":"UA","total_area_m2":1,"priority":"normal","start_date":"2026-09-10"}'::jsonb,
+    '[]'::jsonb,
+    null
+  )
+$$,'%invalid lead%','an invalid Lead cannot be converted');
+select is((select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000102'),null::uuid,'failed conversion leaves the invalid Lead unlinked');
 
 set local role postgres;
 select set_config('request.jwt.claim.sub','53000000-0000-0000-0000-000000000011',true);
@@ -78,7 +87,7 @@ $$,'%administrators%','other-studio admin cannot convert the Lead');
 
 set local role postgres;
 select throws_ok($$update public.crm_leads set project_id=(select project_id from public.crm_leads where id='53000000-0000-0000-0000-000000000100') where id='53000000-0000-0000-0000-000000000101'$$,'23505',null,'one Project cannot be linked to a second Lead');
-select is((select count(*)::integer from public.crm_lead_history where lead_id in ('53000000-0000-0000-0000-000000000100','53000000-0000-0000-0000-000000000101') and event_type='project_linked'),1,'failed attempts do not append link history');
+select is((select count(*)::integer from public.crm_lead_history where lead_id in ('53000000-0000-0000-0000-000000000100','53000000-0000-0000-0000-000000000101','53000000-0000-0000-0000-000000000102') and event_type='project_linked'),1,'failed attempts do not append link history');
 
 select * from finish();
 rollback;

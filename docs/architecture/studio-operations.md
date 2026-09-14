@@ -46,10 +46,20 @@ migrations/tests.
   follow-up changes.
 - Lead creation and status changes append actor-attributed lifecycle rows in
   `crm_lead_history`; ordinary field edits are intentionally not audited there.
-- A Lead next-contact date schedules one future in-app notification for its
-  responsible active administrator. Date or assignee changes replace the unread
-  reminder, while clearing either side or deleting the Lead removes it. This is
-  intentionally independent of Calendar and Google Calendar.
+- A Lead follow-up is an exact `timestamptz`. It schedules one unread in-app
+  notification for the responsible active administrator and projects a timed,
+  admin-only item into StudioFlow Calendar without creating a `calendar_events`
+  row. Date/time or assignee changes replace the unread reminder; read reminder
+  history does not resolve the Lead follow-up. Completing or cancelling clears
+  the active follow-up, and deleting the Lead removes its reminder history.
+- Overdue state derives from the active Lead follow-up timestamp and therefore
+  persists independently of notification read state. Completion records
+  `last_contacted_at`; the administrator may then schedule the next follow-up.
+  The authenticated shell counts overdue active follow-ups assigned to the
+  current administrator for the CRM navigation badge, and the Leads workspace
+  exposes the same population as an optional attention filter.
+- The terminal `invalid` Lead status optionally records a structured invalid
+  reason, clears any active follow-up, and cannot be converted to a Project.
 - Lead project type, country, and city selection reuse the canonical Project
   metadata controls. New leads default to Ukraine; legacy free-text country and
   budget values remain readable until an administrator replaces them.
@@ -59,9 +69,10 @@ migrations/tests.
 - Lead source choices persist stable canonical keys for built-in options while
   custom `Other` values remain free text, so labels can stay localized without
   losing older arbitrary source values.
-- A non-lost Lead can create one Project through the shared Project form. The
-  existing Project/template RPC locks the Lead, creates the Project and template
-  work, links both records, and marks the Lead Won in one transaction. The
+- A Lead that is neither lost nor invalid can create one Project through the
+  shared Project form. The existing Project/template RPC locks the Lead, creates
+  the Project and template work, links both records, and marks the Lead Won in
+  one transaction. The
   normal status trigger and a project-linked lifecycle row preserve both events;
   manual Won remains valid without a Project.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt

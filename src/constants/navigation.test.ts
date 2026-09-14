@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNavigationItems, isNavigationItemActive } from "./navigation";
+import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive } from "./navigation";
 
 describe("application navigation", () => {
   it("hides administration, archive, and CRM from employees", () => {
@@ -31,5 +31,11 @@ describe("application navigation", () => {
   it("marks a workspace route active without matching unrelated prefixes", () => {
     expect(isNavigationItemActive("/projects/abc", "/projects")).toBe(true);
     expect(isNavigationItemActive("/project-settings", "/projects")).toBe(false);
+  });
+
+  it("caps compact navigation attention counts", () => {
+    expect(formatNavigationAttentionCount(1)).toBe("1");
+    expect(formatNavigationAttentionCount(9)).toBe("9");
+    expect(formatNavigationAttentionCount(10)).toBe("9+");
   });
 });

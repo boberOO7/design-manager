@@ -55,3 +55,7 @@ export function getNavigationItems(systemRole: string | null, leaderboardVisible
 export function isNavigationItemActive(pathname: string, href: NavigationItem["href"]): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+export function formatNavigationAttentionCount(count: number): string {
+  return count > 9 ? "9+" : String(count);
+}

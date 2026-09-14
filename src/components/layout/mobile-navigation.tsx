@@ -5,14 +5,14 @@ import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
+import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
 const mobileNavigationId = "mobile-application-navigation";
 
-export function MobileNavigation({ leaderboardVisibleToEmployees, systemRole }: { leaderboardVisibleToEmployees: boolean; systemRole: string }) {
+export function MobileNavigation({ crmAttentionCount, leaderboardVisibleToEmployees, systemRole }: { crmAttentionCount: number; leaderboardVisibleToEmployees: boolean; systemRole: string }) {
   const pathname = usePathname();
   const t = useTranslations("Navigation");
   const [open, setOpen] = useState(false);
@@ -54,9 +54,11 @@ export function MobileNavigation({ leaderboardVisibleToEmployees, systemRole }: 
           {items.map((item) => {
             const Icon = navigationIcons[item.href];
             const active = isNavigationItemActive(pathname, item.href);
+            const attentionCount = item.href === "/crm" ? crmAttentionCount : 0;
             return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={cn("flex min-h-11 items-center gap-3 rounded-[var(--ui-radius-control)] px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]")}>
               <Icon size={18} aria-hidden="true" />
               {t(item.messageKey)}
+              {attentionCount > 0 ? <><span aria-hidden="true" className="ml-auto min-w-4 rounded-full border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-1 text-center text-[10px] font-bold leading-[14px] text-[var(--ui-danger-text)]">{formatNavigationAttentionCount(attentionCount)}</span><span className="sr-only">{t("crmAttention", { count: attentionCount })}</span></> : null}
             </Link>;
           })}
         </nav>

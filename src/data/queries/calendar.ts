@@ -53,6 +53,17 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     .or(`and(series_id.is.null,cancelled_at.is.null,recurrence_rule.not.is.null),and(series_id.is.null,cancelled_at.is.null,recurrence_rule.is.null,starts_at.lt.${rangeEndExclusive},ends_at.gt.${rangeStartInstant}),and(series_id.not.is.null,occurrence_start.gte.${rangeStartInstant},occurrence_start.lt.${rangeEndExclusive})`)
     .order("starts_at");
 
+  const leadFollowUpsPromise = isAdmin
+    ? supabase
+      .from("crm_leads")
+      .select("id, client_name, next_contact_at, responsible_admin_id")
+      .eq("studio_id", membership.studio_id)
+      .not("next_contact_at", "is", null)
+      .gte("next_contact_at", rangeStartInstant)
+      .lt("next_contact_at", rangeEndExclusive)
+      .order("next_contact_at")
+    : Promise.resolve({ data: [], error: null });
+
   const timeOffPromise = supabase
     .from("time_off_requests")
     .select("id, user_id, request_type, start_date, end_date, start_time, end_time, all_day, private_note, status, reviewed_by, reviewed_at, subject:profiles!time_off_requests_user_id_fkey!inner(full_name)")
@@ -90,11 +101,12 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   const ownApprovedDayOffsPromise = supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId).eq("request_type", "day_off").eq("status", "approved");
   const calendarPreferencePromise = supabase.auth.getUser();
 
-  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult] = await Promise.all([
+  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, leadFollowUpsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult] = await Promise.all([
     projectsPromise,
     projectDeadlinesPromise,
     taskDeadlinesPromise,
     eventsPromise,
+    leadFollowUpsPromise,
     timeOffPromise,
     peoplePromise,
     systemMembersPromise,
@@ -104,7 +116,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     calendarPreferencePromise,
   ]);
 
-  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error].filter(Boolean);
+  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, leadFollowUpsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error].filter(Boolean);
   if (errors.length > 0) {
     console.error("Unable to load Calendar data", errors);
     throw new Error("Unable to load Calendar data.");
@@ -168,6 +180,16 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
         description: task.description, status: task.status, priority: task.priority,
         assigneeId: task.assignee_id, assigneeName: task.assignee.full_name,
       },
+    });
+  }
+
+  for (const lead of leadFollowUpsResult.data ?? []) {
+    if (!lead.next_contact_at) continue;
+    items.push({
+      source: "crm_follow_up", key: `crm_follow_up:${lead.id}`, id: lead.id,
+      title: lead.client_name, startDate: instantToDateOnly(lead.next_contact_at), endDate: instantToDateOnly(lead.next_contact_at), allDay: false,
+      startsAt: lead.next_contact_at, endsAt: new Date(new Date(lead.next_contact_at).getTime() + 30 * 60_000).toISOString(),
+      projectId: null, personIds: lead.responsible_admin_id ? [lead.responsible_admin_id] : [], responsibleAdminId: lead.responsible_admin_id,
     });
   }
 

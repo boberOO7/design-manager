@@ -4,6 +4,7 @@ import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
 
 const workspacePath = new URL("./leads-workspace.tsx", import.meta.url);
+const actionsPath = new URL("../../app/(app)/crm/actions.ts", import.meta.url);
 const metadataControlsPath = new URL("../projects/project-metadata-controls.tsx", import.meta.url);
 const cityComboboxPath = new URL("../projects/city-combobox.tsx", import.meta.url);
 const projectFormPath = new URL("../projects/project-form.tsx", import.meta.url);
@@ -56,6 +57,48 @@ describe("CRM leads workspace contract", () => {
     expect(uk.Crm.reminder.needsResponsible).toBeTruthy();
   });
 
+  it("schedules and reschedules in one compact dialog without replacing lead details", async () => {
+    const [workspace, actions] = await Promise.all([readFile(workspacePath, "utf8"), readFile(actionsPath, "utf8")]);
+    const followUpDialog = workspace.slice(workspace.indexOf("function LeadFollowUpDialog"), workspace.indexOf("function LeadHeaderActions"));
+    expect(workspace).toContain("getCrmFollowUpQuickChoice");
+    expect(workspace).toContain('<TimePicker name="next_contact_time"');
+    expect(workspace).toContain("isCrmFollowUpOverdue");
+    expect(workspace).toContain('onFollowUpAction("complete")');
+    expect(workspace).toContain('onFollowUpAction("cancel")');
+    expect(workspace).toContain("function LeadFollowUpDialog");
+    expect(workspace).toContain('mode === "reschedule" ? lead.next_contact_at : null');
+    expect(workspace).toContain('setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")');
+    expect(workspace).toContain('onSave={(followUp) => changeFollowUp("schedule", followUp)}');
+    expect(followUpDialog).not.toContain("AdminField");
+    expect(followUpDialog).not.toContain("NotesField");
+    expect(followUpDialog).not.toContain("ProjectTypeSelect");
+    expect(actions).toContain('action: z.literal("schedule")');
+    expect(actions).toContain("resolveCrmFollowUpAt(parsed.data.date, parsed.data.time)");
+    expect(actions).toContain('query.neq("status", "invalid")');
+    expect(uk.Crm.followUp.scheduleTitle).toBe("Запланувати контакт");
+    expect(uk.Crm.followUp.scheduleAction).toBe("Запланувати");
+    expect(uk.Crm.followUp.rescheduleTitle).toBe("Перенести контакт");
+    expect(uk.Crm.followUp.rescheduleAction).toBe("Перенести");
+    expect(Object.keys(en.Crm.followUp).sort()).toEqual(Object.keys(uk.Crm.followUp).sort());
+  });
+
+  it("offers an optional current-admin overdue filter using the shared attention rule", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("filterCrmLeadsNeedingAttention(leads, currentUserId)");
+    expect(workspace).toContain("attentionOnly ? attentionLeads : leads");
+    expect(workspace).toContain("aria-pressed={attentionOnly}");
+    expect(workspace).toContain('t("filters.needsAttention", { count: attentionLeads.length })');
+    expect(Object.keys(en.Crm.filters).sort()).toEqual(Object.keys(uk.Crm.filters).sort());
+  });
+
+  it("supports structured invalid leads without project conversion", async () => {
+    const workspace = await readFile(workspacePath, "utf8");
+    expect(workspace).toContain("CRM_LEAD_INVALID_REASONS.map");
+    expect(workspace).toContain('lead.status === "lost" || lead.status === "invalid"');
+    expect(uk.Crm.leadStatus.invalid).toBe("Хибний");
+    expect(Object.keys(en.Crm.invalidReason).sort()).toEqual(Object.keys(uk.Crm.invalidReason).sort());
+  });
+
   it("uses aligned shared city and date controls in the Lead form", async () => {
     const [workspace, cityCombobox, projectForm] = await Promise.all([
       readFile(workspacePath, "utf8"),
@@ -65,7 +108,7 @@ describe("CRM leads workspace contract", () => {
     expect(cityCombobox).toContain('cn("relative", className)');
     expect(projectForm).toContain('<CityCombobox className="mt-2"');
     expect(workspace).toContain('<DatePicker name="first_contact_date"');
-    expect(workspace).toContain('<DatePicker name="next_contact_date"');
+    expect(workspace).toContain('name="next_contact_date"');
     expect(workspace).not.toContain('name="first_contact_date" label={t("fields.firstContact")} type="date"');
   });
 
@@ -92,7 +135,7 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain("getLeadProjectDefaults(lead, defaultStartDate)");
     expect(workspace).toContain("client_name: lead.client_name");
     expect(workspace).toContain("description: lead.request_description ?? undefined");
-    expect(workspace).toContain('if (lead.status === "lost") return null');
+    expect(workspace).toContain('if (lead.status === "lost" || lead.status === "invalid") return null');
     expect(workspace).toContain("function LeadProjectAction");
     expect(workspace).toContain("if (lead.project_id)");
     expect(workspace).toContain("ml-[1.625rem]");
@@ -131,7 +174,7 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('function openConversion(item: CrmLead)');
     expect(workspace).toContain('setView("convert")');
     expect(projectAction).toContain('if (lead.project_id)');
-    expect(projectAction).toContain('if (lead.status === "lost") return null');
+    expect(projectAction).toContain('if (lead.status === "lost" || lead.status === "invalid") return null');
     expect(projectAction).toContain('event.stopPropagation()');
     expect(projectAction).toContain('href={`/projects/${lead.project_id}`}');
   });

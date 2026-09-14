@@ -13,4 +13,9 @@ describe("Dialog focus management", () => {
     expect(source).toContain('addEventListener("keydown", handleKeyDown, true)');
     expect(source).toContain('removeEventListener("keydown", handleKeyDown, true)');
   });
+
+  it("limits Escape and focus trapping to the topmost nested dialog", () => {
+    expect(source).toContain("function isTopmostDialog");
+    expect(source).toContain("event.defaultPrevented || !isTopmostDialog(panel)");
+  });
 });

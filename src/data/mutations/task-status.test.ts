@@ -34,4 +34,10 @@ describe("task status mutation contract", () => {
     expect(source).toContain("p_target_status: parsed.data.target_status");
     expect(source).toContain("p_due_date: parsed.data.due_date");
   });
+
+  it("passes useful bulk RPC validation errors through to the API", async () => {
+    const source = await readFile(mutationPath, "utf8");
+
+    expect(source).toContain('return { formError: error.message || "The task batch could not be moved. Please try again.", success: false };');
+  });
 });
