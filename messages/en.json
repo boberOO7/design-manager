@@ -1598,7 +1598,36 @@
     "create": "Create project",
     "creating": "Creating…",
     "save": "Save changes",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "validation": {
+      "correctFields": "Please correct the highlighted fields.",
+      "nameRequired": "Enter a project name.",
+      "nameTooLong": "The project name is too long.",
+      "projectTypeInvalid": "Choose a valid project type.",
+      "projectTypeCustomTooLong": "The custom project type is too long.",
+      "countryInvalid": "Choose a valid country.",
+      "cityTooLong": "The city name is too long.",
+      "cityGeoNamesInvalid": "Choose the city again.",
+      "clientNameTooLong": "The client name is too long.",
+      "descriptionTooLong": "The description is too long.",
+      "areaInvalid": "Enter a valid total area.",
+      "areaPositive": "Total area must be greater than zero.",
+      "priorityInvalid": "Choose a valid priority.",
+      "dateInvalid": "Choose a valid date.",
+      "dueDateBeforeStart": "The due date cannot be earlier than the start date.",
+      "completionDateFuture": "The completion date cannot be in the future.",
+      "stageAssigneesInvalid": "Choose valid stage assignees."
+    },
+    "errors": {
+      "createPermission": "Only active studio administrators can create projects.",
+      "invalidSourceLead": "The source lead is invalid.",
+      "createFailed": "The project could not be created. Please try again.",
+      "editPermission": "Only active studio administrators can edit projects.",
+      "unavailable": "The project was not found or is not available.",
+      "statusManaged": "Project status is managed through lifecycle actions.",
+      "updateFailed": "The project could not be updated. Please try again.",
+      "completionDateFailed": "The project completion date could not be updated. Please try again."
+    }
   },
   "ProjectTypes": {
     "private": "Private",

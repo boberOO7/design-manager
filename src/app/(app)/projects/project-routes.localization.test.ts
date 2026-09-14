@@ -30,5 +30,8 @@ describe("project create and edit route localization", () => {
     expect(uk.Projects.newProjectDescription).toBe("Створіть новий проєкт для вашої студії.");
     expect(uk.Projects.editProject).toBe("Редагувати проєкт");
     expect(uk.Projects.editProjectDescription).toBe("Оновіть проєкт {projectName}.");
+    expect(Object.keys(en.ProjectForm.validation).sort()).toEqual(Object.keys(uk.ProjectForm.validation).sort());
+    expect(uk.ProjectForm.validation.correctFields).toBe("Виправте виділені поля.");
+    expect(uk.ProjectForm.validation.areaPositive).toBe("Площа має бути більшою за нуль.");
   });
 });

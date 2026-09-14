@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { editProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, PROJECT_TYPE_KEYS, projectCompletionDateSchema, projectSchema } from "./project";
+import en from "../../../messages/en.json";
+import uk from "../../../messages/uk.json";
+import { createEditProjectSchema, createProjectCompletionDateSchema, createProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, getProjectValidationFailure, PROJECT_TYPE_KEYS } from "./project";
+
+const projectSchema = createProjectSchema(en.ProjectForm.validation);
+const editProjectSchema = createEditProjectSchema(en.ProjectForm.validation);
+const projectCompletionDateSchema = createProjectCompletionDateSchema(en.ProjectForm.validation);
 
 const project = {
   name: "Apartment renovation",
@@ -53,6 +59,52 @@ describe("project form metadata", () => {
     formData.set("project_type_custom", "Auto showroom");
     expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city, city_geonames_id: String(project.city_geonames_id), project_type_custom: "Auto showroom" });
     expect(getProjectFormInput(formData)).not.toHaveProperty("project_name");
+  });
+
+  it("keeps all submitted field types available while one field is corrected and resubmitted", () => {
+    const formData = new FormData();
+    for (const [field, value] of Object.entries({ ...project, project_name: project.name, project_type: "commercial", total_area_m2: "0" })) {
+      if (field !== "name") formData.set(field, String(value));
+    }
+    const first = projectSchema.safeParse(getProjectFormInput(formData));
+    expect(first.success).toBe(false);
+    if (first.success) return;
+    expect(getProjectValidationFailure(first.error, en.ProjectForm.validation.correctFields)).toEqual({
+      formError: en.ProjectForm.validation.correctFields,
+      fieldErrors: { total_area_m2: en.ProjectForm.validation.areaPositive },
+    });
+    expect(Object.fromEntries(formData)).toMatchObject({
+      project_name: project.name,
+      project_type: "commercial",
+      country_code: "UA",
+      city: "Kyiv",
+      city_geonames_id: "703448",
+      client_name: "Olena K.",
+      priority: "normal",
+      start_date: "2026-08-03",
+      due_date: "",
+      description: "",
+    });
+
+    formData.set("total_area_m2", "96");
+    expect(projectSchema.safeParse(getProjectFormInput(formData)).success).toBe(true);
+  });
+
+  it("uses localized field-specific Project validation messages", () => {
+    const invalid = { ...project, name: "", total_area_m2: 0 };
+    const english = createProjectSchema(en.ProjectForm.validation).safeParse(invalid);
+    const ukrainian = createProjectSchema(uk.ProjectForm.validation).safeParse(invalid);
+    expect(english.success).toBe(false);
+    expect(ukrainian.success).toBe(false);
+    if (english.success || ukrainian.success) return;
+    expect(getProjectValidationFailure(english.error, en.ProjectForm.validation.correctFields)).toMatchObject({
+      formError: "Please correct the highlighted fields.",
+      fieldErrors: { name: "Enter a project name.", total_area_m2: "Total area must be greater than zero." },
+    });
+    expect(getProjectValidationFailure(ukrainian.error, uk.ProjectForm.validation.correctFields)).toMatchObject({
+      formError: "Виправте виділені поля.",
+      fieldErrors: { name: "Вкажіть назву проєкту.", total_area_m2: "Площа має бути більшою за нуль." },
+    });
   });
 
   it("accepts historical completion dates but rejects invalid or future dates", () => {

@@ -30,6 +30,9 @@ describe("compact project creation contract", () => {
     expect(action).toContain("return { projectId: data }");
     expect(action).not.toContain("service_role");
     expect(action).not.toContain("project_code:");
+    expect(action).toContain('getTranslations("ProjectForm")');
+    expect(action).not.toContain("Please correct the highlighted fields.");
+    expect(action).not.toContain("Total area must be greater than zero");
   });
 
   it("opens editing through the same URL-preserving modal and refreshes the workspace", async () => {
@@ -40,9 +43,11 @@ describe("compact project creation contract", () => {
     expect(context).toContain("<ProjectEditModal");
     expect(context).not.toContain("/edit");
     expect(sharedModal).toContain("returnFocusRef={triggerRef}");
-    expect(sharedModal).toContain("getProjectDialogCloseIntent(isDirty, reason)");
+    expect(sharedModal).toContain("getProjectDialogCloseIntent(mode, isDirty, reason)");
     expect(editAction).toContain("revalidateProjectRoutes(project.id);\n  return { projectId: project.id };");
     expect(editAction).toContain('project.status === "completed"');
+    expect(editAction).toContain('getTranslations("ProjectForm")');
+    expect(editAction).not.toContain("Please correct the highlighted fields.");
     for (const field of ["name", "project_type", "project_type_custom", "country_code", "city", "city_geonames_id", "client_name", "description", "total_area_m2", "priority", "start_date", "due_date"]) {
       expect(context).toContain(`${field}: project.${field}`);
     }
@@ -53,6 +58,15 @@ describe("compact project creation contract", () => {
     expect(source).toContain("<input data-dialog-initial-focus name=\"project_name\"");
     expect(source).toContain('autoComplete="off" noValidate');
     expect(source).not.toContain('mode === "create" ? "" : undefined');
+  });
+
+  it("dispatches create and edit submissions without React action-form resets", async () => {
+    const source = await readFile(formPath, "utf8");
+    expect(source).toContain("event.preventDefault();");
+    expect(source).toContain("const formData = new FormData(event.currentTarget);");
+    expect(source).toContain("startTransition(() => formAction(formData));");
+    expect(source).toContain("createProjectSchema(messages) : createEditProjectSchema(messages)");
+    expect(source).not.toContain("action={formAction}");
   });
 
   it("keeps a GeoNames id separate from the browser-visible city search value", async () => {

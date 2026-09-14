@@ -44,7 +44,7 @@ export function ProjectFormModal({
 
   function requestClose(reason: DialogCloseReason) {
     if (isPending) return;
-    const intent = getProjectDialogCloseIntent(isDirty, reason);
+    const intent = getProjectDialogCloseIntent(mode, isDirty, reason);
     if (intent === "ignore") return;
     if (intent === "confirm" && !window.confirm(discardMessage)) return;
     setIsDirty(false);

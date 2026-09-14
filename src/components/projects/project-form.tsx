@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check } from "lucide-react";
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
-import { type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
+import { createEditProjectSchema, createProjectSchema, getProjectFormInput, getProjectValidationFailure, getProjectValidationMessages, type ProjectFormActionState, type ProjectFormField } from "@/lib/validation/project";
 import { cn } from "@/lib/utils";
 import { getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateStageTasks, PROJECT_TEMPLATE_STAGES, type ProjectTemplate } from "@/lib/project-templates";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
@@ -53,6 +53,8 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const locale = useLocale();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState<ProjectFormActionState, FormData>(action, {});
+  const [clientValidation, setClientValidation] = useState<{ actionState: ProjectFormActionState; result: ProjectFormActionState } | null>(null);
+  const visibleState = clientValidation?.actionState === state ? clientValidation.result : state;
   const metadata = useProjectMetadataControls({
     city: defaultValues.city,
     cityGeoNamesId: defaultValues.city_geonames_id,
@@ -72,17 +74,18 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   }, [isPending, onPendingChange]);
 
   useEffect(() => {
-    if (!state.fieldErrors) return;
+    if (!visibleState.fieldErrors) return;
     formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus({ preventScroll: true });
-  }, [state.fieldErrors]);
+  }, [visibleState.fieldErrors]);
 
-  const fieldError = (field: ProjectFormField) => state.fieldErrors?.[field];
+  const fieldError = (field: ProjectFormField) => visibleState.fieldErrors?.[field];
   const errorAttributes = (field: ProjectFormField) => ({
     "aria-describedby": fieldError(field) ? `${field}-error` : undefined,
     "aria-invalid": fieldError(field) ? (true as const) : undefined,
   });
   const dateErrorAttributes = (field: ProjectFormField) => ({
     "aria-describedby": fieldError(field) ? `${field}-error` : undefined,
+    "aria-invalid": fieldError(field) ? (true as const) : undefined,
   });
   const markDirty = () => onDirtyChange?.(true);
 
@@ -90,6 +93,20 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     metadata.changeProjectType(value);
     setStageAssignees({});
     setSelectedTemplateId(getDefaultProjectTemplate(templates, value)?.id ?? "");
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isPending) return;
+    const formData = new FormData(event.currentTarget);
+    const messages = getProjectValidationMessages(t);
+    const parsed = (mode === "create" ? createProjectSchema(messages) : createEditProjectSchema(messages)).safeParse(getProjectFormInput(formData));
+    if (!parsed.success) {
+      setClientValidation({ actionState: state, result: getProjectValidationFailure(parsed.error, t("validation.correctFields")) });
+      return;
+    }
+    setClientValidation({ actionState: state, result: {} });
+    startTransition(() => formAction(formData));
   }
 
   const fields = <div className="grid gap-4 md:grid-cols-2">
@@ -144,10 +161,10 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
     </Field>
   </div>;
 
-  return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} action={formAction} autoComplete="off" noValidate onInput={markDirty} onSubmit={(event) => { if (isPending) event.preventDefault(); }}>
+  return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} autoComplete="off" noValidate onInput={markDirty} onSubmit={submit}>
     <div className={cn(layout === "modal" ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6" : undefined)}>{fields}
       <p aria-live="polite" className={metadata.countryResetMessage ? "mt-3 text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{metadata.countryResetMessage}</p>
-      {state.formError ? <div role="alert" className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{state.formError}</div> : null}
+      {visibleState.formError ? <div role="alert" className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{visibleState.formError}</div> : null}
     </div>
     <div className={cn("flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--ui-border)] sm:flex-row sm:justify-end", layout === "modal" ? "bg-[var(--ui-surface)] px-4 py-3 sm:px-6" : "pt-5")}>
       {onCancel ? <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>{t("cancel")}</Button> : cancelHref ? <Button asChild type="button" variant="outline"><Link href={cancelHref}>{t("cancel")}</Link></Button> : null}

@@ -148,6 +148,8 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('if (lead.status === "lost" || lead.status === "invalid") return null');
     expect(workspace).toContain("function LeadProjectAction");
     expect(workspace).toContain("if (lead.project_id)");
+    expect(workspace).not.toContain("conversionDirty");
+    expect(workspace).not.toContain('projectForm("discardChanges")');
     expect(workspace).toContain("ml-[1.625rem]");
     expect(workspace).not.toContain('className="mt-0.5 size-4 text-[var(--ui-text-muted)]"');
     expect(en.Crm.conversion.action).toBeTruthy();

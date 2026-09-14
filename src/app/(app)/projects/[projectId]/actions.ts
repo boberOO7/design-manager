@@ -2,18 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { createClient } from "@/lib/supabase/server";
 import {
-  editProjectSchema,
+  createEditProjectSchema,
+  createProjectCompletionDateSchema,
   getProjectFormInput,
-  projectCompletionDateSchema,
+  getProjectValidationFailure,
+  getProjectValidationMessages,
   type ProjectFormActionState,
-  type ProjectFormField,
 } from "@/lib/validation/project";
-
-const unavailableProjectError = "The project was not found or is not available.";
 
 function revalidateProjectRoutes(projectId: string) {
   revalidatePath("/projects");
@@ -26,9 +26,9 @@ export async function updateProject(
   _previousState: ProjectFormActionState,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
-  const membership = await getActiveStudioAdmin();
+  const [membership, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("ProjectForm")]);
   if (!membership) {
-    return { formError: "Only active studio administrators can edit projects." };
+    return { formError: t("errors.editPermission") };
   }
 
   const project = await getProjectById(projectId);
@@ -39,25 +39,17 @@ export async function updateProject(
     project.status === "archived" ||
     project.archived_at
   ) {
-    return { formError: unavailableProjectError };
+    return { formError: t("errors.unavailable") };
   }
 
   if (formData.has("status")) {
-    return { formError: "Project status is managed through lifecycle actions." };
+    return { formError: t("errors.statusManaged") };
   }
 
   const input = getProjectFormInput(formData);
-  const parsed = editProjectSchema.safeParse(input);
+  const parsed = createEditProjectSchema(getProjectValidationMessages(t)).safeParse(input);
   if (!parsed.success) {
-    const flattened = parsed.error.flatten().fieldErrors;
-    const fieldErrors: Partial<Record<ProjectFormField, string>> = {};
-
-    for (const field of Object.keys(flattened) as ProjectFormField[]) {
-      const message = flattened[field]?.[0];
-      if (message) fieldErrors[field] = message;
-    }
-
-    return { formError: "Please correct the highlighted fields.", fieldErrors };
+    return getProjectValidationFailure(parsed.error, t("validation.correctFields"));
   }
 
   const values = parsed.data;
@@ -85,7 +77,7 @@ export async function updateProject(
 
   if (error || !data) {
     console.error("Unable to update project", error);
-    return { formError: "The project could not be updated. Please try again." };
+    return { formError: t("errors.updateFailed") };
   }
 
   revalidateProjectRoutes(project.id);
@@ -97,19 +89,20 @@ export async function updateProjectCompletionDate(
   _previousState: ProjectFormActionState,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
-  const parsed = projectCompletionDateSchema.safeParse({ completed_at: formData.get("completed_at") });
+  const t = await getTranslations("ProjectForm");
+  const parsed = createProjectCompletionDateSchema(getProjectValidationMessages(t)).safeParse({ completed_at: formData.get("completed_at") });
   if (!parsed.success) {
     return {
-      formError: "Please correct the highlighted field.",
-      fieldErrors: { completed_at: parsed.error.issues[0]?.message ?? "Enter a valid completion date." },
+      formError: t("validation.correctFields"),
+      fieldErrors: { completed_at: parsed.error.issues[0]?.message ?? t("validation.dateInvalid") },
     };
   }
 
   const membership = await getActiveStudioAdmin();
-  if (!membership) return { formError: "Only active studio administrators can edit projects." };
+  if (!membership) return { formError: t("errors.editPermission") };
   const project = await getProjectById(projectId);
   if (!project || project.studio_id !== membership.studio_id || project.status !== "completed" || project.archived_at) {
-    return { formError: unavailableProjectError };
+    return { formError: t("errors.unavailable") };
   }
   if (project.completed_at === parsed.data.completed_at) return { projectId: project.id };
 
@@ -126,7 +119,7 @@ export async function updateProjectCompletionDate(
 
   if (error || !data) {
     console.error("Unable to update project completion date", error);
-    return { formError: "The project completion date could not be updated. Please try again." };
+    return { formError: t("errors.completionDateFailed") };
   }
 
   revalidateProjectRoutes(project.id);

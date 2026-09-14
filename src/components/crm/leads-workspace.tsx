@@ -15,7 +15,7 @@ import { ProjectForm, type ProjectFormDefaults } from "@/components/projects/pro
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -31,7 +31,6 @@ import { getCrmLeadStatusBadgeStyle } from "@/lib/semantic-styles";
 import { CRM_LEAD_INVALID_REASONS, CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadInvalidReason, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
 import type { ProjectTemplate } from "@/lib/project-templates";
-import { getProjectDialogCloseIntent } from "@/lib/project-dialog";
 
 function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement) {
   if (!(target instanceof Element)) return false;
@@ -41,7 +40,6 @@ function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement)
 
 export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initialLeadId, leads, members, templates }: { admins: CrmAdmin[]; currentUserId: string | null; defaultStartDate: string; initialLeadId?: string; leads: CrmLead[]; members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }) {
   const t = useTranslations("Crm");
-  const projectForm = useTranslations("ProjectForm");
   const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -52,7 +50,6 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
   const [history, setHistory] = useState<CrmLeadHistory[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [conversionDirty, setConversionDirty] = useState(false);
   const [conversionPending, setConversionPending] = useState(false);
   const [followUpMode, setFollowUpMode] = useState<"schedule" | "reschedule" | null>(null);
   const attentionLeads = useMemo(() => filterCrmLeadsNeedingAttention(leads, currentUserId), [currentUserId, leads]);
@@ -66,7 +63,6 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
 
   function openConversion(item: CrmLead) {
     setOpenLead(item);
-    setConversionDirty(false);
     setView("convert");
   }
 
@@ -75,24 +71,16 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
     setView("edit");
   }
 
-  function closeDialog(reason: DialogCloseReason) {
+  function closeDialog() {
     if (deleting || conversionPending) return;
-    if (view === "convert") {
-      const intent = getProjectDialogCloseIntent(conversionDirty, reason);
-      if (intent === "ignore") return;
-      if (intent === "confirm" && !window.confirm(projectForm("discardChanges"))) return;
-    }
     setOpenLead(null);
     setHistory(null);
     setHistoryError(null);
-    setConversionDirty(false);
     setFollowUpMode(null);
   }
 
   function cancelConversion() {
     if (conversionPending) return;
-    if (conversionDirty && !window.confirm(projectForm("discardChanges"))) return;
-    setConversionDirty(false);
     setView("detail");
   }
 
@@ -156,7 +144,7 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
       </table></div> : <EmptyState title={query || status !== "all" || attentionOnly ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" || attentionOnly ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
     <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onDirtyChange={setConversionDirty} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionDirty(false); setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : () => closeDialog("explicit")} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <ProjectForm action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" members={members} mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} templates={templates} /> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => { setOpenLead(null); router.refresh(); }}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
     {lead && followUpMode ? <LeadFollowUpDialog defaultStartDate={defaultStartDate} lead={lead} mode={followUpMode} onClose={() => setFollowUpMode(null)} onSave={(followUp) => changeFollowUp("schedule", followUp)} /> : null}
   </>;

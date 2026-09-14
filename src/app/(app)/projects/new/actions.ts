@@ -1,16 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TEMPLATE_STAGES, isProjectTemplateStage } from "@/lib/project-templates";
 import {
+  createProjectSchema,
   getProjectFormInput,
-  projectSchema,
+  getProjectValidationFailure,
+  getProjectValidationMessages,
   type ProjectFormActionState,
-  type ProjectFormField,
-  type ProjectFormValues,
 } from "@/lib/validation/project";
 
 export async function createProject(
@@ -32,33 +33,25 @@ async function createProjectRecord(
   sourceLeadId: string | null,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
-  const membership = await getActiveStudioMembership();
+  const [membership, t] = await Promise.all([getActiveStudioMembership(), getTranslations("ProjectForm")]);
 
   if (!membership || membership.system_role !== "admin") {
-    return { formError: "Only active studio administrators can create projects." };
+    return { formError: t("errors.createPermission") };
   }
   if (sourceLeadId && !z.uuid().safeParse(sourceLeadId).success) {
-    return { formError: "The source lead is invalid." };
+    return { formError: t("errors.invalidSourceLead") };
   }
 
-  const parsed = projectSchema.safeParse(getProjectFormInput(formData));
+  const parsed = createProjectSchema(getProjectValidationMessages(t)).safeParse(getProjectFormInput(formData));
 
   if (!parsed.success) {
-    const flattened = parsed.error.flatten().fieldErrors;
-    const fieldErrors: Partial<Record<ProjectFormField, string>> = {};
-
-    for (const field of Object.keys(flattened) as Array<keyof ProjectFormValues>) {
-      const message = flattened[field]?.[0];
-      if (message) fieldErrors[field] = message;
-    }
-
-    return { formError: "Please correct the highlighted fields.", fieldErrors };
+    return getProjectValidationFailure(parsed.error, t("validation.correctFields"));
   }
 
   const supabase = await createClient();
   const project = parsed.data;
   const stageAssignees = getStageAssignees(formData);
-  if (!stageAssignees) return { formError: "Choose valid stage assignees." };
+  if (!stageAssignees) return { formError: t("validation.stageAssigneesInvalid") };
   const { data, error: insertError } = await supabase.rpc("create_project_from_template", {
     p_project: {
       studio_id: membership.studio_id,
@@ -82,7 +75,7 @@ async function createProjectRecord(
 
   if (insertError || !data) {
     console.error("Unable to create project", insertError);
-    return { formError: "The project could not be created. Please try again." };
+    return { formError: t("errors.createFailed") };
   }
 
   revalidatePath("/projects");

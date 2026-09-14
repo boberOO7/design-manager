@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 import { canUpdateProjectMetadata, canWorkOnTaskInProject, countOpenLifecycleTasks, getAutomaticProjectStatus, getLifecycleCompletedAt, getRestoredProjectStatus, getTaskCreationStagesForProject, hasProgressedEligibleTasks, isOperationalProjectStatus, isValidArchiveState, OPERATIONAL_PROJECT_STATUSES, validateLifecycleTransition } from "./project-lifecycle";
 import { TASK_STAGES } from "./task-stages";
 import { isWritableTaskStatus } from "./tasks";
-import { editProjectSchema } from "./validation/project";
+import en from "../../messages/en.json";
+import { createEditProjectSchema } from "./validation/project";
+
+const editProjectSchema = createEditProjectSchema(en.ProjectForm.validation);
 
 const lifecycleMutationSource = readFileSync(resolve(process.cwd(), "src/data/mutations/project-lifecycle.ts"), "utf8");
 
