@@ -9,6 +9,7 @@ const query = readFileSync("src/data/queries/equipment.ts", "utf8");
 const shell = readFileSync("src/components/office/office-shell.tsx", "utf8");
 const cron = readFileSync("src/app/api/equipment/maintenance-notifications/route.ts", "utf8");
 const styles = readFileSync("src/app/globals.css", "utf8");
+const binarySwitch = form.slice(form.indexOf("export function BinarySwitch"), form.indexOf("function CapacityInput"));
 
 describe("Equipment application flow", () => {
   it("keeps navigation and page loading admin-only", () => {
@@ -125,6 +126,18 @@ describe("Equipment application flow", () => {
     expect(form).toContain('showMaintenanceFields ? <fieldset');
   });
 
+  it("keeps workstation creation controls aligned without switch label movement", () => {
+    expect(workspace).toContain('<FormField as="div" label={t("workstation.form.quantity")}');
+    expect(workspace).toContain('<span className="flex h-11" data-quantity-stepper>');
+    expect(workspace).toContain('className="w-40" label={<span className="whitespace-nowrap">');
+    expect(binarySwitch).toContain('text-sm font-medium transition-colors');
+    expect(binarySwitch).toContain('transition-[transform,opacity] duration-[220ms] ease-out');
+    expect(binarySwitch).toContain('style={{ transform: `translateX(');
+    expect(binarySwitch).not.toContain("translate-x-");
+    expect(binarySwitch).not.toContain("font-semibold");
+    expect(binarySwitch).not.toContain("motion-reduce:transition-none");
+  });
+
   it("keeps workstation context mounted under a nested equipment drawer", () => {
     expect(workspace).toContain('next.set("equipment", id)');
     expect(workspace).toContain('isTopLayer={!selectedEquipment}');
@@ -186,7 +199,7 @@ describe("Equipment application flow", () => {
     expect(form).toContain("onClick={() => onChange(selectedIndex === 0 ? options[1] : options[0])}");
     expect(form).toContain("data-binary-switch-thumb");
     expect(form).toContain("duration-200");
-    expect(form).toContain("motion-reduce:transition-none");
+    expect(form).not.toContain("motion-reduce:transition-none");
     expect(form).not.toContain("<SegmentedControl");
     expect(form).not.toContain('t("configuration.save")');
     expect(workspace).not.toContain("dirtyConfiguration");

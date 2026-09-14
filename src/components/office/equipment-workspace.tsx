@@ -363,11 +363,10 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
   return <Dialog className="max-w-3xl sm:h-[min(48rem,calc(100dvh-2rem))]" closeDisabled={pending} closeLabel={t("close")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("workstation.form.createTitle")}>
     <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 sm:p-6">
       <div className="flex shrink-0 flex-wrap items-end gap-4">
-        <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{t("workstation.form.quantity")}</legend>
-          <span data-quantity-stepper><NumericStepper ariaLabel={t("workstation.form.quantity")} decreaseLabel={t("workstation.form.decreaseQuantity")} increaseLabel={t("workstation.form.increaseQuantity")} max={50} value={String(quantity)} onValueChange={(value) => changeQuantity(Number(value))} /></span>
-        </fieldset>
-        <FormField className="w-28" label={t("workstation.form.startingNumber")}><Input className="appearance-none text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" inputMode="numeric" type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => changeStartingNumber(Number(event.target.value))} /></FormField>
+        <FormField as="div" label={t("workstation.form.quantity")}>
+          <span className="flex h-11" data-quantity-stepper><NumericStepper ariaLabel={t("workstation.form.quantity")} decreaseLabel={t("workstation.form.decreaseQuantity")} increaseLabel={t("workstation.form.increaseQuantity")} max={50} value={String(quantity)} onValueChange={(value) => changeQuantity(Number(value))} /></span>
+        </FormField>
+        <FormField className="w-40" label={<span className="whitespace-nowrap">{t("workstation.form.startingNumber")}</span>}><Input className="appearance-none text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" inputMode="numeric" type="number" min={1} max={1_000_000} value={startingNumber} onChange={(event) => changeStartingNumber(Number(event.target.value))} /></FormField>
       </div>
 
       <div className="max-w-72">

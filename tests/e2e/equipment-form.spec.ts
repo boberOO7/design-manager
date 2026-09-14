@@ -219,6 +219,9 @@ test("workstation bulk dialog keeps compact controls and stable geometry", async
   const startingNumber = dialog.getByLabel(t.workstation.form.startingNumber, { exact: true });
   const increase = dialog.getByRole("button", { name: t.workstation.form.increaseQuantity, exact: true });
   const decrease = dialog.getByRole("button", { name: t.workstation.form.decreaseQuantity, exact: true });
+  const workstationType = dialog.locator("[data-binary-switch-state]");
+  const leftTypeLabel = workstationType.locator('[data-binary-switch-label="left"]');
+  const rightTypeLabel = workstationType.locator('[data-binary-switch-label="right"]');
   const rows = dialog.locator("[data-workstation-draft]");
   const editor = dialog.locator("[data-workstation-editor]");
   const firstName = rows.first().locator('input:not([type="number"])');
@@ -233,6 +236,56 @@ test("workstation bulk dialog keeps compact controls and stable geometry", async
   const baselineIncreaseBox = initialIncreaseBox;
   expect(baselineIncreaseBox.width).toBeGreaterThanOrEqual(44);
   expect(baselineIncreaseBox.height).toBeGreaterThanOrEqual(44);
+  const quantityControlBox = await dialog.locator("[data-numeric-stepper]").boundingBox();
+  const startingNumberBox = await startingNumber.boundingBox();
+  const quantityFieldBox = await dialog.locator("[data-quantity-stepper]").locator("..").boundingBox();
+  const startingNumberFieldBox = await startingNumber.locator("..").boundingBox();
+  const quantityFieldStyle = await dialog.locator("[data-quantity-stepper]").locator("..").evaluate((element) => {
+    const field = getComputedStyle(element);
+    const label = getComputedStyle(element.firstElementChild!);
+    return { fontSize: label.fontSize, lineHeight: label.lineHeight, marginBottom: label.marginBottom, rowGap: field.rowGap, paddingTop: field.paddingTop, paddingBottom: field.paddingBottom };
+  });
+  const startingNumberFieldStyle = await startingNumber.locator("..").evaluate((element) => {
+    const field = getComputedStyle(element);
+    const label = getComputedStyle(element.firstElementChild!);
+    return { fontSize: label.fontSize, lineHeight: label.lineHeight, marginBottom: label.marginBottom, rowGap: field.rowGap, paddingTop: field.paddingTop, paddingBottom: field.paddingBottom };
+  });
+  const leftLabelBox = await leftTypeLabel.boundingBox();
+  const rightLabelBox = await rightTypeLabel.boundingBox();
+  if (!quantityControlBox || !startingNumberBox || !quantityFieldBox || !startingNumberFieldBox || !leftLabelBox || !rightLabelBox) throw new Error("Missing workstation control geometry");
+  expect(quantityControlBox.height).toBe(44);
+  expect(startingNumberBox.height).toBe(quantityControlBox.height);
+  expect(startingNumberBox.y).toBe(quantityControlBox.y);
+  expect(startingNumberFieldBox.height).toBe(quantityFieldBox.height);
+  expect(startingNumberFieldBox.y).toBe(quantityFieldBox.y);
+  expect(startingNumberFieldStyle).toEqual(quantityFieldStyle);
+  expect(startingNumberBox.width).toBeGreaterThan(150);
+  const thumb = workstationType.locator("[data-binary-switch-thumb]");
+  const initialThumbBox = await thumb.boundingBox();
+  const thumbTransition = await thumb.evaluate((element) => ({ duration: getComputedStyle(element).transitionDuration, property: getComputedStyle(element).transitionProperty }));
+  expect(thumbTransition).toEqual({ duration: "0.22s", property: "transform, opacity" });
+  await workstationType.click();
+  await expect(workstationType).toHaveAttribute("data-binary-switch-state", "right");
+  await page.waitForTimeout(80);
+  const movingThumbBox = await thumb.boundingBox();
+  await page.waitForTimeout(180);
+  const finalThumbBox = await thumb.boundingBox();
+  if (!initialThumbBox || !movingThumbBox || !finalThumbBox) throw new Error("Missing switch thumb geometry");
+  expect(movingThumbBox.x).toBeGreaterThan(initialThumbBox.x);
+  expect(movingThumbBox.x).toBeLessThan(finalThumbBox.x);
+  expect(finalThumbBox.x - initialThumbBox.x).toBeCloseTo(28, 0);
+  const movedLeftLabelBox = await leftTypeLabel.boundingBox();
+  const movedRightLabelBox = await rightTypeLabel.boundingBox();
+  expect(movedLeftLabelBox).toEqual(leftLabelBox);
+  expect(movedRightLabelBox).toEqual(rightLabelBox);
+  await workstationType.click();
+  await page.waitForTimeout(40);
+  await workstationType.click();
+  await page.waitForTimeout(40);
+  await workstationType.click();
+  await expect(workstationType).toHaveAttribute("data-binary-switch-state", "left");
+  await page.waitForTimeout(240);
+  expect((await thumb.boundingBox())?.x).toBeCloseTo(initialThumbBox.x, 0);
   await firstName.fill("Keep this name");
 
   async function verifyQuantity(value: number) {
