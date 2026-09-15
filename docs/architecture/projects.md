@@ -42,7 +42,9 @@ Invariants:
   production task has progressed beyond To do.
 - Reopening a completed project clears its completion date.
 - Administrators may correct a completed project's authoritative `completed_at`
-  date without replaying a lifecycle transition or reopening the project.
+  date without replaying a lifecycle transition or reopening the project. Moving
+  it earlier clamps only later completed Stage 1–3 task dates to the same date;
+  Stage 4 and already-earlier task dates remain unchanged.
 - Restoring an archived project returns it to completed when it retains a
   completion date; otherwise it returns to paused.
 - Completed project metadata and production-stage tasks are read-only. New or
@@ -89,8 +91,9 @@ The server loads the RLS-visible portfolio and calculates progress and health.
 Lifecycle, health, priority, and sort URL parameters filter/order that presented
 collection in the client using the canonical list helpers. Filter changes replace
 the current history entry without reloading the dataset; direct URLs and
-Back/Forward restore the controls and list. Project links and creation still use
-normal server navigation.
+Back/Forward restore the controls and list. Project links carry those parameters
+through the project workspace so its Projects return link and reloads preserve
+the selected list; creation still uses normal server navigation.
 
 ## Activity History
 

@@ -35,8 +35,9 @@ export type ProjectContextProject = {
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, stages, tasks, updateAction }: {
+export function ProjectContextBand({ archiveAction, backHref = "/projects", canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, stages, tasks, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
+  backHref?: string;
   canManage: boolean;
   currentUserId: string;
   isArchived: boolean;
@@ -91,7 +92,7 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
   return <section aria-labelledby="project-context-heading" className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]">
     <div className={compact ? "flex flex-col gap-2 px-4 py-2.5 sm:px-5 lg:flex-row lg:items-start lg:justify-between" : "flex flex-col gap-4 px-4 py-4 sm:px-5 xl:flex-row xl:items-start xl:justify-between"}>
       <div className="min-w-0">
-        <Link href="/projects" className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-[var(--ui-text-secondary)] transition-colors hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
+        <Link href={backHref} className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-[var(--ui-text-secondary)] transition-colors hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
           <ArrowLeft className="size-4" aria-hidden="true" />
           {t("backToProjects")}
         </Link>

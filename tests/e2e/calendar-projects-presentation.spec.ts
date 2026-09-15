@@ -10,7 +10,7 @@ const settings = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST
 if (!["localhost", "127.0.0.1"].includes(new URL(settings.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local fixtures only");
 const admin = createClient<Database>(settings.EQUIPMENT_TEST_SUPABASE_URL, settings.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const studioId = randomUUID();
-const projectIds = [randomUUID(), randomUUID(), randomUUID()];
+const projectIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID(), randomUUID()];
 const eventIds = [randomUUID(), randomUUID()];
 const dayOffId = randomUUID();
 const accounts = ["admin", "employee"].map((role) => ({ role, id: "", email: `calendar-projects-${randomUUID()}@example.test`, password: `Ui-${randomUUID()}` }));
@@ -55,7 +55,7 @@ test.beforeAll(async () => {
     await admin.from("studio_members").insert({ studio_id: studioId, user_id: account.id, system_role: role, is_active: true }).throwOnError();
   }
   for (const [i, id] of projectIds.entries()) {
-    localSql(`insert into public.projects(id,studio_id,name,project_code,status,priority,total_area_m2,start_date,due_date,created_by,country_code) values (${sqlId(id)},${sqlId(studioId)},'${["Alpha active", "Beta paused", "Gamma planned"][i]}','PERF_${i}','${["active", "paused", "planned"][i]}','${i === 0 ? "high" : "normal"}',100,'2026-09-01','2026-09-${15+i}',${sqlId(accounts[0].id)},'UA');`);
+    localSql(`insert into public.projects(id,studio_id,name,project_code,status,priority,total_area_m2,start_date,due_date,completed_at,created_by,country_code) values (${sqlId(id)},${sqlId(studioId)},'${["Alpha active", "Beta paused", "Gamma planned", "Delta completed", "фівфівфів"][i]}','PERF_${i}','${["active", "paused", "planned", "completed", "completed"][i]}','${i === 0 ? "high" : "normal"}',100,'2026-09-01','2026-09-${15+i}',${i >= 3 ? "'2026-09-14'" : "null"},${sqlId(accounts[0].id)},'UA');`);
   }
   for (const [i, id] of eventIds.entries()) localSql(`insert into public.calendar_events(id,studio_id,project_id,title,event_type,meeting_mode,starts_at,ends_at,created_by,organizer_id) values (${sqlId(id)},${sqlId(studioId)},${i === 0 ? sqlId(projectIds[0]) : "null"},'Routing event ${i}','meeting','offline','2026-09-15T09:00:00Z','2026-09-15T10:00:00Z',${sqlId(accounts[i].id)},${sqlId(accounts[i].id)});`, accounts[i].id);
   localSql(`insert into public.studio_days_off(id,studio_id,date,name,created_by) values (${sqlId(dayOffId)},${sqlId(studioId)},'2026-09-16','Routing day off',${sqlId(accounts[0].id)});`);
@@ -142,29 +142,33 @@ test("Projects filters and sort preserve URL history and project navigation", as
   const historyLength = await page.evaluate(() => history.length);
   await choose(page, page.locator("main"), t.priority, en.Priority.high);
   await check("priority", []);
-  await choose(page, page.locator("main"), t.lifecycle, t.lifecyclePaused);
+  await choose(page, page.locator("main"), t.lifecycle, t.lifecycleCompleted);
   await expect(page.getByRole("link", { name: /Alpha active/ })).toHaveCount(0);
   await check("status", []);
   await choose(page, page.locator("main"), t.sortBy, t.deadline);
   await check("sort", []);
   await choose(page, page.locator("main"), t.priority, t.allPriorities);
-  await expect(page.getByRole("link", { name: /Beta paused/ })).toBeVisible();
-  await choose(page, page.locator("main"), t.health, t.healthOnTrack);
+  await expect(page.getByRole("link", { name: /Delta completed/ })).toBeVisible();
+  await choose(page, page.locator("main"), t.health, t.healthCompleted);
   await check("combined", []);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   const filteredUrl = page.url();
-  await page.getByRole("link", { name: /Beta paused/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${projectIds[1]}$`));
+  await page.getByRole("link", { name: /Delta completed/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectIds[3]}\\?lifecycle=completed&health=completed&sort=deadline$`));
+  await page.reload();
+  await expect(page.getByRole("link", { name: en.Workspace.backToProjects, exact: true })).toHaveAttribute("href", "/projects?lifecycle=completed&health=completed&sort=deadline");
   await check("open project", []);
   await page.goBack();
   await expect(page).toHaveURL(filteredUrl);
-  await expect(page.getByRole("link", { name: /Beta paused/ })).toBeVisible();
-  await check("Back", []);
+  await expect(page.getByRole("link", { name: /Delta completed/ })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("link", { name: /Delta completed/ })).toBeVisible();
+  await check("Back and reload", ["GET"]);
   await page.goForward();
-  await expect(page).toHaveURL(new RegExp(`/projects/${projectIds[1]}$`));
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectIds[3]}\\?lifecycle=completed&health=completed&sort=deadline$`));
   await check("Forward", []);
   await page.goto(filteredUrl);
-  await expect(page.getByRole("link", { name: /Beta paused/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Delta completed/ })).toBeVisible();
   await check("direct filtered", ["GET"]);
   await page.getByRole("button", { name: t.resetFilters, exact: true }).click();
   await expect(page.getByRole("link", { name: /Alpha active/ })).toBeVisible();
@@ -175,6 +179,52 @@ test("Projects filters and sort preserve URL history and project navigation", as
   await expect(links.filter({ visible: true })).toHaveCount(3);
   await expect.poll(() => links.filter({ visible: true }).allTextContents()).toEqual([expect.stringContaining("Alpha active"), expect.stringContaining("Gamma planned"), expect.stringContaining("Beta paused")]);
   await check("paused ordering", []);
+});
+
+test("Projects hard reloads hydrate with deterministic lifecycle lists", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => { if (message.type() === "error") runtimeErrors.push(message.text()); });
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+  await login(page);
+
+  for (const [lifecycle, label] of [
+    ["active", en.Projects.lifecycleActive],
+    ["planned", en.Projects.lifecyclePlanned],
+    ["paused", en.Projects.lifecyclePaused],
+    ["completed", en.Projects.lifecycleCompleted],
+  ] as const) {
+    await page.goto(`/projects?lifecycle=${lifecycle}`);
+    await page.reload();
+    await expect(page.getByRole("combobox", { name: en.Projects.lifecycle, exact: true })).toContainText(label);
+  }
+
+  const completedLinks = page.locator('main a[href^="/projects/"]').filter({ hasText: /Delta completed|фівфівфів/ }).filter({ visible: true });
+  await expect(completedLinks).toHaveCount(2);
+  expect(await completedLinks.evaluateAll((links) => links.map((link) => link.getAttribute("href")))).toEqual([
+    `/projects/${projectIds[3]}?lifecycle=completed`,
+    `/projects/${projectIds[4]}?lifecycle=completed`,
+  ]);
+  expect(runtimeErrors.filter((message) => /hydration|server rendered html|<script>|script tags/i.test(message))).toEqual([]);
+});
+
+test("Project completion date reflects the confirmed save immediately and after reload", async ({ page }) => {
+  await login(page);
+  await page.goto(`/projects/${projectIds[3]}?view=details`);
+  const picker = page.getByRole("combobox", { name: en.ProjectWorkspace.completionDate, exact: true });
+  const form = page.locator("form").filter({ has: picker });
+  await expect(picker).toContainText("09/14/2026");
+
+  await picker.click();
+  await page.getByRole("gridcell", { name: "13", exact: true }).click();
+  await form.getByRole("button", { name: en.ProjectForm.save, exact: true }).click();
+  await expect.poll(() => localSql(`select completed_at from public.projects where id=${sqlId(projectIds[3])};`)).toBe("2026-09-13");
+  await expect(picker).toContainText("09/13/2026");
+
+  await picker.click();
+  await expect(page.locator('[role="gridcell"][aria-selected="true"]')).toHaveText("13");
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await expect(picker).toContainText("09/13/2026");
 });
 
 test("Calendar retains a mutation completed while a same-range refresh is in flight", async ({ page }) => {

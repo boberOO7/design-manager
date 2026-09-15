@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FolderKanban } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
@@ -62,30 +63,34 @@ export function MyTasksList({ currentUserId, tasks: initialTasks }: { currentUse
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {groups[section.id].map((task) => (
-                <article
-                  key={task.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openTaskDrawer(task.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openTaskDrawer(task.id);
-                    }
-                  }}
-                  className="cursor-pointer rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 shadow-sm outline-none transition hover:border-[var(--ui-border-strong)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-[var(--ui-text)]">{task.title}</h3>
-                      <Link href={`/projects/${task.project_id}`} onClick={(event) => event.stopPropagation()} className="mt-1 block truncate text-sm text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:underline">{task.project.name}</Link>
+                <article key={task.id} className="relative">
+                  <button
+                    type="button"
+                    aria-label={t("openTask", { name: task.title })}
+                    onClick={() => openTaskDrawer(task.id)}
+                    className="w-full cursor-pointer rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-left shadow-sm outline-none transition hover:border-[var(--ui-border-strong)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-[var(--ui-text)]">{task.title}</h3>
+                        <span className="mt-1 block truncate text-sm text-[var(--ui-text-muted)]">{task.project.name}</span>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--ui-text-muted)]">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
-                    <span>{task.due_date ? t("due", { date: formatDate(task.due_date, locale) }) : t("noDueDate")}</span>
-                  </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 pr-10 text-sm text-[var(--ui-text-muted)]">
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
+                      <span>{task.due_date ? t("due", { date: formatDate(task.due_date, locale) }) : t("noDueDate")}</span>
+                    </div>
+                  </button>
+                  <Link
+                    href={`/projects/${task.project_id}?task=${task.id}`}
+                    aria-label={t("goToProject")}
+                    title={t("goToProject")}
+                    onClick={(event) => event.stopPropagation()}
+                    className="absolute bottom-1.5 right-1.5 inline-flex size-11 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
+                  >
+                    <FolderKanban className="size-4" aria-hidden="true" />
+                  </Link>
                 </article>
               ))}
             </div>

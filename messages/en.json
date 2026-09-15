@@ -444,6 +444,7 @@
     "progressAria": "{name} progress",
     "saving": "Saving…",
     "openTask": "Open task {name}",
+    "goToProject": "Go to project",
     "openTaskDrag": "Open task {name}. Drag the card to move it; keyboard drag is also available.",
     "releaseToMove": "Release to move to {status}",
     "noTasks": "No tasks",

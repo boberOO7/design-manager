@@ -98,6 +98,43 @@ test('collapsed stage mount, animation, order, focus and network measurements', 
   expect(requests).toEqual([]);
 });
 
+test('My Tasks opens details in place and project navigation focuses the exact task', async ({ page }) => {
+  await login(page);
+  await page.goto(`/projects/${projectId}`);
+  await expect(stageControl(page, 3)).toHaveAttribute('aria-expanded', 'false');
+  await page.goto('/my-tasks');
+  const taskTitle = 'Board stage_3 task 1';
+  const taskId = sql(`select id from public.tasks where project_id=${id(projectId)} and title='Board stage_3 task 1';`).trim();
+  await page.getByRole('button', { name: en.Tasks.openTask.replace('{name}', taskTitle), exact: true }).click();
+  await expect(page).toHaveURL('/my-tasks');
+  let drawer = page.getByRole('dialog', { name: en.Tasks.taskDetails });
+  await expect(drawer.getByRole('heading', { name: taskTitle, exact: true })).toBeVisible();
+  await drawer.getByRole('button', { name: en.Tasks.closeTaskDetails }).click();
+  await expect(drawer).toHaveCount(0);
+
+  const taskArticle = page.locator('article').filter({ has: page.getByRole('heading', { name: taskTitle, exact: true }) });
+  await taskArticle.getByRole('link', { name: en.Tasks.goToProject, exact: true }).click();
+  await expect(page).toHaveURL(`/projects/${projectId}?task=${taskId}`);
+  await expect(stageControl(page, 3)).toHaveAttribute('aria-expanded', 'true');
+  drawer = page.getByRole('dialog', { name: en.Tasks.taskDetails });
+  await expect(drawer.getByRole('heading', { name: taskTitle, exact: true })).toBeVisible();
+  const targetCard = card(page, taskTitle);
+  await expect(targetCard).toBeVisible();
+  await expect.poll(() => targetCard.evaluate((element) => {
+    const main = document.getElementById('main-content');
+    const viewport = main && getComputedStyle(main).overflowY !== 'visible'
+      ? main.getBoundingClientRect()
+      : { top: 0, bottom: innerHeight };
+    const rect = element.getBoundingClientRect();
+    const inset = (viewport.bottom - viewport.top) * 0.125;
+    return rect.top >= viewport.top + inset && rect.bottom <= viewport.bottom - inset;
+  })).toBe(true);
+  await drawer.getByRole('button', { name: en.Tasks.closeTaskDetails }).click();
+
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByRole('dialog', { name: en.Tasks.taskDetails })).toHaveCount(0);
+});
+
 test('selection, bulk move, pointer and keyboard drag, and drawer survive remounting', async ({ page }) => {
   await login(page); await page.goto(`/projects/${projectId}`);
   await sampleToggle(stageControl(page)); await sampleToggle(stageControl(page));

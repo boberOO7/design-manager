@@ -130,6 +130,7 @@ export type EditProjectFormValues = z.infer<ReturnType<typeof createEditProjectS
 export type ProjectFormField = keyof EditProjectFormValues;
 
 export type ProjectFormActionState = {
+  completedAt?: string;
   formError?: string;
   fieldErrors?: Partial<Record<ProjectFormField | "completed_at", string>>;
   projectId?: string;

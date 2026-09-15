@@ -92,7 +92,9 @@ Project aggregation and attribution are described in
 ## Board interaction
 
 - The project Board is the primary task workspace. Details and Team remain
-  secondary project views; My Tasks uses the same task drawer.
+  secondary project views. My Tasks reuses the same task drawer in place; its
+  explicit project action deep-links to the task, expands its stage, opens the
+  drawer, and scrolls the board card into view.
 - Whole-card pointer and keyboard drag moves status. Database writes occur only
   after a completed drop into a different column.
 - Manual ordering within a status column is not persisted.

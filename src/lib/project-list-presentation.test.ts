@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
+import { describe, expect, it, vi } from "vitest";
+import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectListHref, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
 import type { ProjectTaskForProgress } from "./project-progress";
 
 const today = "2026-07-29";
@@ -38,6 +38,20 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, { ...operational, sort: "deadline" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
   });
 
+  it("uses the same mixed-script name order regardless of the runtime locale", () => {
+    const localeCompare = vi.spyOn(String.prototype, "localeCompare").mockReturnValue(-1);
+    const items = getPresentedProjects([
+      project({ id: "cyrillic", name: "фівфівфів", status: "completed" }),
+      project({ id: "latin", name: "Test old", status: "completed" }),
+    ], today);
+
+    const order = filterAndSortProjects(items, { ...operational, lifecycle: "completed", sort: "name" }).map((item) => item.id);
+    const localeCompareCalls = localeCompare.mock.calls.length;
+    localeCompare.mockRestore();
+    expect(order).toEqual(["latin", "cyrillic"]);
+    expect(localeCompareCalls).toBe(0);
+  });
+
   it("filters lifecycle, health, and priority without changing the access-scoped source", () => {
     const items = getPresentedProjects([
       project({ id: "active", priority: "urgent", tasks: [{ id: "task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
@@ -66,6 +80,9 @@ describe("project list presentation", () => {
     expect(getProjectProgressLabel(emptyProject.progress)).toBe("No tasks yet");
     expect(getProjectProgressLabel(activeProject.progress)).toBe("10% · 1 completed · 1 open");
     expect(getProjectHref("progress")).toBe("/projects/progress");
+    expect(getProjectListHref(PROJECT_LIST_DEFAULT_FILTERS)).toBe("/projects");
+    expect(getProjectHref("progress", PROJECT_LIST_DEFAULT_FILTERS)).toBe("/projects/progress");
+    expect(getProjectHref("progress", { ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "completed", sort: "deadline" })).toBe("/projects/progress?lifecycle=completed&sort=deadline");
     expect(new Set(getPresentedProjects([project({ id: "one" }), project({ id: "two" })], today).map((item) => item.id)).size).toBe(2);
   });
 

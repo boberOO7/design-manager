@@ -15,6 +15,9 @@ import {
 } from "@/lib/project-list-presentation";
 
 const controlsPath = new URL("./project-list-controls.tsx", import.meta.url);
+const listPath = new URL("./project-list.tsx", import.meta.url);
+const contextBandPath = new URL("./project-context-band.tsx", import.meta.url);
+const projectPagePath = new URL("../../app/(app)/projects/[projectId]/page.tsx", import.meta.url);
 
 describe("Projects filter localization", () => {
   it("keeps canonical values while resolving visible labels through next-intl", async () => {
@@ -49,5 +52,22 @@ describe("Projects filter localization", () => {
     expect(source).toContain("<fieldset");
     expect(source).toContain('calendar("filters")');
     expect(source).not.toContain("min-w-32");
+  });
+
+  it("carries URL filters through project links, tabs, reloads, and the return link", async () => {
+    const [list, contextBand, projectPage] = await Promise.all([
+      readFile(listPath, "utf8"),
+      readFile(contextBandPath, "utf8"),
+      readFile(projectPagePath, "utf8"),
+    ]);
+
+    expect(list).toContain("getProjectHref(project.id, filters)");
+    expect(list).not.toContain("localStorage");
+    expect(list).not.toContain("sessionStorage");
+    expect(list).not.toContain("typeof window");
+    expect(projectPage).toContain("const listFilters = getProjectListFilters(query)");
+    expect(projectPage).toContain("getProjectViewHref(project.id, item.id, listFilters)");
+    expect(projectPage).toContain("backHref={projectsHref}");
+    expect(contextBand).toContain("<Link href={backHref}");
   });
 });

@@ -77,6 +77,10 @@ const pointerSensor = PointerSensor.configure({
 const keyboardSensor = KeyboardSensor.configure({ offset: 320 });
 const sensors = [pointerSensor, keyboardSensor];
 
+function getTaskCardId(taskId: string) {
+  return `project-task-${taskId}`;
+}
+
 type BulkDragSource = {
   columnId: BoardColumnId;
   kind: "column" | "selection";
@@ -425,6 +429,7 @@ function DraggableTaskCard({
       aria-busy={isPending}
       aria-pressed={isSelected}
       data-task-card
+      id={getTaskCardId(task.id)}
       onContextMenu={(event) => onContextMenu(event, task)}
       onClick={(event) => {
         if (event.ctrlKey || event.metaKey) {
@@ -451,7 +456,7 @@ function DraggableTaskCard({
 function ReadOnlyTaskCard({ compact, isSelected, task, onContextMenu, onOpen, onToggleSelection }: { compact: boolean; isSelected: boolean; task: ProjectTask; onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>, task: ProjectTask) => void; onOpen: (taskId: string) => void; onToggleSelection: (task: ProjectTask) => void }) {
   const t = useTranslations("Tasks");
   return (
-    <button type="button" data-task-card aria-pressed={isSelected} onContextMenu={(event) => onContextMenu(event, task)} onClick={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); onToggleSelection(task); } else onOpen(task.id); }} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
+    <button type="button" data-task-card id={getTaskCardId(task.id)} aria-pressed={isSelected} onContextMenu={(event) => onContextMenu(event, task)} onClick={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); onToggleSelection(task); } else onOpen(task.id); }} className="w-full cursor-pointer rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-label={t("openTask", { name: task.title })}>
       <TaskCardContent compact={compact} task={task} isSelected={isSelected} />
     </button>
   );
@@ -667,6 +672,8 @@ export function ProjectTaskBoard({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(() => tasks.some((task) => task.id === initialTaskId));
   const isTaskDrawerOpenRef = useRef(tasks.some((task) => task.id === initialTaskId));
+  const openedInitialTaskIdRef = useRef<string | null>(null);
+  const focusedInitialTaskIdRef = useRef<string | null>(null);
   const localTasksRef = useRef(localTasks);
   const pendingTaskIdsRef = useRef(new Set<string>());
   const previousStatusesRef = useRef(new Map<string, ProjectTask["status"]>());
@@ -733,6 +740,68 @@ export function ProjectTaskBoard({
     localTasksRef.current = localTasks;
     onTasksChangeRef.current?.(localTasks);
   }, [localTasks]);
+
+  useEffect(() => {
+    if (!initialTaskId) {
+      openedInitialTaskIdRef.current = null;
+      focusedInitialTaskIdRef.current = null;
+      return;
+    }
+    if (!stageLayoutReady || openedInitialTaskIdRef.current === initialTaskId) return;
+    const task = localTasks.find((item) => item.id === initialTaskId);
+    if (!task) return;
+
+    let cancelled = false;
+    window.queueMicrotask(() => {
+      if (cancelled) return;
+      openedInitialTaskIdRef.current = initialTaskId;
+      setExpandedStages((current) => current[task.stage] ? current : { ...current, [task.stage]: true });
+      setTaskSelection({ stage: null, taskIds: [] });
+      setTaskContextMenu(null);
+      isTaskDrawerOpenRef.current = true;
+      setSelectedTaskId(task.id);
+      setIsTaskDrawerOpen(true);
+    });
+    return () => { cancelled = true; };
+  }, [initialTaskId, localTasks, stageLayoutReady]);
+
+  useEffect(() => {
+    if (!initialTaskId || focusedInitialTaskIdRef.current === initialTaskId || !stageLayoutReady) return;
+    const task = localTasks.find((item) => item.id === initialTaskId);
+    if (!task || !expandedStages[task.stage]) return;
+    const targetTaskId = task.id;
+    const stageElement = document.getElementById(`project-stage-${task.stage}`);
+    if (!stageElement) return;
+    let cancelled = false;
+
+    function focusTaskCard() {
+      if (cancelled) return;
+      const card = document.getElementById(getTaskCardId(targetTaskId));
+      if (!card) return;
+      const main = document.getElementById("main-content");
+      const viewport = main && window.getComputedStyle(main).overflowY !== "visible"
+        ? main.getBoundingClientRect()
+        : { top: 0, right: window.innerWidth, bottom: window.innerHeight, left: 0 };
+      const horizontalViewport = card.closest<HTMLElement>("[data-task-board-scroll]")?.getBoundingClientRect() ?? viewport;
+      const cardRect = card.getBoundingClientRect();
+      const verticalInset = (viewport.bottom - viewport.top) * 0.125;
+      const isVerticallyComfortable = cardRect.top >= viewport.top + verticalInset && cardRect.bottom <= viewport.bottom - verticalInset;
+      const isHorizontallyComfortable = cardRect.left >= Math.max(viewport.left, horizontalViewport.left) + 16
+        && cardRect.right <= Math.min(viewport.right, horizontalViewport.right) - 16;
+      if (!isVerticallyComfortable || !isHorizontallyComfortable) {
+        card.scrollIntoView({
+          block: isVerticallyComfortable ? "nearest" : "center",
+          inline: isHorizontallyComfortable ? "nearest" : "start",
+        });
+      }
+      focusedInitialTaskIdRef.current = targetTaskId;
+    }
+
+    const animations = stageElement.getAnimations();
+    if (animations.length === 0) focusTaskCard();
+    else void Promise.allSettled(animations.map((animation) => animation.finished)).then(focusTaskCard);
+    return () => { cancelled = true; };
+  }, [expandedStages, initialTaskId, localTasks, stageLayoutReady]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -1225,7 +1294,7 @@ export function ProjectTaskBoard({
                   </div>
                 </div>
                 <StageContent stage={stage} expanded={isExpanded} keepMounted={activeTaskId !== null || activeBulkDrag !== null}>
-                    <div className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3" onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
+                    <div data-task-board-scroll className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3" onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
                       <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
                       {enabledColumns.map((column) => (
                         <BoardColumn

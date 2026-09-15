@@ -37,6 +37,10 @@ export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[
 export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { lifecycle: "active", health: "all", priority: "all", sort: "name" };
 const healthOrder: Record<ProjectHealth, number> = { overdue: 0, needs_attention: 1, deadline_soon: 2, on_track: 3, completed: 4 };
 
+function compareStableText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function isOneOf<T extends readonly string[]>(value: string | string[] | undefined, options: T): value is T[number] {
   return typeof value === "string" && options.includes(value);
 }
@@ -59,7 +63,7 @@ export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForP
 }
 
 function compareNullableDate(left: string | null, right: string | null): number {
-  return (left ?? "9999-12-31").localeCompare(right ?? "9999-12-31");
+  return compareStableText(left ?? "9999-12-31", right ?? "9999-12-31");
 }
 
 export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; health: ProjectHealth; progress: ProjectProgress }>(projects: readonly T[], filters: ProjectListFilters): T[] {
@@ -71,15 +75,15 @@ export function filterAndSortProjects<T extends { name: string; priority: string
   return filtered.map((project, index) => ({ project, index })).sort((left, right) => {
     const first = left.project;
     const second = right.project;
-    if (filters.sort === "name") return first.name.localeCompare(second.name) || left.index - right.index;
+    if (filters.sort === "name") return compareStableText(first.name, second.name) || left.index - right.index;
     const pauseGroup = Number(first.status === "paused") - Number(second.status === "paused");
     if (pauseGroup !== 0) return pauseGroup;
     if (filters.sort === "deadline") return compareNullableDate(first.due_date, second.due_date) || left.index - right.index;
-    if (filters.sort === "health") return healthOrder[first.health] - healthOrder[second.health] || first.name.localeCompare(second.name) || left.index - right.index;
-    if (filters.sort === "progress") return (second.progress.progressPercent ?? -1) - (first.progress.progressPercent ?? -1) || first.name.localeCompare(second.name) || left.index - right.index;
+    if (filters.sort === "health") return healthOrder[first.health] - healthOrder[second.health] || compareStableText(first.name, second.name) || left.index - right.index;
+    if (filters.sort === "progress") return (second.progress.progressPercent ?? -1) - (first.progress.progressPercent ?? -1) || compareStableText(first.name, second.name) || left.index - right.index;
     return healthOrder[first.health] - healthOrder[second.health]
       || compareNullableDate(first.due_date, second.due_date)
-      || first.name.localeCompare(second.name)
+      || compareStableText(first.name, second.name)
       || left.index - right.index;
   }).map(({ project }) => project);
 }
@@ -102,6 +106,15 @@ export function getProjectProgressLabel(progress: ProjectProgress): string {
   return progress.eligibleTaskCount === 0 ? "No tasks yet" : `${progress.progressPercent}% · ${progress.completedTaskCount} completed · ${progress.openTaskCount} open`;
 }
 
-export function getProjectHref(projectId: string): string {
-  return `/projects/${projectId}`;
+export function getProjectListHref(filters: ProjectListFilters): string {
+  const params = new URLSearchParams();
+  if (filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle) params.set("lifecycle", filters.lifecycle);
+  if (filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health) params.set("health", filters.health);
+  if (filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority) params.set("priority", filters.priority);
+  if (filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort) params.set("sort", filters.sort);
+  return `/projects${params.size ? `?${params}` : ""}`;
+}
+
+export function getProjectHref(projectId: string, filters?: ProjectListFilters): string {
+  return `/projects/${projectId}${filters ? getProjectListHref(filters).slice("/projects".length) : ""}`;
 }

@@ -104,7 +104,9 @@ export async function updateProjectCompletionDate(
   if (!project || project.studio_id !== membership.studio_id || project.status !== "completed" || project.archived_at) {
     return { formError: t("errors.unavailable") };
   }
-  if (project.completed_at === parsed.data.completed_at) return { projectId: project.id };
+  if (project.completed_at === parsed.data.completed_at) {
+    return { projectId: project.id, completedAt: project.completed_at };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -114,17 +116,17 @@ export async function updateProjectCompletionDate(
     .eq("studio_id", membership.studio_id)
     .eq("status", "completed")
     .is("archived_at", null)
-    .select("id")
+    .select("id, completed_at")
     .maybeSingle();
 
-  if (error || !data) {
+  if (error || !data?.completed_at) {
     console.error("Unable to update project completion date", error);
     return { formError: t("errors.completionDateFailed") };
   }
 
   revalidateProjectRoutes(project.id);
   revalidatePath("/leaderboard");
-  return { projectId: project.id };
+  return { projectId: project.id, completedAt: data.completed_at };
 }
 
 export async function archiveProject(projectId: string): Promise<void> {

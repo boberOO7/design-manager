@@ -84,12 +84,17 @@ describe("compact project creation contract", () => {
     expect(page).toContain('project.status === "completed" && canManage');
     expect(page).toContain("<ProjectCompletionDateForm");
     expect(completionForm).toContain('name="completed_at"');
-    expect(completionForm).toContain("defaultValue={completedAt}");
+    expect(completionForm).toContain("value={value}");
+    expect(completionForm).toContain("onValueChange={setValue}");
+    expect(completionForm).toContain("const confirmedCompletedAt = state.completedAt ?? completedAt");
+    expect(completionForm).toContain("key={confirmedCompletedAt}");
     expect(completionForm).toContain('useTranslations("ProjectForm")');
     expect(completionForm).toContain('form("saving") : form("save")');
     expect(correctionAction).toContain("project.status !== \"completed\"");
     expect(correctionAction).toContain(".update({ completed_at: parsed.data.completed_at })");
     expect(correctionAction).toContain('.eq("status", "completed")');
+    expect(correctionAction).toContain('.select("id, completed_at")');
+    expect(correctionAction).toContain("return { projectId: project.id, completedAt: data.completed_at }");
     expect(correctionAction).not.toContain("status:");
   });
 });

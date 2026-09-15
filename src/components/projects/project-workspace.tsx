@@ -15,9 +15,10 @@ import type { ProjectStageProgressMethods } from "@/lib/project-progress";
 import { useTranslations } from "next-intl";
 
 export function ProjectWorkspace({
-  archiveAction, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, stageColumns, stageProgressMethods, stages, includeInProductivity, tasks, templates, updateAction,
+  archiveAction, backHref, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, restoreAction, stageColumns, stageProgressMethods, stages, includeInProductivity, tasks, templates, updateAction,
 }: {
   archiveAction: (formData: FormData) => Promise<void>;
+  backHref?: string;
   canCreate: boolean;
   canManage: boolean;
   canManageTasks: boolean;
@@ -47,7 +48,7 @@ export function ProjectWorkspace({
     setContextTasks((currentTasks) => getProjectTaskSnapshotUpdate(currentTasks, nextTasks));
   }, []);
   return <>
-    <ProjectContextBand archiveAction={archiveAction} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={restoreAction} stageProgressMethods={stageProgressMethods} stages={localStages} tasks={contextTasks} updateAction={updateAction} />
+    <ProjectContextBand archiveAction={archiveAction} backHref={backHref} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={restoreAction} stageProgressMethods={stageProgressMethods} stages={localStages} tasks={contextTasks} updateAction={updateAction} />
     {navigation}
     <ProjectTaskBoard canCreate={canCreate} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly} members={members} projectId={project.id} projectStatus={status} stageColumns={stageColumns} stageProgressMethods={stageProgressMethods} stages={localStages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
     {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={localIncludeInProductivity} onClose={() => setStageConfigurationOpen(false)} onSaved={(nextStages, nextIncludeInProductivity) => { setLocalStages(nextStages); setLocalIncludeInProductivity(nextIncludeInProductivity); setStageConfigurationOpen(false); }} projectId={project.id} stageLabels={stageLabels} stages={localStages} /> : null}
