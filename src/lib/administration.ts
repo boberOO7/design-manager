@@ -65,7 +65,7 @@ export function sortPendingRequests(requests: AdministrationRequest[]): Administ
     left.createdAt.localeCompare(right.createdAt) || left.startDate.localeCompare(right.startDate) || left.employeeName.localeCompare(right.employeeName) || left.id.localeCompare(right.id));
 }
 
-export function sortUpcomingAbsences(requests: AdministrationRequest[]): AdministrationRequest[] {
+export function sortUpcomingAbsences<T extends Pick<AdministrationRequest, "startDate" | "startTime" | "id">>(requests: T[]): T[] {
   return [...requests].sort((left, right) => left.startDate.localeCompare(right.startDate) || (left.startTime ?? "00:00").localeCompare(right.startTime ?? "00:00") || left.id.localeCompare(right.id));
 }
 

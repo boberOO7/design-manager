@@ -60,3 +60,10 @@ export type ProjectTask = Pick<
 export type MyTask = ProjectTask & {
   project: { id: string; name: string; status: string; archived_at: string | null };
 };
+
+/** Dashboard calculations/list data; full drawer fields are loaded only on open. */
+export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | "title" | "status" | "priority" | "assignee_id" | "due_date" | "created_at" | "completed_area_m2" | "manual_progress_override" | "production_completion" | "progress_weight" | "project"> & {
+  checklist_items: Pick<TaskChecklistItem, "id" | "is_completed" | "weight">[];
+  collaborators: Pick<TaskCollaborator, "id">[];
+  deadlines?: Pick<TaskDeadline, "id" | "target_status" | "due_date">[];
+};

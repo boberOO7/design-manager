@@ -108,6 +108,18 @@ Project aggregation and attribution are described in
   bulk transition as the context-menu move; dragging an unselected task retains
   the existing single-task transition path.
 
+## Task read ownership
+
+Dashboard loads summary/progress fields with checklist weights/completion and
+profile-visible collaborator IDs. Its limited task list opens full details through
+a guarded read-only action using the existing single-task loader and completion
+history. Loading failures can retry; closed/superseded reads cannot reopen a drawer.
+
+Project Board retains full tasks. Details, Team, and Activity use the existing
+progress-query field set and the same progress/health helpers. Their reads exclude
+checklist text, people profiles, descriptions, and deadline completion history;
+active deadlines are selected before removing milestone rows from context props.
+
 ## Canonical sources
 
 - `src/types/tasks.ts`

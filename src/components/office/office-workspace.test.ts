@@ -88,6 +88,6 @@ describe("Office workspace presentation", () => {
   it("shows safe identity cues in recent activity", () => {
     expect(overview).toContain("<UserAvatar");
     expect(overview).toContain("<LockKeyhole");
-    expect(overview).toContain("item.isAnonymous ? null : item.author");
+    expect(overview).toContain("item.anonymous");
   });
 });

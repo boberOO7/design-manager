@@ -3,41 +3,26 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, ClipboardCheck, Clock3, Inbox, LockKeyhole } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { getOfficeAssignmentsData } from "@/data/queries/office-assignments";
-import { getSubmissionsData } from "@/data/queries/submissions";
-import { isOfficeAssignmentOverdue, isTerminalOfficeAssignmentStatus } from "@/lib/office-assignments";
-import { isTerminalSubmissionStatus } from "@/lib/submissions";
+import { getOfficeOverview } from "@/data/queries/office-overview";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Office");
   return { title: t("title") };
 }
 
-function kyivToday() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
 export default async function OfficeOverviewPage() {
-  const [t, submissionsT, submissions, assignments] = await Promise.all([getTranslations("Office"), getTranslations("Submissions"), getSubmissionsData(), getOfficeAssignmentsData()]);
-  const isAdmin = assignments.isAdmin;
-  const today = kyivToday();
-  const ownSubmissions = submissions.items.filter((item) => item.author?.id === submissions.currentUserId);
-  const assignedToMe = assignments.items.filter((item) => item.responsible.id === assignments.currentUserId && !isTerminalOfficeAssignmentStatus(item.status));
-  const activeAssignments = assignments.items.filter((item) => !isTerminalOfficeAssignmentStatus(item.status));
-  const overdueAssignments = assignments.items.filter((item) => isOfficeAssignmentOverdue(item.deadline, item.status, today));
-  const attention = submissions.items.filter((item) => !isTerminalSubmissionStatus(item.type, item.status));
-  const recentSubmissions = (isAdmin ? submissions.items : ownSubmissions).map((item) => ({ id: item.id, title: item.title, updatedAt: item.updatedAt, href: `/office/submissions?item=${item.id}`, kind: t("activity.submission"), person: item.isAnonymous ? null : item.author, anonymous: item.isAnonymous }));
-  const recentAssignments = assignments.items.map((item) => ({ id: item.id, title: item.title, updatedAt: item.updatedAt, href: `/office/assignments?item=${item.id}`, kind: t("activity.assignment"), person: item.responsible, anonymous: false }));
-  const recent = [...recentSubmissions, ...recentAssignments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6);
+  const [t, submissionsT, overview] = await Promise.all([getTranslations("Office"), getTranslations("Submissions"), getOfficeOverview()]);
+  const { isAdmin, counts } = overview;
+  const recent = overview.recent.map((item) => ({ ...item, href: `/office/${item.kind === "submission" ? "submissions" : "assignments"}?item=${item.id}`, kind: t(`activity.${item.kind}`) }));
   const cards = isAdmin ? [
-    { label: t("metrics.attention"), value: attention.length, href: "/office/submissions", icon: Inbox },
-    { label: t("metrics.active"), value: activeAssignments.length, href: "/office/assignments", icon: ClipboardCheck },
-    { label: t("metrics.overdue"), value: overdueAssignments.length, href: "/office/assignments", icon: AlertTriangle },
-    { label: t("metrics.assignedToMe"), value: assignedToMe.length, href: "/office/assignments", icon: Clock3 },
+    { label: t("metrics.attention"), value: counts.attention, href: "/office/submissions", icon: Inbox },
+    { label: t("metrics.active"), value: counts.activeAssignments, href: "/office/assignments", icon: ClipboardCheck },
+    { label: t("metrics.overdue"), value: counts.overdueAssignments, href: "/office/assignments", icon: AlertTriangle },
+    { label: t("metrics.assignedToMe"), value: counts.assignedToMe, href: "/office/assignments", icon: Clock3 },
   ] : [
-    { label: t("metrics.mySubmissions"), value: ownSubmissions.length, href: "/office/submissions", icon: Inbox },
-    { label: t("metrics.assignedToMe"), value: assignedToMe.length, href: "/office/assignments", icon: ClipboardCheck },
-    { label: t("metrics.overdueMine"), value: overdueAssignments.length, href: "/office/assignments", icon: AlertTriangle },
+    { label: t("metrics.mySubmissions"), value: counts.ownSubmissions, href: "/office/submissions", icon: Inbox },
+    { label: t("metrics.assignedToMe"), value: counts.assignedToMe, href: "/office/assignments", icon: ClipboardCheck },
+    { label: t("metrics.overdueMine"), value: counts.overdueAssignments, href: "/office/assignments", icon: AlertTriangle },
   ];
 
   return <div className="space-y-6">

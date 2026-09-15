@@ -479,6 +479,8 @@
     "cancel": "Cancel",
     "createTask": "Create task",
     "creating": "Creating…",
+    "loadFailed": "The task could not be loaded. Please try again.",
+    "retryLoad": "Try again",
     "taskDetails": "Task details",
     "closeTaskDetails": "Close task details",
     "taskChangesSaved": "Task changes saved.",

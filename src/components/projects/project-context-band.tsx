@@ -10,13 +10,12 @@ import { ProjectEditModal } from "@/components/projects/project-edit-modal";
 import type { ProjectFormAction } from "@/components/projects/project-form";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
-import { calculateProjectProgress, calculateStageProgress, getProjectHealth, getProjectHealthLabel, getTodayDateOnly, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import { calculateProjectProgress, calculateStageProgress, getProjectHealth, getProjectHealthLabel, getTodayDateOnly, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
 import { getTaskPriorityLabel } from "@/lib/tasks";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
 import { getProjectTypeDisplayName, isProjectPriority } from "@/lib/validation/project";
-import type { ProjectTask } from "@/types/tasks";
 import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
 
 export type ProjectContextProject = {
@@ -46,7 +45,7 @@ export function ProjectContextBand({ archiveAction, canManage, currentUserId, is
   restoreAction: (formData: FormData) => Promise<void>;
   stageProgressMethods: ProjectStageProgressMethods;
   stages?: ConfiguredProjectStage[];
-  tasks: ProjectTask[];
+  tasks: ProjectTaskForProgress[];
   updateAction: ProjectFormAction;
 }) {
   const t = useTranslations("Workspace");

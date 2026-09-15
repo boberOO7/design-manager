@@ -1,5 +1,5 @@
 import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
-import type { MyTask } from "../types/tasks";
+import type { MyTask, DashboardTaskSummary } from "../types/tasks";
 import { canWorkOnTaskInProject, isOperationalProjectStatus, type ProjectLifecycleStatus } from "./project-lifecycle";
 import { calculateProjectProgress, type ProjectStageProgressMethods } from "./project-progress";
 import { isTaskStage } from "./task-stages";
@@ -18,7 +18,7 @@ export type DashboardProject = {
 
 export type DashboardMember = { id: string; full_name: string; job_title: string; avatar_url?: string | null };
 
-export function isDashboardTask(task: { project: DashboardTask["project"]; priority: string; stage: string; status: string }): task is DashboardTask {
+export function isDashboardTask<T extends { project: DashboardTaskSummary["project"]; priority: string; stage: string; status: string }>(task: T): task is T & Pick<DashboardTaskSummary, "priority" | "stage" | "status"> {
   return Boolean(task.project)
     && isTaskStatus(task.status)
     && isTaskPriority(task.priority)
@@ -55,16 +55,16 @@ export function isOpenTask(task: Pick<DashboardTask, "status">): boolean {
   return !isTaskFinished(task.status);
 }
 
-export function countDueToday(tasks: DashboardTask[], today: string): number {
+export function countDueToday(tasks: DashboardTaskSummary[], today: string): number {
   return tasks.filter((task) => isOpenTask(task) && task.due_date === today).length;
 }
 
-export function countDueThisWeek(tasks: DashboardTask[], today: string): number {
+export function countDueThisWeek(tasks: DashboardTaskSummary[], today: string): number {
   const weekEnd = getWeekEnd(today);
   return tasks.filter((task) => isOpenTask(task) && task.due_date !== null && task.due_date >= today && task.due_date <= weekEnd).length;
 }
 
-export function countUpcomingSevenDays(tasks: DashboardTask[], today: string): number {
+export function countUpcomingSevenDays(tasks: DashboardTaskSummary[], today: string): number {
   const endDate = getDateDaysFrom(today, 7);
   return tasks.filter((task) => isOpenTask(task) && task.due_date !== null && task.due_date > today && task.due_date <= endDate).length;
 }
@@ -82,7 +82,7 @@ export function isEmployeeTaskNeedsAttention(task: EmployeeAttentionTask, today:
     || isTaskInReview(task.status);
 }
 
-function attentionRank(task: DashboardTask, today: string): number {
+function attentionRank(task: DashboardTaskSummary, today: string): number {
   if (isTaskOverdue(task, today)) return 0;
   if (task.due_date === today) return 1;
   if (task.priority === "urgent") return 2;
@@ -90,7 +90,7 @@ function attentionRank(task: DashboardTask, today: string): number {
   return 4;
 }
 
-export function sortEmployeeTasks(tasks: DashboardTask[], today: string): DashboardTask[] {
+export function sortEmployeeTasks<T extends DashboardTaskSummary>(tasks: T[], today: string): T[] {
   return [...tasks].sort((left, right) => attentionRank(left, today) - attentionRank(right, today)
     || (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31")
     || left.created_at.localeCompare(right.created_at));
@@ -115,7 +115,7 @@ export function getEmployeeTasksNeedingAttention<T extends EmployeeAttentionTask
 
 export type AttentionProject = DashboardProject & { openTaskCount: number; overdueCount: number; urgentCount: number; deadlineDaysAway: number | null; progressPercent: number | null };
 
-export function getProjectsRequiringAttention(projects: DashboardProject[], tasks: DashboardTask[], today: string): AttentionProject[] {
+export function getProjectsRequiringAttention(projects: DashboardProject[], tasks: DashboardTaskSummary[], today: string): AttentionProject[] {
   const byProject = new Map(projects.map((project) => [project.id, project]));
   const summaries = new Map<string, AttentionProject>();
   for (const project of projects) {
@@ -140,7 +140,7 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
       || right.urgentCount - left.urgentCount || left.name.localeCompare(right.name));
 }
 
-export function getTeamWorkload(members: DashboardMember[], tasks: DashboardTask[], today: string) {
+export function getTeamWorkload(members: DashboardMember[], tasks: DashboardTaskSummary[], today: string) {
   return members.map((member) => {
     const assigned = tasks.filter((task) => task.assignee_id === member.id);
     const active = assigned.filter(isOpenTask);

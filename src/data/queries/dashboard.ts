@@ -3,31 +3,26 @@ import "server-only";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getCurrentUserProfile } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, getTodayDate, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject, type DashboardTask } from "@/lib/dashboard";
+import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, getTodayDate, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
 import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { isTaskInReview, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle";
-import type { MyTask } from "@/types/tasks";
+import type { DashboardTaskSummary } from "@/types/tasks";
 
-type DashboardTaskRow = Omit<DashboardTask, "collaborators"> & {
-  collaborators: TaskCollaboratorRelation[];
+type DashboardTaskRow = Omit<DashboardTaskSummary, "collaborators"> & {
+  collaborators: Array<{ user_id: string; profile: { id: string } | null }>;
 };
 type DashboardProjectRow = DashboardProject;
 
 export type DashboardDeadline = { id: string; kind: "task" | "project"; title: string; dueDate: string; project?: { id: string; name: string } };
-type DashboardTaskForDrawer = MyTask;
 
-export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: string }; metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }; attentionProjects: ReturnType<typeof getProjectsRequiringAttention>; deadlines: DashboardDeadline[]; workload: ReturnType<typeof getTeamWorkload>; myTasks: DashboardTaskForDrawer[] };
-export type EmployeeDashboard = { kind: "employee"; profile: { id: string; full_name: string }; metrics: { overdue: number; dueToday: number; inProgress: number; upcoming: number }; needsAttention: DashboardTaskForDrawer[]; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; hasMoreProjects: boolean; deadlines: DashboardDeadline[] };
+export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: string }; metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }; attentionProjects: ReturnType<typeof getProjectsRequiringAttention>; deadlines: DashboardDeadline[]; workload: ReturnType<typeof getTeamWorkload>; myTasks: DashboardTaskSummary[] };
+export type EmployeeDashboard = { kind: "employee"; profile: { id: string; full_name: string }; metrics: { overdue: number; dueToday: number; inProgress: number; upcoming: number }; needsAttention: DashboardTaskSummary[]; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; hasMoreProjects: boolean; deadlines: DashboardDeadline[] };
 export type DashboardData = AdminDashboard | EmployeeDashboard;
 
-function toDrawerTask(task: DashboardTask): DashboardTaskForDrawer {
-  return task;
-}
-
-function makeDeadlines(tasks: DashboardTask[], projects: DashboardProject[], today: string): DashboardDeadline[] {
+function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject[], today: string): DashboardDeadline[] {
   const endDate = new Date(today + "T12:00:00"); endDate.setDate(endDate.getDate() + 14);
   const limit = endDate.toISOString().slice(0, 10);
   return [
@@ -42,7 +37,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (membership.system_role !== "admin" && membership.system_role !== "employee") throw new Error("Active studio membership has an unsupported role.");
   const supabase = await createClient();
   const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date, status").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", OPERATIONAL_PROJECT_STATUSES);
-  const taskQuery = supabase.from("tasks").select("id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)").eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived");
+  const taskQuery = supabase.from("tasks").select(`${PROJECT_TASK_PROGRESS_SELECT}, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`).eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived");
   const [projectsResult, tasksResult, membersResult] = await Promise.all([
     projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>(),
     taskQuery.overrideTypes<DashboardTaskRow[], { merge: false }>(),
@@ -62,15 +57,15 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const projects = projectsResult.data.map((project) => ({ ...project, stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
   const tasks = tasksResult.data.map(({ collaborators, ...task }) => {
     const deadlines = task.deadlines ?? [];
-    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
+    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.filter((row) => row.profile !== null).map((row) => ({ id: row.user_id })) };
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {
-    const myTasks = sortEmployeeTasks(tasks.filter((task) => (task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)) && isOpenTask(task)), today).slice(0, 5).map(toDrawerTask);
+    const myTasks = sortEmployeeTasks(tasks.filter((task) => (task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)) && isOpenTask(task)), today).slice(0, 5);
     return { kind: "admin", profile, metrics: { activeProjects: projects.length, openTasks: tasks.filter(isOpenTask).length, overdueTasks: tasks.filter((task) => isTaskOverdue(task, today)).length, dueThisWeek: countDueThisWeek(tasks, today) }, attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6), deadlines: makeDeadlines(tasks, projects, today), workload: getTeamWorkload(membersResult.data.map((member) => member.profile), tasks, today), myTasks };
   }
   const personalTasks = tasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id));
-  const taskByProject = new Map<string, DashboardTask[]>();
+  const taskByProject = new Map<string, DashboardTaskSummary[]>();
   for (const task of personalTasks) taskByProject.set(task.project_id, [...(taskByProject.get(task.project_id) ?? []), task]);
-  return { kind: "employee", profile, metrics: { overdue: personalTasks.filter((task) => isTaskOverdue(task, today)).length, dueToday: countDueToday(personalTasks, today), inProgress: personalTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, upcoming: countUpcomingSevenDays(personalTasks, today) }, needsAttention: getEmployeeTasksNeedingAttention(personalTasks, today).slice(0, 8).map(toDrawerTask), projects: projects.map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, project.stageProgressMethods); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), hasMoreProjects: projects.length > 6, deadlines: makeDeadlines(personalTasks, projects, today) };
+  return { kind: "employee", profile, metrics: { overdue: personalTasks.filter((task) => isTaskOverdue(task, today)).length, dueToday: countDueToday(personalTasks, today), inProgress: personalTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, upcoming: countUpcomingSevenDays(personalTasks, today) }, needsAttention: getEmployeeTasksNeedingAttention(personalTasks, today).slice(0, 8), projects: projects.map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, project.stageProgressMethods); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), hasMoreProjects: projects.length > 6, deadlines: makeDeadlines(personalTasks, projects, today) };
 }

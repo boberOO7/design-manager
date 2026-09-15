@@ -3,17 +3,22 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { loadDashboardTask } from "@/app/(app)/dashboard/task-actions";
+import { Drawer } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getEmployeeTasksNeedingAttention, getTodayDate } from "@/lib/dashboard";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
-import { isTaskOverdue, mergeProjectTask } from "@/lib/tasks";
+import { isTaskOverdue } from "@/lib/tasks";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
-import type { MyTask, ProjectTask } from "@/types/tasks";
+import type { DashboardTaskSummary, ProjectTask } from "@/types/tasks";
 
-export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = false, emptyState }: { currentUserId: string; tasks: MyTask[]; needsAttentionOnly?: boolean; emptyState?: { title: string; description: string; linkHref: string; linkLabel: string } }) {
+export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = false, emptyState }: { currentUserId: string; tasks: DashboardTaskSummary[]; needsAttentionOnly?: boolean; emptyState?: { title: string; description: string; linkHref: string; linkLabel: string } }) {
   const t = useTranslations("Dashboard");
+  const common = useTranslations("Common");
   const taskT = useTranslations("Tasks");
   const status = useTranslations("Status");
   const priority = useTranslations("Priority");
@@ -22,26 +27,44 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const isTaskDrawerOpenRef = useRef(false);
-  const selectedTask = selectedTaskId ? items.find((task) => task.id === selectedTaskId) ?? null : null;
+  const selectedItem = selectedTaskId ? items.find((task) => task.id === selectedTaskId) ?? null : null;
+  const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const detailRequest = useRef(0);
 
   function openTaskDrawer(taskId: string) {
     isTaskDrawerOpenRef.current = true;
     setSelectedTaskId(taskId);
     setIsTaskDrawerOpen(true);
+    setSelectedTask(null);
+    setLoadFailed(false);
+    const request = ++detailRequest.current;
+    const item = items.find((task) => task.id === taskId);
+    if (!item) return;
+    void loadDashboardTask(taskId, item.project_id).then((task) => {
+      if (request !== detailRequest.current || !isTaskDrawerOpenRef.current) return;
+      if (task) setSelectedTask(task);
+      else setLoadFailed(true);
+    }).catch(() => {
+      if (request === detailRequest.current && isTaskDrawerOpenRef.current) setLoadFailed(true);
+    });
   }
 
   function closeTaskDrawer() {
+    detailRequest.current += 1;
     isTaskDrawerOpenRef.current = false;
     setIsTaskDrawerOpen(false);
   }
 
   function clearExitedTask() {
     if (!isTaskDrawerOpenRef.current) setSelectedTaskId(null);
+    if (!isTaskDrawerOpenRef.current) setSelectedTask(null);
   }
 
   function updateTask(updatedTask: ProjectTask) {
+    setSelectedTask((current) => current?.id === updatedTask.id ? updatedTask : current);
     setItems((current) => {
-      const next = mergeProjectTask(current, updatedTask);
+      const next = current.map((task) => task.id === updatedTask.id ? { ...task, ...updatedTask } : task);
       return needsAttentionOnly ? getEmployeeTasksNeedingAttention(next, getTodayDate()) : next;
     });
   }
@@ -70,6 +93,11 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
       })}
       </ul> : null}
     </div>
+    {selectedItem && !selectedTask ? <Drawer className="w-full max-w-[34rem]" title={taskT("taskDetails")} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask}>
+      <div className="flex items-center justify-between border-b border-[var(--ui-border)] p-4"><h2 className="font-semibold">{selectedItem.title}</h2><Button aria-label={taskT("closeTaskDetails")} size="sm" variant="ghost" onClick={closeTaskDrawer}><X className="size-4" /></Button></div>
+      <p className="p-4 text-sm text-[var(--ui-text-muted)]" role={loadFailed ? "alert" : "status"}>{loadFailed ? taskT("loadFailed") : common("loading")}</p>
+      {loadFailed ? <Button className="mx-4" variant="outline" onClick={() => openTaskDrawer(selectedItem.id)}>{taskT("retryLoad")}</Button> : null}
+    </Drawer> : null}
     {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isOpen={isTaskDrawerOpen} isProjectReadOnly={false} members={[]} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
   </>;
 }

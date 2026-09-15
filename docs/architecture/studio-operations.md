@@ -25,6 +25,11 @@ Invariants:
   saved through the guarded self-service profile RPC; they do not affect
   notification creation or read state.
 
+Dashboard uses a separate admin-only summary: the same capped pending queue count
+and three upcoming absences, without review notes, approval details, history,
+member statistics, checklist templates, or bonus configuration. It starts alongside
+the main Dashboard load. The Administration workspace retains its full model.
+
 ## Contractors
 
 - Contractors are studio-scoped through category ownership.
@@ -106,6 +111,12 @@ Assignment and Submission selection/dismissal replace URL history without a
 server navigation. Creation links push history locally when their workspace is
 already open; links to another workspace still navigate. Deep links initialize
 the same overlays. Successful mutation Server Actions own workspace revalidation.
+
+Office overview reads lightweight status/identity rows under the workspace RLS
+and population/order rules, then fetches display fields only for the six recent
+items. It reuses domain status/overdue helpers and does not load discussions,
+reactions, internal notes, descriptions, creator details, or member pickers.
+The full Submissions and Assignments workspace loaders remain independent.
 
 ### Submissions
 

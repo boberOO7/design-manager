@@ -16,6 +16,17 @@ type ProjectListMembershipRow = {
 };
 type ProjectTaskWithDeadlines = ProjectTaskForProgress & { project_id: string; deadlines: Array<{ id: string; target_status: string; due_date: string }> };
 
+export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, weight)";
+
+export async function getProjectTasksForProgress(projectId: string): Promise<ProjectTaskForProgress[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("tasks").select(PROJECT_TASK_PROGRESS_SELECT)
+    .eq("project_id", projectId).order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true })
+    .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>();
+  if (error || !data) throw new Error("Unable to load project task progress.", { cause: error });
+  return data.map(({ deadlines, ...task }) => ({ ...task, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null }));
+}
+
 export type AccessibleProjectWithTasks = ProjectListRow & {
   participants: ProjectListParticipant[];
   stageProgressMethods: ProjectStageProgressMethods;
@@ -41,7 +52,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, weight)")
+      .select(PROJECT_TASK_PROGRESS_SELECT)
       .in("project_id", ids)
       .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>(),
     supabase

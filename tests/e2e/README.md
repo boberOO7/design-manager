@@ -31,3 +31,20 @@ then run `pnpm exec vitest run src/data/queries/calendar-tasks.integration.test.
 The test rejects non-loopback URLs and removes its disposable studios/accounts.
 Set `CALENDAR_QUERY_MEASUREMENTS` to an output file to retain request, row,
 deadline-record, and response-byte measurements.
+
+Dashboard/Office summary equivalence and payload checks live in
+`src/data/queries/overview-summaries.integration.test.ts`. Set
+`SUMMARY_QUERY_TEST_URL`, `SUMMARY_QUERY_TEST_KEY`, and
+`SUMMARY_QUERY_TEST_SERVICE_KEY` from local Supabase, then run that file with
+Vitest. Only loopback URLs are accepted; disposable studios/accounts are removed.
+`SUMMARY_QUERY_MEASUREMENTS` optionally records request, row, byte, and elapsed
+loader measurements. These direct-loader measurements include membership reads;
+React request memoization in a rendered page can reuse those reads.
+
+Task payload equivalence: set `TASK_PAYLOAD_TEST_URL`, `TASK_PAYLOAD_TEST_KEY`,
+and `TASK_PAYLOAD_TEST_SERVICE_KEY` from local Supabase, then run
+`pnpm exec vitest run src/data/queries/task-payload.integration.test.ts`.
+`TASK_PAYLOAD_MEASUREMENTS` optionally records HTTP requests, task/nested counts,
+response bytes, and elapsed time. The suite rejects remote URLs and removes fixtures.
+`pnpm exec playwright test tests/e2e/task-payload.spec.ts` covers Project views
+and Dashboard drawer loading, close/reopen, retry, and checklist persistence.
