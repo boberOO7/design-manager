@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ProjectForm, type ProjectFormAction, type ProjectFormDefaults } from "@/components/projects/project-form";
+import type { ProjectFormAction, ProjectFormDefaults } from "@/components/projects/project-form";
+import { LazyProjectForm as ProjectForm } from "@/components/projects/lazy-project-form";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { getProjectDialogCloseIntent } from "@/lib/project-dialog";

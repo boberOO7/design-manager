@@ -66,6 +66,13 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => getDefaultProjectTemplate(templates, defaultValues.project_type ?? "")?.id ?? "");
 
   useEffect(() => {
+    const dialog = formRef.current?.closest('[role="dialog"]');
+    if (layout === "modal" && dialog === document.activeElement) {
+      formRef.current?.querySelector<HTMLElement>("[data-dialog-initial-focus]")?.focus({ preventScroll: true });
+    }
+  }, [layout]);
+
+  useEffect(() => {
     if (state.projectId) onSuccess?.(state.projectId);
   }, [onSuccess, state.projectId]);
 
