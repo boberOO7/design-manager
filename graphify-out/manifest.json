@@ -570,9 +570,9 @@
     "semantic_hash": "ab83dc0bb5797b7bed8f221e02c20855"
   },
   "src/data/queries/calendar.ts": {
-    "mtime": 1789380764.5394003,
-    "ast_hash": "e18d30539badef1aace3fdefa8bd37d4",
-    "semantic_hash": "e18d30539badef1aace3fdefa8bd37d4"
+    "mtime": 1789471622.6863482,
+    "ast_hash": "bea106a2574d9f30ecf1be91f09383ee",
+    "semantic_hash": ""
   },
   "src/data/queries/dashboard.ts": {
     "mtime": 1788438219.1717243,
@@ -4070,8 +4070,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/calendar.md": {
-    "mtime": 1789429106.3291237,
-    "ast_hash": "a6c005ec8cd006604e72a13282b0cb58",
+    "mtime": 1789472101.7843933,
+    "ast_hash": "62d1c5e14a335e50f4326eefff91ef55",
     "semantic_hash": ""
   },
   "docs/architecture/database.md": {
@@ -4715,8 +4715,8 @@
     "semantic_hash": ""
   },
   "tests/e2e/README.md": {
-    "mtime": 1789429106.6571453,
-    "ast_hash": "f225f882c1fe69ffff130b382fb8f65a",
+    "mtime": 1789472157.7647426,
+    "ast_hash": "05e56029d2f7fd34442ebb7803087a7c",
     "semantic_hash": ""
   },
   "src/lib/equipment-inventory-migration.test.ts": {
@@ -5075,8 +5075,23 @@
     "semantic_hash": ""
   },
   "tests/e2e/calendar-projects-presentation.spec.ts": {
-    "mtime": 1789429049.7577758,
-    "ast_hash": "1f5939ce34231b503e5aef045b3f260f",
+    "mtime": 1789429354.2101946,
+    "ast_hash": "38b32f75ad7cbc3a4c7ffc3cb46c76ec",
+    "semantic_hash": ""
+  },
+  "src/data/queries/calendar-follow-ups.test.ts": {
+    "mtime": 1789471903.609791,
+    "ast_hash": "d91341f03ba10bda165569764b904887",
+    "semantic_hash": ""
+  },
+  "src/data/queries/calendar-tasks.integration.test.ts": {
+    "mtime": 1789471903.6057909,
+    "ast_hash": "f8037bc9f76c7aec643a6ddb8d6af777",
+    "semantic_hash": ""
+  },
+  "src/data/queries/calendar-tasks.ts": {
+    "mtime": 1789471471.764588,
+    "ast_hash": "749cede957a1a3e57ae056537aaaf126",
     "semantic_hash": ""
   }
 }

@@ -22,3 +22,12 @@ Calendar and Projects presentation regression coverage:
 Uses disposable local records to check filter navigation counts, direct links,
 Back/Forward, paused ordering, same-range refresh adoption, and an event mutation
 that completes while an earlier refresh response is deliberately delayed.
+
+Calendar task-range query equivalence and payload checks live in
+`src/data/queries/calendar-tasks.integration.test.ts`. They are opt-in: set
+`CALENDAR_QUERY_TEST_URL`, `CALENDAR_QUERY_TEST_KEY`, and
+`CALENDAR_QUERY_TEST_SERVICE_KEY` from the running **local** Supabase stack,
+then run `pnpm exec vitest run src/data/queries/calendar-tasks.integration.test.ts`.
+The test rejects non-loopback URLs and removes its disposable studios/accounts.
+Set `CALENDAR_QUERY_MEASUREMENTS` to an output file to retain request, row,
+deadline-record, and response-byte measurements.

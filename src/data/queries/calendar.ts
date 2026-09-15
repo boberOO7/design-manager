@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getCalendarTasks } from "./calendar-tasks";
+
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
@@ -40,12 +42,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     .neq("status", "archived")
     .order("due_date");
 
-  const taskDeadlinesPromise = supabase
-    .from("tasks")
-    .select("id, project_id, title, description, status, priority, assignee_id, deadlines:task_deadlines(id, target_status, due_date), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status), assignee:profiles!tasks_assignee_id_fkey!inner(id, full_name)")
-    .eq("project.studio_id", membership.studio_id)
-    .neq("status", "cancelled")
-    .order("created_at");
+  const taskDeadlinesPromise = getCalendarTasks(supabase, membership.studio_id, { start, end });
 
   const eventsPromise = supabase
     .from("calendar_events")
@@ -126,18 +123,22 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const projects: CalendarProject[] = projectsResult.data ?? [];
   const reviewRequestIds = isAdmin ? (timeOffResult.data ?? []).map((request) => request.id) : [];
-  const reviewNotesResult = reviewRequestIds.length
-    ? await supabase.from("time_off_request_reviews").select("request_id, note").in("request_id", reviewRequestIds)
-    : { data: [], error: null };
-  if (reviewNotesResult.error) throw new Error("Unable to load private time-off review notes.");
-  const reviewNoteByRequestId = new Map((reviewNotesResult.data ?? []).map((review) => [review.request_id, review.note]));
+  const reviewNotesPromise = reviewRequestIds.length
+    ? supabase.from("time_off_request_reviews").select("request_id, note").in("request_id", reviewRequestIds)
+    : Promise.resolve({ data: [], error: null });
   const detailDayOffs = (timeOffResult.data ?? []).filter((request) => request.request_type === "day_off" && request.status === "approved");
   const linkedRequestIds = (eventsResult.data ?? []).map((event) => event.compensates_time_off_request_id).filter((id): id is string => id !== null);
-  const linkedDayOffsResult = linkedRequestIds.length ? await supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").in("id", linkedRequestIds).eq("request_type", "day_off").eq("status", "approved") : { data: [], error: null };
-  if (linkedDayOffsResult.error) throw new Error("Unable to load linked day-off details.");
-  const compensationRequestIds = [...new Set([...detailDayOffs, ...(ownApprovedDayOffsResult.data ?? []), ...(linkedDayOffsResult.data ?? [])].map((request) => request.id))];
-  const compensationEventsResult = compensationRequestIds.length ? await supabase.from("calendar_events").select("id, starts_at, ends_at, all_day, cancelled_at, compensates_time_off_request_id").eq("studio_id", membership.studio_id).eq("event_type", "work_makeup").in("compensates_time_off_request_id", compensationRequestIds) : { data: [], error: null };
+  // Reuse the native promise: awaiting a Supabase query builder twice executes it twice.
+  const linkedDayOffsPromise = Promise.resolve(linkedRequestIds.length ? supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").in("id", linkedRequestIds).eq("request_type", "day_off").eq("status", "approved") : { data: [], error: null });
+  const compensationEventsPromise = linkedDayOffsPromise.then(async (linkedDayOffsResult) => {
+    if (linkedDayOffsResult.error) throw new Error("Unable to load linked day-off details.");
+    const compensationRequestIds = [...new Set([...detailDayOffs, ...(ownApprovedDayOffsResult.data ?? []), ...(linkedDayOffsResult.data ?? [])].map((request) => request.id))];
+    return compensationRequestIds.length ? await supabase.from("calendar_events").select("id, starts_at, ends_at, all_day, cancelled_at, compensates_time_off_request_id").eq("studio_id", membership.studio_id).eq("event_type", "work_makeup").in("compensates_time_off_request_id", compensationRequestIds) : { data: [], error: null };
+  });
+  const [reviewNotesResult, linkedDayOffsResult, compensationEventsResult] = await Promise.all([reviewNotesPromise, linkedDayOffsPromise, compensationEventsPromise]);
+  if (reviewNotesResult.error) throw new Error("Unable to load private time-off review notes.");
   if (compensationEventsResult.error) throw new Error("Unable to load day-off compensation.");
+  const reviewNoteByRequestId = new Map((reviewNotesResult.data ?? []).map((review) => [review.request_id, review.note]));
   const compensationFor = (request: { id: string; start_date: string; end_date: string; start_time: string | null; end_time: string | null; all_day: boolean }) => getDayOffCompensation({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day }, (compensationEventsResult.data ?? []).filter((event) => event.compensates_time_off_request_id === request.id).map((event) => ({ id: event.id, startsAt: event.starts_at, endsAt: event.ends_at, allDay: event.all_day, cancelledAt: event.cancelled_at, compensatesTimeOffRequestId: event.compensates_time_off_request_id })));
   const compensableDayOffs: CalendarCompensableDayOff[] = (ownApprovedDayOffsResult.data ?? []).map((request) => ({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day, remainingMinutes: compensationFor(request).remainingMinutes })).filter((request) => request.remainingMinutes > 0);
   const linkedDayOffById = new Map((linkedDayOffsResult.data ?? []).map((request) => [request.id, { id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day, remainingMinutes: compensationFor(request).remainingMinutes }]));

@@ -42,6 +42,16 @@ mutations completed after the workspace's refresh began. Open form drafts remain
 local. Calendar itself has no item realtime subscription; notification delivery
 belongs to the shell.
 
+Task range reads first fetch lightweight candidates with an in-range milestone,
+keeping their complete deadline collection. The canonical next-unreached
+milestone selector then determines which tasks need full Calendar details.
+The full rows are checked again before projection. Candidate pagination and
+bounded detail batches avoid Data API row limits and oversized ID filters.
+Tasks still load when hidden by a source filter, so local toggles need no fetch.
+
+Private review notes load independently of linked day-off details and their
+dependent compensation-event read.
+
 ## Semantic event types
 
 Real events use language-neutral types: general, meeting, interview, site visit,
