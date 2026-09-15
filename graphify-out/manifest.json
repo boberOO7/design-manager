@@ -1705,9 +1705,9 @@
     "semantic_hash": "8571003c6ea8c4cb6eefd26c31db2c4c"
   },
   "src/components/layout/profile-avatar-editor.tsx": {
-    "mtime": 1789346112.6238954,
-    "ast_hash": "bcb8b6ead0599e60391e337f034c5ee5",
-    "semantic_hash": "bcb8b6ead0599e60391e337f034c5ee5"
+    "mtime": 1789484260.8021815,
+    "ast_hash": "2ffd1f2f521709f470c29435045b2f04",
+    "semantic_hash": ""
   },
   "src/lib/avatar-storage-migration.test.ts": {
     "mtime": 1786573673.0167682,
@@ -1735,9 +1735,9 @@
     "semantic_hash": "f3e8055a90b27b6b0c5174db451a1301"
   },
   "src/components/layout/profile-avatar-editor.contract.test.ts": {
-    "mtime": 1789346112.8079042,
-    "ast_hash": "4387bffb0981968ad1df3198239e4cbc",
-    "semantic_hash": "4387bffb0981968ad1df3198239e4cbc"
+    "mtime": 1789484261.1141946,
+    "ast_hash": "da4162107e5b55336bd49ee51e64ede2",
+    "semantic_hash": ""
   },
   "src/components/layout/avatar-crop-step.contract.test.ts": {
     "mtime": 1786573386.824155,
@@ -4080,8 +4080,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/overview.md": {
-    "mtime": 1788605747.9498703,
-    "ast_hash": "155e7d0c9a734601253aeaff4a9015bf",
+    "mtime": 1789484523.8459651,
+    "ast_hash": "dcd519015992935bbd987c1eb615d451",
     "semantic_hash": ""
   },
   "docs/architecture/permissions.md": {
@@ -5060,8 +5060,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/date-field-consistency.test.ts": {
-    "mtime": 1789391601.4915874,
-    "ast_hash": "ae467aa4059888a4af68108cd8408e9f",
+    "mtime": 1789484384.6977284,
+    "ast_hash": "27d41c85043682208d9a002b2f6848de",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20260914_114245_investigate_and_fix_the_stale_session_auth_resume.md": {
@@ -5147,6 +5147,16 @@
   "src/components/projects/lazy-project-form.tsx": {
     "mtime": 1789483296.7171543,
     "ast_hash": "9c59b1203be2c190633b9ca0bfa52cba",
+    "semantic_hash": ""
+  },
+  "src/components/layout/profile-editor-dialog.tsx": {
+    "mtime": 1789484197.8539627,
+    "ast_hash": "4725447b75fd53042dae999fe0c3e6c3",
+    "semantic_hash": ""
+  },
+  "tests/e2e/profile-shell.spec.ts": {
+    "mtime": 1789484612.940991,
+    "ast_hash": "b79dcdcf059ea0f08257c567aab1f208",
     "semantic_hash": ""
   }
 }

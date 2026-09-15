@@ -96,6 +96,18 @@ documents without external verification.
 - Add schema changes in a new migration. Never revise an applied migration or
   push remote changes without explicit confirmation.
 
+## Profile/account client delivery
+
+The shared header keeps the avatar trigger, current avatar URL, and OAuth-return
+listener in `profile-avatar-editor.tsx`. The listener must remain eager to consume
+`googleCalendar` callback results and open the account UI without another click.
+The editor, crop/upload controls, city/date controls, and Google connection UI
+load through `profile-editor-dialog.tsx` on first opening. A cancellable spinner
+occupies the existing avatar bounds while loading. The editor stays mounted after
+that first load to preserve its existing close/reset and account-state behavior;
+the shared Dialog returns focus to the persistent trigger. Profile RPCs, Storage
+operations, and Google endpoints retain their existing authorization boundaries.
+
 ## Read next
 
 | Task | Read |

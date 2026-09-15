@@ -21,7 +21,7 @@ describe("date-field consistency", () => {
     ["Equipment / Maintenance", ["src/components/office/equipment-form.tsx", "src/components/office/equipment-workspace.tsx"]],
     ["Projects", ["src/components/projects/project-form.tsx", "src/components/projects/project-completion-date-form.tsx"]],
     ["CRM", ["src/components/crm/leads-workspace.tsx", "src/components/crm/candidates-workspace.tsx"]],
-    ["Team / Profile", ["src/components/team/studio-member-profile-editor.tsx", "src/components/layout/profile-avatar-editor.tsx"]],
+    ["Team / Profile", ["src/components/team/studio-member-profile-editor.tsx", "src/components/layout/profile-editor-dialog.tsx"]],
   ])("uses DatePicker in %s", (_area, paths) => {
     const source = paths.map((path) => readFileSync(path, "utf8")).join("\n");
     expect(source).toContain("<DatePicker");

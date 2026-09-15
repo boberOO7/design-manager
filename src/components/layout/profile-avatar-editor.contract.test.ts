@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
-const editorPath = new URL("./profile-avatar-editor.tsx", import.meta.url);
+const editorPath = new URL("./profile-editor-dialog.tsx", import.meta.url);
 
 describe("profile editor fields", () => {
   it("keeps personal dates together and only enables start-date editing for administrators", async () => {
