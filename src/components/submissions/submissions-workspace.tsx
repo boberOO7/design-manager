@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useOptimistic, useRef,
 import * as Popover from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
 import { Ban, CalendarCheck2, CalendarClock, Check, CheckCircle2, CircleAlert, Ellipsis, Eye, Lightbulb, LockKeyhole, MessageSquareText, Play, Send, ShieldCheck, ThumbsUp, UserRound, Wrench, X } from "lucide-react";
-import { addSubmissionComment, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
+import { addSubmissionComment, loadSubmissionDetail, createSubmission, manageSubmission, toggleSuggestionSupport } from "@/app/(app)/submissions/actions";
 import { useOfficeOverlayRouting } from "@/components/office/use-office-overlay-routing";
 import { officeListDesktopGridClassName, officeWorkflowStyles } from "@/components/office/office-list-patterns";
 import { taskPrioritySelectItem } from "@/components/tasks/task-select-presentation";
@@ -15,7 +15,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import type { SubmissionComment, SubmissionItem, SubmissionPerson } from "@/data/queries/submissions";
+import type { SubmissionComment, SubmissionDetail, SubmissionItem, SubmissionSummary, SubmissionPerson } from "@/data/queries/submissions";
 import { canRejectSubmission, getPrimarySubmissionAction, getPrimarySubmissionStatus, isTerminalSubmissionStatus, submissionTransitionRequiresResponsible, SUBMISSION_PRIORITIES, SUBMISSION_REQUEST_CATEGORIES, SUBMISSION_TYPES, type SubmissionPriority, type SubmissionRequestCategory, type SubmissionStatus, type SubmissionType, type SubmissionWorkflowAction as SubmissionWorkflowActionDefinition } from "@/lib/submissions";
 import { createClient } from "@/lib/supabase/client";
 import type { SubmissionActionState } from "@/lib/validation/submission";
@@ -28,6 +28,7 @@ type ManageSubmissionInput = { submissionId: string; status: string; responsible
 type RealtimeCommentDetailRow = { id: string; body: string; created_at: string; author: { id: string; full_name: string; avatar_url: string | null } };
 const initialCreateState: SubmissionActionState = {};
 const discussionBottomThreshold = 96;
+type DetailLoader = (id: string) => Promise<SubmissionDetail | null>;
 
 function sortComments(comments: SubmissionComment[]) {
   return [...comments].sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
@@ -56,7 +57,7 @@ function statusStyle(status: SubmissionStatus) {
   return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
-export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }: { currentUserId: string; isAdmin: boolean; items: SubmissionItem[]; members: SubmissionPerson[] }) {
+export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }: { currentUserId: string; isAdmin: boolean; items: SubmissionSummary[]; members: SubmissionPerson[] }) {
   const t = useTranslations("Submissions");
   const [filter, setFilter] = useState<InboxFilter>("active");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -68,9 +69,22 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }:
   const rememberComment = useCallback((submissionId: string, entry: SubmissionComment) => {
     setReceivedComments((current) => new Map(current).set(submissionId, [...(current.get(submissionId) ?? []).filter((comment) => comment.id !== entry.id), entry]));
   }, []);
-  const selectedComments = useMemo(() => selected
-    ? sortComments([...new Map([...(receivedComments.get(selected.id) ?? []), ...selected.comments].map((entry) => [entry.id, entry])).values()])
-    : [], [receivedComments, selected]);
+  const detailCache = useRef<{ items: SubmissionSummary[]; requests: Map<string, ReturnType<DetailLoader>> } | null>(null);
+  const loadDetail = useCallback<DetailLoader>((id) => {
+    if (!items.some((item) => item.id === id)) return Promise.resolve(null);
+    // Successful actions replace this authoritative snapshot. Old in-flight reads
+    // stay isolated and cannot overwrite the cache belonging to the new render.
+    if (detailCache.current?.items !== items) detailCache.current = { items, requests: new Map() };
+    const requests = detailCache.current.requests;
+    const existing = requests.get(id);
+    if (existing) return existing;
+    const request = loadSubmissionDetail(id).catch(() => null).then((detail) => {
+      if (!detail) requests.delete(id);
+      return detail;
+    });
+    requests.set(id, request);
+    return request;
+  }, [items]);
   const filters: InboxFilter[] = ["active", "mine", "history"];
   const filtered = useMemo(() => items.filter((item) => {
     if (typeFilter !== "all" && item.type !== typeFilter) return false;
@@ -95,11 +109,11 @@ export function SubmissionsWorkspace({ currentUserId, isAdmin, items, members }:
     {createdNotice ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200">{t(createdNotice === "anonymous" ? "anonymousCreatedNotice" : "createdNotice")}</p> : null}
     {filtered.length ? <div className="divide-y divide-[var(--ui-border-subtle)] overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">{filtered.map((item) => <SubmissionRow key={item.id} currentUserId={currentUserId} isAdmin={isAdmin} item={item} members={members} onOpen={() => openItem(item.id)} />)}</div> : <div className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-6 py-14 text-center"><MessageSquareText className="mx-auto size-8 text-[var(--ui-text-muted)]" aria-hidden="true" /><h2 className="mt-3 font-semibold">{t("empty.title")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("empty.description")}</p></div>}
     <CreateSubmissionDialog key={`submission-create-${createOpen ? "open" : "closed"}`} isOpen={createOpen} onClose={closeCreate} onCreated={(id, anonymous) => { setCreatedNotice(anonymous ? "anonymous" : "named"); if (id) openItem(id); else closeCreate(); }} />
-    <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} comments={selectedComments} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onComment={rememberComment} onClose={closeItem} />
+    <SubmissionDetailDrawer key={`submission-detail-${selected?.id ?? "closed"}`} receivedComments={selected ? receivedComments.get(selected.id) ?? [] : []} loadDetail={loadDetail} currentUserId={currentUserId} isAdmin={isAdmin} item={selected} members={members} onComment={rememberComment} onClose={closeItem} />
   </div>;
 }
 
-function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { currentUserId: string; isAdmin: boolean; item: SubmissionItem; members: SubmissionPerson[]; onOpen: () => void }) {
+function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { currentUserId: string; isAdmin: boolean; item: SubmissionSummary; members: SubmissionPerson[]; onOpen: () => void }) {
   const t = useTranslations("Submissions");
   const locale = useLocale();
   const [optimisticSupport, setOptimisticSupport] = useOptimistic(
@@ -128,7 +142,7 @@ function SubmissionRow({ currentUserId, isAdmin, item, members, onOpen }: { curr
   function runWorkflow(status: SubmissionStatus, responsibleId: string | null) {
     setWorkflowError(null);
     startWorkflowTransition(async () => {
-      const result = await manageSubmission({ submissionId: item.id, status, responsibleId, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" });
+      const result = await manageSubmission({ submissionId: item.id, status, responsibleId, priority: item.priority, deadline: item.deadline });
       if (result.error) setWorkflowError(result.error);
     });
   }
@@ -181,9 +195,20 @@ function CreateSubmissionDialog({ isOpen, onClose, onCreated }: { isOpen: boolea
   </Dialog>;
 }
 
-function SubmissionDetailDrawer({ comments, currentUserId, isAdmin, item, members, onComment, onClose }: { comments: SubmissionComment[]; onComment: (submissionId: string, entry: SubmissionComment) => void; currentUserId: string; isAdmin: boolean; item: SubmissionItem | null; members: SubmissionPerson[]; onClose: () => void }) {
+function SubmissionDetailDrawer({ receivedComments, loadDetail, currentUserId, isAdmin, item, members, onComment, onClose }: { receivedComments: SubmissionComment[]; loadDetail: DetailLoader; onComment: (submissionId: string, entry: SubmissionComment) => void; currentUserId: string; isAdmin: boolean; item: SubmissionSummary | null; members: SubmissionPerson[]; onClose: () => void }) {
   const t = useTranslations("Submissions");
   const locale = useLocale();
+  const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState<{ loader: DetailLoader; detail: SubmissionDetail | null } | null>(null);
+  useEffect(() => {
+    if (!item) return;
+    let cancelled = false;
+    void loadDetail(item.id).then((detail) => { if (!cancelled) setLoaded({ loader: loadDetail, detail }); });
+    return () => { cancelled = true; };
+  }, [item, loadDetail, attempt]);
+  const current = loaded?.loader === loadDetail ? loaded : null;
+  const detail = current?.detail ?? null;
+  const comments = useMemo(() => sortComments([...new Map([...(detail?.comments ?? []), ...receivedComments].map((entry) => [entry.id, entry])).values()]), [detail, receivedComments]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -254,7 +279,7 @@ function SubmissionDetailDrawer({ comments, currentUserId, isAdmin, item, member
   const Icon = typeIcons[item.type];
   function run(operation: () => Promise<{ error?: string }>) { setError(null); startTransition(async () => { const result = await operation(); if (result.error) setError(result.error); }); }
   function submitComment() {
-    if (pending || !comment.trim()) return;
+    if (pending || !detail || !comment.trim()) return;
     const keepNewestVisible = isNearDiscussionBottom();
     setError(null);
     startTransition(async () => {
@@ -271,12 +296,12 @@ function SubmissionDetailDrawer({ comments, currentUserId, isAdmin, item, member
     <header className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div className="flex min-w-0 gap-3"><div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)]", typeStyles[item.type])}><Icon className="size-5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]">{t(`types.${item.type}`)}{item.type === "request" && item.requestCategory ? ` · ${t(`categories.${item.requestCategory}`)}` : ""}</p><div className="mt-1 flex flex-wrap items-center gap-2"><h2 className="max-w-full break-words text-lg font-bold leading-6">{item.title}</h2><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", statusStyle(item.status))}>{t(`statuses.${item.status}`)}</span><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold !border-0", getPriorityBadgeStyle(item.priority).className)}>{t(`priorities.${item.priority}`)}</span></div></div></div><button ref={closeRef} type="button" aria-label={t("close")} onClick={onClose} className="flex size-11 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-5" aria-hidden="true" /></button></header>
     <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
       <section className="space-y-5 p-5 sm:p-6"><dl className="grid gap-x-6 gap-y-4 border-b border-[var(--ui-border-subtle)] pb-4 sm:grid-cols-2">{item.isAnonymous ? <AnonymousMeta label={t("author")} value={t("anonymousPrivate")} /> : item.author ? <PersonMeta label={t("author")} person={item.author} /> : <Meta label={t("author")} value="—" />}{item.responsible ? <PersonMeta label={t("responsible")} person={item.responsible} /> : <Meta label={t("responsible")} value={t("unassigned")} />}<Meta label={t("created")} value={new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(item.createdAt))} /><Meta label={t("deadline")} value={item.deadline ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${item.deadline}T00:00:00`)) : "—"} /></dl>
-        <div><h3 className="text-sm font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{item.description}</p></div>
+        <div>{!current ? <p role="status">{t("detailLoading")}</p> : !detail ? <div><p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("detailLoadError")}</p><Button variant="ghost" onClick={() => { setLoaded(null); setAttempt((value) => value + 1); }}>{t("retry")}</Button></div> : null}<h3 className="text-sm font-semibold">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{detail?.description}</p></div>
         {item.type === "suggestion" ? <Button type="button" size="lg" variant="outline" aria-pressed={item.supportedByMe} disabled={pending} onClick={() => run(() => toggleSuggestionSupport(item.id, item.supportedByMe))} className={item.supportedByMe ? "border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)] hover:opacity-90" : undefined}><ThumbsUp className={cn("mr-2 size-4", item.supportedByMe && "fill-current")} aria-hidden="true" />{item.supportedByMe ? t("supported", { count: item.supportCount }) : t("support", { count: item.supportCount })}</Button> : null}
       </section>
-      {isAdmin ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={item} members={members} disabled={pending} onSave={(input) => run(() => manageSubmission(input))} onReject={canRejectSubmission(item.type, item.status) ? () => run(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: item.internalNote ?? "" })) : undefined} /> : null}
+      {isAdmin && detail ? <AdminControls key={`${item.id}:${item.updatedAt}`} item={{ ...item, ...detail }} members={members} disabled={pending} onSave={(input) => run(() => manageSubmission(input))} onReject={canRejectSubmission(item.type, item.status) ? () => run(() => manageSubmission({ submissionId: item.id, status: "rejected", responsibleId: item.responsible?.id ?? null, priority: item.priority, deadline: item.deadline, internalNote: detail.internalNote ?? "" })) : undefined} /> : null}
       {!item.isAnonymous ? <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><h3 className="flex items-center gap-2 font-semibold"><MessageSquareText className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" />{t(item.type === "suggestion" ? "discussion" : "communication")}</h3><div className="mt-4 grid gap-4">{comments.map((entry) => <div key={entry.id} className="flex gap-3"><UserAvatar imageUrl={entry.author.avatarUrl} name={entry.author.fullName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-semibold">{entry.author.id === currentUserId ? t("you") : entry.author.fullName}</span><time className="text-xs text-[var(--ui-text-muted)]">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-text-secondary)]">{entry.body}</p></div></div>)}</div>
-        <div className="mt-4 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea ref={commentRef} value={comment} onChange={(event) => setComment(event.target.value)} onCompositionStart={() => { isComposingCommentRef.current = true; }} onCompositionEnd={() => { isComposingCommentRef.current = false; }} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || isComposingCommentRef.current) return; event.preventDefault(); submitComment(); }} maxLength={3000} rows={1} className="min-h-11 max-h-28 resize-none overflow-y-auto py-2.5 leading-5" /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
+        <div className="mt-4 flex items-end gap-2"><FormField className="min-w-0 flex-1" label={t("comment")}><Textarea ref={commentRef} value={comment} onChange={(event) => setComment(event.target.value)} onCompositionStart={() => { isComposingCommentRef.current = true; }} onCompositionEnd={() => { isComposingCommentRef.current = false; }} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || isComposingCommentRef.current) return; event.preventDefault(); submitComment(); }} maxLength={3000} rows={1} className="min-h-11 max-h-28 resize-none overflow-y-auto py-2.5 leading-5" /></FormField><Button type="button" aria-label={t("send")} disabled={pending || !detail || !comment.trim()} onClick={submitComment} className="size-11 px-0"><Send className="size-4" aria-hidden="true" /></Button></div>
       </section> : null}
       {error ? <p role="alert" className="mx-5 mb-5 text-sm text-[var(--ui-danger-text)] sm:mx-6 sm:mb-6">{t(`errors.${error}`)}</p> : null}
     </div>

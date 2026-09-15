@@ -29,7 +29,7 @@ export const manageSubmissionSchema = z.object({
   responsibleId: z.string().uuid().nullable(),
   priority: z.enum(SUBMISSION_PRIORITIES),
   deadline: z.iso.date().nullable(),
-  internalNote: z.string().trim().max(5000),
+  internalNote: z.string().trim().max(5000).optional(),
 });
 
 export type SubmissionActionState = { success?: boolean; submissionId?: string; anonymousSubmitted?: boolean; error?: string };

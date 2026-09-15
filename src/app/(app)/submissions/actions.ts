@@ -1,5 +1,7 @@
 "use server";
 
+import { z } from "zod";
+import { getSubmissionDetail } from "@/data/queries/submissions";
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -75,18 +77,33 @@ export async function toggleSuggestionSupport(submissionId: string, supported: b
   refresh(); return {};
 }
 
-export async function manageSubmission(input: { submissionId: string; status: string; responsibleId: string | null; priority: string; deadline: string | null; internalNote: string }): Promise<{ error?: string }> {
+export async function manageSubmission(input: { submissionId: string; status: string; responsibleId: string | null; priority: string; deadline: string | null; internalNote?: string }): Promise<{ error?: string }> {
   const [admin, parsed] = await Promise.all([getActiveStudioAdmin(), Promise.resolve(manageSubmissionSchema.safeParse(input))]);
   if (!admin) return { error: "permission" };
   if (!parsed.success) return { error: "invalid" };
   const supabase = await createClient();
+  // Inline workflow actions do not load private notes. Preserve the current note
+  // when omitted; an explicit empty string still clears it in the admin form.
+  let internalNote = parsed.data.internalNote;
+  if (internalNote === undefined) {
+    const { data, error } = await supabase.from("submission_admin_details").select("internal_note")
+      .eq("studio_id", admin.studio_id).eq("submission_id", parsed.data.submissionId).maybeSingle();
+    if (error) return { error: "manage" };
+    internalNote = data?.internal_note ?? "";
+  }
   const manageInput = {
     p_submission_id: parsed.data.submissionId, p_status: parsed.data.status,
-    p_priority: parsed.data.priority, p_internal_note: parsed.data.internalNote,
+    p_priority: parsed.data.priority, p_internal_note: internalNote,
     ...(parsed.data.responsibleId === null ? {} : { p_responsible_id: parsed.data.responsibleId }),
     ...(parsed.data.deadline === null ? {} : { p_deadline: parsed.data.deadline }),
   };
   const { error } = await supabase.rpc("manage_submission", manageInput);
   if (error) { console.error("Unable to manage submission", error); return { error: error.message.includes("invalid_submission_transition") ? "transition" : error.message.includes("responsible_required_for_work") || error.message.includes("responsible_must_be_active_studio_member") ? "responsible" : "manage" }; }
   refresh(); return {};
+}
+
+export async function loadSubmissionDetail(submissionId: unknown) {
+  const parsed = z.uuid().safeParse(submissionId);
+  if (!parsed.success) return null;
+  try { return await getSubmissionDetail(parsed.data); } catch { return null; }
 }

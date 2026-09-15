@@ -2,9 +2,9 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, CircleDot, ExternalLink, FileText, Link as LinkIcon, Mail, MoreHorizontal, Pencil, Phone, Plus, Search, Trash2, UserRound, type LucideIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { createCandidate, deleteCandidate, saveCandidateEditor, startRecruitingCycle } from "@/app/(app)/crm/actions";
+import { createCandidate, deleteCandidate, loadCandidateCycles, saveCandidateEditor, startRecruitingCycle } from "@/app/(app)/crm/actions";
 import { CrmActionForm } from "@/components/crm/action-form";
 import { AdminField, TextField } from "@/components/crm/crm-fields";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { TimePicker } from "@/components/ui/time-picker";
-import type { CrmAdmin, CrmCandidate, CrmRecruitingCycle } from "@/data/queries/crm";
+import type { CrmAdmin, CrmCandidate, CrmCandidateSummary, CrmRecruitingCycle } from "@/data/queries/crm";
 import { instantToWallInput } from "@/lib/calendar";
 import { filterCandidates, isCandidateStatusFilter, type CandidateStatusFilter } from "@/lib/crm";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
@@ -52,7 +52,7 @@ function CandidateSourceField({ customError, defaultValue, error }: { customErro
   </>;
 }
 
-function CandidateContactFields({ admins, candidate, fieldErrors, includePosition, positions }: { admins: CrmAdmin[]; candidate?: CrmCandidate | null; fieldErrors?: Record<string, string>; includePosition: boolean; positions: readonly ProfessionalRole[] }) {
+function CandidateContactFields({ admins, candidate, fieldErrors, includePosition, positions }: { admins: CrmAdmin[]; candidate?: CrmCandidateSummary | null; fieldErrors?: Record<string, string>; includePosition: boolean; positions: readonly ProfessionalRole[] }) {
   const t = useTranslations("Crm");
   return <div className="grid gap-4 sm:grid-cols-2">
     <TextField name="full_name" label={t("fields.fullName")} defaultValue={candidate?.full_name} required initialFocus error={fieldErrors?.full_name} />
@@ -74,22 +74,49 @@ function CandidateCycleFields({ cycle, fieldErrors, positions }: { cycle?: CrmRe
   return <><div className="grid gap-4 sm:grid-cols-2"><PositionField positions={positions} defaultValue={cycle?.target_position} error={fieldErrors?.target_position} /><FormField as="div" label={t("fields.stage")} error={fieldErrors?.stage}><Select aria-invalid={Boolean(fieldErrors?.stage)} name="stage" defaultValue={cycle?.stage ?? "new"}>{RECRUITING_STAGES.map((value) => <SelectItem key={value} value={value}>{t(`candidateStage.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.outcome")} error={fieldErrors?.outcome} optional><Select aria-invalid={Boolean(fieldErrors?.outcome)} name="outcome" defaultValue={cycle?.outcome ?? ""} placeholder="—"><SelectItem value="">—</SelectItem>{RECRUITING_OUTCOMES.map((value) => <SelectItem key={value} value={value}>{t(`candidateOutcome.${value}`)}</SelectItem>)}</Select></FormField><FormField as="div" label={t("fields.nextContact")} error={fieldErrors?.next_contact_date} optional><DatePicker name="next_contact_date" defaultValue={cycle?.next_contact_date ?? ""} locale={locale} invalid={Boolean(fieldErrors?.next_contact_date)} /></FormField><FormField as="div" label={t("fields.interviewDate")} error={fieldErrors?.interview_at} optional><input type="hidden" name="interview_at" value={interviewDate ? `${interviewDate}T${interviewTime}` : ""} /><div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]"><DatePicker aria-label={t("fields.interviewDate")} locale={locale} value={interviewDate} onValueChange={setInterviewDate} invalid={Boolean(fieldErrors?.interview_at)} /><TimePicker aria-label={t("fields.interviewDate")} className="min-w-0" locale={locale} value={interviewTime} disabled={!interviewDate} onValueChange={setInterviewTime} /></div></FormField></div><div className="mt-4 grid gap-4"><FormField label={t("fields.interviewNotes")} error={fieldErrors?.interview_notes} optional><Textarea className="resize-y" name="interview_notes" rows={3} defaultValue={cycle?.interview_notes ?? ""} aria-invalid={Boolean(fieldErrors?.interview_notes)} /></FormField><FormField label={t("fields.testResult")} error={fieldErrors?.test_task_result} optional><Textarea className="resize-y" name="test_task_result" rows={3} defaultValue={cycle?.test_task_result ?? ""} aria-invalid={Boolean(fieldErrors?.test_task_result)} /></FormField></div></>;
 }
 
-export function CandidatesWorkspace({ admins, candidates, positions }: { admins: CrmAdmin[]; candidates: CrmCandidate[]; positions: readonly ProfessionalRole[] }) {
+export function CandidatesWorkspace({ admins, candidates, positions }: { admins: CrmAdmin[]; candidates: CrmCandidateSummary[]; positions: readonly ProfessionalRole[] }) {
   const t = useTranslations("Crm");
   const locale = useLocale();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<CandidateStatusFilter>("active");
   const [position, setPosition] = useState("");
-  const [selected, setSelected] = useState<CrmCandidate | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = candidates.find((candidate) => candidate.id === selectedId) ?? null;
   const [view, setView] = useState<"detail" | "edit">("detail");
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const roles = useTranslations("Roles");
   const positionFilterValues = positions;
   const visible = useMemo(() => filterCandidates(candidates, query, status, position), [candidates, position, query, status]);
-  const latest = selected?.cycles[0];
-  function openRecord(candidate: CrmCandidate) { setSelected(candidate); setView("detail"); }
-  const closeRecord = () => { setSelected(null); setView("detail"); };
+  const cache = useRef<{ candidates: CrmCandidateSummary[]; requests: Map<string, ReturnType<typeof loadCandidateCycles>> } | null>(null);
+  const loadCycles = useCallback((id: string) => {
+    if (cache.current?.candidates !== candidates) cache.current = { candidates, requests: new Map() };
+    const requests = cache.current.requests;
+    const existing = requests.get(id);
+    if (existing) return existing;
+    const request = loadCandidateCycles(id).catch(() => null).then((cycles) => {
+      if (cycles === null) requests.delete(id);
+      return cycles;
+    });
+    requests.set(id, request);
+    return request;
+  }, [candidates]);
+  const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState<{ id: string; loader: typeof loadCycles; cycles: CrmRecruitingCycle[] | null } | null>(null);
+  // Keep the submitted editor mounted until its existing onSuccess closes it.
+  // Reopening uses the new authoritative snapshot and reloads history as needed.
+  const editingLoadedRecord = view === "edit" && loaded?.id === selectedId;
+  useEffect(() => {
+    if (!selectedId || editingLoadedRecord) return;
+    let cancelled = false;
+    void loadCycles(selectedId).then((cycles) => { if (!cancelled) setLoaded({ id: selectedId, loader: loadCycles, cycles }); });
+    return () => { cancelled = true; };
+  }, [selectedId, loadCycles, attempt, editingLoadedRecord]);
+  const current = loaded?.id === selectedId && (loaded?.loader === loadCycles || editingLoadedRecord) ? loaded : null;
+  const cycles = current?.cycles ?? null;
+  const latest = cycles?.[0];
+  function openRecord(candidate: CrmCandidateSummary) { setSelectedId(candidate.id); setView("detail"); }
+  const closeRecord = () => { setSelectedId(null); setView("detail"); };
   async function remove() { if (!selected || !window.confirm(t("deleteCandidateConfirm", { name: selected.full_name }))) return; setDeleting(true); const result = await deleteCandidate(selected.id); setDeleting(false); if (result.error) { window.alert(result.error); return; } closeRecord(); }
 
   return <>
@@ -97,7 +124,7 @@ export function CandidatesWorkspace({ admins, candidates, positions }: { admins:
       {visible.length ? <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs uppercase tracking-wide text-[var(--ui-text-muted)]"><tr><th className="px-4 py-3">{t("candidates.columns.name")}</th><th className="px-4 py-3">{t("candidates.columns.position")}</th><th className="px-4 py-3">{t("candidates.columns.stage")}</th><th className="px-4 py-3">{t("candidates.columns.responsible")}</th><th className="px-4 py-3">{t("candidates.columns.nextContact")}</th></tr></thead><tbody className="divide-y divide-[var(--ui-border)]">{visible.map((candidate) => { const cycle = candidate.cycles[0]; return <tr key={candidate.id} onClick={(event) => { if (!isNestedInteractiveTarget(event.target, event.currentTarget)) openRecord(candidate); }} className="cursor-pointer outline-none transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)]"><td className="px-4 py-3"><button type="button" aria-label={t("candidates.openRecord", { name: candidate.full_name })} onClick={() => openRecord(candidate)} className="font-medium text-[var(--ui-text)] outline-none">{candidate.full_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{candidate.email || candidate.phone || "—"}</p></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{cycle ? positionLabel(cycle.target_position, roles) : "—"}</td><td className="px-4 py-3"><span className="rounded-full border border-[var(--ui-border)] px-2 py-1 text-xs">{cycle?.outcome ? t(`candidateOutcome.${cycle.outcome}`) : cycle ? t(`candidateStage.${cycle.stage}`) : "—"}</span></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{candidate.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{formatDate(cycle?.next_contact_date ?? null, locale) ?? "—"}</td></tr>; })}</tbody></table></div> : <EmptyState title={query || position || status !== "active" ? t("empty.filteredTitle") : t("candidates.emptyTitle")} description={query || position || status !== "active" ? t("empty.filteredDescription") : t("candidates.emptyDescription")} />}
     </div>
     <Dialog isOpen={creating} onRequestClose={() => setCreating(false)} closeLabel={t("close")} title={t("candidates.add")} description={t("candidates.createDescription")}><div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={createCandidate} submitLabel={t("save")} onSuccess={() => setCreating(false)}>{(state) => <><CandidateContactFields admins={admins} positions={positions} includePosition={false} fieldErrors={state.fieldErrors} /><CandidateCycleFields positions={positions} fieldErrors={state.fieldErrors} /></>}</CrmActionForm></div></Dialog>
-    <Dialog isOpen={Boolean(selected)} onRequestClose={() => { if (!deleting) { setSelected(null); setView("detail"); } }} closeLabel={t("close")} title={selected?.full_name} description={view === "detail" ? t("candidates.detailDescription") : t("candidates.editDescription")} className="max-w-[60rem]" closeDisabled={deleting} headerActions={selected && view === "detail" ? <CandidateHeaderActions deleting={deleting} onDelete={() => void remove()} onEdit={() => setView("edit")} /> : undefined}>{selected ? view === "detail" ? <CandidateDetail candidate={selected} locale={locale} /> : <div className="overflow-y-auto p-4 sm:p-6">{latest ? <CrmActionForm action={saveCandidateEditor.bind(null, selected.id, latest.id)} submitLabel={t("save")} cancelLabel={t("cancel")} onCancel={() => setView("detail")} onSuccess={closeRecord}>{(state) => <><CandidateContactFields admins={admins} positions={positions} candidate={selected} includePosition={false} fieldErrors={state.fieldErrors} /><CandidateCycleFields cycle={latest} positions={positions} fieldErrors={state.fieldErrors} /></>}</CrmActionForm> : null}{latest?.outcome ? <section className="mt-8 border-t border-[var(--ui-border)] pt-6"><h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("candidates.startCycle")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("candidates.startCycleDescription")}</p><CrmActionForm action={startRecruitingCycle.bind(null, selected.id)} submitLabel={t("candidates.startCycle")} onSuccess={closeRecord}>{(state) => <PositionField positions={positions} error={state.fieldErrors?.target_position} />}</CrmActionForm></section> : null}</div> : null}</Dialog>
+    <Dialog isOpen={Boolean(selected)} onRequestClose={() => { if (!deleting) { setSelectedId(null); setView("detail"); } }} closeLabel={t("close")} title={selected?.full_name} description={view === "detail" ? t("candidates.detailDescription") : t("candidates.editDescription")} className="max-w-[60rem]" closeDisabled={deleting} headerActions={selected && cycles && view === "detail" ? <CandidateHeaderActions deleting={deleting} onDelete={() => void remove()} onEdit={() => setView("edit")} /> : undefined}>{selected ? !cycles ? <div className="p-4 sm:p-6">{!current ? <p role="status" className="text-sm text-[var(--ui-text-muted)]">{t("candidates.loadingCycles")}</p> : <><p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("candidates.loadCyclesError")}</p><Button variant="ghost" onClick={() => { setLoaded(null); setAttempt((value) => value + 1); }}>{t("candidates.retryCycles")}</Button></>}</div> : view === "detail" ? <CandidateDetail candidate={{ ...selected, cycles }} locale={locale} /> : <div className="overflow-y-auto p-4 sm:p-6">{latest ? <CrmActionForm action={saveCandidateEditor.bind(null, selected.id, latest.id)} submitLabel={t("save")} cancelLabel={t("cancel")} onCancel={() => setView("detail")} onSuccess={closeRecord}>{(state) => <><CandidateContactFields admins={admins} positions={positions} candidate={selected} includePosition={false} fieldErrors={state.fieldErrors} /><CandidateCycleFields cycle={latest} positions={positions} fieldErrors={state.fieldErrors} /></>}</CrmActionForm> : null}{latest?.outcome ? <section className="mt-8 border-t border-[var(--ui-border)] pt-6"><h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("candidates.startCycle")}</h3><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("candidates.startCycleDescription")}</p><CrmActionForm action={startRecruitingCycle.bind(null, selected.id)} submitLabel={t("candidates.startCycle")} onSuccess={closeRecord}>{(state) => <PositionField positions={positions} error={state.fieldErrors?.target_position} />}</CrmActionForm></section> : null}</div> : null}</Dialog>
   </>;
 }
 

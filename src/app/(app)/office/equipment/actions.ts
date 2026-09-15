@@ -1,5 +1,7 @@
 "use server";
 
+import { z } from "zod";
+import { getEquipmentHistory } from "@/data/queries/equipment";
 import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
@@ -291,4 +293,16 @@ export async function recordEquipmentHistory(input: unknown): Promise<EquipmentA
   if (error || !data) return { error: databaseError(error, "history") };
   refreshEquipment();
   return { success: true, id: data };
+}
+
+export async function loadEquipmentHistory(equipmentId: unknown) {
+  const parsed = z.uuid().safeParse(equipmentId);
+  if (!parsed.success) return null;
+  try {
+    const admin = await getActiveStudioAdmin();
+    if (!admin) return null;
+    return await getEquipmentHistory(admin, parsed.data);
+  } catch {
+    return null;
+  }
 }

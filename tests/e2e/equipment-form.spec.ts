@@ -960,3 +960,96 @@ test("catalog combobox cancels stale context and preserves server fuzzy results"
   await input.press("Enter");
   await expect(input).toHaveValue("Fuzzy server result");
 });
+
+test("service history is item-scoped, reused, locally retryable and reconciles after writes", async ({ page }, testInfo) => {
+  const t = en.Equipment;
+  const firstId = randomUUID(); const secondId = randomUUID();
+  localSql(`insert into public.equipment(id,studio_id,equipment_type,display_name) values
+    (${sqlId(firstId)},${sqlId(studioId)},'printer','Lazy history first'),
+    (${sqlId(secondId)},${sqlId(studioId)},'printer','Lazy history second');
+    insert into public.equipment_service_events(studio_id,equipment_id,event_type,started_on,completed_on,service_provider,cost_amount,cost_currency,started_notes,completion_notes) values
+    (${sqlId(studioId)},${sqlId(firstId)},'repair','2026-01-01','2026-01-03','History provider',125,'UAH','Original start notes','Original completion notes'),
+    (${sqlId(studioId)},${sqlId(secondId)},'upgrade','2026-02-01','2026-02-02',null,null,null,null,'Second item history');`);
+  const historyReads: string[] = [];
+  const navigations: string[] = [];
+  let failSecond = true;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname !== "/office/equipment") return;
+    if (request.headers()["next-action"] && [JSON.stringify([firstId]), JSON.stringify([secondId])].includes(request.postData() ?? "")) historyReads.push(request.postData() ?? "");
+    if (request.method() === "GET" && !request.headers()["next-router-prefetch"]) navigations.push(request.url());
+  });
+  await page.route("**/office/equipment?**", async (route) => {
+    if (!route.request().headers()["next-action"]) return route.continue();
+    const body = route.request().postData();
+    if (body === JSON.stringify([firstId])) await new Promise((resolve) => setTimeout(resolve, 250));
+    if (body === JSON.stringify([secondId]) && failSecond) { failSecond = false; return route.abort("failed"); }
+    await route.continue();
+  });
+  await login(page);
+  expect(historyReads).toHaveLength(0);
+  const initialNavigations = navigations.length;
+  await page.getByRole("button", { name: /Lazy history first/ }).click();
+  let drawer = page.getByRole("dialog");
+  await expect(drawer).toBeVisible();
+  expect(historyReads).toHaveLength(0);
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Lazy history first/ }).click();
+  expect(navigations).toHaveLength(initialNavigations);
+  await drawer.getByRole("link", { name: t.maintenance.openWorkspace }).click();
+  await expect(drawer.getByText(t.history.loading, { exact: true })).toBeVisible();
+  await expect(drawer.getByRole("list")).toContainText("Original completion notes");
+  await expect(drawer.getByRole("list")).toContainText("Original start notes");
+  await expect(drawer.getByRole("list")).toContainText("History provider");
+  expect(historyReads).toHaveLength(1);
+  const maintenanceNavigations = navigations.length;
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: t.inventory.all, exact: true }).click();
+  await page.getByRole("button", { name: /Lazy history first/ }).click();
+  await expect(drawer.getByRole("list")).toContainText("Original completion notes");
+  expect(historyReads).toHaveLength(1);
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Lazy history second/ }).click();
+  await expect(drawer.getByRole("alert")).toHaveText(t.history.loadError);
+  await expect(drawer.getByRole("button", { name: t.maintenance.saveSchedule })).toBeEnabled();
+  await drawer.getByRole("button", { name: t.actions.retry, exact: true }).click();
+  await expect(drawer.getByRole("list")).toContainText("Second item history");
+  expect(historyReads).toHaveLength(3);
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Lazy history first/ }).click();
+  await expect(drawer.getByRole("list")).toContainText("Original completion notes");
+  expect(historyReads).toHaveLength(3);
+  expect(navigations).toHaveLength(maintenanceNavigations);
+
+  // A schedule edit follows the same authoritative refresh used by service writes.
+  await drawer.getByRole("button", { name: t.maintenance.saveSchedule }).click();
+  await expect.poll(() => historyReads.length).toBe(4);
+  await expect(drawer.getByRole("list")).toContainText("Original completion notes");
+  await drawer.locator('[name="notes"]').fill("Lazy service start");
+  await drawer.getByRole("button", { name: t.service.send, exact: true }).click();
+  await expect(drawer.getByRole("button", { name: t.service.complete, exact: true })).toBeVisible();
+  await expect.poll(() => historyReads.length).toBe(5);
+  await drawer.locator('[name="notes"]').fill("Lazy service completed");
+  await drawer.getByRole("button", { name: t.service.complete, exact: true }).click();
+  await expect(drawer.getByRole("list")).toContainText("Lazy service completed");
+  expect(historyReads).toHaveLength(6);
+  const updatedAt = localSql(`select updated_at from public.equipment where id=${sqlId(firstId)};`);
+  await drawer.getByRole("button", { name: t.history.record, exact: true }).click();
+  const historyForm = drawer.locator("form").filter({ has: page.getByRole("button", { name: t.history.save, exact: true }) });
+  await historyForm.locator('[name="notes"]').fill("Recorded past repair");
+  await historyForm.getByRole("button", { name: t.history.save, exact: true }).click();
+  await expect(drawer.getByRole("list")).toContainText("Recorded past repair");
+  expect(historyReads).toHaveLength(7);
+  expect(localSql(`select updated_at from public.equipment where id=${sqlId(firstId)};`)).toBe(updatedAt);
+  await drawer.getByRole("button", { name: t.close, exact: true }).click();
+  await page.getByRole("button", { name: /Lazy history first/ }).click();
+  await expect(drawer.getByRole("list")).toContainText("Recorded past repair");
+  expect(historyReads).toHaveLength(7);
+  await page.goto(`/office/equipment?view=maintenance&item=${firstId}`);
+  drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("list")).toContainText("Recorded past repair");
+  expect(historyReads).toHaveLength(8);
+  await page.goto(`/office/equipment?view=inventory&item=${firstId}`);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(historyReads).toHaveLength(8);
+  await testInfo.attach("history-requests", { body: JSON.stringify({ historyReads, navigations }), contentType: "application/json" });
+});

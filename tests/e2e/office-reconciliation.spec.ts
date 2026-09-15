@@ -136,7 +136,7 @@ test("Submission overlays retain live discussion, reactions and private administ
   for (const [label, index] of [["open", 0], ["reopen", 0], ["switch", 1]] as const) {
     await page.getByRole("button", { name: `Suggestion: Routing suggestion ${index}`, exact: true }).click();
     const drawer = page.getByRole("dialog", { name: `Routing suggestion ${index}`, exact: true });
-    await expect(drawer).toBeVisible(); await check(label, []);
+    await expect(drawer).toBeVisible(); await check(label, label === "reopen" ? [] : ["action"]);
     if (index === 0) {
       if (label === "open") {
         await expect.poll(() => joined.has(ids[0])).toBe(true);
@@ -150,16 +150,16 @@ test("Submission overlays retain live discussion, reactions and private administ
   let drawer = page.getByRole("dialog", { name: "Routing suggestion 1", exact: true });
   await drawer.getByRole("button", { name: "Support · 0", exact: true }).click();
   await expect(drawer.getByRole("button", { name: "Supported · 1", exact: true })).toBeEnabled();
-  await check("drawer reaction", ["action"]);
+  await check("drawer reaction", ["action", "action"]);
   await drawer.getByLabel(t.comment, { exact: true }).fill("Saved discussion comment");
   await drawer.getByRole("button", { name: t.send, exact: true }).click();
   await expect(drawer.getByLabel(t.comment, { exact: true })).toHaveValue("");
   await expect(drawer.getByText("Saved discussion comment", { exact: true })).toHaveCount(1);
-  await check("comment", ["action"]);
+  await check("comment", ["action", "action"]);
   await drawer.getByLabel(t.admin.note, { exact: false }).fill("Administrator-only note");
   await drawer.getByRole("button", { name: t.admin.save, exact: true }).click();
   await expect(drawer.getByRole("button", { name: t.admin.save, exact: true })).toBeEnabled();
-  await check("manage submission", ["action"]);
+  await check("manage submission", ["action", "action"]);
   await drawer.getByRole("button", { name: t.close, exact: true }).click();
   const row = page.locator("article").filter({ hasText: "Routing suggestion 1" });
   await row.getByRole("button", { name: "Supported · 1", exact: true }).click();
@@ -176,12 +176,12 @@ test("Submission overlays retain live discussion, reactions and private administ
   await drawer.locator('[name="description"]').fill("A new suggestion");
   await drawer.getByRole("button", { name: t.form.submit, exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Created routing suggestion", exact: true })).toBeVisible();
-  await check("create submission", ["action"]);
+  await check("create submission", ["action", "action"]);
   await page.goto(`/office/submissions?item=${ids[1]}`);
   drawer = page.getByRole("dialog", { name: "Routing suggestion 1", exact: true });
   await expect(drawer.getByText("Saved discussion comment", { exact: true })).toHaveCount(1);
   await expect(drawer.getByLabel(t.admin.note, { exact: false })).toHaveValue("Administrator-only note");
-  await check("direct URL", ["GET"]);
+  await check("direct URL", ["GET", "action"]);
   // Reject a valid-looking stale support operation through the real database constraint.
   localSql(`insert into public.submission_reactions(submission_id,studio_id,user_id) values (${sqlId(ids[1])},${sqlId(studioId)},${sqlId(accounts[0].id)});`);
   await drawer.getByRole("button", { name: "Support · 0", exact: true }).click();
@@ -341,4 +341,91 @@ test("Office creation navigates across workspaces and preserves anonymous and em
     await expect(employee.getByRole("dialog")).toHaveCount(0);
     await employeeCheck("employee creation open/close", []);
   } finally { await employeeContext.close(); }
+});
+
+test("Submission lazy detail merges loading/live/mutation races and reuses item detail", async ({ page, browser }) => {
+  const t = en.Submissions;
+  const first = randomUUID(); const second = randomUUID();
+  localSql(`insert into public.submissions(id,studio_id,type,author_id,title,description) values
+    (${sqlId(first)},${sqlId(studioId)},'suggestion',${sqlId(accounts[0].id)},'Lazy discussion first','First detail body'),
+    (${sqlId(second)},${sqlId(studioId)},'suggestion',${sqlId(accounts[0].id)},'Lazy discussion second','Second detail body');
+    insert into public.submission_comments(submission_id,studio_id,author_id,body) values (${sqlId(first)},${sqlId(studioId)},${sqlId(accounts[0].id)},'Original discussion body');`);
+  const reads: string[] = []; const navigations: string[] = []; const joined = new Set<string>();
+  let releaseRead = () => {};
+  const gate = new Promise<void>((resolve) => { releaseRead = resolve; });
+  let held = false; let failSecond = true;
+  page.on("websocket", (socket) => socket.on("framereceived", (event) => {
+    const payload = event.payload.toString();
+    for (const id of [first, second]) if (payload.includes(`submission-comments:${id}`) && payload.includes('"status":"ok"')) joined.add(id);
+  }));
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname !== "/office/submissions") return;
+    if (request.method() === "GET" && !request.headers()["next-router-prefetch"]) navigations.push(request.url());
+  });
+  await page.route("**/office/submissions?**", async (route) => {
+    if (!route.request().headers()["next-action"]) return route.continue();
+    const body = route.request().postData();
+    if (body !== JSON.stringify([first]) && body !== JSON.stringify([second])) return route.continue();
+    reads.push(body);
+    if (body === JSON.stringify([second]) && failSecond) { failSecond = false; return route.abort("failed"); }
+    if (body === JSON.stringify([first]) && reads.length === 1) {
+      const response = await route.fetch(); held = true;
+      await gate;
+      return route.fulfill({ response });
+    }
+    await route.continue();
+  });
+  const employeeContext = await browser.newContext();
+  try {
+    const employee = await employeeContext.newPage();
+    await login(employee, accounts[1]);
+    await employee.goto(`/office/submissions?item=${first}`);
+    const employeeDrawer = employee.getByRole("dialog", { name: "Lazy discussion first", exact: true });
+    await expect(employeeDrawer.getByText("Original discussion body", { exact: true })).toBeVisible();
+    await login(page);
+    await page.goto('/office/submissions');
+    expect(reads).toHaveLength(0);
+    const initialNavigations = navigations.length;
+    await page.getByRole("button", { name: "Suggestion: Lazy discussion first", exact: true }).click();
+    let drawer = page.getByRole("dialog", { name: "Lazy discussion first", exact: true });
+    await expect(drawer.getByRole("status")).toHaveText(t.detailLoading);
+    await expect.poll(() => held && joined.has(first)).toBe(true);
+    // Queue a local support mutation while the older detail response is held.
+    await drawer.getByRole("button", { name: "Support · 0", exact: true }).click();
+    await employeeDrawer.getByLabel(t.comment, { exact: true }).fill("Comment during lazy read");
+    await employeeDrawer.getByRole("button", { name: t.send, exact: true }).click();
+    await expect(drawer.getByText("Comment during lazy read", { exact: true })).toHaveCount(1);
+    releaseRead();
+    await expect(drawer.getByText("Original discussion body", { exact: true })).toHaveCount(1);
+    await expect(drawer.getByRole("button", { name: "Supported · 1", exact: true })).toBeEnabled();
+    await expect(drawer.getByText("Comment during lazy read", { exact: true })).toHaveCount(1);
+    await expect(drawer.getByRole("status")).toHaveCount(0);
+    expect(reads).toHaveLength(2); // initial detail + authoritative support refresh
+    await drawer.getByRole("button", { name: t.close, exact: true }).click();
+    await page.getByRole("button", { name: "Suggestion: Lazy discussion first", exact: true }).click();
+    await expect(drawer.getByText("Comment during lazy read", { exact: true })).toHaveCount(1);
+    expect(reads).toHaveLength(2);
+    await drawer.getByRole("button", { name: t.close, exact: true }).click();
+    await page.getByRole("button", { name: "Suggestion: Lazy discussion second", exact: true }).click();
+    drawer = page.getByRole("dialog", { name: "Lazy discussion second", exact: true });
+    await expect(drawer.getByRole("alert")).toHaveText(t.detailLoadError);
+    await expect(drawer.getByRole("button", { name: t.send, exact: true })).toBeDisabled();
+    await drawer.getByRole("button", { name: t.retry, exact: true }).click();
+    await expect(drawer.getByText("Second detail body", { exact: true })).toBeVisible();
+    expect(reads).toHaveLength(4);
+    await drawer.getByRole("button", { name: t.close, exact: true }).click();
+    await page.getByRole("button", { name: "Suggestion: Lazy discussion first", exact: true }).click();
+    drawer = page.getByRole("dialog", { name: "Lazy discussion first", exact: true });
+    await expect(drawer.getByText("Comment during lazy read", { exact: true })).toHaveCount(1);
+    expect(reads).toHaveLength(4); expect(navigations).toHaveLength(initialNavigations);
+    await drawer.getByLabel(t.comment, { exact: true }).fill("Own echo only once");
+    await drawer.getByRole("button", { name: t.send, exact: true }).click();
+    await expect(drawer.getByText("Own echo only once", { exact: true })).toHaveCount(1);
+    await expect(employeeDrawer.getByText("Own echo only once", { exact: true })).toHaveCount(1);
+    await expect(drawer.getByLabel(t.comment, { exact: true })).toHaveValue("");
+    await expect(drawer.getByText("Comment during lazy read", { exact: true })).toHaveCount(1);
+    await drawer.getByRole("button", { name: t.close, exact: true }).click();
+    await page.getByRole("button", { name: "Suggestion: Lazy discussion first", exact: true }).click();
+    await expect(drawer.getByText("Own echo only once", { exact: true })).toHaveCount(1);
+  } finally { releaseRead(); await employeeContext.close(); }
 });

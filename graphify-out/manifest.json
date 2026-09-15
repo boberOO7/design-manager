@@ -1485,13 +1485,13 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1789476880.1566038,
-    "ast_hash": "a85c8c31f99067faaeba8f478110a869",
+    "mtime": 1789479830.129917,
+    "ast_hash": "e42bf8c5fc84a2671d93983b5c326728",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1789476880.1566038,
-    "ast_hash": "3d7e038eb99ad51e80812f2447a4b806",
+    "mtime": 1789479830.129917,
+    "ast_hash": "c00846aae83bcb7d0ae2c6e04d0ce261",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -3735,9 +3735,9 @@
     "semantic_hash": "bbae8b529cb5bf86f5b3d187b6429e8a"
   },
   "src/app/(app)/submissions/actions.ts": {
-    "mtime": 1789043708.4849887,
-    "ast_hash": "e1c32e120adb73aafc1bbf60f5cbe133",
-    "semantic_hash": "e1c32e120adb73aafc1bbf60f5cbe133"
+    "mtime": 1789479830.129917,
+    "ast_hash": "60e3ba983344a551df013874a4ce8230",
+    "semantic_hash": ""
   },
   "src/app/(app)/submissions/page.tsx": {
     "mtime": 1788530266.6449578,
@@ -3750,14 +3750,14 @@
     "semantic_hash": "7a38b06b57973377745ace5e0192c1e7"
   },
   "src/components/submissions/submissions-workspace.tsx": {
-    "mtime": 1789425659.9724197,
-    "ast_hash": "99fb9a868f7e778e488b7327bf51dddf",
+    "mtime": 1789479830.129917,
+    "ast_hash": "c11a0d14a87be9467da3b88bd6f3385d",
     "semantic_hash": ""
   },
   "src/data/queries/submissions.ts": {
-    "mtime": 1789426026.315376,
-    "ast_hash": "c6f1069b8fb9619f489aaf9bb5338484",
-    "semantic_hash": "c6f1069b8fb9619f489aaf9bb5338484"
+    "mtime": 1789479830.1259167,
+    "ast_hash": "164cbeda1c76ebf58b0f236f933e18ec",
+    "semantic_hash": ""
   },
   "src/lib/internal-submissions-migration.test.ts": {
     "mtime": 1788520414.862965,
@@ -3775,9 +3775,9 @@
     "semantic_hash": "ead347aafb066bfe0a99ecd54a526a42"
   },
   "src/lib/validation/submission.ts": {
-    "mtime": 1788641557.031843,
-    "ast_hash": "21a04e793eb562ab98096aea29b08629",
-    "semantic_hash": "21a04e793eb562ab98096aea29b08629"
+    "mtime": 1789479830.129917,
+    "ast_hash": "f9394cfc2940882d40c59faa278f2dd3",
+    "semantic_hash": ""
   },
   "supabase/migrations/20260904120000_internal_submissions.sql": {
     "mtime": 1788520705.1763248,
@@ -4100,8 +4100,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/studio-operations.md": {
-    "mtime": 1789476411.448261,
-    "ast_hash": "673a8a2bf840568529aaf5cb83d3f1e4",
+    "mtime": 1789480104.1761723,
+    "ast_hash": "615e413e29b3960cd8f0eed7e67b724b",
     "semantic_hash": ""
   },
   "docs/architecture/tasks.md": {
@@ -4575,9 +4575,9 @@
     "semantic_hash": "a2397380b08a95924061e392eeac42aa"
   },
   "src/app/(app)/office/equipment/actions.ts": {
-    "mtime": 1789318249.1444545,
-    "ast_hash": "be9a84841c974150caeb787454b61839",
-    "semantic_hash": "be9a84841c974150caeb787454b61839"
+    "mtime": 1789479088.6223302,
+    "ast_hash": "6cbf6609b4bb79513fc0cbcd7672224c",
+    "semantic_hash": ""
   },
   "src/app/(app)/office/equipment/page.tsx": {
     "mtime": 1789417147.4704292,
@@ -4595,14 +4595,14 @@
     "semantic_hash": ""
   },
   "src/components/office/equipment-workspace.tsx": {
-    "mtime": 1789417032.321543,
-    "ast_hash": "bcf9684e1c64ca663cbe1a65ba9e77b2",
+    "mtime": 1789479249.6958704,
+    "ast_hash": "ca52a3220f162c5ae17c27f85d9f05b9",
     "semantic_hash": ""
   },
   "src/data/queries/equipment.ts": {
-    "mtime": 1789417147.4704292,
-    "ast_hash": "bb9738d1756a3d667340f8cb3de2344a",
-    "semantic_hash": "bb9738d1756a3d667340f8cb3de2344a"
+    "mtime": 1789479088.6223302,
+    "ast_hash": "fbe39bd2efc719aeaac80d3e2e15fa85",
+    "semantic_hash": ""
   },
   "src/lib/equipment.ts": {
     "mtime": 1789323374.0355878,
@@ -4690,8 +4690,8 @@
     "semantic_hash": "e8a0b4e877e1da7fa3d151882320e516"
   },
   "tests/e2e/equipment-form.spec.ts": {
-    "mtime": 1789417195.5267823,
-    "ast_hash": "3ec2b8fac6643209ee92227703176f43",
+    "mtime": 1789479319.2212524,
+    "ast_hash": "fd2820a1e8c11878ef27450e1a764496",
     "semantic_hash": ""
   },
   ".agents/skills/gsap-core/SKILL.md": {
@@ -5070,8 +5070,8 @@
     "semantic_hash": ""
   },
   "tests/e2e/office-reconciliation.spec.ts": {
-    "mtime": 1789426447.6473794,
-    "ast_hash": "921843aeaee64599f78236dc75c79c96",
+    "mtime": 1789480076.8638918,
+    "ast_hash": "685ba2f897f471400bd65f21708a2d7e",
     "semantic_hash": ""
   },
   "tests/e2e/calendar-projects-presentation.spec.ts": {
@@ -5122,6 +5122,16 @@
   "tests/e2e/task-payload.spec.ts": {
     "mtime": 1789477597.9823723,
     "ast_hash": "9ffea3f48cfec943299c1d5514727b5a",
+    "semantic_hash": ""
+  },
+  "src/data/queries/equipment-history.integration.test.ts": {
+    "mtime": 1789479207.8355114,
+    "ast_hash": "2daf42125f1e6f972dc46032a8f96f7c",
+    "semantic_hash": ""
+  },
+  "src/data/queries/submission-detail.integration.test.ts": {
+    "mtime": 1789480104.1761723,
+    "ast_hash": "9cb7ec0a7f1f22220c3a33b9353ee88c",
     "semantic_hash": ""
   }
 }

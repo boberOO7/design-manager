@@ -131,6 +131,15 @@ The full Submissions and Assignments workspace loaders remain independent.
 - Starting request work requires an active responsible studio member.
 - Assignment and status transition are performed together by `manage_submission`.
 - Suggestions have support/reaction behavior distinct from managed request work.
+- The inbox reads list fields, member pickers, and per-submission support counts
+  (including current-user support); it does not fetch descriptions, comments,
+  individual reactions, or private notes. Opening a drawer loads its description,
+  complete ordered discussion, and administrator-only note under the same RLS.
+  Detail reads are reused within the authoritative workspace snapshot, which
+  successful mutation revalidation replaces. Received comment IDs merge with
+  lazy results and mutation responses so Realtime echoes cannot duplicate them.
+  Inline workflow actions read the current private note server-side when omitted;
+  an explicit empty note from the admin form still clears it.
 - Open non-anonymous submission discussions receive request-scoped comment
   inserts through Supabase Realtime; the existing submission visibility policy
   remains the read boundary for delivery. Comments received in an open discussion
@@ -205,6 +214,11 @@ submission/office-assignment migrations and RLS tests.
   workspace, including nested equipment drawers and Back/Forward navigation.
   Successful Equipment Server Actions revalidate the workspace; clients consume
   that updated render without issuing an additional refresh.
+  Initial data includes only the open service ID, type, and start date alongside
+  equipment maintenance state. Completed history loads in full, per item, when
+  its Maintenance drawer opens. Reads are reused within the workspace snapshot;
+  authoritative revalidation discards that reuse, including after history-only
+  writes. History failures and retries stay local to the history panel.
 - Optional recurring maintenance stores an interval and an explicit next due
   date. Completing regular maintenance advances the due date from the actual
   completion date; disabling the schedule does not remove history.

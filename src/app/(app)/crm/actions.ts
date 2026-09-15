@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
+import { getCrmCandidateCycles, getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
 import { resolveCrmFollowUpAt } from "@/lib/crm";
 import { zonedWallTimeToIso } from "@/lib/calendar";
@@ -296,4 +296,9 @@ export async function deleteCandidate(candidateId: string): Promise<{ error?: st
   }
   revalidatePath("/crm/candidates");
   return {};
+}
+
+export async function loadCandidateCycles(candidateId: unknown) {
+  if (!z.uuid().safeParse(candidateId).success || typeof candidateId !== "string") return null;
+  try { return await getCrmCandidateCycles(candidateId); } catch { return null; }
 }

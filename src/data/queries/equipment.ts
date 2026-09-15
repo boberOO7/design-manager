@@ -36,7 +36,7 @@ export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" 
   recurringMaintenanceEnabled: boolean;
   maintenanceIntervalMonths: number | null;
   nextMaintenanceDueDate: string | null;
-  serviceEvents: EquipmentServiceEvent[];
+  activeService: Pick<EquipmentServiceEvent, "id" | "eventType" | "startedOn"> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,7 +68,7 @@ function mapServiceEvent(row: EquipmentServiceEventRow): EquipmentServiceEvent {
   };
 }
 
-function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[]): EquipmentItem {
+function mapEquipment(row: EquipmentRow, activeService: EquipmentItem["activeService"]): EquipmentItem {
   return {
     id: row.id,
     studioId: row.studio_id,
@@ -83,7 +83,7 @@ function mapEquipment(row: EquipmentRow, serviceEvents: EquipmentServiceEvent[])
     recurringMaintenanceEnabled: row.recurring_maintenance_enabled,
     maintenanceIntervalMonths: row.maintenance_interval_months,
     nextMaintenanceDueDate: row.next_maintenance_due_date,
-    serviceEvents,
+    activeService,
     pcConfiguration: row.pc_configuration === null ? null : computerConfigurationSchema.parse(row.pc_configuration),
     cpu: row.cpu,
     gpu: row.gpu,
@@ -114,7 +114,7 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
   const [workstationsResult, equipmentResult, serviceEventsResult, membersResult, floorPlanResult] = await Promise.all([
     supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("number"),
     supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name", { nullsFirst: false }).order("asset_tag"),
-    supabase.from("equipment_service_events").select("*").eq("studio_id", admin.studio_id).order("completed_on", { ascending: false, nullsFirst: true }).order("started_on", { ascending: false }),
+    supabase.from("equipment_service_events").select("id, equipment_id, event_type, started_on").eq("studio_id", admin.studio_id).is("completed_on", null),
     supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
     supabase.from("office_floor_plan_placements").select("*").eq("studio_id", admin.studio_id).order("created_at"),
   ]);
@@ -123,13 +123,10 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
 
   const members = (membersResult.data ?? []).map((row) => ({ id: row.user_id, fullName: row.profile.full_name, avatarUrl: row.profile.avatar_url })).sort((a, b) => a.fullName.localeCompare(b.fullName));
   const memberById = new Map(members.map((member) => [member.id, member]));
-  const eventsByEquipment = new Map<string, EquipmentServiceEvent[]>();
-  for (const row of serviceEventsResult.data ?? []) {
-    const events = eventsByEquipment.get(row.equipment_id) ?? [];
-    events.push(mapServiceEvent(row));
-    eventsByEquipment.set(row.equipment_id, events);
-  }
-  const equipment = (equipmentResult.data ?? []).map((row) => mapEquipment(row, eventsByEquipment.get(row.id) ?? []));
+  const activeServiceByEquipment = new Map((serviceEventsResult.data ?? []).map((row) => [row.equipment_id, {
+    id: row.id, eventType: row.event_type, startedOn: row.started_on,
+  }]));
+  const equipment = (equipmentResult.data ?? []).map((row) => mapEquipment(row, activeServiceByEquipment.get(row.id) ?? null));
   const equipmentByWorkstation = new Map<string, EquipmentItem[]>();
   for (const item of equipment) {
     if (!item.workstationId) continue;
@@ -155,4 +152,21 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
       updatedAt: row.updated_at,
     })),
   };
+}
+
+// Read every page: PostgREST's response cap must not silently truncate an item's history.
+export async function getEquipmentHistory(admin: ActiveStudioMembership, equipmentId: string): Promise<EquipmentServiceEvent[]> {
+  const supabase = await createClient();
+  const events: EquipmentServiceEvent[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.from("equipment_service_events")
+      .select("*").eq("studio_id", admin.studio_id).eq("equipment_id", equipmentId)
+      .not("completed_on", "is", null)
+      .order("completed_on", { ascending: false }).order("started_on", { ascending: false })
+      .order("id", { ascending: false }).range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Unable to load equipment history.", { cause: error });
+    events.push(...(data ?? []).map(mapServiceEvent));
+    if (!data || data.length < pageSize) return events;
+  }
 }

@@ -17,6 +17,8 @@ export type CrmLeadHistory = LeadHistoryRow & {
   project: { name: string } | null;
 };
 export type CrmRecruitingCycle = CycleRow;
+export type CrmCycleSummary = Pick<CycleRow, "id" | "target_position" | "stage" | "outcome" | "next_contact_date">;
+export type CrmCandidateSummary = CandidateRow & { responsibleAdmin: CrmAdmin | null; cycles: CrmCycleSummary[] };
 export type CrmCandidate = CandidateRow & { responsibleAdmin: CrmAdmin | null; cycles: CrmRecruitingCycle[] };
 
 async function getCrmContext() {
@@ -88,30 +90,21 @@ export async function getCrmLeadHistory(leadId: string): Promise<CrmLeadHistory[
   return data;
 }
 
-export async function getCrmCandidates(): Promise<{ candidates: CrmCandidate[]; error: boolean }> {
+export async function getCrmCandidates(): Promise<{ candidates: CrmCandidateSummary[]; error: boolean }> {
   const context = await getCrmContext();
   if (!context) return { candidates: [], error: false };
-  const [candidateResult, cycleResult] = await Promise.all([
-    context.supabase
-      .from("crm_candidates")
-      .select("*")
-      .eq("studio_id", context.membership.studio_id)
-      .order("updated_at", { ascending: false }),
-    context.supabase
-      .from("crm_recruiting_cycles")
-      .select("*")
-      .eq("studio_id", context.membership.studio_id)
-      .order("started_at", { ascending: false }),
-  ]);
-  if (candidateResult.error || cycleResult.error) {
-    console.error("Unable to load CRM candidates", candidateResult.error ?? cycleResult.error);
+  // The existing current/latest rule is the first cycle by started_at descending,
+  // not an outcome-based active-cycle preference. Limit the embedded relation per candidate.
+  const candidateResult = await context.supabase.from("crm_candidates")
+    .select("*, cycles:crm_recruiting_cycles(id, target_position, stage, outcome, next_contact_date)")
+    .eq("studio_id", context.membership.studio_id)
+    .order("updated_at", { ascending: false })
+    .order("started_at", { referencedTable: "cycles", ascending: false })
+    .order("id", { referencedTable: "cycles", ascending: false })
+    .limit(1, { referencedTable: "cycles" });
+  if (candidateResult.error) {
+    console.error("Unable to load CRM candidates", candidateResult.error);
     return { candidates: [], error: true };
-  }
-  const cyclesByCandidate = new Map<string, CycleRow[]>();
-  for (const cycle of cycleResult.data) {
-    const cycles = cyclesByCandidate.get(cycle.candidate_id) ?? [];
-    cycles.push(cycle);
-    cyclesByCandidate.set(cycle.candidate_id, cycles);
   }
   const admins = await getCrmAdmins();
   const adminNames = new Map(admins.map((admin) => [admin.id, admin]));
@@ -120,7 +113,22 @@ export async function getCrmCandidates(): Promise<{ candidates: CrmCandidate[]; 
     candidates: candidateResult.data.map((candidate) => ({
       ...candidate,
       responsibleAdmin: candidate.responsible_admin_id ? adminNames.get(candidate.responsible_admin_id) ?? null : null,
-      cycles: cyclesByCandidate.get(candidate.id) ?? [],
     })),
   };
+}
+
+export async function getCrmCandidateCycles(candidateId: string): Promise<CrmRecruitingCycle[] | null> {
+  const context = await getCrmContext();
+  if (!context) return null;
+  const cycles: CrmRecruitingCycle[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await context.supabase.from("crm_recruiting_cycles").select("*")
+      .eq("studio_id", context.membership.studio_id).eq("candidate_id", candidateId)
+      .order("started_at", { ascending: false }).order("id", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Unable to load candidate recruiting cycles.", { cause: error });
+    cycles.push(...(data ?? []));
+    if (!data || data.length < pageSize) return cycles;
+  }
 }

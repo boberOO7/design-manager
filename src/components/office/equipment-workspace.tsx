@@ -4,7 +4,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useActionState, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AirVent,
@@ -43,6 +43,7 @@ import {
   deleteEquipment,
   deleteWorkstation,
   recordEquipmentHistory,
+  loadEquipmentHistory,
   startEquipmentService,
   updateEquipmentField,
   updateEquipmentMaintenance,
@@ -84,6 +85,7 @@ import { cn } from "@/lib/utils";
 
 type EquipmentView = "inventory" | "workstations" | "maintenance";
 type WorkstationView = "cards" | "floorPlan";
+type HistoryLoader = (equipmentId: string) => ReturnType<typeof loadEquipmentHistory>;
 type CreateKind = "workstation" | "equipment";
 const initialActionState: EquipmentActionState = {};
 const FloorPlanView = dynamic(() => import("@/components/office/floor-plan-view"));
@@ -158,6 +160,25 @@ function useEquipmentRouting() {
 
 export function EquipmentWorkspace({ equipment, floorPlanPlacements, initialView, initialWorkstationView, members, today, workstations }: { equipment: EquipmentItem[]; floorPlanPlacements: FloorPlanPlacement[]; initialView: EquipmentView; initialWorkstationView: WorkstationView; members: EquipmentMember[]; today: string; workstations: WorkstationItem[] }) {
   const t = useTranslations("Equipment");
+  // Reuse reads across drawer mounts, only for this authoritative workspace snapshot.
+  // Every successful mutation revalidates equipment, including history-only writes
+  // that do not change equipment.updatedAt.
+  const historyCache = useRef<{ equipment: EquipmentItem[]; requests: Map<string, ReturnType<typeof loadEquipmentHistory>> } | null>(null);
+  const loadHistory = useCallback<HistoryLoader>((id) => {
+    if (!equipment.some((item) => item.id === id)) return Promise.resolve(null);
+    if (historyCache.current?.equipment !== equipment) {
+      historyCache.current = { equipment, requests: new Map() };
+    }
+    const requests = historyCache.current.requests;
+    const existing = requests.get(id);
+    if (existing) return existing;
+    const request = loadEquipmentHistory(id).catch(() => null).then((events) => {
+      if (events === null) requests.delete(id);
+      return events;
+    });
+    requests.set(id, request);
+    return request;
+  }, [equipment]);
   const routing = useEquipmentRouting();
   const selectedWorkstation = workstations.find((item) => item.id === routing.selectedItemId) ?? null;
   const selectedEquipment = equipment.find((item) => item.id === (selectedWorkstation ? routing.nestedEquipmentId : routing.selectedItemId)) ?? null;
@@ -189,7 +210,7 @@ export function EquipmentWorkspace({ equipment, floorPlanPlacements, initialView
     <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} isTopLayer={!selectedEquipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openEquipment} />
-    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} maintenanceMode={initialView === "maintenance" && !selectedWorkstation} today={today} workstations={workstations} onClose={routing.closeEquipment} />
+    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} loadHistory={loadHistory} maintenanceMode={initialView === "maintenance" && !selectedWorkstation} today={today} workstations={workstations} onClose={routing.closeEquipment} />
   </div>;
 }
 
@@ -484,7 +505,7 @@ function EquipmentAttachPicker({ candidates, label, locationNames, onAttach, pen
   </PopoverPrimitive.Root>;
 }
 
-function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
+function EquipmentDrawer({ item, loadHistory, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; loadHistory: HistoryLoader; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
   const t = useTranslations("Equipment");
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<EquipmentActionState["error"]>();
@@ -551,7 +572,7 @@ function EquipmentDrawer({ item, maintenanceMode, today, workstations, onClose }
     <div className="min-h-0 flex-1 overflow-y-auto">
       <ActionError error={error} />
       {error && retryRef.current ? <Button variant="ghost" onClick={() => retryRef.current?.()}>{t("actions.retry")}</Button> : null}
-      {maintenanceMode ? <><MaintenanceSchedule item={item} pending={pending} run={run} /><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} /></> : <><fieldset aria-busy={pending} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={false} workstations={workstations} onSave={saveField} /></fieldset><EquipmentMaintenanceSummary item={item} today={today} onNavigate={canLeave} onStartService={() => setServiceOpen(true)} /></>}
+      {maintenanceMode ? <><MaintenanceSchedule item={item} pending={pending} run={run} /><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} loadHistory={loadHistory} /></> : <><fieldset aria-busy={pending} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={false} workstations={workstations} onSave={saveField} /></fieldset><EquipmentMaintenanceSummary item={item} today={today} onNavigate={canLeave} onStartService={() => setServiceOpen(true)} /></>}
     </div>
   </Drawer>
   <Dialog className="max-w-lg" isOpen={serviceOpen} closeDisabled={pending} closeLabel={t("close")} title={t("service.send")} onRequestClose={(reason) => { if (!pending && reason !== "outside") setServiceOpen(false); }}><div className="overflow-y-auto p-5 sm:p-6"><p className="mb-4 text-sm text-[var(--ui-text-muted)]">{item.assetTag}{item.displayName ? ` · ${item.displayName}` : ""}</p><StartServiceForm item={item} pending={pending} today={today} run={(operation) => run(operation, () => setServiceOpen(false))} /><ActionError error={error} /></div></Dialog>
@@ -573,7 +594,7 @@ function MaintenanceSchedule({ item, pending, run }: { item: EquipmentItem; pend
 function EquipmentMaintenanceSummary({ item, today, onStartService, onNavigate }: { item: EquipmentItem; today: string; onStartService: () => void; onNavigate: () => boolean }) {
   const t = useTranslations("Equipment");
   const locale = useLocale();
-  const openService = item.serviceEvents.find((event) => !event.completedOn);
+  const openService = item.activeService;
   const urgency = getMaintenanceUrgency(item.recurringMaintenanceEnabled, item.nextMaintenanceDueDate, today);
   const status = openService ? t("service.inProgressSince", { date: formatDateOnly(openService.startedOn, locale) }) : item.nextMaintenanceDueDate ? t("maintenance.due", { date: formatDateOnly(item.nextMaintenanceDueDate, locale) }) : t("maintenance.notScheduled");
   return <section className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]"><Wrench className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="text-sm font-semibold">{t("maintenance.summaryTitle")}</h3><div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-muted)]"><span>{status}</span><MaintenanceBadge item={item} urgency={urgency} /></div></div></div><div className="flex flex-wrap gap-2">{!openService && item.lifecycleState !== "retired" ? <Button variant="outline" onClick={onStartService}>{t("service.send")}</Button> : null}<Button asChild variant="ghost"><Link onClick={(event) => { if (!onNavigate()) event.preventDefault(); }} href={`/office/equipment?view=maintenance&item=${item.id}`}>{t("maintenance.openWorkspace")}</Link></Button></div></div></section>;
@@ -590,7 +611,7 @@ function ServicePanel({ item, pending, run, today }: { item: EquipmentItem; pend
   const t = useTranslations("Equipment");
   const locale = useLocale();
   const [showHistoryForm, setShowHistoryForm] = useState(false);
-  const openService = item.serviceEvents.find((event) => !event.completedOn);
+  const openService = item.activeService;
 
   function complete(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if (!openService) return; const data = new FormData(event.currentTarget); const costAmount = data.get("costAmount"); run(() => completeEquipmentService({ serviceEventId: openService.id, completedOn: data.get("completedOn"), returnState: data.get("returnState"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") })); }
   function record(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); const costAmount = data.get("costAmount"); run(() => recordEquipmentHistory({ equipmentId: item.id, eventType: data.get("eventType"), startedOn: data.get("startedOn"), completedOn: data.get("completedOn"), serviceProvider: data.get("serviceProvider"), costAmount, costCurrency: costAmount ? data.get("costCurrency") : "", notes: data.get("notes") }), () => { form.reset(); setShowHistoryForm(false); }); }
@@ -606,11 +627,21 @@ function CostFields() {
   return <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]"><FormField label={t("service.cost")} optional optionalLabel={t("optional")}><Input type="number" name="costAmount" min="0.01" step="0.01" /></FormField><FormField label={t("service.currency")}><Select name="costCurrency" defaultValue="UAH">{CRM_BUDGET_CURRENCIES.map((currency) => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}</Select></FormField></div>;
 }
 
-function HistoryPanel({ item }: { item: EquipmentItem }) {
+function HistoryPanel({ item, loadHistory }: { item: EquipmentItem; loadHistory: HistoryLoader }) {
   const t = useTranslations("Equipment");
   const locale = useLocale();
-  const completed = item.serviceEvents.filter((event) => event.completedOn);
-  return <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><div className="flex items-center gap-2"><RotateCcw className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" /><h3 className="font-semibold">{t("history.title")}</h3></div>{completed.length ? <ol className="mt-4 space-y-3">{completed.map((event) => {
+  const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState<{ loader: HistoryLoader; events: Awaited<ReturnType<HistoryLoader>> } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadHistory(item.id).then((events) => {
+      if (!cancelled) setLoaded({ loader: loadHistory, events });
+    });
+    return () => { cancelled = true; };
+  }, [item.id, loadHistory, attempt]);
+  const current = loaded?.loader === loadHistory ? loaded : null;
+  const completed = current?.events ?? [];
+  return <section className="border-t border-[var(--ui-border)] p-5 sm:p-6"><div className="flex items-center gap-2"><RotateCcw className="size-4 text-[var(--ui-text-muted)]" aria-hidden="true" /><h3 className="font-semibold">{t("history.title")}</h3></div>{!current ? <p role="status" className="mt-3 text-sm text-[var(--ui-text-muted)]">{t("history.loading")}</p> : current.events === null ? <div className="mt-3"><p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("history.loadError")}</p><Button variant="ghost" onClick={() => { setLoaded(null); setAttempt((value) => value + 1); }}>{t("actions.retry")}</Button></div> : completed.length ? <ol className="mt-4 space-y-3">{completed.map((event) => {
     const cost = event.costAmount !== null && event.costCurrency && isCrmBudgetCurrency(event.costCurrency) ? formatCrmBudget(event.costAmount, event.costCurrency) : null;
     return <li key={event.id} className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-4"><div className="flex flex-wrap items-start justify-between gap-2"><strong className="text-sm">{t(`history.types.${event.eventType}`)}</strong><time className="text-xs text-[var(--ui-text-muted)]" dateTime={event.completedOn ?? undefined}>{formatDateOnly(event.completedOn, locale)}</time></div><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{event.startedOn !== event.completedOn ? t("history.dateRange", { start: formatDateOnly(event.startedOn, locale), end: formatDateOnly(event.completedOn, locale) }) : null}{event.serviceProvider ? `${event.startedOn !== event.completedOn ? " · " : ""}${event.serviceProvider}` : ""}{cost ? ` · ${cost}` : ""}</p>{event.startedNotes ? <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--ui-text-secondary)]">{event.startedNotes}</p> : null}{event.completionNotes ? <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--ui-text-secondary)]">{event.completionNotes}</p> : null}</li>;
   })}</ol> : <p className="mt-3 text-sm text-[var(--ui-text-muted)]">{t("history.empty")}</p>}</section>;
