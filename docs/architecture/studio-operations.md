@@ -88,6 +88,14 @@ migrations/tests.
 - Candidate identity/contact data lives in `crm_candidates`; each hiring attempt
   lives in `crm_recruiting_cycles`. Starting a later cycle inserts a new row and
   preserves prior interview notes, test results, and outcomes.
+  The directory reads only one cycle summary per candidate: position, stage,
+  outcome, next-contact date, and ID. The existing latest-cycle rule is descending
+  `started_at`, without preferring active outcomes; descending ID breaks date ties
+  consistently in summaries and complete history. Opening a Candidate dialog
+  loads all its cycle fields and pages through the full history under admin RLS.
+  Reads are reused within the authoritative candidate snapshot; mutation
+  revalidation invalidates reuse even when a new cycle leaves the candidate's
+  `updated_at` unchanged. Dialog selection remains local, without URL navigation.
 - Candidate creation and editor saves use guarded RPCs so contact and recruiting
   cycle fields commit or roll back together. Empty responsible-admin selection
   remains unassigned. Interview wall times are interpreted in StudioFlow's

@@ -1485,13 +1485,13 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1789479830.129917,
-    "ast_hash": "e42bf8c5fc84a2671d93983b5c326728",
+    "mtime": 1789480502.5208416,
+    "ast_hash": "d7803a2aebc405ab1145b1cbfed6b449",
     "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1789479830.129917,
-    "ast_hash": "c00846aae83bcb7d0ae2c6e04d0ce261",
+    "mtime": 1789480502.5208416,
+    "ast_hash": "78eba6bb95897cc0c0a582abc600ebc9",
     "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
@@ -4100,8 +4100,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/studio-operations.md": {
-    "mtime": 1789480104.1761723,
-    "ast_hash": "615e413e29b3960cd8f0eed7e67b724b",
+    "mtime": 1789480816.9137278,
+    "ast_hash": "8000d752160d27874a246f661d982d64",
     "semantic_hash": ""
   },
   "docs/architecture/tasks.md": {
@@ -4275,9 +4275,9 @@
     "semantic_hash": "8ee6e3a1067a83ec2b0ce98f14fc0a3d"
   },
   "src/app/(app)/crm/actions.ts": {
-    "mtime": 1789381139.3727636,
-    "ast_hash": "68b5be11ad03ad2b01dd654247ab9b60",
-    "semantic_hash": "68b5be11ad03ad2b01dd654247ab9b60"
+    "mtime": 1789480502.5168417,
+    "ast_hash": "70a9c22189673dda759f36820e320edf",
+    "semantic_hash": ""
   },
   "src/app/(app)/crm/candidates/page.tsx": {
     "mtime": 1789426026.315376,
@@ -4315,8 +4315,8 @@
     "semantic_hash": "98f95684ca6ad6a333630aa3d173952b"
   },
   "src/components/crm/candidates-workspace.tsx": {
-    "mtime": 1789425659.9684196,
-    "ast_hash": "dbea7fbdbbb3af3f5538094dcb1f55f0",
+    "mtime": 1789480756.9146538,
+    "ast_hash": "56bc3c66c08f257c44237f764ecc72d9",
     "semantic_hash": ""
   },
   "src/components/crm/crm-fields.tsx": {
@@ -4345,9 +4345,9 @@
     "semantic_hash": "f051db5882c3716d4e62ebde0c894f27"
   },
   "src/data/queries/crm.ts": {
-    "mtime": 1789426026.315376,
-    "ast_hash": "d32ca05149261265b4105d1e2b3bdc62",
-    "semantic_hash": "d32ca05149261265b4105d1e2b3bdc62"
+    "mtime": 1789480502.5168417,
+    "ast_hash": "a2b52b168fe254dba64f69b214ac2dc8",
+    "semantic_hash": ""
   },
   "src/lib/crm-budget.test.ts": {
     "mtime": 1788975375.796811,
@@ -5070,8 +5070,8 @@
     "semantic_hash": ""
   },
   "tests/e2e/office-reconciliation.spec.ts": {
-    "mtime": 1789480076.8638918,
-    "ast_hash": "685ba2f897f471400bd65f21708a2d7e",
+    "mtime": 1789480756.918654,
+    "ast_hash": "fa71288b7503d9101d4481fdddb8448b",
     "semantic_hash": ""
   },
   "tests/e2e/calendar-projects-presentation.spec.ts": {
@@ -5132,6 +5132,11 @@
   "src/data/queries/submission-detail.integration.test.ts": {
     "mtime": 1789480104.1761723,
     "ast_hash": "9cb7ec0a7f1f22220c3a33b9353ee88c",
+    "semantic_hash": ""
+  },
+  "src/data/queries/candidate-cycles.integration.test.ts": {
+    "mtime": 1789480680.0133545,
+    "ast_hash": "401ff5532ced4a14423649e2d57b12f1",
     "semantic_hash": ""
   }
 }

@@ -272,7 +272,7 @@ test("CRM candidate create, editor, new cycle and delete consume Server Action r
   await expect(dialog).toHaveCount(0);
   await page.getByRole("button", { name: "Open candidate Reconciliation candidate", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Reconciliation candidate", exact: true });
-  await expect(dialog).toBeVisible(); await check("create candidate", ["action"]);
+  await expect(dialog).toBeVisible(); await check("create candidate", ["action", "action"]);
   await dialog.getByRole("button", { name: t.edit, exact: true }).click();
   await dialog.locator('[name="full_name"]').fill("Edited reconciliation candidate");
   await dialog.locator('[name="outcome"]').locator("..").getByRole("combobox").click();
@@ -282,7 +282,7 @@ test("CRM candidate create, editor, new cycle and delete consume Server Action r
   await choose(page, page.locator("main"), t.statusFilter, t.filters.all);
   await page.getByRole("button", { name: "Open candidate Edited reconciliation candidate", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Edited reconciliation candidate", exact: true });
-  await expect(dialog).toContainText(t.candidateOutcome.reserve); await check("edit candidate", ["action"]);
+  await expect(dialog).toContainText(t.candidateOutcome.reserve); await check("edit candidate", ["action", "action"]);
   await dialog.getByRole("button", { name: t.edit, exact: true }).click();
   const cycleForm = dialog.locator("form").filter({ has: page.getByRole("button", { name: t.candidates.startCycle, exact: true }) });
   await cycleForm.locator('[name="target_position"]').locator("..").getByRole("combobox").click();
@@ -291,7 +291,7 @@ test("CRM candidate create, editor, new cycle and delete consume Server Action r
   await expect(dialog).toHaveCount(0);
   await page.getByRole("button", { name: "Open candidate Edited reconciliation candidate", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: t.candidates.history, exact: true })).toBeVisible();
-  await expect(dialog).toContainText(t.candidateOutcome.reserve); await check("start cycle", ["action"]);
+  await expect(dialog).toContainText(t.candidateOutcome.reserve); await check("start cycle", ["action", "action"]);
   await dialog.getByRole("button", { name: t.recordActions, exact: true }).click();
   page.once("dialog", (confirmation) => confirmation.accept());
   await dialog.getByRole("button", { name: t.delete, exact: true }).click();
@@ -428,4 +428,74 @@ test("Submission lazy detail merges loading/live/mutation races and reuses item 
     await page.getByRole("button", { name: "Suggestion: Lazy discussion first", exact: true }).click();
     await expect(drawer.getByText("Own echo only once", { exact: true })).toHaveCount(1);
   } finally { releaseRead(); await employeeContext.close(); }
+});
+
+test("Candidate cycles load locally, retry and reuse complete details across selection", async ({ page }) => {
+  const t = en.Crm; const first = randomUUID(); const second = randomUUID();
+  localSql(`insert into public.crm_candidates(id,studio_id,full_name,email) values
+    (${sqlId(first)},${sqlId(studioId)},'Lazy candidate first','first@example.test'),
+    (${sqlId(second)},${sqlId(studioId)},'Lazy candidate second','second@example.test');
+    insert into public.crm_recruiting_cycles(studio_id,candidate_id,target_position,stage,outcome,started_at,completed_at,interview_at,interview_notes,test_task_result) values
+    (${sqlId(studioId)},${sqlId(first)},'Architect','decision','reserve','2025-01-01','2025-01-02',null,'Preserved past interview','Preserved past result'),
+    (${sqlId(studioId)},${sqlId(first)},'Architect','interview_scheduled',null,'2026-01-01',null,'2026-09-15T13:30:00Z','Current interview detail','Current test result'),
+    (${sqlId(studioId)},${sqlId(second)},'Architect','new',null,'2026-01-01',null,null,'Second interview detail',null);`);
+  const reads: string[] = []; const navigations: string[] = [];
+  let failSecond = true;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname !== '/crm/candidates') return;
+    if (request.method() === 'GET' && !request.headers()['next-router-prefetch']) navigations.push(request.url());
+  });
+  await page.route('**/crm/candidates', async (route) => {
+    if (!route.request().headers()['next-action']) return route.continue();
+    const body = route.request().postData();
+    if (body !== JSON.stringify([first]) && body !== JSON.stringify([second])) return route.continue();
+    reads.push(body);
+    if (body === JSON.stringify([second]) && failSecond) { failSecond = false; return route.abort('failed'); }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.continue();
+  });
+  await login(page);
+  await page.goto('/crm/candidates');
+  await expect(page.getByRole('button', { name: 'Open candidate Lazy candidate first', exact: true })).toBeVisible();
+  expect(reads).toHaveLength(0);
+  const initialNavigations = navigations.length;
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate first', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Lazy candidate first', exact: true });
+  await expect(dialog.getByRole('status')).toHaveText(t.candidates.loadingCycles);
+  await expect(dialog.getByText('Current interview detail', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Current test result', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: t.candidates.history, exact: true })).toBeVisible();
+  expect(reads).toHaveLength(1);
+  await dialog.getByRole('button', { name: t.close, exact: true }).click();
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate first', exact: true }).click();
+  await expect(dialog.getByText('Current interview detail', { exact: true })).toBeVisible();
+  expect(reads).toHaveLength(1);
+  await dialog.getByRole('button', { name: t.close, exact: true }).click();
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate second', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Lazy candidate second', exact: true });
+  await expect(dialog.getByRole('alert')).toHaveText(t.candidates.loadCyclesError);
+  await dialog.getByRole('button', { name: t.candidates.retryCycles, exact: true }).click();
+  await expect(dialog.getByText('Second interview detail', { exact: true })).toBeVisible();
+  expect(reads).toHaveLength(3);
+  await dialog.getByRole('button', { name: t.close, exact: true }).click();
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate first', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Lazy candidate first', exact: true });
+  await expect(dialog.getByText('Current interview detail', { exact: true })).toBeVisible();
+  expect(reads).toHaveLength(3); expect(navigations).toHaveLength(initialNavigations);
+  await dialog.getByRole('button', { name: t.edit, exact: true }).click();
+  await expect(dialog.locator('[name="interview_notes"]')).toHaveValue('Current interview detail');
+  await expect(dialog.locator('[name="test_task_result"]')).toHaveValue('Current test result');
+  await expect(dialog.locator('[name="interview_at"]')).toHaveValue('2026-09-15T16:30');
+  await dialog.locator('[name="interview_notes"]').fill('Edited interview detail');
+  await dialog.getByRole('button', { name: t.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate first', exact: true }).click();
+  await expect(dialog.getByText('Edited interview detail', { exact: true })).toBeVisible();
+  expect(reads).toHaveLength(4);
+  // Another previously cached candidate belongs to the older authoritative snapshot.
+  await dialog.getByRole('button', { name: t.close, exact: true }).click();
+  await page.getByRole('button', { name: 'Open candidate Lazy candidate second', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Lazy candidate second', exact: true });
+  await expect(dialog.getByText('Second interview detail', { exact: true })).toBeVisible();
+  expect(reads).toHaveLength(5);
 });

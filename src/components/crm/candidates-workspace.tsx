@@ -22,6 +22,8 @@ import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { ProfessionalRole } from "@/lib/validation/employee-invitation";
 import { CRM_LEAD_SOURCE_KEYS, getCrmLeadSourceFormValues, RECRUITING_OUTCOMES, RECRUITING_STAGES } from "@/lib/validation/crm";
 
+type CycleLoader = (id: string) => Promise<CrmRecruitingCycle[] | null>;
+
 function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement) {
   if (!(target instanceof Element)) return false;
   const interactiveTarget = target.closest("a, button, input, select, textarea, [role='button'], [role='link'], [role='menuitem']");
@@ -89,7 +91,7 @@ export function CandidatesWorkspace({ admins, candidates, positions }: { admins:
   const positionFilterValues = positions;
   const visible = useMemo(() => filterCandidates(candidates, query, status, position), [candidates, position, query, status]);
   const cache = useRef<{ candidates: CrmCandidateSummary[]; requests: Map<string, ReturnType<typeof loadCandidateCycles>> } | null>(null);
-  const loadCycles = useCallback((id: string) => {
+  const loadCycles = useCallback<CycleLoader>((id) => {
     if (cache.current?.candidates !== candidates) cache.current = { candidates, requests: new Map() };
     const requests = cache.current.requests;
     const existing = requests.get(id);
@@ -102,17 +104,18 @@ export function CandidatesWorkspace({ admins, candidates, positions }: { admins:
     return request;
   }, [candidates]);
   const [attempt, setAttempt] = useState(0);
-  const [loaded, setLoaded] = useState<{ id: string; loader: typeof loadCycles; cycles: CrmRecruitingCycle[] | null } | null>(null);
+  const [loaded, setLoaded] = useState<{ id: string; snapshot: CrmCandidateSummary[]; cycles: CrmRecruitingCycle[] | null } | null>(null);
   // Keep the submitted editor mounted until its existing onSuccess closes it.
   // Reopening uses the new authoritative snapshot and reloads history as needed.
+  const selectedExists = selected !== null;
   const editingLoadedRecord = view === "edit" && loaded?.id === selectedId;
   useEffect(() => {
-    if (!selectedId || editingLoadedRecord) return;
+    if (!selectedId || !selectedExists || deleting || editingLoadedRecord) return;
     let cancelled = false;
-    void loadCycles(selectedId).then((cycles) => { if (!cancelled) setLoaded({ id: selectedId, loader: loadCycles, cycles }); });
+    void loadCycles(selectedId).then((cycles) => { if (!cancelled) setLoaded({ id: selectedId, snapshot: candidates, cycles }); });
     return () => { cancelled = true; };
-  }, [selectedId, loadCycles, attempt, editingLoadedRecord]);
-  const current = loaded?.id === selectedId && (loaded?.loader === loadCycles || editingLoadedRecord) ? loaded : null;
+  }, [selectedId, selectedExists, candidates, loadCycles, attempt, deleting, editingLoadedRecord]);
+  const current = loaded?.id === selectedId && (loaded?.snapshot === candidates || editingLoadedRecord) ? loaded : null;
   const cycles = current?.cycles ?? null;
   const latest = cycles?.[0];
   function openRecord(candidate: CrmCandidateSummary) { setSelectedId(candidate.id); setView("detail"); }
