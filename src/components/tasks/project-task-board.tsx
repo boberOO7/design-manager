@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, UserPlus, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
@@ -573,6 +573,38 @@ function BoardColumn({
   );
 }
 
+// Keep the existing grid transition, then release cards and DnD registrations.
+function StageContent({ children, expanded, keepMounted, stage }: { children: ReactNode; expanded: boolean; keepMounted: boolean; stage: TaskStage }) {
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const [retained, setRetained] = useState(expanded);
+  useLayoutEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+    let cancelled = false;
+    if (expanded) {
+      if (!retained) {
+        // Newly mounted content needs a measured zero-height starting frame.
+        node.style.transition = "none";
+        node.style.gridTemplateRows = "0fr";
+        node.getBoundingClientRect();
+        node.style.removeProperty("transition");
+        node.style.removeProperty("grid-template-rows");
+      }
+      queueMicrotask(() => { if (!cancelled) setRetained(true); });
+    } else if (!keepMounted) {
+      // Empty/reduced-motion transitions resolve immediately; cancelled transitions
+      // also release content unless a newer expand/drag has superseded this effect.
+      void Promise.allSettled(node.getAnimations().map((animation) => animation.finished)).then(() => {
+        if (!cancelled) setRetained(false);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [expanded, keepMounted, retained]);
+  return <div ref={nodeRef} id={`project-stage-${stage}`} aria-hidden={!expanded} inert={!expanded && !keepMounted} className={cn("grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none", expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+    <div className="min-h-0 overflow-hidden">{expanded || retained ? children : null}</div>
+  </div>;
+}
+
 export function ProjectTaskBoard({
   canCreate,
   canManageTasks,
@@ -729,11 +761,11 @@ export function ProjectTaskBoard({
     });
   }, [tasks]);
 
-  const groupsByStage = TASK_STAGES.reduce<Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>>((groups, stage) => ({
+  const groupsByStage = useMemo(() => TASK_STAGES.reduce<Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>>((groups, stage) => ({
     ...groups,
     [stage]: groupTasksByBoardColumn(localTasks.filter((task) => task.stage === stage)),
-  }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>);
-  const stageProgress = calculateStageProgress(localTasks, localStageProgressMethods);
+  }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>), [localTasks]);
+  const stageProgress = useMemo(() => calculateStageProgress(localTasks, localStageProgressMethods), [localTasks, localStageProgressMethods]);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -788,6 +820,10 @@ export function ProjectTaskBoard({
   }
 
   function toggleStage(stage: TaskStage) {
+    const content = document.getElementById(`project-stage-${stage}`);
+    if (expandedStages[stage] && content?.contains(document.activeElement)) {
+      content.parentElement?.querySelector<HTMLButtonElement>(`button[aria-controls="project-stage-${stage}"]`)?.focus();
+    }
     if (expandedStages[stage] && taskSelection.stage === stage) clearTaskSelection();
     setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }));
   }
@@ -1055,7 +1091,7 @@ export function ProjectTaskBoard({
       suppressCardOpenRef.current = false;
       suppressSelectionClearRef.current = false;
     }, 0);
-    if (event.canceled || taskId === undefined || !target) return;
+    if (event.canceled || taskId === undefined || !target || !expandedStages[target.stage]) return;
 
     if (bulkSource) {
       if (!bulkSource || bulkSource.stage !== target.stage || bulkSource.columnId === target.columnId) return;
@@ -1188,8 +1224,7 @@ export function ProjectTaskBoard({
                   </button>
                   </div>
                 </div>
-                <div id={`project-stage-${stage}`} className={cn("grid transition-[grid-template-rows] duration-200 ease-out", isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
-                  <div className="min-h-0 overflow-hidden">
+                <StageContent stage={stage} expanded={isExpanded} keepMounted={activeTaskId !== null || activeBulkDrag !== null}>
                     <div className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3" onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
                       <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
                       {enabledColumns.map((column) => (
@@ -1216,8 +1251,7 @@ export function ProjectTaskBoard({
                       ))}
                       </div>
                     </div>
-                  </div>
-                </div>
+                </StageContent>
               </section>
             );
           })}

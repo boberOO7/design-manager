@@ -96,6 +96,10 @@ Project aggregation and attribution are described in
 - Whole-card pointer and keyboard drag moves status. Database writes occur only
   after a completed drop into a different column.
 - Manual ordering within a status column is not persisted.
+- Collapsed stages keep their headers, counts, progress, and board-owned task
+  state. Cards and drag/drop registrations unmount after the collapse transition
+  (after an active drag ends when necessary); expanding restores them from local
+  state without a read. A drop into a stage collapsed during the drag is ignored.
 - Rejected optimistic moves restore prior task/project state and surface the
   failure.
 - Ctrl/Cmd-click builds a same-stage task selection. Escape, an empty board

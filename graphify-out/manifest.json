@@ -460,9 +460,9 @@
     "semantic_hash": "d7fb13a38b4d6b550689e6ad1079da25"
   },
   "src/components/tasks/project-task-board.tsx": {
-    "mtime": 1789384423.2702823,
-    "ast_hash": "1760a6373f57d32b042ffa7b8720b38f",
-    "semantic_hash": "1760a6373f57d32b042ffa7b8720b38f"
+    "mtime": 1789481666.909603,
+    "ast_hash": "a2fa45a60ec62cf0e21c7d571ddea119",
+    "semantic_hash": ""
   },
   "src/components/tasks/task-details-drawer.tsx": {
     "mtime": 1789042002.5117385,
@@ -4105,8 +4105,8 @@
     "semantic_hash": ""
   },
   "docs/architecture/tasks.md": {
-    "mtime": 1789477381.8190186,
-    "ast_hash": "c4ad27cd97935309f5ee3f6cca860776",
+    "mtime": 1789482108.324871,
+    "ast_hash": "37c460b99bc6d9e7ba8d06636af0ea52",
     "semantic_hash": ""
   },
   "src/lib/submission-comment-realtime-migration.test.ts": {
@@ -5137,6 +5137,11 @@
   "src/data/queries/candidate-cycles.integration.test.ts": {
     "mtime": 1789480680.0133545,
     "ast_hash": "401ff5532ced4a14423649e2d57b12f1",
+    "semantic_hash": ""
+  },
+  "tests/e2e/board-collapse.spec.ts": {
+    "mtime": 1789482177.5410116,
+    "ast_hash": "3dce8cbf511a699e40ad93037a8cce3c",
     "semantic_hash": ""
   }
 }
