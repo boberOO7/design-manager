@@ -5,6 +5,7 @@ import { motionBootstrapScript } from "@/lib/motion";
 import { DARK_THEME_COLOR, LIGHT_THEME_COLOR, themeBootstrapScript } from "@/lib/theme";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { selectMessages } from "@/i18n/message-scopes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +56,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
-        <NextIntlClientProvider locale={locale} messages={messages}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale} messages={selectMessages(messages, "root")}>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

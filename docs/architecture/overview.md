@@ -96,6 +96,37 @@ documents without external verification.
 - Add schema changes in a new migration. Never revise an applied migration or
   push remote changes without explicit confirmation.
 
+## Translation message delivery
+
+`src/i18n/request.ts` retains the complete request-local dictionary for Server
+Components, metadata, actions, and route handlers. Client message ownership is
+defined by whole namespaces in `src/i18n/message-scopes.ts`:
+
+- Root: `Common` and `Account`, including public language/theme/sign-out controls.
+- Authenticated shell: `Navigation`, `Notifications`, and `CitySearch`. Account
+  and city messages also cover the deferred profile/crop/Google editor everywhere.
+- Domain layouts add their own messages through the server-only `DomainMessages`.
+  Projects owns its list, workspace, templates, forms, and task editors; CRM also
+  owns the Project form namespaces needed for Lead conversion. Dashboard, My
+  Tasks, and Projects share the task namespace group.
+- Office adds only `Office`; Equipment, Assignments, and Submissions add separate
+  scopes below it. Other domains have their own layouts. Server-rendered text
+  (for example Legal and Archive) still uses the full server dictionary.
+
+`ScopedIntlProvider` merges additional messages with inherited context in the
+client, so ancestor dictionaries are not serialized again at each boundary.
+Locale comes from the root context; the existing cookie update and router refresh
+update both root and domain messages. Client navigation loads the destination
+domain through normal RSC delivery, without a separate translation endpoint.
+Lazy UI inherits its domain's complete namespaces on first open; making messages
+available must not turn its dynamic JavaScript imports into eager imports.
+
+The ownership test follows both static and dynamic imports from route entry
+points, checks their ancestor scopes, and rejects unreviewed dynamic namespace or
+whole-dictionary access. It is a regression alarm, not a runtime key-pruning
+mechanism. When moving UI across domains or adding a namespace, review ownership
+and keep the entire namespace available to optional and role-specific UI.
+
 ## Profile/account client delivery
 
 The shared header keeps the avatar trigger, current avatar URL, and OAuth-return
