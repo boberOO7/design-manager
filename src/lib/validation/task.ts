@@ -95,6 +95,13 @@ export const taskBulkDeadlinePayloadSchema = z.object({
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
+export const projectTemplateStageApplicationSchema = z.object({
+  project_id: z.uuid("Choose a valid project"),
+  template_id: z.uuid("Choose a valid project template"),
+  source_stage: z.enum(TASK_STAGES),
+  destination_stage: z.enum(TASK_STAGES),
+}).strict();
+
 export const taskEditSchema = z.object({
   title: z.string().trim().min(1, "Task title is required").max(200, "Task title is too long"),
   description: z.preprocess(

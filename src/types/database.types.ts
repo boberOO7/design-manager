@@ -2844,6 +2844,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_project_template_stage: {
+        Args: {
+          p_destination_stage: string
+          p_project_id: string
+          p_source_stage: string
+          p_template_id: string
+        }
+        Returns: number
+      }
       approve_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
         Returns: {

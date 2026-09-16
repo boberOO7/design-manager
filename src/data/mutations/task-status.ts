@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isTaskStage } from "@/lib/task-stages";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
-import { taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
+import { projectTemplateStageApplicationSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 type AuthorizedTask = NonNullable<Awaited<ReturnType<typeof getTaskForStatusUpdate>>>;
@@ -154,6 +154,36 @@ export async function bulkMoveTaskStatusesMutation(projectId: string, input: unk
 export type BulkTaskStageAssignmentMutationResult =
   | { success: true; projectId: string; tasks: Awaited<ReturnType<typeof getProjectTasks>> }
   | { success: false; formError: string };
+
+export type ProjectTemplateStageApplicationMutationResult =
+  | { success: true; projectId: string; createdCount: number; tasks: Awaited<ReturnType<typeof getProjectTasks>> }
+  | { success: false; formError: string };
+
+export async function applyProjectTemplateStageMutation(projectId: string, input: unknown): Promise<ProjectTemplateStageApplicationMutationResult> {
+  const parsed = projectTemplateStageApplicationSchema.safeParse(
+    typeof input === "object" && input !== null ? { ...input, project_id: projectId } : input,
+  );
+  if (!parsed.success) return { formError: "Choose a valid project template and source stage.", success: false };
+
+  const supabase = await createClient();
+  const { data: createdCount, error } = await supabase.rpc("apply_project_template_stage", {
+    p_destination_stage: parsed.data.destination_stage,
+    p_project_id: parsed.data.project_id,
+    p_source_stage: parsed.data.source_stage,
+    p_template_id: parsed.data.template_id,
+  });
+  if (error || createdCount === null) {
+    console.error("Unable to apply project template stage", error);
+    return { formError: error?.message || "The project template stage could not be applied. Please try again.", success: false };
+  }
+
+  const tasks = await getProjectTasks(parsed.data.project_id);
+  revalidatePath(`/projects/${parsed.data.project_id}`);
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { createdCount, projectId: parsed.data.project_id, success: true, tasks };
+}
 
 export async function bulkAssignTaskStageMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {
   const parsed = taskBulkStageAssignmentPayloadSchema.safeParse(input);

@@ -15,6 +15,7 @@ import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, Gr
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
+import { ProjectTemplateStageDialog } from "@/components/tasks/project-template-stage-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
@@ -48,6 +49,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
 import { TASK_MILESTONE_STATUSES, isTaskMilestoneStatus, type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { getBulkMoveBatch, toggleTaskBoardSelection, type TaskBoardSelection } from "@/lib/task-board-selection";
+import type { ProjectTemplate } from "@/lib/project-templates";
 
 const COLUMN_DROP_ID_PREFIX = "task-column:";
 const interactiveSelector = [
@@ -619,6 +621,7 @@ export function ProjectTaskBoard({
   members,
   projectId,
   projectStatus,
+  projectTemplates,
   stageColumns,
   stageProgressMethods,
   stages,
@@ -635,6 +638,7 @@ export function ProjectTaskBoard({
   members: AssignableProjectMember[];
   projectId: string;
   projectStatus: ProjectLifecycleStatus;
+  projectTemplates: ProjectTemplate[];
   stageColumns: ProjectStageColumns;
   stageProgressMethods: ProjectStageProgressMethods;
   stages: ConfiguredProjectStage[];
@@ -646,6 +650,7 @@ export function ProjectTaskBoard({
   const t = useTranslations("Tasks");
   const statusLabels = useTranslations("Status");
   const stageLabels = useTranslations("TaskStages");
+  const projectTemplatesT = useTranslations("ProjectTemplates");
   const stageName = (stage: TaskStage) => stages.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage);
   const locale = useLocale();
   const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
@@ -668,6 +673,7 @@ export function ProjectTaskBoard({
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
   const [localStageProgressMethods, setLocalStageProgressMethods] = useState(stageProgressMethods);
   const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
+  const [templateStage, setTemplateStage] = useState<TaskStage | null>(null);
   const [savingProgressMethodStage, setSavingProgressMethodStage] = useState<TaskStage | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => tasks.some((task) => task.id === initialTaskId) ? initialTaskId ?? null : null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(() => tasks.some((task) => task.id === initialTaskId));
@@ -1251,6 +1257,7 @@ export function ProjectTaskBoard({
           {stages.filter((item) => item.isEnabled).map(({ stage }) => {
             const isStageReadOnly = isProjectReadOnly || (projectStatus === "completed" && isProjectProgressStage(stage));
             const canCreateInStage = canCreate && taskCreationStages.includes(stage);
+            const canApplyTemplate = canCreateInStage && localStageColumns[stage].includes("todo");
             const isExpanded = expandedStages[stage];
             const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status));
             const taskCount = groupsByStage[stage].todo.length
@@ -1280,7 +1287,7 @@ export function ProjectTaskBoard({
                   {canCreateInStage ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isProjectProgressStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]">{canApplyTemplate ? <button type="button" onClick={() => setTemplateStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{projectTemplatesT("applyStageAction")}</button> : null}<button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isProjectProgressStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}
@@ -1355,6 +1362,7 @@ export function ProjectTaskBoard({
         selectedStatuses={new Set(selectedTasks.map((task) => task.status))}
       /> : null}
       {settingsStage ? <StageColumnsDialog columns={localStageColumns[settingsStage]} onClose={() => setSettingsStage(null)} onSaved={(columns) => { setLocalStageColumns((current) => ({ ...current, [settingsStage]: columns })); setSettingsStage(null); }} projectId={projectId} stage={settingsStage} /> : null}
+      {templateStage ? <ProjectTemplateStageDialog destinationStage={templateStage} destinationStageName={stageName(templateStage)} onApplied={(nextTasks, createdCount) => { localTasksRef.current = nextTasks; setLocalTasks(nextTasks); setAnnouncement(projectTemplatesT("appliedStage", { count: createdCount, stage: stageName(templateStage) })); setTemplateStage(null); }} onClose={() => setTemplateStage(null)} projectId={projectId} templates={projectTemplates} /> : null}
       {selectedTask ? <TaskDetailsDrawer
         key={selectedTask.id}
         canManageTasks={canManageTasks}

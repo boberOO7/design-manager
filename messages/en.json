@@ -687,7 +687,23 @@
     "removeStage": "Remove {title}"
   },
   "ProjectTemplates": {
-    "defaultTemplate": "Default template"
+    "defaultTemplate": "Default template",
+    "applyStageAction": "Apply template",
+    "applyStageTitle": "Apply template to stage",
+    "applyStageDescription": "Choose a template stage. Its tasks will be added to {stage}.",
+    "destinationStage": "Destination stage",
+    "templateLabel": "Project template",
+    "chooseTemplate": "Choose a template",
+    "sourceStage": "Template source stage",
+    "taskCount": "{count, plural, one {# task} other {# tasks}}",
+    "tasksWillBeAdded": "{count, plural, one {# task will be added} other {# tasks will be added}}",
+    "existingTasksRemain": "Existing tasks and stage settings will remain unchanged.",
+    "noTemplates": "No active project templates are available.",
+    "emptySourceStage": "Choose a template stage that contains tasks.",
+    "applyStage": "Apply template",
+    "applyingStage": "Applying…",
+    "applyStageFailed": "The template stage could not be applied. Try again.",
+    "appliedStage": "{count, plural, one {# task was added to {stage}.} other {# tasks were added to {stage}.}}"
   },
   "Validation": {
     "correctFields": "Please correct the highlighted fields.",

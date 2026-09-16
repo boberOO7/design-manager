@@ -81,6 +81,10 @@ Invariants:
   the impact check and removal RPC keep this atomic.
 - Project templates create the project, memberships, task structure, and defaults
   atomically. Template task priority and ordering are normalized by migrations.
+- Administrators may also append one non-empty stage from an active same-studio
+  template to any enabled, writable destination stage. This cross-stage mapping
+  preserves the destination stage configuration and every existing task; it does
+  not replace or deduplicate stage work.
 - Every project has four stable stage IDs. Labels, ordering, visibility, allowed
   columns, and Stage 1–3 progress methods are configuration; stable stage IDs are
   policy inputs and must not be repurposed.

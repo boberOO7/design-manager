@@ -69,6 +69,10 @@ and Lead history.
   `bulk_set_project_task_deadline`, and the existing
   `bulk_move_project_tasks`; each validates the full same-project/stage batch
   before changing any row.
+- `apply_project_template_stage` appends a selected source template stage to a
+  writable destination stage after checking admin, tenant, lifecycle, and stage
+  configuration. It shares the private ordered task-copy helper used by
+  `create_project_from_template`.
 - Storage is a separate RLS surface. The `avatars` bucket is public for reads but
   upload/delete/select paths are constrained to the authenticated user's folder;
   profile avatar updates use guarded cleanup behavior.

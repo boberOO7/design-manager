@@ -687,7 +687,23 @@
     "removeStage": "Видалити «{title}»"
   },
   "ProjectTemplates": {
-    "defaultTemplate": "Шаблон за замовчуванням"
+    "defaultTemplate": "Шаблон за замовчуванням",
+    "applyStageAction": "Застосувати шаблон",
+    "applyStageTitle": "Застосувати шаблон до етапу",
+    "applyStageDescription": "Оберіть етап шаблону. Його задачі буде додано до етапу «{stage}».",
+    "destinationStage": "Етап призначення",
+    "templateLabel": "Шаблон проєкту",
+    "chooseTemplate": "Оберіть шаблон",
+    "sourceStage": "Етап-джерело шаблону",
+    "taskCount": "{count, plural, one {# задача} few {# задачі} many {# задач} other {# задачі}}",
+    "tasksWillBeAdded": "{count, plural, one {Буде додано # задачу} few {Буде додано # задачі} many {Буде додано # задач} other {Буде додано # задачі}}",
+    "existingTasksRemain": "Наявні задачі та налаштування етапу залишаться без змін.",
+    "noTemplates": "Немає активних шаблонів проєктів.",
+    "emptySourceStage": "Оберіть етап шаблону, що містить задачі.",
+    "applyStage": "Застосувати шаблон",
+    "applyingStage": "Застосування…",
+    "applyStageFailed": "Не вдалося застосувати етап шаблону. Спробуйте ще раз.",
+    "appliedStage": "{count, plural, one {# задачу додано до етапу «{stage}».} few {# задачі додано до етапу «{stage}».} many {# задач додано до етапу «{stage}».} other {# задачі додано до етапу «{stage}».}}"
   },
   "Validation": {
     "correctFields": "Виправте виділені поля.",
