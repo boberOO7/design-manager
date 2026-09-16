@@ -1125,6 +1125,310 @@ export type Database = {
           },
         ]
       }
+      finance_accounts: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          name: string
+          opening_balance: number
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by: string
+          currency: string
+          id?: string
+          name: string
+          opening_balance?: number
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          name?: string
+          opening_balance?: number
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_accounts_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_accounts_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_currencies: {
+        Row: {
+          code: string
+          minor_units: number
+        }
+        Insert: {
+          code: string
+          minor_units: number
+        }
+        Update: {
+          code?: string
+          minor_units?: number
+        }
+        Relationships: []
+      }
+      finance_movement_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          currency: string
+          entry_role: string
+          fx_effective_date: string
+          fx_rate: number
+          fx_source: string
+          id: string
+          movement_id: string
+          reporting_amount: number
+          reporting_currency: string
+          studio_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          currency: string
+          entry_role: string
+          fx_effective_date: string
+          fx_rate: number
+          fx_source: string
+          id?: string
+          movement_id: string
+          reporting_amount: number
+          reporting_currency: string
+          studio_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          currency?: string
+          entry_role?: string
+          fx_effective_date?: string
+          fx_rate?: number
+          fx_source?: string
+          id?: string
+          movement_id?: string
+          reporting_amount?: number
+          reporting_currency?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movement_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_reporting_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_currency_fkey"
+            columns: ["studio_id", "account_id", "currency"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id", "currency"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_currency_fkey"
+            columns: ["studio_id", "account_id", "currency"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id", "currency"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+        ]
+      }
+      finance_movements: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          financial_date: string
+          id: string
+          kind: string
+          nature: string
+          related_movement_id: string | null
+          request_id: string
+          request_payload: Json
+          studio_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          description?: string
+          financial_date: string
+          id?: string
+          kind: string
+          nature: string
+          related_movement_id?: string | null
+          request_id: string
+          request_payload: Json
+          studio_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          financial_date?: string
+          id?: string
+          kind?: string
+          nature?: string
+          related_movement_id?: string | null
+          request_id?: string
+          request_payload?: Json
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_settings: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string
+          cutover_date: string
+          finalized_at: string | null
+          finalized_by: string | null
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          created_by: string
+          cutover_date: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string
+          cutover_date?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_settings_base_currency_fkey"
+            columns: ["base_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_settings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_settings_finalized_by_fkey"
+            columns: ["finalized_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_settings_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: true
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       google_calendar_connections: {
         Row: {
           created_at: string
@@ -2841,7 +3145,112 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      finance_account_balances: {
+        Row: {
+          archived_at: string | null
+          currency: string | null
+          id: string | null
+          name: string | null
+          opening_balance: number | null
+          recorded_balance: number | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_accounts_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_cash_effects: {
+        Row: {
+          account_id: string | null
+          amount: number | null
+          category: string | null
+          currency: string | null
+          entry_role: string | null
+          financial_date: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          id: string | null
+          kind: string | null
+          movement_id: string | null
+          nature: string | null
+          related_movement_id: string | null
+          reporting_amount: number | null
+          reporting_currency: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movement_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_reporting_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_currency_fkey"
+            columns: ["studio_id", "account_id", "currency"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id", "currency"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_currency_fkey"
+            columns: ["studio_id", "account_id", "currency"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id", "currency"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_account_id_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_project_template_stage: {
@@ -3053,6 +3462,10 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      finalize_finance_setup: {
+        Args: { p_studio_id: string }
+        Returns: undefined
+      }
       finish_equipment_catalog_sync: {
         Args: {
           p_error?: string
@@ -3141,6 +3554,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_finance_movement: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
         Returns: undefined
@@ -3180,6 +3597,16 @@ export type Database = {
         Returns: string
       }
       restore_studio_member: { Args: { p_user_id: string }; Returns: undefined }
+      reverse_finance_movement: {
+        Args: {
+          p_date: string
+          p_movement_id: string
+          p_reason: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       save_checklist_template: {
         Args: {
           p_name: string
@@ -3188,6 +3615,24 @@ export type Database = {
           p_template_id?: string
         }
         Returns: string
+      }
+      save_finance_account: {
+        Args: {
+          p_account_id?: string
+          p_currency: string
+          p_name: string
+          p_opening_balance: number
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_settings: {
+        Args: {
+          p_base_currency: string
+          p_cutover_date: string
+          p_studio_id: string
+        }
+        Returns: undefined
       }
       save_leaderboard_bonus_rules: {
         Args: { p_enabled: boolean; p_rules: Json; p_studio_id: string }
@@ -3224,6 +3669,10 @@ export type Database = {
       set_checklist_template_archived: {
         Args: { p_archived: boolean; p_template_id: string }
         Returns: string
+      }
+      set_finance_account_archived: {
+        Args: { p_account_id: string; p_archived: boolean; p_studio_id: string }
+        Returns: undefined
       }
       set_leaderboard_employee_visibility: {
         Args: { p_studio_id: string; p_visible: boolean }

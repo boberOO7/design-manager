@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Trophy,
   Users,
+  Wallet,
 } from "lucide-react";
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 
@@ -24,6 +25,7 @@ export const navigationItems = [
   { href: "/contractors", label: "Contractors", messageKey: "contractors", adminOnly: false },
   { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
   { href: "/crm", label: "CRM", messageKey: "crm", adminOnly: true },
+  { href: "/finance", label: "Finance", messageKey: "finance", adminOnly: true },
   { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: true },
   { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },
 ] as const;
@@ -40,6 +42,7 @@ export const navigationIcons: Record<NavigationItem["href"], LucideIcon> = {
   "/contractors": ContactRound,
   "/leaderboard": Trophy,
   "/crm": Handshake,
+  "/finance": Wallet,
   "/archive": Archive,
   "/admin": ShieldCheck,
 };

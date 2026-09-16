@@ -1,0 +1,223 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { test, expect } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import en from "../../messages/en.json";
+import uk from "../../messages/uk.json";
+import type { Database } from "../../src/types/database.types";
+
+const local = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SERVICE_KEY: z.string() }).parse(process.env);
+if (!["127.0.0.1", "localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Finance fixtures require local Supabase");
+const client = createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL, local.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const studioId = randomUUID();
+const actors = ["admin", "employee"].map((role) => ({ role, id: "", email: `finance-${randomUUID()}@example.test`, password: `Finance-${randomUUID()}` }));
+function sql(statement: string) {
+  return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }).trim();
+}
+const studioLiteral = `'${z.uuid().parse(studioId)}'`;
+function clearFoundation() {
+  // Test-only local teardown of this suite's UUID tenant; production history is immutable.
+  sql(`begin; set local session_replication_role=replica;
+    delete from public.finance_movement_entries where studio_id=${studioLiteral};
+    delete from public.finance_movements where studio_id=${studioLiteral};
+    delete from public.finance_accounts where studio_id=${studioLiteral};
+    delete from public.finance_settings where studio_id=${studioLiteral}; commit;`);
+}
+
+test.beforeAll(async () => {
+  await client.from("studios").insert({ id: studioId, name: "Finance browser test" }).throwOnError();
+  for (const actor of actors) {
+    const result = await client.auth.admin.createUser({ email: actor.email, password: actor.password, email_confirm: true });
+    if (result.error) throw result.error;
+    actor.id = result.data.user.id;
+    await client.from("profiles").upsert({ id: actor.id, email: actor.email, full_name: `Finance ${actor.role}`, system_role: actor.role, is_active: true }).throwOnError();
+    await client.from("studio_members").insert({ studio_id: studioId, user_id: actor.id, system_role: actor.role }).throwOnError();
+  }
+});
+test.afterAll(async () => {
+  clearFoundation();
+  sql(`delete from public.studios where id=${studioLiteral};`);
+  for (const actor of actors) if (actor.id) { const result = await client.auth.admin.deleteUser(actor.id); if (result.error) throw result.error; }
+});
+
+for (const locale of ["en", "uk"] as const) {
+  test(`${locale}: setup, precision, finalization, and archival`, async ({ page }, testInfo) => {
+    clearFoundation();
+    const t = (locale === "en" ? en : uk).Finance;
+    const actor = actors[0];
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    if (locale === "uk") await page.setViewportSize({ width: 375, height: 900 });
+    await page.context().addCookies([{ name: "studioflow-locale", value: locale, url: "http://127.0.0.1:3100" }]);
+    await page.goto("/login");
+    await page.locator('input[type="email"]').fill(actor.email);
+    await page.locator('input[type="password"]').fill(actor.password);
+    await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto("/finance");
+    await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: t.saveSettings }).click();
+    await page.getByRole("button", { name: t.addAccount, exact: true }).click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel(t.accountName, { exact: true }).fill("Operating bank");
+    await dialog.getByLabel(t.openingBalance, { exact: true }).fill("1234.567");
+    await dialog.getByRole("button", { name: t.saveAccount }).click();
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await expect(dialog.getByLabel(t.accountName, { exact: true })).toHaveValue("Operating bank");
+    await dialog.getByLabel(t.openingBalance, { exact: true }).fill("1234.56");
+    await dialog.getByRole("button", { name: t.saveAccount }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("Operating bank", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: t.editNamed.replace("{name}", "Operating bank") }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: t.currency, exact: true }).click();
+    await expect(dialog.getByText(t.commonCurrencies, { exact: true })).toBeVisible();
+    await expect(dialog.getByText(t.otherCurrencies, { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("option").evaluateAll((options) => options.slice(0, 4).map((option) => option.textContent))).resolves.toEqual(["UAH", "USD", "EUR", "PLN"]);
+    await dialog.getByRole("combobox", { name: t.searchCurrencies }).fill("KWD");
+    await expect(dialog.getByRole("option", { name: "UAH", exact: true })).toHaveCount(0);
+    await page.getByRole("option", { name: "KWD", exact: true }).click();
+    await dialog.getByLabel(t.openingBalance, { exact: true }).fill("12.345");
+    await dialog.getByRole("button", { name: t.saveAccount }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole("combobox", { name: t.baseCurrency, exact: true }).click();
+    await page.getByRole("option", { name: "GBP", exact: true }).click();
+    await page.getByRole("button", { name: t.saveSettings }).click();
+    await expect(page.getByRole("combobox", { name: t.baseCurrency })).toHaveText("GBP");
+    await page.getByRole("button", { name: t.reviewFinalize }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByRole("checkbox").check();
+    await dialog.getByRole("button", { name: t.finalize, exact: true }).click();
+    await expect(page.getByText(t.finalized, { exact: true })).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole("button", { name: t.editNamed.replace("{name}", "Operating bank") }).click();
+    dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel(t.openingBalance, { exact: true })).toHaveAttribute("readonly");
+    await dialog.getByLabel(t.accountName, { exact: true }).fill("Renamed bank");
+    await dialog.getByRole("button", { name: t.saveAccount }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole("button", { name: t.archive, exact: true }).click();
+    await page.locator("summary").click();
+    await expect(page.getByText("Renamed bank", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: t.restore, exact: true }).click();
+    await expect(page.getByRole("button", { name: t.editNamed.replace("{name}", "Renamed bank") })).toBeVisible();
+    await page.getByRole("button", { name: t.addAccount, exact: true }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByLabel(t.accountName, { exact: true }).fill("New wallet");
+    await expect(dialog.getByLabel(t.openingBalance, { exact: true })).toHaveValue("0");
+    await expect(dialog.getByLabel(t.openingBalance, { exact: true })).toHaveAttribute("readonly");
+    await dialog.getByRole("button", { name: t.saveAccount }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(sql(`select currency || ':' || opening_balance from public.finance_accounts where studio_id=${studioLiteral} and name='Renamed bank'`)).toBe("KWD:12.345");
+    expect(sql(`select base_currency from public.finance_settings where studio_id=${studioLiteral}`)).toBe("GBP");
+    await expect(page.getByText("New wallet", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`finance-${locale}.png`), fullPage: true });
+    expect(errors).toEqual([]);
+  });
+}
+
+test("actual movements, transfers, historical FX, refunds and reversal", async ({ page }, testInfo) => {
+  clearFoundation();
+  const t=en.Finance.movements;
+  const actor=actors[0];
+  const bank=randomUUID(), cash=randomUUID(), usd=randomUUID();
+  sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values(${studioLiteral},'UAH','2026-09-01','${z.uuid().parse(actor.id)}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values
+    ('${bank}',${studioLiteral},'Bank','UAH',1000,'${actor.id}'),('${cash}',${studioLiteral},'Cash','UAH',0,'${actor.id}'),('${usd}',${studioLiteral},'Dollars','USD',1000,'${actor.id}');
+    select set_config('request.jwt.claim.sub','${actor.id}',false); select public.finalize_finance_setup(${studioLiteral});`);
+  const errors:string[]=[]; page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(actor.email);
+  await page.locator('input[type="password"]').fill(actor.password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/finance/movements");
+  await expect(page.getByRole("heading",{ name:t.title })).toBeVisible();
+  async function select(label:string, option:string) {
+    await page.getByRole("dialog").getByRole("combobox",{ name:label,exact:true }).click();
+    await page.getByRole("option",{ name:option,exact:true }).click();
+  }
+  async function record(kind:"incoming"|"outgoing"|"owner_withdrawal",amount:string,category:string) {
+    await page.getByRole("button",{ name:t.add,exact:true }).click();
+    await select(t.type,t.kinds[kind]);
+    await select(t.account,"Bank · UAH");
+    const dialog=page.getByRole("dialog");
+    await dialog.getByLabel(t.amount,{ exact:true }).fill(amount);
+    await dialog.getByLabel(t.category,{ exact:true }).fill(category);
+    await dialog.getByRole("button",{ name:t.record,exact:true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText(category,{ exact:true })).toBeVisible();
+  }
+  await record("incoming","200","Design receipt");
+  await record("outgoing","50","Studio supplies");
+  await record("owner_withdrawal","25","Owner payout");
+  await page.getByRole("button",{ name:t.transfer,exact:true }).click();
+  await select(t.fromAccount,"Bank · UAH"); await select(t.toAccount,"Cash · UAH");
+  let dialog=page.getByRole("dialog");
+  await dialog.getByLabel(t.sentAmount,{ exact:true }).fill("100");
+  await expect(dialog.getByLabel(t.receivedAmount,{ exact:true })).toHaveValue("100");
+  await dialog.locator('input[name="fee"]').fill("2");
+  await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${bank}'`)).toBe("1023");
+  await page.getByRole("button",{ name:t.transfer,exact:true }).click();
+  await select(t.fromAccount,"Dollars · USD"); await select(t.toAccount,"Cash · UAH");
+  dialog=page.getByRole("dialog");
+  await dialog.getByLabel(t.sentAmount,{ exact:true }).fill("10");
+  await dialog.getByLabel(t.receivedAmount,{ exact:true }).fill("410");
+  await dialog.locator('input[name="fee"]').fill("1");
+  await select(t.valuation.replace("{currency}","USD").replace("{base}","UAH"),t.manual);
+  await dialog.locator('input[name="manualRate"]').fill("42");
+  await dialog.getByLabel(t.description,{ exact:true }).fill("Exchange cash");
+  await page.screenshot({ path:testInfo.outputPath("finance-transfer.png") });
+  await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${usd}'`)).toBe("989");
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${cash}'`)).toBe("510");
+  const exchange=page.locator("li").filter({ has:page.getByText("Exchange cash",{ exact:true }) });
+  await exchange.locator("summary").click();
+  await expect(exchange.getByText(/1 USD = 42 UAH/).first()).toBeVisible();
+  await exchange.getByRole("button",{ name:t.reverse,exact:true }).click();
+  dialog=page.getByRole("dialog");
+  await dialog.getByLabel(t.reason,{ exact:true }).fill("Duplicate bank record");
+  await dialog.getByRole("checkbox").check();
+  await dialog.getByRole("button",{ name:t.confirmReverse,exact:true }).click(); await expect(dialog).toHaveCount(0);
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${usd}'`)).toBe("1000");
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${cash}'`)).toBe("100");
+  const supplies=page.locator("li").filter({ has:page.getByText("Studio supplies",{ exact:true }) });
+  await supplies.getByRole("button",{ name:t.refund,exact:true }).click();
+  dialog=page.getByRole("dialog");
+  await dialog.getByLabel(t.amount,{ exact:true }).fill("20");
+  await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);
+  expect(sql(`select recorded_balance from public.finance_account_balances where id='${bank}'`)).toBe("1043");
+  expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("7");
+  await page.locator("#main-content").evaluate((element) => element.scrollTo(0,0));
+  await page.screenshot({ path:testInfo.outputPath("finance-movements-desktop.png"),fullPage:true });
+  await page.setViewportSize({ width:375,height:900 });
+  await page.emulateMedia({ colorScheme:"dark",reducedMotion:"reduce" });
+  await page.context().addCookies([{ name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100" }]);
+  await page.reload();
+  await expect(page.getByRole("heading",{ name:uk.Finance.movements.title })).toBeVisible();
+  await page.locator("summary").first().click();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({ path:testInfo.outputPath("finance-movements-mobile.png"),fullPage:true });
+  await page.getByRole("button",{ name:uk.Finance.movements.transfer,exact:true }).click();
+  await expect(page.getByRole("dialog").getByRole("button",{ name:uk.Finance.movements.record,exact:true })).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({ path:testInfo.outputPath("finance-transfer-mobile.png"),fullPage:true });
+  expect(errors).toEqual([]);
+});
+
+test("employee navigation and direct route deny Finance", async ({ page }) => {
+  const actor = actors[1];
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(actor.email);
+  await page.locator('input[type="password"]').fill(actor.password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.locator('a[href="/finance"]')).toHaveCount(0);
+  await page.goto("/finance");
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/finance/movements");
+  await expect(page).toHaveURL(/\/dashboard/);
+});

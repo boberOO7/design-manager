@@ -46,6 +46,7 @@ forms, local interaction, or optimistic state.
 | Productivity | `/leaderboard`, project and dashboard summaries | `src/lib/productivity.ts`, `src/data/queries/index.ts`, attribution migrations | [productivity](productivity.md) |
 | Calendar | `/calendar`, `/api/calendar/*`, `/api/integrations/google-calendar/*` | `src/data/queries/calendar.ts`, `src/lib/calendar*.ts`, `src/lib/google-calendar/` | [calendar](calendar.md) |
 | Studio operations | `/team`, `/contractors`, `/office/*`, `/admin` | Domain queries/actions plus notification header and APIs | [studio operations](studio-operations.md) |
+| Finance | `/finance`, `/finance/movements` | `src/data/queries/finance.ts`, Finance Server Actions, `src/lib/finance-fx.ts` | [finance](finance.md) |
 | Database and authorization | All domains | Migrations, generated types, RLS contract tests | [database](database.md), [permissions](permissions.md) |
 
 ## Source-of-truth hierarchy
@@ -150,4 +151,5 @@ operations, and Google endpoints retain their existing authorization boundaries.
 | Events, time off, Calendar views, recurrence, Google synchronization | [calendar.md](calendar.md) |
 | Team, Administration, contractors, submissions, office assignments, notifications | [studio-operations.md](studio-operations.md) |
 | Tables, functions, triggers, migration or generated types | [database.md](database.md), plus the owning domain document |
+| Finance setup, currencies, accounts, actual movements, transfers, historical FX | [finance.md](finance.md) |
 | Product scope or terminology | [../product-spec.md](../product-spec.md) |

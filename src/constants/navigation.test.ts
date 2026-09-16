@@ -7,6 +7,7 @@ describe("application navigation", () => {
     expect(items.some((item) => item.href === "/admin")).toBe(false);
     expect(items.some((item) => item.href === "/archive")).toBe(false);
     expect(items.some((item) => item.href === "/crm")).toBe(false);
+    expect(items.some((item) => item.href === "/finance")).toBe(false);
     expect(items.some((item) => item.href === "/leaderboard")).toBe(false);
   });
 
@@ -25,6 +26,7 @@ describe("application navigation", () => {
     expect(items.some((item) => item.href === "/admin")).toBe(true);
     expect(items.some((item) => item.href === "/archive")).toBe(true);
     expect(items.some((item) => item.href === "/crm")).toBe(true);
+    expect(items.some((item) => item.href === "/finance")).toBe(true);
     expect(items.some((item) => item.href === "/leaderboard")).toBe(true);
   });
 

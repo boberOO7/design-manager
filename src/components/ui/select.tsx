@@ -1,7 +1,7 @@
 "use client";
 
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ function collectSelectItems(children: React.ReactNode): SelectItemElement[] {
       items.push(child);
       return;
     }
-    if (React.isValidElement<{ children?: React.ReactNode }>(child) && child.type === React.Fragment) {
+    if (React.isValidElement<{ children?: React.ReactNode }>(child)) {
       items.push(...collectSelectItems(child.props.children));
     }
   });
@@ -55,6 +55,7 @@ type SelectContextValue = {
   onHighlight: (value: string) => void;
   onSelect: (value: string) => void;
   selectedValue: string | undefined;
+  matchesSearch: (text: string) => boolean;
 };
 
 const SelectContext = React.createContext<SelectContextValue | null>(null);
@@ -70,18 +71,22 @@ export type SelectProps = Omit<
   onValueChange?: (value: string) => void;
   placeholder?: React.ReactNode;
   required?: boolean;
+  searchEmptyMessage?: string;
+  searchPlaceholder?: string;
   size?: "compact" | "default";
   value?: string;
   width?: "content" | "full";
 };
 
-const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, name, onClick, onKeyDown, onValueChange, placeholder, required, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, name, onClick, onKeyDown, onValueChange, placeholder, required, searchEmptyMessage, searchPlaceholder, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
   const items = collectSelectItems(children);
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
   const [highlightedValue, setHighlightedValue] = React.useState<string>();
   const [requiredInvalid, setRequiredInvalid] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const searchRef = React.useRef<HTMLInputElement>(null);
   const [triggerNode, setTriggerNode] = React.useState<HTMLButtonElement | null>(null);
   const listboxId = React.useId();
   const typeaheadRef = React.useRef("");
@@ -91,23 +96,28 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
   const selectedLabel = selectedItem?.props.children;
   const selectedText = selectedItem?.props.textValue ?? getNodeText(selectedLabel);
   const portalContainer = triggerNode?.closest("dialog, [role='dialog']") ?? undefined;
-  const itemModels = items.map((item) => ({ disabled: item.props.disabled, value: item.props.value }));
+  const matchesSearch = (text: string) => {
+    return text.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase());
+  };
+  const visibleItems = items.filter((item) => matchesSearch(item.props.textValue ?? getNodeText(item.props.children)));
+  const itemModels = visibleItems.map((item) => ({ disabled: item.props.disabled, value: item.props.value }));
 
-  const setTriggerRef = React.useCallback((node: HTMLButtonElement | null) => {
+  const setTriggerRef = (node: HTMLButtonElement | null) => {
     triggerRef.current = node;
     setTriggerNode(node);
     if (typeof forwardedRef === "function") forwardedRef(node);
     else if (forwardedRef) forwardedRef.current = node;
-  }, [forwardedRef]);
+  };
 
-  const choose = React.useCallback((nextValue: string) => {
+  const choose = (nextValue: string) => {
     const item = items.find((candidate) => candidate.props.value === nextValue);
     if (!item || item.props.disabled) return;
     if (value === undefined) setInternalValue(nextValue);
     setRequiredInvalid(false);
     onValueChange?.(nextValue);
     setOpen(false);
-  }, [items, onValueChange, value]);
+    setSearchQuery("");
+  };
 
   React.useEffect(() => {
     const form = triggerRef.current?.closest("form");
@@ -181,17 +191,34 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
     if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) typeahead(event.key);
   }
 
-  const contextValue = React.useMemo<SelectContextValue>(() => ({
+  const contextValue: SelectContextValue = {
     getItemId: (itemValue) => `${listboxId}-option-${items.findIndex((item) => item.props.value === itemValue)}`,
     highlightedValue,
     onHighlight: setHighlightedValue,
     onSelect: choose,
     selectedValue,
-  }), [choose, highlightedValue, items, listboxId, selectedValue]);
+    matchesSearch,
+  };
+
+  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      highlight(event.key === "ArrowDown" ? "next" : "previous");
+    } else if (event.key === "Enter" && highlightedValue !== undefined) {
+      event.preventDefault();
+      choose(highlightedValue);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      setSearchQuery("");
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+  }
 
   return <SelectContext.Provider value={contextValue}>
     <PopoverPrimitive.Root modal={false} open={open} onOpenChange={(nextOpen) => {
       setOpen(nextOpen);
+      if (!nextOpen) setSearchQuery("");
       if (nextOpen) {
         const selectedIsEnabled = items.some((item) => item.props.value === selectedValue && !item.props.disabled);
         setHighlightedValue(selectedIsEnabled ? selectedValue : getNextSelectValue(itemModels, undefined, "first"));
@@ -241,12 +268,19 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           sideOffset={4}
           collisionPadding={8}
           className="z-[70] box-border w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            if (searchPlaceholder) requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: true }));
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             if (document.activeElement === document.body) triggerRef.current?.focus({ preventScroll: true });
           }}
         >
+          {searchPlaceholder ? <div className="relative border-b border-[var(--ui-border-subtle)] p-2">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
+            <input ref={searchRef} role="combobox" aria-activedescendant={highlightedValue !== undefined ? contextValue.getItemId(highlightedValue) : undefined} aria-autocomplete="list" aria-controls={listboxId} aria-expanded="true" aria-label={searchPlaceholder} autoComplete="off" className="h-9 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-3 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" placeholder={searchPlaceholder} value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setHighlightedValue(undefined); }} onKeyDown={handleSearchKeyDown} />
+          </div> : null}
           <div
             id={listboxId}
             role="listbox"
@@ -254,6 +288,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
             className="max-h-[min(20rem,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-auto p-1"
           >
             {children}
+            {searchPlaceholder && !visibleItems.length ? <p role="status" className="px-3 py-4 text-sm text-[var(--ui-text-muted)]">{searchEmptyMessage}</p> : null}
           </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
@@ -281,9 +316,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
 Select.displayName = "Select";
 
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(function SelectItem({ children, className, disabled, onClick, onPointerMove, textValue, value, ...props }, ref) {
-  void textValue;
   const context = React.useContext(SelectContext);
-  if (!context) return null;
+  if (!context || !context.matchesSearch(textValue ?? getNodeText(children))) return null;
   const isSelected = context.selectedValue === value;
   const isHighlighted = context.highlightedValue === value;
   return <div
@@ -314,4 +348,14 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(function Se
 });
 SelectItem.displayName = "SelectItem";
 
-export { Select, SelectItem };
+function SelectGroup({ children, label }: { children: React.ReactNode; label: string }) {
+  const context = React.useContext(SelectContext);
+  const labelId = React.useId();
+  if (!context || !collectSelectItems(children).some((item) => context.matchesSearch(item.props.textValue ?? getNodeText(item.props.children)))) return null;
+  return <div role="group" aria-labelledby={labelId} className="border-t border-[var(--ui-border-subtle)] py-1 first:border-t-0">
+    <div id={labelId} className="px-2 pb-1 pt-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{label}</div>
+    {children}
+  </div>;
+}
+
+export { Select, SelectGroup, SelectItem };
