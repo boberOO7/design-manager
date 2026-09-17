@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectFinanceSection } from "@/components/finance/project-finance-section";
+import { DomainMessages } from "@/i18n/domain-messages";
 import { notFound } from "next/navigation";
 import { ProjectContextBand } from "@/components/projects/project-context-band";
 import { ProjectCompletionDateForm } from "@/components/projects/project-completion-date-form";
@@ -32,10 +34,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("board") };
 }
 
-type ProjectView = "board" | "details" | "team" | "activity";
+type ProjectView = "board" | "details" | "team" | "activity" | "finance";
 
 function getProjectView(value: string | string[] | undefined): ProjectView {
-  return value === "details" || value === "team" || value === "activity" ? value : "board";
+  return value === "details" || value === "team" || value === "activity" || value === "finance" ? value : "board";
 }
 
 function getProjectViewHref(projectId: string, view: ProjectView, filters: ProjectListFilters): string {
@@ -45,7 +47,7 @@ function getProjectViewHref(projectId: string, view: ProjectView, filters: Proje
   return `/projects/${projectId}${params.size ? `?${params}` : ""}`;
 }
 
-type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort", string | string[]>>;
+type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort" | "stream" | "page" | "credits" | "filter", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
   const [{ projectId }, query, t, locale] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale()]);
@@ -62,6 +64,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
 
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
+  if (view === "finance" && !canManage) notFound();
   const [boardTasks, contextTasks, taskAssignees, projectMembers, activity, checklistTemplates, projectTemplates, stageConfiguration] = await Promise.all([
     view === "board" ? getProjectTasks(project.id) : Promise.resolve([]),
     view === "board" ? Promise.resolve([]) : getProjectTasksForProgress(project.id),
@@ -78,9 +81,10 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const updateAction = updateProject.bind(null, project.id);
   const completionDateAction = updateProjectCompletionDate.bind(null, project.id);
   const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
+  if (canManage) navItems.push({ id: "finance", label: t("finance") });
   const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
-  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={contextTasks} updateAction={updateAction} />{navigation}{view === "details" ? <ProjectDetails canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
+  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={contextTasks} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
 }
 
 async function ProjectDetails({ canManage, completionDateAction, locale, project }: { canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {

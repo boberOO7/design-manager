@@ -29,7 +29,11 @@ describe("movement action boundary",()=>{
   });
   it("derives the studio and forwards exact strings with an FX snapshot",async()=>{
     expect((await saveFinanceMovement({ status:"idle" },form())).status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_request_id:id,p_input:expect.objectContaining({ amount:"100",fx:{ rate:"42",source:"manual",effectiveDate:"2026-09-02" } }) }));
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_request_id:id,p_input:expect.objectContaining({ amount:"100",allocationIntent:false,fx:{ rate:"42",source:"manual",effectiveDate:"2026-09-02" } }) }));
+  });
+  it("records explicit advance intent without changing the movement kind",async()=>{
+    expect((await saveFinanceMovement({ status:"idle" },form({ allocationIntent:"true" }))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_input:expect.objectContaining({ kind:"incoming",allocationIntent:true }) }));
   });
   it("never writes when FX lookup fails",async()=>{
     mocks.fx.mockRejectedValue(new Error("outage"));

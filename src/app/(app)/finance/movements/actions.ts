@@ -33,6 +33,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       const submission = payload && typeof payload === "object" && !Array.isArray(payload) ? movementInputSchema.safeParse(payload.submission) : null;
       if (!submission?.success || JSON.stringify(submission.data) !== JSON.stringify(input)) return { status: "error", message: t("errors.conflict") };
       revalidatePath("/finance", "layout");
+      revalidatePath("/projects/[projectId]", "page");
       return { status: "success", message: t("saved") };
     }
     const data = await getFinanceData();
@@ -50,7 +51,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     }
     const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
-      category: input.category, categoryId:input.categoryId, description: input.description, fee: input.fee, fx, submission: input,
+      category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, submission: input,
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
       ...(input.kind === "refund" ? { relatedMovementId: input.relatedMovementId } : {}),
     };
@@ -67,5 +68,6 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     return { status: "error", message: t(message) };
   }
   revalidatePath("/finance", "layout");
+  revalidatePath("/projects/[projectId]", "page");
   return { status: "success", message: t("saved") };
 }

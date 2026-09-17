@@ -1232,6 +1232,13 @@ export type Database = {
             foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
             columns: ["studio_id", "cause_movement_id"]
             isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
+            columns: ["studio_id", "cause_movement_id"]
+            isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1254,6 +1261,20 @@ export type Database = {
             columns: ["studio_id", "expected_item_id"]
             isOneToOne: false
             referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -1524,6 +1545,13 @@ export type Database = {
             foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
             columns: ["studio_id", "movement_id"]
             isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1615,6 +1643,13 @@ export type Database = {
             foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
             columns: ["studio_id", "related_movement_id"]
             isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1662,6 +1697,182 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_planning_requests_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_project_items: {
+        Row: {
+          context_label: string
+          contractor_id: string | null
+          expected_item_id: string
+          extra_visit: boolean
+          period_start: string | null
+          project_id: string
+          source: string
+          stream: string
+          studio_id: string
+          terms_id: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          context_label?: string
+          contractor_id?: string | null
+          expected_item_id: string
+          extra_visit?: boolean
+          period_start?: string | null
+          project_id: string
+          source?: string
+          stream: string
+          studio_id: string
+          terms_id?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          context_label?: string
+          contractor_id?: string | null
+          expected_item_id?: string
+          extra_visit?: boolean
+          period_start?: string | null
+          project_id?: string
+          source?: string
+          stream?: string
+          studio_id?: string
+          terms_id?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_items_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_current_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_project_terms: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string
+          currency: string
+          effective_from: string | null
+          effective_through: string | null
+          id: string
+          mode: string
+          project_id: string
+          reason: string
+          revision: number
+          stream: string
+          studio_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by: string
+          currency: string
+          effective_from?: string | null
+          effective_through?: string | null
+          id?: string
+          mode: string
+          project_id: string
+          reason: string
+          revision: number
+          stream: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          effective_from?: string | null
+          effective_through?: string | null
+          id?: string
+          mode?: string
+          project_id?: string
+          reason?: string
+          revision?: number
+          stream?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -3474,6 +3685,47 @@ export type Database = {
           },
         ]
       }
+      finance_actionable_unapplied: {
+        Row: {
+          account_id: string | null
+          allocated_amount: number | null
+          category: string | null
+          category_id: string | null
+          currency: string | null
+          description: string | null
+          direction: string | null
+          financial_date: string | null
+          id: string | null
+          nature: string | null
+          net_amount: number | null
+          original_amount: number | null
+          studio_id: string | null
+          unapplied_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movement_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_cash_effects: {
         Row: {
           account_id: string | null
@@ -3535,6 +3787,13 @@ export type Database = {
             columns: ["studio_id", "account_id"]
             isOneToOne: false
             referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -3655,6 +3914,144 @@ export type Database = {
             referencedColumns: ["studio_id"]
           },
         ]
+      }
+      finance_project_current_terms: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          effective_from: string | null
+          effective_through: string | null
+          id: string | null
+          mode: string | null
+          project_id: string | null
+          reason: string | null
+          revision: number | null
+          stream: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_terms_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_project_expected_balances: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          certainty: string | null
+          commitment: string | null
+          context_label: string | null
+          contractor_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          direction: string | null
+          due_date: string | null
+          due_state: string | null
+          expected_payment_date: string | null
+          id: string | null
+          is_established: boolean | null
+          outstanding_amount: number | null
+          payment_state: string | null
+          period_start: string | null
+          project_id: string | null
+          remaining_amount: number | null
+          settled_amount: number | null
+          source: string | null
+          stream: string | null
+          studio_id: string | null
+          updated_at: string | null
+          version: number | null
+          visit_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expected_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_project_totals: {
+        Row: {
+          collected_amount: number | null
+          contract_amount: number | null
+          currency: string | null
+          outstanding_amount: number | null
+          planned_amount: number | null
+          project_id: string | null
+          scheduled_amount: number | null
+          stream: string | null
+          studio_id: string | null
+          unscheduled_amount: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -3894,6 +4291,16 @@ export type Database = {
         Args: { p_today?: string }
         Returns: number
       }
+      generate_finance_supervision_months: {
+        Args: {
+          p_from: string
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+          p_through: string
+        }
+        Returns: string
+      }
       get_calendar_coworker_availability: {
         Args: {
           range_end: string
@@ -4066,6 +4473,24 @@ export type Database = {
       }
       save_finance_expected_item: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      save_finance_project_item: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_project_terms: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
         Returns: string
       }
       save_finance_settings: {

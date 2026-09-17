@@ -111,6 +111,16 @@ the selected list; creation still uses normal server navigation.
 - Task deletion may make the current task title unavailable; the historical
   activity row remains.
 
+## Project Finance
+
+Administrators have a `view=finance` tab alongside Board, Details, Team and
+Activity. Finance owns agreements, flexible expected payments, supervision and
+contractor bonus income; see [finance.md](finance.md). It never depends on
+production stages or copies the CRM lead budget. Completion/archive keeps Finance
+writable for collections. Operational lifecycle changes do not settle, cancel,
+or stop financial arrangements. Financially referenced projects cannot be deleted.
+Finance private amendments never enter the ordinary project activity feed.
+
 ## Canonical sources
 
 - `src/app/(app)/projects/`

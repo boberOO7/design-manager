@@ -32,6 +32,10 @@ the main Dashboard load. The Administration workspace retains its full model.
 
 ## Contractors
 
+Finance may reference a contractor for project bonus **income**. It checks tenant
+ownership through the contractor category and retains a private name snapshot.
+Referenced contractors cannot be deleted; directory edits do not rewrite Finance.
+
 - Contractors are studio-scoped through category ownership.
 - Any active studio member can create and update contractor records and resolve
   category/subcategory classification.

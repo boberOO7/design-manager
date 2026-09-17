@@ -19,4 +19,8 @@ describe("Finance planning actions",()=>{
     expect((await saveFinancePlanning({ status:"idle" },form({ intent:"expected",direction:"incoming",categoryId:id,currency:"UAH",commitment:"agreed",certainty:"fixed",established:"true" }))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_finance_expected_item",expect.objectContaining({ p_studio_id:"verified",p_input:expect.objectContaining({ amount:"12.34",established:true }) }));
   });
+  it("adds project context using the guarded wrapper without posting cash",async()=>{
+    expect((await saveFinancePlanning({ status:"idle" },form({ intent:"expected",projectId:id,stream:"contractor_bonus",contractorId:id,direction:"incoming",categoryId:id,currency:"UAH",commitment:"tentative",certainty:"fixed",established:"false" }))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_finance_project_item",expect.objectContaining({ p_studio_id:"verified",p_project_id:id,p_input:expect.objectContaining({ stream:"contractor_bonus",contractorId:id,item:expect.objectContaining({ established:false }) }) }));
+  });
 });

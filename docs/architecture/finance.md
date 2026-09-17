@@ -6,6 +6,8 @@ Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
 `/finance` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
 owns classification. All inherit the same administrator-only layout and messages.
+Project details adds an administrator-only `view=finance` tab with its own scoped
+Finance messages; it uses these same expectations, movements, and matching RPCs.
 
 ## Foundation and historical boundary
 
@@ -91,6 +93,10 @@ owns classification. All inherit the same administrator-only layout and messages
   income, staff costs, ordinary expenses, financing and owner distributions. Default
   labels are localized; administrator names are stored as entered. Names can change;
   direction/nature cannot. Archive/restore preserves references and posted snapshots.
+  UI labels use the stable `default_key` only while a category retains its system
+  name. Renamed/custom categories display exactly as stored. Structured movement
+  history localizes that system identity; legacy rows with no `category_id` display
+  their original free-text snapshot unchanged.
   Case/space-insensitive uniqueness prevents duplicate names within a direction/nature.
   A posting trigger requires an active category for new ordinary movements; refunds
   and reversals inherit the original snapshot, including legacy/archived categories.
@@ -115,9 +121,14 @@ owns classification. All inherit the same administrator-only layout and messages
   currency, direction and nature are required. Transfers, fees, owner distributions
   and refunds are not independently allocatable payments in Phase 3.
 - `finance_payment_availability` derives original principal less unreversed refunds
-  (or zero after original reversal), less effective allocations. Excess incoming money
-  remains unapplied credit; outgoing advances remain available for later obligations.
-  Archived-account history remains matchable. Cancellation prevents new allocations.
+  (or zero after original reversal), less effective allocations. It stays broad so
+  any compatible historical incoming/outgoing movement can be matched, including an
+  ordinary standalone transaction. `finance_actionable_unapplied` is the narrower
+  attention surface: it contains positive availability explicitly posted as an
+  advance/prepayment or with allocation history. Contextual overpayments and released
+  matches therefore remain visible, while ordinary unallocated rent, utilities or
+  standalone income do not imply unfinished work. Archived-account history remains
+  matchable. Cancellation prevents new allocations.
 - All matching writes take the same studio-settings lock as ledger posting. They
   validate both item remaining value and payment availability within that transaction.
   Request UUID/payload auditing makes retries idempotent and conflicting reuse fail.
@@ -146,6 +157,56 @@ writing, serializing them with settings changes/finalization; triggers enforce
 identity and historical invariants. Finance emits no ordinary project activity
 or notifications containing private data.
 
+## Project agreements and revenue streams
+
+- `finance_project_terms` retains immutable, numbered design/supervision revisions
+  with the actor and a required agreement/amendment note. Current terms are the
+  latest revision, not a copied CRM budget. Saves use the existing studio lock,
+  request audit/idempotency, and optimistic revision checks.
+- `finance_project_items` adds permanent project/source context to Phase 3 expected
+  items. It contains no separate payment or settlement state. Design, supervision,
+  contractor bonus, and other income use incoming Finance expectations. Project
+  payment recording composes the existing ledger/allocation RPC and returns to
+  the originating project; global matching sees the same expected and movement IDs.
+- Design schedules have arbitrary names/counts, independent due/expected dates,
+  and the agreement currency. Active scheduled amounts cannot exceed the current
+  contract. A shortfall stays **unscheduled**, with no invented forecast date.
+  Currency is fixed after any schedule history. An amendment never edits the
+  schedule; administrators revise unpaid items explicitly, with submitted revisions
+  retained in the planning audit. After any allocation history, project-item amount,
+  currency, category, due date, commitment and certainty are locked even through the
+  global RPC. Expected timing, description and established status remain editable.
+- `finance_project_totals` uses exact database numeric, grouped by stream/currency.
+  Collected is effective allocated money (net of releases), not all cash on a
+  receipt that happens to partly settle the project. Excess remains a global
+  actionable credit. Planned is active remaining value not established as receivable; the
+  contract's unscheduled remainder is shown separately. Opening balances never enter
+  these totals. Future project due dates do not infer established entitlement in
+  the form; existing stored entitlement is preserved when editing.
+- Monthly supervision is a full-calendar-month rate with an effective start and
+  optional inclusive end, not a finite lifetime contract. An explicit admin action
+  generates at most 12 months per batch, with month-end due/expected dates and
+  established status false. Stable project/month uniqueness skips already generated
+  months across retries and revisions, including cancelled occurrences. No background
+  billing or catch-up job runs. New supervision revisions start after generated
+  months; existing expected items are never rewritten or automatically cancelled.
+- Per-visit charges require selection of an existing, non-cancelled same-project
+  Calendar site visit and an explicit save. Calendar already requires site visits
+  to be concrete, non-recurring events. Applicable terms are selected for the
+  visit date; monthly-retainer visits need explicit extra-charge confirmation.
+  One permanent charge identity per visit prevents duplicate billing. Custom/manual
+  supervision expectations remain available. Changing or stopping supervision is
+  an explicit effective-dated revision, independent of project status.
+- Contractor bonuses are income to the studio. They default to tentative and can
+  reference an existing contractor; studio ownership is verified through its category.
+  Contractor names and visit titles/dates are snapshotted in private Finance context.
+  Foreign keys restrict deletion of referenced projects, contractors and visits;
+  billed visits cannot change studio, project or event type. Operational rename,
+  rescheduling, cancellation, completion, pause and archive never rewrite Finance.
+- All project Finance tables and caller-context views use the existing strict
+  Finance admin boundary. Employees get no tab/data and direct `view=finance` is
+  denied. Private terms and amendments do not enter project activity/notifications.
+
 ## Next-phase constraints
 
 Actual movements must require finalized setup and retain account-currency amounts;
@@ -156,13 +217,15 @@ must not be implemented by rewriting finalized opening balances. Financial repor
 must retain archived accounts when reporting their history. A reporting-currency
 change would require an explicit later migration/workflow, not a settings edit.
 
-Project Finance should generate/revise this same expected-item model, using explicit
+New generators should use this same expected-item model, using explicit
 established entitlement instead of treating the entire contract as receivable. Keep
 due dates, forecast timing and actual payment dates distinct. Use stable studio/item
 and studio/movement keys; do not create another cash store or bypass allocation locks.
 Cross-currency settlement needs its own explicit conversion contract in a later phase;
-historical ledger reporting FX must not be reused silently as settlement FX. Project,
-payroll, recurring-expense and budget generation are not implemented here.
+historical ledger reporting FX must not be reused silently as settlement FX. Payroll,
+recurring studio expenses and budget generation are not implemented here. Future
+generators need stable occurrence identities and effective-dated terms, must preserve
+already generated/settled history, and must not turn salary reminders into actual cash.
 
 ## Canonical sources
 
@@ -177,3 +240,7 @@ payroll, recurring-expense and budget generation are not implemented here.
 - `supabase/migrations/20260916233308_finance_expected_settlement.sql`
 - `supabase/tests/finance_settlement_rls.test.sql`
 - Finance domain/action/migration tests and `tests/e2e/finance-foundation.spec.ts`
+- `supabase/migrations/20260917114733_finance_project_agreements.sql`
+- `src/lib/finance-projects.ts`, `src/components/finance/project-finance-section.tsx`
+- `src/app/(app)/finance/project-actions.ts`
+- `supabase/tests/finance_projects_rls.test.sql`, `tests/e2e/finance-projects.spec.ts`

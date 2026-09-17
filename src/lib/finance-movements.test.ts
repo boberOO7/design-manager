@@ -9,7 +9,8 @@ const account = (id: string, currency: string): FinanceAccount => ({ id, currenc
 
 describe("actual movement inputs", () => {
   it("keeps decimal amounts as normalized strings through the RPC boundary", () => {
-    expect(movementInputSchema.parse(base).amount).toBe("12.34");
+    expect(movementInputSchema.parse(base)).toMatchObject({ amount:"12.34",allocationIntent:false });
+    expect(movementInputSchema.parse({ ...base,allocationIntent:"true" }).allocationIntent).toBe(true);
     for (const amount of ["0", "-1", "1e3", "NaN", "Infinity", "1.12345", "10000000000"]) expect(movementInputSchema.safeParse({ ...base, amount }).success).toBe(false);
   });
   it("requires distinct transfer accounts and both actual amounts", () => {

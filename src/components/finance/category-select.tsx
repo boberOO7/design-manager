@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { FormField,Input } from "@/components/ui/form-field";
 import { Select,SelectItem } from "@/components/ui/select";
 import { FinanceActionForm } from "./finance-action-form";
-import { categoriesForDirection,type FinanceCategory } from "@/lib/finance-planning";
+import { categoriesForDirection,financeCategoryLabel,type FinanceCategory } from "@/lib/finance-planning";
 
 export function FinanceCategoryEditor({ category,direction="incoming",owner=false,onSaved,onPending }: {
   category?:FinanceCategory; direction?:string; owner?:boolean; onSaved:(id?:string)=>void; onPending?:(pending:boolean)=>void;
@@ -37,7 +37,7 @@ export function FinanceCategorySelect({ categories,direction,owner=false,value,o
   const options=categoriesForDirection(categories,direction,owner,currentId);
   return <div className="space-y-1">
     <FormField label={t("movements.category")}><Select name="categoryId" aria-label={t("movements.category")} value={value} onValueChange={onValueChange} required searchPlaceholder={t("planning.searchCategories")} searchEmptyMessage={t("planning.noCategories")}>
-      {options.map((category)=><SelectItem key={category.id} value={category.id}>{category.default_key&&!category.custom_name?t(`planning.defaults.${category.default_key}`):category.name}</SelectItem>)}
+      {options.map((category)=><SelectItem key={category.id} value={category.id}>{financeCategoryLabel(category,category.name,(key)=>t(`planning.defaults.${key}`))}</SelectItem>)}
     </Select></FormField>
     <Button type="button" variant="ghost" onClick={()=>setCreating(true)}>{t("planning.newCategory")}</Button>
     <Dialog isOpen={creating} closeDisabled={pending} onRequestClose={()=>setCreating(false)} title={t("planning.newCategory")} closeLabel={t("movements.close")}>

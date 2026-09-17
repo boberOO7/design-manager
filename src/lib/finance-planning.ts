@@ -24,3 +24,12 @@ export const releaseInputSchema = z.object({ requestId:z.uuid(),allocationId:z.u
 export function categoriesForDirection(categories:FinanceCategory[],direction:string,owner=false,currentId?:string|null) {
   return categories.filter((category) => category.direction===direction && (category.nature==="owner_distribution")===owner && (!category.archived_at || category.id===currentId));
 }
+
+export function financeCategoryLabel(category:FinanceCategory|undefined,fallback:string|null,translateDefault:(key:string)=>string) {
+  return category?.default_key&&!category.custom_name ? translateDefault(category.default_key) : category?.name??fallback??"";
+}
+
+export function financeMovementCategoryLabel(categoryId:string|null,snapshot:string|null,categories:FinanceCategory[],translateDefault:(key:string)=>string) {
+  const category=categories.find((item)=>item.id===categoryId);
+  return category?.default_key&&!category.custom_name ? translateDefault(category.default_key) : snapshot??"";
+}

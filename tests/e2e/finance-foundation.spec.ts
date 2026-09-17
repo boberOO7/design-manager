@@ -197,6 +197,12 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
   await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);
   expect(sql(`select recorded_balance from public.finance_account_balances where id='${bank}'`)).toBe("1043");
   expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("7");
+  const legacyMovement=randomUUID(),legacyRequest=randomUUID();
+  sql(`begin;set local session_replication_role=replica;
+    insert into public.finance_movements(id,studio_id,request_id,request_payload,kind,nature,financial_date,category,created_by)
+    values('${legacyMovement}',${studioLiteral},'${legacyRequest}','{}','incoming','operating','2026-09-02','Legacy bespoke label','${actor.id}');
+    insert into public.finance_movement_entries(studio_id,movement_id,account_id,entry_role,currency,amount,reporting_currency,reporting_amount,fx_rate,fx_source,fx_effective_date)
+    values(${studioLiteral},'${legacyMovement}','${bank}','primary','UAH',15,'UAH',15,1,'identity','2026-09-02');commit;`);
   await page.locator("#main-content").evaluate((element) => element.scrollTo(0,0));
   await page.screenshot({ path:testInfo.outputPath("finance-movements-desktop.png"),fullPage:true });
   await page.setViewportSize({ width:375,height:900 });
@@ -204,6 +210,8 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
   await page.context().addCookies([{ name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100" }]);
   await page.reload();
   await expect(page.getByRole("heading",{ name:uk.Finance.movements.title })).toBeVisible();
+  await expect(page.getByText(uk.Finance.planning.defaults.project_payments,{ exact:true }).first()).toBeVisible();
+  await expect(page.getByText("Legacy bespoke label",{ exact:true })).toBeVisible();
   await page.locator("summary").first().click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({ path:testInfo.outputPath("finance-movements-mobile.png"),fullPage:true });
@@ -269,16 +277,21 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await expect(estimate.getByText(p.estimatedAmount,{ exact:true })).toBeVisible();
   expect(sql(`select concat(is_established,'|',outstanding_amount) from public.finance_expected_balances where studio_id=${studioLiteral} and description='Early estimate'`)).toBe("f|0");
   await page.goto("/finance/movements");await page.getByRole("button",{ name:t.movements.add,exact:true }).click();
-  dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("100");
+  dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("10");
   await dialog.getByRole("combobox",{ name:t.movements.category,exact:true }).click();await page.getByRole("option",{ name:"Design consultation",exact:true }).click();
-  await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Client advance");await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
+  await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Walk-in receipt");await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{ name:t.movements.add,exact:true }).click();dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("100");
+  await dialog.getByRole("combobox",{ name:t.movements.category,exact:true }).click();await page.getByRole("option",{ name:"Design consultation",exact:true }).click();
+  await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Client advance");await dialog.locator('input[name="allocationIntent"]').check();await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
   await page.goto("/finance/expected");await item.getByRole("button",{ name:p.match,exact:true }).click();dialog=page.getByRole("dialog");
-  await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await page.getByRole("option",{ name:/Client advance/ }).click();
+  await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await expect(page.getByRole("option",{ name:/Walk-in receipt/ })).toBeVisible();await page.getByRole("option",{ name:/Client advance/ }).click();
   await dialog.getByRole("button",{ name:p.match,exact:true }).click();await expect(dialog).toHaveCount(0);
   await expect(item.getByText(p.states.settled,{ exact:true })).toBeVisible();
-  expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("2");
-  expect(sql(`select sum(unapplied_amount) from public.finance_payment_availability where studio_id=${studioLiteral}`)).toBe("40");
+  expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("3");
+  expect(sql(`select sum(unapplied_amount) from public.finance_payment_availability where studio_id=${studioLiteral}`)).toBe("50");
+  expect(sql(`select sum(unapplied_amount) from public.finance_actionable_unapplied where studio_id=${studioLiteral}`)).toBe("40");
   await expect(page.getByRole("heading",{ name:p.unapplied,exact:true })).toBeVisible();
+  await expect(page.getByText(/Client advance/)).toBeVisible();await expect(page.getByText(/Walk-in receipt/)).toHaveCount(0);
   await item.getByRole("button",{ name:t.edit,exact:true }).click();dialog=page.getByRole("dialog");
   await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-01");await expect(dialog.locator('select[name="expectedDate"]')).toHaveValue("2026-09-30");
   await dialog.getByRole("button",{ name:t.movements.close,exact:true }).click();

@@ -10,6 +10,7 @@ export const movementInputSchema = z.object({
   amount: decimal.refine((value) => Number(value)>0), nature: z.enum(["operating", "financing"]).default("operating"),
   category: z.string().trim().min(1).max(120).default("Movement"), categoryId:z.union([z.uuid(),z.literal("")]).default(""),
   expectedItemId:z.union([z.uuid(),z.literal("")]).default(""),allocationAmount:z.union([decimal.refine((value)=>Number(value)>0),z.literal("")]).default(""),
+  allocationIntent:z.union([z.boolean(),z.enum(["true","false"])]).default(false).transform((value)=>value===true||value==="true"),
   description: z.string().trim().max(2000).default(""),
   destinationId: z.union([z.uuid(), z.literal("")]).default(""),
   receivedAmount: z.union([decimal.refine((value) => Number(value)>0), z.literal("")]).default(""),

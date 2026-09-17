@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getFinanceData, getFinanceMovements,getFinanceExpectedItem } from "@/data/queries/finance";
+import { getFinanceData, getFinanceMovements,getFinanceExpectedItem,getFinanceExpectedReturnHref } from "@/data/queries/finance";
 import { z } from "zod";
 import { FinanceMovementsWorkspace } from "@/components/finance/movements-workspace";
 import { getKyivDateOnly } from "@/lib/validation/project";
@@ -12,5 +12,6 @@ export default async function FinanceMovementsPage({ searchParams }: { searchPar
   if (!foundation || !ledger) redirect("/dashboard");
   const expected=params.expected&&z.uuid().safeParse(params.expected).success ? await getFinanceExpectedItem(params.expected) : null;
   if(params.expected&&(!expected||expected.commitment==="cancelled"||!expected.remaining_amount)) redirect("/finance/expected");
-  return <FinanceMovementsWorkspace {...foundation} {...ledger} expected={expected} page={page} today={getKyivDateOnly()} />;
+  const returnHref=expected?.id?await getFinanceExpectedReturnHref(expected.id):"/finance/expected";
+  return <FinanceMovementsWorkspace {...foundation} {...ledger} expected={expected} returnHref={returnHref} page={page} today={getKyivDateOnly()} />;
 }

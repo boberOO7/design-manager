@@ -1,5 +1,5 @@
 import { describe,expect,it } from "vitest";
-import { allocationInputSchema,categoryInputSchema,expectedInputSchema } from "./finance-planning";
+import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,type FinanceCategory } from "./finance-planning";
 const id="64000000-0000-4000-8000-000000000100";
 const item={ requestId:id,direction:"incoming",amount:"100,25",currency:"UAH",categoryId:id,commitment:"agreed",certainty:"fixed",established:"true",dueDate:"2026-09-01",expectedDate:"2026-10-01" };
 describe("Finance planning inputs",()=>{
@@ -20,5 +20,12 @@ describe("Finance planning inputs",()=>{
   });
   it("cannot classify incoming categories as owner distributions",()=>{
     expect(categoryInputSchema.safeParse({ requestId:id,name:"Owner",direction:"incoming",nature:"owner_distribution" }).success).toBe(false);
+  });
+  it("localizes system identity while preserving custom and legacy labels",()=>{
+    const system:FinanceCategory={ id,studio_id:id,name:"Rent",direction:"outgoing",nature:"operating",default_key:"rent",custom_name:false,archived_at:null,created_at:"" };
+    expect(financeCategoryLabel(system,system.name,(key)=>({ rent:"Оренда" })[key]??key)).toBe("Оренда");
+    expect(financeCategoryLabel({ ...system,name:"Оренда офісу",custom_name:true },system.name,()=>"Rent")).toBe("Оренда офісу");
+    expect(financeMovementCategoryLabel(id,"Rent",[{ ...system,name:"Оренда офісу",custom_name:true }],()=>"Оренда")).toBe("Rent");
+    expect(financeMovementCategoryLabel(null,"Legacy bespoke label",[system],()=>"Оренда")).toBe("Legacy bespoke label");
   });
 });

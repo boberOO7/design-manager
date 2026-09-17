@@ -36,8 +36,16 @@ select is((select count(*) from public.finance_movements),0::bigint,'expectation
 select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1000::numeric,'opening balance unaffected');
 select lives_ok($$select pg_temp.post(200)$$,'structured category derives nature without caller classification');
 select is((select nature from public.finance_movements where id=pg_temp.movement(200)),'operating','category reporting nature snapshot');
+select is((select count(*) from public.finance_actionable_unapplied where id=pg_temp.movement(200)),0::bigint,'ordinary standalone income is not an actionable credit');
+select lives_ok($$select pg_temp.post(250,jsonb_build_object('kind','outgoing','amount','20','categoryId',pg_temp.cat('utilities')))$$,'ordinary standalone expense');
+select is((select count(*) from public.finance_actionable_unapplied where id=pg_temp.movement(250)),0::bigint,'ordinary utilities expense is not an actionable advance');
+select lives_ok($$select pg_temp.post(251,'{"amount":"35","allocationIntent":true}')$$,'explicit incoming customer credit');
+select is((select unapplied_amount from public.finance_actionable_unapplied where id=pg_temp.movement(251)),35::numeric,'explicit incoming credit remains actionable');
+select lives_ok($$select pg_temp.post(252,jsonb_build_object('kind','outgoing','amount','25','categoryId',pg_temp.cat('utilities'),'allocationIntent',true))$$,'explicit outgoing studio prepayment');
+select is((select unapplied_amount from public.finance_actionable_unapplied where id=pg_temp.movement(252)),25::numeric,'explicit outgoing advance remains actionable');
 select throws_like($$select pg_temp.post(201,'{"categoryId":null,"category":"Arbitrary"}')$$,'%finance_category_invalid%','free text cannot create new category fragmentation');
 select lives_ok($$select pg_temp.allocate(300,100,200,40)$$,'partial settlement');
+select is((select unapplied_amount from public.finance_actionable_unapplied where id=pg_temp.movement(200)),110::numeric,'existing movement remains matchable and its post-match remainder becomes actionable');
 select lives_ok($$select pg_temp.allocate(300,100,200,40)$$,'allocation retry idempotent');
 select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(100)),40::numeric,'retry does not double paid');
 select is((select payment_state||':'||due_state from public.finance_expected_balances where id=pg_temp.result(100)),'partial:overdue','partially settled and overdue coexist');
@@ -67,7 +75,7 @@ select throws_like($$select pg_temp.allocate(303,102,201,1)$$,'%finance_overallo
 select lives_ok($$select public.release_finance_allocation(pg_temp.fid(1),pg_temp.fid(304),pg_temp.result(300),'Wrong match')$$,'manual unmatch appends release');
 select lives_ok($$select public.release_finance_allocation(pg_temp.fid(1),pg_temp.fid(304),pg_temp.result(300),'Wrong match')$$,'release retry idempotent');
 select is((select payment_state from public.finance_expected_balances where id=pg_temp.result(100)),'unpaid','unmatch restores unpaid');
-select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1130::numeric,'allocation and unmatch never alter cash');
+select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1120::numeric,'allocation and unmatch never alter cash');
 select lives_ok($$select pg_temp.item(110,'{"established":false,"commitment":"tentative","certainty":"estimated"}')$$,'tentative estimate supported');
 select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(110)),0::numeric,'tentative contract value is not receivable');
 select lives_ok($$select pg_temp.item(111,'{"established":false}')$$,'agreed future entitlement supported');
@@ -87,6 +95,7 @@ select is((select count(*) from public.finance_movements where request_id=pg_tem
 select lives_ok($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(230),pg_temp.result(102),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','50','categoryId',pg_temp.cat('project_payments')),40)$$,'contextual payment posts and matches atomically');
 select lives_ok($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(230),pg_temp.result(102),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','50','categoryId',pg_temp.cat('project_payments')),40)$$,'contextual payment retry does not duplicate either entry');
 select is((select unapplied_amount from public.finance_payment_availability where id=pg_temp.movement(230)),10::numeric,'contextual overpayment retains unapplied remainder');
+select is((select unapplied_amount from public.finance_actionable_unapplied where id=pg_temp.movement(230)),10::numeric,'contextual overpayment is an actionable credit');
 select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(60),jsonb_build_object('id',pg_temp.cat('project_payments'),'name','Studio fees','direction','incoming','nature','operating','archived',true))$$,'rename and archive category');
 select is((select category from public.finance_movements where id=pg_temp.movement(200)),'Project payments','historical category snapshot never rewritten');
 select throws_like($$select pg_temp.post(220)$$,'%finance_category_invalid%','new movements cannot use archived category');
@@ -121,6 +130,7 @@ begin
  return next is((select count(*) from public.finance_expected_balances),0::bigint,'expected access denied '||actor);
  return next is((select count(*) from public.finance_allocations),0::bigint,'allocation access denied '||actor);
  return next is((select count(*) from public.finance_payment_availability),0::bigint,'credit access denied '||actor);
+ return next is((select count(*) from public.finance_actionable_unapplied),0::bigint,'actionable credit access denied '||actor);
  return next is((select count(*) from public.finance_planning_requests),0::bigint,'audit access denied '||actor);
  return next throws_like('select pg_temp.item(900)','%finance_admin_required%','expected mutation denied '||actor);
  return next throws_like('select pg_temp.allocate(901,100,200,1)','%finance_admin_required%','allocation mutation denied '||actor);
