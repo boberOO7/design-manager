@@ -1183,6 +1183,156 @@ export type Database = {
           },
         ]
       }
+      finance_allocations: {
+        Row: {
+          amount: number
+          cause_movement_id: string | null
+          created_at: string
+          created_by: string
+          expected_item_id: string
+          id: string
+          movement_id: string
+          reason: string
+          released_allocation_id: string | null
+          studio_id: string
+        }
+        Insert: {
+          amount: number
+          cause_movement_id?: string | null
+          created_at?: string
+          created_by: string
+          expected_item_id: string
+          id?: string
+          movement_id: string
+          reason?: string
+          released_allocation_id?: string | null
+          studio_id: string
+        }
+        Update: {
+          amount?: number
+          cause_movement_id?: string | null
+          created_at?: string
+          created_by?: string
+          expected_item_id?: string
+          id?: string
+          movement_id?: string
+          reason?: string
+          released_allocation_id?: string | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_allocations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
+            columns: ["studio_id", "cause_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
+            columns: ["studio_id", "cause_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_released_allocation_id_expec_fkey"
+            columns: [
+              "studio_id",
+              "released_allocation_id",
+              "expected_item_id",
+              "movement_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "finance_allocations"
+            referencedColumns: [
+              "studio_id",
+              "id",
+              "expected_item_id",
+              "movement_id",
+            ]
+          },
+        ]
+      }
+      finance_categories: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          custom_name: boolean
+          default_key: string | null
+          direction: string
+          id: string
+          name: string
+          nature: string
+          studio_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          custom_name?: boolean
+          default_key?: string | null
+          direction: string
+          id?: string
+          name: string
+          nature: string
+          studio_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          custom_name?: boolean
+          default_key?: string | null
+          direction?: string
+          id?: string
+          name?: string
+          nature?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_categories_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_currencies: {
         Row: {
           code: string
@@ -1197,6 +1347,92 @@ export type Database = {
           minor_units?: number
         }
         Relationships: []
+      }
+      finance_expected_items: {
+        Row: {
+          amount: number
+          category_id: string
+          certainty: string
+          commitment: string
+          created_at: string
+          created_by: string
+          currency: string
+          description: string
+          direction: string
+          due_date: string | null
+          expected_payment_date: string | null
+          id: string
+          is_established: boolean
+          studio_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          certainty: string
+          commitment: string
+          created_at?: string
+          created_by: string
+          currency: string
+          description?: string
+          direction: string
+          due_date?: string | null
+          expected_payment_date?: string | null
+          id?: string
+          is_established?: boolean
+          studio_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          certainty?: string
+          commitment?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string
+          direction?: string
+          due_date?: string | null
+          expected_payment_date?: string | null
+          id?: string
+          is_established?: boolean
+          studio_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expected_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
       }
       finance_movement_entries: {
         Row: {
@@ -1292,6 +1528,13 @@ export type Database = {
             referencedColumns: ["studio_id", "id"]
           },
           {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_movement_entries_studio_id_reporting_currency_fkey"
             columns: ["studio_id", "reporting_currency"]
             isOneToOne: false
@@ -1303,6 +1546,7 @@ export type Database = {
       finance_movements: {
         Row: {
           category: string
+          category_id: string | null
           created_at: string
           created_by: string
           description: string
@@ -1317,6 +1561,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          category_id?: string | null
           created_at?: string
           created_by: string
           description?: string
@@ -1331,6 +1576,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          category_id?: string | null
           created_at?: string
           created_by?: string
           description?: string
@@ -1352,6 +1598,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "finance_movements_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_movements_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
@@ -1364,6 +1617,55 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_planning_requests: {
+        Row: {
+          created_at: string
+          created_by: string
+          payload: Json
+          request_id: string
+          result_id: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          payload: Json
+          request_id: string
+          result_id: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          payload?: Json
+          request_id?: string
+          result_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_planning_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_planning_requests_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
           },
         ]
       }
@@ -3243,6 +3545,13 @@ export type Database = {
             referencedColumns: ["studio_id", "id"]
           },
           {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_movement_entries_studio_id_reporting_currency_fkey"
             columns: ["studio_id", "reporting_currency"]
             isOneToOne: false
@@ -3251,8 +3560,114 @@ export type Database = {
           },
         ]
       }
+      finance_expected_balances: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          certainty: string | null
+          commitment: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          direction: string | null
+          due_date: string | null
+          due_state: string | null
+          expected_payment_date: string | null
+          id: string | null
+          is_established: boolean | null
+          outstanding_amount: number | null
+          payment_state: string | null
+          remaining_amount: number | null
+          settled_amount: number | null
+          studio_id: string | null
+          updated_at: string | null
+          version: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expected_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_payment_availability: {
+        Row: {
+          account_id: string | null
+          allocated_amount: number | null
+          category: string | null
+          category_id: string | null
+          currency: string | null
+          description: string | null
+          direction: string | null
+          financial_date: string | null
+          id: string | null
+          nature: string | null
+          net_amount: number | null
+          original_amount: number | null
+          studio_id: string | null
+          unapplied_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movement_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
     }
     Functions: {
+      allocate_finance_payment: {
+        Args: {
+          p_amount: number
+          p_item_id: string
+          p_movement_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       apply_project_template_stage: {
         Args: {
           p_destination_stage: string
@@ -3554,6 +3969,16 @@ export type Database = {
         }
         Returns: string
       }
+      record_finance_expected_payment: {
+        Args: {
+          p_allocation_amount: number
+          p_input: Json
+          p_item_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       record_finance_movement: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
@@ -3561,6 +3986,15 @@ export type Database = {
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
         Returns: undefined
+      }
+      release_finance_allocation: {
+        Args: {
+          p_allocation_id: string
+          p_reason: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
       }
       remove_project_member: {
         Args: {
@@ -3624,6 +4058,14 @@ export type Database = {
           p_opening_balance: number
           p_studio_id: string
         }
+        Returns: string
+      }
+      save_finance_category: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      save_finance_expected_item: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
       save_finance_settings: {

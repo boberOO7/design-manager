@@ -4,7 +4,7 @@ import type { FinanceAccount } from "./finance";
 
 const first = "63000000-0000-4000-8000-000000000020";
 const second = "63000000-0000-4000-8000-000000000021";
-const base = { requestId: first, kind: "incoming", date: "2026-09-02", accountId: first, amount: "12,34", category: "Design" };
+const base = { requestId: first, kind: "incoming", date: "2026-09-02", accountId: first, amount: "12,34", categoryId:first };
 const account = (id: string, currency: string): FinanceAccount => ({ id, currency, name: "Bank", studio_id: first, archived_at: null, created_at: "", updated_at: "", created_by: first, opening_balance: 0 });
 
 describe("actual movement inputs", () => {

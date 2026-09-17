@@ -1,0 +1,155 @@
+begin;
+select no_plan();
+create function pg_temp.fid(n integer) returns uuid language sql immutable as $$select ('64000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
+insert into public.studios(id,name) values(pg_temp.fid(1),'Planning A'),(pg_temp.fid(2),'Planning B');
+insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select pg_temp.fid(n),'authenticated','authenticated','planning-'||n||'@test','{}','{}',now(),now() from generate_series(10,14)n;
+insert into public.profiles(id,full_name,email,system_role,is_active)
+select pg_temp.fid(n),'Planning tester','planning-'||n||'@test',case when n=11 then 'employee' else 'admin' end,n<>13 from generate_series(10,14)n;
+insert into public.studio_members(studio_id,user_id,system_role,is_active)
+select pg_temp.fid(case when n=12 then 2 else 1 end),pg_temp.fid(n),case when n=11 then 'employee' else 'admin' end,n<>14 from generate_series(10,14)n;
+insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by)
+values(pg_temp.fid(1),'UAH','2026-09-01',pg_temp.fid(10)),(pg_temp.fid(2),'UAH','2026-09-01',pg_temp.fid(12));
+insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values
+(pg_temp.fid(20),pg_temp.fid(1),'Bank','UAH',1000,pg_temp.fid(10)),(pg_temp.fid(21),pg_temp.fid(1),'Dollar','USD',0,pg_temp.fid(10));
+create function pg_temp.cat(key text,studio integer default 1) returns uuid language sql as $$select id from public.finance_categories where studio_id=pg_temp.fid(studio) and default_key=key$$;
+create function pg_temp.item(request integer,patch jsonb default '{}') returns uuid language sql as $$
+select public.save_finance_expected_item(pg_temp.fid(1),pg_temp.fid(request),jsonb_build_object('direction','incoming','amount','100','currency','UAH','categoryId',pg_temp.cat('project_payments'),
+'dueDate','2026-09-01','expectedDate','2026-10-01','commitment','agreed','certainty','fixed','established',true,'description','Design')||patch)$$;
+create function pg_temp.result(request integer) returns uuid language sql as $$select result_id from public.finance_planning_requests where studio_id=pg_temp.fid(1) and request_id=pg_temp.fid(request)$$;
+create function pg_temp.post(request integer,patch jsonb default '{}') returns uuid language sql as $$
+select public.record_finance_movement(pg_temp.fid(1),pg_temp.fid(request),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','150','categoryId',pg_temp.cat('project_payments'))||patch)$$;
+create function pg_temp.movement(request integer) returns uuid language sql as $$select id from public.finance_movements where studio_id=pg_temp.fid(1) and request_id=pg_temp.fid(request)$$;
+create function pg_temp.allocate(request integer,item integer,movement integer,amount numeric) returns uuid language sql as $$select public.allocate_finance_payment(pg_temp.fid(1),pg_temp.fid(request),pg_temp.result(item),pg_temp.movement(movement),amount)$$;
+select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
+set local role authenticated;
+select is((select count(*) from public.finance_categories),20::bigint,'defaults visible only for own studio');
+select throws_like($$select pg_temp.item(100)$$,'%finance_finalized_setup_required%','expectations require finalized foundation');
+select public.finalize_finance_setup(pg_temp.fid(1));
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(50),' {"name":"Consulting","direction":"incoming","nature":"operating"}')$$,'admin creates category');
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(50),' {"name":"Consulting","direction":"incoming","nature":"operating"}')$$,'category retry idempotent');
+select throws_like($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(51),' {"name":" consulting ","direction":"incoming","nature":"operating"}')$$,'%duplicate key%','case/space duplicate categories rejected');
+select lives_ok($$select pg_temp.item(100)$$,'admin creates expected item');
+select lives_ok($$select pg_temp.item(100)$$,'expected create retry idempotent');
+select throws_like($$select pg_temp.item(100,'{"amount":"101"}')$$,'%finance_request_conflict%','different retry rejected');
+select is((select count(*) from public.finance_movements),0::bigint,'expectations create no actual cash');
+select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1000::numeric,'opening balance unaffected');
+select lives_ok($$select pg_temp.post(200)$$,'structured category derives nature without caller classification');
+select is((select nature from public.finance_movements where id=pg_temp.movement(200)),'operating','category reporting nature snapshot');
+select throws_like($$select pg_temp.post(201,'{"categoryId":null,"category":"Arbitrary"}')$$,'%finance_category_invalid%','free text cannot create new category fragmentation');
+select lives_ok($$select pg_temp.allocate(300,100,200,40)$$,'partial settlement');
+select lives_ok($$select pg_temp.allocate(300,100,200,40)$$,'allocation retry idempotent');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(100)),40::numeric,'retry does not double paid');
+select is((select payment_state||':'||due_state from public.finance_expected_balances where id=pg_temp.result(100)),'partial:overdue','partially settled and overdue coexist');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(100)),60::numeric,'established receivable remains due');
+select lives_ok($$select pg_temp.item(101,'{"amount":"80"}')$$,'second expected item');
+select lives_ok($$select pg_temp.allocate(301,101,200,80)$$,'one payment settles multiple items');
+select lives_ok($$select pg_temp.post(201,'{"amount":"100"}')$$,'second actual');
+select lives_ok($$select pg_temp.allocate(302,100,201,60)$$,'multiple payments settle one item');
+select is((select payment_state from public.finance_expected_balances where id=pg_temp.result(100)),'settled','fully settled derived');
+select is((select unapplied_amount from public.finance_payment_availability where id=pg_temp.movement(200)),30::numeric,'overpayment remains unapplied credit');
+select throws_like($$select pg_temp.allocate(303,100,200,1)$$,'%finance_overallocation%','item over-allocation denied');
+select lives_ok($$select pg_temp.item(102,'{"amount":"200"}')$$,'third item');
+select throws_like($$select pg_temp.allocate(303,102,200,31)$$,'%finance_overallocation%','payment over-allocation denied');
+select throws_like($$select pg_temp.allocate(303,102,200,0.001)$$,'%finance_amount_invalid%','allocation currency precision enforced');
+select lives_ok($$select pg_temp.post(210,jsonb_build_object('kind','refund','relatedMovementId',pg_temp.movement(200),'amount','20'))$$,'refund first consumes unapplied cash');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(101)),80::numeric,'refund within credit leaves allocations intact');
+select lives_ok($$select pg_temp.post(211,jsonb_build_object('kind','refund','relatedMovementId',pg_temp.movement(200),'amount','50'))$$,'larger refund releases affected allocations');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(101)),40::numeric,'newest allocation released first by shortfall');
+select is((select unapplied_amount from public.finance_payment_availability where id=pg_temp.movement(200)),0::numeric,'refund cannot leave negative unapplied balance');
+select is((select cause_movement_id from public.finance_allocations where amount<0),pg_temp.movement(211),'release references actual refund');
+select lives_ok($$select public.reverse_finance_movement(pg_temp.fid(1),pg_temp.fid(212),pg_temp.movement(211),'2026-09-03','Refund entered twice')$$,'reverse refund restores cash availability');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(101)),40::numeric,'reversed refund never resurrects stale allocations');
+select is((select unapplied_amount from public.finance_payment_availability where id=pg_temp.movement(200)),50::numeric,'returned availability can be explicitly rematched');
+select lives_ok($$select public.reverse_finance_movement(pg_temp.fid(1),pg_temp.fid(213),pg_temp.movement(201),'2026-09-03','Wrong payment')$$,'original reversal releases every linked allocation');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(100)),40::numeric,'reversed original no longer satisfies receivable');
+select throws_like($$select pg_temp.allocate(303,102,201,1)$$,'%finance_overallocation%','reversed payment cannot be allocated');
+select lives_ok($$select public.release_finance_allocation(pg_temp.fid(1),pg_temp.fid(304),pg_temp.result(300),'Wrong match')$$,'manual unmatch appends release');
+select lives_ok($$select public.release_finance_allocation(pg_temp.fid(1),pg_temp.fid(304),pg_temp.result(300),'Wrong match')$$,'release retry idempotent');
+select is((select payment_state from public.finance_expected_balances where id=pg_temp.result(100)),'unpaid','unmatch restores unpaid');
+select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1130::numeric,'allocation and unmatch never alter cash');
+select lives_ok($$select pg_temp.item(110,'{"established":false,"commitment":"tentative","certainty":"estimated"}')$$,'tentative estimate supported');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(110)),0::numeric,'tentative contract value is not receivable');
+select lives_ok($$select pg_temp.item(111,'{"established":false}')$$,'agreed future entitlement supported');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(111)),0::numeric,'agreed future contract value alone is not receivable');
+select lives_ok($$select pg_temp.item(112,'{"established":false,"commitment":"cancelled"}')$$,'cancelled item preserved');
+select throws_like($$select pg_temp.allocate(305,112,200,1)$$,'%finance_allocation_incompatible%','cancelled cannot receive allocations');
+select lives_ok($$select pg_temp.item(113,'{"currency":"USD"}')$$,'foreign expected currency supported');
+select throws_like($$select pg_temp.allocate(305,113,200,1)$$,'%finance_allocation_incompatible%','cross-currency matching is explicitly unsupported');
+select throws_like($$select pg_temp.item(114,'{"amount":"1.001"}')$$,'%finance_amount_invalid%','expected precision rejected');
+select lives_ok($$select pg_temp.item(120,jsonb_build_object('id',pg_temp.result(100),'version',1,'expectedDate','2026-11-01'))$$,'expected timing editable separately');
+select is((select due_date::text from public.finance_expected_items where id=pg_temp.result(100)),'2026-09-01','expected date change preserves original due date');
+select throws_like($$select pg_temp.item(121,jsonb_build_object('id',pg_temp.result(100),'version',1))$$,'%finance_version_conflict%','concurrent edits cannot overwrite newer item');
+select throws_like($$select pg_temp.item(121,jsonb_build_object('id',pg_temp.result(100),'version',2,'currency','USD'))$$,'%finance_expected_identity_locked%','allocation history locks expected currency');
+select throws_like($$select pg_temp.item(121,jsonb_build_object('id',pg_temp.result(101),'version',1,'amount','1'))$$,'%finance_below_settled%','cannot shrink below settled amount');
+select throws_like($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(230),pg_temp.result(102),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','50','categoryId',pg_temp.cat('project_payments')),51)$$,'%finance_overallocation%','contextual posting rolls back if matching fails');
+select is((select count(*) from public.finance_movements where request_id=pg_temp.fid(230)),0::bigint,'failed contextual match leaves no cash movement');
+select lives_ok($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(230),pg_temp.result(102),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','50','categoryId',pg_temp.cat('project_payments')),40)$$,'contextual payment posts and matches atomically');
+select lives_ok($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(230),pg_temp.result(102),jsonb_build_object('kind','incoming','date','2026-09-02','accountId',pg_temp.fid(20),'amount','50','categoryId',pg_temp.cat('project_payments')),40)$$,'contextual payment retry does not duplicate either entry');
+select is((select unapplied_amount from public.finance_payment_availability where id=pg_temp.movement(230)),10::numeric,'contextual overpayment retains unapplied remainder');
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(60),jsonb_build_object('id',pg_temp.cat('project_payments'),'name','Studio fees','direction','incoming','nature','operating','archived',true))$$,'rename and archive category');
+select is((select category from public.finance_movements where id=pg_temp.movement(200)),'Project payments','historical category snapshot never rewritten');
+select throws_like($$select pg_temp.post(220)$$,'%finance_category_invalid%','new movements cannot use archived category');
+select throws_like($$select pg_temp.item(122)$$,'%finance_category_invalid%','new items cannot use archived category');
+select lives_ok($$select pg_temp.item(122,jsonb_build_object('id',pg_temp.result(100),'version',2))$$,'existing archived category reference remains editable');
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(61),jsonb_build_object('id',pg_temp.cat('project_payments'),'name','Studio fees','direction','incoming','nature','operating','archived',false))$$,'restore category');
+select throws_like($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(62),jsonb_build_object('id',pg_temp.cat('project_payments'),'name','Studio fees','direction','incoming','nature','financing'))$$,'%finance_category_semantics_immutable%','category reporting semantics immutable');
+select public.set_finance_account_archived(pg_temp.fid(1),pg_temp.fid(20),true);
+select lives_ok($$select pg_temp.allocate(306,102,200,10)$$,'existing archived-account money remains matchable');
+select public.set_finance_account_archived(pg_temp.fid(1),pg_temp.fid(20),false);
+select lives_ok($$select pg_temp.item(130,jsonb_build_object('direction','outgoing','amount','50','categoryId',pg_temp.cat('salary')))$$,'outgoing established obligation');
+select lives_ok($$select pg_temp.post(240,jsonb_build_object('kind','outgoing','amount','60','categoryId',pg_temp.cat('salary')))$$,'outgoing actual payment');
+select throws_like($$select pg_temp.allocate(310,130,200,1)$$,'%finance_allocation_incompatible%','incoming payment cannot settle outgoing obligation');
+select lives_ok($$select pg_temp.allocate(310,130,240,50)$$,'outgoing obligation fully settled');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(130)),0::numeric,'settled obligation has no outstanding amount');
+select lives_ok($$select pg_temp.post(241,jsonb_build_object('kind','refund','amount','20','relatedMovementId',pg_temp.movement(240)))$$,'supplier refund releases only previously matched cash shortfall');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(130)),10::numeric,'refunded outgoing payment reopens obligation');
+select lives_ok($$select pg_temp.item(131,jsonb_build_object('id',pg_temp.result(130),'version',1,'direction','outgoing','amount','50','categoryId',pg_temp.cat('salary'),'commitment','cancelled','established',false))$$,'cancelling partly settled obligation keeps paid history');
+select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(130)),40::numeric,'cancellation preserves effective settlement');
+select is((select outstanding_amount from public.finance_expected_balances where id=pg_temp.result(130)),0::numeric,'cancelled remainder is not outstanding');
+select lives_ok($$select pg_temp.post(242,jsonb_build_object('amount','30','categoryId',pg_temp.cat('financing_in')))$$,'financing category derives non-operating cash nature');
+select throws_like($$select pg_temp.allocate(311,102,242,1)$$,'%finance_allocation_incompatible%','financing cannot silently satisfy an operating expectation');
+select throws_like($$update public.finance_expected_items set amount=1$$,'%permission denied%','direct expected mutation denied');
+select throws_like($$insert into public.finance_allocations(studio_id) values(pg_temp.fid(1))$$,'%permission denied%','direct allocation denied');
+select throws_like($$delete from public.finance_categories$$,'%permission denied%','category deletion denied');
+
+set local role postgres;
+create function pg_temp.denied(actor integer) returns setof text language plpgsql as $$
+begin
+ perform set_config('request.jwt.claim.sub',pg_temp.fid(actor)::text,true);
+ return next is((select count(*) from public.finance_categories where studio_id=pg_temp.fid(1)),0::bigint,'category isolation '||actor);
+ return next is((select count(*) from public.finance_expected_balances),0::bigint,'expected access denied '||actor);
+ return next is((select count(*) from public.finance_allocations),0::bigint,'allocation access denied '||actor);
+ return next is((select count(*) from public.finance_payment_availability),0::bigint,'credit access denied '||actor);
+ return next is((select count(*) from public.finance_planning_requests),0::bigint,'audit access denied '||actor);
+ return next throws_like('select pg_temp.item(900)','%finance_admin_required%','expected mutation denied '||actor);
+ return next throws_like('select pg_temp.allocate(901,100,200,1)','%finance_admin_required%','allocation mutation denied '||actor);
+ return next throws_like('select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(902),''{}'')','%finance_admin_required%','category mutation denied '||actor);
+end;$$;
+set local role authenticated;
+select * from pg_temp.denied(11); select * from pg_temp.denied(12); select * from pg_temp.denied(13); select * from pg_temp.denied(14);
+select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
+select throws_like($$select public.allocate_finance_payment(pg_temp.fid(2),pg_temp.fid(950),pg_temp.result(100),pg_temp.movement(200),1)$$,'%finance_admin_required%','foreign studio write denied');
+set local role anon;
+select throws_like($$select * from public.finance_expected_balances$$,'%permission denied%','anon read denied');
+select throws_like($$select pg_temp.item(999)$$,'%permission denied%','anon RPC denied');
+set local role postgres;
+select throws_like($$update public.finance_allocations set amount=1$$,'%finance_history_immutable%','allocation history immutable');
+select throws_like($$delete from public.finance_planning_requests$$,'%finance_history_immutable%','revision audit immutable');
+select throws_like($$insert into public.finance_expected_items(studio_id,direction,amount,currency,category_id,commitment,certainty,created_by) values(pg_temp.fid(2),'incoming',1,'UAH',pg_temp.cat('project_payments'),'agreed','fixed',pg_temp.fid(12))$$,'%foreign key%','composite category FK prevents foreign category');
+-- Local fixture models a header/entry already posted before Phase 3, without modifying it.
+set local session_replication_role=replica;
+insert into public.finance_movements(id,studio_id,request_id,request_payload,kind,nature,financial_date,category,created_by)
+values(pg_temp.fid(961),pg_temp.fid(1),pg_temp.fid(960),'{}','incoming','operating','2026-09-02','Legacy bespoke label',pg_temp.fid(10));
+insert into public.finance_movement_entries(studio_id,movement_id,account_id,entry_role,currency,amount,reporting_currency,reporting_amount,fx_rate,fx_source,fx_effective_date)
+values(pg_temp.fid(1),pg_temp.fid(961),pg_temp.fid(20),'primary','UAH',25,'UAH',25,1,'identity','2026-09-02');
+set local session_replication_role=origin;
+set local role authenticated;
+select lives_ok($$select pg_temp.allocate(962,102,960,25)$$,'legacy free-text payment remains allocatable');
+select lives_ok($$select pg_temp.post(963,jsonb_build_object('kind','refund','amount','10','relatedMovementId',pg_temp.movement(960)))$$,'legacy original still supports linked refunds');
+select is((select category from public.finance_movements where id=pg_temp.movement(963)),'Legacy bespoke label','legacy refund inherits historical snapshot');
+select is((select category_id from public.finance_movements where id=pg_temp.movement(960)),null::uuid,'legacy category relationship is not rewritten');
+select lives_ok($$select public.reverse_finance_movement(pg_temp.fid(1),pg_temp.fid(964),pg_temp.movement(963),'2026-09-03','Mistake')$$,'legacy-linked refund can be reversed');
+select lives_ok($$select public.reverse_finance_movement(pg_temp.fid(1),pg_temp.fid(965),pg_temp.movement(960),'2026-09-03','Mistake')$$,'legacy original correction still releases all effective allocations');
+select * from finish();
+rollback;

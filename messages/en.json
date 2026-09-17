@@ -1803,6 +1803,26 @@
     "architect": "Architect"
   },
   "Finance": {
+    "planning": {
+      "title": "Expected items", "description": "Plan payments and match them with actual money movements.",
+      "create": "Create expected item", "edit": "Edit expected item", "save": "Save", "empty": "No expected items in this view.",
+      "dueDate": "Pay by", "expectedDate": "Expected payment",
+      "agreementState": "Payment state", "agreementOptions": { "agreed": "Confirmed", "tentative": "Planned", "cancelled": "Cancelled" }, "estimatedAmount": "Amount is an estimate",
+      "moreOptions": "More options", "trackReceivable": "Count the remaining amount as receivable", "trackObligation": "Count the remaining amount as an obligation", "establishedAdvancedHelp": "Turn this off when the payment is confirmed but the amount is not yet collectible or payable.",
+      "paid": "Settled", "remaining": "Remaining", "receivable": "Receivable", "obligation": "Obligation",
+      "filters": "Expected item filters", "filtersList": { "all": "All", "incoming": "Incoming", "outgoing": "Outgoing", "receivables": "Receivables", "obligations": "Obligations", "cancelled": "Cancelled" },
+      "states": { "unpaid": "Unpaid", "partial": "Partially settled", "settled": "Settled", "unscheduled": "No due date", "not_due": "Not due", "due": "Due today", "overdue": "Overdue", "tentative": "Tentative", "agreed": "Agreed", "cancelled": "Cancelled", "fixed": "Fixed", "estimated": "Estimated" },
+      "match": "Match payment", "recordPayment": "Record payment", "recordFor": "Payment for {item} · {currency}. Choose how much to settle; any excess stays unapplied.",
+      "payment": "Actual payment", "allocateAmount": "Amount to settle", "searchPayments": "Search payments…", "noPayments": "No available payments on this page.",
+      "matchHelp": "Choose an existing payment in the same currency and direction. Matching does not create cash. Browse the unapplied payments pages below for older payments.",
+      "history": "Recent settlement history", "matched": "Matched", "cashRelease": "Released by refund or reversal", "manualRelease": "Match released",
+      "unmatch": "Release match", "unmatchHelp": "Release the remaining allocation without changing the actual payment. Add a reason for the audit trail.",
+      "unapplied": "Unapplied payments and advances", "unappliedHelp": "Actual money available to match. Incoming excess remains a credit; outgoing advances remain available for obligations. Amounts are shown in their original currencies.", "creditPages": "Available payment pages",
+      "categories": "Categories", "categoriesHelp": "Reusable studio categories determine reporting classification. Rename or archive them without rewriting posted history.",
+      "newCategory": "New category", "editCategory": "Edit category", "categoryName": "Category name", "archived": "Archived", "searchCategories": "Search categories…", "noCategories": "No matching categories.",
+      "defaults": { "project_payments": "Project payments", "supervision": "Supervision", "contractor_bonus": "Contractor bonus income", "other_income": "Other income", "salary": "Salary", "employee_bonus": "Employee bonus", "employer_costs": "Employer taxes and contributions", "rent": "Rent", "utilities": "Utilities", "cleaning": "Cleaning", "software": "Software and subscriptions", "smm": "SMM", "advertising": "Advertising", "taxes": "Taxes and fees", "equipment": "Equipment", "maintenance": "Maintenance and repair", "other_expense": "Other expense", "financing_in": "Financing received", "financing_out": "Financing repaid", "owner_distribution": "Owner distribution" },
+      "errors": { "forbidden": "Finance is available to active studio administrators only.", "invalid": "Check the required fields, amounts and dates.", "save": "Could not save. Check the item and payment are still available, then try again.", "duplicate": "This category already exists. Use or restore the existing category.", "overallocated": "The amount exceeds the item's remaining balance or the payment's available amount.", "version": "This item changed. Close and reopen it before saving.", "conflict": "This request was already saved with different values. Reopen the form before recording another change.", "locked": "Currency, direction and reporting nature are fixed once an item has settlement history.", "belowSettled": "The expected amount cannot be less than the amount already settled.", "incompatible": "Choose an active item and a payment with matching currency, direction and reporting nature." }
+    },
     "movements": {
       "title": "Movements",
       "descriptionText": "Actual studio cash. Opening balances are kept separate from cash flow.",

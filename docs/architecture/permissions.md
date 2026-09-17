@@ -48,7 +48,7 @@ server guard before changing a write.
 | Submissions | Type/workflow-dependent management | Create and participate where authorized |
 | Office assignments | Create/manage/cancel; read all in studio | Read and transition assignments for which responsible |
 | Workstations and equipment | Read and manage within active studio | No access |
-| Finance settings, accounts, opening balances, actual movements, historical FX | Active profile and active studio admin; RLS, guarded RPCs and caller-context views | No access |
+| Finance settings, accounts, cash ledger/FX, categories, expected items, settlement and unapplied money | Active profile and active studio admin; RLS, guarded RPCs and caller-context views | No access |
 | Notifications | Own recipient rows only | Own recipient rows only |
 
 ## Invariants

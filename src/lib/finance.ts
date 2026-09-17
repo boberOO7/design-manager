@@ -4,7 +4,7 @@ import type { Database } from "@/types/database.types";
 export type FinanceCurrency = Database["public"]["Tables"]["finance_currencies"]["Row"];
 export type FinanceSettings = Database["public"]["Tables"]["finance_settings"]["Row"];
 export type FinanceAccount = Database["public"]["Tables"]["finance_accounts"]["Row"];
-export type FinanceActionState = { status: "idle" | "success" | "error"; message?: string };
+export type FinanceActionState = { status: "idle" | "success" | "error"; message?: string; id?: string };
 
 export function financeSettingsSchema(currencies: FinanceCurrency[]) {
   return z.object({

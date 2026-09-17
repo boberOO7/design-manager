@@ -9,7 +9,7 @@ vi.mock("next/cache",()=>({ revalidatePath:mocks.revalidate }));
 vi.mock("next-intl/server",()=>({ getTranslations:async ()=>(key:string)=>key }));
 import { saveFinanceMovement } from "./actions";
 const id="63000000-0000-4000-8000-000000000020";
-const input={ requestId:id, kind:"incoming", accountId:id, date:"2026-09-02", amount:"100", category:"Design", studioId:"spoofed" };
+const input={ requestId:id, kind:"incoming", accountId:id, date:"2026-09-02", amount:"100", categoryId:id, studioId:"spoofed" };
 function form(patch: Record<string,string>={}) { const value=new FormData(); for(const [key,item] of Object.entries({ ...input,...patch })) value.set(key,item); return value; }
 describe("movement action boundary",()=>{
   beforeEach(()=>{
@@ -35,6 +35,11 @@ describe("movement action boundary",()=>{
     mocks.fx.mockRejectedValue(new Error("outage"));
     expect(await saveFinanceMovement({ status:"idle" },form())).toEqual({ status:"error",message:"errors.fx" });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("uses the atomic posting and settlement RPC for contextual payments",async()=>{
+    expect((await saveFinanceMovement({ status:"idle" },form({ expectedItemId:id,allocationAmount:"60" }))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_expected_payment",expect.objectContaining({ p_item_id:id,p_allocation_amount:60,p_input:expect.objectContaining({ amount:"100",categoryId:id }) }));
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
   it("resolves a lost-response retry without re-fetching FX or reposting",async()=>{
     mocks.prior.mockResolvedValue({ data:{ request_payload:{ submission:movementInputSchema.parse(input) } },error:null });

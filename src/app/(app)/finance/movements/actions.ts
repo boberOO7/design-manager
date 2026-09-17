@@ -48,12 +48,15 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     } catch {
       return { status: "error", message: t("errors.fx") };
     }
-    ({ error } = await client.rpc("record_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: {
+    const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
-      category: input.category, description: input.description, fee: input.fee, fx, submission: input,
+      category: input.category, categoryId:input.categoryId, description: input.description, fee: input.fee, fx, submission: input,
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
       ...(input.kind === "refund" ? { relatedMovementId: input.relatedMovementId } : {}),
-    } }));
+    };
+    ({ error } = input.expectedItemId
+      ? await client.rpc("record_finance_expected_payment",{ p_studio_id:admin.studio_id,p_request_id:input.requestId,p_item_id:input.expectedItemId,p_input:payload,p_allocation_amount:Number(input.allocationAmount) })
+      : await client.rpc("record_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input:payload }));
   }
   if (error) {
     const message = error.message === "finance_request_conflict" ? "errors.conflict"

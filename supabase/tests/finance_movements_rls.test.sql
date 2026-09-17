@@ -17,7 +17,11 @@ insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,c
 (pg_temp.fid(23),pg_temp.fid(2),'Foreign','UAH',0,pg_temp.fid(12)),
 (pg_temp.fid(24),pg_temp.fid(1),'Yen','JPY',0,pg_temp.fid(10));
 create function pg_temp.input(patch jsonb default '{}') returns jsonb language sql as $$
- select jsonb_build_object('kind','incoming','nature','operating','date','2026-09-02','amount','100.25','accountId',pg_temp.fid(20),'category','Design','description','')||patch;
+ select jsonb_build_object('kind','incoming','nature','operating','date','2026-09-02','amount','100.25','accountId',pg_temp.fid(20),'category','Design','description','',
+ 'categoryId',(select id from public.finance_categories where studio_id=pg_temp.fid(1) and default_key=case
+ when patch->>'kind'='owner_withdrawal' then 'owner_distribution'
+ when patch->>'nature'='financing' then case when patch->>'kind'='outgoing' then 'financing_out' else 'financing_in' end
+ when patch->>'kind'='outgoing' then 'other_expense' else 'other_income' end))||patch;
 $$;
 create function pg_temp.post(patch jsonb default '{}', request integer default 100) returns uuid language sql as $$
  select public.record_finance_movement(pg_temp.fid(1),pg_temp.fid(request),pg_temp.input(patch));
@@ -54,7 +58,7 @@ select throws_like($$select pg_temp.post('{"amount":"Infinity"}',110)$$,'%financ
 select throws_like($$select pg_temp.post('{"amount":"1.001"}',110)$$,'%finance_amount_invalid%','currency precision rejected without rounding');
 select throws_like($$select pg_temp.post('{"date":"2026-08-31"}',110)$$,'%finance_input_invalid%','before-cutover posting rejected');
 select throws_like($$select pg_temp.post('{"date":"9999-01-01"}',110)$$,'%finance_input_invalid%','future actual rejected');
-select throws_like($$select pg_temp.post('{"nature":"owner_distribution"}',110)$$,'%check constraint%','incoming cannot masquerade as owner withdrawal');
+select throws_like($$select pg_temp.post(jsonb_build_object('categoryId',(select id from public.finance_categories where studio_id=pg_temp.fid(1) and default_key='owner_distribution')),110)$$,'%finance_category_invalid%','incoming cannot masquerade as owner withdrawal');
 select throws_like($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(23)),110)$$,'%finance_account_unavailable%','foreign source rejected');
 select throws_like($$select pg_temp.post(jsonb_build_object('kind','transfer','receivedAmount','100.25','destinationId',pg_temp.fid(23)),110)$$,'%finance_account_unavailable%','foreign destination rejected atomically');
 select is((select count(*) from public.finance_movements where request_id=pg_temp.fid(110)),0::bigint,'failed transfer leaves no partial event');

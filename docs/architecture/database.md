@@ -35,7 +35,7 @@ Use this map instead of duplicating their fields here.
 | CRM | `crm_leads`, `crm_lead_history`, `crm_candidates`, `crm_recruiting_cycles` |
 | Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments`, `workstations`, `equipment`, `equipment_service_events`, `office_floor_plan_placements` |
 | Delivery | `notifications` |
-| Finance | `finance_settings`, `finance_accounts`, `finance_currencies`, `finance_movements`, `finance_movement_entries`; see [Finance](finance.md) for finalization, derived balances and historical invariants |
+| Finance | `finance_settings`, `finance_accounts`, `finance_currencies`, `finance_movements`, `finance_movement_entries`, `finance_categories`, `finance_expected_items`, `finance_allocations`, `finance_planning_requests`; see [Finance](finance.md) for cash, expected balances and historical invariants |
 
 ## Database boundary patterns
 

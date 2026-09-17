@@ -8,13 +8,18 @@ export const movementKinds = ["incoming", "outgoing", "transfer", "owner_withdra
 export const movementInputSchema = z.object({
   requestId: z.uuid(), kind: z.enum(movementKinds), date: z.iso.date(), accountId: z.uuid(),
   amount: decimal.refine((value) => Number(value)>0), nature: z.enum(["operating", "financing"]).default("operating"),
-  category: z.string().trim().min(1).max(120), description: z.string().trim().max(2000).default(""),
+  category: z.string().trim().min(1).max(120).default("Movement"), categoryId:z.union([z.uuid(),z.literal("")]).default(""),
+  expectedItemId:z.union([z.uuid(),z.literal("")]).default(""),allocationAmount:z.union([decimal.refine((value)=>Number(value)>0),z.literal("")]).default(""),
+  description: z.string().trim().max(2000).default(""),
   destinationId: z.union([z.uuid(), z.literal("")]).default(""),
   receivedAmount: z.union([decimal.refine((value) => Number(value)>0), z.literal("")]).default(""),
   fee: decimal.default("0"), relatedMovementId: z.union([z.uuid(), z.literal("")]).default(""),
   fxMode: z.enum(["nbu", "manual"]).default("manual"), manualRate: z.string().default(""),
   destinationFxMode: z.enum(["nbu", "manual"]).default("manual"), destinationManualRate: z.string().default(""),
 }).superRefine((input, context) => {
+  if (["incoming","outgoing","owner_withdrawal"].includes(input.kind) && !input.categoryId) context.addIssue({ code:"custom",message:"category" });
+  if (input.expectedItemId && (!["incoming","outgoing"].includes(input.kind) || !input.allocationAmount)) context.addIssue({ code:"custom",message:"settlement" });
+  if (!input.expectedItemId && input.allocationAmount) context.addIssue({ code:"custom",message:"settlement" });
   if (input.kind === "transfer" && (!input.destinationId || !input.receivedAmount || input.destinationId === input.accountId)) {
     context.addIssue({ code: "custom", message: "transfer" });
   }
