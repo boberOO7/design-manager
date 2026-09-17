@@ -5,7 +5,8 @@ is administrator-only. Project lifecycle, CRM budgets, equipment/service costs,
 Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
 `/finance` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
-owns classification; `/finance/schedules` owns compensation and recurring rules. All inherit the same administrator-only layout and messages.
+owns classification; `/finance/schedules` owns compensation and recurring rules;
+`/finance/planning` owns cash budgets, rolling forecasts and saved expectations. All inherit the same administrator-only layout and messages.
 Project details adds an administrator-only `view=finance` tab with its own scoped
 Finance messages; it uses these same expectations, movements, and matching RPCs.
 
@@ -259,33 +260,87 @@ or notifications containing private data.
   pay is included. These are reminders, not paid events or stored Calendar events;
   no financial amounts reach ordinary notifications, activity or Google projection.
 
-## Phase 6 constraints: Budget, rolling Forecast and Overview
+## Cash Budget and rolling Forecast
 
-Actual movements must require finalized setup and retain account-currency amounts;
-reporting valuations must preserve their currency/rate/date independently. Do not
-derive historical valuations from mutable settings or sum mixed currencies.
-Opening positions remain separate from period cash flow. Transfers and corrections
-must not be implemented by rewriting finalized opening balances. Financial reports
-must retain archived accounts when reporting their history. A reporting-currency
-change would require an explicit later migration/workflow, not a settings edit.
+`/finance/planning` is the admin-only operational planning view. It is separate
+from the future Finance Overview; no P&L, accrual, sales-pipeline forecasting,
+recurrence generation job or tax engine is implied.
 
-New generators should use this same expected-item model, using explicit
-established entitlement instead of treating the entire contract as receivable. Keep
-due dates, forecast timing and actual payment dates distinct. Use stable studio/item
-and studio/movement keys; do not create another cash store or bypass allocation locks.
-Cross-currency settlement needs its own explicit conversion contract in a later phase;
-historical ledger reporting FX must not be reused silently as settlement FX.
+- `finance_budget_revisions` stores twelve monthly amounts per studio, year and
+  existing category. Amounts are explicitly approved in the studio reporting
+  currency, with currency precision enforced in PostgreSQL. Any conversion used
+  while preparing a budget belongs in its required approval/revision note, not
+  in ledger FX or forecast assumptions. Saving appends an immutable revision;
+  optimistic revision checks and request IDs protect concurrent edits/retries.
+  `finance_current_budget` selects the latest category/year revision. Zero is an
+  explicit amount; an absent budget is not zero. Budget writes never create
+  expectations, allocations or ledger entries. The editor supports filling all
+  twelve months, followed by individual adjustments, and shows revision history.
+- `calculate_finance_forecast` calculates in one database statement with exact
+  numeric arithmetic. The default horizon is the current calendar month plus
+  five following months; alternatives are three months, through December, and
+  twelve months. Actual = historical recorded cash in the selected months through
+  today (Europe/Kyiv). Remaining = unsettled expected cash still due to occur.
+  Full-period Forecast = Actual + Remaining; budget is only a comparison baseline.
+  No budget envelope contributes cash and no recurrence rule contributes money.
+- Existing `finance_expected_balances.remaining_amount` is the only expectation
+  amount. Project design/supervision/contractor bonuses, payroll components,
+  recurring obligations and owner distributions all enter via their stable
+  expected-item identities. Gross salary is never added alongside payout and
+  remittances. Cancelled and fully settled items contribute no remaining cash.
+  Confirmed includes `agreed`, including estimated amounts; Including planned
+  adds `tentative`. Certainty, commitment and earned/established status remain
+  independent. Owner distributions remain non-operating.
+- Expected payment date takes priority over contractual due date; due date is
+  the fallback only when expected timing is absent. Past outgoing dates roll
+  forward to today as immediate exposure, including overdue obligations without
+  revised timing. A future revised expected date takes priority even if overdue.
+  Incoming items with no date or stale past timing stay outside dated totals,
+  retain their amount, and require attention. Truly undated outgoings also stay
+  undated. Per-item dates and contractual dates survive monthly aggregation.
+- `finance_planning_actuals` projects the existing cash effects with historical
+  valuations. Refunds/reversals are signed contra-values in the original category
+  direction. Transfer principal is excluded; fees are operating expenses.
+  Uncategorized legacy cash and transfer fees are shown explicitly. Opening
+  balances are never category actuals. Pre-cutover periods are marked unavailable.
+- Future FX is an explicit flat-rate assumption: for UAH reporting the server
+  requests today's effective NBU rate using the existing dated resolver. The
+  same rate is held across the horizon; it is not a prediction. Admins may supply
+  manual overrides, required for other reporting currencies or unsupported NBU
+  rates. Each rate retains currency, source and effective date. Missing rates
+  never become identity or zero and mark known totals incomplete. Actual ledger
+  FX is never changed. Refreshing a live forecast may change assumptions;
+  snapshots preserve them. Authorized RPC rates remain admin-supplied data.
+- Cash projection starts with recorded account balances (including archived
+  accounts) revalued at forecast rates, then adds only remaining net cash.
+  Recorded actuals are already in that opening point and are not added again.
+  This cash valuation is distinct from historical category actuals and introduces
+  no manufactured operating exchange gains/losses.
+- Unknown employer costs/remittances remain null and produce attention items,
+  even if the known payout was settled. Missing schedule periods are coverage
+  diagnostics only, starting one service month before the current month to catch
+  next-month payroll. Missing supervision months and unscheduled contract value
+  are also flagged. Diagnostics never materialize cash; administrators generate
+  stable occurrences in Schedules/Project Finance. Totals with unresolved issues
+  are labelled known subtotals, not complete forecasts. No future sales are invented.
+- `finance_forecast_snapshots` saves immutable versioned expectations, original
+  dates/classification/source IDs, remaining category/month totals, FX assumptions,
+  budget revision references/values, coverage issues and the valued cash baseline.
+  Actual ledger rows and actual category totals are not copied. Saving recalculates
+  server-side under the Finance lock, with idempotent requests. Snapshot comparison
+  reads live historical actuals recorded after capture, with financial dates from
+  the capture day through the horizon. Thus later same-day payments are included;
+  current-month comparison is partial. Historical backdated corrections can change
+  observed actuals, but never the saved expectation. The UI lists the latest 50
+  snapshots and 100 yearly budget revisions; older records remain stored.
+- Tables have the existing strict Finance-admin RLS and SELECT-only grants;
+  immutable triggers and guarded RPCs own writes. Caller-context report functions
+  also check active-admin identity explicitly. Reporting scans are database-side,
+  so the Data API row limit cannot silently truncate ledger/expected totals.
 
-Budget and Forecast must distinguish ungenerated schedule intent from materialized
-expected items and deduplicate using occurrence identity. Open-ended schedules
-are not finite contract totals. Show forecast coverage and unknown employer costs
-explicitly; missing components are not zero. Keep fixed/estimated and
-agreed/tentative planning distinct from earned outstanding obligations and actual
-cash, and separate service periods from expected and actual cash dates. Payroll
-components must not double-count gross agreed pay plus its payout/remittances.
-Owner distributions affect cash only, outside operating expense/P&L. Reporting
-must retain cancelled/settled history and use effective revisions, including stops
-and restoration gaps. No Budget, Forecast, P&L or automatic payment/job is added.
+Phase 6B should build on these definitions and surface coverage next to charts.
+Any FX revaluation presentation, comparison of whole-month historical snapshots,
+and generation workflow must retain these timing and historical boundaries.
 
 ## Canonical sources
 
@@ -309,3 +364,9 @@ and restoration gaps. No Budget, Forecast, P&L or automatic payment/job is added
 - `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`
 - `src/lib/finance-schedules.ts`, `src/components/finance/schedules-workspace.tsx`
 - `supabase/tests/finance_schedules_rls.test.sql`, `tests/e2e/finance-schedules.spec.ts`
+
+- `src/lib/finance-forecast.ts`, `src/data/queries/finance-forecast.ts`
+- `src/components/finance/cash-planning-workspace.tsx`
+- `supabase/migrations/20260917170558_finance_budget_forecast.sql`
+- `supabase/migrations/20260917171353_finance_forecast_capture_boundary.sql`
+- `supabase/tests/finance_forecast_rls.test.sql`, `tests/e2e/finance-forecast.spec.ts`

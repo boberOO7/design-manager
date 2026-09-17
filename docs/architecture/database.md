@@ -144,3 +144,12 @@ employee/service-period identities and `finance_obligation_items` maps component
 to existing expected items. All use strict Finance admin RLS and guarded RPCs.
 Caller-context `finance_payroll_calendar` is amount-free; lifecycle triggers stop
 generation without deleting history. See [Finance](finance.md) for invariants.
+
+## Finance cash planning
+
+Immutable `finance_budget_revisions` holds reporting-currency category/year plans;
+`finance_current_budget` chooses the latest revision. `finance_forecast_snapshots`
+retains expectations and assumptions, not a duplicate actual ledger. Forecast
+RPCs calculate with exact numeric from existing expected balances and cash effects.
+All inherit strict Finance admin RLS, guarded writes and immutable history.
+See [Finance](finance.md) for timing, coverage and FX policies.

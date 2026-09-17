@@ -1317,6 +1317,74 @@ export type Database = {
           },
         ]
       }
+      finance_budget_revisions: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          months: number[]
+          reason: string
+          revision: number
+          studio_id: string
+          year: number
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by: string
+          currency: string
+          id?: string
+          months: number[]
+          reason: string
+          revision: number
+          studio_id: string
+          year: number
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          months?: number[]
+          reason?: string
+          revision?: number
+          studio_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_budget_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_categories: {
         Row: {
           archived_at: string | null
@@ -1455,6 +1523,48 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_forecast_snapshots: {
+        Row: {
+          created_at: string
+          created_by: string
+          forecast: Json
+          id: string
+          name: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          forecast: Json
+          id?: string
+          name: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          forecast?: Json
+          id?: string
+          name?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_forecast_snapshots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_snapshots_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -4127,6 +4237,50 @@ export type Database = {
           },
         ]
       }
+      finance_current_budget: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          id: string | null
+          months: number[] | null
+          reason: string | null
+          revision: number | null
+          studio_id: string | null
+          year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_budget_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_budget_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_expected_balances: {
         Row: {
           amount: number | null
@@ -4240,6 +4394,18 @@ export type Database = {
             referencedColumns: ["studio_id"]
           },
         ]
+      }
+      finance_planning_actuals: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          direction: string | null
+          financial_date: string | null
+          nature: string | null
+          recorded_at: string | null
+          studio_id: string | null
+        }
+        Relationships: []
       }
       finance_project_current_terms: {
         Row: {
@@ -4512,6 +4678,15 @@ export type Database = {
           id: string
         }[]
       }
+      calculate_finance_forecast: {
+        Args: {
+          p_fx?: Json
+          p_horizon?: string
+          p_scenario?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
       claim_equipment_catalog_sync: {
         Args: { p_run_id: string; p_source: string }
         Returns: {
@@ -4550,6 +4725,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      compare_finance_forecast_snapshot: {
+        Args: { p_snapshot_id: string; p_studio_id: string }
+        Returns: Json
       }
       complete_equipment_service: {
         Args: {
@@ -4865,12 +5044,27 @@ export type Database = {
         }
         Returns: string
       }
+      save_finance_budget: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       save_finance_category: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
       save_finance_expected_item: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      save_finance_forecast_snapshot: {
+        Args: {
+          p_fx: Json
+          p_horizon: string
+          p_name: string
+          p_request_id: string
+          p_scenario: string
+          p_studio_id: string
+        }
         Returns: string
       }
       save_finance_project_item: {
