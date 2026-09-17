@@ -5,7 +5,7 @@ is administrator-only. Project lifecycle, CRM budgets, equipment/service costs,
 Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
 `/finance` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
-owns classification. All inherit the same administrator-only layout and messages.
+owns classification; `/finance/schedules` owns compensation and recurring rules. All inherit the same administrator-only layout and messages.
 Project details adds an administrator-only `view=finance` tab with its own scoped
 Finance messages; it uses these same expectations, movements, and matching RPCs.
 
@@ -118,8 +118,9 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   incoming/outgoing movement IDs and expected-item IDs through same-studio keys.
   Positive allocations support many-to-many and partial matching; negative releases
   reference a specific earlier allocation. No match or release creates money. Same
-  currency, direction and nature are required. Transfers, fees, owner distributions
-  and refunds are not independently allocatable payments in Phase 3.
+  currency, direction and nature are required. Owner withdrawals are allocatable
+  as outgoing owner distributions; they cannot settle operating expenses. Transfers,
+  fees and refunds are not independently allocatable payments.
 - `finance_payment_availability` derives original principal less unreversed refunds
   (or zero after original reversal), less effective allocations. It stays broad so
   any compatible historical incoming/outgoing movement can be matched, including an
@@ -207,7 +208,58 @@ or notifications containing private data.
   Finance admin boundary. Employees get no tab/data and direct `view=finance` is
   denied. Private terms and amendments do not enter project activity/notifications.
 
-## Next-phase constraints
+## Employee compensation and recurring studio obligations
+
+- `/finance/schedules` is admin-only. `finance_schedules` identifies either an
+  employee's monthly payroll or a recurring studio obligation; immutable
+  `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
+  month starts and optional inclusive ends are month ends. Later revisions must
+  start in a future month after all created service periods. History derives
+  valid-through from the next revision, submitted end and permanent stop boundary.
+- Payroll keeps agreed compensation (net/gross), employee payout, optional
+  employee deductions/remittances and additional employer cost separate. Admins
+  supply amounts; PostgreSQL validates exact currency precision and agreement
+  arithmetic. Net equals payout, with remittances additional; gross equals payout
+  plus explicit deductions. Unknown costs remain null, confirmed zero is explicit,
+  and estimated employer cost remains estimated. There is no statutory tax engine.
+- Recurring studio terms select any outgoing category, monthly/quarterly/yearly
+  cadence, fixed/estimated value and tentative/agreed commitment. The category's
+  immutable nature keeps owner distributions non-operating. Each interval starts
+  from the revision's effective month. Paydays clamp to month-end; a payment may
+  fall in the period's start month or the next month.
+- An explicit admin action generates up to 12 service months per batch.
+  `finance_obligations` is permanent employee/service-period/source context, and
+  `finance_obligation_items` links its components to ordinary expected items.
+  Schedule/month and employee/payroll-month uniqueness prevent duplicates across
+  retries, revisions and cancellations. No new cash or settlement store exists.
+  Each component supports the existing partial allocation, correction and reversal
+  flow. Expected items initially have `is_established=false`; admins explicitly
+  confirm earned obligations. Generation does not mean earning or payment.
+- Payroll payout, remittance and bonus amounts and contractual dates are protected
+  even through the global editor. Expected timing, description, cancellation and
+  earned status remain editable. Studio and employer-cost estimates can be
+  explicitly reconciled through the existing audited expected-item editor.
+  Generated components show their employee and service period in Expected items.
+- Team removal and profile deactivation permanently stop the old payroll schedule
+  from the next service month, atomically with deactivation. Past ungenerated
+  months can still be generated; created obligations (including future plans) and
+  settlement history survive. Administrators review/cancel future plans explicitly.
+  Restoration never restarts pay; a new schedule must begin after the prior stop
+  and any already-created payroll periods. Membership-first locks coordinate
+  payroll generation with Team removal, followed by the existing Finance lock.
+- Rates apply to whole months, with no automatic proration for joining/leaving or
+  partial recurring intervals. Admins must explicitly reconcile partial-period
+  obligations before marking them earned. A one-off employee bonus is a separate
+  admin-authored payout and service period, including for a former member; it never
+  changes base salary or reads Leaderboard awards.
+- Calendar reads `finance_payroll_calendar`, an amount-free, caller-context view
+  of created payout/bonus expected dates (falling back to contractual dates).
+  Only admins query it; underlying strict Finance RLS also denies employee reads.
+  Membership dates produce birthdays/anniversaries only. An admin's own configured
+  pay is included. These are reminders, not paid events or stored Calendar events;
+  no financial amounts reach ordinary notifications, activity or Google projection.
+
+## Phase 6 constraints: Budget, rolling Forecast and Overview
 
 Actual movements must require finalized setup and retain account-currency amounts;
 reporting valuations must preserve their currency/rate/date independently. Do not
@@ -222,10 +274,18 @@ established entitlement instead of treating the entire contract as receivable. K
 due dates, forecast timing and actual payment dates distinct. Use stable studio/item
 and studio/movement keys; do not create another cash store or bypass allocation locks.
 Cross-currency settlement needs its own explicit conversion contract in a later phase;
-historical ledger reporting FX must not be reused silently as settlement FX. Payroll,
-recurring studio expenses and budget generation are not implemented here. Future
-generators need stable occurrence identities and effective-dated terms, must preserve
-already generated/settled history, and must not turn salary reminders into actual cash.
+historical ledger reporting FX must not be reused silently as settlement FX.
+
+Budget and Forecast must distinguish ungenerated schedule intent from materialized
+expected items and deduplicate using occurrence identity. Open-ended schedules
+are not finite contract totals. Show forecast coverage and unknown employer costs
+explicitly; missing components are not zero. Keep fixed/estimated and
+agreed/tentative planning distinct from earned outstanding obligations and actual
+cash, and separate service periods from expected and actual cash dates. Payroll
+components must not double-count gross agreed pay plus its payout/remittances.
+Owner distributions affect cash only, outside operating expense/P&L. Reporting
+must retain cancelled/settled history and use effective revisions, including stops
+and restoration gaps. No Budget, Forecast, P&L or automatic payment/job is added.
 
 ## Canonical sources
 
@@ -244,3 +304,8 @@ already generated/settled history, and must not turn salary reminders into actua
 - `src/lib/finance-projects.ts`, `src/components/finance/project-finance-section.tsx`
 - `src/app/(app)/finance/project-actions.ts`
 - `supabase/tests/finance_projects_rls.test.sql`, `tests/e2e/finance-projects.spec.ts`
+
+- `supabase/migrations/20260917141123_finance_compensation_recurring.sql`
+- `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`
+- `src/lib/finance-schedules.ts`, `src/components/finance/schedules-workspace.tsx`
+- `supabase/tests/finance_schedules_rls.test.sql`, `tests/e2e/finance-schedules.spec.ts`

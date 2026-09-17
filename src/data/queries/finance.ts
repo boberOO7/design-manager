@@ -80,7 +80,9 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   if(history?.error) throw new Error("Unable to load settlement history.",{ cause:history.error });
   const links=ids.length ? await client.from("finance_project_items").select("*").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(links?.error) throw new Error("Unable to load project payment context.",{ cause:links.error });
-  return { items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
+  const obligations=ids.length ? await client.from("finance_obligation_items").select("expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  if(obligations?.error) throw new Error("Unable to load obligation context.",{ cause:obligations.error });
+  return { obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 
@@ -100,3 +102,18 @@ export async function getFinanceProject(projectId:string) {
   return { projectId,terms:terms.data??[],termHistory:history.data??[],totals:totals.data??[],contractors:contractors.data??[],visits:visits.data??[] };
 }
 export type FinanceProjectData=NonNullable<Awaited<ReturnType<typeof getFinanceProject>>>;
+
+export async function getFinanceSchedules() {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return null;
+  const client = await createClient();
+  const [schedules, terms, members] = await Promise.all([
+    client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
+    client.from("finance_schedule_history").select("*").eq("studio_id", admin.studio_id).order("revision", { ascending: false }),
+    client.from("studio_members").select("user_id,is_active,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
+  ]);
+  const error = schedules.error ?? terms.error ?? members.error;
+  if (error) throw new Error("Unable to load Finance schedules.", { cause: error });
+  return { schedules: schedules.data ?? [], terms: terms.data ?? [], members: members.data ?? [] };
+}
+export type FinanceSchedulesData = NonNullable<Awaited<ReturnType<typeof getFinanceSchedules>>>;

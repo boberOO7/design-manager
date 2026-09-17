@@ -1,0 +1,97 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { test, expect, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import en from "../../messages/en.json";
+import uk from "../../messages/uk.json";
+import type { Database } from "../../src/types/database.types";
+
+const local=z.object({EQUIPMENT_TEST_SUPABASE_URL:z.url(),EQUIPMENT_TEST_SERVICE_KEY:z.string()}).parse(process.env);
+if(!["127.0.0.1","localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local Finance fixtures only");
+const client=createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL,local.EQUIPMENT_TEST_SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const studio=randomUUID(),bank=randomUUID();
+const actors=["admin","employee"].map((role)=>({role,id:"",email:`payroll-${randomUUID()}@example.test`,password:`Finance-${randomUUID()}`}));
+function sql(statement:string){return execFileSync("docker",["exec","-i","supabase_db_design-manager","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-At"],{input:statement,encoding:"utf8"}).trim();}
+const t=en.Finance,s=t.schedules;
+async function login(page:Page,index=0){await page.goto("/login");await page.locator('input[type="email"]').fill(actors[index].email);await page.locator('input[type="password"]').fill(actors[index].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);}
+
+test.beforeAll(async()=>{
+  await client.from("studios").insert({id:studio,name:"Payroll browser test"}).throwOnError();
+  for(const actor of actors){
+    const {data,error}=await client.auth.admin.createUser({email:actor.email,password:actor.password,email_confirm:true});if(error)throw error;actor.id=data.user.id;
+    await client.from("profiles").upsert({id:actor.id,email:actor.email,full_name:`Payroll ${actor.role}`,system_role:actor.role,is_active:true}).throwOnError();
+    await client.from("studio_members").insert({studio_id:studio,user_id:actor.id,system_role:actor.role,joined_at:"2026-01-15"}).throwOnError();
+  }
+  sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values('${studio}','UAH','2026-01-01','${actors[0].id}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bank}','${studio}','Payroll bank','UAH',10000,'${actors[0].id}');
+    select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.finalize_finance_setup('${studio}');`);
+});
+test.afterAll(async()=>{
+  // Local fixture-only cleanup; preserve production's immutable financial history.
+  sql(`begin;set local session_replication_role=replica;
+    delete from public.finance_obligation_items where studio_id='${studio}';delete from public.finance_obligations where studio_id='${studio}';
+    delete from public.finance_schedule_terms where studio_id='${studio}';delete from public.finance_schedules where studio_id='${studio}';
+    delete from public.finance_allocations where studio_id='${studio}';delete from public.finance_expected_items where studio_id='${studio}';
+    delete from public.finance_planning_requests where studio_id='${studio}';delete from public.finance_movement_entries where studio_id='${studio}';
+    delete from public.finance_movements where studio_id='${studio}';delete from public.finance_accounts where studio_id='${studio}';
+    delete from public.finance_categories where studio_id='${studio}';delete from public.finance_settings where studio_id='${studio}';
+    delete from public.notifications where studio_id='${studio}';delete from public.studio_members where studio_id='${studio}';delete from public.studios where id='${studio}';commit;`);
+  for(const actor of actors)if(actor.id){const {error}=await client.auth.admin.deleteUser(actor.id);if(error)throw error;}
+});
+
+test("compensation, obligations, payroll privacy, recurrence and owner payment",async({page},testInfo)=>{
+  await login(page);await page.goto("/finance/schedules");
+  let firstStartMonth="";
+  async function salary(employee:string,cost:"unknown"|"none"="unknown",inspect=false){
+    await page.getByRole("button",{name:s.addCompensation,exact:true}).click();const dialog=page.getByRole("dialog");
+    await dialog.getByRole("combobox",{name:s.employee,exact:true}).click();await page.getByRole("option",{name:employee,exact:true}).click();
+    await expect(dialog.getByLabel(s.name,{exact:true})).toHaveCount(0);await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1000");
+    const startMonth=dialog.getByLabel(s.effectiveFrom,{exact:true});await expect(startMonth).toHaveAttribute("type","month");
+    await expect(dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await expect(dialog.getByLabel(s.deductions,{exact:true})).toHaveCount(0);
+    if(inspect){
+      await dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true}).click();await expect(dialog.getByLabel(s.deductions,{exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toBeVisible();await expect(dialog.getByText(s.taxWarning,{exact:true})).toBeVisible();await dialog.getByRole("switch",{name:`${s.basis}: ${s.gross}`,exact:true}).click();
+      await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costHas,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toBeVisible();await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costUnknown,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toHaveCount(0);
+      firstStartMonth=await startMonth.inputValue();await dialog.getByLabel(s.hasEndDate,{exact:true}).check();const endMonth=dialog.getByLabel(s.endDate,{exact:true});await expect(endMonth).toHaveAttribute("type","month");await endMonth.fill("2027-02");
+      const submittedStart=dialog.locator('input[name="effectiveFrom"]');await submittedStart.evaluate((input:HTMLInputElement)=>{input.value=`${input.value.slice(0,7)}-10`;});await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog.getByRole("alert")).toHaveText(s.errors.effectiveFromInput);await startMonth.fill("");await startMonth.fill(firstStartMonth);
+    }
+    if(cost==="none"){await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costNone,exact:true}).click();}
+    await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  }
+  await salary("Payroll employee","unknown",true);await salary("Payroll admin","none");
+  expect(sql(`select h.effective_from||'|'||h.effective_through from public.finance_schedule_history h join public.finance_schedules s on s.studio_id=h.studio_id and s.id=h.schedule_id where h.studio_id='${studio}' and s.employee_id='${actors[1].id}' and h.revision=1`)).toBe(`${firstStartMonth}-01|2027-02-28`);
+  const row=page.locator("article").filter({hasText:"Payroll employee"});
+  for(let i=0;i<2;i++){await row.getByRole("button",{name:s.generate,exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:s.generate,exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);}
+  const own=page.locator("article").filter({hasText:"Payroll admin"});await own.getByRole("button",{name:s.generate,exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:s.generate,exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`)).toBe("2");
+  expect(sql(`select count(*) from public.finance_movements where studio_id='${studio}'`)).toBe("0");
+  expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}' and employer_cost is null and employer_cost_status='unknown'`)).toBe("1");
+  expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}' and employer_cost=0 and employer_cost_status='fixed'`)).toBe("1");
+  // Revisions are explicit and cannot rewrite this month's existing obligations.
+  await row.getByRole("button",{name:s.revise,exact:true}).click();let dialog=page.getByRole("dialog");await expect(dialog.getByLabel(s.effectiveFrom,{exact:true})).toHaveAttribute("type","month");await expect(dialog.getByLabel(s.endDate,{exact:true})).toHaveValue("2027-02");await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1200");await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await dialog.getByLabel(s.note,{exact:true}).fill("Salary increase next month");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}'`)).toBe("3");
+  expect(sql(`select i.amount from public.finance_expected_items i join public.finance_obligation_items oi on oi.studio_id=i.studio_id and oi.expected_item_id=i.id join public.finance_obligations o on o.studio_id=oi.studio_id and o.id=oi.obligation_id where i.studio_id='${studio}' and o.employee_id='${actors[1].id}' and oi.component='payout'`)).toBe("1000");
+  await page.getByRole("button",{name:s.addBonus,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByRole("combobox",{name:s.employee,exact:true}).click();await page.getByRole("option",{name:"Payroll employee",exact:true}).click();await dialog.getByLabel(t.movements.amount,{exact:true}).fill("75");await dialog.getByLabel(t.movements.description,{exact:true}).fill("Manual employee award");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Monthly utilities");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("100");await dialog.getByRole("combobox",{name:s.certainty,exact:true}).click();await page.getByRole("option",{name:s.estimated,exact:true}).click();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.utilities,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Utilities estimate");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  const utilities=page.locator("article").filter({has:page.getByRole("heading",{name:"Monthly utilities",exact:true})});await utilities.getByRole("button",{name:s.generate,exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:s.generate,exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Owner draw");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("500");await dialog.getByLabel(t.movements.kinds.owner_withdrawal,{exact:true}).check();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.owner_distribution,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Owner distribution agreement");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  const owner=page.locator("article").filter({has:page.getByRole("heading",{name:"Owner draw",exact:true})});await owner.getByRole("button",{name:s.generate,exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:s.generate,exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goto("/finance/expected?filter=outgoing");
+  const employeeItem=page.locator("article").filter({has:page.getByRole("heading",{name:new RegExp(`^${s.defaultSalaryName}`)})}).filter({hasText:"Payroll employee"});
+  await expect(employeeItem.getByText(/Service period:/)).toBeVisible();await employeeItem.getByRole("link",{name:t.planning.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("250");await dialog.getByLabel(t.planning.allocateAmount,{exact:true}).fill("250");await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(employeeItem.getByText(t.planning.states.partial,{exact:true})).toBeVisible();
+  const ownerItem=page.locator("article").filter({has:page.getByRole("heading",{name:/^Owner draw/})});await ownerItem.getByRole("link",{name:t.planning.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");await expect(dialog.getByText(t.movements.ownerHelp,{exact:true})).toBeVisible();await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(ownerItem.getByText(t.planning.states.settled,{exact:true})).toBeVisible();
+  expect(sql(`select count(*) from public.finance_movements where studio_id='${studio}' and kind='owner_withdrawal' and nature='owner_distribution'`)).toBe("1");
+  const paymentDate=sql(`select payment_date from public.finance_payroll_calendar where studio_id='${studio}' and employee_id='${actors[0].id}' limit 1`);
+  await page.goto(`/calendar?date=${paymentDate}&view=month`);await expect(page.getByText("Payroll reminder · Payroll admin",{exact:true}).first()).toBeVisible();
+  const oldCount=sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`);
+  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.remove_studio_member('${actors[1].id}','[]'::jsonb,true);`);
+  await page.goto("/finance/schedules");await expect(row.getByText(/Generation stopped from/)).toBeVisible();expect(sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`)).toBe(oldCount);
+  await page.screenshot({path:testInfo.outputPath("finance-schedules-desktop.png"),fullPage:true});
+  await page.setViewportSize({width:375,height:900});await page.emulateMedia({colorScheme:"dark",reducedMotion:"reduce"});await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]);await page.reload();await expect(page.getByRole("heading",{name:uk.Finance.schedules.title,exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:uk.Finance.schedules.defaultSalaryName,exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath("finance-schedules-mobile.png"),fullPage:true});
+  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.restore_studio_member('${actors[1].id}');`);
+});
+
+test("employee cannot access compensation UI or payroll Calendar",async({page})=>{
+  await login(page,1);await page.goto("/finance/schedules");await expect(page).toHaveURL(/\/dashboard/);await expect(page.getByRole("button",{name:s.addCompensation,exact:true})).toHaveCount(0);
+  await page.goto("/calendar");await expect(page.getByText(/Payroll reminder ·/)).toHaveCount(0);await expect(page.getByText(s.defaultSalaryName,{exact:true})).toHaveCount(0);await expect(page.getByText("Manual employee award",{exact:true})).toHaveCount(0);
+});

@@ -9,7 +9,7 @@ const query = readFileSync("src/data/queries/equipment.ts", "utf8");
 const shell = readFileSync("src/components/office/office-shell.tsx", "utf8");
 const cron = readFileSync("src/app/api/equipment/maintenance-notifications/route.ts", "utf8");
 const styles = readFileSync("src/app/globals.css", "utf8");
-const binarySwitch = form.slice(form.indexOf("export function BinarySwitch"), form.indexOf("function CapacityInput"));
+const binarySwitch = readFileSync("src/components/ui/binary-switch.tsx", "utf8");
 
 describe("Equipment application flow", () => {
   it("keeps navigation and page loading admin-only", () => {
@@ -194,12 +194,12 @@ describe("Equipment application flow", () => {
     expect(form).toContain("persistConfiguration");
     expect(form).toContain("updateConfiguration");
     expect(form).toContain("<BinarySwitch");
-    expect(form).toContain('role="switch"');
-    expect(form).toContain("aria-checked={selectedIndex === 1}");
-    expect(form).toContain("onClick={() => onChange(selectedIndex === 0 ? options[1] : options[0])}");
-    expect(form).toContain("data-binary-switch-thumb");
-    expect(form).toContain("duration-200");
-    expect(form).not.toContain("motion-reduce:transition-none");
+    expect(binarySwitch).toContain('role="switch"');
+    expect(binarySwitch).toContain("aria-checked={selectedIndex === 1}");
+    expect(binarySwitch).toContain("onClick={() => onChange(selectedIndex === 0 ? options[1] : options[0])}");
+    expect(binarySwitch).toContain("data-binary-switch-thumb");
+    expect(binarySwitch).toContain("duration-200");
+    expect(binarySwitch).not.toContain("motion-reduce:transition-none");
     expect(form).not.toContain("<SegmentedControl");
     expect(form).not.toContain('t("configuration.save")');
     expect(workspace).not.toContain("dirtyConfiguration");

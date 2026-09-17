@@ -19,7 +19,7 @@ export const movementInputSchema = z.object({
   destinationFxMode: z.enum(["nbu", "manual"]).default("manual"), destinationManualRate: z.string().default(""),
 }).superRefine((input, context) => {
   if (["incoming","outgoing","owner_withdrawal"].includes(input.kind) && !input.categoryId) context.addIssue({ code:"custom",message:"category" });
-  if (input.expectedItemId && (!["incoming","outgoing"].includes(input.kind) || !input.allocationAmount)) context.addIssue({ code:"custom",message:"settlement" });
+  if (input.expectedItemId && (!["incoming","outgoing","owner_withdrawal"].includes(input.kind) || !input.allocationAmount)) context.addIssue({ code:"custom",message:"settlement" });
   if (!input.expectedItemId && input.allocationAmount) context.addIssue({ code:"custom",message:"settlement" });
   if (input.kind === "transfer" && (!input.destinationId || !input.receivedAmount || input.destinationId === input.accountId)) {
     context.addIssue({ code: "custom", message: "transfer" });

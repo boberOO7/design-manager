@@ -168,6 +168,7 @@ export async function removeStudioMember(_previousState: StudioMemberActionState
     return { formError: "The member could not be removed. Review open work and try again." };
   }
   revalidatePath("/team"); revalidatePath("/dashboard"); revalidatePath("/projects"); revalidatePath("/my-tasks");
+  revalidatePath("/finance", "layout"); revalidatePath("/calendar");
   return { success: "removed" };
 }
 

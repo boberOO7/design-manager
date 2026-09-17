@@ -1267,6 +1267,13 @@ export type Database = {
             foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
             columns: ["studio_id", "expected_item_id"]
             isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
             referencedRelation: "finance_project_expected_balances"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1662,6 +1669,141 @@ export type Database = {
           },
         ]
       }
+      finance_obligation_items: {
+        Row: {
+          component: string
+          expected_item_id: string
+          obligation_id: string
+          studio_id: string
+        }
+        Insert: {
+          component: string
+          expected_item_id: string
+          obligation_id: string
+          studio_id: string
+        }
+        Update: {
+          component?: string
+          expected_item_id?: string
+          obligation_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_obligations: {
+        Row: {
+          created_at: string
+          created_by: string
+          employee_id: string | null
+          employee_name: string | null
+          id: string
+          kind: string
+          period_end: string
+          period_start: string
+          schedule_id: string | null
+          studio_id: string
+          terms_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          employee_id?: string | null
+          employee_name?: string | null
+          id?: string
+          kind: string
+          period_end: string
+          period_start: string
+          schedule_id?: string | null
+          studio_id: string
+          terms_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          employee_id?: string | null
+          employee_name?: string | null
+          id?: string
+          kind?: string
+          period_end?: string
+          period_start?: string
+          schedule_id?: string | null
+          studio_id?: string
+          terms_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_obligations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_obligations_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_obligations_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_obligations_studio_id_terms_id_schedule_id_fkey"
+            columns: ["studio_id", "terms_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedule_history"
+            referencedColumns: ["studio_id", "id", "schedule_id"]
+          },
+          {
+            foreignKeyName: "finance_obligations_studio_id_terms_id_schedule_id_fkey"
+            columns: ["studio_id", "terms_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedule_terms"
+            referencedColumns: ["studio_id", "id", "schedule_id"]
+          },
+        ]
+      }
       finance_planning_requests: {
         Row: {
           created_at: string
@@ -1777,6 +1919,13 @@ export type Database = {
             foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
             columns: ["studio_id", "expected_item_id"]
             isOneToOne: true
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
             referencedRelation: "finance_project_expected_balances"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1873,6 +2022,165 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_project_terms_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_schedule_terms: {
+        Row: {
+          amount: number
+          basis: string | null
+          category_id: string
+          certainty: string
+          commitment: string
+          created_at: string
+          created_by: string
+          currency: string
+          effective_from: string
+          effective_through: string | null
+          employee_deductions: number | null
+          employee_payout: number | null
+          employer_cost: number | null
+          employer_cost_status: string
+          id: string
+          interval_months: number
+          name: string
+          payment_month_offset: number
+          payout_day: number
+          reason: string
+          revision: number
+          schedule_id: string
+          studio_id: string
+        }
+        Insert: {
+          amount: number
+          basis?: string | null
+          category_id: string
+          certainty: string
+          commitment: string
+          created_at?: string
+          created_by: string
+          currency: string
+          effective_from: string
+          effective_through?: string | null
+          employee_deductions?: number | null
+          employee_payout?: number | null
+          employer_cost?: number | null
+          employer_cost_status?: string
+          id?: string
+          interval_months: number
+          name: string
+          payment_month_offset?: number
+          payout_day: number
+          reason: string
+          revision: number
+          schedule_id: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number
+          basis?: string | null
+          category_id?: string
+          certainty?: string
+          commitment?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          effective_from?: string
+          effective_through?: string | null
+          employee_deductions?: number | null
+          employee_payout?: number | null
+          employer_cost?: number | null
+          employer_cost_status?: string
+          id?: string
+          interval_months?: number
+          name?: string
+          payment_month_offset?: number
+          payout_day?: number
+          reason?: string
+          revision?: number
+          schedule_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_schedule_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_studio_id_schedule_id_fkey"
+            columns: ["studio_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedules"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_schedules: {
+        Row: {
+          created_at: string
+          created_by: string
+          employee_id: string | null
+          id: string
+          kind: string
+          stopped_from: string | null
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          employee_id?: string | null
+          id?: string
+          kind: string
+          stopped_from?: string | null
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          employee_id?: string | null
+          id?: string
+          kind?: string
+          stopped_from?: string | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_schedules_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_schedules_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -3915,6 +4223,24 @@ export type Database = {
           },
         ]
       }
+      finance_payroll_calendar: {
+        Row: {
+          employee_id: string | null
+          employee_name: string | null
+          expected_item_id: string | null
+          payment_date: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_project_current_terms: {
         Row: {
           amount: number | null
@@ -4052,6 +4378,64 @@ export type Database = {
           unscheduled_amount: number | null
         }
         Relationships: []
+      }
+      finance_schedule_history: {
+        Row: {
+          amount: number | null
+          basis: string | null
+          category_id: string | null
+          certainty: string | null
+          commitment: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          effective_from: string | null
+          effective_through: string | null
+          employee_deductions: number | null
+          employee_payout: number | null
+          employer_cost: number | null
+          employer_cost_status: string | null
+          id: string | null
+          interval_months: number | null
+          name: string | null
+          payment_month_offset: number | null
+          payout_day: number | null
+          reason: string | null
+          revision: number | null
+          schedule_id: string | null
+          studio_id: string | null
+          valid_through: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_schedule_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_studio_id_schedule_id_fkey"
+            columns: ["studio_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedules"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -4230,6 +4614,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_finance_employee_bonus: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       create_office_assignment: {
         Args: {
           p_deadline?: string
@@ -4290,6 +4678,16 @@ export type Database = {
       generate_equipment_maintenance_notifications: {
         Args: { p_today?: string }
         Returns: number
+      }
+      generate_finance_obligations: {
+        Args: {
+          p_from: string
+          p_request_id: string
+          p_schedule_id: string
+          p_studio_id: string
+          p_through: string
+        }
+        Returns: string
       }
       generate_finance_supervision_months: {
         Args: {
@@ -4493,6 +4891,10 @@ export type Database = {
         }
         Returns: string
       }
+      save_finance_schedule: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       save_finance_settings: {
         Args: {
           p_base_currency: string
@@ -4556,6 +4958,15 @@ export type Database = {
           p_notes?: string
           p_service_provider?: string
           p_started_on: string
+        }
+        Returns: string
+      }
+      stop_finance_schedule: {
+        Args: {
+          p_from: string
+          p_request_id: string
+          p_schedule_id: string
+          p_studio_id: string
         }
         Returns: string
       }

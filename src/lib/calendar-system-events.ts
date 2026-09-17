@@ -1,5 +1,4 @@
 import type { CalendarItem } from "@/types/calendar";
-import { parseDateOnly, toDateOnly } from "@/lib/calendar";
 
 export type CalendarSystemEventMember = {
   membershipId: string;
@@ -36,34 +35,7 @@ function rangeYears(start: string, end: string): number[] {
   return Array.from({ length: last - first + 1 }, (_, index) => first + index);
 }
 
-/**
- * Creates a monthly date from a source date. Dates that do not exist in a
- * target month are observed on that month's last calendar day.
- */
-export function monthlyCalendarDate(sourceDate: string, year: number, month: number): string | null {
-  const match = /^(?:\d{4})-(\d{2})-(\d{2})$/.exec(sourceDate);
-  if (!match || month < 1 || month > 12) return null;
-  const sourceDay = Number(match[2]);
-  const monthStart = parseDateOnly(`${year}-${String(month).padStart(2, "0")}-01`);
-  const nextMonth = new Date(monthStart);
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  nextMonth.setDate(0);
-  monthStart.setDate(Math.min(sourceDay, nextMonth.getDate()));
-  return toDateOnly(monthStart);
-}
-
-function rangeMonths(start: string, end: string): Array<{ year: number; month: number }> {
-  const cursor = parseDateOnly(`${start.slice(0, 7)}-01`);
-  const lastMonth = end.slice(0, 7);
-  const months: Array<{ year: number; month: number }> = [];
-  while (toDateOnly(cursor).slice(0, 7) <= lastMonth) {
-    months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-  return months;
-}
-
-export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], start: string, end: string, { excludeSalaryPaymentsForUserId, includeSalaryPayments = false }: { excludeSalaryPaymentsForUserId?: string; includeSalaryPayments?: boolean } = {}): CalendarItem[] {
+export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], start: string, end: string): CalendarItem[] {
   const items: CalendarItem[] = [];
   for (const member of members) {
     for (const year of rangeYears(start, end)) {
@@ -78,14 +50,16 @@ export function buildCalendarSystemEvents(members: CalendarSystemEventMember[], 
         items.push({ source: "team_anniversary", key: `anniversary:${member.membershipId}:${year}`, id: `anniversary:${member.membershipId}:${year}`, title: member.fullName, startDate: anniversary, endDate: anniversary, allDay: true, projectId: null, personIds: [member.userId], member: { userId: member.userId, fullName: member.fullName, avatarUrl: member.avatarUrl }, anniversaryYears });
       }
     }
-    const joinedDate = member.joinedAt?.slice(0, 10);
-    if (!includeSalaryPayments || !joinedDate || member.userId === excludeSalaryPaymentsForUserId) continue;
-    for (const { year, month } of rangeMonths(start, end)) {
-      const paymentDate = monthlyCalendarDate(joinedDate, year, month);
-      if (!paymentDate || paymentDate <= joinedDate || paymentDate < start || paymentDate > end) continue;
-      const monthKey = `${year}-${String(month).padStart(2, "0")}`;
-      items.push({ source: "salary_payment", key: `salary-payment:${member.membershipId}:${monthKey}`, id: `salary-payment:${member.membershipId}:${monthKey}`, title: member.fullName, startDate: paymentDate, endDate: paymentDate, allDay: true, projectId: null, personIds: [member.userId], member: { userId: member.userId, fullName: member.fullName, avatarUrl: member.avatarUrl } });
-    }
   }
   return items;
+}
+
+/** Salary reminders project created Finance obligations; they never imply payment. */
+export function normalizePayrollCalendar(rows: import("@/types/database.types").Database["public"]["Views"]["finance_payroll_calendar"]["Row"][]): CalendarItem[] {
+  return rows.flatMap((row): CalendarItem[] => {
+    if (!row.expected_item_id || !row.employee_id || !row.employee_name || !row.payment_date) return [];
+    return [{ source: "salary_payment", key: `salary-payment:${row.expected_item_id}`, id: row.expected_item_id,
+      title: row.employee_name, startDate: row.payment_date, endDate: row.payment_date, allDay: true,
+      projectId: null, personIds: [row.employee_id], member: { userId: row.employee_id, fullName: row.employee_name, avatarUrl: null } }];
+  });
 }

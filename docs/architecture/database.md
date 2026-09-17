@@ -135,3 +135,12 @@ identity/state needed for incremental synchronization and points only to canonic
 models. The service-only `equipment_catalog_sync_state` coordinates idempotent imports; deletion
 from either catalog table is not granted even to the worker. See
 [Equipment catalog](equipment-catalog.md).
+
+## Finance compensation and recurring schedules
+
+`finance_schedules` and immutable `finance_schedule_terms` own effective-dated
+payroll and recurring outgoing rules. `finance_obligations` provides stable
+employee/service-period identities and `finance_obligation_items` maps components
+to existing expected items. All use strict Finance admin RLS and guarded RPCs.
+Caller-context `finance_payroll_calendar` is amount-free; lifecycle triggers stop
+generation without deleting history. See [Finance](finance.md) for invariants.

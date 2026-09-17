@@ -49,7 +49,8 @@ import {
   updateEquipmentMaintenance,
   updateWorkstation,
 } from "@/app/(app)/office/equipment/actions";
-import { BinarySwitch, EquipmentFormFields } from "@/components/office/equipment-form";
+import { EquipmentFormFields } from "@/components/office/equipment-form";
+import { BinarySwitch } from "@/components/ui/binary-switch";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";

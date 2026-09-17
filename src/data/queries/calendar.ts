@@ -5,7 +5,7 @@ import { getCalendarTasks } from "./calendar-tasks";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
 import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
-import { buildCalendarSystemEvents } from "@/lib/calendar-system-events";
+import { buildCalendarSystemEvents, normalizePayrollCalendar } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
 import { CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS } from "@/lib/crm";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +84,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     .eq("is_active", true)
     .eq("profile.is_active", true);
 
+  const payrollPromise = isAdmin
+    ? supabase.from("finance_payroll_calendar").select("*").eq("studio_id", membership.studio_id).gte("payment_date", start).lte("payment_date", end)
+    : Promise.resolve({ data: [], error: null });
+
   const studioDaysOffPromise = supabase
     .from("studio_days_off")
     .select("id, date, name, note")
@@ -100,7 +104,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   const ownApprovedDayOffsPromise = supabase.from("time_off_requests").select("id, start_date, end_date, start_time, end_time, all_day").eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId).eq("request_type", "day_off").eq("status", "approved");
   const calendarPreferencePromise = supabase.auth.getUser();
 
-  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, leadFollowUpsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult] = await Promise.all([
+  const [projectsResult, projectDeadlinesResult, taskDeadlinesResult, eventsResult, leadFollowUpsResult, timeOffResult, peopleResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult, payrollResult] = await Promise.all([
     projectsPromise,
     projectDeadlinesPromise,
     taskDeadlinesPromise,
@@ -113,9 +117,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     coworkerPromise,
     ownApprovedDayOffsPromise,
     calendarPreferencePromise,
+    payrollPromise,
   ]);
 
-  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, leadFollowUpsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error].filter(Boolean);
+  const errors = [projectsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, leadFollowUpsResult.error, timeOffResult.error, peopleResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error, payrollResult.error].filter(Boolean);
   if (errors.length > 0) {
     console.error("Unable to load Calendar data", errors);
     throw new Error("Unable to load Calendar data.");
@@ -155,7 +160,8 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
   items.push(...buildCalendarSystemEvents((systemMembersResult.data ?? []).map((member) => ({
     membershipId: member.id, userId: member.user_id, fullName: member.profile.full_name,
     avatarUrl: member.profile.avatar_url, birthDate: member.profile.birth_date, joinedAt: member.joined_at,
-  })), start, end, { excludeSalaryPaymentsForUserId: membership.authenticatedUserId, includeSalaryPayments: isAdmin }));
+  })), start, end));
+  items.push(...normalizePayrollCalendar(payrollResult.data ?? []));
 
   for (const dayOff of studioDaysOffResult.data ?? []) {
     items.push({ source: "studio_day_off", key: `studio-day-off:${dayOff.id}`, id: dayOff.id, title: dayOff.name, note: dayOff.note, startDate: dayOff.date, endDate: dayOff.date, allDay: true, projectId: null, personIds: [] });

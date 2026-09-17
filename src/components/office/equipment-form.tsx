@@ -5,6 +5,7 @@ import { CircuitBoard, Cpu, Fingerprint, Gpu, HardDrive, MemoryStick, Power, Che
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { BinarySwitch } from "@/components/ui/binary-switch";
 import { EquipmentCatalogCombobox } from "@/components/office/equipment-catalog-combobox";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -55,16 +56,6 @@ function ConfigurationSelect<T extends string>({ label, value, options, onChange
 function Segments<T extends string>({ label, value, options, onChange, optionLabel }: { label: string; value: T | null; options: readonly T[]; onChange: (value: T) => void; optionLabel?: (value: T) => string }) {
   const name = useId();
   return <fieldset className="min-w-0"><legend className="mb-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{label}</legend><div className="inline-flex flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">{options.map((option) => <label key={option} className="relative cursor-pointer"><input className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" type="radio" name={name} value={option} checked={value === option} onChange={() => onChange(option)} /><span className="flex min-h-10 items-center rounded-[var(--ui-radius-control)] px-3 text-sm text-[var(--ui-text-secondary)] peer-checked:bg-[var(--ui-surface)] peer-checked:font-semibold peer-checked:text-[var(--ui-text)] peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ui-focus)]">{optionLabel?.(option) ?? option}</span></label>)}</div></fieldset>;
-}
-
-export function BinarySwitch<T extends string>({ disabled = false, emptyLabel, hideLabel = false, label, value, options, onChange, optionLabel }: { disabled?: boolean; emptyLabel: string; hideLabel?: boolean; label: string; value: T | null; options: readonly [T, T]; onChange: (value: T) => void; optionLabel?: (value: T) => string }) {
-  const selectedIndex = value === options[0] ? 0 : value === options[1] ? 1 : -1;
-  const labels = options.map((option) => optionLabel?.(option) ?? option);
-  return <fieldset className="min-w-0">{!hideLabel && <legend className="mb-1.5 text-sm font-medium text-[var(--ui-text-secondary)]">{label}</legend>}<button type="button" role="switch" aria-checked={selectedIndex === 1} aria-label={`${label}: ${selectedIndex < 0 ? emptyLabel : labels[selectedIndex]}`} disabled={disabled} data-binary-switch-state={selectedIndex < 0 ? "unset" : selectedIndex === 0 ? "left" : "right"} onClick={() => onChange(selectedIndex === 0 ? options[1] : options[0])} className="inline-flex min-h-11 max-w-full cursor-pointer items-center gap-2 rounded-full px-1 text-sm font-medium transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-60">
-    <span data-binary-switch-label="left" aria-hidden="true" className={cn("min-w-0 text-right transition-colors duration-200", selectedIndex === 0 ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]")}>{labels[0]}</span>
-    <span aria-hidden="true" className="relative h-6 w-[3.25rem] shrink-0 rounded-full bg-[var(--ui-surface-strong)] shadow-inner"><span data-binary-switch-thumb className={cn("absolute left-1 top-1 size-4 rounded-full bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)] transition-[transform,opacity] duration-[220ms] ease-out", selectedIndex < 0 && "opacity-50")} style={{ transform: `translateX(${selectedIndex === 1 ? "1.75rem" : selectedIndex < 0 ? "0.875rem" : "0"})` }} /></span>
-    <span data-binary-switch-label="right" aria-hidden="true" className={cn("min-w-0 text-left transition-colors duration-200", selectedIndex === 1 ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]")}>{labels[1]}</span>
-  </button></fieldset>;
 }
 
 function CapacityInput({ label, value, onChange, onBlur, max = 1_000_000, integer = false }: { label: string; value: number | null; onChange: (value: number | null) => void; onBlur?: () => void; max?: number; integer?: boolean }) {

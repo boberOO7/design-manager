@@ -276,6 +276,13 @@ Canonical paths: `src/app/(app)/office/equipment/`,
 Equipment application/RLS tests. See [Equipment reference catalog](equipment-catalog.md)
 for local search boundaries, category mapping, historical retention and sync operations.
 
+## Payroll lifecycle
+
+Finance owns compensation privately. Member removal and profile deactivation stop
+future payroll generation from the next service month; existing and earned
+obligations remain. Restoring access does not restart compensation. See
+[Finance](finance.md) for explicit schedule renewal and settlement.
+
 ## Notifications
 
 Notifications are persistent, recipient-private, database-generated operational

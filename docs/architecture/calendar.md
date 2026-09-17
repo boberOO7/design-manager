@@ -17,9 +17,13 @@ events retain their own canonical sources.
 | Private time-off request | `time_off_requests` | Requester and active administrators |
 | Coworker availability | Privacy-safe RPC projection | Approved intervals and generic label only |
 | Birthday/anniversary | Profile and studio membership dates | Active studio membership rules |
-| Salary payment | Team membership dates, admin view | Administrator operational action |
+| Payroll reminder | Finance payroll/bonus expected obligations | Admin-only, amount-free reminder; includes own configured pay |
 | Studio day off | `studio_days_off` | Active studio members |
 | CRM Lead follow-up | `crm_leads.next_contact_at` | Administrator-only; “mine” uses responsible administrator |
+
+Salary reminders project created Finance obligations through `finance_payroll_calendar`;
+joined-at dates never generate pay schedules. Changing expected payment timing
+updates the reminder without changing its source identity or implying payment.
 
 Views are Month, Week, and Agenda. Task deadlines are hidden by default in dense
 views. Timed values are absolute `timestamptz` displayed in `Europe/Kyiv`;

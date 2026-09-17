@@ -42,8 +42,8 @@ function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending
   const locale = useLocale();
   const active = data.accounts.filter((account) => !account.archived_at && (!expected || account.currency===expected.currency));
   const originalAccount = refund?.entries.find((entry) => entry.entry_role === "primary")?.account_id;
-  const [kind, setKind] = useState(refund ? "refund" : transfer ? "transfer" : expected?.direction??"incoming");
   const expectedCategory=data.categories.find((category)=>category.id===expected?.category_id);
+  const [kind, setKind] = useState(refund ? "refund" : transfer ? "transfer" : expectedCategory?.nature === "owner_distribution" ? "owner_withdrawal" : expected?.direction??"incoming");
   const allowedCategories=expected?data.categories.filter((category)=>category.nature===expectedCategory?.nature):data.categories;
   const [categoryId,setCategoryId]=useState(expectedCategory&&!expectedCategory.archived_at?expectedCategory.id:"");
   const [accountId, setAccountId] = useState(originalAccount ?? active[0]?.id ?? "");

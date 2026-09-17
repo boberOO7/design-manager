@@ -158,10 +158,10 @@ describe("admin-only salary payment reminders", () => {
     expect(source).toContain('salaryPayments: initialData.isAdmin && param("payments") !== "0"');
     expect(source).toContain('if (data.isAdmin) checks.push(["salaryPayments", t("salaryPayments")])');
     expect(source).toContain('candidate.source === "calendar_event"');
-    expect(en.Calendar.salaryPayments).toBe("Payments");
-    expect(uk.Calendar.salaryPayments).toBe("Виплати");
-    expect(en.Calendar.salaryPaymentEvent).toBe("Payment · {name}");
-    expect(uk.Calendar.salaryPaymentEvent).toBe("Виплата · {name}");
+    expect(en.Calendar.salaryPayments).toBe("Payroll reminders");
+    expect(uk.Calendar.salaryPayments).toBe("Нагадування про виплати");
+    expect(en.Calendar.salaryPaymentEvent).toBe("Payroll reminder · {name}");
+    expect(uk.Calendar.salaryPaymentEvent).toBe("Нагадування про виплату · {name}");
     expect(en.Calendar.birthdayEvent).toBe("Birthday · {name}");
     expect(uk.Calendar.birthdayEvent).toBe("День народження · {name}");
     expect(en.Calendar.teamAnniversaryEvent).toBe("Team anniversary · {name}");

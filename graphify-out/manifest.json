@@ -220,9 +220,9 @@
     "semantic_hash": ""
   },
   "src/app/(app)/team/actions.ts": {
-    "mtime": 1789048687.2696087,
-    "ast_hash": "a362eed4f6aed2e345dc2f03b7fff7ca",
-    "semantic_hash": "a362eed4f6aed2e345dc2f03b7fff7ca"
+    "mtime": 1789654613.7179282,
+    "ast_hash": "fe6786b3e37f1716cc78f96757e82c1e",
+    "semantic_hash": ""
   },
   "src/app/(app)/team/page.tsx": {
     "mtime": 1787854575.870985,
@@ -570,8 +570,8 @@
     "semantic_hash": "ab83dc0bb5797b7bed8f221e02c20855"
   },
   "src/data/queries/calendar.ts": {
-    "mtime": 1789471622.6863482,
-    "ast_hash": "bea106a2574d9f30ecf1be91f09383ee",
+    "mtime": 1789654613.7179282,
+    "ast_hash": "05d6541b62c23bde158ecb1150790ef9",
     "semantic_hash": ""
   },
   "src/data/queries/dashboard.ts": {
@@ -910,9 +910,9 @@
     "semantic_hash": "e313916f1ad1d6e68d12f367e7cebe3b"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789652618.7555163,
-    "ast_hash": "6ed9b0fdc6be2e5c8e1d640449b7e49a",
-    "semantic_hash": "6ed9b0fdc6be2e5c8e1d640449b7e49a"
+    "mtime": 1789655797.0443397,
+    "ast_hash": "2465f58157c53f47ddcc2b3a8c20601a",
+    "semantic_hash": ""
   },
   "src/types/index.ts": {
     "mtime": 1789345810.1280808,
@@ -1485,14 +1485,14 @@
     "semantic_hash": "473291438ca18589ee7598ee454c5669"
   },
   "messages/en.json": {
-    "mtime": 1789652563.0381627,
-    "ast_hash": "586bb802d12ee9e0069bf2517e64f00b",
-    "semantic_hash": "586bb802d12ee9e0069bf2517e64f00b"
+    "mtime": 1789662155.9767928,
+    "ast_hash": "64498c50ea77dc48e75416ba9797c12e",
+    "semantic_hash": ""
   },
   "messages/uk.json": {
-    "mtime": 1789652563.2101696,
-    "ast_hash": "ddf6e2080fcfc7ef1938b7e5f8f46cb8",
-    "semantic_hash": "ddf6e2080fcfc7ef1938b7e5f8f46cb8"
+    "mtime": 1789662156.168802,
+    "ast_hash": "7f536f5c261e96d12967b7f01efbb60b",
+    "semantic_hash": ""
   },
   "src/components/layout/language-selector.tsx": {
     "mtime": 1785753322.173698,
@@ -1530,8 +1530,8 @@
     "semantic_hash": "54b72cfcf913f026bf2fa2e5b476f473"
   },
   "src/components/calendar/calendar-workspace.localization.test.ts": {
-    "mtime": 1789428787.4336643,
-    "ast_hash": "7ac5797df8eb13edff714fe2f0046914",
+    "mtime": 1789655163.731016,
+    "ast_hash": "a3edbe0cacb7e3766eb0492767156855",
     "semantic_hash": ""
   },
   "src/lib/professional-roles.test.ts": {
@@ -3340,14 +3340,14 @@
     "semantic_hash": ""
   },
   "src/lib/calendar-system-events.test.ts": {
-    "mtime": 1787917223.7720246,
-    "ast_hash": "fd58b8f53fd9113f5b4ac07b26b3d920",
-    "semantic_hash": "fd58b8f53fd9113f5b4ac07b26b3d920"
+    "mtime": 1789655017.5077019,
+    "ast_hash": "4e07dcc054efcf935df696d414e7e208",
+    "semantic_hash": ""
   },
   "src/lib/calendar-system-events.ts": {
-    "mtime": 1787917223.4560132,
-    "ast_hash": "40319832befefbde86eb64a963ef06fa",
-    "semantic_hash": "40319832befefbde86eb64a963ef06fa"
+    "mtime": 1789654613.7179282,
+    "ast_hash": "d378c653705bb0b842c5e6f0eeb1aaa5",
+    "semantic_hash": ""
   },
   "src/components/ui/time-picker.test.ts": {
     "mtime": 1787913040.1164396,
@@ -4070,14 +4070,14 @@
     "semantic_hash": ""
   },
   "docs/architecture/calendar.md": {
-    "mtime": 1789472101.7843933,
-    "ast_hash": "62d1c5e14a335e50f4326eefff91ef55",
-    "semantic_hash": ""
+    "mtime": 1789655424.514757,
+    "ast_hash": "dbc739cbf9ca7d7d9c53effa5cf4a0d4",
+    "semantic_hash": "dbc739cbf9ca7d7d9c53effa5cf4a0d4"
   },
   "docs/architecture/database.md": {
-    "mtime": 1789652728.8639264,
-    "ast_hash": "1b8bde3de9431503faead1c68b7da684",
-    "semantic_hash": "1b8bde3de9431503faead1c68b7da684"
+    "mtime": 1789655424.514757,
+    "ast_hash": "df5c03746a7892356066b861a71467d3",
+    "semantic_hash": "df5c03746a7892356066b861a71467d3"
   },
   "docs/architecture/overview.md": {
     "mtime": 1789647156.4683454,
@@ -4085,9 +4085,9 @@
     "semantic_hash": "5750b59a6608d43c76b82de26a6e32ff"
   },
   "docs/architecture/permissions.md": {
-    "mtime": 1789647085.6806417,
-    "ast_hash": "6b2f9dfecc9600ba75ea360e5d55f21d",
-    "semantic_hash": "6b2f9dfecc9600ba75ea360e5d55f21d"
+    "mtime": 1789655424.514757,
+    "ast_hash": "8e5d56cab7c5efc09a739aa2a5b91a73",
+    "semantic_hash": "8e5d56cab7c5efc09a739aa2a5b91a73"
   },
   "docs/architecture/productivity.md": {
     "mtime": 1788811093.7060354,
@@ -4100,9 +4100,9 @@
     "semantic_hash": "f9540a222ae4b5915e49b8b2c218580f"
   },
   "docs/architecture/studio-operations.md": {
-    "mtime": 1789647086.0366676,
-    "ast_hash": "460682b5b6bc9c4ddd4335307dd28788",
-    "semantic_hash": "460682b5b6bc9c4ddd4335307dd28788"
+    "mtime": 1789655424.514757,
+    "ast_hash": "2fafaa2fa40f39af653bd6ae53e818c3",
+    "semantic_hash": "2fafaa2fa40f39af653bd6ae53e818c3"
   },
   "docs/architecture/tasks.md": {
     "mtime": 1789503844.8037891,
@@ -4590,13 +4590,13 @@
     "semantic_hash": "746b66f7c7285b0973782d20d4d0a73d"
   },
   "src/components/office/equipment-workspace.test.ts": {
-    "mtime": 1789398595.4856427,
-    "ast_hash": "944cc14140de834718f30c9f9e117563",
+    "mtime": 1789659335.2622604,
+    "ast_hash": "b9aa4a7676b5d4d1ebb2d901b4c8103e",
     "semantic_hash": ""
   },
   "src/components/office/equipment-workspace.tsx": {
-    "mtime": 1789479249.6958704,
-    "ast_hash": "ca52a3220f162c5ae17c27f85d9f05b9",
+    "mtime": 1789659334.8342438,
+    "ast_hash": "43668afdbd2f1b6c2f5d7d518a723777",
     "semantic_hash": ""
   },
   "src/data/queries/equipment.ts": {
@@ -4660,8 +4660,8 @@
     "semantic_hash": "ed7cc8c7cbbb73feafc88a088d1f2173"
   },
   "src/components/office/equipment-form.tsx": {
-    "mtime": 1789398595.3056352,
-    "ast_hash": "1ccc418ddaed5f0011e676cbbb91fca8",
+    "mtime": 1789659334.610235,
+    "ast_hash": "e72fd4065ddca813b91938b3d59f20bf",
     "semantic_hash": ""
   },
   "src/lib/pc-configuration.test.ts": {
@@ -5305,9 +5305,9 @@
     "semantic_hash": ""
   },
   "src/data/queries/finance.ts": {
-    "mtime": 1789652483.4476776,
-    "ast_hash": "9af89fd5b95ce3e18dbae3342103202e",
-    "semantic_hash": "9af89fd5b95ce3e18dbae3342103202e"
+    "mtime": 1789655062.9445148,
+    "ast_hash": "88b66a4b35ea53e590edf65c8966b225",
+    "semantic_hash": ""
   },
   "src/lib/finance-foundation-migration.test.ts": {
     "mtime": 1789589399.9571319,
@@ -5335,14 +5335,14 @@
     "semantic_hash": ""
   },
   "tests/e2e/finance-foundation.spec.ts": {
-    "mtime": 1789652889.3137898,
-    "ast_hash": "7f5d8e256259b4ee43d67508ac225f3a",
-    "semantic_hash": "7f5d8e256259b4ee43d67508ac225f3a"
+    "mtime": 1789652999.3403242,
+    "ast_hash": "0b08ed3b56549e2daf47ae1380f1491d",
+    "semantic_hash": ""
   },
   "docs/architecture/finance.md": {
-    "mtime": 1789652728.6959198,
-    "ast_hash": "fd008d9cb15834fa646f520177cc2e50",
-    "semantic_hash": "fd008d9cb15834fa646f520177cc2e50"
+    "mtime": 1789655504.2452488,
+    "ast_hash": "4305a5ee295e93af8d1e2b47599f289e",
+    "semantic_hash": "4305a5ee295e93af8d1e2b47599f289e"
   },
   "src/components/finance/currency-select.test.ts": {
     "mtime": 1789596434.4473414,
@@ -5370,14 +5370,14 @@
     "semantic_hash": "4c41ada89a0d1bf863830e43225398f5"
   },
   "src/components/finance/finance-navigation.tsx": {
-    "mtime": 1789602551.3399806,
-    "ast_hash": "1fd75c93c1f1e03d4c8259cca7d16e66",
+    "mtime": 1789654613.7179282,
+    "ast_hash": "d700aa6fa2581257dda312e4458eb6b1",
     "semantic_hash": ""
   },
   "src/components/finance/movements-workspace.tsx": {
-    "mtime": 1789652539.2931936,
-    "ast_hash": "b96c2f9e1beea32d5fdcf6a0da2a16f0",
-    "semantic_hash": "b96c2f9e1beea32d5fdcf6a0da2a16f0"
+    "mtime": 1789654613.7179282,
+    "ast_hash": "45658cef417b7bf51ccfd99117fb8a71",
+    "semantic_hash": ""
   },
   "src/lib/finance-fx.test.ts": {
     "mtime": 1789598092.3348644,
@@ -5400,9 +5400,9 @@
     "semantic_hash": "a355447d34785756dcd2ad56a8a0b65d"
   },
   "src/lib/finance-movements.ts": {
-    "mtime": 1789652482.8396559,
-    "ast_hash": "e678e53e10fa1bede1d36e456d2655d9",
-    "semantic_hash": "e678e53e10fa1bede1d36e456d2655d9"
+    "mtime": 1789654613.7179282,
+    "ast_hash": "85693980c54b6b415272ed169919147b",
+    "semantic_hash": ""
   },
   "supabase/migrations/20260916221929_finance_actual_movements.sql": {
     "mtime": 1789597518.8970575,
@@ -5425,9 +5425,9 @@
     "semantic_hash": "9ed79023268081f2498cd57eb0f58e11"
   },
   "src/app/(app)/finance/expected/actions.ts": {
-    "mtime": 1789646002.077356,
-    "ast_hash": "6203e4012a8808beb71f42a572a4759a",
-    "semantic_hash": "6203e4012a8808beb71f42a572a4759a"
+    "mtime": 1789655062.9445148,
+    "ast_hash": "62beb8ec463504007b0c09494b4df296",
+    "semantic_hash": ""
   },
   "src/app/(app)/finance/expected/page.tsx": {
     "mtime": 1789602550.5242589,
@@ -5445,9 +5445,9 @@
     "semantic_hash": "44dda5d578958bc87a41a4a2dc1c2ceb"
   },
   "src/components/finance/expected-workspace.tsx": {
-    "mtime": 1789652539.077185,
-    "ast_hash": "be273fce1a57d02a7d7cd499c6f0d90d",
-    "semantic_hash": "be273fce1a57d02a7d7cd499c6f0d90d"
+    "mtime": 1789659835.4397864,
+    "ast_hash": "66a3e04c475f45f18b6a60b748983312",
+    "semantic_hash": ""
   },
   "src/components/finance/finance-action-form.tsx": {
     "mtime": 1789602318.3921268,
@@ -5490,9 +5490,9 @@
     "semantic_hash": "b0bd3bad30604312a7f95c41841a49d9"
   },
   "src/components/finance/project-finance-workspace.tsx": {
-    "mtime": 1789646961.1534047,
-    "ast_hash": "b52a5602128fdf217301550b740122fb",
-    "semantic_hash": "b52a5602128fdf217301550b740122fb"
+    "mtime": 1789647478.4372084,
+    "ast_hash": "cae75d8daf4081d22b3bffbc7b93f105",
+    "semantic_hash": ""
   },
   "src/lib/finance-projects.test.ts": {
     "mtime": 1789646660.2897708,
@@ -5523,5 +5523,60 @@
     "mtime": 1789652482.67165,
     "ast_hash": "2aade494b9a66ae4bdd31ce9bd53bb4b",
     "semantic_hash": "2aade494b9a66ae4bdd31ce9bd53bb4b"
+  },
+  "src/app/(app)/finance/schedules/actions.ts": {
+    "mtime": 1789662141.5081038,
+    "ast_hash": "5a66f935f0ec2461304d542aee524574",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/finance/schedules/page.tsx": {
+    "mtime": 1789654613.7019277,
+    "ast_hash": "bc77d11404b8ed5c482a2bba7c341216",
+    "semantic_hash": ""
+  },
+  "src/components/finance/schedules-workspace.tsx": {
+    "mtime": 1789662141.1360865,
+    "ast_hash": "959dd89209009698e28cb2f46464e9af",
+    "semantic_hash": ""
+  },
+  "src/data/queries/calendar-payroll.test.ts": {
+    "mtime": 1789655164.9550638,
+    "ast_hash": "73dcc3d84d8da55e520cb06d595f4f17",
+    "semantic_hash": ""
+  },
+  "src/lib/finance-schedules.test.ts": {
+    "mtime": 1789662195.0447774,
+    "ast_hash": "128dfc7be99081d9a32e73169f363662",
+    "semantic_hash": ""
+  },
+  "src/lib/finance-schedules.ts": {
+    "mtime": 1789662141.3240952,
+    "ast_hash": "c53b60cbf1da67ae7b82b41a38f34eb3",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260917141123_finance_compensation_recurring.sql": {
+    "mtime": 1789654485.062416,
+    "ast_hash": "5eaf4596d7375802392c3e632deb64bf",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql": {
+    "mtime": 1789655341.9580343,
+    "ast_hash": "36eb08a018d07926a1a01282efa88f3d",
+    "semantic_hash": ""
+  },
+  "supabase/tests/finance_schedules_rls.test.sql": {
+    "mtime": 1789655574.3143122,
+    "ast_hash": "a88ef01e33d37187a4ad080bb258ffa7",
+    "semantic_hash": ""
+  },
+  "tests/e2e/finance-schedules.spec.ts": {
+    "mtime": 1789662218.6640205,
+    "ast_hash": "114147c3d111b786db4bd6860121b543",
+    "semantic_hash": ""
+  },
+  "src/components/ui/binary-switch.tsx": {
+    "mtime": 1789659334.3422246,
+    "ast_hash": "170348a8550ebaa20f71527f16fa6a3c",
+    "semantic_hash": ""
   }
 }
