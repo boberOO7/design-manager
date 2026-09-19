@@ -215,8 +215,11 @@ or notifications containing private data.
   employee's monthly payroll or a recurring studio obligation; immutable
   `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
   month starts and optional inclusive ends are month ends. Later revisions must
-  start in a future month after all created service periods. History derives
-  valid-through from the next revision, submitted end and permanent stop boundary.
+  start in a future month and cannot split an existing multi-month service period.
+  The first payroll form suggests the employee's current Team start month when
+  available; the saved term is independent and later Team edits do not change it.
+  History derives valid-through from the next revision, submitted end and permanent
+  stop boundary.
 - Payroll keeps agreed compensation (net/gross), employee payout, optional
   employee deductions/remittances and additional employer cost separate. Admins
   supply amounts; PostgreSQL validates exact currency precision and agreement
@@ -228,14 +231,18 @@ or notifications containing private data.
   immutable nature keeps owner distributions non-operating. Each interval starts
   from the revision's effective month. Paydays clamp to month-end; a payment may
   fall in the period's start month or the next month.
-- An explicit admin action generates up to 12 service months per batch.
+- Saving a rule maintains expected occurrences from the current planning boundary
+  through the twelve-month horizon. Finance planning, Forecast and administrator
+  Calendar reads reconcile the requested supported horizon before reading it.
   `finance_obligations` is permanent employee/service-period/source context, and
   `finance_obligation_items` links its components to ordinary expected items.
   Schedule/month and employee/payroll-month uniqueness prevent duplicates across
   retries, revisions and cancellations. No new cash or settlement store exists.
   Each component supports the existing partial allocation, correction and reversal
   flow. Expected items initially have `is_established=false`; admins explicitly
-  confirm earned obligations. Generation does not mean earning or payment.
+  confirm earned obligations. Maintenance does not mean earning or payment. The
+  guarded generation RPC remains available for exceptional historical backfill,
+  but is not exposed in the normal schedule workflow.
 - Payroll payout, remittance and bonus amounts and contractual dates are protected
   even through the global editor. Expected timing, description, cancellation and
   earned status remain editable. Studio and employer-cost estimates can be
@@ -243,11 +250,11 @@ or notifications containing private data.
   Generated components show their employee and service period in Expected items.
 - Team removal and profile deactivation permanently stop the old payroll schedule
   from the next service month, atomically with deactivation. Past ungenerated
-  months can still be generated; created obligations (including future plans) and
-  settlement history survive. Administrators review/cancel future plans explicitly.
+  months can still be backfilled; created obligations and settlement history survive.
+  Untouched future projections are cancelled from the stop boundary.
   Restoration never restarts pay; a new schedule must begin after the prior stop
-  and any already-created payroll periods. Membership-first locks coordinate
-  payroll generation with Team removal, followed by the existing Finance lock.
+  and can reuse system-cancelled employee/month identities. Membership-first locks
+  coordinate payroll generation with Team removal, followed by the existing Finance lock.
 - Rates apply to whole months, with no automatic proration for joining/leaving or
   partial recurring intervals. Admins must explicitly reconcile partial-period
   obligations before marking them earned. A one-off employee bonus is a separate
@@ -291,6 +298,12 @@ recurrence generation job or tax engine is implied.
   Confirmed includes `agreed`, including estimated amounts; Including planned
   adds `tentative`. Certainty, commitment and earned/established status remain
   independent. Owner distributions remain non-operating.
+- Forecast data loading first asks the guarded schedule reconciler to cover the
+  selected 3/6/year-end/12-month horizon. It creates or updates stable expected
+  occurrences, then `calculate_finance_forecast` reads those items only. Rule rows
+  remain diagnostics and never contribute a second amount. Repeated reconciliation
+  is duplicate-safe; future revisions update only unearned, unallocated projections,
+  while past, established, partial, settled and manually cancelled items remain intact.
 - Expected payment date takes priority over contractual due date; due date is
   the fallback only when expected timing is absent. Past outgoing dates roll
   forward to today as immediate exposure, including overdue obligations without
@@ -320,8 +333,9 @@ recurrence generation job or tax engine is implied.
   even if the known payout was settled. Missing schedule periods are coverage
   diagnostics only, starting one service month before the current month to catch
   next-month payroll. Missing supervision months and unscheduled contract value
-  are also flagged. Diagnostics never materialize cash; administrators generate
-  stable occurrences in Schedules/Project Finance. Totals with unresolved issues
+  are also flagged. Schedule coverage is normally repaired before calculation;
+  any remaining diagnostic signals an exceptional recovery case. Supervision remains
+  explicitly generated in Project Finance. Totals with unresolved issues
   are labelled known subtotals, not complete forecasts. No future sales are invented.
 - `finance_forecast_snapshots` saves immutable versioned expectations, original
   dates/classification/source IDs, remaining category/month totals, FX assumptions,
@@ -362,6 +376,7 @@ and generation workflow must retain these timing and historical boundaries.
 
 - `supabase/migrations/20260917141123_finance_compensation_recurring.sql`
 - `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`
+- `supabase/migrations/20260917182151_finance_automatic_schedule_occurrences.sql`
 - `src/lib/finance-schedules.ts`, `src/components/finance/schedules-workspace.tsx`
 - `supabase/tests/finance_schedules_rls.test.sql`, `tests/e2e/finance-schedules.spec.ts`
 

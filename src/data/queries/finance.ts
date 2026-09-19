@@ -60,6 +60,8 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
+  const coverage=await client.rpc("ensure_finance_schedule_occurrences",{p_studio_id:admin.studio_id,p_horizon:"12"});
+  if(coverage.error) throw new Error("Unable to maintain Finance schedule coverage.",{ cause:coverage.error });
   let query=projectId
     ? client.from("finance_project_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream",stream)
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
@@ -107,10 +109,12 @@ export async function getFinanceSchedules() {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
+  const coverage = await client.rpc("ensure_finance_schedule_occurrences", { p_studio_id: admin.studio_id, p_horizon: "12" });
+  if (coverage.error) throw new Error("Unable to maintain Finance schedule coverage.", { cause: coverage.error });
   const [schedules, terms, members] = await Promise.all([
     client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
     client.from("finance_schedule_history").select("*").eq("studio_id", admin.studio_id).order("revision", { ascending: false }),
-    client.from("studio_members").select("user_id,is_active,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
+    client.from("studio_members").select("user_id,is_active,joined_at,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
   ]);
   const error = schedules.error ?? terms.error ?? members.error;
   if (error) throw new Error("Unable to load Finance schedules.", { cause: error });

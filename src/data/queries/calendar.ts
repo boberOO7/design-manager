@@ -21,6 +21,10 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   const supabase = await createClient();
   const isAdmin = membership.system_role === "admin";
+  if (isAdmin) {
+    const coverage = await supabase.rpc("ensure_finance_schedule_occurrences", { p_studio_id: membership.studio_id, p_horizon: "12" });
+    if (coverage.error) throw new Error("Unable to maintain payroll Calendar coverage.", { cause: coverage.error });
+  }
   const rangeStartInstant = zonedWallTimeToIso(`${start}T00:00`);
   const rangeEndExclusive = zonedWallTimeToIso(`${addCalendarDays(end, 1)}T00:00`);
 

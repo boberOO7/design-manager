@@ -21,8 +21,10 @@ describe("Finance payroll Calendar boundary",()=>{
       const data=await getCalendarData({start:"2026-09-01",end:"2026-09-30"});
       expect(data?.items.filter((i)=>i.source==="salary_payment")).toHaveLength(role==="admin"?1:0);
       const finance=queries.filter((q)=>q.pathname.includes("finance_"));
-      expect(finance).toHaveLength(role==="admin"?1:0);
-      if(finance[0]) expect(finance[0].searchParams.get("studio_id")).toBe("eq.studio");
+      expect(finance).toHaveLength(role==="admin"?2:0);
+      const payroll=finance.find((q)=>q.pathname.endsWith("/finance_payroll_calendar"));
+      if(payroll) expect(payroll.searchParams.get("studio_id")).toBe("eq.studio");
+      expect(finance.some((q)=>q.pathname.endsWith("/rpc/ensure_finance_schedule_occurrences"))).toBe(role==="admin");
       expect(JSON.stringify(data)).not.toMatch(/employee_payout|employer_cost|amount|settled_amount/);
     });
   }

@@ -1783,18 +1783,21 @@ export type Database = {
         Row: {
           component: string
           expected_item_id: string
+          managed_active: boolean
           obligation_id: string
           studio_id: string
         }
         Insert: {
           component: string
           expected_item_id: string
+          managed_active?: boolean
           obligation_id: string
           studio_id: string
         }
         Update: {
           component?: string
           expected_item_id?: string
+          managed_active?: boolean
           obligation_id?: string
           studio_id?: string
         }
@@ -4840,6 +4843,10 @@ export type Database = {
       delete_project_template: {
         Args: { p_template_id: string }
         Returns: undefined
+      }
+      ensure_finance_schedule_occurrences: {
+        Args: { p_horizon?: string; p_studio_id: string }
+        Returns: number
       }
       finalize_finance_setup: {
         Args: { p_studio_id: string }

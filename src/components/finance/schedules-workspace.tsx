@@ -20,7 +20,7 @@ import { formatDateOnly } from "@/lib/utils";
 type Data = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinanceSchedulesData & { today: string };
 type Schedule = FinanceSchedulesData["schedules"][number];
 type Terms = FinanceSchedulesData["terms"][number];
-type Editor = { intent: "schedule"; kind: "payroll" | "recurring"; schedule?: Schedule } | { intent: "generate"; schedule: Schedule } | { intent: "stop"; schedule: Schedule } | { intent: "bonus" };
+type Editor = { intent: "schedule"; kind: "payroll" | "recurring"; schedule?: Schedule } | { intent: "stop"; schedule: Schedule } | { intent: "bonus" };
 type EmployerCostChoice = "unknown" | "none" | "has";
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 
@@ -63,17 +63,20 @@ function ScheduleForm({ data, editor, onSaved, onPending }: { data: Data; editor
   const [effectiveFromMonth, setEffectiveFromMonth] = useState((schedule ? nextMonth : month).slice(0, 7));
   const [effectiveThroughMonth, setEffectiveThroughMonth] = useState(current?.effective_through?.slice(0, 7) ?? "");
   const salaryCategory = data.categories.find((c) => c.default_key === "salary" && !c.archived_at);
-  const chooseEmployee = <FormField label={t("schedules.employee")}><Select name="employeeId" aria-label={t("schedules.employee")} value={employee} onValueChange={setEmployee} required>
+  const chooseEmployee = <FormField label={t("schedules.employee")}><Select name="employeeId" aria-label={t("schedules.employee")} value={employee} onValueChange={(value) => {
+    setEmployee(value);
+    const joinedAt = data.members.find((member) => member.user_id === value)?.joined_at;
+    if (payroll && !schedule && joinedAt) setEffectiveFromMonth(joinedAt.slice(0, 7));
+  }} required>
     {data.members.filter((m) => editor.intent === "bonus" || (m.is_active && m.profile.is_active)).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.profile.full_name}{!m.is_active ? ` · ${t("schedules.former")}` : ""}</SelectItem>)}
   </Select></FormField>;
   const currencyField = <FormField label={t("currency")}><FinanceCurrencySelect name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency ?? ""} value={currency} onValueChange={setCurrency} /></FormField>;
-  return <FinanceActionForm action={saveFinanceSchedule} label={t(editor.intent === "generate" ? "schedules.generate" : editor.intent === "stop" ? "schedules.stop" : "planning.save")} onSaved={onSaved} onPending={onPending}>
+  return <FinanceActionForm action={saveFinanceSchedule} label={t(editor.intent === "stop" ? "schedules.stop" : "planning.save")} onSaved={onSaved} onPending={onPending}>
     <input type="hidden" name="intent" value={editor.intent} />
-    {editor.intent === "generate" || editor.intent === "stop" ? <>
+    {editor.intent === "stop" ? <>
       <input type="hidden" name="scheduleId" value={editor.schedule.id} />
-      <p className="text-sm text-[var(--ui-text-secondary)]">{t(editor.intent === "generate" ? "schedules.generateHelp" : "schedules.stopHelp")}</p>
-      <DateField name="from" label={t(editor.intent === "stop" ? "schedules.stopFrom" : "schedules.from")} initial={editor.intent === "stop" ? nextMonth : month} required />
-      {editor.intent === "generate" ? <DateField name="through" label={t("schedules.through")} initial={month} required /> : null}
+      <p className="text-sm text-[var(--ui-text-secondary)]">{t("schedules.stopHelp")}</p>
+      <DateField name="from" label={t("schedules.stopFrom")} initial={nextMonth} required />
     </> : editor.intent === "bonus" ? <>
       <p className="text-sm text-[var(--ui-text-secondary)]">{t("schedules.bonusHelp")}</p>
       {chooseEmployee}
@@ -174,13 +177,12 @@ export function FinanceSchedulesWorkspace(data: Data) {
           <div className="flex flex-wrap gap-2">
             {!schedule.stopped_from ? <><Button variant="ghost" onClick={() => setEditor({ intent: "schedule", kind: schedule.kind === "payroll" ? "payroll" : "recurring", schedule })}>{t("schedules.revise")}</Button>
               <Button variant="ghost" onClick={() => setEditor({ intent: "stop", schedule })}>{t("schedules.stop")}</Button></> : null}
-            <Button variant="ghost" onClick={() => setEditor({ intent: "generate", schedule })}>{t("schedules.generate")}</Button>
           </div>
           <details><summary className="cursor-pointer text-sm">{t("schedules.history")}</summary><ul className="mt-3 space-y-4">{history.map((term) => <li key={term.id}>{termSummary(term)}<p className="mt-1 break-words text-xs text-[var(--ui-text-muted)]">{termReason(term.reason)}</p></li>)}</ul></details>
         </article>;
       }) : <p className="p-5 text-sm text-[var(--ui-text-muted)]">{t("schedules.empty")}</p>}
     </section>
-    <Dialog isOpen={editor !== null} closeDisabled={pending} onRequestClose={() => setEditor(null)} title={t(editor?.intent === "bonus" ? "schedules.addBonus" : editor?.intent === "generate" ? "schedules.generate" : editor?.intent === "stop" ? "schedules.stop" : editor?.kind === "payroll" ? "schedules.addCompensation" : "schedules.addRecurring")} closeLabel={t("movements.close")}>
+    <Dialog isOpen={editor !== null} closeDisabled={pending} onRequestClose={() => setEditor(null)} title={t(editor?.intent === "bonus" ? "schedules.addBonus" : editor?.intent === "stop" ? "schedules.stop" : editor?.kind === "payroll" ? "schedules.addCompensation" : "schedules.addRecurring")} closeLabel={t("movements.close")}>
       {editor ? <div className="p-5"><ScheduleForm data={data} editor={editor} onSaved={() => setEditor(null)} onPending={setPending} /></div> : null}
     </Dialog>
   </div>;
