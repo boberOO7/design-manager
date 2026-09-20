@@ -51,7 +51,7 @@ select is((select opening_reporting_amount from public.finance_accounts where id
 select public.save_finance_account(pg_temp.fid(1),'Renamed dollars','USD',100,pg_temp.fid(21));
 select pg_temp.value_opening();
 select is((select opening_reporting_amount from public.finance_accounts where id=pg_temp.fid(20)),null::numeric,'same-currency opening requires no separate FX fields');
-select public.save_finance_account(pg_temp.fid(1),'Zero euros','EUR',0);
+select public.save_finance_account(pg_temp.fid(1),'Zero euros','EUR',0,p_request_id=>gen_random_uuid());
 select is((select opening_reporting_amount from public.finance_accounts where name='Zero euros'),null::numeric,'zero foreign opening requires no invented rate');
 select public.set_finance_account_archived(pg_temp.fid(1),pg_temp.fid(21),true);
 select lives_ok($$select public.finalize_finance_setup(pg_temp.fid(1))$$,'all required valuations allow setup finalization including archived openings');

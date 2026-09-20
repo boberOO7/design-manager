@@ -2164,6 +2164,8 @@
     "saving": "Saving…",
     "saved": "Saved.",
     "errors": {
+      "futureCutover": "Setup cannot be finalized before the cutover date. Wait until that date, or correct the date in draft settings.",
+      "accountRequestConflict": "This account submission already succeeded with different details. Close this form, refresh, and edit the existing account.",
       "forbidden": "Only an active studio administrator can manage Finance.",
       "save": "Unable to save. Your changes may not have been saved. Refresh and check before trying again.",
       "settings": "Choose a supported reporting currency and a valid cutover date from 1900 onward.",

@@ -18,6 +18,12 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
 - Setup starts as a draft. Administrators can correct settings and account
   currencies/openings until explicitly finalizing setup. Finalization records
   the actor/date, requires an active account, and cannot be undone through the API.
+  Draft cutover dates may be in the future, but finalization requires cutover on
+  or before today's `Europe/Kyiv` business date. A database trigger also protects
+  direct finalized inserts/updates; the requested date is never silently changed.
+  If legacy future-finalized state is found, preserve its history and wait until
+  cutover before using current-cash reports. An incorrectly recorded date requires
+  a separately reviewed repair; ordinary setup APIs never unlock finalized history.
 - After finalization, reporting currency, cutover date, and existing account
   currencies/openings are immutable. Later accounts start at zero. Renaming,
   archiving, and restoring remain available; restoring does not unlock openings.
@@ -26,6 +32,13 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   openings remain historical data; archival never removes balances.
 - Accounts have a `(studio_id, id)` unique key for future tenant-safe references.
   There is no client delete path; foreign keys restrict destructive parent deletion.
+- Account creation requires a request UUID, retained for the create form's lifetime
+  and renewed for each new Add account flow. `save_finance_account` uses the existing
+  studio lock and immutable `finance_planning_requests` audit. Identical retries,
+  including concurrent or lost-response retries, return the original account ID;
+  changed payloads conflict. Recovery still works after finalization, valuation,
+  rename or archival and never resets those fields. Separate request IDs allow
+  legitimately identical accounts. Existing-account edits retain their usual guards.
 - `finance_currencies` is an ISO 4217 reference snapshot with monetary minor units,
   extended through migrations. It includes currencies beyond CRM's four choices.
   Opening amounts use exact PostgreSQL numeric, reject excess currency precision

@@ -16,6 +16,7 @@ export function financeSettingsSchema(currencies: FinanceCurrency[]) {
 
 export function financeAccountSchema(currencies: FinanceCurrency[]) {
   return z.object({
+    requestId: z.uuid(),
     accountId: z.union([z.uuid(), z.literal("")]),
     name: z.string().trim().min(1).max(120),
     currency: z.string(),

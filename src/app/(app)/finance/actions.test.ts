@@ -9,7 +9,8 @@ vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) 
 
 import { saveFinanceFoundation } from "./actions";
 
-function form(values: Record<string, string | undefined>) { const data = new FormData(); for (const [key, value] of Object.entries(values)) if (value !== undefined) data.set(key, value); return data; }
+const requestId = "62000000-0000-4000-8000-000000000020";
+function form(values: Record<string, string | undefined>) { const data = new FormData(); for (const [key, value] of Object.entries({ requestId, ...values })) if (value !== undefined) data.set(key, value); return data; }
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -22,6 +23,22 @@ beforeEach(() => {
     mocks.client.mockResolvedValue({ from: (table: string) => table === "finance_currencies" ? { select: mocks.select } : { select() { return this; }, eq: mocks.eq, maybeSingle: () => mocks.context(table) }, rpc: mocks.rpc });
   });
 describe("Finance actions", () => {
+  it("keeps the submitted creation identity and returns the recovered account on retry", async () => {
+    const input=form({intent:"account",accountId:"",name:"Bank",currency:"UAH",openingBalance:"123"});
+    mocks.rpc.mockRejectedValueOnce(new Error("Lost response")).mockResolvedValue({data:requestId,error:null});
+    await expect(saveFinanceFoundation({status:"idle"},input)).rejects.toThrow("Lost response");
+    expect(await saveFinanceFoundation({status:"idle"},input)).toEqual({status:"success",message:"saved",id:requestId});
+    expect(mocks.rpc.mock.calls[0]).toEqual(mocks.rpc.mock.calls[1]);
+    expect(mocks.rpc.mock.calls[1][1].p_request_id).toBe(requestId);
+  });
+  it("rejects missing create identity and reports actionable cutover and retry conflicts", async () => {
+    expect((await saveFinanceFoundation({status:"idle"},form({intent:"account",requestId:undefined,accountId:"",name:"Bank",currency:"UAH",openingBalance:"0"}))).status).toBe("error");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    for(const [message,key] of [["finance_cutover_future","futureCutover"],["finance_request_conflict","accountRequestConflict"]]) {
+      mocks.rpc.mockResolvedValueOnce({error:{message}});
+      expect(await saveFinanceFoundation({status:"idle"},form({intent:"finalize",confirmed:"on"}))).toEqual({status:"error",message:`errors.${key}`});
+    }
+  });
   it("rejects unauthorized callers before opening a database client", async () => {
     mocks.admin.mockResolvedValue(null);
     expect(await saveFinanceFoundation({ status: "idle" }, form({ intent: "settings" }))).toEqual({ status: "error", message: "errors.forbidden" });
@@ -30,7 +47,7 @@ describe("Finance actions", () => {
   it("takes tenant identity only from verified membership", async () => {
     const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "account", studioId: "spoofed", accountId: "", name: "Bank", currency: "UAH", openingBalance: "-12,34" }));
     expect(result.status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("save_finance_account", { p_studio_id: "verified-studio", p_name: "Bank", p_currency: "UAH", p_opening_balance: -12.34 });
+    expect(mocks.rpc).toHaveBeenCalledWith("save_finance_account", { p_studio_id: "verified-studio", p_name: "Bank", p_currency: "UAH", p_opening_balance: -12.34, p_request_id: requestId });
     expect(mocks.revalidate).toHaveBeenCalledWith("/finance", "layout");
   });
   it("rejects invalid precision before mutation", async () => {

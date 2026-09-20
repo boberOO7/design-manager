@@ -15,6 +15,7 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
   const supabase = await createClient();
   const intent = form.get("intent");
   let error: { message: string } | null;
+  let id: string | null = null;
 
   if (intent === "settings" || intent === "account") {
     const currencies = await supabase.from("finance_currencies").select("*");
@@ -28,8 +29,9 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
     } else {
       const input = financeAccountSchema(currencies.data).safeParse(Object.fromEntries(form));
       if (!input.success) return { status: "error", message: t("errors.account") };
-      ({ error } = await supabase.rpc("save_finance_account", {
+      ({ error, data: id } = await supabase.rpc("save_finance_account", {
         p_studio_id: admin.studio_id, p_name: input.data.name, p_currency: input.data.currency,
+        p_request_id: input.data.requestId,
         p_opening_balance: input.data.openingBalance, ...(input.data.accountId ? { p_account_id: input.data.accountId } : {}),
       }));
     }
@@ -64,6 +66,8 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
   }
 
   if (error) {
+    if (error.message === "finance_cutover_future") return { status: "error", message: t("errors.futureCutover") };
+    if (error.message === "finance_request_conflict") return { status: "error", message: t("errors.accountRequestConflict") };
     const openingErrors: Record<string, string> = { finance_opening_fx_required: "required", finance_opening_fx_invalid: "invalid", finance_setup_context_changed: "changed", finance_opening_valuation_locked: "locked" };
     const openingError = openingErrors[error.message];
     if (openingError) return { status: "error", message: t(`openingFx.${openingError}`) };
@@ -71,5 +75,5 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
     return { status: "error", message: locked ? t("errors.locked") : error.message === "finance_active_account_required" ? t("errors.activeAccount") : t("errors.save") };
   }
   revalidatePath("/finance", "layout");
-  return { status: "success", message: t("saved") };
+  return { status: "success", message: t("saved"), ...(id ? { id } : {}) };
 }

@@ -56,11 +56,13 @@ function SettingsForm({ settings, currencies, today }: { settings: FinanceSettin
 
 function AccountForm({ account, settings, currencies, onSaved, onPendingChange }: { account: FinanceAccount | null; settings: FinanceSettings; currencies: FinanceCurrency[]; onSaved: () => void; onPendingChange: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
+  const [requestId] = useState(() => crypto.randomUUID());
   const [currency, setCurrency] = useState(account?.currency ?? settings.base_currency);
   const locked = Boolean(settings.finalized_at);
   const precision = currencies.find((entry) => entry.code === currency)?.minor_units ?? 2;
   return <FinanceForm label={t("saveAccount")} onSaved={onSaved} onPendingChange={onPendingChange}>
     <input type="hidden" name="intent" value="account" />
+    <input type="hidden" name="requestId" value={requestId} />
     <input type="hidden" name="accountId" value={account?.id ?? ""} />
     <FormField label={t("accountName")}><Input name="name" defaultValue={account?.name ?? ""} required maxLength={120} autoComplete="off" data-dialog-initial-focus /></FormField>
     <FormField label={t("currency")}>{locked && account ? <><Input value={currency} readOnly aria-label={t("currency")} /><input type="hidden" name="currency" value={currency} /></> : <FinanceCurrencySelect currencies={currencies} name="currency" value={currency} reportingCurrency={settings.base_currency} onValueChange={setCurrency} />}</FormField>
@@ -144,7 +146,7 @@ export function FinanceWorkspace({ settings, accounts, currencies, balances, tod
       {settings && valuationAccount ? <div className="p-5"><OpeningValuationForm key={`${valuationAccount.id}:${valuationAccount.updated_at}:${settings.base_currency}:${settings.cutover_date}`} account={valuationAccount} settings={settings} onSaved={() => setValuing(null)} onPendingChange={setDialogPending} /></div> : null}
     </Dialog>
     <Dialog isOpen={editor !== null} closeDisabled={dialogPending} onRequestClose={() => setEditor(null)} title={selectedAccount ? t("editAccount") : t("addAccount")} closeLabel={t("close")}>
-      {settings && editor !== null ? <div className="p-5"><AccountForm key={`${editor}:${settings.finalized_at ?? "draft"}`} account={selectedAccount} settings={settings} currencies={currencies} onSaved={() => setEditor(null)} onPendingChange={setDialogPending} /></div> : null}
+      {settings && editor !== null ? <div className="p-5"><AccountForm key={editor === "new" ? editor : `${editor}:${settings.finalized_at ?? "draft"}`} account={selectedAccount} settings={settings} currencies={currencies} onSaved={() => setEditor(null)} onPendingChange={setDialogPending} /></div> : null}
     </Dialog>
     <Dialog isOpen={finalizing && !locked} closeDisabled={dialogPending} onRequestClose={() => setFinalizing(false)} title={t("finalizeTitle")} closeLabel={t("close")}>
       {finalizing ? <div className="space-y-4 p-5"><p className="text-sm text-[var(--ui-text-secondary)]">{t("finalizeHelp")}</p><FinanceForm label={t("finalize")} onSaved={() => setFinalizing(false)} onPendingChange={setDialogPending}><input type="hidden" name="intent" value="finalize" /><label className="flex items-start gap-3 text-sm"><input className="mt-1 size-4 shrink-0 accent-[var(--ui-action-primary)]" type="checkbox" name="confirmed" required /><span>{t("confirmFinalize")}</span></label></FinanceForm></div> : null}

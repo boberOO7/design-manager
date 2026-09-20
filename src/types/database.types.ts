@@ -5196,6 +5196,7 @@ export type Database = {
           p_currency: string
           p_name: string
           p_opening_balance: number
+          p_request_id?: string
           p_studio_id: string
         }
         Returns: string

@@ -335,3 +335,58 @@ test("employee navigation and direct route deny Finance", async ({ page }) => {
   await page.goto("/finance/categories");
   await expect(page).toHaveURL(/\/dashboard/);
 });
+
+test("account creation survives lost responses and concurrent retries; cutover blocks early finalization",async({page})=>{
+  clearFoundation();
+  const t=en.Finance,actor=actors[0];
+  await page.goto("/login");await page.locator('input[type="email"]').fill(actor.email);await page.locator('input[type="password"]').fill(actor.password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/finance/accounts");
+  await page.getByRole("combobox",{name:t.cutoverDate,exact:true}).click();await page.getByRole("button",{name:/^Next /}).click();await page.getByRole("gridcell",{name:"1",exact:true}).first().click();
+  await page.getByRole("button",{name:t.saveSettings,exact:true}).click();
+  await expect(page.getByRole("button",{name:t.addAccount,exact:true})).toBeVisible();
+  expect(sql(`select cutover_date>(now() at time zone 'Europe/Kyiv')::date from public.finance_settings where studio_id=${studioLiteral}`)).toBe("t");
+  await page.getByRole("button",{name:t.addAccount,exact:true}).click();
+  const dialog=page.getByRole("dialog");
+  const request=await dialog.locator('input[name="requestId"]').inputValue();
+  await dialog.getByLabel(t.accountName,{exact:true}).fill("Same bank");await dialog.getByLabel(t.openingBalance,{exact:true}).fill("100");
+  let dropped=false;
+  await page.route("**/finance/accounts",async(route)=>{
+    if(!dropped&&route.request().method()==="POST") { dropped=true;await route.fetch();await route.abort("failed"); }
+    else await route.continue();
+  });
+  await dialog.getByRole("button",{name:t.saveAccount,exact:true}).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  expect(dropped).toBe(true);
+  expect(sql(`select count(*) from public.finance_accounts where studio_id=${studioLiteral}`)).toBe("1");
+  await expect(dialog.locator('input[name="requestId"]')).toHaveValue(request);
+  await dialog.getByRole("button",{name:t.saveAccount,exact:true}).click();await expect(dialog).toHaveCount(0);
+  expect(sql(`select concat(count(*),'|',sum(opening_balance)) from public.finance_accounts where studio_id=${studioLiteral}`)).toBe("1|100");
+  await page.reload();await expect(page.getByText("Same bank",{exact:true})).toHaveCount(1);
+  await page.getByRole("button",{name:t.addAccount,exact:true}).click();expect(await dialog.locator('input[name="requestId"]').inputValue()).not.toBe(request);
+  await dialog.getByLabel(t.accountName,{exact:true}).fill("Same bank");await dialog.getByLabel(t.openingBalance,{exact:true}).fill("100");await dialog.getByRole("button",{name:t.saveAccount,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("Same bank",{exact:true})).toHaveCount(2);
+  const authed=createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL,local.EQUIPMENT_TEST_SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+  const login=await authed.auth.signInWithPassword({email:actor.email,password:actor.password});if(login.error)throw login.error;
+  const concurrentRequest=randomUUID();
+  const results=await Promise.all(Array.from({length:4},()=>authed.rpc("save_finance_account",{p_studio_id:studioId,p_request_id:concurrentRequest,p_name:"Dollars",p_currency:"USD",p_opening_balance:50})));
+  for(const result of results)expect(result.error).toBeNull();
+  expect(new Set(results.map(result=>result.data)).size).toBe(1);
+  expect(sql(`select concat(count(*),'|',sum(opening_balance)) from public.finance_accounts where studio_id=${studioLiteral} and currency='USD'`)).toBe("1|50");
+  await page.reload();
+  async function valueDollars(){await page.getByRole("button",{name:t.openingFx.named.replace("{name}","Dollars"),exact:true}).click();await dialog.locator('select[name="fxMode"]').selectOption("manual");await dialog.locator('input[name="manualRate"]').fill("40");await dialog.getByRole("button",{name:t.openingFx.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
+  await valueDollars();
+  await page.getByRole("button",{name:t.reviewFinalize,exact:true}).click();await dialog.getByRole("checkbox").check();await dialog.getByRole("button",{name:t.finalize,exact:true}).click();await expect(dialog.getByRole("alert")).toHaveText(t.errors.futureCutover);
+  expect(sql(`select finalized_at is null from public.finance_settings where studio_id=${studioLiteral}`)).toBe("t");
+  await dialog.getByRole("button",{name:t.close,exact:true}).click();
+  await page.goto("/finance");await expect(page.getByText(t.movements.recordedBalance,{exact:false})).toHaveCount(0);
+  const today=sql("select (now() at time zone 'Europe/Kyiv')::date");
+  await page.getByRole("combobox",{name:t.cutoverDate,exact:true}).click();await page.getByRole("button",{name:/^Previous /}).click();await page.getByRole("gridcell",{name:String(Number(today.slice(8))),exact:true}).first().click();await page.getByRole("button",{name:t.saveSettings,exact:true}).click();
+  await expect(page.getByRole("button",{name:t.reviewFinalize,exact:true})).toBeDisabled();
+  await valueDollars();
+  await page.getByRole("button",{name:t.reviewFinalize,exact:true}).click();await dialog.getByRole("checkbox").check();await dialog.getByRole("button",{name:t.finalize,exact:true}).click();await expect(dialog).toHaveCount(0);
+  expect(sql(`select cutover_date=(now() at time zone 'Europe/Kyiv')::date and finalized_at is not null from public.finance_settings where studio_id=${studioLiteral}`)).toBe("t");
+  const retry=await authed.rpc("save_finance_account",{p_studio_id:studioId,p_request_id:concurrentRequest,p_name:"Dollars",p_currency:"USD",p_opening_balance:50});expect(retry.error).toBeNull();expect(retry.data).toBe(results[0].data);
+  expect(sql(`select opening_balance=50 and opening_reporting_amount=2000 and opening_fx_effective_date='${today}' from public.finance_accounts where studio_id=${studioLiteral} and name='Dollars'`)).toBe("t");
+  expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("0");
+  await page.goto("/finance/accounts");await expect(page.getByText("Same bank",{exact:true})).toHaveCount(2);await expect(page.getByText("Dollars",{exact:true})).toHaveCount(1);
+});
