@@ -1,6 +1,17 @@
 import "server-only";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
+import { getKyivDateOnly } from "@/lib/validation/project";
+
+export type FinancePlanningPeriod = "month" | "30days" | "3months" | "6months" | "all";
+
+function planningPeriodBounds(period:FinancePlanningPeriod,today:string) {
+  if(period==="all") return null;
+  const [year,month,day]=today.split("-").map(Number);
+  const start=period==="30days"?new Date(Date.UTC(year,month-1,day)):new Date(Date.UTC(year,month-1,1));
+  const end=period==="30days"?new Date(Date.UTC(year,month-1,day+29)):new Date(Date.UTC(year,month+(period==="month"?0:period==="3months"?2:5),0));
+  return [start.toISOString().slice(0,10),end.toISOString().slice(0,10)] as const;
+}
 
 export async function getFinanceData() {
   const admin = await getActiveStudioAdmin();
@@ -56,7 +67,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   return data?`/projects/${data.project_id}?view=finance&stream=${data.stream}`:"/finance/expected";
 }
 
-export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design") {
+export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly()) {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
@@ -68,6 +79,8 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(filter==="cancelled") query=query.eq("commitment","cancelled");
+  const bounds=planningPeriodBounds(period,today);
+  if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null)`);
   const [items,payments,credits]=await Promise.all([
     query.order("due_date",{ nullsFirst:false }).order("id").range((page-1)*50,page*50-1),
     client.from("finance_payment_availability").select("*").eq("studio_id",admin.studio_id).gt("unapplied_amount",0)

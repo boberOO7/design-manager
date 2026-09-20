@@ -255,6 +255,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await dialog.getByRole("button",{ name:p.save,exact:true }).click();await expect(dialog).toHaveCount(0);
   const item=page.locator("article").filter({ has:page.getByRole("heading",{ name:"Studio milestone",exact:true }) });
   await expect(item.getByText(p.states.overdue,{ exact:true })).toBeVisible();
+  await expect(item.getByText(/Pay by Sep 1 · expected Sep 30/)).toBeVisible();
   expect(sql(`select concat(due_date,'|',expected_payment_date,'|',commitment,'|',certainty,'|',is_established) from public.finance_expected_items where studio_id=${studioLiteral}`)).toBe("2026-09-01|2026-09-30|agreed|fixed|t");
   expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("0");
   await item.getByRole("link",{ name:p.recordPayment,exact:true }).click();
@@ -283,7 +284,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await page.getByRole("button",{ name:t.movements.add,exact:true }).click();dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("100");
   await dialog.getByRole("combobox",{ name:t.movements.category,exact:true }).click();await page.getByRole("option",{ name:"Design consultation",exact:true }).click();
   await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Client advance");await dialog.locator('input[name="allocationIntent"]').check();await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
-  await page.goto("/finance/expected");await item.getByRole("button",{ name:p.match,exact:true }).click();dialog=page.getByRole("dialog");
+  await page.goto("/finance/expected");await item.getByText(p.details,{exact:true}).click();await item.getByRole("button",{ name:p.match,exact:true }).click();dialog=page.getByRole("dialog");
   await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await expect(page.getByRole("option",{ name:/Walk-in receipt/ })).toBeVisible();await page.getByRole("option",{ name:/Client advance/ }).click();
   await dialog.getByRole("button",{ name:p.match,exact:true }).click();await expect(dialog).toHaveCount(0);
   await expect(item.getByText(p.states.settled,{ exact:true })).toBeVisible();
@@ -292,7 +293,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   expect(sql(`select sum(unapplied_amount) from public.finance_actionable_unapplied where studio_id=${studioLiteral}`)).toBe("40");
   await expect(page.getByRole("heading",{ name:p.unapplied,exact:true })).toBeVisible();
   await expect(page.getByText(/Client advance/)).toBeVisible();await expect(page.getByText(/Walk-in receipt/)).toHaveCount(0);
-  await item.getByRole("button",{ name:t.edit,exact:true }).click();dialog=page.getByRole("dialog");
+  await item.getByText(p.details,{exact:true}).click();await item.getByRole("button",{ name:t.edit,exact:true }).click();dialog=page.getByRole("dialog");
   await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-01");await expect(dialog.locator('select[name="expectedDate"]')).toHaveValue("2026-09-30");
   await dialog.getByRole("button",{ name:t.movements.close,exact:true }).click();
   await page.setViewportSize({ width:375,height:900 });await page.emulateMedia({ colorScheme:"dark",reducedMotion:"reduce" });
