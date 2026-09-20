@@ -5049,6 +5049,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_finance_category_management: {
+        Args: { p_studio_id: string }
+        Returns: {
+          archived_at: string
+          can_delete: boolean
+          created_at: string
+          custom_name: boolean
+          default_key: string
+          direction: string
+          id: string
+          name: string
+          nature: string
+          studio_id: string
+        }[]
+      }
       get_finance_overview: {
         Args: {
           p_fx?: Json
@@ -5141,6 +5156,10 @@ export type Database = {
           p_request_id: string
           p_studio_id: string
         }
+        Returns: string
+      }
+      remove_finance_category: {
+        Args: { p_category_id: string; p_studio_id: string }
         Returns: string
       }
       remove_project_member: {
@@ -5525,7 +5544,6 @@ export type Database = {
     }
   }
 }
-
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

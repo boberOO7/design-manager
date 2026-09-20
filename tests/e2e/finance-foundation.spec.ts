@@ -318,6 +318,33 @@ test("categories, expected items, partial overdue settlement and contextual paym
   expect(errors).toEqual([]);
 });
 
+test("category management groups, creates, deletes, archives and restores",async({page},testInfo)=>{
+  clearFoundation();
+  const actor=actors[0],t=en.Finance,p=t.planning,bank=randomUUID();
+  sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values(${studioLiteral},'UAH','2026-09-01','${actor.id}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bank}',${studioLiteral},'Bank','UAH',0,'${actor.id}');
+    select set_config('request.jwt.claim.sub','${actor.id}',false);select public.finalize_finance_setup(${studioLiteral});`);
+  const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("/login");await page.locator('input[type="email"]').fill(actor.email);await page.locator('input[type="password"]').fill(actor.password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/finance/categories");
+  await expect(page.getByRole("heading",{name:p.expenses,exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:p.income,exact:true})).toBeVisible();
+  await expect(page.locator('[data-category-direction="outgoing"]')).toBeVisible();await expect(page.locator('[data-category-direction="incoming"]')).toBeVisible();
+  const rentEdit=page.getByRole("button",{name:p.editNamed.replace("{name}",p.defaults.rent),exact:true});await expect(rentEdit.locator("..")).toHaveCSS("opacity","0");await rentEdit.locator("xpath=ancestor::li").hover();await expect(rentEdit.locator("..")).toHaveCSS("opacity","1");
+  await page.getByRole("button",{name:p.addExpenseCategory,exact:true}).click();
+  let dialog=page.getByRole("dialog");await expect(dialog.getByLabel(p.expenses,{exact:true})).toBeChecked();await dialog.getByLabel(p.categoryName,{exact:true}).fill("Office snacks");await dialog.getByRole("button",{name:p.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:p.deleteNamed.replace("{name}","Office snacks"),exact:true}).click();
+  dialog=page.getByRole("dialog");await dialog.getByRole("button",{name:p.delete,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByText("Office snacks",{exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:p.addIncomeCategory,exact:true}).click();dialog=page.getByRole("dialog");await expect(dialog.getByLabel(p.income,{exact:true})).toBeChecked();await dialog.getByLabel(p.categoryName,{exact:true}).fill("Consulting income");await dialog.getByRole("button",{name:p.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  const category=sql(`select id from public.finance_categories where studio_id=${studioLiteral} and name='Consulting income'`);
+  sql(`insert into public.finance_expected_items(studio_id,direction,amount,currency,category_id,description,commitment,certainty,created_by) values(${studioLiteral},'incoming',100,'UAH','${category}','Referenced category','tentative','fixed','${actor.id}')`);
+  await page.reload();await page.getByRole("button",{name:p.archiveNamed.replace("{name}","Consulting income"),exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByRole("button",{name:p.archive,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByText(p.archived,{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:p.editNamed.replace("{name}","Consulting income"),exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByRole("button",{name:p.restore,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByText(p.archived,{exact:true})).toHaveCount(0);
+  await page.goto("/finance/movements");await page.getByRole("button",{name:t.movements.add,exact:true}).click();dialog=page.getByRole("dialog");await expect(dialog.getByRole("link",{name:p.manageCategories,exact:true})).toHaveAttribute("href","/finance/categories");await dialog.getByRole("button",{name:t.movements.close,exact:true}).click();
+  await page.setViewportSize({width:375,height:900});await page.emulateMedia({colorScheme:"dark",reducedMotion:"reduce"});await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]);await page.goto("/finance/categories");
+  await expect(page.getByRole("heading",{name:uk.Finance.planning.expenses,exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:uk.Finance.planning.income,exact:true})).toBeVisible();await expect(page.getByRole("button",{name:uk.Finance.planning.editNamed.replace("{name}","Consulting income"),exact:true}).locator("..")).toHaveCSS("opacity","1");expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath("finance-categories-mobile-uk.png"),fullPage:true});
+  expect(errors).toEqual([]);
+});
+
 test("employee navigation and direct route deny Finance", async ({ page }) => {
   const actor = actors[1];
   await page.goto("/login");

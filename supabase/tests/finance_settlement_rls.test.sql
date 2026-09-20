@@ -26,9 +26,18 @@ set local role authenticated;
 select is((select count(*) from public.finance_categories),20::bigint,'defaults visible only for own studio');
 select throws_like($$select pg_temp.item(100)$$,'%finance_finalized_setup_required%','expectations require finalized foundation');
 select public.finalize_finance_setup(pg_temp.fid(1));
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(48),' {"name":"Unused custom","direction":"outgoing","nature":"operating"}')$$,'admin creates unused category');
+select ok((select can_delete from public.get_finance_category_management(pg_temp.fid(1)) where id=pg_temp.result(48)),'unused custom category is deletable');
+select is(public.remove_finance_category(pg_temp.fid(1),pg_temp.result(48)),'deleted','unused custom category is hard deleted');
+select is((select count(*) from public.finance_categories where id=pg_temp.result(48)),0::bigint,'deleted category is gone');
 select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(50),' {"name":"Consulting","direction":"incoming","nature":"operating"}')$$,'admin creates category');
 select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(50),' {"name":"Consulting","direction":"incoming","nature":"operating"}')$$,'category retry idempotent');
 select throws_like($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(51),' {"name":" consulting ","direction":"incoming","nature":"operating"}')$$,'%duplicate key%','case/space duplicate categories rejected');
+select lives_ok($$select pg_temp.item(99,jsonb_build_object('categoryId',pg_temp.result(50)))$$,'custom category gains a historical reference');
+select isnt((select can_delete from public.get_finance_category_management(pg_temp.fid(1)) where id=pg_temp.result(50)),true,'referenced category is not deletable');
+select is(public.remove_finance_category(pg_temp.fid(1),pg_temp.result(50)),'archived','referenced category archives instead of deleting');
+select ok((select archived_at is not null from public.finance_categories where id=pg_temp.result(50)),'archived category and reference remain');
+select lives_ok($$select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(52),jsonb_build_object('id',pg_temp.result(50),'name','Consulting','direction','incoming','nature','operating','archived',false))$$,'referenced category restores');
 select lives_ok($$select pg_temp.item(100)$$,'admin creates expected item');
 select lives_ok($$select pg_temp.item(100)$$,'expected create retry idempotent');
 select throws_like($$select pg_temp.item(100,'{"amount":"101"}')$$,'%finance_request_conflict%','different retry rejected');
@@ -127,6 +136,7 @@ create function pg_temp.denied(actor integer) returns setof text language plpgsq
 begin
  perform set_config('request.jwt.claim.sub',pg_temp.fid(actor)::text,true);
  return next is((select count(*) from public.finance_categories where studio_id=pg_temp.fid(1)),0::bigint,'category isolation '||actor);
+ return next is((select count(*) from public.get_finance_category_management(pg_temp.fid(1))),0::bigint,'category management isolation '||actor);
  return next is((select count(*) from public.finance_expected_balances),0::bigint,'expected access denied '||actor);
  return next is((select count(*) from public.finance_allocations),0::bigint,'allocation access denied '||actor);
  return next is((select count(*) from public.finance_payment_availability),0::bigint,'credit access denied '||actor);
@@ -135,6 +145,7 @@ begin
  return next throws_like('select pg_temp.item(900)','%finance_admin_required%','expected mutation denied '||actor);
  return next throws_like('select pg_temp.allocate(901,100,200,1)','%finance_admin_required%','allocation mutation denied '||actor);
  return next throws_like('select public.save_finance_category(pg_temp.fid(1),pg_temp.fid(902),''{}'')','%finance_admin_required%','category mutation denied '||actor);
+ return next throws_like('select public.remove_finance_category(pg_temp.fid(1),pg_temp.cat(''rent''))','%finance_admin_required%','category removal denied '||actor);
 end;$$;
 set local role authenticated;
 select * from pg_temp.denied(11); select * from pg_temp.denied(12); select * from pg_temp.denied(13); select * from pg_temp.denied(14);

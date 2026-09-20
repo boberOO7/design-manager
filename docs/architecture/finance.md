@@ -130,7 +130,9 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   and backfilled for existing setups. Defaults cover project/supervision/contractor
   income, staff costs, ordinary expenses, financing and owner distributions. Default
   labels are localized; administrator names are stored as entered. Names can change;
-  direction/nature cannot. Archive/restore preserves references and posted snapshots.
+  direction/nature cannot. Unused custom categories may be deleted; referenced custom
+  categories and all system/default categories archive instead. Archive/restore
+  preserves references and posted snapshots.
   UI labels use the stable `default_key` only while a category retains its system
   name. Renamed/custom categories display exactly as stored. Structured movement
   history localizes that system identity; legacy rows with no `category_id` display

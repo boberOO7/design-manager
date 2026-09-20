@@ -1,11 +1,25 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { allocationInputSchema,categoryInputSchema,expectedInputSchema,releaseInputSchema } from "@/lib/finance-planning";
 import type { FinanceActionState } from "@/lib/finance";
 import { projectContextSchema,financeProjectError } from "@/lib/finance-projects";
+
+export async function removeFinanceCategory(_state:FinanceActionState,form:FormData):Promise<FinanceActionState> {
+  const t=await getTranslations("Finance.planning");
+  const admin=await getActiveStudioAdmin();
+  if(!admin) return { status:"error",message:t("errors.forbidden") };
+  const categoryId=z.uuid().safeParse(form.get("categoryId"));
+  if(!categoryId.success) return { status:"error",message:t("errors.invalid") };
+  const client=await createClient();
+  const { error }=await client.rpc("remove_finance_category",{ p_studio_id:admin.studio_id,p_category_id:categoryId.data });
+  if(error) return { status:"error",message:t(error.message==="finance_category_schedule_required"?"errors.categoryScheduleRequired":"errors.save") };
+  revalidatePath("/finance","layout");
+  return { status:"success" };
+}
 
 export async function saveFinancePlanning(_state:FinanceActionState,form:FormData):Promise<FinanceActionState> {
   const t=await getTranslations("Finance.planning");

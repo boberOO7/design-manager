@@ -34,6 +34,18 @@ export async function getFinanceData() {
   })), currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
 }
 
+export async function getFinanceCategories() {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return null;
+  const client = await createClient();
+  const [settings, categories] = await Promise.all([
+    client.from("finance_settings").select("studio_id").eq("studio_id", admin.studio_id).maybeSingle(),
+    client.rpc("get_finance_category_management", { p_studio_id: admin.studio_id }),
+  ]);
+  if (settings.error || categories.error) throw new Error("Unable to load Finance categories.", { cause: settings.error ?? categories.error });
+  return { ready: Boolean(settings.data), categories: categories.data ?? [] };
+}
+
 export async function getFinanceMovements(page: number) {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;

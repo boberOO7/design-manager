@@ -4,7 +4,7 @@ vi.mock("@/data/queries/active-studio-admin",()=>({ getActiveStudioAdmin:mocks.a
 vi.mock("@/lib/supabase/server",()=>({ createClient:mocks.client }));
 vi.mock("next/cache",()=>({ revalidatePath:mocks.revalidate }));
 vi.mock("next-intl/server",()=>({ getTranslations:async()=>(key:string)=>key }));
-import { saveFinancePlanning } from "./actions";
+import { removeFinanceCategory,saveFinancePlanning } from "./actions";
 const id="64000000-0000-4000-8000-000000000100";
 function form(patch:Record<string,string>={}) { const data=new FormData();for(const [key,value] of Object.entries({ intent:"allocate",requestId:id,itemId:id,movementId:id,amount:"12,34",studioId:"untrusted",...patch }))data.set(key,value);return data; }
 describe("Finance planning actions",()=>{
@@ -22,5 +22,9 @@ describe("Finance planning actions",()=>{
   it("adds project context using the guarded wrapper without posting cash",async()=>{
     expect((await saveFinancePlanning({ status:"idle" },form({ intent:"expected",projectId:id,stream:"contractor_bonus",contractorId:id,direction:"incoming",categoryId:id,currency:"UAH",commitment:"tentative",certainty:"fixed",established:"false" }))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_finance_project_item",expect.objectContaining({ p_studio_id:"verified",p_project_id:id,p_input:expect.objectContaining({ stream:"contractor_bonus",contractorId:id,item:expect.objectContaining({ established:false }) }) }));
+  });
+  it("removes a category through the database delete-or-archive decision",async()=>{
+    expect((await removeFinanceCategory({ status:"idle" },form({ categoryId:id }))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("remove_finance_category",{ p_studio_id:"verified",p_category_id:id });
   });
 });

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getFinanceData } from "@/data/queries/finance";
+import { getFinanceCategories } from "@/data/queries/finance";
 import { FinanceCategoriesWorkspace } from "@/components/finance/categories-workspace";
 export default async function FinanceCategoriesPage() {
-  const data=await getFinanceData();
+  const data=await getFinanceCategories();
   if(!data) redirect("/dashboard");
-  return <FinanceCategoriesWorkspace categories={data.categories} ready={Boolean(data.settings)}/>;
+  return <FinanceCategoriesWorkspace categories={data.categories} ready={data.ready}/>;
 }
