@@ -1862,6 +1862,13 @@ export type Database = {
             referencedRelation: "finance_obligations"
             referencedColumns: ["studio_id", "id"]
           },
+          {
+            foreignKeyName: "finance_obligation_items_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
         ]
       }
       finance_obligations: {
@@ -1939,6 +1946,67 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_schedule_terms"
             referencedColumns: ["studio_id", "id", "schedule_id"]
+          },
+        ]
+      }
+      finance_payroll_cost_revisions: {
+        Row: {
+          amount: number | null
+          component: string
+          created_at: string
+          created_by: string
+          id: string
+          obligation_id: string
+          reason: string
+          revision: number
+          status: string
+          studio_id: string
+        }
+        Insert: {
+          amount?: number | null
+          component: string
+          created_at?: string
+          created_by: string
+          id?: string
+          obligation_id: string
+          reason: string
+          revision: number
+          status: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number | null
+          component?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          obligation_id?: string
+          reason?: string
+          revision?: number
+          status?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payroll_cost_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cost_revisions_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cost_revisions_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
           },
         ]
       }
@@ -4423,6 +4491,44 @@ export type Database = {
           },
         ]
       }
+      finance_payroll_unknown_costs: {
+        Row: {
+          amount: number | null
+          can_complete: boolean | null
+          component: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          obligation_id: string | null
+          reason: string | null
+          revision: number | null
+          status: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_obligations_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cost_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       finance_planning_actuals: {
         Row: {
           amount: number | null
@@ -4767,6 +4873,10 @@ export type Database = {
           p_return_state: Database["public"]["Enums"]["equipment_lifecycle_state"]
           p_service_event_id: string
         }
+        Returns: string
+      }
+      complete_finance_payroll_cost: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
       create_calendar_event_with_invites: {

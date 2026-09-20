@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useLocale,useTranslations } from "next-intl";
+import { saveFinanceSchedule } from "@/app/(app)/finance/schedules/actions";
 import { saveFinancePlanning } from "@/app/(app)/finance/expected/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -65,9 +66,26 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
   </FinanceActionForm>;
 }
 
+function PayrollCostForm({ cost,onSaved,onPending }: { cost:FinancePlanningData["payrollCosts"][number];onSaved:()=>void;onPending:(value:boolean)=>void }) {
+  const t=useTranslations("Finance");
+  const [status,setStatus]=useState(cost.status??"unknown");
+  return <FinanceActionForm action={saveFinanceSchedule} label={t("planning.save")} onSaved={onSaved} onPending={onPending}>
+    <input type="hidden" name="intent" value="payrollCost"/><input type="hidden" name="obligationId" value={cost.obligation_id??""}/>
+    <input type="hidden" name="component" value={cost.component??""}/><input type="hidden" name="revision" value={cost.revision??0}/>
+    <p className="text-sm">{t(`schedules.components.${cost.component}`)} · {cost.currency}</p>
+    <p className="text-sm text-[var(--ui-text-secondary)]">{t("schedules.completeCostHelp")}</p>
+    {cost.reason?<p className="text-sm text-[var(--ui-text-muted)]">{t("schedules.previousCostNote")}: {cost.reason}</p>:null}
+    <FormField label={t("schedules.certainty")}><Select name="status" aria-label={t("schedules.certainty")} value={status} onValueChange={setStatus}>{["unknown","fixed","estimated"].map((value)=><SelectItem key={value} value={value}>{t(`schedules.${value}`)}</SelectItem>)}</Select></FormField>
+    {status!=="unknown"?<FormField label={t("movements.amount")}><Input aria-label={t("movements.amount")} aria-describedby="payroll-cost-zero-help" name="amount" inputMode="decimal" defaultValue={cost.amount??""} required/><p id="payroll-cost-zero-help" className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("schedules.explicitZeroHelp")}</p></FormField>:<input type="hidden" name="amount" value=""/>}
+    <FormField label={t("movements.reason")}><Textarea name="reason" maxLength={2000} required/></FormField>
+  </FinanceActionForm>;
+}
+
 export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ page:number;creditPage:number;filter:string;period?:FinancePlanningPeriod;today?:string;project?:ProjectContext;itemId?:string }) {
   const t=useTranslations("Finance"),locale=useLocale();
   const [editing,setEditing]=useState<FinanceExpected|"new"|null>(null);
+  const [costEditing,setCostEditing]=useState<FinancePlanningData["payrollCosts"][number]|null>(null);
+  const [savedCost,setSavedCost]=useState<FinancePlanningData["payrollCosts"][number]|null>(null);
   const [matching,setMatching]=useState<FinanceExpected|null>(null);
   const [paymentId,setPaymentId]=useState("");
   const [releasing,setReleasing]=useState<string|null>(null);
@@ -125,6 +143,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
         <div className="flex flex-wrap items-center gap-2">{link&&!props.project?<Link className="px-3 py-2 text-sm underline" href={`/projects/${link.project_id}?view=finance&stream=${link.stream}`}>{t("project.open")}</Link>:<Button size="sm" variant="ghost" onClick={()=>setEditing(item)}>{t("edit")}</Button>}{active?<Button size="sm" variant="ghost" onClick={()=>{setPaymentId("");setMatching(item);}}>{t("planning.match")}</Button>:null}</div>
         {history.length?<div><p className="text-xs font-medium text-[var(--ui-text-secondary)]">{t("planning.history")}</p><ul className="mt-2 space-y-2 text-xs">{history.map((entry)=>{const remaining=entry.amount+history.filter((release)=>release.released_allocation_id===entry.id).reduce((sum,release)=>sum+release.amount,0);return <li key={entry.id} className="break-words"><span>{date(entry.movement.financial_date)} · {money(entry.amount,item.currency)} · {entry.amount<0?t(entry.cause_movement_id?"planning.cashRelease":"planning.manualRelease"):t("planning.matched")}</span>{entry.amount>0&&remaining>0?<Button size="sm" variant="ghost" onClick={()=>setReleasing(entry.id)}>{t("planning.unmatch")}</Button>:null}</li>;})}</ul></div>:null}
       </div></details>{active?<Button asChild size="sm" className="min-h-11 sm:min-h-8"><Link href={`/finance/movements?expected=${item.id}`}>{t("planning.recordPayment")}</Link></Button>:null}</div>
+      {obligation?.component==="payout"?props.payrollCosts.filter((cost)=>cost.obligation_id===obligation.obligation_id).map((cost)=><div key={cost.component} className="flex flex-wrap items-center gap-2 text-xs text-[var(--ui-text-secondary)]"><span>{t(`schedules.components.${cost.component}`)}: {cost.status==="unknown"?t("schedules.unknown"):`${money(cost.amount,cost.currency)} · ${t(`schedules.${cost.status}`)}`}</span>{cost.can_complete?<Button size="sm" variant="ghost" disabled={savedCost?.obligation_id===cost.obligation_id&&savedCost?.component===cost.component&&savedCost?.revision===cost.revision} onClick={()=>setCostEditing(cost)}>{t("schedules.completeCost")}</Button>:null}</div>):null}
     </article>;
   };
   const itemSection=(key:"attention"|"current"|"earlier",items:FinanceExpected[])=>items.length?<section className="space-y-2" aria-labelledby={`expected-${key}`}><h2 id={`expected-${key}`} className="text-sm font-semibold text-[var(--ui-text-secondary)]">{t(`planning.sections.${key}`)} <span className="ml-1 font-normal text-[var(--ui-text-muted)]">{items.length}</span></h2><div className={`${panel} divide-y divide-[var(--ui-border)]`}>{items.map(renderItem)}</div></section>:null;
@@ -137,6 +156,9 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     {props.items.length?<div className="space-y-5">{itemSection("attention",attention)}{itemSection("current",current)}{settledCurrent.length?<details className={panel} data-settled-current><summary className="flex min-h-12 cursor-pointer list-none items-center px-4 py-2 text-sm font-medium text-[var(--ui-text-secondary)] marker:content-none">{t("planning.sections.completedCurrent")} <span className="ml-1 text-[var(--ui-text-muted)]">· {settledCurrent.length}</span></summary><div className="divide-y divide-[var(--ui-border)] border-t border-[var(--ui-border)]">{settledCurrent.map(renderItem)}</div></details>:null}{future.size?<section className="space-y-2" aria-labelledby="expected-future"><h2 id="expected-future" className="text-sm font-semibold text-[var(--ui-text-secondary)]">{t("planning.sections.future")} <span className="ml-1 font-normal text-[var(--ui-text-muted)]">{Array.from(future.values()).reduce((sum,items)=>sum+items.length,0)}</span></h2><div className="space-y-2">{Array.from(future).sort(([a],[b])=>a.localeCompare(b)).map(([month,items])=>{const totals=Array.from(items.reduce((result,item)=>result.set(item.currency,(result.get(item.currency)??0)+(item.amount??0)),new Map<string|null,number>()));return <details key={month} className={panel} data-future-month={month} open={Boolean(props.itemId)}><summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm font-semibold marker:content-none"><span>{t("planning.futureGroup",{month:monthLabel(month),count:items.length})}</span><span className="ui-numeric text-xs font-medium text-[var(--ui-text-muted)]">{totals.map(([currency,total])=>money(total,currency)).join(" · ")}</span></summary><div className="divide-y divide-[var(--ui-border)] border-t border-[var(--ui-border)]">{items.map(renderItem)}</div></details>;})}</div></section>:null}{itemSection("earlier",earlier)}</div>:<p className={`${panel} p-5 text-sm text-[var(--ui-text-muted)]`}>{t("planning.empty")}</p>}
     <nav className="flex justify-between text-sm" aria-label={t("movements.pages")}>{props.page>1?<Link className="underline" href={href(props.page-1)}>{t("movements.previous")}</Link>:<span/>}{props.page*50<props.total?<Link className="underline" href={href(props.page+1)}>{t("movements.next")}</Link>:null}</nav>
     {props.creditTotal>0?<section className={`${panel} space-y-3 p-5`} aria-label={t("planning.unapplied")}><h2 className="font-medium">{t("planning.unapplied")}</h2><p className="text-xs text-[var(--ui-text-muted)]">{t("planning.unappliedHelp")}</p>{props.credits.length?<ul className="space-y-3">{props.credits.map((payment)=><li key={payment.id} className="flex flex-wrap justify-between gap-2 text-sm"><span>{date(payment.financial_date)} · {paymentLabel(payment)} · {t(`movements.kinds.${payment.direction}`)}</span><span className="ui-numeric">{money(payment.unapplied_amount,payment.currency)}</span></li>)}</ul>:<p className="text-sm text-[var(--ui-text-muted)]">{t("planning.noPayments")}</p>}<nav className="flex justify-between text-sm" aria-label={t("planning.creditPages")}>{props.creditPage>1?<Link className="underline" href={href(props.page,props.creditPage-1)}>{t("movements.previous")}</Link>:<span/>}{props.creditPage*50<props.creditTotal?<Link className="underline" href={href(props.page,props.creditPage+1)}>{t("movements.next")}</Link>:null}</nav></section>:null}
+    <Dialog isOpen={costEditing!==null} closeDisabled={pending} onRequestClose={()=>setCostEditing(null)} title={t("schedules.completeCost")} closeLabel={t("movements.close")}>
+      {costEditing?<div className="p-5"><PayrollCostForm cost={costEditing} onSaved={()=>{setSavedCost(costEditing);setCostEditing(null);}} onPending={setPending}/></div>:null}
+    </Dialog>
     <Dialog isOpen={editing!==null} closeDisabled={pending} onRequestClose={()=>setEditing(null)} title={t(editing==="new"?"planning.create":"planning.edit")} closeLabel={t("movements.close")}>
       {editing?<div className="p-5"><ExpectedForm obligation={editing!=="new"?props.obligations.find((entry)=>entry.expected_item_id===editing?.id)?.component:undefined} data={props} project={props.project} item={editing==="new"?undefined:editing} onSaved={()=>setEditing(null)} onPending={setPending}/></div>:null}
     </Dialog>

@@ -2044,7 +2044,7 @@
       "categories": "Categories", "categoriesHelp": "Reusable studio categories determine reporting classification. Rename or archive them without rewriting posted history.",
       "newCategory": "New category", "editCategory": "Edit category", "categoryName": "Category name", "archived": "Archived", "searchCategories": "Search categories…", "noCategories": "No matching categories.",
       "defaults": { "project_payments": "Project payments", "supervision": "Supervision", "contractor_bonus": "Contractor bonus income", "other_income": "Other income", "salary": "Salary", "employee_bonus": "Employee bonus", "employer_costs": "Employer taxes and contributions", "rent": "Rent", "utilities": "Utilities", "cleaning": "Cleaning", "software": "Software and subscriptions", "smm": "SMM", "advertising": "Advertising", "taxes": "Taxes and fees", "equipment": "Equipment", "maintenance": "Maintenance and repair", "other_expense": "Other expense", "financing_in": "Financing received", "financing_out": "Financing repaid", "owner_distribution": "Owner distribution" },
-      "errors": { "forbidden": "Finance is available to active studio administrators only.", "invalid": "Check the required fields, amounts and dates.", "save": "Could not save. Check the item and payment are still available, then try again.", "duplicate": "This category already exists. Use or restore the existing category.", "overallocated": "The amount exceeds the item's remaining balance or the payment's available amount.", "version": "This item changed. Close and reopen it before saving.", "conflict": "This request was already saved with different values. Reopen the form before recording another change.", "locked": "Currency, direction and reporting nature are fixed once an item has settlement history.", "belowSettled": "The expected amount cannot be less than the amount already settled.", "incompatible": "Choose an active item and a payment with matching currency, direction and reporting nature." }
+      "errors": { "categoryScheduleRequired": "This category is required by an active or future Finance schedule. Revise or stop the dependent schedules before archiving it.", "forbidden": "Finance is available to active studio administrators only.", "invalid": "Check the required fields, amounts and dates.", "save": "Could not save. Check the item and payment are still available, then try again.", "duplicate": "This category already exists. Use or restore the existing category.", "overallocated": "The amount exceeds the item's remaining balance or the payment's available amount.", "version": "This item changed. Close and reopen it before saving.", "conflict": "This request was already saved with different values. Reopen the form before recording another change.", "locked": "Currency, direction and reporting nature are fixed once an item has settlement history.", "belowSettled": "The expected amount cannot be less than the amount already settled.", "incompatible": "Choose an active item and a payment with matching currency, direction and reporting nature." }
     },
     "movements": {
       "title": "Movements",
@@ -2165,6 +2165,12 @@
       "invalid": "Check the form and confirm your selection."
     },
     "schedules": {
+      "remittances": "Additional remittances",
+      "remittancesHelp": "Leave blank if unknown. Enter 0 to confirm none, or a known amount in addition to net pay.",
+      "completeCost": "Complete payroll cost",
+      "completeCostHelp": "Record or correct a previously unknown cost for this payroll period. A reason is required. Salary terms and recorded payments remain unchanged. Settled cost components cannot be changed here.",
+      "previousCostNote": "Previous completion note",
+      "explicitZeroHelp": "Enter 0 to explicitly confirm there is no cost.",
       "neverEffective": "Did not take effect (scheduled from {date})",
       "title": "Compensation & recurring",
       "description": "Configure employee pay and recurring studio obligations. Expected payments stay available automatically for planning and settlement.",
@@ -2244,6 +2250,8 @@
         "bonus": "Employee bonus"
       },
       "errors": {
+        "costLocked": "This cost cannot be changed here. Use a future compensation revision for planned payroll; settled or established costs are protected.",
+        "costCategory": "Restore the Employer taxes and contributions category in Finance → Categories before saving payroll costs.",
         "invalid": "Check the required schedule fields.",
         "effectiveFromInput": "Choose an effective-from month.",
         "effectiveThroughInput": "Choose an end month that is the same as or later than the effective-from month.",

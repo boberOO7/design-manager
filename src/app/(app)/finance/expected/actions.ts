@@ -42,6 +42,8 @@ export async function saveFinancePlanning(_state:FinanceActionState,form:FormDat
     } else ({ error }=await client.rpc("save_finance_expected_item",{ p_studio_id:admin.studio_id,p_request_id:requestId,p_input:{ ...input,established:input.established==="true" } }));
   } else return { status:"error",message:t("errors.invalid") };
   if(error) {
+    if(error.message==="finance_category_schedule_required") return { status:"error",message:t("errors.categoryScheduleRequired") };
+    if(error.message==="finance_payroll_cost_locked") { const scheduleT=await getTranslations("Finance.schedules");return { status:"error",message:scheduleT("errors.costLocked") }; }
     if(error.message==="finance_obligation_locked") { const scheduleT=await getTranslations("Finance.schedules");return { status:"error",message:scheduleT("errors.locked") }; }
     const projectKey=financeProjectError(error.message);
     if(projectKey) { const projectT=await getTranslations("Finance.project");return { status:"error",message:projectT(`errors.${projectKey}`) }; }

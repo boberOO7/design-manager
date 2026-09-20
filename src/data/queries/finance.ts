@@ -96,9 +96,12 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   if(history?.error) throw new Error("Unable to load settlement history.",{ cause:history.error });
   const links=ids.length ? await client.from("finance_project_items").select("*").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(links?.error) throw new Error("Unable to load project payment context.",{ cause:links.error });
-  const obligations=ids.length ? await client.from("finance_obligation_items").select("expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  const obligations=ids.length ? await client.from("finance_obligation_items").select("obligation_id,expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(obligations?.error) throw new Error("Unable to load obligation context.",{ cause:obligations.error });
-  return { obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
+  const obligationIds=[...new Set(obligations?.data?.map((link)=>link.obligation_id)??[])];
+  const payrollCosts=obligationIds.length ? await client.from("finance_payroll_unknown_costs").select("*").eq("studio_id",admin.studio_id).in("obligation_id",obligationIds) : null;
+  if(payrollCosts?.error) throw new Error("Unable to load payroll cost completion.",{ cause:payrollCosts.error });
+  return { payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 

@@ -24,12 +24,19 @@ export const scheduleInputSchema = z.object({
 export const generateObligationsSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart, through: monthStart })
   .refine((v) => v.through >= v.from && (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 export const stopScheduleSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart });
+export const payrollCostSchema = z.object({
+  requestId: z.uuid(), obligationId: z.uuid(), component: z.enum(["deductions", "employer_cost"]),
+  revision: z.coerce.number().int().min(0), status: z.enum(["unknown", "fixed", "estimated"]),
+  amount: optionalAmount, reason: z.string().trim().min(1).max(2000),
+}).refine((v) => (v.status === "unknown") === (v.amount === ""), { path: ["amount"] });
 export const employeeBonusSchema = z.object({
   requestId: z.uuid(), employeeId: z.uuid(), amount: planningAmount, currency: z.string().regex(/^[A-Z]{3}$/),
   periodStart: z.iso.date(), periodEnd: z.iso.date(), dueDate: z.iso.date(), description: z.string().trim().min(1).max(2000),
 }).refine((v) => v.periodEnd >= v.periodStart);
 
 export function financeScheduleError(message: string) {
+  if (message === "finance_payroll_cost_locked") return "costLocked";
+  if (message === "finance_payroll_cost_category_required") return "costCategory";
   if (message === "finance_schedule_effective_date") return "effectiveDate";
   if (message === "finance_schedule_range") return "range";
   if (message === "finance_employee_invalid" || message.includes("finance_active_payroll_employee")) return "employee";

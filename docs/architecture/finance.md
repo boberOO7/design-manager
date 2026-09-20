@@ -125,6 +125,11 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   Case/space-insensitive uniqueness prevents duplicate names within a direction/nature.
   A posting trigger requires an active category for new ordinary movements; refunds
   and reversals inherit the original snapshot, including legacy/archived categories.
+- Categories required by active or future schedule terms cannot be archived,
+  including payroll's implicit employer-cost/remittance category and terms beyond
+  the forecast horizon. Unknown payroll costs retain that dependency. New payroll
+  terms reject an archived required cost category with a restoration instruction;
+  restoring a legacy archived dependency allows occurrence maintenance to recover.
 - `finance_expected_items` holds incoming/outgoing amounts and currencies without
   creating account effects. Commitment (tentative/agreed/cancelled), certainty
   (fixed/estimated), contractual due date and expected payment date are independent.
@@ -250,6 +255,21 @@ or notifications containing private data.
   arithmetic. Net equals payout, with remittances additional; gross equals payout
   plus explicit deductions. Unknown costs remain null, confirmed zero is explicit,
   and estimated employer cost remains estimated. There is no statutory tax engine.
+- Net-pay forms accept additional remittances: blank is unknown, zero explicitly
+  confirms none, and a known amount is additional to payout. Gross arithmetic is
+  unchanged. Employer costs retain fixed/estimated choices.
+- Expected payroll items expose completion of originally unknown remittances and
+  employer costs for past service months or earned/allocated payouts. The guarded
+  `complete_finance_payroll_cost` RPC appends reasoned, versioned facts to
+  `finance_payroll_cost_revisions`; retries use the existing planning request audit.
+  Positive amounts create/revise the separate expected component, while explicit
+  zero or unknown cancels an unsettled component without inventing a zero payment.
+  Established components and any allocation history prohibit further completion
+  edits. The global editor cannot bypass these audited amount/state corrections.
+  Salary terms, payouts and cash remain unchanged; automatic maintenance preserves
+  completed occurrences. Compensation amendments cannot overlap completed occurrences,
+  even if the payout's earned flag is later cleared. Forecast diagnostics read the latest explicit
+  completion state, and estimated expectations retain existing forecast semantics.
 - Recurring studio terms select any outgoing category, monthly/quarterly/yearly
   cadence, fixed/estimated value and tentative/agreed commitment. The category's
   immutable nature keeps owner distributions non-operating. Each interval starts
@@ -279,6 +299,10 @@ or notifications containing private data.
   Restoration never restarts pay; a new schedule must begin after the prior stop
   and can reuse system-cancelled employee/month identities. Membership-first locks
   coordinate payroll generation with Team removal, followed by the existing Finance lock.
+- Cancellation requires schedule ownership. A replacement may adopt an unprotected,
+  system-cancelled occurrence only with valid replacement terms and a stopped prior
+  owner. The same obligation and component IDs acquire explicit replacement ownership;
+  predecessor maintenance cannot cancel them, regardless of processing order.
 - Rates apply to whole months, with no automatic proration for joining/leaving or
   partial recurring intervals. Admins must explicitly reconcile partial-period
   obligations before marking them earned. A one-off employee bonus is a separate
