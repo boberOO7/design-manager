@@ -1,0 +1,122 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { test, expect, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import en from "../../messages/en.json";
+import uk from "../../messages/uk.json";
+import type { Database } from "../../src/types/database.types";
+const local = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SERVICE_KEY: z.string() }).parse(process.env);
+if (!["127.0.0.1", "localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local Finance fixtures only");
+const client = createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL, local.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const studio = randomUUID(), bank = randomUUID();
+const actors = ["admin", "employee"].map(role => ({ role, id: "", email: `overview-${randomUUID()}@example.test`, password: `Finance-${randomUUID()}` }));
+const t = en.Finance.overview;
+const f = en.Finance.forecast;
+const foreign = randomUUID(), secondBank = randomUUID();
+function sql(statement: string) { return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }).trim(); }
+async function login(page: Page, index = 0) { await page.goto("/login"); await page.locator('input[type="email"]').fill(actors[index].email); await page.locator('input[type="password"]').fill(actors[index].password); await page.locator('button[type="submit"]').click(); await expect(page).toHaveURL(/\/dashboard/); }
+let category = "";
+test.beforeAll(async () => {
+  await client.from("studios").insert({ id: studio, name: "Forecast browser test" }).throwOnError();
+  for (const actor of actors) {
+    const { data, error } = await client.auth.admin.createUser({ email: actor.email, password: actor.password, email_confirm: true }); if (error) throw error; actor.id = data.user.id;
+    await client.from("profiles").upsert({ id: actor.id, email: actor.email, full_name: `Forecast ${actor.role}`, system_role: actor.role, is_active: true }).throwOnError();
+    await client.from("studio_members").insert({ studio_id: studio, user_id: actor.id, system_role: actor.role, joined_at: "2026-01-01" }).throwOnError();
+  }
+  sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values('${studio}','UAH',date_trunc('month',now() at time zone 'Europe/Kyiv')::date,'${actors[0].id}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bank}','${studio}','Bank','UAH',1000,'${actors[0].id}'),('${foreign}','${studio}','Dollar bank','USD',0,'${actors[0].id}'),('${secondBank}','${studio}','Second bank','UAH',0,'${actors[0].id}');
+    select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.finalize_finance_setup('${studio}');`);
+  category = sql(`select id from public.finance_categories where studio_id='${studio}' and default_key='project_payments'`);
+  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);
+    do $$declare item uuid; begin
+      item:=public.save_finance_expected_item('${studio}',gen_random_uuid(),jsonb_build_object('direction','incoming','amount','100000','currency','UAH','categoryId','${category}','established',true,'description','Contract receipt','dueDate',(now() at time zone 'Europe/Kyiv')::date,'expectedDate',(now() at time zone 'Europe/Kyiv')::date,'commitment','agreed','certainty','fixed'));
+      perform public.record_finance_expected_payment('${studio}',gen_random_uuid(),item,jsonb_build_object('kind','incoming','date',(now() at time zone 'Europe/Kyiv')::date,'amount','40000','accountId','${bank}','categoryId','${category}'),40000);
+      perform public.save_finance_expected_item('${studio}',gen_random_uuid(),jsonb_build_object('direction','incoming','amount','100','currency','UAH','categoryId','${category}','description','Tentative receipt','expectedDate',(now() at time zone 'Europe/Kyiv')::date,'commitment','tentative','certainty','estimated'));
+      perform public.save_finance_expected_item('${studio}',gen_random_uuid(),jsonb_build_object('direction','incoming','amount','75','currency','UAH','categoryId','${category}','established',true,'description','Undated receipt','commitment','agreed','certainty','fixed'));
+      perform public.save_finance_expected_item('${studio}',gen_random_uuid(),jsonb_build_object('direction','outgoing','amount','120','currency','UAH','categoryId',(select id from public.finance_categories where studio_id='${studio}' and default_key='rent'),'description','Overdue rent','dueDate',(now() at time zone 'Europe/Kyiv')::date-1,'commitment','agreed','certainty','fixed'));
+      perform public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','owner_withdrawal','date',(now() at time zone 'Europe/Kyiv')::date,'amount','500','accountId','${bank}','categoryId',(select id from public.finance_categories where studio_id='${studio}' and default_key='owner_distribution')));
+      perform public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','transfer','category','Transfer','date',(now() at time zone 'Europe/Kyiv')::date,'amount','100','accountId','${bank}','destinationId','${secondBank}','receivedAmount','100','fee','2'));
+      perform public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','incoming','date',(now() at time zone 'Europe/Kyiv')::date,'amount','10','accountId','${foreign}','categoryId','${category}','fx',jsonb_build_object('rate','39','source','manual','effectiveDate',(now() at time zone 'Europe/Kyiv')::date)));
+      perform public.save_finance_budget('${studio}',gen_random_uuid(),jsonb_build_object('categoryId','${category}','year',extract(year from now() at time zone 'Europe/Kyiv'),'revision',0,'months',to_jsonb(array_fill(100000,ARRAY[12])),'reason','Overview reference'));
+    end $$;`);
+});
+test.afterAll(async () => {
+  sql(`begin;set local session_replication_role=replica;
+    delete from public.finance_forecast_snapshots where studio_id='${studio}';delete from public.finance_budget_revisions where studio_id='${studio}';
+    delete from public.finance_allocations where studio_id='${studio}';delete from public.finance_expected_items where studio_id='${studio}';
+    delete from public.finance_planning_requests where studio_id='${studio}';delete from public.finance_movement_entries where studio_id='${studio}';delete from public.finance_movements where studio_id='${studio}';
+    delete from public.finance_accounts where studio_id='${studio}';delete from public.finance_categories where studio_id='${studio}';delete from public.finance_settings where studio_id='${studio}';
+    delete from public.notifications where studio_id='${studio}';delete from public.studio_members where studio_id='${studio}';delete from public.studios where id='${studio}';commit;`);
+  for (const actor of actors) if (actor.id) { const { error } = await client.auth.admin.deleteUser(actor.id); if (error) throw error; }
+});
+test("Overview reconciles, drills to exact items and works across report contexts and screen sizes", async ({ page }, testInfo) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  page.on("console", message => { if (message.type() === "error" && /hydration|hydrated/i.test(message.text())) errors.push(message.text()); });
+  await login(page); await page.goto("/finance?fx_USD=40");
+  await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
+  await expect(page.getByLabel(f.horizon, { exact: true })).toHaveValue("6");
+  await expect(page.getByLabel(f.scenario, { exact: true })).toHaveValue("confirmed");
+  const metric = (name: string) => page.getByRole("button", { name: new RegExp(`^${name}`) });
+  await expect(metric(t.cash)).toContainText("40,898.00");
+  await expect(metric(t.netFlow)).toContainText("39,888.00");
+  await expect(metric(t.receivables)).toContainText("60,075.00");
+  await expect(metric(t.outgoing)).toContainText("120.00");
+  await expect(metric(t.outgoing)).toContainText("Known subtotal");
+  await metric(t.cash).click();
+  const breakdown = page.locator("#overview-breakdown");
+  await expect(breakdown).toContainText("Dollar bank"); await expect(breakdown).toContainText("400.00");
+  await metric(t.netFlow).click();
+  await expect(breakdown).toContainText(en.Finance.movements.natures.owner_distribution);
+  await expect(breakdown).toContainText("500.00");
+  await page.getByText(t.chartData, { exact: true }).click();
+  const chart = page.getByRole("table", { name: t.cashChart });
+  await expect(chart).toContainText("40,888.00"); // Stored USD valuation is 39.
+  await expect(chart).toContainText("40,898.00"); // Forecast starting cash uses 40.
+  await expect(chart).toContainText("100,778.00"); // Remaining 60000 less 120, no double counting.
+  await page.getByText(t.chartData, { exact: true }).click();
+  await expect(page.getByText(t.overdue, { exact: true }).last()).toBeVisible();
+  await page.getByRole("link", { name: "Overdue rent", exact: true }).last().click();
+  await expect(page).toHaveURL(/\/finance\/expected\?item=/);
+  await expect(page.getByText("Overdue rent", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Contract receipt", { exact: true })).toHaveCount(0);
+  await page.goto("/finance?fx_USD=40");
+  for (const horizon of ["3", "12", "year", "6"]) {
+    await page.getByLabel(f.horizon, { exact: true }).selectOption(horizon);
+    await page.getByLabel(f.scenario, { exact: true }).selectOption("planned");
+    await page.getByRole("button", { name: f.apply, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`horizon=${horizon}`));
+    await expect(page).toHaveURL(/fx_USD=40/);
+    await expect(page.getByRole("link", { name: "Tentative receipt", exact: true }).last()).toBeVisible();
+  }
+  await page.getByLabel(t.actualPeriod, { exact: true }).selectOption("month");
+  await page.getByRole("button", { name: f.apply, exact: true }).click();
+  await expect(page).toHaveURL(/period=month/);
+  const categoryTable = page.getByRole("table", { name: t.budgetComparison });
+  await expect(categoryTable).toContainText("100,490.00"); // Actual 40390 + remaining 60100.
+  await page.getByRole("link", { name: t.budgetDetails, exact: true }).click();
+  await expect(page).toHaveURL(/scenario=planned/); await expect(page).toHaveURL(/fx_USD=40/);
+  await expect(page.getByRole("table", { name: f.comparison })).toContainText("100,490.00");
+  await page.goto("/finance?fx_USD=40");
+  await metric(t.cash).click(); await page.getByRole("button", { name: t.close, exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath("overview-desktop.png"), fullPage: true });
+  await page.getByRole("heading", { name: t.flows, exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("overview-details-desktop.png"), fullPage: true });
+  await page.locator('circle[role="button"]').first().focus(); await page.keyboard.press("ArrowRight");
+  await expect(page.locator('p[aria-live="polite"]')).not.toHaveText(t.chartInteraction);
+  await page.setViewportSize({ width: 375, height: 900 }); await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();
+  await expect(page.getByRole("heading", { name: uk.Finance.overview.title, exact: true })).toBeVisible();
+  await metric(uk.Finance.overview.cash).click(); await page.getByRole("button", { name: uk.Finance.overview.close, exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const cashChart = page.getByRole("group", { name: uk.Finance.overview.cashChart, exact: true });
+  await expect.poll(async () => cashChart.evaluate(svg => Number(svg.getAttribute("viewBox")?.split(" ")[2]))).toBeLessThan(375);
+  await page.screenshot({ path: testInfo.outputPath("overview-mobile.png"), fullPage: true });
+  await page.getByRole("heading", { name: uk.Finance.overview.upcoming, exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("overview-details-mobile.png"), fullPage: true });
+  expect(errors).toEqual([]);
+});
+test("employee cannot access Overview or Accounts", async ({ page }) => {
+  await login(page, 1);
+  for (const route of ["/finance", "/finance/accounts"]) { await page.goto(route); await expect(page).toHaveURL(/\/dashboard/); }
+});

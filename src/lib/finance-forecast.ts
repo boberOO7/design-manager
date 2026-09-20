@@ -50,5 +50,5 @@ export type ForecastReport = z.infer<typeof forecastReportSchema>;
 export function forecastIssueHref(issue: ForecastReport["issues"][number]) {
   if (issue.source === "project") return `/projects/${issue.id}?view=finance`;
   if (issue.source === "schedule" || issue.source === "payroll") return "/finance/schedules";
-  return issue.source === "account" ? "/finance" : "/finance/expected";
+  return issue.source === "account" ? "/finance/accounts" : "/finance/expected";
 }

@@ -1134,6 +1134,12 @@ export type Database = {
           id: string
           name: string
           opening_balance: number
+          opening_fx_effective_date: string | null
+          opening_fx_rate: number | null
+          opening_fx_source: string | null
+          opening_reporting_amount: number | null
+          opening_valued_at: string | null
+          opening_valued_by: string | null
           studio_id: string
           updated_at: string
         }
@@ -1145,6 +1151,12 @@ export type Database = {
           id?: string
           name: string
           opening_balance?: number
+          opening_fx_effective_date?: string | null
+          opening_fx_rate?: number | null
+          opening_fx_source?: string | null
+          opening_reporting_amount?: number | null
+          opening_valued_at?: string | null
+          opening_valued_by?: string | null
           studio_id: string
           updated_at?: string
         }
@@ -1156,6 +1168,12 @@ export type Database = {
           id?: string
           name?: string
           opening_balance?: number
+          opening_fx_effective_date?: string | null
+          opening_fx_rate?: number | null
+          opening_fx_source?: string | null
+          opening_reporting_amount?: number | null
+          opening_valued_at?: string | null
+          opening_valued_by?: string | null
           studio_id?: string
           updated_at?: string
         }
@@ -1173,6 +1191,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_accounts_opening_valued_by_fkey"
+            columns: ["opening_valued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "finance_accounts_studio_id_fkey"
@@ -4903,6 +4928,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_finance_overview: {
+        Args: {
+          p_fx?: Json
+          p_horizon?: string
+          p_period?: string
+          p_scenario?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
       get_personal_task_ids: {
         Args: never
         Returns: {
@@ -5264,6 +5299,10 @@ export type Database = {
           p_studio_id: string
           p_user_ids: string[]
         }
+        Returns: undefined
+      }
+      value_finance_opening: {
+        Args: { p_account_id: string; p_input: Json; p_studio_id: string }
         Returns: undefined
       }
     }

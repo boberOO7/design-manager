@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { financeRateSchema } from "./finance-movements";
 import type { Database } from "@/types/database.types";
 
 export type FinanceCurrency = Database["public"]["Tables"]["finance_currencies"]["Row"];
@@ -39,3 +40,12 @@ export function formatFinanceAmount(amount: number, currency: FinanceCurrency, l
     minimumFractionDigits: currency.minor_units, maximumFractionDigits: currency.minor_units,
   }).format(amount);
 }
+
+export const openingValuationSchema = z.object({
+  accountId: z.uuid(), currency: z.string().regex(/^[A-Z]{3}$/), reportingCurrency: z.string().regex(/^[A-Z]{3}$/),
+  openingAmount: z.string().regex(/^-?\d{1,10}(?:\.\d{1,4})?$/), date: z.iso.date(),
+  fxMode: z.enum(["nbu", "manual"]), manualRate: z.string().default(""),
+}).superRefine((input, context) => {
+  if (input.fxMode === "manual" && !financeRateSchema.safeParse(input.manualRate).success) context.addIssue({ code: "custom", path: ["manualRate"], message: "rate" });
+  if (input.fxMode === "nbu" && input.reportingCurrency !== "UAH") context.addIssue({ code: "custom", path: ["fxMode"], message: "nbu" });
+});

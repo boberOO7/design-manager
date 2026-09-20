@@ -61,7 +61,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   return <div className="mx-auto w-full max-w-4xl space-y-8">
     <PageHeader title={t("title")} description={t("description")} />
     {data.invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("invalidManualFx")}</p> : null}
-    {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance" className="underline">{ft("accounts")}</Link></p> : <>
+    {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : <>
       <form method="get" className="flex flex-wrap items-end gap-4">
         <input type="hidden" name="year" value={data.year} />
         <FormField label={t("horizon")}><select aria-label={t("horizon")} className={inputClassName} name="horizon" defaultValue={report.horizon}>{["3", "6", "year", "12"].map(value => <option key={value} value={value}>{t(`horizons.${value}`)}</option>)}</select></FormField>

@@ -3,7 +3,7 @@
 Finance is a separate, studio-scoped management/cash-planning domain. V1 access
 is administrator-only. Project lifecycle, CRM budgets, equipment/service costs,
 Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
-`/finance` owns setup/accounts; `/finance/movements` owns actual cash and recorded
+`/finance` owns the management Overview; `/finance/accounts` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
 owns classification; `/finance/schedules` owns compensation and recurring rules;
 `/finance/planning` owns cash budgets, rolling forecasts and saved expectations. All inherit the same administrator-only layout and messages.
@@ -32,6 +32,30 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   instead of rounding, and support negative/zero balances. The current input range
   is ten integer digits and up to four fractional digits. Monetary arithmetic and
   reporting-valuation rounding happen in PostgreSQL, never in the client.
+
+## Historical opening valuation
+
+- Nonzero foreign openings carry a reporting amount, FX rate/source/effective date,
+  and valuation actor/time on `finance_accounts`. The reporting currency and
+  financial date are the studio's cutover context. Rates follow Phase 2: reporting
+  units per one account-currency unit, dated NBU for UAH or explicit manual input,
+  with exact numeric rounding once to reporting-currency precision.
+- Accounts provides an explicit valuation action using the same historical FX
+  resolver as movements. NBU requests use the cutover date, never today. Missing
+  rates save nothing and require retry or an explicit manual fallback. Same-currency
+  openings use their original amount; zero foreign openings require no assumed rate.
+- Draft valuations may be corrected. Changing the opening amount, account currency,
+  reporting currency or cutover clears stale draft valuations. Finalization requires
+  all nonzero foreign openings to be valued, including archived accounts. Context
+  checks under the Finance parent lock reject stale submissions.
+- Older finalized setups retain missing valuations until an admin explicitly
+  completes them. This exception only fills absent valuation fields; it never
+  unlocks amounts, currencies or cutover. Once completed on a finalized setup,
+  valuation and provenance are immutable, including against direct privileged edits.
+- Valuation creates no ledger entries, cash activity or expected items. Native
+  account balances retain original opening amounts. Historical consolidated cash
+  sums frozen opening valuations and each movement's own stored reporting value.
+  Current balances and rolling Forecast still use report-date FX independently.
 
 ## Actual cash and historical valuation
 
@@ -270,7 +294,7 @@ or notifications containing private data.
 ## Cash Budget and rolling Forecast
 
 `/finance/planning` is the admin-only operational planning view. It is separate
-from the future Finance Overview; no P&L, accrual, sales-pipeline forecasting,
+from the Finance Overview; no P&L, accrual, sales-pipeline forecasting,
 recurrence generation job or tax engine is implied.
 
 - `finance_budget_revisions` stores twelve monthly amounts per studio, year and
@@ -352,9 +376,46 @@ recurrence generation job or tax engine is implied.
   also check active-admin identity explicitly. Reporting scans are database-side,
   so the Data API row limit cannot silently truncate ledger/expected totals.
 
-Phase 6B should build on these definitions and surface coverage next to charts.
+The Overview consumes these same definitions and exposes their completeness next to charts.
 Any FX revaluation presentation, comparison of whole-month historical snapshots,
 and generation workflow must retain these timing and historical boundaries.
+
+## Management Overview
+
+- `/finance` defaults to all accounts, the last three calendar months of actual
+  cash through today (clipped at cutover), and the six-month Confirmed forecast.
+  Actual-period, forecast-horizon and scenario controls are independent. Draft
+  studios still see setup; account administration remains at `/finance/accounts`.
+- `get_finance_overview` first calls the canonical forecast/automatic coverage
+  boundary. It projects existing ledger views and that forecast into exact
+  numeric summaries; it creates no financial sources or alternative timing rules.
+  Summary breakdowns use the same RPC result and FX assumptions. Expected-item
+  links filter by ID, so pagination cannot hide the selected obligation.
+- Cash history uses original same-currency openings and frozen foreign opening
+  valuations plus all stored reporting cash effects, including transfer legs, at
+  daily closing precision. Missing legacy opening valuations make history
+  unavailable until explicitly completed in Accounts. Forecast starts separately at today's assumed FX-valued
+  recorded cash. A difference at the boundary is valuation, not a cash movement.
+- Daily forecast points add only canonical dated remaining items. The low point
+  includes starting cash and daily closing points; same-day cash ordering is not
+  inferred. SVG coordinates alone use JavaScript numbers. Exact amounts and dates
+  remain available in the keyboard-accessible chart's table.
+- Actual flow comparison uses `finance_planning_actuals`, excluding opening cash
+  and transfer principal. Fees remain operating, refunds/reversals remain signed,
+  and financing/owner distributions remain separate. Net flow includes all those
+  non-transfer classifications; it need not equal the FX-valued cash change.
+- Receivables use established, agreed, fixed `outstanding_amount` across all dates,
+  valued with the same assumptions; currency discovery includes receivables beyond
+  the forecast horizon. Upcoming cash uses canonical dated remaining items through
+  today + 30 days, capped at the selected forecast end. Contractual due dates stay
+  visible even when a revised expected date controls cash timing.
+- Category Budget/Forecast/Actual sums the canonical monthly comparisons over the
+  selected horizon, sorted by absolute variance. A full-horizon budget/variance is
+  unavailable unless every month has a baseline. Monthly detail links preserve
+  scenario, horizon and rate values. Budget never becomes forecast cash.
+- Missing FX and forecast coverage keep affected summaries visibly incomplete.
+  One expandable attention area contains overdue items and canonical issues.
+  No chart substitutes missing inputs with zero or hypothetical receipts.
 
 ## Canonical sources
 
@@ -385,3 +446,11 @@ and generation workflow must retain these timing and historical boundaries.
 - `supabase/migrations/20260917170558_finance_budget_forecast.sql`
 - `supabase/migrations/20260917171353_finance_forecast_capture_boundary.sql`
 - `supabase/tests/finance_forecast_rls.test.sql`, `tests/e2e/finance-forecast.spec.ts`
+
+- `src/lib/finance-overview.ts`, `src/data/queries/finance-overview.ts`
+- `src/components/finance/finance-overview.tsx`, `src/components/finance/cash-chart.tsx`
+- `supabase/migrations/20260920112753_finance_overview.sql`
+- `supabase/tests/finance_overview_rls.test.sql`, `tests/e2e/finance-overview.spec.ts`
+
+- `supabase/migrations/20260920121044_finance_opening_valuation.sql`
+- `supabase/tests/finance_opening_valuation_rls.test.sql`, `tests/e2e/finance-opening-valuation.spec.ts`

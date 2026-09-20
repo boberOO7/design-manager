@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financeAccountSchema, financeSettingsSchema, formatFinanceAmount } from "./finance";
+import { financeAccountSchema, financeSettingsSchema, openingValuationSchema, formatFinanceAmount } from "./finance";
 
 const currencies = ["UAH", "USD", "EUR", "PLN"].map((code) => ({ code, minor_units: 2 })).concat([
   { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 },
@@ -35,4 +35,10 @@ describe("Finance foundation inputs", () => {
     expect(formatFinanceAmount(1.234, currencies[5], "en")).toContain("1.234");
     expect(formatFinanceAmount(25, currencies[4], "en")).not.toContain(".00");
   });
+});
+
+it("validates opening FX context and explicit positive manual assumptions", () => {
+  const input = { accountId: "62000000-0000-4000-8000-000000000001", currency: "USD", reportingCurrency: "UAH", openingAmount: "-5.25", date: "2026-09-01", fxMode: "manual", manualRate: "39,5" };
+  expect(openingValuationSchema.safeParse(input).success).toBe(true);
+  for (const patch of [{ manualRate: "0" }, { manualRate: "" }, { manualRate: "NaN" }, { date: "2026-02-30" }, { openingAmount: "1e3" }, { reportingCurrency: "EUR", fxMode: "nbu" }]) expect(openingValuationSchema.safeParse({ ...input, ...patch }).success).toBe(false);
 });

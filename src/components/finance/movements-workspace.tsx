@@ -94,7 +94,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
   };
   return <div className="mx-auto w-full max-w-4xl space-y-6">
     <PageHeader title={t("movements.title")} description={t("movements.descriptionText")} />
-    {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance">{t("movements.setupLink")}</Link></p> : <>
+    {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></p> : <>
       <section aria-label={t("movements.recordedBalance")} className={`${panel} divide-y divide-[var(--ui-border)]`}>
         <h2 className="px-5 py-3 text-sm font-semibold">{t("movements.recordedBalance")}</h2>
         {props.balances.map((balance) => <div key={balance.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><span>{balance.name}{balance.archived_at ? <span className="ml-2 text-xs text-[var(--ui-text-muted)]">{t("movements.archived")}</span> : null}</span><span className="ui-numeric font-medium">{balance.recorded_balance !== null && balance.currency ? money(balance.recorded_balance, balance.currency) : "—"}</span></div>)}

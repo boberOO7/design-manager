@@ -28,6 +28,6 @@ export async function saveFinanceCashPlan(_previous: FinanceActionState, form: F
     ({ error, data: id } = await client.rpc("save_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_name: v.name, p_horizon: v.horizon, p_scenario: v.scenario, p_fx: v.fx }));
   } else return { status: "error", message: t("errors.invalid") };
   if (error) return { status: "error", message: t(error.message.includes("version_conflict") ? "errors.conflict" : error.message.includes("fx_invalid") ? "errors.fx" : "errors.invalid") };
-  revalidatePath("/finance/planning");
+  revalidatePath("/finance", "layout");
   return { status: "success", id: id ?? undefined };
 }

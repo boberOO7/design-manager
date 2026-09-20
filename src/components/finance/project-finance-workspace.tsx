@@ -60,7 +60,7 @@ export function ProjectFinanceWorkspace(props: Props) {
     const currency = props.currencies.find((v) => v.code === code);
     return currency ? formatFinanceAmount(amount ?? 0, currency, locale) : "—";
   };
-  if (!props.settings?.finalized_at) return <section className={panel}>{t("movements.setupRequired")} <Link className="underline" href="/finance">{t("movements.setupLink")}</Link></section>;
+  if (!props.settings?.finalized_at) return <section className={panel}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></section>;
   return <div className="mx-auto w-full max-w-4xl space-y-5">
     <nav aria-label={t("project.streamNavigation")} className="flex flex-wrap gap-x-5 gap-y-2 text-sm">{projectStreams.map((stream) => <Link key={stream} href={`/projects/${props.project.projectId}?view=finance&stream=${stream}`} aria-current={stream === props.stream ? "page" : undefined} className="py-2 text-[var(--ui-text-secondary)] aria-[current=page]:font-semibold aria-[current=page]:underline">{t(`project.streams.${stream}`)}</Link>)}</nav>
     <section className={`${panel} space-y-4`} aria-label={t("project.summary")}>

@@ -23,6 +23,9 @@ create function pg_temp.budget(n integer,patch jsonb default '{}') returns uuid 
 create function pg_temp.expected(n integer,patch jsonb default '{}') returns uuid language sql as $$select public.save_finance_expected_item(pg_temp.fid(1),pg_temp.fid(n),jsonb_build_object('direction','incoming','amount','100000','currency','UAH','categoryId',pg_temp.cat('project_payments'),'description','Contract receipt','dueDate',pg_temp.today(),'expectedDate',pg_temp.today(),'commitment','agreed','certainty','fixed')||patch)$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
+-- Explicit historical assumptions for this test fixture, separate from forecast FX.
+select public.value_finance_opening(a.studio_id,a.id,jsonb_build_object('currency',a.currency,'reportingCurrency',s.base_currency,'openingAmount',a.opening_balance::text,'date',s.cutover_date,'fx',jsonb_build_object('rate','39','source','manual','effectiveDate',s.cutover_date)))
+from public.finance_accounts a join public.finance_settings s on s.studio_id=a.studio_id where a.studio_id=pg_temp.fid(1) and a.currency<>s.base_currency and a.opening_balance<>0;
 select public.finalize_finance_setup(pg_temp.fid(1));
 select lives_ok($$select pg_temp.budget(100)$$,'admin approves annual budget');
 select lives_ok($$select pg_temp.budget(100)$$,'budget retry idempotent');

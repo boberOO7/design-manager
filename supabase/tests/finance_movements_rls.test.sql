@@ -29,6 +29,9 @@ $$;
 select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
 set local role authenticated;
 select throws_like($$select pg_temp.post()$$,'%finance_finalized_setup_required%','draft setup cannot post');
+-- Explicit historical assumptions for this test fixture, separate from forecast FX.
+select public.value_finance_opening(a.studio_id,a.id,jsonb_build_object('currency',a.currency,'reportingCurrency',s.base_currency,'openingAmount',a.opening_balance::text,'date',s.cutover_date,'fx',jsonb_build_object('rate','39','source','manual','effectiveDate',s.cutover_date)))
+from public.finance_accounts a join public.finance_settings s on s.studio_id=a.studio_id where a.studio_id=pg_temp.fid(1) and a.currency<>s.base_currency and a.opening_balance<>0;
 select public.finalize_finance_setup(pg_temp.fid(1));
 select is((select recorded_balance from public.finance_account_balances where id=pg_temp.fid(20)),1000::numeric,'opening contributes to balance');
 select is((select count(*) from public.finance_cash_effects),0::bigint,'opening never becomes a cash flow');

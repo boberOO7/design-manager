@@ -48,6 +48,9 @@ select throws_like($$update public.finance_currencies set minor_units=0$$,'%perm
 select lives_ok($$select public.set_finance_account_archived('62000000-0000-0000-0000-000000000001',(select id from public.finance_accounts where name='Overdraft'),true)$$,'archive preserves an account with an opening balance');
 select is((select opening_balance from public.finance_accounts where name='Overdraft' and archived_at is not null),-55.50::numeric,'archived opening balance remains readable');
 select throws_like($$select public.save_finance_account('62000000-0000-0000-0000-000000000001','Changed','USD',0,(select id from public.finance_accounts where name='Overdraft'))$$,'%finance_account_unavailable%','archived account must be restored before editing');
+-- Explicit historical assumptions for this test fixture, separate from forecast FX.
+select public.value_finance_opening(a.studio_id,a.id,jsonb_build_object('currency',a.currency,'reportingCurrency',s.base_currency,'openingAmount',a.opening_balance::text,'date',s.cutover_date,'fx',jsonb_build_object('rate','39','source','manual','effectiveDate',s.cutover_date)))
+from public.finance_accounts a join public.finance_settings s on s.studio_id=a.studio_id where a.studio_id='62000000-0000-0000-0000-000000000001' and a.currency<>s.base_currency and a.opening_balance<>0;
 select lives_ok($$select public.finalize_finance_setup('62000000-0000-0000-0000-000000000001')$$,'admin finalizes setup');
 select lives_ok($$select public.finalize_finance_setup('62000000-0000-0000-0000-000000000001')$$,'finalization retry is idempotent');
 select is((select finalized_by from public.finance_settings),'62000000-0000-0000-0000-000000000010'::uuid,'finalization records verified actor');

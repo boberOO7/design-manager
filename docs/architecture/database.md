@@ -152,4 +152,15 @@ Immutable `finance_budget_revisions` holds reporting-currency category/year plan
 retains expectations and assumptions, not a duplicate actual ledger. Forecast
 RPCs calculate with exact numeric from existing expected balances and cash effects.
 All inherit strict Finance admin RLS, guarded writes and immutable history.
-See [Finance](finance.md) for timing, coverage and FX policies.
+`get_finance_overview` is an admin-only caller-context projection over the same
+forecast RPC and existing ledger/expected views. It adds no tables or financial
+sources. See [Finance](finance.md) for reporting reconciliation, timing, coverage
+and FX policies.
+
+## Finance historical openings
+
+`value_finance_opening` stores cutover FX valuation metadata on accounts under the
+same Finance admin/parent-lock boundary. Triggers invalidate changed draft context,
+require complete foreign valuations at new finalization, and freeze finalized
+valuations. Older finalized setups allow absent valuations to be completed once.
+No ledger rows are created. See [Finance](finance.md#historical-opening-valuation).

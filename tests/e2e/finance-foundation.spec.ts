@@ -59,7 +59,7 @@ for (const locale of ["en", "uk"] as const) {
     await page.locator('input[type="password"]').fill(actor.password);
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/dashboard/);
-    await page.goto("/finance");
+    await page.goto("/finance/accounts");
     await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
     await page.getByRole("button", { name: t.saveSettings }).click();
     await page.getByRole("button", { name: t.addAccount, exact: true }).click();
@@ -89,6 +89,12 @@ for (const locale of ["en", "uk"] as const) {
     await page.getByRole("option", { name: "GBP", exact: true }).click();
     await page.getByRole("button", { name: t.saveSettings }).click();
     await expect(page.getByRole("combobox", { name: t.baseCurrency })).toHaveText("GBP");
+    await expect(page.getByRole("button", { name: t.reviewFinalize })).toBeDisabled();
+    await page.getByRole("button", { name: t.openingFx.named.replace("{name}", "Operating bank"), exact: true }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.locator('input[name="manualRate"]').fill("2.5");
+    await dialog.getByRole("button", { name: t.openingFx.save, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
     await page.getByRole("button", { name: t.reviewFinalize }).click();
     dialog = page.getByRole("dialog");
     await dialog.getByRole("checkbox").check();
@@ -102,7 +108,7 @@ for (const locale of ["en", "uk"] as const) {
     await dialog.getByRole("button", { name: t.saveAccount }).click();
     await expect(dialog).toHaveCount(0);
     await page.getByRole("button", { name: t.archive, exact: true }).click();
-    await page.locator("summary").click();
+    await page.getByText(t.archivedAccounts.replace("{count}", "1"), { exact: true }).click();
     await expect(page.getByText("Renamed bank", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: t.restore, exact: true }).click();
     await expect(page.getByRole("button", { name: t.editNamed.replace("{name}", "Renamed bank") })).toBeVisible();
@@ -130,7 +136,7 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
   sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values(${studioLiteral},'UAH','2026-09-01','${z.uuid().parse(actor.id)}');
     insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values
     ('${bank}',${studioLiteral},'Bank','UAH',1000,'${actor.id}'),('${cash}',${studioLiteral},'Cash','UAH',0,'${actor.id}'),('${usd}',${studioLiteral},'Dollars','USD',1000,'${actor.id}');
-    select set_config('request.jwt.claim.sub','${actor.id}',false); select public.finalize_finance_setup(${studioLiteral});`);
+    select set_config('request.jwt.claim.sub','${actor.id}',false); select public.value_finance_opening(${studioLiteral},'${usd}',jsonb_build_object('currency','USD','reportingCurrency','UAH','openingAmount','1000','date','2026-09-01','fx',jsonb_build_object('rate','39','source','manual','effectiveDate','2026-09-01'))); select public.finalize_finance_setup(${studioLiteral});`);
   const errors:string[]=[]; page.on("pageerror",error=>errors.push(error.message));
   await page.goto("/login");
   await page.locator('input[type="email"]').fill(actor.email);

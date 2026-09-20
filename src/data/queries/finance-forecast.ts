@@ -2,8 +2,7 @@ import "server-only";
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { resolveFinanceFx } from "@/lib/finance-fx";
-import { instantToDateOnly } from "@/lib/calendar";
-import { forecastFxSchema, forecastOptionsSchema, forecastReportSchema, forecastSnapshotSchema, snapshotComparisonSchema, type ForecastFx } from "@/lib/finance-forecast";
+import { forecastFxSchema, forecastOptionsSchema, forecastReportSchema, forecastSnapshotSchema, snapshotComparisonSchema, type ForecastFx, type ForecastReport } from "@/lib/finance-forecast";
 
 export async function getFinanceForecast(options: { horizon?: string; scenario?: string }, year: number, manualFx: ForecastFx = [], snapshotId?: string) {
   const admin = await getActiveStudioAdmin();
@@ -24,17 +23,7 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
   const raw = await client.rpc("calculate_finance_forecast", { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_fx: [] });
   if (raw.error) throw new Error("Unable to calculate forecast.", { cause: raw.error });
   const initial = forecastReportSchema.parse(raw.data);
-  const today = instantToDateOnly(new Date().toISOString());
-  const fx = forecastFxSchema.parse(manualFx).filter(row => row.currency !== initial.currency);
-  const needed = [...new Set([...initial.items.filter(item => item.reportingAmount === null).map(item => item.currency), ...initial.issues.filter(issue => issue.reason === "missing_fx").map(issue => issue.currency)])];
-  const rates = await Promise.all(needed.filter(currency => !fx.some(row => row.currency === currency)).map(async currency => {
-    if (initial.currency !== "UAH") return null;
-    try {
-      const rate = await resolveFinanceFx(currency, initial.currency, today, "nbu", "");
-      return { currency, rate: rate.rate, source: "nbu" as const, effectiveDate: rate.effectiveDate };
-    } catch { return null; } // Unavailable rates remain explicit report issues; never fall back to zero/old FX.
-  }));
-  fx.push(...rates.filter(rate => rate !== null));
+  const fx = await resolveForecastAssumptions(initial, manualFx);
   const calculated = fx.length ? await client.rpc("calculate_finance_forecast", { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_fx: fx }) : raw;
   if (calculated.error) throw new Error("Unable to value forecast.", { cause: calculated.error });
   const compared = saved?.data ? await client.rpc("compare_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_snapshot_id: saved.data.id }) : null;
@@ -45,3 +34,18 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
   };
 }
 export type FinanceForecastData = NonNullable<Awaited<ReturnType<typeof getFinanceForecast>>>;
+
+export async function resolveForecastAssumptions(initial: ForecastReport, manualFx: ForecastFx = [], extraCurrencies: string[] = []) {
+  const today = initial.asOf;
+  const fx = forecastFxSchema.parse(manualFx).filter(row => row.currency !== initial.currency);
+  const needed = [...new Set([...extraCurrencies, ...initial.items.filter(item => item.reportingAmount === null).map(item => item.currency), ...initial.issues.filter(issue => issue.reason === "missing_fx").map(issue => issue.currency)])];
+  const rates = await Promise.all(needed.filter(currency => !fx.some(row => row.currency === currency)).map(async currency => {
+    if (initial.currency !== "UAH") return null;
+    try {
+      const rate = await resolveFinanceFx(currency, initial.currency, today, "nbu", "");
+      return { currency, rate: rate.rate, source: "nbu" as const, effectiveDate: rate.effectiveDate };
+    } catch { return null; } // Unavailable rates remain explicit report issues; never fall back to zero/old FX.
+  }));
+  fx.push(...rates.filter(rate => rate !== null));
+  return fx;
+}

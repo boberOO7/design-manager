@@ -67,7 +67,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   return data?`/projects/${data.project_id}?view=finance&stream=${data.stream}`:"/finance/expected";
 }
 
-export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly()) {
+export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string) {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
@@ -76,6 +76,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   let query=projectId
     ? client.from("finance_project_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream",stream)
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
+  if(itemId) query=query.eq("id",itemId);
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(filter==="cancelled") query=query.eq("commitment","cancelled");
