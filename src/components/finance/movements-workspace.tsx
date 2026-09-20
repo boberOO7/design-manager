@@ -88,7 +88,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
   const [reversalDate, setReversalDate] = useState(props.today);
   const ready = Boolean(props.settings?.finalized_at);
   const active = props.accounts.filter((account) => !account.archived_at);
-  const money = (amount: number, code: string) => {
+  const money = (amount: number | string, code: string) => {
     const currency = props.currencies.find((item) => item.code === code);
     return currency ? formatFinanceAmount(amount, currency, locale) : `${amount} ${code}`;
   };

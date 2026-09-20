@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { formatFinanceDecimal, canChartFinanceAmount } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceOverview } from "@/lib/finance-overview";
 
-// Number conversion is only for SVG coordinates/formatting; all money and cumulative sums come from SQL.
+// Number conversion is only for SVG coordinates; all money and cumulative sums come from SQL.
 export function FinanceCashChart({ data }: { data: FinanceOverview }) {
   const t = useTranslations("Finance.overview");
   const locale = useLocale();
@@ -22,7 +23,9 @@ export function FinanceCashChart({ data }: { data: FinanceOverview }) {
     { date: report.asOf, amount: report.cashBase, kind: "forecast" as const },
     ...data.projection.map(p => ({ ...p, kind: "forecast" as const })),
   ];
-  const format = (value: string) => new Intl.NumberFormat(locale, { style: "currency", currency: report.currency, currencyDisplay: "code" }).format(Number(value));
+  const format = (value: string) => formatFinanceDecimal(value, locale, { style: "currency", currency: report.currency, currencyDisplay: "code" });
+  const digits = new Intl.NumberFormat(locale, { style: "currency", currency: report.currency }).resolvedOptions().maximumFractionDigits ?? 2;
+  const chartSafe = points.every(p => p.amount === null || canChartFinanceAmount(p.amount, digits));
   const values = points.flatMap(p => p.amount === null ? [] : [Number(p.amount)]);
   const min = Math.min(0, ...values), max = Math.max(1, ...values);
   const start = Date.parse(data.actualFrom), end = Date.parse(report.through);
@@ -34,7 +37,7 @@ export function FinanceCashChart({ data }: { data: FinanceOverview }) {
   return <div className="space-y-3">
     <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-[var(--ui-text-secondary)]"><span>━━ {t("actual")}{data.historyIncomplete ? ` · ${t("unavailable")}` : ""}</span><span className="text-[var(--ui-success-text)]">┄┄ {t("forecast")}{incomplete ? ` · ${t("incomplete")}` : ""}</span><span>{report.currency}</span></div>
     <div ref={container}>
-      <svg viewBox={`0 0 ${width} 280`} className="w-full" role="group" aria-label={t("cashChart")} aria-describedby="cash-chart-description">
+      {chartSafe ? <svg viewBox={`0 0 ${width} 280`} className="w-full" role="group" aria-label={t("cashChart")} aria-describedby="cash-chart-description">
         <desc id="cash-chart-description">{t("chartDescription")}</desc>
         {[min, (min + max) / 2, max].map((value, i) => <g key={i}><line x1="76" x2={width - 20} y1={y(value)} y2={y(value)} stroke="var(--ui-border)" /><text x="66" y={y(value) + 4} textAnchor="end" fontSize="12" fill="var(--ui-text-secondary)">{new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)}</text></g>)}
         <line x1={x(report.asOf)} x2={x(report.asOf)} y1="20" y2="240" stroke="var(--ui-text-muted)" strokeDasharray="3 4" />
@@ -52,9 +55,9 @@ export function FinanceCashChart({ data }: { data: FinanceOverview }) {
           const visibleIndex = points.slice(0, next).filter(point => point.amount !== null).length;
           if (points[next]) target?.[visibleIndex]?.focus();
         }}><title>{`${p.date}: ${format(p.amount)}`}</title></circle>)}
-      </svg>
+      </svg> : <p className="text-sm text-[var(--ui-text-secondary)]">{t("chartScale")}</p>}
     </div>
-    <p className="min-h-5 text-sm tabular-nums" aria-live="polite">{active?.amount !== null && active ? `${t(active.kind)} · ${active.date} · ${format(active.amount)}` : t("chartInteraction")}</p>
-    <details className="text-sm"><summary className="cursor-pointer font-medium">{t("chartData")}</summary><div className="mt-3 max-h-80 overflow-auto"><table className="w-full text-left [&_th]:p-2 [&_td]:p-2"><caption className="sr-only">{t("cashChart")}</caption><thead><tr><th scope="col">{t("date")}</th><th scope="col">{t("series")}</th><th scope="col">{report.currency}</th></tr></thead><tbody>{points.map((p, i) => <tr key={i}><th scope="row">{p.date}</th><td>{t(p.kind)}{p.kind === "forecast" && incomplete ? ` · ${t("incomplete")}` : ""}</td><td>{p.amount === null ? t("unavailable") : format(p.amount)}</td></tr>)}</tbody></table></div></details>
+    {chartSafe ? <p className="min-h-5 text-sm tabular-nums" aria-live="polite">{active?.amount !== null && active ? `${t(active.kind)} · ${active.date} · ${format(active.amount)}` : t("chartInteraction")}</p> : null}
+    <details className="text-sm" open={chartSafe ? undefined : true}><summary className="cursor-pointer font-medium">{t("chartData")}</summary><div className="mt-3 max-h-80 overflow-auto"><table className="w-full text-left [&_th]:p-2 [&_td]:p-2"><caption className="sr-only">{t("cashChart")}</caption><thead><tr><th scope="col">{t("date")}</th><th scope="col">{t("series")}</th><th scope="col">{report.currency}</th></tr></thead><tbody>{points.map((p, i) => <tr key={i}><th scope="row">{p.date}</th><td>{t(p.kind)}{p.kind === "forecast" && incomplete ? ` · ${t("incomplete")}` : ""}</td><td>{p.amount === null ? t("unavailable") : format(p.amount)}</td></tr>)}</tbody></table></div></details>
   </div>;
 }

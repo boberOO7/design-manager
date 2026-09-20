@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { formatFinanceDecimal } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { getFinanceData } from "@/data/queries/finance";
 import type { FinanceForecastData } from "@/data/queries/finance-forecast";
@@ -52,7 +53,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const report = data.report;
   const currency = data.settings?.base_currency ?? "UAH";
   const digits = data.currencies.find(c => c.code === currency)?.minor_units ?? 2;
-  const amount = (value: string | null) => value === null ? "—" : new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value));
+  const amount = (value: string | null) => value === null ? "—" : formatFinanceDecimal(value, locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const monthLabel = (date: string) => new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const categoryLabel = (id: string | null, fallback: string | null = null) => financeCategoryLabel(data.categories.find(c => c.id === id), fallback, key => ft(`planning.defaults.${key}`)) || t("unclassified");
   const href = (key: string, value: string) => { const next = new URLSearchParams(params); next.set(key, value); return `/finance/planning?${next}`; };
@@ -109,7 +110,8 @@ export function FinanceCashPlanningWorkspace(data: Props) {
       </FinanceActionForm>
       <ul className="space-y-2 text-sm">{data.snapshots.map(row => <li key={row.id}><Link className="underline" href={href("snapshot", row.id)}>{row.name}</Link> · {row.created_at.slice(0, 16).replace("T", " ")}</li>)}</ul>
       {data.saved ? <div className="space-y-3"><h3 className="font-medium">{data.saved.name} · {t(data.saved.forecast.scenario === "confirmed" ? "confirmed" : "planned")}</h3><p className="text-sm">{t("savedContext", { date: data.saved.forecast.asOf, through: data.saved.forecast.through, count: data.saved.forecast.issues.length })}</p>
-        <div className="overflow-x-auto"><table className={tableClass}><thead><tr><th>{t("month")}</th><th>{t("savedRemaining")}</th><th>{t("subsequentActual")}</th></tr></thead><tbody>{data.saved.comparison.map(row => <tr key={row.month}><th scope="row">{monthLabel(row.month)}</th><td>{amount(row.remaining)}</td><td>{amount(row.actual)}</td></tr>)}</tbody></table></div>
+        {data.saved.comparison === null ? <p className="text-sm">{t("legacySnapshot")}</p> : null}
+        <div className="overflow-x-auto"><table className={tableClass}><thead><tr><th>{t("month")}</th><th>{t("savedRemaining")}</th><th>{t("subsequentActual")}</th></tr></thead><tbody>{(data.saved.comparison ?? data.saved.forecast.months.map(row => ({ ...row, actual: null }))).map(row => <tr key={row.month}><th scope="row">{monthLabel(row.month)}</th><td>{amount(row.remaining)}</td><td>{amount(row.actual)}</td></tr>)}</tbody></table></div>
         <details><summary className="cursor-pointer text-sm">{t("savedAssumptions")}</summary><ul className="mt-2 space-y-1 text-sm">{data.saved.forecast.fx.map(f => <li key={f.currency}>{f.currency}: {f.rate} · {t(`fxSources.${f.source}`)} · {f.effectiveDate}</li>)}</ul></details>
       </div> : null}
     </section> : null}

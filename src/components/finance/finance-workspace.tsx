@@ -11,7 +11,7 @@ import { FormField, Input, inputClassName } from "@/components/ui/form-field";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
 import { formatFinanceAmount, type FinanceAccount, type FinanceActionState, type FinanceCurrency, type FinanceSettings } from "@/lib/finance";
-import type { Database } from "@/types/database.types";
+import type { getFinanceData } from "@/data/queries/finance";
 
 const initialState: FinanceActionState = { status: "idle" };
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
@@ -89,7 +89,7 @@ function OpeningValuationForm({ account, settings, onSaved, onPendingChange }: {
   </FinanceForm>;
 }
 
-export function FinanceWorkspace({ settings, accounts, currencies, balances, today }: { settings: FinanceSettings | null; accounts: FinanceAccount[]; currencies: FinanceCurrency[]; balances: Database["public"]["Views"]["finance_account_balances"]["Row"][]; today: string }) {
+export function FinanceWorkspace({ settings, accounts, currencies, balances, today }: { settings: FinanceSettings | null; accounts: FinanceAccount[]; currencies: FinanceCurrency[]; balances: NonNullable<Awaited<ReturnType<typeof getFinanceData>>>["balances"]; today: string }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const [editor, setEditor] = useState<string | null>(null);

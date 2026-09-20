@@ -1557,6 +1557,7 @@ export type Database = {
       }
       finance_forecast_snapshots: {
         Row: {
+          capture_order: number | null
           created_at: string
           created_by: string
           forecast: Json
@@ -1565,6 +1566,7 @@ export type Database = {
           studio_id: string
         }
         Insert: {
+          capture_order?: number | null
           created_at?: string
           created_by: string
           forecast: Json
@@ -1573,6 +1575,7 @@ export type Database = {
           studio_id: string
         }
         Update: {
+          capture_order?: number | null
           created_at?: string
           created_by?: string
           forecast?: Json
@@ -1724,6 +1727,7 @@ export type Database = {
           id: string
           kind: string
           nature: string
+          posting_order: number
           related_movement_id: string | null
           request_id: string
           request_payload: Json
@@ -1739,6 +1743,7 @@ export type Database = {
           id?: string
           kind: string
           nature: string
+          posting_order?: number
           related_movement_id?: string | null
           request_id: string
           request_payload: Json
@@ -1754,6 +1759,7 @@ export type Database = {
           id?: string
           kind?: string
           nature?: string
+          posting_order?: number
           related_movement_id?: string | null
           request_id?: string
           request_payload?: Json
@@ -4536,6 +4542,7 @@ export type Database = {
           direction: string | null
           financial_date: string | null
           nature: string | null
+          posting_order: number | null
           recorded_at: string | null
           studio_id: string | null
         }

@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
@@ -19,14 +20,18 @@ export async function getFinanceData() {
   const supabase = await createClient();
   const [settings, accounts, currencies, balances, categories] = await Promise.all([
     supabase.from("finance_settings").select("*").eq("studio_id", admin.studio_id).maybeSingle(),
-    supabase.from("finance_accounts").select("*").eq("studio_id", admin.studio_id).order("created_at").order("id"),
+    supabase.from("finance_accounts").select("id,studio_id,name,currency,opening_balance,archived_at,created_at,updated_at,created_by,opening_fx_effective_date,opening_fx_rate::text,opening_fx_source,opening_reporting_amount::text,opening_valued_at,opening_valued_by").eq("studio_id", admin.studio_id).order("created_at").order("id"),
     supabase.from("finance_currencies").select("*").order("code"),
-    supabase.from("finance_account_balances").select("*").eq("studio_id", admin.studio_id),
+    supabase.from("finance_account_balances").select("id,studio_id,name,currency,opening_balance,archived_at,recorded_balance::text").eq("studio_id", admin.studio_id),
     supabase.from("finance_categories").select("*").eq("studio_id",admin.studio_id).order("created_at").order("name"),
   ]);
   const error = settings.error ?? accounts.error ?? currencies.error ?? balances.error ?? categories.error;
   if (error) throw new Error("Unable to load Finance.", { cause: error });
-  return { settings: settings.data, accounts: accounts.data ?? [], currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
+  return { settings: settings.data, accounts: (accounts.data ?? []).map(account => ({ ...account,
+    // PostgREST cast inference drops nullability; validate the nullable wire fields.
+    opening_reporting_amount: z.string().nullable().parse(account.opening_reporting_amount),
+    opening_fx_rate: z.string().nullable().parse(account.opening_fx_rate),
+  })), currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
 }
 
 export async function getFinanceMovements(page: number) {
@@ -34,7 +39,7 @@ export async function getFinanceMovements(page: number) {
   if (!admin) return null;
   const client = await createClient();
   const { data, error, count } = await client.from("finance_movements")
-    .select("*, entries:finance_movement_entries!finance_movement_entries_studio_id_movement_id_fkey(*)", { count: "exact" })
+    .select("*, entries:finance_movement_entries!finance_movement_entries_studio_id_movement_id_fkey(id,studio_id,movement_id,account_id,amount,currency,entry_role,reporting_currency,reporting_amount::text,fx_rate::text,fx_source,fx_effective_date)", { count: "exact" })
     .eq("studio_id", admin.studio_id).order("financial_date", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false })
     .range((page-1)*50, page*50-1);
   if (error) throw new Error("Unable to load Finance movements.", { cause: error });

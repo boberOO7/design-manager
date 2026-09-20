@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { formatFinanceDecimal, canChartFinanceAmount } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceOverview } from "@/lib/finance-overview";
 import type { getFinanceData } from "@/data/queries/finance";
@@ -19,7 +20,8 @@ export function FinanceOverviewWorkspace({ data, categories, invalidFx }: { data
   const [detail, setDetail] = useState<"cash" | "netFlow" | "receivables" | "outgoing" | null>(null);
   const report = data.forecast;
   const digits = new Intl.NumberFormat(locale, { style: "currency", currency: report.currency, currencyDisplay: "code" }).resolvedOptions().maximumFractionDigits;
-  const amount = (value: string | null, currency?: string) => value === null ? "—" : new Intl.NumberFormat(locale, currency ? { style: "currency", currency, currencyDisplay: "code" } : { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value));
+  const amount = (value: string | null, currency?: string) => value === null ? "—" : formatFinanceDecimal(value, locale, currency ? { style: "currency", currency, currencyDisplay: "code" } : { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const flowsSafe = data.flows.every(row => canChartFinanceAmount(row.amount, digits ?? 2));
   const category = (id: string | null, name: string | null) => financeCategoryLabel(categories.find(c => c.id === id), name, key => ft(`planning.defaults.${key}`)) || f("unclassified");
   const upcoming = report.items.filter(i => i.date && i.date <= data.upcomingThrough);
   const outgoing = upcoming.filter(i => i.direction === "outgoing");
@@ -62,16 +64,17 @@ export function FinanceOverviewWorkspace({ data, categories, invalidFx }: { data
         {report.issues.map((i, index) => <li key={index}><Link className="underline" href={i.source === "expected" ? itemHref(i.id) : forecastIssueHref(i)}>{i.label || f("item")}</Link> · {f(`issues.${i.reason}`)}{i.date ? ` · ${i.date}` : ""}</li>)}
       </ul>
     </details> : null}
-    <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="text-lg font-semibold">{t("cashChart")}</h2><p className="text-right text-sm"><span className="text-[var(--ui-text-secondary)]">{t("lowPoint")}{incomplete ? ` · ${t("incomplete")}` : ""}</span><span className={`block font-medium tabular-nums ${Number(data.lowPoint.amount) < 0 ? "text-[var(--ui-danger-text)]" : ""}`}>{amount(data.lowPoint.amount)} · {data.lowPoint.date}</span></p></div>
+    <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="text-lg font-semibold">{t("cashChart")}</h2><p className="text-right text-sm"><span className="text-[var(--ui-text-secondary)]">{t("lowPoint")}{incomplete ? ` · ${t("incomplete")}` : ""}</span><span className={`block font-medium tabular-nums ${data.lowPoint.amount.startsWith("-") ? "text-[var(--ui-danger-text)]" : ""}`}>{amount(data.lowPoint.amount)} · {data.lowPoint.date}</span></p></div>
       <FinanceCashChart data={data} />
       <details className="text-sm"><summary className="cursor-pointer text-[var(--ui-text-secondary)]">{t("valuation")}</summary><p className="mt-2 text-[var(--ui-text-secondary)]">{t("valuationHelp")}</p></details>
     </Panel>
     <div className="grid min-w-0 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
       <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><h2 className="text-lg font-semibold">{t("flows")}</h2><p className="text-xs text-[var(--ui-text-secondary)]">{data.actualFrom} – {report.asOf} · {ft("movements.natures.operating")}</p>
+        {!flowsSafe ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("chartScale")}</p> : null}
         <div className="space-y-5">{[...new Set(data.flows.map(r => r.month))].map(month => <div key={month} className="space-y-2"><h3 className="text-sm font-medium">{new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}T00:00:00Z`))}</h3>{["incoming", "outgoing"].map(direction => {
           const value = data.flows.find(r => r.month === month && r.direction === direction && r.nature === "operating")?.amount ?? "0";
           const max = Math.max(1, ...data.flows.filter(r => r.nature === "operating").map(r => Math.abs(Number(r.amount))));
-          return <div key={direction} className="space-y-1"><div className="flex justify-between gap-2 text-xs"><span>{ft(`movements.kinds.${direction}`)}</span><span className="tabular-nums">{amount(value)}</span></div><div aria-hidden="true" className="h-2 bg-[var(--ui-surface-muted)]"><div className={`h-2 ${direction === "incoming" ? "bg-[var(--ui-success-accent)]" : "bg-[var(--ui-text-muted)]"}`} style={{ width: `${Math.abs(Number(value)) / max * 100}%` }} /></div></div>;
+          return <div key={direction} className="space-y-1"><div className="flex justify-between gap-2 text-xs"><span>{ft(`movements.kinds.${direction}`)}</span><span className="tabular-nums">{amount(value)}</span></div>{flowsSafe ? <div aria-hidden="true" className="h-2 bg-[var(--ui-surface-muted)]"><div className={`h-2 ${direction === "incoming" ? "bg-[var(--ui-success-accent)]" : "bg-[var(--ui-text-muted)]"}`} style={{ width: `${Math.abs(Number(value)) / max * 100}%` }} /></div> : null}</div>;
         })}</div>)}</div>
         {!data.flows.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("emptyFlows")}</p> : null}
         {data.flows.some(r => r.nature !== "operating") ? <ul className="space-y-2 border-t border-[var(--ui-border)] pt-3 text-xs">{data.flows.filter(r => r.nature !== "operating").map((r, i) => <li key={i} className="flex flex-wrap justify-between gap-2"><span>{r.month.slice(0, 7)} · {ft(`movements.natures.${r.nature}`)} · {ft(`movements.kinds.${r.direction}`)}</span><span className="tabular-nums">{amount(r.amount)}</span></li>)}</ul> : null}

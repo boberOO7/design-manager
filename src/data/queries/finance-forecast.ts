@@ -13,7 +13,7 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
     client.from("finance_settings").select("*").eq("studio_id", admin.studio_id).maybeSingle(),
     client.from("finance_current_budget").select("*").eq("studio_id", admin.studio_id).eq("year", year).order("category_id"),
     client.from("finance_budget_revisions").select("*").eq("studio_id", admin.studio_id).eq("year", year).order("created_at", { ascending: false }).limit(100),
-    client.from("finance_forecast_snapshots").select("id,name,created_at").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }).limit(50),
+    client.from("finance_forecast_snapshots").select("id,name,created_at").eq("studio_id", admin.studio_id).order("capture_order", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(50),
     snapshotId ? client.from("finance_forecast_snapshots").select("*").eq("studio_id", admin.studio_id).eq("id", snapshotId).maybeSingle() : null,
   ]);
   const error = settings.error ?? budget.error ?? history.error ?? snapshots.error ?? saved?.error;
@@ -26,11 +26,11 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
   const fx = await resolveForecastAssumptions(initial, manualFx);
   const calculated = fx.length ? await client.rpc("calculate_finance_forecast", { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_fx: fx }) : raw;
   if (calculated.error) throw new Error("Unable to value forecast.", { cause: calculated.error });
-  const compared = saved?.data ? await client.rpc("compare_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_snapshot_id: saved.data.id }) : null;
+  const compared = saved?.data && saved.data.capture_order !== null ? await client.rpc("compare_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_snapshot_id: saved.data.id }) : null;
   if (compared?.error) throw new Error("Unable to compare forecast snapshot.", { cause: compared.error });
   return {
     report: forecastReportSchema.parse(calculated.data), budget: budget.data ?? [], history: history.data ?? [], snapshots: snapshots.data ?? [],
-    saved: saved?.data ? { ...saved.data, forecast: forecastSnapshotSchema.parse(saved.data.forecast), comparison: snapshotComparisonSchema.parse(compared?.data) } : null,
+    saved: saved?.data ? { ...saved.data, forecast: forecastSnapshotSchema.parse(saved.data.forecast), comparison: compared ? snapshotComparisonSchema.parse(compared.data) : null } : null,
   };
 }
 export type FinanceForecastData = NonNullable<Awaited<ReturnType<typeof getFinanceForecast>>>;

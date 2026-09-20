@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financeAccountSchema, financeSettingsSchema, openingValuationSchema, formatFinanceAmount } from "./finance";
+import { financeAccountSchema, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount } from "./finance";
 
 const currencies = ["UAH", "USD", "EUR", "PLN"].map((code) => ({ code, minor_units: 2 })).concat([
   { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 },
@@ -43,3 +43,17 @@ it("validates opening FX context and explicit positive manual assumptions", () =
   expect(openingValuationSchema.safeParse(input).success).toBe(true);
   for (const patch of [{ manualRate: "0" }, { manualRate: "" }, { manualRate: "NaN" }, { date: "2026-02-30" }, { openingAmount: "1e3" }, { reportingCurrency: "EUR", fxMode: "nbu" }]) expect(openingValuationSchema.safeParse({ ...input, ...patch }).success).toBe(false);
 });
+
+ it("preserves exact large decimals, currency minor units and locale separators", () => {
+  for (const currency of currencies) {
+    const fraction = "7891".slice(0, currency.minor_units);
+    const amount = `1234567890123456${fraction ? `.${fraction}` : ""}`;
+    expect(formatFinanceAmount(amount, currency, "en")).toContain(`1,234,567,890,123,456${fraction ? `.${fraction}` : ""}`);
+    expect(formatFinanceAmount(`-${amount}`, currency, "uk").replace(/[\s\u00a0]/g, "")).toContain(`-1234567890123456${fraction ? `,${fraction}` : ""}`);
+  }
+  expect(formatFinanceDecimal("1234567890123456.78", "en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })).toBe("1,234,567,890,123,456.78");
+  expect(formatFinanceAmount("99999999999999999999.995", currencies[0], "en")).toContain("100,000,000,000,000,000,000.00");
+  expect(() => formatFinanceAmount("NaN", currencies[0], "en")).toThrow();
+  expect(canChartFinanceAmount("1234567890123456.78", 2)).toBe(false);
+  expect(canChartFinanceAmount("40898.00", 2)).toBe(true);
+ });

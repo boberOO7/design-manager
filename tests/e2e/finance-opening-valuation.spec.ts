@@ -84,3 +84,17 @@ test("legacy opening valuation: missing NBU, explicit manual completion, frozen 
 test("employee cannot access opening valuation", async ({ page }) => {
   await login(page, 1); await page.goto("/finance/accounts"); await expect(page).toHaveURL(/\/dashboard/);
 });
+
+
+test("large frozen opening valuations retain cents through the Data API and Accounts", async ({ page }) => {
+  // Test-only historical fixture, independent of the ordinary completion scenario above.
+  sql(`begin;set local session_replication_role=replica;
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by,
+      opening_reporting_amount,opening_fx_rate,opening_fx_source,opening_fx_effective_date,opening_valued_at,opening_valued_by)
+    values(gen_random_uuid(),'${studio}','Large frozen opening','USD',1234567890.12,'${actors[0].id}',
+      1234567890120000.74,1000000.0000000006,'manual','1900-01-01',now(),'${actors[0].id}');commit;`);
+  await login(page); await page.goto("/finance/accounts");
+  await expect(page.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();
+  await page.getByText(/1,234,567,890,120,000\.74/).click();
+  await expect(page.getByText(/1000000\.0000000006 UAH/)).toBeVisible();
+});

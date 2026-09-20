@@ -124,8 +124,12 @@ select is((select (i->>'amount')::numeric from public.finance_forecast_snapshots
 select is((select i->>'rate' from public.finance_forecast_snapshots s,jsonb_array_elements(s.forecast->'fx') i where i->>'currency'='USD'),'40','saved FX stays fixed');
 select is((select (i->>'budget')::numeric from public.finance_forecast_snapshots s,jsonb_array_elements(s.forecast->'comparisons') i where i->>'category_id'=pg_temp.cat('project_payments')::text limit 1),100000::numeric,'saved budget baseline stable');
 select is(jsonb_array_length(public.compare_finance_forecast_snapshot(pg_temp.fid(1),pg_temp.result(400))),6,'snapshot compares against live actuals');
+select ok((select capture_order>0 from public.finance_forecast_snapshots where id=pg_temp.result(400)),'capture has serialized order');
+select is((public.compare_finance_forecast_snapshot(pg_temp.fid(1),pg_temp.result(400))->0->>'actual')::numeric,0::numeric,'payments already included at capture are excluded');
+select throws_like($$select nextval('private.finance_posting_order')$$,'%permission denied%','clients cannot advance ordering sequence');
 -- Refunds/reversals stay signed within the original income classification.
 select public.record_finance_movement(pg_temp.fid(1),pg_temp.fid(410),jsonb_build_object('kind','refund','date',pg_temp.today(),'amount','1000','accountId',pg_temp.fid(20),'relatedMovementId',(select id from public.finance_movements where request_id=pg_temp.fid(201))));
+select is((public.compare_finance_forecast_snapshot(pg_temp.fid(1),pg_temp.result(400))->0->>'actual')::numeric,-1000::numeric,'refund after capture is included even within the same transaction timestamp');
 select is((select sum(amount) from public.finance_planning_actuals where studio_id=pg_temp.fid(1) and category_id=pg_temp.cat('project_payments')),40560::numeric,'refund reduces historical income actual instead of inventing expense');
 select public.reverse_finance_movement(pg_temp.fid(1),pg_temp.fid(411),(select id from public.finance_movements where request_id=pg_temp.fid(410)),pg_temp.today(),'Refund recorded in error');
 select is((select sum(amount) from public.finance_planning_actuals where studio_id=pg_temp.fid(1) and category_id=pg_temp.cat('project_payments')),41560::numeric,'reversed refund restores original category actual');
@@ -162,5 +166,11 @@ select throws_like($$select public.calculate_finance_forecast(pg_temp.fid(1))$$,
 reset role;
 select throws_like($$update public.finance_budget_revisions set reason='rewrite'$$,'%finance_history_immutable%','budget history immutable even privileged');
 select throws_like($$update public.finance_forecast_snapshots set forecast='{}'$$,'%finance_history_immutable%','saved assumptions immutable even privileged');
+-- Model a pre-migration snapshot without inventing its historical ordering.
+set local session_replication_role=replica;
+update public.finance_forecast_snapshots set capture_order=null where id=pg_temp.result(400);
+set local session_replication_role=origin;
+select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
+select throws_like($$select public.compare_finance_forecast_snapshot(pg_temp.fid(1),pg_temp.result(400))$$,'%finance_snapshot_boundary_missing%','legacy comparison fails explicitly instead of using transaction timestamps');
 select * from finish();
 rollback;

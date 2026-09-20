@@ -4,7 +4,7 @@ import type { Database } from "@/types/database.types";
 
 export type FinanceCurrency = Database["public"]["Tables"]["finance_currencies"]["Row"];
 export type FinanceSettings = Database["public"]["Tables"]["finance_settings"]["Row"];
-export type FinanceAccount = Database["public"]["Tables"]["finance_accounts"]["Row"];
+export type FinanceAccount = NonNullable<Awaited<ReturnType<typeof import("@/data/queries/finance").getFinanceData>>>["accounts"][number];
 export type FinanceActionState = { status: "idle" | "success" | "error"; message?: string; id?: string };
 
 export function financeSettingsSchema(currencies: FinanceCurrency[]) {
@@ -35,11 +35,26 @@ export function financeAccountSchema(currencies: FinanceCurrency[]) {
   }).transform((value) => ({ ...value, openingBalance: Number(value.openingBalance.replace(",", ".")) }));
 }
 
-export function formatFinanceAmount(amount: number, currency: FinanceCurrency, locale: string): string {
-  return new Intl.NumberFormat(locale, {
+// Intl accepts decimal strings without first rounding them to binary floating point.
+function isDecimal(value: string): value is `${number}` {
+  return /^-?\d+(?:\.\d+)?$/.test(value);
+}
+export function formatFinanceDecimal(amount: string | number, locale: string, options: Intl.NumberFormatOptions): string {
+  const decimal = String(amount);
+  if (!isDecimal(decimal)) throw new Error("Invalid Finance decimal");
+  return new Intl.NumberFormat(locale, options).format(decimal);
+}
+
+// Coordinates are approximate; use the exact table if minor units exceed safe integers.
+export function canChartFinanceAmount(amount: string, digits: number): boolean {
+  return Math.abs(Number(amount)) <= Number.MAX_SAFE_INTEGER / 10 ** digits;
+}
+
+export function formatFinanceAmount(amount: string | number, currency: FinanceCurrency, locale: string): string {
+  return formatFinanceDecimal(amount, locale, {
     style: "currency", currency: currency.code, currencyDisplay: "code",
     minimumFractionDigits: currency.minor_units, maximumFractionDigits: currency.minor_units,
-  }).format(amount);
+  });
 }
 
 export const openingValuationSchema = z.object({

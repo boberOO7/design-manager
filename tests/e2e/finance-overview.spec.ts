@@ -120,3 +120,32 @@ test("employee cannot access Overview or Accounts", async ({ page }) => {
   await login(page, 1);
   for (const route of ["/finance", "/finance/accounts"]) { await page.goto(route); await expect(page).toHaveURL(/\/dashboard/); }
 });
+
+test("large decimal amounts stay exact in cards, chart tables, drilldowns and stored valuations", async ({ page }) => {
+  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);
+    select public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','incoming','date',(now() at time zone 'Europe/Kyiv')::date,'amount','1234567890.12','accountId','${foreign}','categoryId','${category}','fx',jsonb_build_object('rate','1000000.0000000006','source','manual','effectiveDate',(now() at time zone 'Europe/Kyiv')::date)));
+    select public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','incoming','date',(now() at time zone 'Europe/Kyiv')::date,'amount','56.78','accountId','${bank}','categoryId','${category}'));`);
+  await login(page); await page.goto("/finance?fx_USD=1000000");
+  const cash = page.getByRole("button", { name: new RegExp(`^${t.cash}`) });
+  await expect(cash).toContainText("1,234,567,900,160,554.78");
+  await cash.click();
+  const breakdown = page.locator("#overview-breakdown");
+  await expect(breakdown).toContainText("1,234,567,900,120,000.00");
+  await expect(breakdown).toContainText("1,234,567,900,160,554.78");
+  await expect(page.getByRole("group", { name: t.cashChart })).toHaveCount(0);
+  await expect(page.getByText(t.chartScale, { exact: true }).first()).toBeVisible();
+  const chart = page.getByRole("table", { name: t.cashChart }); // Opens automatically when coordinates are unsafe.
+  await expect(chart).toBeVisible();
+  await expect(chart).toContainText("1,234,567,890,160,945.52"); // Historical posted FX, not today's assumed FX.
+  await expect(chart).toContainText("1,234,567,900,160,554.78");
+  await page.getByRole("button", { name: new RegExp(`^${t.netFlow}`) }).click();
+  await expect(breakdown).toContainText("1,234,567,890,160,447.52"); // Incoming aggregate, exact to cents.
+  await page.goto("/finance/movements");
+  for (const detail of await page.locator("details").all()) await detail.evaluate(el => el.setAttribute("open", ""));
+  await expect(page.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();
+  await page.goto("/finance/planning?fx_USD=1000000");
+  await expect(page.getByRole("table", { name: f.cashProjection })).toContainText("1,234,567,900,220,434.78");
+  await page.goto("/finance?fx_USD=1000000");
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();
+  await expect(page.getByRole("button", { name: new RegExp(`^${uk.Finance.overview.cash}`) })).toContainText("1 234 567 900 160 554,78");
+});

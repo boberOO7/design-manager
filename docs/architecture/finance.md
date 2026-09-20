@@ -419,7 +419,14 @@ recurrence generation job or tax engine is implied.
   budget revision references/values, coverage issues and the valued cash baseline.
   Actual ledger rows and actual category totals are not copied. Saving recalculates
   server-side under the Finance lock, with idempotent requests. Snapshot comparison
-  reads live historical actuals recorded after capture, with financial dates from
+  uses `finance_movements.posting_order > snapshot.capture_order`, allocated by a
+  private monotonic sequence under that same studio lock. Transaction-start
+  timestamps remain unchanged and do not decide inclusion; retries retain the
+  original capture. Snapshot lists use capture order, then legacy timestamps.
+  Pre-migration movements have order zero. Older snapshots keep their original
+  assumptions but have no reconstructible ordering boundary: saved expectations
+  remain visible, and comparison explicitly requires a new capture.
+  Comparison reads live historical actuals posted after capture, with financial dates from
   the capture day through the horizon. Thus later same-day payments are included;
   current-month comparison is partial. Historical backdated corrections can change
   observed actuals, but never the saved expectation. The UI lists the latest 50
@@ -451,8 +458,14 @@ and generation workflow must retain these timing and historical boundaries.
   recorded cash. A difference at the boundary is valuation, not a cash movement.
 - Daily forecast points add only canonical dated remaining items. The low point
   includes starting cash and daily closing points; same-day cash ordering is not
-  inferred. SVG coordinates alone use JavaScript numbers. Exact amounts and dates
-  remain available in the keyboard-accessible chart's table.
+  inferred. Report money remains decimal text through native `Intl.NumberFormat`
+  string formatting, including cards, drilldowns, planning and chart tables.
+  Account balances, opening valuations and movement valuations are selected as
+  decimal text before Data API JSON parsing; bounded native inputs retain their
+  existing domain types. Currency minor units and locale separators are preserved.
+  SVG coordinates alone use JavaScript numbers. When minor units exceed the safe
+  integer range, the plot is replaced by its open exact data table and flow bars
+  are hidden while exact labels remain. Normal charts retain keyboard tooltips.
 - Actual flow comparison uses `finance_planning_actuals`, excluding opening cash
   and transfer principal. Fees remain operating, refunds/reversals remain signed,
   and financing/owner distributions remain separate. Net flow includes all those
