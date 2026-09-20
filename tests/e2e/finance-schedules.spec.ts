@@ -11,7 +11,7 @@ const local=z.object({EQUIPMENT_TEST_SUPABASE_URL:z.url(),EQUIPMENT_TEST_SERVICE
 if(!["127.0.0.1","localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local Finance fixtures only");
 const client=createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL,local.EQUIPMENT_TEST_SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const studio=randomUUID(),bank=randomUUID();
-const actors=["admin","employee"].map((role)=>({role,id:"",email:`payroll-${randomUUID()}@example.test`,password:`Finance-${randomUUID()}`}));
+const actors=["admin","employee","employee","employee","employee"].map((role,index)=>({role,name:["Payroll admin","Payroll employee","Payroll designer","Payroll architect","Payroll assistant"][index],id:"",email:`payroll-${randomUUID()}@example.test`,password:`Finance-${randomUUID()}`}));
 function sql(statement:string){return execFileSync("docker",["exec","-i","supabase_db_design-manager","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-At"],{input:statement,encoding:"utf8"}).trim();}
 const t=en.Finance,s=t.schedules;
 async function login(page:Page,index=0){await page.goto("/login");await page.locator('input[type="email"]').fill(actors[index].email);await page.locator('input[type="password"]').fill(actors[index].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);}
@@ -20,7 +20,7 @@ test.beforeAll(async()=>{
   await client.from("studios").insert({id:studio,name:"Payroll browser test"}).throwOnError();
   for(const actor of actors){
     const {data,error}=await client.auth.admin.createUser({email:actor.email,password:actor.password,email_confirm:true});if(error)throw error;actor.id=data.user.id;
-    await client.from("profiles").upsert({id:actor.id,email:actor.email,full_name:`Payroll ${actor.role}`,system_role:actor.role,is_active:true}).throwOnError();
+    await client.from("profiles").upsert({id:actor.id,email:actor.email,full_name:actor.name,system_role:actor.role,is_active:true}).throwOnError();
     await client.from("studio_members").insert({studio_id:studio,user_id:actor.id,system_role:actor.role,joined_at:"2026-01-15"}).throwOnError();
   }
   sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values('${studio}','UAH','2026-01-01','${actors[0].id}');
@@ -35,7 +35,7 @@ test.afterAll(async()=>{
     delete from public.finance_allocations where studio_id='${studio}';delete from public.finance_expected_items where studio_id='${studio}';
     delete from public.finance_planning_requests where studio_id='${studio}';delete from public.finance_movement_entries where studio_id='${studio}';
     delete from public.finance_movements where studio_id='${studio}';delete from public.finance_accounts where studio_id='${studio}';
-    delete from public.finance_categories where studio_id='${studio}';delete from public.finance_settings where studio_id='${studio}';
+    delete from public.finance_recurring_groups where studio_id='${studio}';delete from public.finance_categories where studio_id='${studio}';delete from public.finance_settings where studio_id='${studio}';
     delete from public.notifications where studio_id='${studio}';delete from public.studio_members where studio_id='${studio}';delete from public.studios where id='${studio}';commit;`);
   for(const actor of actors)if(actor.id){const {error}=await client.auth.admin.deleteUser(actor.id);if(error)throw error;}
 });
@@ -49,10 +49,10 @@ test("compensation, obligations, payroll privacy, recurrence and owner payment",
     await expect(dialog.getByLabel(s.name,{exact:true})).toHaveCount(0);await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1000");
     const startMonth=dialog.getByLabel(s.effectiveFrom,{exact:true});await expect(startMonth).toHaveAttribute("type","month");
     await expect(startMonth).toHaveValue("2026-01");
-    await expect(dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await expect(dialog.getByLabel(s.remittances,{exact:true})).toBeVisible();await expect(dialog.getByLabel(s.remittances,{exact:true})).toHaveValue("");
+    await expect(dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await expect(dialog.getByLabel(s.remittances,{exact:true})).toBeHidden();await dialog.getByRole("button",{name:s.payrollCosts,exact:true}).click();await expect(dialog.getByLabel(s.remittances,{exact:true})).toBeVisible();await expect(dialog.getByLabel(s.remittances,{exact:true})).toHaveValue("");
     if(inspect){
-      await dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true}).click();await expect(dialog.getByLabel(s.deductions,{exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toBeVisible();await expect(dialog.getByText(s.taxWarning,{exact:true})).toBeVisible();await dialog.getByRole("switch",{name:`${s.basis}: ${s.gross}`,exact:true}).click();
-      await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costHas,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toBeVisible();await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costUnknown,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toHaveCount(0);
+      await dialog.getByRole("switch",{name:`${s.basis}: ${s.net}`,exact:true}).click();await expect(dialog.getByLabel(s.deductions,{exact:true})).toBeVisible();await expect(dialog.getByLabel(s.payout,{exact:true})).toBeVisible();await expect(dialog.getByText(s.taxWarning,{exact:true})).toBeVisible();await dialog.getByRole("switch",{name:`${s.basis}: ${s.gross}`,exact:true}).click();await expect(dialog.getByRole("button",{name:s.payrollCosts,exact:true})).toHaveAttribute("aria-expanded","true");
+      await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costHas,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toBeVisible();await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costUnknown,exact:true}).click();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toBeHidden();await expect(dialog.getByLabel(s.employerCostAmount,{exact:true})).toBeDisabled();
       firstStartMonth=await startMonth.inputValue();await dialog.getByLabel(s.hasEndDate,{exact:true}).check();const endMonth=dialog.getByLabel(s.endDate,{exact:true});await expect(endMonth).toHaveAttribute("type","month");await endMonth.fill("2027-02");
       const submittedStart=dialog.locator('input[name="effectiveFrom"]');await submittedStart.evaluate((input:HTMLInputElement)=>{input.value=`${input.value.slice(0,7)}-10`;});await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog.getByRole("alert")).toHaveText(s.errors.effectiveFromInput);await startMonth.fill("");await startMonth.fill(firstStartMonth);
     }
@@ -70,13 +70,13 @@ test("compensation, obligations, payroll privacy, recurrence and owner payment",
   expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}' and employer_cost is null and employer_cost_status='unknown'`)).toBe("1");
   expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}' and employer_cost=0 and employer_cost_status='fixed'`)).toBe("1");
   // Revisions are explicit and cannot rewrite this month's existing obligations.
-  await row.getByRole("button",{name:s.revise,exact:true}).click();let dialog=page.getByRole("dialog");await expect(dialog.getByLabel(s.effectiveFrom,{exact:true})).toHaveAttribute("type","month");await expect(dialog.getByLabel(s.effectiveFrom,{exact:true})).toHaveValue("2026-10");await expect(dialog.getByLabel(s.endDate,{exact:true})).toHaveValue("2027-02");await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1200");await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await dialog.getByLabel(s.note,{exact:true}).fill("Salary increase next month");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await row.getByRole("button",{name:s.revise,exact:true}).click();let dialog=page.getByRole("dialog");await expect(dialog.getByLabel(s.effectiveFrom,{exact:true})).toHaveAttribute("type","month");await expect(dialog.getByLabel(s.effectiveFrom,{exact:true})).toHaveValue("2026-10");await expect(dialog.getByLabel(s.endDate,{exact:true})).toHaveValue("2027-02");await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1200");await expect(dialog.getByLabel(s.payout,{exact:true})).toHaveCount(0);await dialog.getByRole("button",{name:s.note,exact:true}).click();await dialog.getByRole("textbox",{name:s.note,exact:true}).fill("Salary increase next month");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
   expect(sql(`select count(*) from public.finance_schedule_terms where studio_id='${studio}'`)).toBe("3");
   expect(sql(`select string_agg(o.period_start||':'||i.amount,',' order by o.period_start) from public.finance_expected_items i join public.finance_obligation_items oi on oi.studio_id=i.studio_id and oi.expected_item_id=i.id join public.finance_obligations o on o.studio_id=oi.studio_id and o.id=oi.obligation_id where i.studio_id='${studio}' and o.employee_id='${actors[1].id}' and oi.component='payout' and o.period_start in ('2026-09-01','2026-10-01')`)).toBe("2026-09-01:1000,2026-10-01:1200");
-  await page.getByRole("button",{name:s.addBonus,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByRole("combobox",{name:s.employee,exact:true}).click();await page.getByRole("option",{name:"Payroll employee",exact:true}).click();await dialog.getByLabel(t.movements.amount,{exact:true}).fill("75");await dialog.getByLabel(t.movements.description,{exact:true}).fill("Manual employee award");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Google Drive");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("50");await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"USD",exact:true}).click();await dialog.getByRole("combobox",{name:s.certainty,exact:true}).click();await page.getByRole("option",{name:s.estimated,exact:true}).click();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.software,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Subscription estimate");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Studio rent");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("1000");await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.rent,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Rent agreement");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Owner draw");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("500");await dialog.getByLabel(t.movements.kinds.owner_withdrawal,{exact:true}).check();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.owner_distribution,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Owner distribution agreement");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:s.addBonus,exact:true}).first().click();dialog=page.getByRole("dialog");await dialog.getByRole("combobox",{name:s.employee,exact:true}).click();await page.getByRole("option",{name:"Payroll employee",exact:true}).click();await dialog.getByLabel(t.movements.amount,{exact:true}).fill("75");await dialog.getByRole("button",{name:s.note,exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill("Manual employee award");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Google Drive");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("50");await dialog.getByRole("combobox",{name:t.planning.currency,exact:true}).click();await page.getByRole("option",{name:"USD",exact:true}).click();await dialog.getByLabel(t.planning.estimatedAmount,{exact:true}).check();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.software,exact:true}).click();await dialog.getByRole("button",{name:s.note,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Subscription estimate");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Studio rent");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("1000");await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.rent,exact:true}).click();await dialog.getByRole("button",{name:s.note,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Rent agreement");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:s.addRecurring,exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel(s.name,{exact:true}).fill("Owner draw");await dialog.getByLabel(t.movements.amount,{exact:true}).fill("500");await dialog.getByLabel(t.movements.kinds.owner_withdrawal,{exact:true}).check();await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:t.planning.defaults.owner_distribution,exact:true}).click();await dialog.getByRole("button",{name:s.note,exact:true}).click();await dialog.getByLabel(t.project.reason,{exact:true}).fill("Owner distribution agreement");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
   expect(sql(`select count(*) from public.finance_obligations o join public.finance_schedules s on s.studio_id=o.studio_id and s.id=o.schedule_id where o.studio_id='${studio}' and s.kind='recurring'`)).not.toBe("0");
   sql(`insert into public.finance_expected_items(studio_id,direction,amount,currency,category_id,description,due_date,expected_payment_date,commitment,certainty,is_established,created_by)
     select '${studio}','outgoing',amount,'UAH',id,description,due_date,expected_date,'agreed','fixed',true,'${actors[0].id}' from public.finance_categories cross join (values
@@ -98,9 +98,9 @@ test("compensation, obligations, payroll privacy, recurrence and owner payment",
   await page.goto(`/calendar?date=${paymentDate}&view=month`);await expect(page.getByText("Payroll reminder · Payroll admin",{exact:true}).first()).toBeVisible();
   const oldCount=sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`);
   sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.remove_studio_member('${actors[1].id}','[]'::jsonb,true);`);
-  await page.goto("/finance/schedules");await expect(row.getByText(/Schedule stopped from/)).toBeVisible();expect(sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`)).toBe(oldCount);
+  await page.goto("/finance/schedules");await expect(row.getByText(/Accruals stopped from/)).toBeVisible();expect(sql(`select count(*) from public.finance_obligations where studio_id='${studio}'`)).toBe(oldCount);
   await page.screenshot({path:testInfo.outputPath("finance-schedules-desktop.png"),fullPage:true});
-  await page.setViewportSize({width:375,height:900});await page.emulateMedia({colorScheme:"dark",reducedMotion:"reduce"});await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]);await page.reload();await expect(page.getByRole("heading",{name:uk.Finance.schedules.title,exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:uk.Finance.schedules.defaultSalaryName,exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath("finance-schedules-mobile.png"),fullPage:true});
+  await page.setViewportSize({width:375,height:900});await page.emulateMedia({colorScheme:"dark",reducedMotion:"reduce"});await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]);await page.reload();await expect(page.getByRole("heading",{name:uk.Finance.schedules.title,exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:"Payroll employee",exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath("finance-schedules-mobile.png"),fullPage:true});
   sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.restore_studio_member('${actors[1].id}');`);
 });
 
@@ -117,7 +117,7 @@ test("replacement maintenance, category protection and audited historical costs"
   const ledgerBefore=sql(`select jsonb_agg(to_jsonb(m) order by id)::text from public.finance_movements m where studio_id='${studio}'`);
   await page.getByRole("button",{name:s.addCompensation,exact:true}).click();let dialog=page.getByRole("dialog");
   await dialog.getByRole("combobox",{name:s.employee,exact:true}).click();await page.getByRole("option",{name:"Payroll employee",exact:true}).click();
-  await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1300");await dialog.getByLabel(s.remittances,{exact:true}).fill("150");
+  await dialog.getByLabel(s.agreedAmount,{exact:true}).fill("1300");await dialog.getByRole("button",{name:s.payrollCosts,exact:true}).click();await dialog.getByLabel(s.remittances,{exact:true}).fill("150");
   await dialog.getByLabel(s.effectiveFrom,{exact:true}).fill(nextMonth.slice(0,7));
   await dialog.getByRole("combobox",{name:s.costStatus,exact:true}).click();await page.getByRole("option",{name:s.costNone,exact:true}).click();
   await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
@@ -151,4 +151,142 @@ test("replacement maintenance, category protection and audited historical costs"
   const paymentDate=sql(`select payment_date from public.finance_payroll_calendar c join public.finance_obligation_items l on l.expected_item_id=c.expected_item_id join public.finance_obligations o on o.id=l.obligation_id where o.schedule_id='${replacement}' order by payment_date limit 1`);
   await page.goto(`/calendar?date=${paymentDate}&view=month`);await expect(page.getByText("Payroll reminder · Payroll employee",{exact:true}).first()).toBeVisible();
   await page.goto("/finance/planning");await expect(page.getByRole("heading",{name:en.Finance.forecast.title,exact:true})).toBeVisible();
+});
+
+// Use the same local tenant and guarded RPCs for reproducible visual/interaction QA.
+test.describe("compensation visual QA", () => {
+  test.beforeAll(() => {
+    if (sql(`select count(*) from finance_schedules where studio_id='${studio}'`) === "0") {
+    const rules = [
+      { name: "Base salary", amount: "50000", category: "salary", employee: actors[0].id },
+      { name: "Base salary", amount: "35000", category: "salary", employee: actors[1].id },
+      { name: "Base salary", amount: "45000", category: "salary", employee: actors[2].id },
+      { name: "Studio rent", amount: "40000", category: "rent", employee: "" },
+      { name: "Utilities", amount: "4000", category: "utilities", employee: "" },
+      { name: "Cleaning", amount: "2000", category: "cleaning", employee: "" },
+      { name: "Water", amount: "500", category: "other_expense", employee: "" },
+      { name: "Coffee", amount: "1000", category: "other_expense", employee: "" },
+      { name: "Milk", amount: "400", category: "other_expense", employee: "" },
+      { name: "Google Drive", amount: "50", category: "software", employee: "" },
+      { name: "Owner draw", amount: "500", category: "owner_distribution", employee: "" },
+    ];
+    for (const rule of rules) {
+      const categoryId = sql(`select id from finance_categories where studio_id='${studio}' and default_key='${rule.category}'`);
+      const input = { name: rule.name, amount: rule.amount, currency: ["software", "owner_distribution"].includes(rule.category) ? "USD" : "UAH", categoryId, kind: rule.employee ? "payroll" : "recurring", employeeId: rule.employee, basis: rule.employee === actors[1].id ? "gross" : rule.employee ? "net" : "", employeePayout: rule.employee === actors[1].id ? "28000" : rule.employee ? rule.amount : "", employeeDeductions: rule.employee === actors[1].id ? "7000" : "", employerCostStatus: rule.employee === actors[1].id ? "fixed" : "unknown", employerCost: rule.employee === actors[1].id ? "7700" : "", intervalMonths: 1, payoutDay: 10, paymentMonthOffset: rule.employee ? 1 : 0, effectiveFrom: "2026-09-01", commitment: "agreed", certainty: rule.category === "software" ? "estimated" : "fixed", reason: "Visual fixture", revision: 0 };
+      sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select save_finance_schedule('${studio}','${randomUUID()}','${JSON.stringify(input)}'::jsonb);`);
+    }
+    }
+    for (const groupName of ["Office", "Software & subscriptions", "Owner", "Marketing"]) {
+      const id = randomUUID();
+      sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select manage_finance_recurring_group('${studio}','create','${id}','${groupName}');select manage_finance_recurring_group('${studio}','assign','${id}',null,s.id) from finance_schedules s join finance_schedule_terms t on t.schedule_id=s.id where s.studio_id='${studio}' and s.kind='recurring' and ${groupName === "Office" ? "t.name not in ('Google Drive','Owner draw')" : groupName === "Owner" ? "t.name='Owner draw'" : groupName === "Software & subscriptions" ? "t.name='Google Drive'" : "false"};`);
+    }
+  });
+  for (const locale of ["en", "uk"] as const) for (const theme of ["light", "dark"] as const) for (const width of [1920, 2560, 375]) {
+    test(`${locale} ${theme} ${width}`, async ({ page }, testInfo) => {
+      const f = (locale === "uk" ? uk : en).Finance, labels = f.schedules;
+      await page.setViewportSize({ width, height: width === 2560 ? 1440 : width === 375 ? 900 : 1080 });
+      await page.addInitScript((value) => localStorage.setItem("studioflow-theme", value), theme);
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+      await page.context().addCookies([{ name: "studioflow-locale", value: locale, url: "http://127.0.0.1:3100" }]);
+      await login(page); await page.goto("/finance/schedules");
+      await expect(page.getByRole("heading", { name: labels.payrollSection, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: labels.recurringSection, exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const nextId = sql(`select i.id from finance_expected_balances i join finance_obligation_items l on l.expected_item_id=i.id join finance_obligations o on o.id=l.obligation_id join finance_schedule_terms r on r.id=o.terms_id where i.studio_id='${studio}' and r.name='Studio rent' and i.commitment<>'cancelled' and i.remaining_amount>0 and coalesce(i.expected_payment_date,i.due_date)>=(now() at time zone 'Europe/Kyiv')::date order by coalesce(i.expected_payment_date,i.due_date) limit 1`);
+      await expect(page.locator("article").filter({ has: page.getByRole("heading", { name: "Studio rent", exact: true }) }).getByRole("link")).toHaveAttribute("href", `/finance/expected?item=${nextId}&period=all`);
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("rules.png"), fullPage: true });
+      const screenshot = async (name: string) => {
+        const dialog = page.getByRole("dialog");
+        expect(await dialog.locator("[aria-hidden][style]").evaluateAll((nodes) => nodes.every((node) => node.scrollTop === 0))).toBe(true);
+        await dialog.locator("form").evaluate((form) => form.parentElement?.scrollTo(0, 0));
+        await page.screenshot({ animations: "disabled", path: testInfo.outputPath(`${name}.png`) });
+        await dialog.getByRole("button", { name: f.planning.save, exact: true }).scrollIntoViewIfNeeded();
+        const bounds = await dialog.getByRole("button", { name: f.planning.save, exact: true }).boundingBox();
+        expect(bounds && bounds.y + bounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+        expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+        if (width === 375) await page.screenshot({ animations: "disabled", path: testInfo.outputPath(`${name}-bottom.png`) });
+      };
+      const close = () => page.getByRole("dialog").getByRole("button", { name: f.movements.close, exact: true }).first().click();
+      await page.getByRole("button", { name: labels.setupTeam, exact: true }).click();
+      const setup = page.getByRole("dialog");
+      await setup.getByRole("group", { name: "Payroll architect", exact: true }).getByLabel(labels.agreedAmount, { exact: true }).fill("48000");
+      await setup.getByRole("group", { name: "Payroll assistant", exact: true }).getByLabel(labels.agreedAmount, { exact: true }).fill("30000");
+      await setup.locator("form").evaluate((form) => form.parentElement?.scrollTo(0, 0));
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("team-setup.png") });
+      await setup.getByRole("button", { name: labels.setupSave, exact: true }).scrollIntoViewIfNeeded();
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("team-setup-bottom.png") });
+      await close();
+      await page.getByRole("button", { name: labels.addCompensation, exact: true }).click();
+      let dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: labels.employee, exact: true }).click();
+      await page.getByRole("option", { name: "Payroll admin", exact: true }).click();
+      await dialog.getByLabel(labels.agreedAmount, { exact: true }).fill("50000");
+      await expect(dialog.getByLabel(labels.remittances, { exact: true })).toBeHidden();
+      await screenshot("net-salary");
+      await dialog.getByRole("switch").click();
+      await dialog.getByLabel(labels.deductions, { exact: true }).fill("10000");
+      await dialog.getByLabel(labels.payout, { exact: true }).fill("40000");
+      await dialog.getByRole("combobox", { name: labels.costStatus, exact: true }).click();
+      await page.getByRole("option", { name: labels.costHas, exact: true }).click();
+      await dialog.getByLabel(labels.employerCostAmount, { exact: true }).fill("11000");
+      await screenshot("gross-salary"); await close();
+      await page.locator("article").filter({ has: page.getByRole("heading", { name: "Payroll admin", exact: true }) }).getByRole("button", { name: labels.revise, exact: true }).click();
+      dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("heading", { name: labels.reviseCompensation, exact: true })).toBeVisible();
+      await expect(dialog.getByLabel(labels.effectiveFrom, { exact: true })).toHaveAttribute("type", "month");
+      await screenshot("salary-revision"); await close();
+      await page.getByRole("button", { name: labels.addBonus, exact: true }).first().click();
+      dialog = page.getByRole("dialog");
+      await dialog.getByRole("combobox", { name: labels.employee, exact: true }).click();
+      await page.getByRole("option", { name: "Payroll employee", exact: true }).click();
+      await dialog.getByLabel(f.movements.amount, { exact: true }).fill("1000");
+      await expect(dialog.getByRole("switch")).toHaveCount(0);
+      await screenshot("bonus"); await close();
+      await page.getByRole("button", { name: labels.addRecurring, exact: true }).click();
+      dialog = page.getByRole("dialog");
+      await dialog.getByLabel(labels.name, { exact: true }).fill("Studio rent");
+      await dialog.getByLabel(f.movements.amount, { exact: true }).fill("40000");
+      await expect(dialog.getByLabel(labels.effectiveFrom, { exact: true })).toHaveAttribute("type", "month");
+      await dialog.getByRole("combobox", { name: f.movements.category, exact: true }).click();
+      await page.getByRole("option", { name: f.planning.defaults.rent, exact: true }).click();
+      await screenshot("fixed-recurring");
+      await dialog.getByLabel(labels.name, { exact: true }).fill("Utilities");
+      await dialog.getByLabel(f.movements.amount, { exact: true }).fill("12000");
+      await dialog.getByLabel(f.planning.estimatedAmount, { exact: true }).check();
+      await dialog.getByLabel(f.planning.plannedPayment, { exact: true }).check();
+      await dialog.getByLabel(labels.hasEndDate, { exact: true }).check();
+      await dialog.getByLabel(labels.endDate, { exact: true }).fill("2028-02");
+      expect(await dialog.locator("form").evaluate((form: HTMLFormElement) => Object.fromEntries(new FormData(form)))).toMatchObject({ certainty: "estimated", commitment: "tentative", effectiveFrom: "2026-09-01", effectiveThrough: "2028-02-29" });
+      await screenshot("estimated-recurring");
+      await dialog.getByLabel(f.movements.kinds.owner_withdrawal, { exact: true }).check();
+      await expect(dialog.getByText(f.movements.ownerHelp, { exact: true })).toBeVisible();
+      await dialog.getByLabel(labels.name, { exact: true }).fill("Owner withdrawal");
+      await dialog.getByLabel(f.movements.amount, { exact: true }).fill("500");
+      await dialog.getByLabel(f.planning.estimatedAmount, { exact: true }).uncheck();
+      await dialog.getByLabel(f.planning.plannedPayment, { exact: true }).uncheck();
+      await dialog.getByLabel(labels.hasEndDate, { exact: true }).uncheck();
+      await dialog.getByRole("combobox", { name: f.planning.currency, exact: true }).click();
+      await page.getByRole("option", { name: "USD", exact: true }).click();
+      await dialog.getByRole("combobox", { name: f.movements.category, exact: true }).click();
+      await page.getByRole("option", { name: f.planning.defaults.owner_distribution, exact: true }).click();
+      await screenshot("owner-withdrawal"); await close();
+      await page.locator("article").filter({ has: page.getByRole("heading", { name: "Studio rent", exact: true }) }).getByRole("button", { name: labels.revise, exact: true }).click();
+      await screenshot("recurring-revision"); await close();
+      const history = page.locator("article").filter({ has: page.getByRole("heading", { name: "Payroll admin", exact: true }) }).getByRole("button", { name: labels.history, exact: true });
+      await history.focus(); await page.keyboard.press("Enter");
+      await expect(history).toHaveAttribute("aria-expanded", "true");
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("history.png"), fullPage: true });
+      await page.getByRole("checkbox", { name: labels.selectRule.replace("{name}", "Studio rent"), exact: true }).check();
+      await page.getByRole("checkbox", { name: labels.selectRule.replace("{name}", "Google Drive"), exact: true }).check();
+      await expect(page.getByRole("region", { name: "Marketing", exact: true }).getByText(labels.groupEmpty, { exact: true })).toBeVisible();
+      await page.getByRole("region", { name: labels.recurringSection, exact: true }).getByRole("status").scrollIntoViewIfNeeded();
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("selection.png"), fullPage: true });
+      await page.getByRole("button", { name: labels.moveSelected, exact: true }).filter({ hasText: labels.moveSelected }).click();
+      await screenshot("bulk-move"); await close();
+      await page.getByRole("button", { name: labels.clearSelection, exact: true }).click();
+      const recurringHistory = page.locator("article").filter({ has: page.getByRole("heading", { name: "Studio rent", exact: true }) }).getByRole("button", { name: labels.history, exact: true });
+      await recurringHistory.click();
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath("recurring-details.png"), fullPage: true });
+    });
+  }
 });

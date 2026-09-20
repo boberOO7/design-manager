@@ -5,6 +5,7 @@ const optionalAmount = z.union([z.string().trim().regex(/^\d{1,10}(?:[.,]\d{1,4}
 const monthStart = z.iso.date().refine((v) => v.endsWith("-01"));
 export const scheduleInputSchema = z.object({
   requestId: z.uuid(), id: z.union([z.uuid(), z.literal("")]).default(""), revision: z.coerce.number().int().min(0),
+  groupId: z.union([z.uuid(), z.literal("")]).optional(),
   kind: z.enum(["payroll", "recurring"]), employeeId: z.union([z.uuid(), z.literal("")]).default(""),
   name: z.string().trim().min(1).max(120), amount: planningAmount, currency: z.string().regex(/^[A-Z]{3}$/), categoryId: z.uuid(),
   intervalMonths: z.coerce.number().pipe(z.union([z.literal(1), z.literal(3), z.literal(12)])),
@@ -35,6 +36,7 @@ export const employeeBonusSchema = z.object({
 }).refine((v) => v.periodEnd >= v.periodStart);
 
 export function financeScheduleError(message: string) {
+  if (message === "finance_group_invalid") return "group";
   if (message === "finance_payroll_cost_locked") return "costLocked";
   if (message === "finance_payroll_cost_category_required") return "costCategory";
   if (message === "finance_schedule_effective_date") return "effectiveDate";

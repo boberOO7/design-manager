@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { CircuitBoard, Cpu, Fingerprint, Gpu, HardDrive, MemoryStick, Power, ChevronDown, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { AnimatedFormContent } from "@/components/ui/animated-form-content";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { BinarySwitch } from "@/components/ui/binary-switch";
@@ -16,21 +17,6 @@ import type { EquipmentFieldUpdate } from "@/lib/validation/equipment";
 import { cn } from "@/lib/utils";
 
 type Section = "identification" | "processor" | "graphics" | "memory" | "drives" | "motherboard" | "powerSupply";
-
-// Measure the mounted inner content so both toggles and added drives transition
-// actual layout height, including inside a height-constrained dialog.
-function AnimatedFormContent({ children, isOpen, id, labelledBy }: { children: ReactNode; isOpen: boolean; id?: string; labelledBy?: string }) {
-  const content = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(0);
-  useLayoutEffect(() => {
-    const node = content.current;
-    if (!node) return;
-    const observer = new ResizeObserver(() => setHeight(node.getBoundingClientRect().height));
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-  return <div id={id} role={id ? "region" : undefined} aria-labelledby={labelledBy} aria-hidden={!isOpen} inert={!isOpen} style={{ height: isOpen ? height : 0 }} className={cn("shrink-0 overflow-hidden transition-[height,opacity] duration-[220ms] ease-out", isOpen ? "opacity-100" : "opacity-0")}><div ref={content} className="flow-root">{children}</div></div>;
-}
 
 function AccordionSection({ children, title, summary, isOpen, onOpen, Icon }: { Icon: LucideIcon; children: ReactNode; title: string; summary: string; isOpen: boolean; onOpen: () => void }) {
   const id = useId();

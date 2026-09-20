@@ -281,6 +281,35 @@ or notifications containing private data.
 
 ## Employee compensation and recurring studio obligations
 
+- The configuration page stacks full-width compensation and recurring sections.
+  Compact salary rows show employee, amount/basis, payout timing and actionable
+  attention; only exceptional periods are exposed. Detailed costs and immutable
+  history sit behind disclosure. Unspecified payroll costs produce
+  one attention state and remain unknown until explicitly supplied.
+- Forms use month-level effective periods, with remittances/employer costs exposed
+  for gross pay or on request. Bonus notes and initial recurring-agreement notes
+  are optional, with localized defaults; recurring revisions still require a reason.
+  Recurring next-payment links use maintained, unsettled expected items and their
+  expected-date override, excluding cancelled and past items; no cadence is
+  recalculated in the browser.
+- Optional team setup lists active employees without an unstopped payroll agreement.
+  Shared currency, basis and payout defaults allow per-person overrides; initial
+  months use employment start, bounded by any previous permanent stop. Each selected
+  row uses the existing guarded save with its own stable request ID. Successful rows
+  stay saved and locked while failed rows can be corrected and retried; existing
+  agreements and revisions are never updated by this workflow.
+- Recurring groups are studio-owned, one-level organizational metadata persisted in
+  `finance_recurring_groups`; nullable `finance_schedules.group_id` means Ungrouped
+  for existing rules. Groups can mix financial categories and currencies. Creation,
+  rename, ordering and assignment use admin-guarded RPCs and tenant-scoped RLS;
+  direct writes remain denied. Group moves update no terms, expected items,
+  obligations, ledger entries or reporting classification. The recurring-save
+  wrapper atomically assigns a group while delegating all financial validation to
+  the existing schedule RPC; replay cannot undo a later organizational move.
+  Checkboxes and Ctrl/Cmd-click select recurring rules across groups. Bulk moves
+  call the same guarded assignment per rule: completed moves are retained, failures
+  remain selected for retry, and assigning the same destination again is safe.
+  No financial fields are accepted by the bulk organization action.
 - `/finance/schedules` is admin-only. `finance_schedules` identifies either an
   employee's monthly payroll or a recurring studio obligation; immutable
   `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
@@ -518,7 +547,10 @@ and generation workflow must retain these timing and historical boundaries.
 - `supabase/migrations/20260917141123_finance_compensation_recurring.sql`
 - `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`
 - `supabase/migrations/20260917182151_finance_automatic_schedule_occurrences.sql`
+- `supabase/migrations/20260920211341_finance_recurring_groups.sql`
 - `src/lib/finance-schedules.ts`, `src/components/finance/schedules-workspace.tsx`
+- `src/components/finance/payroll-setup.tsx`, `tests/e2e/finance-payroll-setup.spec.ts`
+- `supabase/tests/finance_recurring_groups_rls.test.sql`
 - `supabase/tests/finance_schedules_rls.test.sql`, `tests/e2e/finance-schedules.spec.ts`
 
 - `src/lib/finance-forecast.ts`, `src/data/queries/finance-forecast.ts`

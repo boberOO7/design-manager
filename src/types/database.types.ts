@@ -2241,6 +2241,35 @@ export type Database = {
           },
         ]
       }
+      finance_recurring_groups: {
+        Row: {
+          id: string
+          name: string
+          position: number
+          studio_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          position: number
+          studio_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          position?: number
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_recurring_groups_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_schedule_terms: {
         Row: {
           amount: number
@@ -2353,6 +2382,7 @@ export type Database = {
           created_at: string
           created_by: string
           employee_id: string | null
+          group_id: string | null
           id: string
           kind: string
           stopped_from: string | null
@@ -2362,6 +2392,7 @@ export type Database = {
           created_at?: string
           created_by: string
           employee_id?: string | null
+          group_id?: string | null
           id?: string
           kind: string
           stopped_from?: string | null
@@ -2371,12 +2402,20 @@ export type Database = {
           created_at?: string
           created_by?: string
           employee_id?: string | null
+          group_id?: string | null
           id?: string
           kind?: string
           stopped_from?: string | null
           studio_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "finance_schedule_group_studio_fkey"
+            columns: ["studio_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recurring_groups"
+            referencedColumns: ["studio_id", "id"]
+          },
           {
             foreignKeyName: "finance_schedules_created_by_fkey"
             columns: ["created_by"]
@@ -5097,6 +5136,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      manage_finance_recurring_group: {
+        Args: {
+          p_id?: string
+          p_name?: string
+          p_operation: string
+          p_schedule_id?: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       manage_office_assignment: {
         Args: {
           p_assignment_id: string
@@ -5266,6 +5315,10 @@ export type Database = {
           p_request_id: string
           p_studio_id: string
         }
+        Returns: string
+      }
+      save_finance_recurring_schedule: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
       save_finance_schedule: {
@@ -5544,6 +5597,7 @@ export type Database = {
     }
   }
 }
+
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

@@ -910,9 +910,9 @@
     "semantic_hash": "e313916f1ad1d6e68d12f367e7cebe3b"
   },
   "src/types/database.types.ts": {
-    "mtime": 1789923790.8852363,
-    "ast_hash": "0ec5fdfd7bd57d44fe55d7a569aee497",
-    "semantic_hash": ""
+    "mtime": 1789940045.5721674,
+    "ast_hash": "65629a4d3eca19cc7f524214113dac98",
+    "semantic_hash": "65629a4d3eca19cc7f524214113dac98"
   },
   "src/types/index.ts": {
     "mtime": 1789345810.1280808,
@@ -4590,9 +4590,9 @@
     "semantic_hash": "746b66f7c7285b0973782d20d4d0a73d"
   },
   "src/components/office/equipment-workspace.test.ts": {
-    "mtime": 1789659335.2622604,
-    "ast_hash": "b9aa4a7676b5d4d1ebb2d901b4c8103e",
-    "semantic_hash": "b9aa4a7676b5d4d1ebb2d901b4c8103e"
+    "mtime": 1789941983.9289103,
+    "ast_hash": "5b71fe98b1ee9647eebdd2b1feb99861",
+    "semantic_hash": "5b71fe98b1ee9647eebdd2b1feb99861"
   },
   "src/components/office/equipment-workspace.tsx": {
     "mtime": 1789659334.8342438,
@@ -4660,9 +4660,9 @@
     "semantic_hash": "ed7cc8c7cbbb73feafc88a088d1f2173"
   },
   "src/components/office/equipment-form.tsx": {
-    "mtime": 1789659334.610235,
-    "ast_hash": "e72fd4065ddca813b91938b3d59f20bf",
-    "semantic_hash": "e72fd4065ddca813b91938b3d59f20bf"
+    "mtime": 1789941983.9289103,
+    "ast_hash": "58c970b9f350a1f9a7cd84c6bc4f2bec",
+    "semantic_hash": "58c970b9f350a1f9a7cd84c6bc4f2bec"
   },
   "src/lib/pc-configuration.test.ts": {
     "mtime": 1789323627.581392,
@@ -5305,9 +5305,9 @@
     "semantic_hash": ""
   },
   "src/data/queries/finance.ts": {
-    "mtime": 1789929945.1603606,
-    "ast_hash": "bc13a869144b781000266966a049beff",
-    "semantic_hash": ""
+    "mtime": 1789938939.1664593,
+    "ast_hash": "c0678c6ca4cac478713f6a81368a3675",
+    "semantic_hash": "c0678c6ca4cac478713f6a81368a3675"
   },
   "src/lib/finance-foundation-migration.test.ts": {
     "mtime": 1789589399.9571319,
@@ -5340,9 +5340,9 @@
     "semantic_hash": "8c33d4121427e7b137d54e89504b69c7"
   },
   "docs/architecture/finance.md": {
-    "mtime": 1789925407.5285532,
-    "ast_hash": "02c18a8bfa71b77d1d10c387abb9aa81",
-    "semantic_hash": ""
+    "mtime": 1789942197.4105334,
+    "ast_hash": "29976b582efcfecb3ac0cac8f662242c",
+    "semantic_hash": "29976b582efcfecb3ac0cac8f662242c"
   },
   "src/components/finance/currency-select.test.ts": {
     "mtime": 1789596434.4473414,
@@ -5435,9 +5435,9 @@
     "semantic_hash": "56cf8a227286db80189a319eee77b849"
   },
   "src/components/finance/categories-workspace.tsx": {
-    "mtime": 1789925369.6439805,
-    "ast_hash": "710778facbf16b61d0e721e99b7a8494",
-    "semantic_hash": ""
+    "mtime": 1789941939.807437,
+    "ast_hash": "068454245bb9f873d87e95a83b6b8b14",
+    "semantic_hash": "068454245bb9f873d87e95a83b6b8b14"
   },
   "src/components/finance/category-select.tsx": {
     "mtime": 1789923790.525221,
@@ -5525,9 +5525,9 @@
     "semantic_hash": "2aade494b9a66ae4bdd31ce9bd53bb4b"
   },
   "src/app/(app)/finance/schedules/actions.ts": {
-    "mtime": 1789910001.1203573,
-    "ast_hash": "0116bc788f65fbd1431b6d8ce805869e",
-    "semantic_hash": ""
+    "mtime": 1789941909.9825578,
+    "ast_hash": "39e76fbdc918507dab59aa5aba3ff518",
+    "semantic_hash": "39e76fbdc918507dab59aa5aba3ff518"
   },
   "src/app/(app)/finance/schedules/page.tsx": {
     "mtime": 1789654613.7019277,
@@ -5535,9 +5535,9 @@
     "semantic_hash": "bc77d11404b8ed5c482a2bba7c341216"
   },
   "src/components/finance/schedules-workspace.tsx": {
-    "mtime": 1789925369.9999957,
-    "ast_hash": "9a5f6f5127b879526cbc7d1a36e4477e",
-    "semantic_hash": ""
+    "mtime": 1789942225.6228032,
+    "ast_hash": "4778f86c9a5c8d640934c50b6fb3b7cb",
+    "semantic_hash": "4778f86c9a5c8d640934c50b6fb3b7cb"
   },
   "src/data/queries/calendar-payroll.test.ts": {
     "mtime": 1789670305.9334276,
@@ -5550,9 +5550,9 @@
     "semantic_hash": ""
   },
   "src/lib/finance-schedules.ts": {
-    "mtime": 1789910000.9523504,
-    "ast_hash": "610ec726939581af3b292c157676beda",
-    "semantic_hash": ""
+    "mtime": 1789938938.7064407,
+    "ast_hash": "685c940cf0d1235050bd3e150e2406f1",
+    "semantic_hash": "685c940cf0d1235050bd3e150e2406f1"
   },
   "supabase/migrations/20260917141123_finance_compensation_recurring.sql": {
     "mtime": 1789654485.062416,
@@ -5570,9 +5570,9 @@
     "semantic_hash": "f0b446373461fbfcef117c6fc6c4dbf3"
   },
   "tests/e2e/finance-schedules.spec.ts": {
-    "mtime": 1789934097.1763945,
-    "ast_hash": "e83a6d674b5d278c2469226ee3ee6fd5",
-    "semantic_hash": "e83a6d674b5d278c2469226ee3ee6fd5"
+    "mtime": 1789943664.83634,
+    "ast_hash": "1affa99782b9c084dfed4704531e2be2",
+    "semantic_hash": "1affa99782b9c084dfed4704531e2be2"
   },
   "src/components/ui/binary-switch.tsx": {
     "mtime": 1789659334.3422246,
@@ -5763,5 +5763,45 @@
     "mtime": 1789926167.8620915,
     "ast_hash": "503ffc9a3838aa278037b126e3c2c467",
     "semantic_hash": ""
+  },
+  "src/app/(app)/finance/schedules/actions.test.ts": {
+    "mtime": 1789941983.9289103,
+    "ast_hash": "f37a477dcec86ac50ee9d761480058e1",
+    "semantic_hash": "f37a477dcec86ac50ee9d761480058e1"
+  },
+  "src/data/queries/finance-schedules.test.ts": {
+    "mtime": 1789937163.5784996,
+    "ast_hash": "8ef30cbc20358e000731081a5d37e8f5",
+    "semantic_hash": "8ef30cbc20358e000731081a5d37e8f5"
+  },
+  "src/components/finance/payroll-setup.tsx": {
+    "mtime": 1789942052.7832968,
+    "ast_hash": "3e26bf9999dba93cf8f2792df9167328",
+    "semantic_hash": "3e26bf9999dba93cf8f2792df9167328"
+  },
+  "supabase/migrations/20260920211341_finance_recurring_groups.sql": {
+    "mtime": 1789938870.1327913,
+    "ast_hash": "05449d1d249f443895ac7499108914be",
+    "semantic_hash": "05449d1d249f443895ac7499108914be"
+  },
+  "supabase/migrations/20260920211918_finance_recurring_group_optional_assignment.sql": {
+    "mtime": 1789939173.301965,
+    "ast_hash": "3a69a4af7b11f96dfb7eda22ba6e9a07",
+    "semantic_hash": "3a69a4af7b11f96dfb7eda22ba6e9a07"
+  },
+  "supabase/tests/finance_recurring_groups_rls.test.sql": {
+    "mtime": 1789939226.7909622,
+    "ast_hash": "8e1f6c0b606f291dcc6c65eef36459da",
+    "semantic_hash": "8e1f6c0b606f291dcc6c65eef36459da"
+  },
+  "tests/e2e/finance-payroll-setup.spec.ts": {
+    "mtime": 1789942232.571126,
+    "ast_hash": "97e77c1d1d1451cd5558838b14f94bdd",
+    "semantic_hash": "97e77c1d1d1451cd5558838b14f94bdd"
+  },
+  "src/components/ui/animated-form-content.tsx": {
+    "mtime": 1789943434.768529,
+    "ast_hash": "1b86179ea195af26fb3803f1743082a7",
+    "semantic_hash": "1b86179ea195af26fb3803f1743082a7"
   }
 }

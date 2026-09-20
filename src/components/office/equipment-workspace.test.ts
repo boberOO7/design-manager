@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const workspace = readFileSync("src/components/office/equipment-workspace.tsx", "utf8");
 const form = readFileSync("src/components/office/equipment-form.tsx", "utf8");
+const animatedContent = readFileSync("src/components/ui/animated-form-content.tsx", "utf8");
 const actions = readFileSync("src/app/(app)/office/equipment/actions.ts", "utf8");
 const page = readFileSync("src/app/(app)/office/equipment/page.tsx", "utf8");
 const query = readFileSync("src/data/queries/equipment.ts", "utf8");
@@ -114,9 +115,9 @@ describe("Equipment application flow", () => {
     expect(workspace).not.toContain('t("workstation.eyebrow")}</span><strong');
     expect(form).toContain('aria-expanded={isOpen}');
     expect(form).toContain('aria-controls={id}');
-    expect(form).toContain('inert={!isOpen}');
-    expect(form).toContain('ResizeObserver');
-    expect(form).toContain('transition-[height,opacity]');
+    expect(animatedContent).toContain('inert={!isOpen}');
+    expect(animatedContent).toContain('ResizeObserver');
+    expect(animatedContent).toContain('transition-[height,opacity,visibility]');
     expect(form).toContain('openSection === key');
     expect(form).toContain('<fieldset className="shrink-0 rounded-');
     expect(form).toContain('<FormField className="w-full" label={t("form.notes")} optional');
