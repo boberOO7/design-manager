@@ -28,4 +28,12 @@ describe("Project Finance action", () => {
     expect(await saveFinanceProject({ status: "idle" }, form())).toEqual({ status: "error", message: "project.errors.overScheduled" });
     expect(mocks.revalidate).not.toHaveBeenCalled();
   });
+  it("cancels through the verified tenant with explicit retained-settlement confirmation", async () => {
+    const input={intent:"cancelExpectation",itemId:id,version:"1",settledAmount:"40000",retainSettlement:"true",reason:"Terminated"};
+    expect((await saveFinanceProject({status:"idle"},form(input))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("cancel_finance_project_expectation",expect.objectContaining({p_studio_id:"verified",p_input:{itemId:id,version:1,settledAmount:"40000",retainSettlement:true,reason:"Terminated"}}));
+    mocks.rpc.mockClear();
+    expect((await saveFinanceProject({status:"idle"},form({...input,retainSettlement:"false"}))).status).toBe("error");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
 });

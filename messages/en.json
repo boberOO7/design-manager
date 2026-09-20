@@ -1958,6 +1958,11 @@
       }
     },
     "project": {
+      "overrideVisitPrice": "Use a manual price for this visit",
+      "cancelExpectation": "Cancel expectation",
+      "retainSettlement": "Keep {amount} as a fully paid replacement expectation and cancel the remaining balance.",
+      "contractVisitPrice": "Agreed visit price: {amount} {currency}",
+      "cancelExpectationHelp": "This closes the unpaid balance and preserves the original amount, agreement and payment history. It does not change cash or the project contract total.",
       "title": "Finance",
       "open": "Project Finance",
       "summary": "Financial overview",
@@ -2011,6 +2016,9 @@
       "history": "Recent agreement revisions",
       "revision": "Revision {version}",
       "errors": {
+        "visitPriceChanged": "The applicable visit agreement has changed. Refresh and check the price.",
+        "retentionRequired": "Confirm that the retained payment will be kept in a replacement expectation.",
+        "cancellationRequired": "Use Cancel expectation and provide a reason.",
         "duplicateCharge": "This visit or month already has a payment. Edit or match the existing payment instead.",
         "overScheduled": "Scheduled design payments would exceed the contract value. Amend the agreement or revise unpaid payments first.",
         "currencyLocked": "Design payment currency must match the agreement. Agreement currency is fixed once a schedule exists.",

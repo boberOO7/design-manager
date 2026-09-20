@@ -111,14 +111,21 @@ export async function getFinanceProject(projectId:string) {
   const client=await createClient();
   const [terms,history,totals,contractors,visits]=await Promise.all([
     client.from("finance_project_current_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
-    client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").limit(50),
+    client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(0,999),
     client.from("finance_project_totals").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("contractors").select("id,name,category:contractor_categories!inner(studio_id)").eq("category.studio_id",admin.studio_id).order("name").limit(1000),
     client.from("calendar_events").select("id,title,starts_at").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("event_type","site_visit").is("cancelled_at",null).order("starts_at",{ ascending:false }).limit(200),
   ]);
   const error=terms.error??history.error??totals.error??contractors.error??visits.error;
   if(error) throw new Error("Unable to load Project Finance.",{ cause:error });
-  return { projectId,terms:terms.data??[],termHistory:history.data??[],totals:totals.data??[],contractors:contractors.data??[],visits:visits.data??[] };
+  // Historical visit defaults must not depend on a recent-revisions limit.
+  const termHistory=history.data??[];
+  for(let offset=1000;termHistory.length===offset;offset+=1000) {
+    const page=await client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(offset,offset+999);
+    if(page.error) throw new Error("Unable to load Project Finance.",{ cause:page.error });
+    termHistory.push(...page.data);
+  }
+  return { projectId,terms:terms.data??[],termHistory,totals:totals.data??[],contractors:contractors.data??[],visits:visits.data??[] };
 }
 export type FinanceProjectData=NonNullable<Awaited<ReturnType<typeof getFinanceProject>>>;
 

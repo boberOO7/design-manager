@@ -205,8 +205,19 @@ or notifications containing private data.
   Currency is fixed after any schedule history. An amendment never edits the
   schedule; administrators revise unpaid items explicitly, with submitted revisions
   retained in the planning audit. After any allocation history, project-item amount,
-  currency, category, due date, commitment and certainty are locked even through the
-  global RPC. Expected timing, description and established status remain editable.
+  currency, category, due date and certainty are locked even through the global RPC.
+  Expected timing, description and established status remain editable.
+- Project expectation cancellation uses `cancel_finance_project_expectation`, with
+  a required reason, item version and effective-settlement check under the studio
+  lock. Refunds alone never cancel an expectation. With no retained settlement,
+  cancellation preserves the original amount, terms, payment and allocation history.
+  With retained settlement, explicit confirmation atomically releases its matches,
+  cancels the original and re-matches that exact amount to a fully paid replacement
+  in the same project/stream/currency. Releases and the original-to-replacement audit
+  are append-only; neither path changes cash. Cancelled items cannot be reopened.
+  The original permanently retains visit/month billing identity. Closed unpaid value
+  leaves receivables and timed forecasts; the commercial agreement total stays intact
+  and its unscheduled remainder still requires a separate explicit agreement amendment.
 - `finance_project_totals` uses exact database numeric, grouped by stream/currency.
   Collected is effective allocated money (net of releases), not all cash on a
   receipt that happens to partly settle the project. Excess remains a global
@@ -224,7 +235,12 @@ or notifications containing private data.
 - Per-visit charges require selection of an existing, non-cancelled same-project
   Calendar site visit and an explicit save. Calendar already requires site visits
   to be concrete, non-recurring events. Applicable terms are selected for the
-  visit date; monthly-retainer visits need explicit extra-charge confirmation.
+  visit's Kyiv date, including historical revisions. The form defaults amount and
+  currency to that revision and identifies manual pricing through an explicit override
+  control. An override survives visit selection changes. Contract-default submissions
+  verify the applicable revision and price again at save; manual prices retain their
+  applicable agreement link and request audit. Monthly-retainer visits still need
+  explicit extra-charge confirmation and a manually entered extra-visit amount.
   One permanent charge identity per visit prevents duplicate billing. Custom/manual
   supervision expectations remain available. Changing or stopping supervision is
   an explicit effective-dated revision, independent of project status.

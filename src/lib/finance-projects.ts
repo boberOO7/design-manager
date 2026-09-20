@@ -1,5 +1,21 @@
 import { z } from "zod";
 import { planningAmount } from "./finance-planning";
+import { instantToDateOnly } from "./calendar";
+import type { Database } from "@/types/database.types";
+
+export function supervisionVisitTerms(history: Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "id"|"stream"|"mode"|"amount"|"currency"|"effective_from"|"effective_through"|"revision">[], startsAt: string) {
+  const date = instantToDateOnly(startsAt);
+  const term = history.filter((v) => v.stream === "supervision" && v.effective_from && v.effective_from <= date)
+    .sort((a,b) => (b.effective_from??"").localeCompare(a.effective_from??"") || b.revision-a.revision)[0];
+  return term && (!term.effective_through || term.effective_through >= date) && ["per_visit","monthly"].includes(term.mode) ? term : null;
+}
+
+export const projectCancellationSchema = z.object({
+  requestId: z.uuid(), itemId: z.uuid(), version: z.coerce.number().int().positive(),
+  settledAmount: z.string().regex(/^\d{1,10}(?:\.\d{1,4})?$/),
+  retainSettlement: z.enum(["true","false"]).default("false"),
+  reason: z.string().trim().min(1).max(2000),
+}).refine((v) => Number(v.settledAmount) === 0 || v.retainSettlement === "true");
 
 export const projectStreams = ["design", "supervision", "contractor_bonus", "other"] as const;
 export const projectContextSchema = z.object({
@@ -8,6 +24,8 @@ export const projectContextSchema = z.object({
   contractorId: z.union([z.uuid(), z.literal("")]).default(""),
   visitId: z.union([z.uuid(), z.literal("")]).default(""),
   extraVisit: z.enum(["true", "false"]).default("false"),
+  visitPricing: z.enum(["contract", "manual"]).default("manual"),
+  visitTermsId: z.union([z.uuid(), z.literal("")]).default(""),
 }).refine((v) => v.source !== "visit" || (v.stream === "supervision" && Boolean(v.visitId)))
   .refine((v) => !v.contractorId || v.stream === "contractor_bonus");
 
@@ -30,6 +48,9 @@ export const supervisionMonthsSchema = z.object({
   (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 
 export function financeProjectError(message: string) {
+  if (message === "finance_project_cancellation_required") return "cancellationRequired";
+  if (message === "finance_project_retention_required") return "retentionRequired";
+  if (message === "finance_project_visit_price_changed") return "visitPriceChanged";
   if (message.includes("finance_project_month_once") || message.includes("finance_project_visit_once")) return "duplicateCharge";
   if (message === "finance_project_over_scheduled") return "overScheduled";
   if (message === "finance_project_currency_locked") return "currencyLocked";
