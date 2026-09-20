@@ -52,3 +52,14 @@ export function forecastIssueHref(issue: ForecastReport["issues"][number]) {
   if (issue.source === "schedule" || issue.source === "payroll") return "/finance/schedules";
   return issue.source === "account" ? "/finance/accounts" : "/finance/expected";
 }
+
+// Sum approved monthly budget inputs only; forecast/reporting totals stay database-owned.
+export function budgetYearTotal(months: string[]): string {
+  const parsed = budgetInputSchema.shape.months.safeParse(months);
+  if (!parsed.success) throw new Error("Invalid annual budget");
+  const total = parsed.data.reduce((sum, value) => {
+    const [whole, fraction = ""] = value.split(".");
+    return sum + BigInt(whole) * BigInt(10000) + BigInt(fraction.padEnd(4, "0"));
+  }, BigInt(0));
+  return `${total / BigInt(10000)}.${String(total % BigInt(10000)).padStart(4, "0")}`;
+}

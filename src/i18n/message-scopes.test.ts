@@ -85,6 +85,6 @@ describe("domain message ownership", () => {
       available.push(...entry[1]);
     }
     expect(available.length).toBe(new Set(available).size);
-    for (const namespace of new Set(owners.flatMap((owner) => namespaces(owner)))) expect(available, `${route}: ${namespace}`).toContain(namespace);
+    for (const namespace of new Set(owners.flatMap((owner) => namespaces(owner)))) expect(available, `${route}: ${namespace}`).toContain(namespace.split(".")[0]);
   });
 });

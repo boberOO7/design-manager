@@ -391,6 +391,16 @@ or notifications containing private data.
 from the Finance Overview; no P&L, accrual, sales-pipeline forecasting,
 recurrence generation job or tax engine is implied.
 
+- Local Forecast, Budget and Forecast history modes share this route; Forecast is
+  the default. Horizon/scenario changes apply immediately and retain manual rates.
+  Planning loads `get_finance_overview`, whose embedded canonical forecast supplies
+  both summaries/chart and monthly detail under one calculation and FX scope.
+  Historical flow bars cover the last three calendar months through today; category
+  comparison covers the forecast horizon. They retain separate date labels.
+  Attention, monthly detail and assumptions are disclosures. Budget's annual
+  category matrix opens the existing immutable revision editor; it creates no cash.
+  History compares a selected snapshot with subsequent recorded cash.
+
 - `finance_budget_revisions` stores twelve monthly amounts per studio, year and
   existing category. Amounts are explicitly approved in the studio reporting
   currency, with currency precision enforced in PostgreSQL. Any conversion used

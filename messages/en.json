@@ -1870,6 +1870,21 @@
       "emptyBudget": "No budget or forecast activity in this period."
     },
     "forecast": {
+      "snapshotRules": "About snapshot comparisons",
+      "budgetRules": "Budget approval & revisions",
+      "modesLabel": "Planning workspace",
+      "modes": {
+        "forecast": "Forecast",
+        "budget": "Budget",
+        "history": "Forecast history"
+      },
+      "horizonCash": "Cash at horizon end",
+      "monthlyCash": "Monthly cash projection",
+      "forecastBasis": "How this forecast works",
+      "yearTotal": "Year total",
+      "varianceOrder": "Largest absolute variances first. A dash means no complete budget baseline.",
+      "selectSnapshot": "Select a saved forecast to compare expectations with subsequent cash.",
+      "emptySnapshots": "No saved forecasts yet. Save a snapshot from Forecast to start a comparison.",
       "invalidManualFx": "Invalid manual assumptions were not applied. The forecast below uses available default rates; correct the assumptions and apply again.",
       "title": "Budget & Forecast",
       "description": "Cash planning from recorded money and remaining expected payments.",

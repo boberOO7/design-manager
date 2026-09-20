@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { budgetInputSchema, forecastFxSchema, forecastOptionsSchema } from "./finance-forecast";
+import { budgetYearTotal, budgetInputSchema, forecastFxSchema, forecastOptionsSchema } from "./finance-forecast";
 const id = "67000000-0000-4000-8000-000000000001";
 describe("cash planning input boundaries", () => {
   it("accepts twelve exact decimal strings, explicit zero and a required revision note", () => {
@@ -19,4 +19,11 @@ describe("cash planning input boundaries", () => {
     expect(forecastFxSchema.safeParse([rate, rate]).success).toBe(false);
     for (const patch of [{ rate: "0" }, { rate: "NaN" }, { rate: "-1" }, { rate: "40.12345678901" }, { effectiveDate: "" }, { source: "historical" }]) expect(forecastFxSchema.safeParse([{ ...rate, ...patch }]).success).toBe(false);
   });
+});
+
+it("sums twelve approved months exactly without changing absent-budget semantics", () => {
+  expect(budgetYearTotal(Array(12).fill("0.1"))).toBe("1.2000");
+  expect(budgetYearTotal(Array(12).fill("9999999999.9999"))).toBe("119999999999.9988");
+  expect(budgetYearTotal(Array(12).fill("80,25"))).toBe("963.0000");
+  expect(() => budgetYearTotal(["0"])).toThrow();
 });

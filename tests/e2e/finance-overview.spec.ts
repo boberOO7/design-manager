@@ -144,6 +144,7 @@ test("large decimal amounts stay exact in cards, chart tables, drilldowns and st
   for (const detail of await page.locator("details").all()) await detail.evaluate(el => el.setAttribute("open", ""));
   await expect(page.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();
   await page.goto("/finance/planning?fx_USD=1000000");
+  await page.getByRole("button", { name: f.monthlyCash, exact: false }).click();
   await expect(page.getByRole("table", { name: f.cashProjection })).toContainText("1,234,567,900,220,434.78");
   await page.goto("/finance?fx_USD=1000000");
   await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();
