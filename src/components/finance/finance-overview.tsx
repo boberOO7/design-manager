@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { formatFinanceDecimal, canChartFinanceAmount } from "@/lib/finance";
+import { formatFinanceAmount, canChartFinanceAmount, type FinanceCurrency } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceOverview } from "@/lib/finance-overview";
 import type { getFinanceData } from "@/data/queries/finance";
@@ -14,14 +14,18 @@ import { FormField, Input, inputClassName } from "@/components/ui/form-field";
 import { FinanceCashChart } from "./cash-chart";
 
 const table = "w-full text-left text-sm [&_th]:p-3 [&_th]:font-medium [&_td]:p-3 [&_tr]:border-b [&_tr]:border-[var(--ui-border)] [&_td]:tabular-nums";
-export function FinanceOverviewWorkspace({ data, categories, invalidFx }: { data: FinanceOverview; categories: NonNullable<Awaited<ReturnType<typeof getFinanceData>>>["categories"]; invalidFx: boolean }) {
+export function FinanceOverviewWorkspace({ data, categories, currencies, invalidFx }: { data: FinanceOverview; categories: NonNullable<Awaited<ReturnType<typeof getFinanceData>>>["categories"]; currencies: FinanceCurrency[]; invalidFx: boolean }) {
   const t = useTranslations("Finance.overview"), ft = useTranslations("Finance"), f = useTranslations("Finance.forecast");
   const locale = useLocale();
   const [detail, setDetail] = useState<"cash" | "netFlow" | "receivables" | "outgoing" | null>(null);
   const report = data.forecast;
-  const digits = new Intl.NumberFormat(locale, { style: "currency", currency: report.currency, currencyDisplay: "code" }).resolvedOptions().maximumFractionDigits;
-  const amount = (value: string | null, currency?: string) => value === null ? "—" : formatFinanceDecimal(value, locale, currency ? { style: "currency", currency, currencyDisplay: "code" } : { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  const flowsSafe = data.flows.every(row => canChartFinanceAmount(row.amount, digits ?? 2));
+  const reportingCurrency = currencies.find(currency => currency.code === report.currency);
+  if (!reportingCurrency) throw new Error("Unknown Finance reporting currency");
+  const amount = (value: string | null, code?: string) => {
+    const currency = code ? currencies.find(currency => currency.code === code) : reportingCurrency;
+    return value === null || !currency ? "—" : formatFinanceAmount(value, currency, locale, code ? "currency" : "decimal");
+  };
+  const flowsSafe = data.flows.every(row => canChartFinanceAmount(row.amount, reportingCurrency.minor_units));
   const category = (id: string | null, name: string | null) => financeCategoryLabel(categories.find(c => c.id === id), name, key => ft(`planning.defaults.${key}`)) || f("unclassified");
   const upcoming = report.items.filter(i => i.date && i.date <= data.upcomingThrough);
   const outgoing = upcoming.filter(i => i.direction === "outgoing");
@@ -65,7 +69,7 @@ export function FinanceOverviewWorkspace({ data, categories, invalidFx }: { data
       </ul>
     </details> : null}
     <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="text-lg font-semibold">{t("cashChart")}</h2><p className="text-right text-sm"><span className="text-[var(--ui-text-secondary)]">{t("lowPoint")}{incomplete ? ` · ${t("incomplete")}` : ""}</span><span className={`block font-medium tabular-nums ${data.lowPoint.amount.startsWith("-") ? "text-[var(--ui-danger-text)]" : ""}`}>{amount(data.lowPoint.amount)} · {data.lowPoint.date}</span></p></div>
-      <FinanceCashChart data={data} />
+      <FinanceCashChart data={data} currency={reportingCurrency} />
       <details className="text-sm"><summary className="cursor-pointer text-[var(--ui-text-secondary)]">{t("valuation")}</summary><p className="mt-2 text-[var(--ui-text-secondary)]">{t("valuationHelp")}</p></details>
     </Panel>
     <div className="grid min-w-0 gap-6 lg:grid-cols-[0.8fr_1.2fr]">

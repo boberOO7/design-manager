@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { formatFinanceDecimal, canChartFinanceAmount } from "@/lib/finance";
+import { formatFinanceAmount, canChartFinanceAmount, type FinanceCurrency } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceOverview } from "@/lib/finance-overview";
 
 // Number conversion is only for SVG coordinates; all money and cumulative sums come from SQL.
-export function FinanceCashChart({ data }: { data: FinanceOverview }) {
+export function FinanceCashChart({ data, currency }: { data: FinanceOverview; currency: FinanceCurrency }) {
   const t = useTranslations("Finance.overview");
   const locale = useLocale();
   const report = data.forecast;
@@ -23,9 +23,8 @@ export function FinanceCashChart({ data }: { data: FinanceOverview }) {
     { date: report.asOf, amount: report.cashBase, kind: "forecast" as const },
     ...data.projection.map(p => ({ ...p, kind: "forecast" as const })),
   ];
-  const format = (value: string) => formatFinanceDecimal(value, locale, { style: "currency", currency: report.currency, currencyDisplay: "code" });
-  const digits = new Intl.NumberFormat(locale, { style: "currency", currency: report.currency }).resolvedOptions().maximumFractionDigits ?? 2;
-  const chartSafe = points.every(p => p.amount === null || canChartFinanceAmount(p.amount, digits));
+  const format = (value: string) => formatFinanceAmount(value, currency, locale);
+  const chartSafe = points.every(p => p.amount === null || canChartFinanceAmount(p.amount, currency.minor_units));
   const values = points.flatMap(p => p.amount === null ? [] : [Number(p.amount)]);
   const min = Math.min(0, ...values), max = Math.max(1, ...values);
   const start = Date.parse(data.actualFrom), end = Date.parse(report.through);

@@ -20,5 +20,5 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const context = parseFinanceReportParams(await searchParams, today);
   const data = await getFinanceOverview(context);
   if (!data) redirect("/dashboard");
-  return <FinanceOverviewWorkspace key={`${data.period}-${data.forecast.horizon}-${data.forecast.scenario}`} data={data} categories={foundation.categories} invalidFx={context.invalidFx} />;
+  return <FinanceOverviewWorkspace key={`${data.period}-${data.forecast.horizon}-${data.forecast.scenario}`} data={data} categories={foundation.categories} currencies={foundation.currencies} invalidFx={context.invalidFx} />;
 }

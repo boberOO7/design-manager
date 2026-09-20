@@ -117,7 +117,7 @@ export async function getFinanceProject(projectId:string) {
   const [terms,history,totals,contractors,visits]=await Promise.all([
     client.from("finance_project_current_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(0,999),
-    client.from("finance_project_totals").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
+    client.from("finance_project_totals").select("studio_id,project_id,stream,currency,contract_amount::text,scheduled_amount::text,collected_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("contractors").select("id,name,category:contractor_categories!inner(studio_id)").eq("category.studio_id",admin.studio_id).order("name").limit(1000),
     client.from("calendar_events").select("id,title,starts_at").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("event_type","site_visit").is("cancelled_at",null).order("starts_at",{ ascending:false }).limit(200),
   ]);
@@ -130,7 +130,9 @@ export async function getFinanceProject(projectId:string) {
     if(page.error) throw new Error("Unable to load Project Finance.",{ cause:page.error });
     termHistory.push(...page.data);
   }
-  return { projectId,terms:terms.data??[],termHistory,totals:totals.data??[],contractors:contractors.data??[],visits:visits.data??[] };
+  // Data API casts preserve decimal text but omit view nullability from inferred types.
+  const projectTotals=(totals.data??[]).map(row=>({...row,contract_amount:z.string().nullable().parse(row.contract_amount),unscheduled_amount:z.string().nullable().parse(row.unscheduled_amount)}));
+  return { projectId,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
 export type FinanceProjectData=NonNullable<Awaited<ReturnType<typeof getFinanceProject>>>;
 

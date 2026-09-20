@@ -85,6 +85,29 @@ select pg_temp.post(223,jsonb_build_object('kind','refund','relatedMovementId',p
 select is((select settled_amount from public.finance_expected_balances where id=pg_temp.result(121)),0::numeric,'later refund releases replacement allocation using original payment');
 select is((select commitment from public.finance_expected_items where id=pg_temp.result(120)),'cancelled','later refund never reopens cancelled original');
 select lives_ok($$select pg_temp.close_item(122,121)$$,'fully refunded replacement can also be cancelled with reason');
+-- Two payments settle the target; one also settles an unrelated expectation.
+select pg_temp.item(140,'{"amount":"100"}');
+select pg_temp.item(150,'{"amount":"50","description":"Unrelated expectation"}');
+select pg_temp.post(240,'{"amount":"100"}');
+select pg_temp.post(250,'{"amount":"40"}');
+select public.allocate_finance_payment(pg_temp.fid(1),pg_temp.fid(241),pg_temp.result(140),pg_temp.movement(240),60);
+select public.allocate_finance_payment(pg_temp.fid(1),pg_temp.fid(242),pg_temp.result(150),pg_temp.movement(240),40);
+select public.allocate_finance_payment(pg_temp.fid(1),pg_temp.fid(251),pg_temp.result(140),pg_temp.movement(250),40);
+create temporary table shared_other_history as select * from public.finance_allocations where expected_item_id=pg_temp.result(150);
+create temporary table shared_other_balance as select * from public.finance_expected_balances where id=pg_temp.result(150);
+create temporary table shared_history as select * from public.finance_allocations;
+create temporary table shared_cash as select * from public.finance_movement_entries;
+create temporary table shared_movements as select * from public.finance_movements;
+select lives_ok($$select pg_temp.close_item(141,140,'{"settledAmount":"100","retainSettlement":true}')$$,'retention can move settlement from multiple payments including a shared payment');
+select is((select concat(amount,'|',settled_amount,'|',commitment) from public.finance_expected_balances where id=pg_temp.result(140)),'100|0|cancelled','shared-payment original closes without changing its amount');
+select is((select concat(amount,'|',settled_amount,'|',payment_state) from public.finance_expected_balances where id=pg_temp.result(141)),'100|100|settled','replacement retains exactly both payments');
+select results_eq('select movement_id,amount from public.finance_allocations where expected_item_id=pg_temp.result(141) order by movement_id',
+  'select movement_id,amount from shared_history where expected_item_id=pg_temp.result(140) order by movement_id','replacement preserves the individual payment amounts');
+select results_eq('select * from public.finance_allocations where expected_item_id=pg_temp.result(150)','select * from shared_other_history','unrelated allocation history is untouched');
+select results_eq('select * from public.finance_expected_balances where id=pg_temp.result(150)','select * from shared_other_balance','unrelated expectation retains its settlement and outstanding amount');
+select results_eq('select a.* from public.finance_allocations a join shared_history b using(id) order by a.id','select * from shared_history order by id','all prior allocation history is immutable');
+select results_eq('select * from public.finance_movement_entries','select * from shared_cash','shared-payment retention leaves total cash and every ledger entry unchanged');
+select results_eq('select * from public.finance_movements','select * from shared_movements','shared-payment retention preserves movement history');
 select is(has_function_privilege('anon','public.cancel_finance_project_expectation(uuid,uuid,jsonb)','execute'),false,'anonymous cancellation execution denied');
 select is(has_function_privilege('service_role','public.cancel_finance_project_expectation(uuid,uuid,jsonb)','execute'),false,'privileged client cannot bypass verified user RPC boundary');
 select pg_temp.terms(300,'{"stream":"supervision","mode":"per_visit","amount":"3000","effectiveFrom":"2026-06-01"}');

@@ -50,9 +50,9 @@ export function canChartFinanceAmount(amount: string, digits: number): boolean {
   return Math.abs(Number(amount)) <= Number.MAX_SAFE_INTEGER / 10 ** digits;
 }
 
-export function formatFinanceAmount(amount: string | number, currency: FinanceCurrency, locale: string): string {
+export function formatFinanceAmount(amount: string | number, currency: FinanceCurrency, locale: string, style: "currency" | "decimal" = "currency"): string {
   return formatFinanceDecimal(amount, locale, {
-    style: "currency", currency: currency.code, currencyDisplay: "code",
+    style, currency: currency.code, currencyDisplay: "code",
     minimumFractionDigits: currency.minor_units, maximumFractionDigits: currency.minor_units,
   });
 }

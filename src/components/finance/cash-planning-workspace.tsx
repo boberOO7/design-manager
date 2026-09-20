@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { formatFinanceDecimal } from "@/lib/finance";
+import { formatFinanceAmount } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { getFinanceData } from "@/data/queries/finance";
 import type { FinanceForecastData } from "@/data/queries/finance-forecast";
@@ -52,8 +52,10 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const [snapshotForm, setSnapshotForm] = useState(0);
   const report = data.report;
   const currency = data.settings?.base_currency ?? "UAH";
-  const digits = data.currencies.find(c => c.code === currency)?.minor_units ?? 2;
-  const amount = (value: string | null) => value === null ? "—" : formatFinanceDecimal(value, locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const amount = (value: string | null, code?: string) => {
+    const catalogCurrency = data.currencies.find(c => c.code === (code ?? currency));
+    return value === null || !catalogCurrency ? "—" : formatFinanceAmount(value, catalogCurrency, locale, code ? "currency" : "decimal");
+  };
   const monthLabel = (date: string) => new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const categoryLabel = (id: string | null, fallback: string | null = null) => financeCategoryLabel(data.categories.find(c => c.id === id), fallback, key => ft(`planning.defaults.${key}`)) || t("unclassified");
   const href = (key: string, value: string) => { const next = new URLSearchParams(params); next.set(key, value); return `/finance/planning?${next}`; };
@@ -84,10 +86,10 @@ export function FinanceCashPlanningWorkspace(data: Props) {
         {!report.comparisons.length ? <p className="text-sm">{t("empty")}</p> : null}
       </section>
       <details className="space-y-3"><summary className="cursor-pointer font-medium">{t("datedItems", { count: report.items.length })}</summary><p className="text-sm text-[var(--ui-text-secondary)]">{t("timingHelp")}</p>
-        <div className="overflow-x-auto"><table className={tableClass}><thead><tr>{["item", "cashDate", "dueDate", "remaining", "classification"].map(key => <th scope="col" key={key}>{t(key)}</th>)}</tr></thead><tbody>{report.items.map(item => <tr key={item.id}><th scope="row"><Link href={item.projectId ? `/projects/${item.projectId}?view=finance` : "/finance/expected"} className="underline">{item.description || categoryLabel(item.categoryId)}</Link></th><td>{item.date ?? "—"}</td><td>{item.dueDate ?? "—"}</td><td>{item.amount} {item.currency}</td><td>{ft(`planning.states.${item.commitment}`)} · {ft(`planning.states.${item.certainty}`)} · {ft(`movements.natures.${item.nature}`)}</td></tr>)}</tbody></table></div>
+        <div className="overflow-x-auto"><table className={tableClass}><thead><tr>{["item", "cashDate", "dueDate", "remaining", "classification"].map(key => <th scope="col" key={key}>{t(key)}</th>)}</tr></thead><tbody>{report.items.map(item => <tr key={item.id}><th scope="row"><Link href={item.projectId ? `/projects/${item.projectId}?view=finance` : "/finance/expected"} className="underline">{item.description || categoryLabel(item.categoryId)}</Link></th><td>{item.date ?? "—"}</td><td>{item.dueDate ?? "—"}</td><td>{amount(item.amount, item.currency)}</td><td>{ft(`planning.states.${item.commitment}`)} · {ft(`planning.states.${item.certainty}`)} · {ft(`movements.natures.${item.nature}`)}</td></tr>)}</tbody></table></div>
       </details>
       <section className="space-y-3" aria-labelledby="attention-heading"><h2 id="attention-heading" className="text-lg font-semibold">{t("attention", { count: report.issues.length })}</h2>
-        {!report.issues.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noIssues")}</p> : <ul className="divide-y divide-[var(--ui-border)]">{report.issues.map((issue, index) => <li key={index} className="py-3 text-sm"><Link href={forecastIssueHref(issue)} className="font-medium underline">{issue.label || t("item")}</Link> · {t(`issues.${issue.reason}`)}{issue.date ? ` · ${issue.date}` : ""}{issue.amount !== null ? ` · ${issue.amount} ${issue.currency}` : ""}</li>)}</ul>}
+        {!report.issues.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noIssues")}</p> : <ul className="divide-y divide-[var(--ui-border)]">{report.issues.map((issue, index) => <li key={index} className="py-3 text-sm"><Link href={forecastIssueHref(issue)} className="font-medium underline">{issue.label || t("item")}</Link> · {t(`issues.${issue.reason}`)}{issue.date ? ` · ${issue.date}` : ""}{issue.amount !== null ? ` · ${amount(issue.amount, issue.currency)}` : ""}</li>)}</ul>}
       </section>
       <details className="space-y-4"><summary className="cursor-pointer font-medium">{t("fxTitle")}</summary><p className="text-sm text-[var(--ui-text-secondary)]">{t("fxHelp")}</p>
         <ul className="space-y-1 text-sm">{report.fx.map(f => <li key={f.currency}>{f.currency} → {currency}: {f.rate} · {t(`fxSources.${f.source}`)} · {f.effectiveDate}</li>)}</ul>

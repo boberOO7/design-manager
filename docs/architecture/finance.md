@@ -253,7 +253,9 @@ or notifications containing private data.
   control. An override survives visit selection changes. Contract-default submissions
   verify the applicable revision and price again at save; manual prices retain their
   applicable agreement link and request audit. Monthly-retainer visits still need
-  explicit extra-charge confirmation and a manually entered extra-visit amount.
+  explicit extra-charge confirmation and deliberately entered amount and currency;
+  unrelated current per-visit terms never seed a historical retainer extra. Explicit
+  manual prices survive visit selection changes.
   One permanent charge identity per visit prevents duplicate billing. Custom/manual
   supervision expectations remain available. Changing or stopping supervision is
   an explicit effective-dated revision, independent of project status.
@@ -460,11 +462,13 @@ and generation workflow must retain these timing and historical boundaries.
   includes starting cash and daily closing points; same-day cash ordering is not
   inferred. Report money remains decimal text through native `Intl.NumberFormat`
   string formatting, including cards, drilldowns, planning and chart tables.
-  Account balances, opening valuations and movement valuations are selected as
+  Account balances, Project Finance aggregates, opening valuations and movement valuations are selected as
   decimal text before Data API JSON parsing; bounded native inputs retain their
-  existing domain types. Currency minor units and locale separators are preserved.
+  existing domain types. The shared `formatFinanceAmount` uses Finance catalog minor
+  units in every reporting surface, including numeric-only cards and chart tables;
+  Intl currency defaults never determine Finance precision. Locale separators are preserved.
   SVG coordinates alone use JavaScript numbers. When minor units exceed the safe
-  integer range, the plot is replaced by its open exact data table and flow bars
+  integer range at the catalog's currency precision, the plot is replaced by its open exact data table and flow bars
   are hidden while exact labels remain. Normal charts retain keyboard tooltips.
 - Actual flow comparison uses `finance_planning_actuals`, excluding opening cash
   and transfer principal. Fees remain operating, refunds/reversals remain signed,

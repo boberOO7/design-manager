@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { financeAccountSchema, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount } from "./finance";
 
 const currencies = ["UAH", "USD", "EUR", "PLN"].map((code) => ({ code, minor_units: 2 })).concat([
-  { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 },
+  { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 }, { code: "IQD", minor_units: 3 },
 ]);
 const account = { requestId: "62000000-0000-4000-8000-000000000020", accountId: "", name: "  Bank  ", currency: "UAH", openingBalance: "-1200,25" };
 
@@ -35,6 +35,16 @@ describe("Finance foundation inputs", () => {
     }
     expect(formatFinanceAmount(1.234, currencies[5], "en")).toContain("1.234");
     expect(formatFinanceAmount(25, currencies[4], "en")).not.toContain(".00");
+  });
+  it("uses catalog precision for subunits even when Intl currency defaults disagree", () => {
+    const iqd = { code: "IQD", minor_units: 3 };
+    for (const [locale, expected] of [["en", "0.125"], ["uk", "0,125"]]) {
+      expect(formatFinanceAmount("0.125", iqd, locale)).toContain(expected);
+      expect(formatFinanceAmount("0.125", iqd, locale, "decimal")).toBe(expected);
+    }
+    expect(canChartFinanceAmount("9007199254740.125", iqd.minor_units)).toBe(true);
+    expect(canChartFinanceAmount("9007199254741.125", iqd.minor_units)).toBe(false);
+    expect(formatFinanceAmount("999999999999.0003", { code: "CLF", minor_units: 4 }, "en")).toContain("999,999,999,999.0003");
   });
 });
 

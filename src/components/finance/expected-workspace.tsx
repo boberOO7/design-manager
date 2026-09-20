@@ -35,6 +35,7 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
   const [currency,setCurrency]=useState(item?.currency??terms?.currency??data.settings?.base_currency??"UAH");
   const [amount,setAmount]=useState(String(item?.amount??(project?.stream==="supervision"&&terms?.mode==="per_visit"?terms.amount??"":"")));
   const [priceOverride,setPriceOverride]=useState(false);
+  const [amountEntered,setAmountEntered]=useState(false),[currencyEntered,setCurrencyEntered]=useState(false);
   const [category,setCategory]=useState(item?.category_id??defaultCategory?.id??"");
   const [commitment,setCommitment]=useState(item?.commitment??(project?.stream==="contractor_bonus"?"tentative":"agreed"));
   const [source,setSource]=useState("manual"),[visit,setVisit]=useState(""),[contractor,setContractor]=useState(""),[extraVisit,setExtraVisit]=useState(false);
@@ -47,8 +48,10 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
   const selectedVisit=source==="visit"&&!item?project?.visits.find((v)=>v.id===visit):undefined;
   const visitTerms=selectedVisit&&project?supervisionVisitTerms(project.termHistory,selectedVisit.starts_at):null;
   const contractDefault=visitTerms?.mode==="per_visit"&&!priceOverride;
-  const effectiveAmount=contractDefault?String(visitTerms.amount??""):amount;
-  const effectiveCurrency=contractDefault?visitTerms.currency:currency;
+  // Monthly agreements have no contractual extra-visit price. Ignore unrelated form defaults.
+  const monthlyExtra=visitTerms?.mode==="monthly";
+  const effectiveAmount=contractDefault?String(visitTerms.amount??""):monthlyExtra&&!amountEntered?"":amount;
+  const effectiveCurrency=contractDefault?visitTerms.currency:monthlyExtra&&!currencyEntered?"":currency;
   const canEstablish=commitment==="agreed"&&!estimated;
   const effectiveEstablished=canEstablish&&(establishedTouched?established:Boolean(due)&&(!project||due<=project.today));
   return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending}>
@@ -56,17 +59,17 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
     {project?<><input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value={project.stream}/>
       {item?<p className="text-xs text-[var(--ui-text-muted)]">{t("project.editHelp")}</p>:<>
         {project.stream==="supervision"?<><FormField label={t("project.chargeSource")}><Select name="source" aria-label={t("project.chargeSource")} value={source} onValueChange={setSource}><SelectItem value="manual">{t("project.manualCharge")}</SelectItem><SelectItem value="visit">{t("project.visitCharge")}</SelectItem></Select></FormField>
-          {source==="visit"?<><FormField label={t("project.visit")}><Select name="visitId" aria-label={t("project.visit")} value={visit} onValueChange={setVisit} required searchPlaceholder={t("project.searchVisits")}>{project.visits.map((v)=><SelectItem key={v.id} value={v.id}>{v.title} · {formatDateOnly(instantToDateOnly(v.starts_at),locale)}</SelectItem>)}</Select></FormField><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={extraVisit} onChange={(e)=>setExtraVisit(e.target.checked)}/>{t("project.extraVisit")}</label><input type="hidden" name="extraVisit" value={String(extraVisit)}/></>:null}</>:null}
+          {source==="visit"?<><FormField label={t("project.visit")}><Select name="visitId" aria-label={t("project.visit")} value={visit} onValueChange={setVisit} required searchPlaceholder={t("project.searchVisits")}>{project.visits.map((v)=><SelectItem key={v.id} value={v.id}>{v.title} · {formatDateOnly(instantToDateOnly(v.starts_at),locale)}</SelectItem>)}</Select></FormField><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={extraVisit} required={monthlyExtra} onChange={(e)=>setExtraVisit(e.target.checked)}/>{t("project.extraVisit")}</label><input type="hidden" name="extraVisit" value={String(extraVisit)}/></>:null}</>:null}
         {project.stream==="contractor_bonus"?<FormField label={t("project.contractor")}><Select name="contractorId" aria-label={t("project.contractor")} value={contractor} onValueChange={setContractor} searchPlaceholder={t("project.searchContractors")}><SelectItem value="">{t("project.noContractor")}</SelectItem>{project.contractors.map((c)=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</Select></FormField>:null}
       </>}</>:null}
     {selectedVisit?<><input type="hidden" name="visitPricing" value={contractDefault?"contract":"manual"}/><input type="hidden" name="visitTermsId" value={visitTerms?.id??""}/>
-      {visitTerms?.mode==="per_visit"?<div className="space-y-2 text-sm"><p>{t("project.contractVisitPrice",{amount:visitTerms.amount??0,currency:visitTerms.currency})}</p><label className="flex items-start gap-2"><input type="checkbox" checked={priceOverride} onChange={(e)=>{if(e.target.checked){setAmount(effectiveAmount);setCurrency(effectiveCurrency);}setPriceOverride(e.target.checked);}}/>{t("project.overrideVisitPrice")}</label></div>:null}
+      {visitTerms?.mode==="per_visit"?<div className="space-y-2 text-sm"><p>{t("project.contractVisitPrice",{amount:visitTerms.amount??0,currency:visitTerms.currency})}</p><label className="flex items-start gap-2"><input type="checkbox" checked={priceOverride} onChange={(e)=>{if(e.target.checked){setAmount(effectiveAmount);setCurrency(effectiveCurrency);setAmountEntered(true);setCurrencyEntered(true);}setPriceOverride(e.target.checked);}}/>{t("project.overrideVisitPrice")}</label></div>:null}
     </>:null}
     {obligation?<p className="text-xs text-[var(--ui-text-muted)]">{t("schedules.sourceHelp")}</p>:null}
     <div className="grid gap-4 sm:grid-cols-2">
       {project||obligation?<input type="hidden" name="direction" value={item?.direction??"incoming"}/>:<FormField label={t("movements.type")}><Select name="direction" aria-label={t("movements.type")} value={direction} onValueChange={(value)=>{setDirection(value);setCategory("");}}>{["incoming","outgoing"].map((value)=><SelectItem key={value} value={value}>{t(`movements.kinds.${value}`)}</SelectItem>)}</Select></FormField>}
-      <FormField label={t("movements.amount")}><Input name="amount" readOnly={fixedPayroll||contractDefault} value={effectiveAmount} onChange={(e)=>setAmount(e.target.value)} inputMode="decimal" required/></FormField>
-      {contractDefault?<FormField label={t("currency")}><Input name="currency" value={effectiveCurrency} readOnly/></FormField>:obligation?<input type="hidden" name="currency" value={currency}/>:<FormField label={t("currency")}><FinanceCurrencySelect name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency??""} value={currency} onValueChange={setCurrency}/></FormField>}
+      <FormField label={t("movements.amount")}><Input name="amount" readOnly={fixedPayroll||contractDefault} value={effectiveAmount} onChange={(e)=>{setAmount(e.target.value);setAmountEntered(true);if(monthlyExtra)setPriceOverride(true);}} inputMode="decimal" required/></FormField>
+      {contractDefault?<FormField label={t("currency")}><Input name="currency" value={effectiveCurrency} readOnly/></FormField>:obligation?<input type="hidden" name="currency" value={currency}/>:<FormField label={t("currency")}><FinanceCurrencySelect name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency??""} value={effectiveCurrency} onValueChange={(value)=>{setCurrency(value);setCurrencyEntered(true);if(monthlyExtra)setPriceOverride(true);}}/></FormField>}
       {obligation?<input type="hidden" name="categoryId" value={category}/>:<FinanceCategorySelect categories={data.categories} direction={direction} owner={data.categories.find((c)=>c.id===item?.category_id)?.nature==="owner_distribution"} value={category} onValueChange={setCategory} currentId={item?.category_id}/>}
       {obligation?<input type="hidden" name="dueDate" value={due}/>:<FormField label={t("planning.dueDate")}><DatePicker name="dueDate" aria-label={t("planning.dueDate")} value={due} onValueChange={(value)=>{setDue(value);if(!expectedTouched)setExpected(value);}} locale={locale}/></FormField>}
       <FormField label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={(value)=>{setExpected(value);setExpectedTouched(true);}} locale={locale}/></FormField>

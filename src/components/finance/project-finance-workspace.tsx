@@ -56,7 +56,7 @@ export function ProjectFinanceWorkspace(props: Props) {
   const t = useTranslations("Finance"), locale = useLocale();
   const [editor, setEditor] = useState<"design" | "supervision" | "months" | null>(null), [pending, setPending] = useState(false);
   const terms = props.project.terms.find((v) => v.stream === props.stream);
-  const money = (amount: number | null, code: string | null) => {
+  const money = (amount: string | number | null, code: string | null) => {
     const currency = props.currencies.find((v) => v.code === code);
     return currency ? formatFinanceAmount(amount ?? 0, currency, locale) : "—";
   };
