@@ -21,7 +21,8 @@ export function groupFinanceCurrencies(currencies: FinanceCurrency[], reportingC
   return { reporting, common, other };
 }
 
-export function FinanceCurrencySelect({ currencies, name, onValueChange, reportingCurrency, value }: {
+export function FinanceCurrencySelect({ currencies, name, onValueChange, reportingCurrency, value, "aria-label": ariaLabel }: {
+  "aria-label"?: string;
   currencies: FinanceCurrency[];
   name: string;
   onValueChange: (value: string) => void;
@@ -31,7 +32,7 @@ export function FinanceCurrencySelect({ currencies, name, onValueChange, reporti
   const t = useTranslations("Finance");
   const groups = groupFinanceCurrencies(currencies, reportingCurrency);
   const items = (group: FinanceCurrency[]) => group.map((currency) => <SelectItem key={currency.code} value={currency.code}>{currency.code}</SelectItem>);
-  return <Select aria-label={name === "baseCurrency" ? t("baseCurrency") : t("currency")} name={name} value={value} onValueChange={onValueChange} required searchPlaceholder={t("searchCurrencies")} searchEmptyMessage={t("currencySearchEmpty")}>
+  return <Select aria-label={ariaLabel ?? (name === "baseCurrency" ? t("baseCurrency") : t("currency"))} name={name} value={value} onValueChange={onValueChange} required searchPlaceholder={t("searchCurrencies")} searchEmptyMessage={t("currencySearchEmpty")}>
     {groups.reporting.length ? <SelectGroup label={t("reportingCurrencyGroup")}>{items(groups.reporting)}</SelectGroup> : null}
     <SelectGroup label={t("commonCurrencies")}>{items(groups.common)}</SelectGroup>
     <SelectGroup label={t("otherCurrencies")}>{items(groups.other)}</SelectGroup>

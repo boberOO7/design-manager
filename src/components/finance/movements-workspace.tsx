@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -102,7 +102,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         <h2 className="px-5 py-3 text-sm font-semibold">{t("movements.recordedBalance")}</h2>
         <div className="grid border-t border-[var(--ui-border)] sm:grid-cols-2 xl:grid-cols-4">{props.balances.map((balance) => <div key={balance.id} className="flex min-w-0 items-center justify-between gap-3 border-b border-[var(--ui-border)] px-5 py-2.5 text-sm last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"><span className="min-w-0 truncate">{balance.name}{balance.archived_at ? <span className="ml-2 text-xs text-[var(--ui-text-muted)]">{t("movements.archived")}</span> : null}</span><span className="ui-numeric shrink-0 font-medium">{balance.recorded_balance !== null && balance.currency ? money(balance.recorded_balance, balance.currency) : "—"}</span></div>)}</div>
       </section>
-      <div className="flex flex-wrap gap-2"><Button disabled={!active.length} onClick={() => setEditor("incoming")}>{t("movements.add")}</Button><Button variant="outline" disabled={active.length<2} onClick={() => setEditor("transfer")}>{t("movements.transfer")}</Button></div>
+      <div className="flex flex-wrap gap-2"><Button className="gap-2" disabled={!active.length} onClick={() => setEditor("incoming")}><Plus className="size-4" aria-hidden="true"/>{t("movements.add")}</Button><Button variant="outline" disabled={active.length<2} onClick={() => setEditor("transfer")}>{t("movements.transfer")}</Button></div>
     </>}
     <section aria-label={t("movements.history")} className={`${panel} overflow-hidden`}>
       {props.movements.length ? <><div aria-hidden="true" className="hidden min-h-10 grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] items-center gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span>{t("movements.date")}</span><span>{t("movements.ledgerTitle")}</span><span>{t("movements.account")}</span><span>{t("movements.type")}</span><span className="text-right">{t("movements.amount")}</span><span/></div><ul className="divide-y divide-[var(--ui-border)]">{props.movements.map((movement) => {

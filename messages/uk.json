@@ -2034,9 +2034,11 @@
     "planning": {
       "title": "Очікувані платежі", "description": "Плануйте платежі та пов’язуйте їх із фактичним рухом коштів.",
       "create": "Створити очікуваний платіж", "edit": "Редагувати очікуваний платіж", "save": "Зберегти", "empty": "У цьому списку немає очікуваних платежів.",
-      "dueDate": "Оплатити до", "expectedDate": "Очікуємо оплату", "differentExpectedDate": "Указати іншу очікувану дату платежу",
+      "dueDate": "Оплатити до", "expectedDate": "Очікуємо оплату", "differentExpectedDate": "Указати іншу очікувану дату",
       "agreementState": "Стан платежу", "agreementOptions": { "agreed": "Погоджено", "tentative": "Заплановано", "cancelled": "Скасовано" }, "estimatedAmount": "Сума орієнтовна",
-      "moreOptions": "Додаткові параметри", "trackReceivable": "Враховувати залишок як суму до отримання", "trackObligation": "Враховувати залишок як суму до сплати", "establishedAdvancedHelp": "Вимкніть, якщо платіж погоджено, але суму ще не можна вимагати або сплачувати.",
+      "direction": "Тип платежу", "currency": "Валюта",
+      "plannedPayment": "Ще не погоджено (план)", "plannedPaymentHelp": "Залиште платіж у плані, доки суму та домовленість не буде підтверджено.",
+      "financialTreatment": "Коли виникає заборгованість (розширено)", "trackReceivable": "Враховувати залишок як суму до отримання", "trackObligation": "Враховувати залишок як суму до сплати", "establishedAdvancedHelp": "Вимкніть, якщо платіж погоджено, але суму ще не можна вимагати або сплачувати.",
       "paid": "Погашено", "remaining": "Залишок", "receivable": "До отримання", "obligation": "До сплати",
       "filters": "Фільтри очікуваних платежів", "secondaryFilters": "Інші фільтри", "filtersList": { "all": "Усі", "incoming": "Надходження", "outgoing": "Видатки", "receivables": "До отримання", "obligations": "До сплати", "cancelled": "Скасовані" },
       "periodFilters": { "label": "Період платежів", "month": "Цей місяць", "30days": "Наступні 30 днів", "3months": "3 місяці", "6months": "6 місяців", "all": "Усі" },

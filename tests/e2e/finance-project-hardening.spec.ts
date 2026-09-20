@@ -109,7 +109,7 @@ test("visit defaults follow historical terms and manual overrides survive visit 
   const dialog=page.getByRole("dialog");
   async function begin(){await page.getByRole("button",{name:plan.create,exact:true}).click();await dialog.getByRole("combobox",{name:p.chargeSource,exact:true}).click();await page.getByRole("option",{name:p.visitCharge,exact:true}).click();}
   async function selectVisit(name:string){await dialog.getByRole("combobox",{name:p.visit,exact:true}).click();await page.getByRole("option",{name:new RegExp(name)}).click();}
-  async function save(name:string){await dialog.getByText(plan.moreOptions,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);await dialog.getByRole("button",{name:plan.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
+  async function save(name:string){await dialog.getByText(t.movements.description,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);await dialog.getByRole("button",{name:plan.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
   await begin();await selectVisit("May retainer visit");
   await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("");
   await expect(dialog.locator('select[name="currency"]')).toHaveValue("");
@@ -119,14 +119,14 @@ test("visit defaults follow historical terms and manual overrides survive visit 
   await dialog.getByRole("checkbox",{name:p.extraVisit,exact:true}).check();
   await dialog.getByLabel(t.movements.amount,{exact:true}).fill("1250");
   await expect(dialog.locator('select[name="currency"]')).toHaveValue("");
-  await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"UAH",exact:true}).click();
+  await dialog.getByRole("combobox",{name:plan.currency,exact:true}).click();await page.getByRole("option",{name:"UAH",exact:true}).click();
   await selectVisit("Inspection visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("1250");
   await selectVisit("May retainer visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("1250");
   await expect(dialog.locator('select[name="currency"]')).toHaveValue("UAH");await save("Manual retainer extra");
   expect(sql(`select concat(e.amount,'|',e.currency,'|',t.mode) from public.finance_expected_items e join public.finance_project_items p on p.expected_item_id=e.id join public.finance_project_terms t on t.id=p.terms_id where e.studio_id=${studioLiteral} and e.description='Manual retainer extra'`)).toBe("1250|UAH|monthly");
   await begin();await selectVisit("June historic visit");
-  await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("3000");await expect(dialog.getByLabel(t.currency,{exact:true})).toHaveValue("UAH");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveAttribute("readonly","");
-  await selectVisit("Inspection visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("4000");await expect(dialog.getByLabel(t.currency,{exact:true})).toHaveValue("USD");
+  await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("3000");await expect(dialog.getByLabel(plan.currency,{exact:true})).toHaveValue("UAH");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveAttribute("readonly","");
+  await selectVisit("Inspection visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("4000");await expect(dialog.getByLabel(plan.currency,{exact:true})).toHaveValue("USD");
   await selectVisit("June historic visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("3000");await save("Historical default");
   await begin();await selectVisit("June override visit");await dialog.getByRole("checkbox",{name:p.overrideVisitPrice,exact:true}).check();await dialog.getByLabel(t.movements.amount,{exact:true}).fill("3500");
   await selectVisit("Inspection visit");await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("3500");await expect(dialog.locator('select[name="currency"]')).toHaveValue("UAH");

@@ -162,6 +162,11 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   request audit. Amount cannot fall below effective settlement. After allocation history
   exists, currency/direction/reporting nature are locked; descriptive/category edits
   within the same nature remain possible, including unchanged archived categories.
+- Manual expected-payment creation defaults to agreed/fixed. Planned commitment
+  and estimated amount are separate choices; only agreed/fixed payments expose the
+  optional collection/payment override. Due date initially also drives expected
+  cash timing; a separate expected date never moves the overdue boundary. Existing
+  records retain their dates, status, description and explicit established value on edit.
 - `finance_allocations` is immutable signed matching history referencing original
   incoming/outgoing movement IDs and expected-item IDs through same-studio keys.
   Positive allocations support many-to-many and partial matching; negative releases
