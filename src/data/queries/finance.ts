@@ -81,7 +81,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   const client=await createClient();
   const { data,error }=await client.from("finance_project_items").select("project_id,stream").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
   if(error) throw new Error("Unable to load payment context.",{ cause:error });
-  return data?`/projects/${data.project_id}?view=finance&stream=${data.stream}`:"/finance/expected";
+  return data?`/projects/${data.project_id}?view=finance&stream=${data.stream}`:`/finance/expected?item=${id}`;
 }
 
 export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string) {

@@ -109,7 +109,7 @@ test("visit defaults follow historical terms and manual overrides survive visit 
   const dialog=page.getByRole("dialog");
   async function begin(){await page.getByRole("button",{name:plan.create,exact:true}).click();await dialog.getByRole("combobox",{name:p.chargeSource,exact:true}).click();await page.getByRole("option",{name:p.visitCharge,exact:true}).click();}
   async function selectVisit(name:string){await dialog.getByRole("combobox",{name:p.visit,exact:true}).click();await page.getByRole("option",{name:new RegExp(name)}).click();}
-  async function save(name:string){await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);await dialog.getByRole("button",{name:plan.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
+  async function save(name:string){await dialog.getByText(plan.moreOptions,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);await dialog.getByRole("button",{name:plan.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
   await begin();await selectVisit("May retainer visit");
   await expect(dialog.getByLabel(t.movements.amount,{exact:true})).toHaveValue("");
   await expect(dialog.locator('select[name="currency"]')).toHaveValue("");
