@@ -164,7 +164,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     </article>;
   };
   const itemSection=(key:"attention"|"current"|"earlier",items:FinanceExpected[])=>items.length?<section className="space-y-2" aria-labelledby={`expected-${key}`}><h2 id={`expected-${key}`} className="text-sm font-semibold text-[var(--ui-text-secondary)]">{t(`planning.sections.${key}`)} <span className="ml-1 font-normal text-[var(--ui-text-muted)]">{items.length}</span></h2><div className={`${panel} divide-y divide-[var(--ui-border)]`}>{items.map(renderItem)}</div></section>:null;
-  return <div className="mx-auto w-full max-w-4xl space-y-6">
+  return <div className="mx-auto w-full max-w-7xl space-y-6">
     {props.project?<h2 className="text-lg font-semibold">{t(`project.streams.${props.project.stream}`)}</h2>:<PageHeader className="flex-col items-stretch sm:flex-row sm:items-center" title={t("planning.title")} action={props.settings?.finalized_at?<Button className="w-full sm:w-auto" onClick={()=>setEditing("new")}>{t("planning.create")}</Button>:undefined}/>}
     {!props.settings?.finalized_at?<p className={`${panel} p-5 text-sm`}>{t("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{t("movements.setupLink")}</Link></p>:props.project?<Button onClick={()=>setEditing("new")}>{t("planning.create")}</Button>:null}
     {props.itemId?<p className="text-sm"><Link className="underline" href="/finance/expected">{t("planning.filtersList.all")}</Link></p>:null}

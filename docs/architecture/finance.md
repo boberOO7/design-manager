@@ -6,7 +6,10 @@ Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
 `/finance` owns the management Overview; `/finance/accounts` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
 owns classification; `/finance/schedules` owns compensation and recurring rules;
-`/finance/planning` owns cash budgets, rolling forecasts and saved expectations. All inherit the same administrator-only layout and messages.
+`/finance/planning` owns cash budgets, rolling forecasts and saved expectations. The
+operational routes remain in primary Finance navigation; Accounts and Categories
+remain deep-linkable configuration routes available through the Finance manage menu.
+All inherit the same administrator-only layout and messages.
 Project details adds an administrator-only `view=finance` tab with its own scoped
 Finance messages; it uses these same expectations, movements, and matching RPCs.
 

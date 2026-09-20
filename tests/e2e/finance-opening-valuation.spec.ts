@@ -75,7 +75,7 @@ test("legacy opening valuation: missing NBU, explicit manual completion, frozen 
   await page.goto("/finance/accounts");
   await page.setViewportSize({ width: 375, height: 900 }); await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();
-  await page.getByText(new RegExp(`^${uk.Finance.openingFx.value}`)).click();
+  await page.getByRole("listitem").filter({ has: page.getByText("Legacy dollars", { exact: true }) }).getByText(uk.Finance.openingDetails, { exact: true }).click();
   await expect(page.getByText(/39.25 UAH/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("opening-valuation-mobile.png"), fullPage: true });
@@ -94,7 +94,7 @@ test("large frozen opening valuations retain cents through the Data API and Acco
     values(gen_random_uuid(),'${studio}','Large frozen opening','USD',1234567890.12,'${actors[0].id}',
       1234567890120000.74,1000000.0000000006,'manual','1900-01-01',now(),'${actors[0].id}');commit;`);
   await login(page); await page.goto("/finance/accounts");
-  await expect(page.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();
-  await page.getByText(/1,234,567,890,120,000\.74/).click();
+  const account=page.getByRole("listitem").filter({ has: page.getByText("Large frozen opening", { exact: true }) });await account.getByText(t.openingDetails, { exact: true }).click();
+  await expect(account.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();
   await expect(page.getByText(/1000000\.0000000006 UAH/)).toBeVisible();
 });

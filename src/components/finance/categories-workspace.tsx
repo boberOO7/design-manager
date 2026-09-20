@@ -30,7 +30,7 @@ export function FinanceCategoriesWorkspace({ categories, ready }: { categories: 
     { direction: "incoming" as const, title: t("planning.income"), border: "border-t-[var(--ui-success-border)]" },
   ];
 
-  return <div className="mx-auto w-full max-w-6xl space-y-6">
+  return <div className="mx-auto w-full max-w-7xl space-y-6">
     <PageHeader title={t("planning.categories")} description={t("planning.categoriesHelp")}/>
     {!ready ? <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link> : <div className="grid items-start gap-5 lg:grid-cols-2">
       {groups.map(group => {

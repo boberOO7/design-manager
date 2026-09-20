@@ -61,7 +61,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const href = (key: string, value: string) => { const next = new URLSearchParams(params); next.set(key, value); return `/finance/planning?${next}`; };
   const incomplete = Boolean(report?.issues.length || report?.cashIncomplete);
   const foreignCurrencies = [...new Set([...(report?.fx.filter(f => f.source !== "identity").map(f => f.currency) ?? []), ...(report?.items.filter(i => i.currency !== currency).map(i => i.currency) ?? []), ...(report?.issues.filter(i => i.reason === "missing_fx").map(i => i.currency) ?? [])])].sort();
-  return <div className="mx-auto w-full max-w-4xl space-y-8">
+  return <div className="mx-auto w-full max-w-7xl space-y-8">
     <PageHeader title={t("title")} description={t("description")} />
     {data.invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("invalidManualFx")}</p> : null}
     {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : <>

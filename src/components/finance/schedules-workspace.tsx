@@ -157,7 +157,7 @@ export function FinanceSchedulesWorkspace(data: Data) {
     </div>;
   }
   const termReason = (reason: string | null) => !reason ? "" : ["Compensation agreement", "Домовленість про оплату праці"].includes(reason) ? t("schedules.defaultAgreementNote") : ["Compensation revision", "Нова редакція оплати праці"].includes(reason) ? t("schedules.defaultRevisionNote") : reason;
-  return <div className="mx-auto w-full max-w-4xl space-y-6">
+  return <div className="mx-auto w-full max-w-7xl space-y-6">
     <PageHeader title={t("schedules.title")} description={t("schedules.description")} />
     {!data.settings?.finalized_at ? <p className={`${panel} p-5 text-sm`}>{t("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{t("movements.setupLink")}</Link></p> : <div className="flex flex-wrap gap-2">
       <Button onClick={() => setEditor({ intent: "schedule", kind: "payroll" })}>{t("schedules.addCompensation")}</Button>
