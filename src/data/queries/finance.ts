@@ -80,7 +80,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(filter==="cancelled") query=query.eq("commitment","cancelled");
   const bounds=planningPeriodBounds(period,today);
-  if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null)`);
+  if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null),and(commitment.neq.cancelled,remaining_amount.gt.0,due_state.eq.overdue),and(commitment.neq.cancelled,remaining_amount.gt.0,payment_state.eq.partial)`);
   const [items,payments,credits]=await Promise.all([
     query.order("due_date",{ nullsFirst:false }).order("id").range((page-1)*50,page*50-1),
     client.from("finance_payment_availability").select("*").eq("studio_id",admin.studio_id).gt("unapplied_amount",0)

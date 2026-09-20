@@ -1966,7 +1966,7 @@
       "paid": "Погашено", "remaining": "Залишок", "receivable": "До отримання", "obligation": "До сплати",
       "filters": "Фільтри очікуваних платежів", "filtersList": { "all": "Усі", "incoming": "Надходження", "outgoing": "Видатки", "receivables": "До отримання", "obligations": "До сплати", "cancelled": "Скасовані" },
       "periodFilters": { "label": "Період платежів", "month": "Цей місяць", "30days": "Наступні 30 днів", "3months": "3 місяці", "6months": "6 місяців", "all": "Усі" },
-      "sections": { "attention": "Потребує уваги", "current": "Поточний місяць", "future": "Майбутні", "earlier": "Попередні та завершені" },
+      "sections": { "attention": "Потребує уваги", "current": "Поточний місяць", "completedCurrent": "Завершено цього місяця", "future": "Майбутні", "earlier": "Попередні та завершені" },
       "futureGroup": "{month} · {count, plural, one {# платіж} few {# платежі} many {# платежів} other {# платежу}}", "forPeriod": "За {period}",
       "timingDue": "Оплатити до {date}", "timingExpected": "Очікуємо {date}", "timingDifferent": "Оплатити до {due} · очікуємо {expected}", "timingMissing": "Дату платежу не вказано",
       "settlementProgress": "Погашено {paid} · залишок {remaining}", "details": "Деталі та історія",

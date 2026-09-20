@@ -287,6 +287,9 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await page.goto("/finance/expected");await item.getByText(p.details,{exact:true}).click();await item.getByRole("button",{ name:p.match,exact:true }).click();dialog=page.getByRole("dialog");
   await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await expect(page.getByRole("option",{ name:/Walk-in receipt/ })).toBeVisible();await page.getByRole("option",{ name:/Client advance/ }).click();
   await dialog.getByRole("button",{ name:p.match,exact:true }).click();await expect(dialog).toHaveCount(0);
+  const completedCurrent=page.locator("details[data-settled-current]");
+  await expect(completedCurrent).not.toHaveAttribute("open","");
+  await completedCurrent.locator(":scope > summary").click();
   await expect(item.getByText(p.states.settled,{ exact:true })).toBeVisible();
   expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("3");
   expect(sql(`select sum(unapplied_amount) from public.finance_payment_availability where studio_id=${studioLiteral}`)).toBe("50");

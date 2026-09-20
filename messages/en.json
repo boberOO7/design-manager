@@ -1966,7 +1966,7 @@
       "paid": "Settled", "remaining": "Remaining", "receivable": "Receivable", "obligation": "Obligation",
       "filters": "Expected item filters", "filtersList": { "all": "All", "incoming": "Incoming", "outgoing": "Outgoing", "receivables": "Receivables", "obligations": "Obligations", "cancelled": "Cancelled" },
       "periodFilters": { "label": "Payment period", "month": "This month", "30days": "Next 30 days", "3months": "3 months", "6months": "6 months", "all": "All" },
-      "sections": { "attention": "Needs attention", "current": "Current month", "future": "Future", "earlier": "Earlier and completed" },
+      "sections": { "attention": "Needs attention", "current": "Current month", "completedCurrent": "Completed this month", "future": "Future", "earlier": "Earlier and completed" },
       "futureGroup": "{month} · {count, plural, one {# payment} other {# payments}}", "forPeriod": "For {period}",
       "timingDue": "Pay by {date}", "timingExpected": "Expected {date}", "timingDifferent": "Pay by {due} · expected {expected}", "timingMissing": "Payment date is missing",
       "settlementProgress": "Settled {paid} · remaining {remaining}", "details": "Details and history",
