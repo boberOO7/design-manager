@@ -224,7 +224,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
         setHighlightedValue(selectedIsEnabled ? selectedValue : getNextSelectValue(itemModels, undefined, "first"));
       }
     }}>
-      <PopoverPrimitive.Anchor asChild>
+      <PopoverPrimitive.Trigger asChild>
         <button
           ref={setTriggerRef}
           type="button"
@@ -247,7 +247,6 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           data-placeholder={selectedItem ? undefined : ""}
           onClick={(event) => {
             onClick?.(event);
-            if (!event.defaultPrevented) setOpen((current) => !current);
           }}
           onKeyDown={handleKeyDown}
         >
@@ -261,7 +260,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
             <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
           </span>
         </button>
-      </PopoverPrimitive.Anchor>
+      </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal container={portalContainer}>
         <PopoverPrimitive.Content
           align="start"

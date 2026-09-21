@@ -50959,7 +50959,7 @@
       "label": "SelectItem",
       "file_type": "code",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L318",
+      "source_location": "L317",
       "_origin": "ast",
       "community": 4,
       "community_name": "button.tsx",
@@ -50970,7 +50970,7 @@
       "label": "SelectGroup()",
       "file_type": "code",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L351",
+      "source_location": "L350",
       "_origin": "ast",
       "community": 4,
       "community_name": "button.tsx",
@@ -101348,7 +101348,7 @@
       "label": "AnimatedDisclosure()",
       "file_type": "code",
       "source_file": "src/components/ui/animated-form-content.tsx",
-      "source_location": "L24",
+      "source_location": "L26",
       "_origin": "ast",
       "community": 30,
       "norm_label": "animateddisclosure()",
@@ -104950,7 +104950,7 @@
       "label": "Row",
       "file_type": "code",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L16",
+      "source_location": "L23",
       "_origin": "ast"
     },
     {
@@ -104958,7 +104958,7 @@
       "label": "ProjectValueBuilder()",
       "file_type": "code",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L17",
+      "source_location": "L64",
       "_origin": "ast"
     },
     {
@@ -105287,6 +105287,38 @@
       "file_type": "concept",
       "source_file": "docs/architecture/finance.md",
       "description": "Fixed or area-times-rate pricing preserves immutable revision snapshots. Exact currency rounding reconciles templates against total less full protected scheduled value. Explicit unpaid redistribution, keep amounts, manual changes and unscheduled remainder use canonical expected items through an admin-only atomic idempotent RPC; NBU reference conversion never changes contract value."
+    },
+    {
+      "id": "src_components_finance_project_value_builder_rowcopy",
+      "label": "RowCopy",
+      "file_type": "code",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L24",
+      "_origin": "ast"
+    },
+    {
+      "id": "src_components_finance_project_value_builder_paymentsensors",
+      "label": "paymentSensors",
+      "file_type": "code",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L29",
+      "_origin": "ast"
+    },
+    {
+      "id": "src_components_finance_project_value_builder_decimaltext",
+      "label": "decimalText()",
+      "file_type": "code",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L32",
+      "_origin": "ast"
+    },
+    {
+      "id": "src_components_finance_project_value_builder_paymentrow",
+      "label": "PaymentRow()",
+      "file_type": "code",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L36",
+      "_origin": "ast"
     }
   ],
   "links": [
@@ -202863,7 +202895,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L352",
+      "source_location": "L351",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_ui_select_selectgroup",
@@ -234500,7 +234532,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/currency-select.tsx",
-      "source_location": "L33",
+      "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -258959,7 +258991,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L351",
+      "source_location": "L350",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -258970,7 +259002,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L318",
+      "source_location": "L317",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -259051,7 +259083,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L354",
+      "source_location": "L353",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -259063,7 +259095,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/select.tsx",
-      "source_location": "L354",
+      "source_location": "L353",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -332736,7 +332768,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/animated-form-content.tsx",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "confidence_score": 1.0,
@@ -337987,7 +338019,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L5",
+      "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -337998,7 +338030,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L5",
+      "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338009,7 +338041,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L5",
+      "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338020,7 +338052,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L6",
+      "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338031,7 +338063,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L6",
+      "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338042,7 +338074,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L7",
+      "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338053,7 +338085,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L7",
+      "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338064,7 +338096,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L7",
+      "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338075,7 +338107,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L7",
+      "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338086,7 +338118,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L8",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338097,7 +338129,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L8",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338108,7 +338140,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L8",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338119,7 +338151,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L9",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338130,7 +338162,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L9",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338141,7 +338173,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L10",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338152,7 +338184,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L10",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338163,7 +338195,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L11",
+      "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338174,7 +338206,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L11",
+      "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338185,7 +338217,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L12",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338196,7 +338228,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L12",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338207,7 +338239,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L12",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338218,7 +338250,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338229,7 +338261,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338240,7 +338272,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338251,7 +338283,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338262,7 +338294,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338273,7 +338305,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338284,7 +338316,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338295,7 +338327,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L13",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338306,7 +338338,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L14",
+      "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338317,7 +338349,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L14",
+      "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338327,7 +338359,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L16",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -338337,7 +338369,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L17",
+      "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339076,7 +339108,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L40",
+      "source_location": "L98",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339088,7 +339120,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L45",
+      "source_location": "L104",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339100,7 +339132,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L48",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339112,7 +339144,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L48",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339124,7 +339156,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L48",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339136,19 +339168,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L57",
-      "weight": 1.0,
-      "_origin": "ast"
-    },
-    {
-      "source": "src_components_finance_project_value_builder_projectvaluebuilder",
-      "target": "agents_skills_impeccable_scripts_modern_screenshot_umd_v",
-      "relation": "indirect_call",
-      "context": "argument",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L62",
+      "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339160,7 +339180,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L65",
+      "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339172,7 +339192,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/finance/project-value-builder.tsx",
-      "source_location": "L77",
+      "source_location": "L174",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -339262,6 +339282,193 @@
       "relation": "implemented_by",
       "confidence": "EXTRACTED",
       "source_file": "docs/architecture/finance.md"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_ui_date_picker",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_ui_date_picker_datepicker",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_ui_segmented_control",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_ui_segmented_control_segmentedcontrol",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_ui_animated_form_content_animateddisclosure",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_lib_utils",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_lib_utils_cn",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_finance_project_value_builder_rowcopy",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_finance_project_value_builder_paymentsensors",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_finance_project_value_builder_decimaltext",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder",
+      "target": "src_components_finance_project_value_builder_paymentrow",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder_projectvaluebuilder",
+      "target": "src_components_finance_project_value_builder_decimaltext",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L134",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder_decimaltext",
+      "target": "src_lib_finance_project_plan_projectmoneytext",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder_paymentrow",
+      "target": "src_lib_utils_cn",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L45",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_finance_project_value_builder_projectvaluebuilder",
+      "target": "src_lib_utils_cn",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/project-value-builder.tsx",
+      "source_location": "L186",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_ui_animated_form_content_animatedformcontent",
+      "target": "src_lib_utils_cn",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/ui/animated-form-content.tsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "src_components_ui_animated_form_content_animateddisclosure",
+      "target": "src_lib_utils_cn",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/ui/animated-form-content.tsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_origin": "ast"
     }
   ],
   "hyperedges": [],

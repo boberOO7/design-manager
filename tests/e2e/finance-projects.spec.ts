@@ -69,7 +69,7 @@ test("project agreements, shared settlement, supervision, bonus and archived col
   await page.getByRole("button",{name:p.editAgreement,exact:true}).click();
   let dialog=page.getByRole("dialog");
   await dialog.getByRole("button",{name:t.builder.scheduleLater,exact:true}).click();
-  await dialog.getByLabel(p.contract,{exact:true}).fill("1000");await dialog.getByLabel(p.reason,{exact:true}).fill("Signed design scope");await dialog.getByRole("button",{name:t.builder.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await dialog.getByRole("button",{name:t.builder.fixedShort,exact:true}).click();await dialog.getByLabel(p.contract,{exact:true}).fill("1000");await dialog.getByRole("button",{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
   async function createPayment(amount:string,name:string,dated=false){
     await page.getByRole("button",{name:p.addPayment,exact:true}).click();dialog=page.getByRole("dialog");
     await dialog.getByLabel(t.movements.amount,{exact:true}).fill(amount);await dialog.getByText(t.movements.description,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);

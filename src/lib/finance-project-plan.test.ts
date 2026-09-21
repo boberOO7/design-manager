@@ -23,6 +23,7 @@ describe("Project value and schedule previews", () => {
     expect(projectPaymentAmounts("1",["33.33","33.33","33.34"],2)).toEqual(["0.33","0.33","0.34"]);
     expect(()=>projectPaymentAmounts("100",["30","50"],2)).toThrow("percentages");
     expect(projectPaymentAmounts("100",["30","50"],2,false)).toEqual(["30.00","50.00"]);
+    expect(projectPaymentAmounts("100",["100","0"],2,false)).toEqual(["100.00","0.00"]);
   });
   it("redistributes the full editable value, excluding full contractual protected value", () => {
     const remaining=projectMoneyText(projectMoneyUnits("1000",2)-projectMoneyUnits("800",2),2);

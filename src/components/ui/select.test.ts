@@ -63,6 +63,8 @@ describe("shared Select contract", () => {
     const source = await readFile(selectPath, "utf8");
 
     expect(source).toContain("<PopoverPrimitive.Root modal={false}");
+    expect(source).toContain("<PopoverPrimitive.Trigger asChild>");
+    expect(source).not.toContain("<PopoverPrimitive.Anchor asChild>");
     expect(source).toContain("<PopoverPrimitive.Portal container={portalContainer}>");
     expect(source).toContain("closest(\"dialog, [role='dialog']\")");
     expect(source).toContain("overflow-y-auto overscroll-auto");

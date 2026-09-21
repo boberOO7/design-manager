@@ -49,6 +49,7 @@ describe("Project Finance action", () => {
     mocks.fx.mockResolvedValueOnce({rate:"44.25",source:"nbu",effectiveDate:"2026-09-21"}).mockResolvedValueOnce({rate:"45",source:"nbu",effectiveDate:"2026-09-21"});
     expect((await getProjectReferenceRate("USD"))?.rate).toBe("44.25");expect((await getProjectReferenceRate("USD"))?.rate).toBe("45");
     expect(mocks.rpc).not.toHaveBeenCalled();expect(mocks.revalidate).not.toHaveBeenCalled();
+    mocks.fx.mockRejectedValueOnce(new Error("finance_fx_unavailable"));expect(await getProjectReferenceRate("USD")).toBeNull();
     mocks.admin.mockResolvedValue(null);expect(await getProjectReferenceRate("USD")).toBeNull();
   });
 

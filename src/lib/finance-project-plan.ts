@@ -32,7 +32,7 @@ export function projectAreaValue(area: string, rate: string, digits: number): st
 export function projectPaymentAmounts(total: string, percentages: string[], digits: number, requireReconciled = true): string[] {
   const units = projectMoneyUnits(total, digits), weights = percentages.map(v => projectMoneyUnits(v, 4));
   const balanced = weights.reduce((a,b) => a+b, BigInt(0)) === BigInt(1000000);
-  if (!weights.length || weights.some(v => v <= BigInt(0)) || (requireReconciled && !balanced)) throw new Error("percentages");
+  if (!weights.length || (requireReconciled && (weights.some(v => v <= BigInt(0)) || !balanced))) throw new Error("percentages");
   let assigned = BigInt(0);
   return weights.map((weight,index) => {
     const amount = balanced && index === weights.length - 1 ? units - assigned : units * weight / BigInt(1000000);
