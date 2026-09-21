@@ -198,7 +198,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
   };
   const secondaryActive=!["all","incoming","outgoing"].includes(props.filter);
   const secondaryFilters=props.project?["all","receivables","cancelled"]:[...(secondaryActive&&props.filter!=="cancelled"?["all",props.filter]:secondaryActive?["all"]:[]),"cancelled"];
-  return <div className="mx-auto w-full max-w-7xl space-y-6">
+  return <div className="mx-auto w-full max-w-[var(--finance-content-width,80rem)] space-y-6">
     {props.project?<h2 className="text-lg font-semibold">{t(`project.streams.${props.project.stream}`)}</h2>:<PageHeader title={t("planning.title")} description={t("planning.description")}/>}
     {!props.settings?.finalized_at?<p className={`${panel} p-5 text-sm`}>{t("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{t("movements.setupLink")}</Link></p>:<div className="flex flex-wrap gap-2"><Button className="w-full gap-2 sm:w-auto" onClick={()=>setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t("planning.create")}</Button></div>}
     {props.itemId?<p className="text-sm"><Link className="underline" href="/finance/expected">{t("planning.filtersList.all")}</Link></p>:null}

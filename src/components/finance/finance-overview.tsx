@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { ArrowUpRight, ArrowRight, ChevronDown, Wallet, Activity, ArrowDownRight, Clock3, Check } from "lucide-react";
 import { formatFinanceAmount, canChartFinanceAmount, type FinanceCurrency } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceOverview } from "@/lib/finance-overview";
@@ -9,90 +10,87 @@ import { forecastIssueHref } from "@/lib/finance-forecast";
 import { financeCategoryLabel } from "@/lib/finance-planning";
 import { PageHeader } from "@/components/shared/page-header";
 import { Panel } from "@/components/ui/panel";
-import { Button } from "@/components/ui/button";
-import { FormField, Input, inputClassName } from "@/components/ui/form-field";
+import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FinanceCashChart } from "./cash-chart";
 
-const table = "w-full text-left text-sm [&_th]:p-3 [&_th]:font-medium [&_td]:p-3 [&_tr]:border-b [&_tr]:border-[var(--ui-border)] [&_td]:tabular-nums";
+const interactive = "transition-colors duration-[220ms] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none";
+const textLink = `inline-flex min-h-11 items-center gap-2 rounded-[var(--ui-radius-control)] text-sm font-medium underline decoration-[var(--ui-border-strong)] underline-offset-4 ${interactive}`;
+
 export function FinanceOverviewWorkspace({ data, categories, currencies, invalidFx }: { data: FinanceOverview; categories: NonNullable<Awaited<ReturnType<typeof getFinanceData>>>["categories"]; currencies: FinanceCurrency[]; invalidFx: boolean }) {
   const t = useTranslations("Finance.overview"), ft = useTranslations("Finance"), f = useTranslations("Finance.forecast");
   const locale = useLocale();
-  const [detail, setDetail] = useState<"cash" | "netFlow" | "receivables" | "outgoing" | null>(null);
+  const [cashOpen, setCashOpen] = useState(false);
   const report = data.forecast;
-  const reportingCurrency = currencies.find(currency => currency.code === report.currency);
-  if (!reportingCurrency) throw new Error("Unknown Finance reporting currency");
+  const currency = currencies.find(currency => currency.code === report.currency);
+  if (!currency) throw new Error("Unknown Finance reporting currency");
   const amount = (value: string | null, code?: string) => {
-    const currency = code ? currencies.find(currency => currency.code === code) : reportingCurrency;
-    return value === null || !currency ? "—" : formatFinanceAmount(value, currency, locale, code ? "currency" : "decimal");
+    const unit = code ? currencies.find(currency => currency.code === code) : currency;
+    return value === null || !unit ? "—" : formatFinanceAmount(value, unit, locale, code ? "currency" : "decimal");
   };
-  const flowsSafe = data.flows.every(row => canChartFinanceAmount(row.amount, reportingCurrency.minor_units));
+  const date = (value: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", ...(value.slice(0, 4) !== report.asOf.slice(0, 4) ? { year: "numeric" } : {}), timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
   const category = (id: string | null, name: string | null) => financeCategoryLabel(categories.find(c => c.id === id), name, key => ft(`planning.defaults.${key}`)) || f("unclassified");
-  const upcoming = report.items.filter(i => i.date && i.date <= data.upcomingThrough);
-  const outgoing = upcoming.filter(i => i.direction === "outgoing");
-  const overdue = report.items.filter(i => i.dueDate && i.dueDate < report.asOf);
+  const upcoming = report.items.filter(i => i.date && i.date >= report.asOf && i.date <= data.upcomingThrough).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "") || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || a.id.localeCompare(b.id));
+  const overdue = report.items.filter(i => i.dueDate && i.dueDate < report.asOf).sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
   const incomplete = report.cashIncomplete || report.issues.length > 0;
-  const foreign = [...new Set([...report.fx.filter(fx => fx.source !== "identity").map(fx => fx.currency), ...report.issues.filter(i => i.reason === "missing_fx").map(i => i.currency), ...data.requiredCurrencies, ...report.items.filter(i => i.currency !== report.currency).map(i => i.currency)])].sort();
   const planningParams = new URLSearchParams({ horizon: report.horizon, scenario: report.scenario });
   report.fx.filter(fx => fx.source !== "identity").forEach(fx => planningParams.set(`fx_${fx.currency}`, fx.rate));
   const planningHref = `/finance/planning?${planningParams}`;
   const itemHref = (id: string) => `/finance/expected?item=${id}`;
-  const metrics = [
-    { key: "cash" as const, value: report.cashBase, partial: report.cashIncomplete, scope: report.asOf },
-    { key: "netFlow" as const, value: data.netFlow, partial: false, scope: `${data.actualFrom} – ${report.asOf}` },
-    { key: "receivables" as const, value: data.receivableTotal, partial: data.receivablesIncomplete, scope: t("allDates") },
-    { key: "outgoing" as const, value: data.outgoingTotal, partial: data.outgoingIncomplete || incomplete, scope: `${report.asOf} – ${data.upcomingThrough}` },
+  const attention = [
+    ...overdue.map(i => ({ key: `overdue-${i.id}`, title: i.description || category(i.categoryId, null), note: `${t("overdue")} · ${date(i.dueDate ?? report.asOf)} · ${i.direction === "incoming" ? "+" : "−"}${amount(i.amount, i.currency)}`, href: itemHref(i.id) })),
+    ...(data.historyIncomplete ? [{ key: "history", title: t("openingAttention"), note: ft("accounts"), href: "/finance/accounts" }] : []),
+    ...(report.issues.some(i => i.reason === "missing_fx") || data.receivablesIncomplete || report.cashIncomplete || invalidFx ? [{ key: "fx", title: f("issues.missing_fx"), note: f("fxTitle"), href: planningHref }] : []),
+    ...report.issues.filter(i => i.reason !== "missing_fx").sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).map((i, index) => ({ key: `issue-${index}`, title: i.label || f("item"), note: `${f(`issues.${i.reason}`)}${i.date ? ` · ${date(i.date)}` : ""}`, href: i.source === "expected" ? itemHref(i.id) : forecastIssueHref(i) })),
   ];
-  const itemTable = (items: typeof report.items) => <div className="overflow-x-auto"><table className={table}><thead><tr><th scope="col">{f("item")}</th><th scope="col">{f("cashDate")}</th><th scope="col">{f("dueDate")}</th><th scope="col">{f("remaining")}</th></tr></thead><tbody>{items.map(i => <tr key={i.id}><th scope="row"><Link className="underline underline-offset-4" href={itemHref(i.id)}>{i.description || category(i.categoryId, null)}</Link><span className="block text-xs font-normal text-[var(--ui-text-secondary)]">{ft(`movements.kinds.${i.direction}`)} · {ft(`planning.states.${i.certainty}`)} · {ft(`planning.states.${i.commitment}`)} · {ft(`movements.natures.${i.nature}`)}</span></th><td className="whitespace-nowrap">{i.date ?? "—"}</td><td className="whitespace-nowrap">{i.dueDate ?? "—"}{i.dueDate && i.dueDate < report.asOf ? <span className="block text-xs text-[var(--ui-danger-text)]">{t("overdue")}</span> : i.dueDate === report.asOf ? <span className="block text-xs">{t("dueToday")}</span> : null}</td><td className="whitespace-nowrap">{amount(i.reportingAmount)}{i.currency !== report.currency ? <span className="block text-xs text-[var(--ui-text-secondary)]">{amount(i.amount, i.currency)}</span> : null}</td></tr>)}</tbody></table>{!items.length ? <p className="p-3 text-sm text-[var(--ui-text-secondary)]">{t("emptyUpcoming")}</p> : null}</div>;
-  return <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
-    <PageHeader title={t("title")} description={t("scope", { currency: report.currency })} />
-    <form method="get" className="flex flex-wrap items-end gap-3">
-      <FormField label={t("actualPeriod")}><select aria-label={t("actualPeriod")} name="period" defaultValue={data.period} className={inputClassName}>{["month", "3", "year"].map(p => <option key={p} value={p}>{t(`periods.${p}`)}</option>)}</select></FormField>
-      <FormField label={f("horizon")}><select aria-label={f("horizon")} name="horizon" defaultValue={report.horizon} className={inputClassName}>{["3", "6", "year", "12"].map(h => <option key={h} value={h}>{f(`horizons.${h}`)}</option>)}</select></FormField>
-      <FormField label={f("scenario")}><select aria-label={f("scenario")} name="scenario" defaultValue={report.scenario} className={inputClassName}><option value="confirmed">{f("confirmed")}</option><option value="planned">{f("planned")}</option></select></FormField>
-      {report.fx.filter(fx => fx.source === "manual").map(fx => <input key={fx.currency} type="hidden" name={`fx_${fx.currency}`} value={fx.rate} />)}
-      <Button type="submit" variant="outline">{f("apply")}</Button>
-    </form>
-    {invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{f("invalidManualFx")}</p> : null}
-    <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">{metrics.map(m => <button key={m.key} type="button" aria-expanded={detail === m.key} aria-controls="overview-breakdown" onClick={() => setDetail(detail === m.key ? null : m.key)} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-left hover:border-[var(--ui-border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2">
-      <span className="block text-sm text-[var(--ui-text-secondary)]">{t(m.key)} ↗</span><span className="my-2 block break-words text-xl font-semibold tabular-nums">{amount(m.value)}</span><span className="block text-xs text-[var(--ui-text-secondary)]">{m.partial ? `${t("knownSubtotal")} · ` : ""}{m.scope}</span>
-    </button>)}</div>
-    {detail ? <Panel id="overview-breakdown" className="min-w-0 space-y-3 p-4"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{t(detail)} · {t("breakdown")}</h2><Button variant="ghost" onClick={() => setDetail(null)}>{t("close")}</Button></div>
-      {detail === "cash" ? <div className="overflow-x-auto"><table className={table}><thead><tr><th scope="col">{ft("accounts")}</th><th scope="col">{t("native")}</th><th scope="col">{report.currency}</th></tr></thead><tbody>{data.accounts.map(a => <tr key={a.id}><th scope="row"><Link className="underline" href="/finance/accounts">{a.name}</Link></th><td>{amount(a.native, a.currency)}</td><td>{amount(a.amount)}</td></tr>)}</tbody></table></div> : detail === "receivables" ? <div className="overflow-x-auto"><table className={table}><thead><tr><th scope="col">{f("item")}</th><th scope="col">{f("dueDate")}</th><th scope="col">{f("remaining")}</th></tr></thead><tbody>{data.receivables.map(i => <tr key={i.id}><th scope="row"><Link className="underline" href={itemHref(i.id)}>{i.description || f("item")}</Link></th><td>{i.dueDate ?? "—"}{i.dueDate && i.dueDate < report.asOf ? <span className="block text-xs text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}</td><td>{amount(i.amount)}{i.currency !== report.currency ? <span className="block text-xs">{amount(i.native, i.currency)}</span> : null}</td></tr>)}</tbody></table>{!data.receivables.length ? <p className="p-3 text-sm">{t("emptyReceivables")}</p> : null}</div> : detail === "outgoing" ? itemTable(outgoing) : <div className="overflow-x-auto"><table className={table}><thead><tr><th scope="col">{f("month")}</th><th scope="col">{f("classification")}</th><th scope="col">{report.currency}</th></tr></thead><tbody>{data.flows.map((row, i) => <tr key={i}><th scope="row">{row.month}</th><td>{ft(`movements.natures.${row.nature}`)} · {ft(`movements.kinds.${row.direction}`)}</td><td>{amount(row.amount)}</td></tr>)}</tbody></table></div>}
-      <p className="text-sm font-medium">{t("total")}: {amount(metrics.find(m => m.key === detail)?.value ?? null)}{metrics.find(m => m.key === detail)?.partial ? ` · ${t("knownSubtotal")}` : ""}</p>
-    </Panel> : null}
-    {incomplete || data.historyIncomplete || data.receivablesIncomplete || overdue.length ? <details className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] px-4 py-3 text-sm"><summary className="cursor-pointer font-medium">{t("attention", { count: report.issues.length + overdue.length + Number(data.historyIncomplete) + Number(data.receivablesIncomplete) })}{incomplete ? ` · ${t("incomplete")}` : ""}</summary>
-      <ul className="mt-3 space-y-2">
-        {data.historyIncomplete ? <li>{t("historyIncomplete")} <Link className="underline" href="/finance/accounts">{ft("accounts")}</Link></li> : null}
-        {data.receivablesIncomplete ? <li><a className="underline" href="#overview-fx">{t("receivableFx")}</a></li> : null}
-        {overdue.map(i => <li key={i.id}><Link className="underline" href={itemHref(i.id)}>{i.description || f("item")}</Link> · {t("overdue")} · {i.dueDate} · {amount(i.amount, i.currency)}</li>)}
-        {report.issues.map((i, index) => <li key={index}><Link className="underline" href={i.source === "expected" ? itemHref(i.id) : forecastIssueHref(i)}>{i.label || f("item")}</Link> · {f(`issues.${i.reason}`)}{i.date ? ` · ${i.date}` : ""}</li>)}
-      </ul>
-    </details> : null}
-    <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="text-lg font-semibold">{t("cashChart")}</h2><p className="text-right text-sm"><span className="text-[var(--ui-text-secondary)]">{t("lowPoint")}{incomplete ? ` · ${t("incomplete")}` : ""}</span><span className={`block font-medium tabular-nums ${data.lowPoint.amount.startsWith("-") ? "text-[var(--ui-danger-text)]" : ""}`}>{amount(data.lowPoint.amount)} · {data.lowPoint.date}</span></p></div>
-      <FinanceCashChart data={data} currency={reportingCurrency} />
-      <details className="text-sm"><summary className="cursor-pointer text-[var(--ui-text-secondary)]">{t("valuation")}</summary><p className="mt-2 text-[var(--ui-text-secondary)]">{t("valuationHelp")}</p></details>
-    </Panel>
-    <div className="grid min-w-0 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-      <Panel className="min-w-0 space-y-4 p-4 sm:p-5"><h2 className="text-lg font-semibold">{t("flows")}</h2><p className="text-xs text-[var(--ui-text-secondary)]">{data.actualFrom} – {report.asOf} · {ft("movements.natures.operating")}</p>
-        {!flowsSafe ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("chartScale")}</p> : null}
-        <div className="space-y-5">{[...new Set(data.flows.map(r => r.month))].map(month => <div key={month} className="space-y-2"><h3 className="text-sm font-medium">{new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}T00:00:00Z`))}</h3>{["incoming", "outgoing"].map(direction => {
-          const value = data.flows.find(r => r.month === month && r.direction === direction && r.nature === "operating")?.amount ?? "0";
-          const max = Math.max(1, ...data.flows.filter(r => r.nature === "operating").map(r => Math.abs(Number(r.amount))));
-          return <div key={direction} className="space-y-1"><div className="flex justify-between gap-2 text-xs"><span>{ft(`movements.kinds.${direction}`)}</span><span className="tabular-nums">{amount(value)}</span></div>{flowsSafe ? <div aria-hidden="true" className="h-2 bg-[var(--ui-surface-muted)]"><div className={`h-2 ${direction === "incoming" ? "bg-[var(--ui-success-accent)]" : "bg-[var(--ui-text-muted)]"}`} style={{ width: `${Math.abs(Number(value)) / max * 100}%` }} /></div> : null}</div>;
-        })}</div>)}</div>
-        {!data.flows.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("emptyFlows")}</p> : null}
-        {data.flows.some(r => r.nature !== "operating") ? <ul className="space-y-2 border-t border-[var(--ui-border)] pt-3 text-xs">{data.flows.filter(r => r.nature !== "operating").map((r, i) => <li key={i} className="flex flex-wrap justify-between gap-2"><span>{r.month.slice(0, 7)} · {ft(`movements.natures.${r.nature}`)} · {ft(`movements.kinds.${r.direction}`)}</span><span className="tabular-nums">{amount(r.amount)}</span></li>)}</ul> : null}
-        <Button variant="ghost" onClick={() => { setDetail("netFlow"); window.scrollTo({ top: 0, behavior: "instant" }); }}>{t("breakdown")}</Button>
+  const currentFlows = data.flows.filter(row => row.month.slice(0, 7) === report.asOf.slice(0, 7));
+  const flowsSafe = currentFlows.every(row => canChartFinanceAmount(row.amount, currency.minor_units));
+  const flowMax = Math.max(1, ...currentFlows.filter(row => row.nature === "operating").map(row => Math.abs(Number(row.amount))));
+  const budgetSignals = data.categories.filter(row => row.budget !== null && row.variance !== null && /[1-9]/.test(row.variance)).slice(0, 3);
+  const metrics = [
+    { key: "cash" as const, value: amount(report.cashBase), partial: report.cashIncomplete, scope: `${t("today")} · ${date(report.asOf)}`, Icon: Wallet, tone: "", href: "" },
+    { key: "netFlow" as const, value: `${data.netFlow.startsWith("-") ? "−" : /[1-9]/.test(data.netFlow) ? "+" : ""}${amount(data.netFlow.replace(/^-/, ""))}`, partial: false, scope: `${date(data.actualFrom)} – ${date(report.asOf)}`, Icon: Activity, tone: data.netFlow.startsWith("-") ? "text-[var(--ui-danger-text)]" : /[1-9]/.test(data.netFlow) ? "text-[var(--ui-success-text)]" : "", href: "/finance/movements" },
+    { key: "outgoing" as const, value: `${/[1-9]/.test(data.outgoingTotal) ? "−" : ""}${amount(data.outgoingTotal)}`, partial: data.outgoingIncomplete || incomplete, scope: t("next30"), Icon: ArrowDownRight, tone: "text-[var(--ui-danger-text)]", href: "/finance/expected?filter=outgoing&period=30days" },
+    { key: "overdue" as const, value: String(overdue.length), partial: false, scope: t("overdueScope", { incoming: overdue.filter(i => i.direction === "incoming").length, outgoing: overdue.filter(i => i.direction === "outgoing").length }), Icon: Clock3, tone: overdue.length ? "text-[var(--ui-warning-text)]" : "", href: "#overview-attention" },
+  ];
+  const attentionRows = (rows: typeof attention) => <ul className="divide-y divide-[var(--ui-border)]">{rows.map(row => <li key={row.key}><Link href={row.href} className={`group flex min-h-16 items-center justify-between gap-3 rounded-[var(--ui-radius-control)] py-3 ${interactive}`}><span className="min-w-0"><span className="block break-words text-sm font-medium">{row.title}</span><span className="mt-1 block text-xs text-[var(--ui-warning-text)]">{row.note}</span></span><ArrowUpRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)] group-hover:text-[var(--ui-text)]" /></Link></li>)}</ul>;
+
+  return <div className="w-full min-w-0 space-y-5">
+    <PageHeader title={t("title")} description={t("controlCenter", { currency: report.currency })} className="flex-wrap" action={<Link href={planningHref} className={textLink}>{t("fullForecast")}<ArrowUpRight aria-hidden="true" className="size-4" /></Link>} />
+    <section aria-label={t("currentState")} className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(m => {
+      const content = <><span className="flex w-full items-center justify-between gap-3 text-sm text-[var(--ui-text-secondary)]"><span className="flex items-center gap-2"><m.Icon aria-hidden="true" className="size-4 shrink-0" />{t(m.key)}</span>{m.key === "cash" ? <ChevronDown aria-hidden="true" className={`size-4 shrink-0 transition-transform duration-[220ms] motion-reduce:transition-none ${cashOpen ? "rotate-180" : ""}`} /> : <ArrowUpRight aria-hidden="true" className="size-4 shrink-0" />}</span><span className={`my-2 block break-words text-2xl font-semibold tracking-tight tabular-nums ${m.tone}`}>{m.value}{m.key !== "overdue" ? <span className="ml-2 text-xs font-normal tracking-normal text-[var(--ui-text-secondary)]">{report.currency}</span> : null}</span><span className="block text-xs text-[var(--ui-text-secondary)]">{m.scope}</span>{m.partial ? <span className="mt-2 block text-xs text-[var(--ui-warning-text)]">{t("knownSubtotal")}</span> : null}</>;
+      const className = `flex min-w-0 flex-col items-start justify-start rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-left sm:p-5 ${interactive}`;
+      return m.key === "cash" ? <button id="overview-cash-trigger" key={m.key} type="button" className={className} aria-expanded={cashOpen} aria-controls="overview-breakdown" onClick={() => setCashOpen(!cashOpen)}>{content}</button> : <Link key={m.key} href={m.href} className={className}>{content}</Link>;
+    })}</section>
+    {cashOpen ? <Panel id="overview-breakdown" className="p-4 sm:p-5"><h2 className="font-semibold">{ft("accounts")}</h2><dl className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.accounts.map(a => <div key={a.id} className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-3"><dt className="text-sm text-[var(--ui-text-secondary)]">{a.name}</dt><dd className="mt-1 break-words font-medium tabular-nums">{amount(a.native, a.currency)}</dd>{a.currency !== report.currency ? <dd className="mt-1 break-words text-xs tabular-nums text-[var(--ui-text-secondary)]">{amount(a.amount, report.currency)}</dd> : null}</div>)}</dl><Link href="/finance/movements" className={`mt-2 ${textLink}`}>{t("allMovements")}<ArrowRight aria-hidden="true" className="size-4" /></Link></Panel> : null}
+    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+      <Panel id="overview-attention" className="min-w-0 scroll-mt-5 p-4 sm:p-5 xl:col-start-2 xl:row-start-1">
+        <div className="flex items-center gap-2"><span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${attention.length ? "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]" : "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]"}`}>{attention.length ? <Clock3 aria-hidden="true" className="size-4" /> : <Check aria-hidden="true" className="size-4" />}</span><h2 className="text-lg font-semibold">{t("attention", { count: attention.length })}</h2></div>
+        <p className="mt-2 text-xs text-[var(--ui-text-secondary)]">{f(report.scenario)} · {date(report.asOf)} – {date(report.through)}</p>
+        {attention.length ? <>{attentionRows(attention.slice(0, 3))}{attention.length > 3 ? <AnimatedDisclosure title={t("moreAttention", { count: attention.length - 3 })}>{attentionRows(attention.slice(3))}</AnimatedDisclosure> : null}</> : <p className="mt-4 text-sm text-[var(--ui-text-secondary)]">{t("allClear")}</p>}
       </Panel>
-      <Panel className="min-w-0 space-y-3 p-4 sm:p-5"><h2 className="text-lg font-semibold">{t("budgetComparison")}</h2><p className="text-xs text-[var(--ui-text-secondary)]">{report.from} – {report.through} · {report.currency}</p>
-        <div className="overflow-x-auto"><table className={table}><caption className="sr-only">{t("budgetComparison")}</caption><thead><tr>{["category", "budget", "full", "actual"].map(key => <th key={key} scope="col">{f(key)}{key === "full" && incomplete ? <span className="block text-xs font-normal">{t("incomplete")}</span> : null}</th>)}<th scope="col">{t("variance")}</th></tr></thead><tbody>{data.categories.slice(0, 6).map((c, i) => <tr key={i}><th scope="row">{category(c.id, c.name)}<span className="block text-xs font-normal text-[var(--ui-text-secondary)]">{ft(`movements.kinds.${c.direction}`)} · {ft(`movements.natures.${c.nature}`)}</span></th><td>{amount(c.budget)}</td><td>{amount(c.forecast)}{c.incomplete ? " *" : ""}</td><td>{amount(c.actual)}</td><td>{amount(c.variance)}{c.incomplete ? " *" : ""}</td></tr>)}</tbody></table></div>
-        {!data.categories.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("emptyBudget")}</p> : null}
-        <Link className="inline-block text-sm underline underline-offset-4" href={`${planningHref}&detail=comparison#planning-comparison`}>{t("budgetDetails")}</Link>
+      <Panel className="min-w-0 space-y-3 p-4 sm:p-5 xl:col-start-1 xl:row-start-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-semibold">{t("cashTrend")}</h2><span className="text-xs text-[var(--ui-text-secondary)]">{t("next30")} · {f(report.scenario)}</span></div>
+        <FinanceCashChart data={data} currency={currency} through={data.upcomingThrough} compact />
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-[var(--ui-border)] pt-2"><Link href={planningHref} className={textLink}>{t("fullForecast")}<ArrowRight aria-hidden="true" className="size-4" /></Link>{data.lowPoint.date <= data.upcomingThrough ? <p className={`text-xs tabular-nums ${data.lowPoint.amount.startsWith("-") ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text-secondary)]"}`}>{t("lowPoint")}: {amount(data.lowPoint.amount)} · {date(data.lowPoint.date)}{incomplete ? ` · ${t("incomplete")}` : ""}</p> : null}</div>
       </Panel>
     </div>
-    <Panel className="min-w-0 space-y-3 p-4 sm:p-5"><div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-semibold">{t("upcoming")}</h2><span className="text-xs text-[var(--ui-text-secondary)]">{report.asOf} – {data.upcomingThrough}</span></div>{itemTable(upcoming.slice(0, 8))}{upcoming.length > 8 ? <details><summary className="cursor-pointer text-sm">{t("allUpcoming", { count: upcoming.length })}</summary>{itemTable(upcoming)}</details> : null}</Panel>
-    <details id="overview-fx" className="space-y-3 text-sm"><summary className="cursor-pointer font-medium">{f("fxTitle")}</summary><p className="text-[var(--ui-text-secondary)]">{f("fxHelp")}</p><ul>{report.fx.map(fx => <li key={fx.currency}>{fx.currency} → {report.currency}: {fx.rate} · {f(`fxSources.${fx.source}`)} · {fx.effectiveDate}</li>)}</ul>
-      {foreign.length ? <form method="get" className="flex flex-wrap items-end gap-3"><input type="hidden" name="period" value={data.period} /><input type="hidden" name="horizon" value={report.horizon} /><input type="hidden" name="scenario" value={report.scenario} />{foreign.map(code => <FormField key={code} label={f("manualRate", { currency: code, reporting: report.currency })}><Input name={`fx_${code}`} inputMode="decimal" defaultValue={report.fx.find(fx => fx.currency === code && fx.source === "manual")?.rate ?? ""} /></FormField>)}<Button variant="outline" type="submit">{f("applyFx")}</Button></form> : null}
-    </details>
+    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(20rem,1fr)_minmax(0,2fr)]">
+      <Panel className="min-w-0 space-y-4 p-4 sm:p-5">
+        <div><h2 className="text-lg font-semibold">{t("monthFlows")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${report.asOf}T00:00:00Z`))} · {report.currency} · {ft("movements.natures.operating")}</p></div>
+        <div className="space-y-4">{(["incoming", "outgoing"] as const).map(direction => {
+          const value = currentFlows.find(row => row.nature === "operating" && row.direction === direction)?.amount ?? "0";
+          return <div key={direction} className="space-y-2"><div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><span>{ft(`planning.${direction === "incoming" ? "income" : "expenses"}`)}</span><span className={`font-semibold tabular-nums ${direction === "incoming" ? "text-[var(--ui-success-text)]" : "text-[var(--ui-danger-text)]"}`}>{amount(value)}</span></div>{flowsSafe ? <div aria-hidden="true" className="h-2 rounded-full bg-[var(--ui-surface-muted)]"><div className={`h-full rounded-full ${direction === "incoming" ? "bg-[var(--ui-success-accent)]" : "bg-[var(--ui-danger-border)]"}`} style={{ width: `${Math.abs(Number(value)) / flowMax * 100}%` }} /></div> : null}</div>;
+        })}</div>
+        {currentFlows.some(row => row.nature !== "operating") ? <dl className="space-y-2 border-t border-[var(--ui-border)] pt-3">{currentFlows.filter(row => row.nature !== "operating").map(row => <div key={`${row.nature}-${row.direction}`} className="flex flex-wrap justify-between gap-2 text-xs"><dt className="text-[var(--ui-text-secondary)]">{ft(`movements.natures.${row.nature}`)} · {ft(`movements.kinds.${row.direction}`)}</dt><dd className="tabular-nums">{amount(row.amount)}</dd></div>)}</dl> : null}
+        <Link href="/finance/movements" className={textLink}>{t("allMovements")}<ArrowRight aria-hidden="true" className="size-4" /></Link>
+      </Panel>
+      <Panel className="min-w-0 p-4 sm:p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-semibold">{t("upcoming")}</h2><span className="text-xs text-[var(--ui-text-secondary)]">{date(report.asOf)} – {date(data.upcomingThrough)} · {f(report.scenario)}</span></div>
+        <ul className="mt-3 divide-y divide-[var(--ui-border)]">{upcoming.slice(0, 5).map(i => <li key={i.id}><Link href={itemHref(i.id)} className={`grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-[var(--ui-radius-control)] py-3 sm:grid-cols-[5rem_minmax(0,1fr)_auto] ${interactive}`}><span className="col-span-2 text-xs text-[var(--ui-text-secondary)] sm:col-span-1">{date(i.date ?? report.asOf)}</span><span className="min-w-0"><span className="block break-words text-sm font-medium">{i.description || category(i.categoryId, null)}</span><span className="mt-1 block text-xs text-[var(--ui-text-secondary)]">{category(i.categoryId, null)}{i.nature !== "operating" ? ` · ${ft(`movements.natures.${i.nature}`)}` : ""}{i.certainty === "estimated" ? ` · ${ft("planning.states.estimated")}` : ""}{i.dueDate && i.dueDate < report.asOf ? <span className="ml-2 text-[var(--ui-warning-text)]">{t("overdue")} · {date(i.dueDate)}</span> : null}</span></span><span className={`text-right text-sm font-semibold tabular-nums ${i.direction === "incoming" ? "text-[var(--ui-success-text)]" : "text-[var(--ui-danger-text)]"}`}><span className="sr-only">{ft(`movements.kinds.${i.direction}`)} </span>{i.direction === "incoming" ? "+" : "−"}{amount(i.reportingAmount)}<span className="mt-1 block text-xs font-normal text-[var(--ui-text-secondary)]">{i.currency === report.currency ? report.currency : amount(i.amount, i.currency)}</span></span></Link></li>)}</ul>
+        {!upcoming.length ? <p className="py-6 text-sm text-[var(--ui-text-secondary)]">{t("emptyUpcoming")}</p> : null}
+        <Link href="/finance/expected" className={`mt-2 ${textLink}`}>{t("allExpected")}<ArrowRight aria-hidden="true" className="size-4" /></Link>
+      </Panel>
+    </div>
+    {budgetSignals.length ? <Panel className="min-w-0 p-4 sm:p-5"><div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="font-semibold">{t("budgetSignal")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t("variance")} · {date(report.from)} – {date(report.through)} · {report.currency}</p></div><Link href={`${planningHref}&detail=comparison#planning-comparison`} className={textLink}>{t("budgetDetails")}<ArrowUpRight aria-hidden="true" className="size-4" /></Link></div><dl className="mt-3 grid gap-3 md:grid-cols-3">{budgetSignals.map((row, i) => <div key={i} className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-3"><dt className="text-sm">{category(row.id, row.name)}<span className="mt-1 block text-xs text-[var(--ui-text-secondary)]">{ft(`movements.kinds.${row.direction}`)} · {ft(`movements.natures.${row.nature}`)}</span></dt><dd className="mt-2 break-words font-semibold tabular-nums">{row.variance?.startsWith("-") ? "" : "+"}{amount(row.variance)}{row.incomplete ? <span className="mt-1 block text-xs font-normal text-[var(--ui-warning-text)]">{t("knownSubtotal")}</span> : null}</dd></div>)}</dl></Panel> : null}
   </div>;
 }

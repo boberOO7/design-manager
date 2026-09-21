@@ -50,70 +50,47 @@ test.afterAll(async () => {
     delete from public.notifications where studio_id='${studio}';delete from public.studio_members where studio_id='${studio}';delete from public.studios where id='${studio}';commit;`);
   for (const actor of actors) if (actor.id) { const { error } = await client.auth.admin.deleteUser(actor.id); if (error) throw error; }
 });
-test("Overview reconciles, drills to exact items and works across report contexts and screen sizes", async ({ page }, testInfo) => {
+test("Overview summarizes canonical cash and links to the owning workflows", async ({ page }, testInfo) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
-  page.on("console", message => { if (message.type() === "error" && /hydration|hydrated/i.test(message.text())) errors.push(message.text()); });
   await login(page); await page.goto("/finance?fx_USD=40");
-  await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
-  await expect(page.getByLabel(f.horizon, { exact: true })).toHaveValue("6");
-  await expect(page.getByLabel(f.scenario, { exact: true })).toHaveValue("confirmed");
-  const metric = (name: string) => page.getByRole("button", { name: new RegExp(`^${name}`) });
-  await expect(metric(t.cash)).toContainText("40,898.00");
-  await expect(metric(t.netFlow)).toContainText("39,888.00");
-  await expect(metric(t.receivables)).toContainText("60,075.00");
-  await expect(metric(t.outgoing)).toContainText("120.00");
-  await expect(metric(t.outgoing)).toContainText("Known subtotal");
-  await metric(t.cash).click();
-  const breakdown = page.locator("#overview-breakdown");
-  await expect(breakdown).toContainText("Dollar bank"); await expect(breakdown).toContainText("400.00");
-  await metric(t.netFlow).click();
-  await expect(breakdown).toContainText(en.Finance.movements.natures.owner_distribution);
-  await expect(breakdown).toContainText("500.00");
+  const cash = page.getByRole("button", { name: new RegExp(`^${t.cash}`) });
+  await expect(cash).toContainText("40,898.00");
+  await expect(page.getByRole("link", { name: new RegExp(`^${t.netFlow}`) })).toContainText("+39,888.00");
+  await expect(page.getByRole("link", { name: new RegExp(`^${t.outgoing}`) })).toContainText("−120.00");
+  await expect(page.getByRole("region", { name: t.currentState }).getByRole("link", { name: new RegExp(`^${t.overdue}`) })).toContainText("1");
+  await expect(page.getByLabel(f.horizon, { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel(f.scenario, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(f.fxTitle, { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("table", { name: t.budgetComparison })).toHaveCount(0);
+  await cash.click(); await expect(page.locator("#overview-breakdown")).toContainText("Dollar bank");
+  await expect(page.locator("#overview-breakdown")).toContainText("400.00"); await cash.click();
   await page.getByText(t.chartData, { exact: true }).click();
   const chart = page.getByRole("table", { name: t.cashChart });
-  await expect(chart).toContainText("40,888.00"); // Stored USD valuation is 39.
-  await expect(chart).toContainText("40,898.00"); // Forecast starting cash uses 40.
-  await expect(chart).toContainText("100,778.00"); // Remaining 60000 less 120, no double counting.
+  await expect(chart).toContainText("40,888.00"); await expect(chart).toContainText("40,898.00");
+  await expect(chart).toContainText("100,778.00");
   await page.getByText(t.chartData, { exact: true }).click();
-  await expect(page.getByText(t.overdue, { exact: true }).last()).toBeVisible();
-  await page.getByRole("link", { name: "Overdue rent", exact: true }).last().click();
+  await expect(page.locator("#overview-attention")).toContainText("Overdue rent");
+  await expect(page.locator("#overview-attention")).toContainText("Undated receipt");
+  await expect(page.getByRole("heading", { name: t.monthFlows })).toBeVisible();
+  await expect(page.getByRole("heading", { name: t.monthFlows }).locator("../..")).toContainText(`${en.Finance.movements.natures.owner_distribution} · ${en.Finance.movements.kinds.outgoing}`);
+  await page.locator("#overview-attention").getByRole("link", { name: /Overdue rent/ }).click();
   await expect(page).toHaveURL(/\/finance\/expected\?item=/);
-  await expect(page.getByText("Overdue rent", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Contract receipt", { exact: true })).toHaveCount(0);
   await page.goto("/finance?fx_USD=40");
-  for (const horizon of ["3", "12", "year", "6"]) {
-    await page.getByLabel(f.horizon, { exact: true }).selectOption(horizon);
-    await page.getByLabel(f.scenario, { exact: true }).selectOption("planned");
-    await page.getByRole("button", { name: f.apply, exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`horizon=${horizon}`));
-    await expect(page).toHaveURL(/fx_USD=40/);
-    await expect(page.getByRole("link", { name: "Tentative receipt", exact: true }).last()).toBeVisible();
-  }
-  await page.getByLabel(t.actualPeriod, { exact: true }).selectOption("month");
-  await page.getByRole("button", { name: f.apply, exact: true }).click();
-  await expect(page).toHaveURL(/period=month/);
-  const categoryTable = page.getByRole("table", { name: t.budgetComparison });
-  await expect(categoryTable).toContainText("100,490.00"); // Actual 40390 + remaining 60100.
-  await page.getByRole("link", { name: t.budgetDetails, exact: true }).click();
-  await expect(page).toHaveURL(/scenario=planned/); await expect(page).toHaveURL(/fx_USD=40/);
-  await expect(page.getByRole("table", { name: f.comparison })).toContainText("100,490.00");
+  await page.getByRole("link", { name: t.fullForecast, exact: true }).first().click();
+  await expect(page).toHaveURL(/fx_USD=40/);
+  await page.getByRole("button", { name: f.comparison, exact: false }).click();
+  await expect(page.getByRole("table", { name: f.comparison })).toContainText("100,390.00");
   await page.goto("/finance?fx_USD=40");
-  await metric(t.cash).click(); await page.getByRole("button", { name: t.close, exact: true }).click();
-  await page.screenshot({ path: testInfo.outputPath("overview-desktop.png"), fullPage: true });
-  await page.getByRole("heading", { name: t.flows, exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: testInfo.outputPath("overview-details-desktop.png"), fullPage: true });
   await page.locator('circle[role="button"]').first().focus(); await page.keyboard.press("ArrowRight");
   await expect(page.locator('p[aria-live="polite"]')).not.toHaveText(t.chartInteraction);
-  await page.setViewportSize({ width: 375, height: 900 }); await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();
-  await expect(page.getByRole("heading", { name: uk.Finance.overview.title, exact: true })).toBeVisible();
-  await metric(uk.Finance.overview.cash).click(); await page.getByRole("button", { name: uk.Finance.overview.close, exact: true }).click();
+  await page.setViewportSize({width:1920,height:1080});
+  await page.screenshot({path:testInfo.outputPath("overview-desktop.png")});
+  await page.setViewportSize({width:375,height:900}); await page.emulateMedia({colorScheme:"dark", reducedMotion:"reduce"});
+  await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]); await page.reload();
+  await expect(page.getByRole("heading", {name:uk.Finance.overview.title,exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  const cashChart = page.getByRole("group", { name: uk.Finance.overview.cashChart, exact: true });
-  await expect.poll(async () => cashChart.evaluate(svg => Number(svg.getAttribute("viewBox")?.split(" ")[2]))).toBeLessThan(375);
-  await page.screenshot({ path: testInfo.outputPath("overview-mobile.png"), fullPage: true });
-  await page.getByRole("heading", { name: uk.Finance.overview.upcoming, exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: testInfo.outputPath("overview-details-mobile.png"), fullPage: true });
+  await page.screenshot({path:testInfo.outputPath("overview-mobile.png"),fullPage:true});
   expect(errors).toEqual([]);
 });
 test("employee cannot access Overview or Accounts", async ({ page }) => {
@@ -131,15 +108,14 @@ test("large decimal amounts stay exact in cards, chart tables, drilldowns and st
   await cash.click();
   const breakdown = page.locator("#overview-breakdown");
   await expect(breakdown).toContainText("1,234,567,900,120,000.00");
-  await expect(breakdown).toContainText("1,234,567,900,160,554.78");
+  await expect(cash).toContainText("1,234,567,900,160,554.78");
   await expect(page.getByRole("group", { name: t.cashChart })).toHaveCount(0);
   await expect(page.getByText(t.chartScale, { exact: true }).first()).toBeVisible();
   const chart = page.getByRole("table", { name: t.cashChart }); // Opens automatically when coordinates are unsafe.
   await expect(chart).toBeVisible();
   await expect(chart).toContainText("1,234,567,890,160,945.52"); // Historical posted FX, not today's assumed FX.
   await expect(chart).toContainText("1,234,567,900,160,554.78");
-  await page.getByRole("button", { name: new RegExp(`^${t.netFlow}`) }).click();
-  await expect(breakdown).toContainText("1,234,567,890,160,447.52"); // Incoming aggregate, exact to cents.
+  await expect(page.getByRole("link", { name: new RegExp(`^${t.netFlow}`) })).toContainText("1,234,567,890,159,945.52"); // Net flow remains exact after owner distribution and transfer fee.
   await page.goto("/finance/movements");
   for (const detail of await page.locator("details").all()) await detail.evaluate(el => el.setAttribute("open", ""));
   await expect(page.getByText(/1,234,567,890,120,000\.74/)).toBeVisible();

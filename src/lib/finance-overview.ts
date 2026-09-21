@@ -16,6 +16,19 @@ export const financeOverviewSchema = z.object({
 });
 export type FinanceOverview = z.infer<typeof financeOverviewSchema>;
 
+// Crop canonical daily closing points for display; carry the last balance to the
+// window edge without recalculating any cash or changing expected-item timing.
+export function financeCashChartPoints(data: Pick<FinanceOverview, "history" | "projection"> & { forecast: Pick<FinanceOverview["forecast"], "asOf" | "cashBase" | "through"> }, through = data.forecast.through) {
+  const projection = data.projection.filter(point => point.date <= through);
+  const last = projection.at(-1);
+  return [
+    ...data.history.map(point => ({ ...point, kind: "actual" as const })),
+    { date: data.forecast.asOf, amount: data.forecast.cashBase, kind: "forecast" as const },
+    ...projection.map(point => ({ ...point, kind: "forecast" as const })),
+    ...(last && last.date < through ? [{ date: through, amount: last.amount, kind: "forecast" as const }] : []),
+  ];
+}
+
 export function parseFinanceReportParams(params: Record<string, string | string[] | undefined>, today: string) {
   const options = forecastOptionsSchema.safeParse(params);
   const manual = Object.entries(params).filter(([key, value]) => /^fx_[A-Z]{3}$/.test(key) && typeof value === "string" && value.trim()).map(([key, rate]) => ({ currency: key.slice(3), rate, source: "manual", effectiveDate: today }));

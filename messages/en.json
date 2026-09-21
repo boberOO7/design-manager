@@ -1867,7 +1867,20 @@
       "emptyUpcoming": "No dated expected cash in this period.",
       "emptyReceivables": "No outstanding receivables.",
       "emptyFlows": "No recorded cash flow in this period.",
-      "emptyBudget": "No budget or forecast activity in this period."
+      "emptyBudget": "No budget or forecast activity in this period.",
+    "controlCenter": "Current cash, near-term payments and priorities · {currency}",
+    "currentState": "Current financial state",
+    "cashTrend": "Cash trend",
+    "fullForecast": "Open Budget & Forecast",
+    "next30": "Next 30 days",
+    "overdueScope": "{incoming} incoming · {outgoing} outgoing",
+    "openingAttention": "Complete opening valuations",
+    "moreAttention": "Show {count} more priorities",
+    "allClear": "No overdue payments or missing inputs in this forecast.",
+    "monthFlows": "Income & expenses this month",
+    "allMovements": "View movements",
+    "allExpected": "View all expected payments",
+    "budgetSignal": "Notable Budget deviations"
     },
     "forecast": {
       "snapshotRules": "About snapshot comparisons",

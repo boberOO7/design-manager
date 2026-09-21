@@ -493,10 +493,14 @@ and generation workflow must retain these timing and historical boundaries.
 
 ## Management Overview
 
-- `/finance` defaults to all accounts, the last three calendar months of actual
-  cash through today (clipped at cutover), and the six-month Confirmed forecast.
-  Actual-period, forecast-horizon and scenario controls are independent. Draft
-  studios still see setup; account administration remains at `/finance/accounts`.
+- `/finance` is the financial control center: recorded cash, recent net flow,
+  next-30-day outflow, overdue count, actionable coverage issues, current-month
+  operating flow bars and five upcoming payments. The default actual scope is
+  the last three calendar months through today, clipped at cutover; its dates
+  are explicit. Forecast/scenario, FX, Budget editing and history belong to
+  `/finance/planning`. Draft studios still see setup; account administration
+  remains at `/finance/accounts`. Finance routes share a dashboard-width shell
+  and tab navigation; Accounts and Categories stay in the manage menu.
 - `get_finance_overview` first calls the canonical forecast/automatic coverage
   boundary. It projects existing ledger views and that forecast into exact
   numeric summaries; it creates no financial sources or alternative timing rules.
@@ -519,6 +523,12 @@ and generation workflow must retain these timing and historical boundaries.
   SVG coordinates alone use JavaScript numbers. When minor units exceed the safe
   integer range at the catalog's currency precision, the plot is replaced by its open exact data table and flow bars
   are hidden while exact labels remain. Normal charts retain keyboard tooltips.
+- Overview crops the existing daily projection at `upcomingThrough` (today + 30
+  days, capped at the canonical horizon). Its final step carries the last canonical
+  closing value to the window edge; it never recalculates cash. The canonical low
+  point is shown only when its date falls within this window. Planning retains
+  the full series. The Today boundary separates historical valuation from current
+  assumed FX; Overview links preserve the report's horizon, scenario and FX rates.
 - Actual flow comparison uses `finance_planning_actuals`, excluding opening cash
   and transfer principal. Fees remain operating, refunds/reversals remain signed,
   and financing/owner distributions remain separate. Net flow includes all those
@@ -531,9 +541,15 @@ and generation workflow must retain these timing and historical boundaries.
 - Category Budget/Forecast/Actual sums the canonical monthly comparisons over the
   selected horizon, sorted by absolute variance. A full-horizon budget/variance is
   unavailable unless every month has a baseline. Monthly detail links preserve
-  scenario, horizon and rate values. Budget never becomes forecast cash.
+  scenario, horizon and rate values. Overview shows only up to three nonzero
+  configured variances, with an explicit forecast horizon; absent baselines do not
+  produce an empty panel. Budget never becomes forecast cash.
 - Missing FX and forecast coverage keep affected summaries visibly incomplete.
-  One expandable attention area contains overdue items and canonical issues.
+  One attention panel shows overdue items and canonical issues, with three
+  visible actions and a disclosure for the rest. Missing FX is grouped into one
+  planning action; per-item links open the owning workflow. Current-month income
+  and expense bars use existing operating flow rows, with financing and owner
+  distributions separately labelled below them.
   No chart substitutes missing inputs with zero or hypothetical receipts.
 
 ## Canonical sources

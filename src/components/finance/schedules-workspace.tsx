@@ -257,7 +257,7 @@ export function FinanceSchedulesWorkspace(data: Data) {
   const groups = [...data.groups, ...(recurring.some((schedule) => !schedule.group_id) || !data.groups.length ? [{ id: "", name: t("schedules.ungrouped"), position: data.groups.length, studio_id: "" }] : [])];
   const ready = Boolean(data.settings?.finalized_at);
   const close = () => setEditor(null);
-  return <div className="mx-auto w-full max-w-7xl space-y-6">
+  return <div className="mx-auto w-full max-w-[var(--finance-content-width,80rem)] space-y-6">
     <PageHeader title={t("schedules.title")} description={t("schedules.description")} />
     {!ready ? <p className={`${panel} p-5 text-sm`}>{t("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{t("movements.setupLink")}</Link></p> : null}
     <section aria-labelledby="section-payroll" className={`${panel} overflow-hidden`}>

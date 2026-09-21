@@ -95,7 +95,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     const currency = props.currencies.find((item) => item.code === code);
     return currency ? formatFinanceAmount(amount, currency, locale) : `${amount} ${code}`;
   };
-  return <div className="mx-auto w-full max-w-7xl space-y-6">
+  return <div className="mx-auto w-full max-w-[var(--finance-content-width,80rem)] space-y-6">
     <PageHeader title={t("movements.title")} description={t("movements.descriptionText")} />
     {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></p> : <>
       <section aria-label={t("movements.recordedBalance")} className={panel}>
