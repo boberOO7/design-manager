@@ -213,10 +213,37 @@ or notifications containing private data.
 
 ## Project agreements and revenue streams
 
+- Project Finance presents project value, collected, outstanding receivables and
+  future planned payments separately. Unscheduled contract value is an actionable
+  exception, not dated forecast cash. The next project payment uses expected date
+  before due date and is selected independently of list pagination and filters.
+  Stream navigation keeps design value separate from supervision, contractor
+  bonuses and other income; compact rows disclose settlement actions and history.
+
 - `finance_project_terms` retains immutable, numbered design/supervision revisions
   with the actor and a required agreement/amendment note. Current terms are the
   latest revision, not a copied CRM budget. Saves use the existing studio lock,
   request audit/idempotency, and optimistic revision checks.
+- The value/payment builder supports fixed pricing or area × rate. Immutable
+  `finance_project_plan_revisions` records the area/rate used and reviewed item
+  order alongside the canonical terms revision; legacy revisions remain fixed
+  values. Later project-area edits only show a mismatch. Recalculation requires
+  a new reasoned revision. Native agreement currency stays authoritative; current
+  NBU/UAH references are read-only context and never enter contract or ledger values.
+- Percentage templates distribute the editable contractual value after subtracting
+  the **full** scheduled value of every active item with any allocation history,
+  including released/refunded matches. Protected rows are not written by the builder.
+  Percentage previews use integer minor units, floor intermediate payments and put
+  the remainder in the final payment. Area pricing rounds once to currency precision.
+  Keep-existing and manual amount modes still require explicit reconciliation;
+  an intentional unscheduled remainder has no manufactured date.
+- `save_finance_project_plan` composes the canonical terms, item and cancellation
+  RPCs under the same studio lock. It checks revision and complete active-item
+  versions/history, rejects over-allocation, applies decreases before increases,
+  and records one idempotent request. Removed unpaid items are reasonedly cancelled,
+  never deleted. Existing expected IDs survive edits, protected history is retained,
+  and the operation creates no cash. Pricing snapshots use admin-only RLS and
+  immutable history; `finance_project_plan_items` reads in caller context.
 - `finance_project_items` adds permanent project/source context to Phase 3 expected
   items. It contains no separate payment or settlement state. Design, supervision,
   contractor bonus, and other income use incoming Finance expectations. Project
@@ -225,9 +252,10 @@ or notifications containing private data.
 - Design schedules have arbitrary names/counts, independent due/expected dates,
   and the agreement currency. Active scheduled amounts cannot exceed the current
   contract. A shortfall stays **unscheduled**, with no invented forecast date.
-  Currency is fixed after any schedule history. An amendment never edits the
-  schedule; administrators revise unpaid items explicitly, with submitted revisions
-  retained in the planning audit. After any allocation history, project-item amount,
+  Currency is fixed after any schedule history. Value-only amendments leave the
+  schedule unchanged; the value/payment builder explicitly saves a reviewed unpaid
+  schedule with its value revision in one transaction. Submitted revisions remain
+  in the planning audit. After any allocation history, project-item amount,
   currency, category, due date and certainty are locked even through the global RPC.
   Expected timing, description and established status remain editable.
 - Project expectation cancellation uses `cancel_finance_project_expectation`, with
@@ -569,6 +597,9 @@ and generation workflow must retain these timing and historical boundaries.
 - `src/lib/finance-projects.ts`, `src/components/finance/project-finance-section.tsx`
 - `src/app/(app)/finance/project-actions.ts`
 - `supabase/tests/finance_projects_rls.test.sql`, `tests/e2e/finance-projects.spec.ts`
+- `src/components/finance/project-value-builder.tsx`, `src/lib/finance-project-plan.ts`
+- `supabase/migrations/20260921184630_finance_project_payment_builder.sql`
+- `supabase/tests/finance_project_plan_rls.test.sql`, `tests/e2e/finance-project-builder.spec.ts`
 
 - `supabase/migrations/20260917141123_finance_compensation_recurring.sql`
 - `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`

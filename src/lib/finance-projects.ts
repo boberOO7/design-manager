@@ -48,6 +48,7 @@ export const supervisionMonthsSchema = z.object({
   (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 
 export function financeProjectError(message: string) {
+  if (message === "finance_project_plan_remainder") return "planRemainder";
   if (message === "finance_project_cancellation_required") return "cancellationRequired";
   if (message === "finance_project_retention_required") return "retentionRequired";
   if (message === "finance_project_visit_price_changed") return "visitPriceChanged";

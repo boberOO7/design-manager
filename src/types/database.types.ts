@@ -1303,6 +1303,13 @@ export type Database = {
             referencedColumns: ["studio_id", "id"]
           },
           {
+            foreignKeyName: "finance_allocations_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_allocations_studio_id_movement_id_fkey"
             columns: ["studio_id", "movement_id"]
             isOneToOne: false
@@ -1862,6 +1869,13 @@ export type Database = {
             referencedColumns: ["studio_id", "id"]
           },
           {
+            foreignKeyName: "finance_obligation_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_obligation_items_studio_id_obligation_id_fkey"
             columns: ["studio_id", "obligation_id"]
             isOneToOne: false
@@ -2142,6 +2156,13 @@ export type Database = {
             referencedColumns: ["studio_id", "id"]
           },
           {
+            foreignKeyName: "finance_project_items_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
             foreignKeyName: "finance_project_items_studio_id_terms_id_project_id_fkey"
             columns: ["studio_id", "terms_id", "project_id"]
             isOneToOne: false
@@ -2161,6 +2182,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "calendar_events"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_project_plan_revisions: {
+        Row: {
+          area_snapshot: number | null
+          item_order: string[]
+          pricing_method: string
+          project_id: string
+          rate_per_m2: number | null
+          studio_id: string
+          terms_id: string
+        }
+        Insert: {
+          area_snapshot?: number | null
+          item_order?: string[]
+          pricing_method: string
+          project_id: string
+          rate_per_m2?: number | null
+          studio_id: string
+          terms_id: string
+        }
+        Update: {
+          area_snapshot?: number | null
+          item_order?: string[]
+          pricing_method?: string
+          project_id?: string
+          rate_per_m2?: number | null
+          studio_id?: string
+          terms_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_plan_revision_studio_id_terms_id_project_i_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_current_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_project_plan_revision_studio_id_terms_id_project_i_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
           },
         ]
       }
@@ -4710,6 +4776,83 @@ export type Database = {
           },
         ]
       }
+      finance_project_plan_items: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          certainty: string | null
+          commitment: string | null
+          context_label: string | null
+          contractor_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          direction: string | null
+          due_date: string | null
+          due_state: string | null
+          expected_payment_date: string | null
+          has_settlement_history: boolean | null
+          id: string | null
+          is_established: boolean | null
+          outstanding_amount: number | null
+          payment_state: string | null
+          period_start: string | null
+          project_id: string | null
+          remaining_amount: number | null
+          settled_amount: number | null
+          source: string | null
+          stream: string | null
+          studio_id: string | null
+          updated_at: string | null
+          version: number | null
+          visit_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expected_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_expected_items_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_items_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_project_totals: {
         Row: {
           collected_amount: number | null
@@ -5300,6 +5443,15 @@ export type Database = {
         Returns: string
       }
       save_finance_project_item: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_project_plan: {
         Args: {
           p_input: Json
           p_project_id: string

@@ -126,14 +126,19 @@ export async function getFinanceProject(projectId:string) {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
-  const [terms,history,totals,contractors,visits]=await Promise.all([
+  const nextQuery = () => client.from("finance_project_expected_balances").select("id,description,currency,remaining_amount::text,due_date,expected_payment_date").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream","design").eq("commitment","agreed").gt("remaining_amount",0);
+  const [terms,history,totals,contractors,visits,nextExpected,nextDue,area,designHistory]=await Promise.all([
     client.from("finance_project_current_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(0,999),
     client.from("finance_project_totals").select("studio_id,project_id,stream,currency,contract_amount::text,scheduled_amount::text,collected_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("contractors").select("id,name,category:contractor_categories!inner(studio_id)").eq("category.studio_id",admin.studio_id).order("name").limit(1000),
     client.from("calendar_events").select("id,title,starts_at").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("event_type","site_visit").is("cancelled_at",null).order("starts_at",{ ascending:false }).limit(200),
+    nextQuery().gte("expected_payment_date",getKyivDateOnly()).order("expected_payment_date").order("id").limit(1),
+    nextQuery().is("expected_payment_date",null).gte("due_date",getKyivDateOnly()).order("due_date").order("id").limit(1),
+    client.from("projects").select("total_area_m2").eq("studio_id",admin.studio_id).eq("id",projectId).single(),
+    client.from("finance_project_items").select("expected_item_id").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream","design").limit(1),
   ]);
-  const error=terms.error??history.error??totals.error??contractors.error??visits.error;
+  const error=terms.error??history.error??totals.error??contractors.error??visits.error??nextExpected.error??nextDue.error??area.error??designHistory.error;
   if(error) throw new Error("Unable to load Project Finance.",{ cause:error });
   // Historical visit defaults must not depend on a recent-revisions limit.
   const termHistory=history.data??[];
@@ -142,9 +147,21 @@ export async function getFinanceProject(projectId:string) {
     if(page.error) throw new Error("Unable to load Project Finance.",{ cause:page.error });
     termHistory.push(...page.data);
   }
+  const planRevisions = await client.from("finance_project_plan_revisions").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).in("terms_id",termHistory.filter(v=>v.stream==="design").slice(0,50).map(v=>v.id));
+  if(planRevisions.error) throw new Error("Unable to load pricing revisions.",{cause:planRevisions.error});
+  const planQuery = () => client.from("finance_project_plan_items").select("id,version,amount::text,currency,description,due_date,expected_payment_date,has_settlement_history,settled_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("id");
+  const firstPlanPage = await planQuery().range(0,999);
+  if(firstPlanPage.error) throw new Error("Unable to load project payment schedule.",{cause:firstPlanPage.error});
+  const planItems=firstPlanPage.data;
+  for(let offset=1000;planItems.length===offset;offset+=1000) {
+    const next=await planQuery().range(offset,offset+999);
+    if(next.error) throw new Error("Unable to load project payment schedule.",{cause:next.error});
+    planItems.push(...next.data);
+  }
   // Data API casts preserve decimal text but omit view nullability from inferred types.
   const projectTotals=(totals.data??[]).map(row=>({...row,contract_amount:z.string().nullable().parse(row.contract_amount),unscheduled_amount:z.string().nullable().parse(row.unscheduled_amount)}));
-  return { projectId,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
+  const nextPayment = [...(nextExpected.data??[]),...(nextDue.data??[])].sort((a,b)=>(a.expected_payment_date??a.due_date??"").localeCompare(b.expected_payment_date??b.due_date??""))[0] ?? null;
+  return { projectId,nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
 export type FinanceProjectData=NonNullable<Awaited<ReturnType<typeof getFinanceProject>>>;
 

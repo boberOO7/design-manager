@@ -441,6 +441,21 @@ body,
   }
 }
 
+@supports (interpolate-size: allow-keywords) {
+  [data-project-finance] article details { interpolate-size: allow-keywords; }
+  [data-project-finance] article details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 220ms ease-out, opacity 220ms ease-out, content-visibility 220ms allow-discrete;
+  }
+  [data-project-finance] article details[open]::details-content { block-size: auto; opacity: 1; }
+  :root[data-motion="off"] [data-project-finance] article details::details-content { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-project-finance] article details::details-content { transition: none; }
+  }
+}
+
 [data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-group(root),
 [data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-old(root),
 [data-workstation-editor]:active-view-transition-type(workstation-rows)::view-transition-new(root) {

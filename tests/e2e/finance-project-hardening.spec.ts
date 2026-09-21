@@ -21,6 +21,7 @@ function clearFoundation() {
   // Test-only local teardown of this suite's UUID tenant; production history is immutable.
   sql(`begin; set local session_replication_role=replica;
     delete from public.finance_project_items where studio_id=${studioLiteral};
+    delete from public.finance_project_plan_revisions where studio_id=${studioLiteral};
     delete from public.finance_project_terms where studio_id=${studioLiteral};
     delete from public.finance_allocations where studio_id=${studioLiteral};
     delete from public.finance_expected_items where studio_id=${studioLiteral};
@@ -107,7 +108,7 @@ test("visit defaults follow historical terms and manual overrides survive visit 
   await page.goto("/login");await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
   await page.goto(`/projects/${projectId}?view=finance&stream=supervision`);
   const dialog=page.getByRole("dialog");
-  async function begin(){await page.getByRole("button",{name:plan.create,exact:true}).click();await dialog.getByRole("combobox",{name:p.chargeSource,exact:true}).click();await page.getByRole("option",{name:p.visitCharge,exact:true}).click();}
+  async function begin(){await page.getByRole("button",{name:p.addPayment,exact:true}).click();await dialog.getByRole("combobox",{name:p.chargeSource,exact:true}).click();await page.getByRole("option",{name:p.visitCharge,exact:true}).click();}
   async function selectVisit(name:string){await dialog.getByRole("combobox",{name:p.visit,exact:true}).click();await page.getByRole("option",{name:new RegExp(name)}).click();}
   async function save(name:string){await dialog.getByText(t.movements.description,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(name);await dialog.getByRole("button",{name:plan.save,exact:true}).click();await expect(dialog).toHaveCount(0);}
   await begin();await selectVisit("May retainer visit");

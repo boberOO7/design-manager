@@ -43,20 +43,21 @@ test("IQD subunits reconcile across Accounts, Planning, Overview, chart text and
     await expect(page.getByRole("listitem").filter({has:page.getByText("IQD bank",{exact:true})})).toContainText(fraction);
     await page.goto("/finance");
     const cash=page.getByRole("button",{name:new RegExp(`^${overview.cash}`)});
-    const receivables=page.getByRole("button",{name:new RegExp(`^${overview.receivables}`)});
-    await expect(cash).toContainText(fraction);await expect(receivables).toContainText(fraction);
+    const receivable=page.getByRole("link").filter({hasText:"Subunit receipt"});
+    await expect(cash).toContainText(fraction);await expect(receivable).toContainText(fraction);
     await cash.click();await expect(page.locator("#overview-breakdown")).toContainText(`IQD`);await expect(page.locator("#overview-breakdown")).toContainText(fraction);
-    await receivables.click();await expect(page.locator("#overview-breakdown")).toContainText(fraction);
     await page.getByText(overview.chartData,{exact:true}).click();
     const chart=page.getByRole("table",{name:overview.cashChart});
     await expect(chart).toContainText(fraction);await expect(chart).toContainText(projected);
-    const point=page.locator('circle[role="button"]').first();
+    const point=page.getByRole("group",{name:overview.cashChart}).getByRole("button").first();
     await expect(point).toHaveAttribute("aria-label",new RegExp(fraction.replace(".","\\.")));
     await point.focus();await expect(page.locator('p[aria-live="polite"]')).toContainText(fraction);
-    await page.getByRole("link",{name:"Subunit receipt",exact:true}).last().click();
-    await expect(page).toHaveURL(/\/finance\/expected\?item=/);await expect(page.locator("article").filter({has:page.getByRole("heading",{name:"Subunit receipt",exact:true})})).toContainText(fraction);
+    await receivable.click();
+    await expect(page).toHaveURL(/\/finance\/expected\?item=/);await expect(page.locator("article").filter({hasText:"Subunit receipt"})).toContainText(fraction);
     await page.goto("/finance/planning");
+    await page.getByRole("button",{name:t.forecast.monthlyCash,exact:false}).click();
     await expect(page.getByRole("table",{name:t.forecast.cashProjection})).toContainText(projected);
+    await page.getByRole("button",{name:t.forecast.comparison,exact:false}).click();
     await expect(page.getByRole("table",{name:t.forecast.comparison})).toContainText(fraction);
   }
 });
