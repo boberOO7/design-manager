@@ -14,6 +14,7 @@ import { Select, SelectItem } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
 import { formatFinanceAmount } from "@/lib/finance";
+import { FinanceFxFields as FxFields } from "./finance-fx-fields";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCategorySelect } from "./category-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
@@ -23,20 +24,6 @@ import type { getFinanceData, FinanceMovementWithEntries } from "@/data/queries/
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 
-function FxFields({ currency, base, destination = false }: { currency: string; base: string; destination?: boolean }) {
-  const t = useTranslations("Finance");
-  const [mode, setMode] = useState(base === "UAH" ? "nbu" : "manual");
-  if (currency === base || !currency) return null;
-  return <div className="space-y-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] p-3">
-    <FormField label={t("movements.valuation", { currency, base })}>
-      <Select aria-label={t("movements.valuation", { currency, base })} name={destination ? "destinationFxMode" : "fxMode"} value={mode} onValueChange={setMode}>
-        {base === "UAH" ? <SelectItem value="nbu">{t("movements.nbu")}</SelectItem> : null}
-        <SelectItem value="manual">{t("movements.manual")}</SelectItem>
-      </Select>
-    </FormField>
-    {mode === "manual" ? <FormField label={t("movements.rate", { currency, base })}><Input name={destination ? "destinationManualRate" : "manualRate"} inputMode="decimal" required autoComplete="off" /></FormField> : <p className="text-sm text-[var(--ui-text-muted)]">{t("movements.nbuHelp")}</p>}
-  </div>;
-}
 
 function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; expected?:FinanceExpected|null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");

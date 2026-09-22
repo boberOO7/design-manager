@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getFinanceData, getFinancePlanning, getFinanceProject } from "@/data/queries/finance";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { projectStreams } from "@/lib/finance-projects";
+import { ProjectTripsSection } from "./project-trips-section";
 import { ProjectFinanceWorkspace } from "./project-finance-workspace";
 
 export async function ProjectFinanceSection({ projectId, query }: { projectId: string; query: Partial<Record<"stream" | "page" | "credits" | "filter", string | string[]>> }) {
@@ -11,5 +12,6 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
   const filter = "all";
   const [foundation, project, planning] = await Promise.all([getFinanceData(), getFinanceProject(projectId), getFinancePlanning(page, creditPage, filter, projectId, stream)]);
   if (!foundation || !project || !planning) notFound();
-  return <ProjectFinanceWorkspace {...foundation} {...planning} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>;
+  const currency = foundation.currencies.find(v => v.code === foundation.settings?.base_currency);
+  return <><ProjectFinanceWorkspace {...foundation} {...planning} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>{currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}</>;
 }

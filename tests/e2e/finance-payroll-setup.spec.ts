@@ -130,7 +130,7 @@ test("recurring selection, mouse and keyboard focus, motion, and bulk organizati
   await expect(actions).toHaveCSS("opacity", "1");
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("keyboard-details.png") });
   await page.keyboard.press("Enter"); await expect(details).toHaveAttribute("inert", "");
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.evaluate(() => { document.documentElement.dataset.motion = "system"; });
   const frames = await history.evaluate(async (button) => {
     const target = document.getElementById(button.getAttribute("aria-controls") ?? "");
@@ -147,6 +147,8 @@ test("recurring selection, mouse and keyboard focus, motion, and bulk organizati
   expect(fullHeight).toBeGreaterThan(20);
   expect(frames.filter((height) => height > 2 && height < fullHeight - 2).length).toBeGreaterThanOrEqual(3);
   await history.click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(details).toHaveCSS("transition-property", "none");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.evaluate(() => { document.documentElement.dataset.motion = "off"; });
   await expect(details).toHaveCSS("transition-duration", "1e-05s");

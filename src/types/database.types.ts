@@ -2567,6 +2567,407 @@ export type Database = {
           },
         ]
       }
+      finance_trip_balances: {
+        Row: {
+          currency: string
+          direction: string
+          employee_id: string
+          expected_item_id: string
+          studio_id: string
+          trip_id: string
+        }
+        Insert: {
+          currency: string
+          direction: string
+          employee_id: string
+          expected_item_id: string
+          studio_id: string
+          trip_id: string
+        }
+        Update: {
+          currency?: string
+          direction?: string
+          employee_id?: string
+          expected_item_id?: string
+          studio_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trip_balances_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: true
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_balances_studio_id_trip_id_employee_id_fkey"
+            columns: ["studio_id", "trip_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_travelers"
+            referencedColumns: ["studio_id", "trip_id", "employee_id"]
+          },
+        ]
+      }
+      finance_trip_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          currency: string
+          daily_rate: number | null
+          day_count: number | null
+          employee_id: string | null
+          expected_item_id: string | null
+          expense_type: string
+          financial_date: string
+          fx_effective_date: string
+          fx_rate: number
+          fx_source: string
+          id: string
+          kind: string
+          label: string
+          movement_id: string | null
+          note: string
+          plan_id: string | null
+          reporting_amount: number
+          reporting_currency: string
+          reverses_id: string | null
+          studio_id: string
+          trip_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          currency: string
+          daily_rate?: number | null
+          day_count?: number | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          expense_type: string
+          financial_date: string
+          fx_effective_date: string
+          fx_rate: number
+          fx_source: string
+          id?: string
+          kind: string
+          label?: string
+          movement_id?: string | null
+          note?: string
+          plan_id?: string | null
+          reporting_amount: number
+          reporting_currency: string
+          reverses_id?: string | null
+          studio_id: string
+          trip_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          daily_rate?: number | null
+          day_count?: number | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          expense_type?: string
+          financial_date?: string
+          fx_effective_date?: string
+          fx_rate?: number
+          fx_source?: string
+          id?: string
+          kind?: string
+          label?: string
+          movement_id?: string | null
+          note?: string
+          plan_id?: string | null
+          reporting_amount?: number
+          reporting_currency?: string
+          reverses_id?: string | null
+          studio_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trip_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_plan_id_trip_id_fkey"
+            columns: ["studio_id", "plan_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_plan_id_trip_id_fkey"
+            columns: ["studio_id", "plan_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reverses_id_trip_id_fkey"
+            columns: ["studio_id", "reverses_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reverses_id_trip_id_fkey"
+            columns: ["studio_id", "reverses_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_employee_id_fkey"
+            columns: ["studio_id", "trip_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_travelers"
+            referencedColumns: ["studio_id", "trip_id", "employee_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_totals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trips"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_trip_travelers: {
+        Row: {
+          active: boolean
+          employee_id: string
+          employee_name: string
+          studio_id: string
+          trip_id: string
+        }
+        Insert: {
+          active?: boolean
+          employee_id: string
+          employee_name: string
+          studio_id: string
+          trip_id: string
+        }
+        Update: {
+          active?: boolean
+          employee_id?: string
+          employee_name?: string
+          studio_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trip_travelers_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_travelers_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_totals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_travelers_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trips"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_trips: {
+        Row: {
+          created_at: string
+          created_by: string
+          destination: string
+          ends_on: string
+          id: string
+          note: string
+          project_id: string | null
+          starts_on: string
+          status: string
+          studio_id: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          destination: string
+          ends_on: string
+          id?: string
+          note?: string
+          project_id?: string | null
+          starts_on: string
+          status?: string
+          studio_id: string
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          destination?: string
+          ends_on?: string
+          id?: string
+          note?: string
+          project_id?: string | null
+          starts_on?: string
+          status?: string
+          studio_id?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_trips_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_trips_studio_id_project_id_fkey"
+            columns: ["studio_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       google_calendar_connections: {
         Row: {
           created_at: string
@@ -4926,6 +5327,217 @@ export type Database = {
           },
         ]
       }
+      finance_trip_entry_values: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          daily_rate: number | null
+          day_count: number | null
+          employee_id: string | null
+          expected_item_id: string | null
+          expense_type: string | null
+          financial_date: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          id: string | null
+          kind: string | null
+          label: string | null
+          movement_id: string | null
+          net_amount: number | null
+          net_reporting_amount: number | null
+          note: string | null
+          plan_id: string | null
+          reporting_amount: number | null
+          reporting_currency: string | null
+          reverses_id: string | null
+          studio_id: string | null
+          trip_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trip_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_plan_id_trip_id_fkey"
+            columns: ["studio_id", "plan_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_plan_id_trip_id_fkey"
+            columns: ["studio_id", "plan_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reverses_id_trip_id_fkey"
+            columns: ["studio_id", "reverses_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_reverses_id_trip_id_fkey"
+            columns: ["studio_id", "reverses_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_employee_id_fkey"
+            columns: ["studio_id", "trip_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_travelers"
+            referencedColumns: ["studio_id", "trip_id", "employee_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_totals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_trip_id_fkey"
+            columns: ["studio_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trips"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_trip_totals: {
+        Row: {
+          actual_amount: string | null
+          created_at: string | null
+          created_by: string | null
+          destination: string | null
+          employee_paid: string | null
+          ends_on: string | null
+          id: string | null
+          note: string | null
+          planned_amount: string | null
+          project_id: string | null
+          reporting_currency: string | null
+          starts_on: string | null
+          status: string | null
+          studio_id: string | null
+          studio_paid: string | null
+          title: string | null
+          updated_at: string | null
+          variance: string | null
+          version: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_settings_base_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_trips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_trips_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_trips_studio_id_project_id_fkey"
+            columns: ["studio_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
     }
     Functions: {
       allocate_finance_payment: {
@@ -5337,6 +5949,15 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      record_finance_trip_entry: {
+        Args: {
+          p_input: Json
+          p_request_id: string
+          p_studio_id: string
+          p_trip_id: string
+        }
+        Returns: string
+      }
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
         Returns: undefined
@@ -5484,6 +6105,10 @@ export type Database = {
           p_studio_id: string
         }
         Returns: undefined
+      }
+      save_finance_trip: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
       }
       save_leaderboard_bonus_rules: {
         Args: { p_enabled: boolean; p_rules: Json; p_studio_id: string }

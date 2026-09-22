@@ -580,6 +580,77 @@ and generation workflow must retain these timing and historical boundaries.
   distributions separately labelled below them.
   No chart substitutes missing inputs with zero or hypothetical receipts.
 
+## Business trips
+
+`/finance/trips` is an admin-only operational workflow, reached through the Finance
+manage menu. Project Finance shows linked trips and their reporting-currency cost
+separately from contract income. Completed/archived projects remain reconcilable.
+
+- `finance_trips` stores destination, dates, optional same-studio Project, status
+  and versioned metadata. `finance_trip_travelers` links same-studio Team identities
+  and snapshots names. Removing a traveler only deactivates their participation;
+  receipts and settlements survive. A Project link locks after the first financial
+  entry. Metadata edits never revalue historical entries or update settlement labels.
+- `finance_trip_entries` is immutable, preserving original amount/currency/date,
+  payer, optional label/note, valuation provenance and ledger/plan links. Types are
+  travel, accommodation, meals, local transport, visa/insurance and other. One
+  outgoing `business_travel` reporting category is created when first used
+  (or an existing matching custom Business travel category is reused); the
+  internal types do not expand the global category catalog. Existing matched cash
+  retains its original reporting classification and valuation.
+- Plan and Actual are separate exact reporting totals. Only expenses contribute
+  Actual; advances and reimbursements never contribute a second cost. Optional
+  dated planned cash creates one tentative estimated expected item. Selecting a
+  related plan when recording its actual retires that expectation atomically, while
+  retaining the plan baseline. This completes one planned payment, not a partial
+  budget drawdown. A paid plan can convert with its exact whole payment; existing
+  allocations are explicitly released and rematched. Budget remains independent.
+- Direct studio expenses record or match a whole, unallocated outgoing operating
+  movement. An internal fully settled expected item consumes that payment through
+  canonical allocation semantics. Contextual posting, matching, receipt insertion
+  and plan replacement share one transaction and idempotent request audit. A failed
+  match rolls back all cash. Refunds/reversals remain ledger operations; net trip
+  cost follows their signed entries without overwriting the original receipt.
+- Personal expenses create no cash. `finance_trip_balances` maintains stable
+  outgoing/incoming expected identities per traveler/trip/original currency, because
+  canonical matching requires the same currency. Signed balance = personal expenses
+  − net advances − reimbursed allocations + returned allocations. Positive balances
+  are reimbursements; negative balances are unused advances while planned/active,
+  and become expected incoming returns when completed/cancelled. Completing a trip
+  runs reconciliation. Returns use the existing `other_income` operating category;
+  this is cash management, not expense recognition or statutory accounting.
+- Advances use the same contextual ledger/matching path as direct payments, with
+  the existing advance intent and an immutable trip link. Allocation histories,
+  including partial reimbursement, release and cash corrections, drive remaining
+  balances. Refund reversal explicitly rematches restored trip cash. Cash-owning
+  trip allocations cannot be manually released and reused for another expense;
+  correct the cash through the ledger. Derived expectation amounts/classification
+  cannot be edited from generic Expected payments; those rows link back to the trip.
+- Cancelling a trip preserves existing expenses, plan commitments and settlements;
+  it blocks new entries and confirms unused advance returns. A planned item can be
+  explicitly reversed when unallocated. Personal expense corrections append a
+  reasoned negative copy; a replacement is a new expense. No financial deletion API
+  exists. Historical per-diem inputs remain on the original/correcting entries.
+- `private.finance_valuation` supplies the shared ledger/receipt valuation: exact
+  PostgreSQL arithmetic and currency-catalog rounding, dated NBU for UAH or explicit
+  manual rates. Studio receipts copy ledger FX; personal receipts and plans use the
+  same resolver/rule. Plans carry an explicit estimate valuation date. Original
+  currencies are never overwritten. Report totals and detail values use decimal text
+  and complete paginated reads, not JavaScript floating-point valuation.
+- Per diem is an assisted user-entered daily rate × inclusive days for one traveler.
+  The database verifies multiplication and currency precision. There are no statutory
+  rates. Receipt uploads are not introduced: the existing avatar upload path is not
+  a private Finance document store.
+- New tables are SELECT-only behind strict Finance-admin RLS. Guarded RPCs use the
+  existing studio lock and immutable request audit; tenant-safe foreign keys protect
+  all Project, traveler, expectation and movement references. Normal Team readers
+  gain no Finance access. Browser forms retain request UUIDs across errors, and
+  successful request recovery occurs before another FX lookup.
+
+Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
+`src/app/(app)/finance/trips/`, `src/components/finance/trips-workspace.tsx`,
+`supabase/tests/finance_trips_rls.test.sql`, `tests/e2e/finance-trips.spec.ts`.
+
 ## Canonical sources
 
 - `src/app/(app)/finance/`, `src/components/finance/finance-workspace.tsx`

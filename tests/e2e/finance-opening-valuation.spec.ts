@@ -71,7 +71,7 @@ test("legacy opening valuation: missing NBU, explicit manual completion, frozen 
   sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select public.record_finance_movement('${studio}',gen_random_uuid(),jsonb_build_object('kind','incoming','date',(now() at time zone 'Europe/Kyiv')::date,'amount','10','accountId','${dollars}','categoryId','${category}','fx',jsonb_build_object('rate','41','source','manual','effectiveDate',(now() at time zone 'Europe/Kyiv')::date)));`);
   await page.goto("/finance?fx_USD=50"); await page.getByText(t.overview.chartData, { exact: true }).click();
   await expect(page.getByRole("table", { name: t.overview.cashChart })).toContainText("197,660.00");
-  await expect(page.getByRole("button", { name: new RegExp(`^${t.overview.netFlow}`) })).toContainText("410.00");
+  await expect(page.getByRole("link", { name: new RegExp(`^${t.overview.netFlow}`) })).toContainText("410.00");
   await page.goto("/finance/accounts");
   await page.setViewportSize({ width: 375, height: 900 }); await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]); await page.reload();

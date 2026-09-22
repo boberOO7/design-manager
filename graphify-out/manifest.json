@@ -910,8 +910,8 @@
     "semantic_hash": "e313916f1ad1d6e68d12f367e7cebe3b"
   },
   "src/types/database.types.ts": {
-    "mtime": 1790018013.4672024,
-    "ast_hash": "045af1df30fac741d6e37d91ed6b5461",
+    "mtime": 1790071051.9183612,
+    "ast_hash": "e106493aeea85a7285026bf8ad814e53",
     "semantic_hash": ""
   },
   "src/types/index.ts": {
@@ -4080,9 +4080,9 @@
     "semantic_hash": "9906c3c2c4178f990021f020ff25f194"
   },
   "docs/architecture/overview.md": {
-    "mtime": 1789647156.4683454,
-    "ast_hash": "5750b59a6608d43c76b82de26a6e32ff",
-    "semantic_hash": "5750b59a6608d43c76b82de26a6e32ff"
+    "mtime": 1790070390.9875295,
+    "ast_hash": "",
+    "semantic_hash": "6b9f3abe32c9fc26eb26b0f35d4c5ad3"
   },
   "docs/architecture/permissions.md": {
     "mtime": 1789665839.5112493,
@@ -5305,8 +5305,8 @@
     "semantic_hash": "56e1ae1be1e92310ddb22062d4dc2837"
   },
   "src/data/queries/finance.ts": {
-    "mtime": 1790016999.1883686,
-    "ast_hash": "9a68635f384aecfef55ae4e9d57dfe55",
+    "mtime": 1790070595.4861917,
+    "ast_hash": "800e5b15bc4a32ab60d71a63a39a0500",
     "semantic_hash": ""
   },
   "src/lib/finance-foundation-migration.test.ts": {
@@ -5340,9 +5340,9 @@
     "semantic_hash": "8c33d4121427e7b137d54e89504b69c7"
   },
   "docs/architecture/finance.md": {
-    "mtime": 1790017864.7075486,
-    "ast_hash": "664629852d29638975748dd38d5153dd",
-    "semantic_hash": ""
+    "mtime": 1790070739.4201071,
+    "ast_hash": "",
+    "semantic_hash": "883632820251614903b155d67a22476a"
   },
   "src/components/finance/currency-select.test.ts": {
     "mtime": 1789596434.4473414,
@@ -5370,14 +5370,14 @@
     "semantic_hash": "4c41ada89a0d1bf863830e43225398f5"
   },
   "src/components/finance/finance-navigation.tsx": {
-    "mtime": 1789949091.4837399,
-    "ast_hash": "7e8077cffbe066114c967babbf2cf042",
-    "semantic_hash": "7e8077cffbe066114c967babbf2cf042"
+    "mtime": 1790070194.8798769,
+    "ast_hash": "0c627c03a67fe29adaa07b4fe54e656b",
+    "semantic_hash": ""
   },
   "src/components/finance/movements-workspace.tsx": {
-    "mtime": 1789948130.0296178,
-    "ast_hash": "93156e495757eab705a6412739d53569",
-    "semantic_hash": "93156e495757eab705a6412739d53569"
+    "mtime": 1790069449.5102053,
+    "ast_hash": "5d1bf4bccf8d4894c51293e017fa1fac",
+    "semantic_hash": ""
   },
   "src/lib/finance-fx.test.ts": {
     "mtime": 1789598092.3348644,
@@ -5445,8 +5445,8 @@
     "semantic_hash": ""
   },
   "src/components/finance/expected-workspace.tsx": {
-    "mtime": 1790030209.2481186,
-    "ast_hash": "b50b9cab81cb9377ae975d80cca2f0b5",
+    "mtime": 1790070595.4861917,
+    "ast_hash": "35f75110443ddc79216b5d90f512f67f",
     "semantic_hash": ""
   },
   "src/components/finance/finance-action-form.tsx": {
@@ -5485,8 +5485,8 @@
     "semantic_hash": ""
   },
   "src/components/finance/project-finance-section.tsx": {
-    "mtime": 1790030209.06817,
-    "ast_hash": "ca4173e2abb99b90c2b658f4e58da60c",
+    "mtime": 1790069593.9554949,
+    "ast_hash": "3e562b4b7e544821c3ef81102a8e7f57",
     "semantic_hash": ""
   },
   "src/components/finance/project-finance-workspace.tsx": {
@@ -5700,8 +5700,8 @@
     "semantic_hash": ""
   },
   "tests/e2e/finance-opening-valuation.spec.ts": {
-    "mtime": 1789925481.1304295,
-    "ast_hash": "1a0a4693c798f3171815424a1f9bc492",
+    "mtime": 1790071043.8900075,
+    "ast_hash": "c767c7681cd94a23fdf5814d5e846c50",
     "semantic_hash": ""
   },
   "supabase/migrations/20260920131009_finance_payroll_hardening.sql": {
@@ -5795,9 +5795,9 @@
     "semantic_hash": "8e1f6c0b606f291dcc6c65eef36459da"
   },
   "tests/e2e/finance-payroll-setup.spec.ts": {
-    "mtime": 1789942232.571126,
-    "ast_hash": "97e77c1d1d1451cd5558838b14f94bdd",
-    "semantic_hash": "97e77c1d1d1451cd5558838b14f94bdd"
+    "mtime": 1790071043.8900075,
+    "ast_hash": "ba2512b0a383b4a9348d5d9958480168",
+    "semantic_hash": ""
   },
   "src/components/ui/animated-form-content.tsx": {
     "mtime": 1790020029.301791,
@@ -5858,5 +5858,85 @@
     "mtime": 1790031676.5165572,
     "ast_hash": "3435102c30bd093326775b50ac412b48",
     "semantic_hash": ""
+  },
+  "src/app/(app)/finance/trips/[tripId]/page.tsx": {
+    "mtime": 1790069544.4785187,
+    "ast_hash": "cd3cac5523c8e237c79ad421e84478a1",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/finance/trips/actions.test.ts": {
+    "mtime": 1790069769.2944427,
+    "ast_hash": "807c056245a2e5bdc4d2c6390401a7b9",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/finance/trips/actions.ts": {
+    "mtime": 1790069126.0755758,
+    "ast_hash": "ccdd6b7e407b71948490e45f74764a77",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/finance/trips/page.tsx": {
+    "mtime": 1790069544.4785187,
+    "ast_hash": "bc20a99b6ea9715d9699d480e0f01d77",
+    "semantic_hash": ""
+  },
+  "src/components/finance/finance-fx-fields.tsx": {
+    "mtime": 1790069449.5062046,
+    "ast_hash": "a81c0199f4b61a244259d59754e22286",
+    "semantic_hash": ""
+  },
+  "src/components/finance/project-trips-section.tsx": {
+    "mtime": 1790069593.9434948,
+    "ast_hash": "58321ab74c037fd4be55afad31cffe54",
+    "semantic_hash": ""
+  },
+  "src/components/finance/trips-workspace.tsx": {
+    "mtime": 1790071043.8860073,
+    "ast_hash": "5ec09972c658bfdef9bd5f3ceac26de7",
+    "semantic_hash": ""
+  },
+  "src/data/queries/finance-trips.ts": {
+    "mtime": 1790069769.2904427,
+    "ast_hash": "9946849ce7fdca88ec9fbe7ccd8f51c4",
+    "semantic_hash": ""
+  },
+  "src/lib/finance-trips.test.ts": {
+    "mtime": 1790069769.2944427,
+    "ast_hash": "b28f9f2866941a0cb259915d9a3c9296",
+    "semantic_hash": ""
+  },
+  "src/lib/finance-trips.ts": {
+    "mtime": 1790069449.5102053,
+    "ast_hash": "945f62e379dc1453c6c262840127fe53",
+    "semantic_hash": ""
+  },
+  "tests/e2e/finance-trips.spec.ts": {
+    "mtime": 1790070320.001672,
+    "ast_hash": "3bd6e5b44435ac9e9649fe288e9f3269",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260922091623_finance_business_trips.sql": {
+    "mtime": 1790068857.1964242,
+    "ast_hash": "",
+    "semantic_hash": "32ae4296fcb697d464b6fa34cc3f14f1"
+  },
+  "supabase/migrations/20260922092614_finance_trip_reconciliation_guards.sql": {
+    "mtime": 1790069174.4201937,
+    "ast_hash": "",
+    "semantic_hash": "289ada5c717ff623d5c041eda81f082b"
+  },
+  "supabase/migrations/20260922093851_finance_trip_return_timing.sql": {
+    "mtime": 1790069963.116995,
+    "ast_hash": "",
+    "semantic_hash": "e885550ae6413d46ffcd76ef507dbbb5"
+  },
+  "supabase/migrations/20260922094255_finance_trip_plan_payment_context.sql": {
+    "mtime": 1790070194.8798769,
+    "ast_hash": "",
+    "semantic_hash": "1be59dffe4eb6d366dd658cfb064d559"
+  },
+  "supabase/migrations/20260922095122_finance_trip_existing_category.sql": {
+    "mtime": 1790070683.011189,
+    "ast_hash": "",
+    "semantic_hash": "7fd49181bd971e7314a607a5be23a104"
   }
 }

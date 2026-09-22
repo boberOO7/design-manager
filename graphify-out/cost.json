@@ -23,6 +23,15 @@
       "input_tokens": 0,
       "output_tokens": 0,
       "files": 1
+    },
+    {
+      "date": "2026-09-22T10:03:35.869070+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 26,
+      "scope": "Business Trips incremental refresh",
+      "token_usage_measured": false,
+      "note": "Host semantic extraction usage unavailable; zero fields are unmeasured placeholders, not zero consumption."
     }
   ],
   "total_input_tokens": 0,

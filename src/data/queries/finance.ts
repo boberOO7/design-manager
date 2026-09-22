@@ -81,7 +81,14 @@ export async function getFinanceExpectedReturnHref(id:string) {
   const client=await createClient();
   const { data,error }=await client.from("finance_project_items").select("project_id,stream").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
   if(error) throw new Error("Unable to load payment context.",{ cause:error });
-  return data?`/projects/${data.project_id}?view=finance&stream=${data.stream}`:`/finance/expected?item=${id}`;
+  if (data) return `/projects/${data.project_id}?view=finance&stream=${data.stream}`;
+  const trip = await client.from("finance_trip_balances").select("trip_id").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
+  if (trip.error) throw new Error("Unable to load trip payment context.",{cause:trip.error});
+  if (trip.data) return `/finance/trips/${trip.data.trip_id}`;
+  const entry = await client.from("finance_trip_entries").select("trip_id").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
+  if (entry.error) throw new Error("Unable to load trip payment context.",{cause:entry.error});
+  if (entry.data) return `/finance/trips/${entry.data.trip_id}`;
+  return `/finance/expected?item=${id}`;
 }
 
 export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string) {
@@ -118,7 +125,10 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const obligationIds=[...new Set(obligations?.data?.map((link)=>link.obligation_id)??[])];
   const payrollCosts=obligationIds.length ? await client.from("finance_payroll_unknown_costs").select("*").eq("studio_id",admin.studio_id).in("obligation_id",obligationIds) : null;
   if(payrollCosts?.error) throw new Error("Unable to load payroll cost completion.",{ cause:payrollCosts.error });
-  return { payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
+  const tripBalances = ids.length ? await client.from("finance_trip_balances").select("trip_id,expected_item_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  const tripEntries = ids.length ? await client.from("finance_trip_entries").select("trip_id,expected_item_id,movement_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  if (tripBalances?.error || tripEntries?.error) throw new Error("Unable to load trip context.",{cause:tripBalances?.error ?? tripEntries?.error});
+  return { tripLinks:[...(tripBalances?.data??[]).map(v=>({...v,cash:false})),...(tripEntries?.data??[]).map(v=>({...v,cash:Boolean(v.movement_id)}))],payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 
