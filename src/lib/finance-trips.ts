@@ -4,6 +4,12 @@ import { projectMoneyText, projectMoneyUnits } from "./finance-project-plan";
 
 export const tripExpenseTypes = ["travel", "accommodation", "meals", "transport", "visa", "other"] as const;
 export const tripStatuses = ["planned", "active", "completed", "cancelled"] as const;
+export function deriveTripStatus(start: string, end: string, today: string, calendarState?: string|null): typeof tripStatuses[number] {
+  if (calendarState && calendarState !== "active") return "cancelled";
+  if (today < start) return "planned";
+  if (today > end) return "completed";
+  return "active";
+}
 const optionalId = z.union([z.uuid(), z.literal("")]).default("");
 export const tripInputSchema = z.object({
   requestId: z.uuid(), id: optionalId, version: z.coerce.number().int().min(0).default(0),

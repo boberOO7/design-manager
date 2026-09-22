@@ -50,6 +50,33 @@
       "scope": "Business Trips inline workspace incremental refresh",
       "token_usage_measured": false,
       "note": "Host semantic extraction usage unavailable; zero fields are unmeasured placeholders, not zero consumption."
+    },
+    {
+      "date": "2026-09-22T14:07:03.228398+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 3,
+      "scope": "Business Trips detail UX polish incremental refresh",
+      "token_usage_measured": false,
+      "note": "AST extraction and clustering used no LLM tokens."
+    },
+    {
+      "date": "2026-09-22T15:10:51.673382+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 5,
+      "scope": "Business Trips derived status and detail UX polish incremental refresh",
+      "token_usage_measured": false,
+      "note": "AST extraction and clustering used no LLM tokens."
+    },
+    {
+      "date": "2026-09-22T15:56:26.228582+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 4,
+      "scope": "Business Trips buttonless inline autosave polish incremental refresh",
+      "token_usage_measured": false,
+      "note": "AST extraction and clustering used no LLM tokens."
     }
   ],
   "total_input_tokens": 0,

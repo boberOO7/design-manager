@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tripDays, tripEntrySchema, tripInputSchema, tripPerDiem, sumTripMoney, tripPlanSummary } from "./finance-trips";
+import { deriveTripStatus, tripDays, tripEntrySchema, tripInputSchema, tripPerDiem, sumTripMoney, tripPlanSummary } from "./finance-trips";
 const id = "79000000-0000-4000-8000-000000000001";
 const expense = { requestId: id, tripId: id, kind: "expense", expenseType: "travel", amount: "100.12", currency: "UAH", date: "2026-09-12", employeeId: id };
 describe("business trips", () => {
@@ -24,6 +24,12 @@ describe("business trips", () => {
     expect(tripPerDiem("0.1234", 3, 4)).toBe("0.3702");
     expect(() => tripPerDiem("1", 0, 2)).toThrow();
     expect(() => tripPerDiem("1.001", 4, 2)).toThrow();
+  });
+  it("derives trip status from source state and inclusive dates",()=>{
+    expect(deriveTripStatus("2026-10-24","2026-10-26","2026-10-23")).toBe("planned");
+    expect(deriveTripStatus("2026-10-24","2026-10-26","2026-10-24")).toBe("active");
+    expect(deriveTripStatus("2026-10-24","2026-10-26","2026-10-27")).toBe("completed");
+    expect(deriveTripStatus("2026-10-24","2026-10-26","2026-10-24","cancelled")).toBe("cancelled");
   });
   it("retains exact large reporting summaries and negative corrections", () => {
     expect(sumTripMoney(["9999999999999999.01", "0.02", "-0.01"], 2)).toBe("9999999999999999.02");

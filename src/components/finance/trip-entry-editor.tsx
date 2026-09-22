@@ -1,13 +1,14 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 import { saveFinanceTrip } from "@/app/(app)/finance/trips/actions";
 import { getProjectReferenceRate } from "@/app/(app)/finance/project-actions";
 import type { getFinanceData } from "@/data/queries/finance";
 import type { FinanceTripData } from "@/data/queries/finance-trips";
-import { tripDays, tripPerDiem } from "@/lib/finance-trips";
+import { tripDays, tripEntrySchema, tripPerDiem } from "@/lib/finance-trips";
 import { projectReferenceValue } from "@/lib/finance-project-plan";
+import type { FinanceActionState } from "@/lib/finance";
 import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -21,13 +22,34 @@ type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 type Entry = FinanceTripData["entries"][number];
 const quiet = "text-xs text-[var(--ui-text-muted)]";
 
-export function TripEntryEditor({kind,expenseType,data,foundation,today,entry,onSaved,onCancel,onPending}: {
+export type TripEntryEditorHandle={commit:()=>Promise<boolean>};
+function snapshot(form:HTMLFormElement){return JSON.stringify([...new FormData(form)].map(([key,value])=>[key,String(value)]));}
+function isEditorInteraction(root:HTMLElement,event:Event){
+  const path=event.composedPath();
+  if(path.some(node=>isEditorTarget(root,node)))return true;
+  return isEditorTarget(root,event.target);
+}
+function isEditorTarget(root:HTMLElement,target:EventTarget|null){
+  if(!(target instanceof Node))return false;
+  if(root.contains(target))return true;
+  const controlled=new Set([...root.querySelectorAll<HTMLElement>("[aria-controls]")].flatMap(node=>(node.getAttribute("aria-controls")??"").split(/\s+/).filter(Boolean)));
+  if(target instanceof HTMLElement&&controlled.has(target.id))return true;
+  return [...controlled].some(id=>{
+    const content=document.getElementById(id);
+    return Boolean(content&&(content.contains(target)||content.parentElement?.contains(target)));
+  });
+}
+
+export const TripEntryEditor=forwardRef<TripEntryEditorHandle,{
   kind:"plan"|"expense"|"advance"; expenseType:string; data:FinanceTripData; foundation:Foundation; today:string; entry?:Entry;
-  onSaved:()=>void; onCancel:()=>void; onPending?:(pending:boolean)=>void;
-}) {
+  onSaved:()=>void; onCancel:()=>void; onLeave?:()=>void; onPending?:(pending:boolean)=>void;
+}>(function TripEntryEditor({kind,expenseType,data,foundation,today,entry,onSaved,onCancel,onLeave,onPending},ref) {
   const t=useTranslations("Finance.trips"),f=useTranslations("Finance"),locale=useLocale();
   const root=useRef<HTMLDivElement>(null);
+  const form=useRef<HTMLFormElement>(null),initial=useRef<string|null>(null);
+  const submission=useRef<{promise:Promise<boolean>;resolve:(saved:boolean)=>void}|null>(null);
   const [pending,setPending]=useState(false);
+  const [feedback,setFeedback]=useState<{state:"idle"|"saving"|"saved"|"error";message?:string;retry?:boolean}>({state:"idle"});
   const base=foundation.settings?.base_currency ?? "UAH";
   const plans=data.entries.filter(e=>e.kind==="plan" && e.expense_type===expenseType && !e.reverses_id && !data.entries.some(r=>r.reverses_id===e.id || r.plan_id===e.id));
   const contextual=plans.length===1 ? plans[0] : undefined;
@@ -55,7 +77,38 @@ export function TripEntryEditor({kind,expenseType,data,foundation,today,entry,on
   let calculated="";
   try { if(perDiem) calculated=tripPerDiem(rate,Number(days),digits,covered.length); } catch { /* Incomplete drafts remain editable. */ }
   const value=matched ? movement?.original_amount ?? "" : perDiem ? calculated : amount;
-  useEffect(()=>{const frame=requestAnimationFrame(()=>root.current?.querySelector<HTMLInputElement>("[data-entry-focus]")?.focus());return ()=>cancelAnimationFrame(frame);},[]);
+  const autosave=kind!=="advance";
+  const blocked=perDiem&&!calculated||matched&&!movementId||kind==="expense"&&!entry&&choices.length>1&&chosenPlan===null;
+  async function commit(){
+    const current=form.current;
+    if(!autosave||!current)return true;
+    if(submission.current)return submission.current.promise;
+    if(snapshot(current)===initial.current)return true;
+    const draft=new FormData(current),raw=Object.fromEntries(draft);
+    const valid=current.checkValidity()&&!blocked&&tripEntrySchema.safeParse({...raw,coveredTravelerIds:draft.getAll("coveredTravelerIds")}).success;
+    if(!valid){setFeedback({state:"error",message:t("errors.invalid")});current.reportValidity();return false;}
+    setFeedback({state:"saving"});
+    let resolve:(saved:boolean)=>void=()=>undefined;
+    const promise=new Promise<boolean>(done=>{resolve=done;});
+    submission.current={promise,resolve};
+    current.requestSubmit();
+    return promise;
+  }
+  function finish(result:FinanceActionState){
+    const active=submission.current;
+    if(result.status==="success")setFeedback({state:"saved"});
+    else setFeedback({state:"error",message:result.message??t("errors.save"),retry:true});
+    submission.current=null;
+    active?.resolve(result.status==="success");
+  }
+  useImperativeHandle(ref,()=>({commit}));
+  useEffect(()=>{initial.current=form.current?snapshot(form.current):null;const frame=requestAnimationFrame(()=>root.current?.querySelector<HTMLInputElement>("[data-entry-focus]")?.focus());return ()=>cancelAnimationFrame(frame);},[]);
+  useEffect(()=>{
+    if(!autosave)return;
+    const leave=(event:MouseEvent)=>{const node=root.current;if(!node||isEditorInteraction(node,event)||(event.target instanceof Element&&event.target.closest("[data-trip-editor-trigger]")))return;void commit().then(saved=>{if(saved)onLeave?.();});};
+    document.addEventListener("click",leave);
+    return()=>document.removeEventListener("click",leave);
+  });
   useEffect(()=>{
     if(kind!=="plan" || code===base || data.estimates.fx.some(v=>v.currency===code)) return;
     let cancelled=false;
@@ -66,11 +119,11 @@ export function TripEntryEditor({kind,expenseType,data,foundation,today,entry,on
   let estimate:string|null=null;
   try { if(fx) estimate=projectReferenceValue(value,fx,digits,data.estimates.digits); } catch { /* Incomplete drafts have no estimate. */ }
   const inheritedFx=entry && entry.currency===code && entry.financial_date===date;
-  return <div ref={root} onKeyDown={e=>{if(e.key==="Escape" && !e.defaultPrevented && !pending){e.preventDefault();e.stopPropagation();onCancel();}}} className="bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5">
-    <FinanceActionForm action={saveFinanceTrip} onSaved={onSaved} onPending={v=>{setPending(v);onPending?.(v);}} onCancel={onCancel} cancelLabel={f("close")} label={entry ? t("update") : f("planning.save")} disabled={perDiem && !calculated || matched && !movementId || kind==="expense" && !entry && choices.length>1 && chosenPlan===null} fieldsetClassName="grid min-w-0 grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" actionsClassName="flex justify-end gap-2 lg:col-start-2 lg:row-start-2">
+  return <div ref={root} onInput={()=>{if(feedback.state==="error")setFeedback({state:"idle"});}} onChange={()=>{if(feedback.state==="error")setFeedback({state:"idle"});}} onKeyDown={e=>{if(e.key==="Escape"&&!e.defaultPrevented&&!pending){e.preventDefault();e.stopPropagation();onCancel();}else if(autosave&&e.key==="Enter"&&!e.defaultPrevented&&e.target instanceof HTMLInputElement){e.preventDefault();void commit().then(saved=>{if(saved)onLeave?.();});}}} className="bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5">
+    <FinanceActionForm formRef={form} action={saveFinanceTrip} onSaved={onSaved} onResult={autosave?finish:undefined} onPending={v=>{setPending(v);if(autosave&&v)setFeedback({state:"saving"});onPending?.(v);}} onCancel={onCancel} cancelLabel={f("close")} label={entry ? t("update") : f("planning.save")} disabled={blocked} hideActions={autosave} showMessage={!autosave} fieldsetClassName="grid min-w-0 grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" actionsClassName="flex justify-end gap-2 lg:col-start-2 lg:row-start-2">
       <input type="hidden" name="intent" value="entry"/><input type="hidden" name="tripId" value={data.trip.id ?? ""}/><input type="hidden" name="entryId" value={entry?.id ?? ""}/><input type="hidden" name="kind" value={kind}/><input type="hidden" name="expenseType" value={expenseType}/>
       <input type="hidden" name="employeeId" value={kind==="plan" || payer==="studio" ? "" : payer}/><input type="hidden" name="planId" value={kind==="expense" ? planId : ""}/>
-      <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-2"><p className="text-sm font-medium">{t(`types.${expenseType}`)} <span className="font-normal text-[var(--ui-text-muted)]">· {t(kind==="plan" ? "plan" : kind==="advance" ? "issueAdvance" : "actual")}</span></p>{expenseType==="meals" && !matched ? <Button type="button" size="sm" variant={perDiem ? "outline":"ghost"} aria-pressed={perDiem} onClick={()=>setPerDiem(!perDiem)}>{t("perDiem")}</Button>:null}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-2"><p className="text-sm font-medium">{t(`types.${expenseType}`)} <span className="font-normal text-[var(--ui-text-muted)]">· {t(kind==="plan" ? "plan" : kind==="advance" ? "issueAdvance" : "actual")}</span></p><div className="flex items-center gap-2">{autosave?<span role="status" aria-live="polite" className="min-w-16 text-right text-xs text-[var(--ui-text-muted)]">{feedback.state==="saving"?t("saving"):feedback.state==="saved"?t("saved"):""}</span>:null}{expenseType==="meals" && !matched ? <Button type="button" size="sm" variant={perDiem ? "outline":"ghost"} aria-pressed={perDiem} onClick={()=>setPerDiem(!perDiem)}>{t("perDiem")}</Button>:null}</div></div>
       <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {perDiem ? <FormField label={t("dailyRate")}><Input data-entry-focus name="dailyRate" inputMode="decimal" value={rate} onChange={e=>setRate(e.target.value)} required/></FormField> : <FormField label={f("movements.amount")}><Input data-entry-focus name="amount" inputMode="decimal" value={value} onChange={e=>setAmount(e.target.value)} readOnly={matched} required/></FormField>}
         {cash ? <input type="hidden" name="currency" value={code}/> : <FormField label={t("currency")}><FinanceCurrencySelect name="currency" aria-label={t("currency")} currencies={foundation.currencies} reportingCurrency={base} value={currency} onValueChange={setCurrency}/></FormField>}
@@ -93,7 +146,8 @@ export function TripEntryEditor({kind,expenseType,data,foundation,today,entry,on
         <FormField label={t("note")}><Textarea name="note" defaultValue={entry?.note ?? ""} rows={1} maxLength={2000}/></FormField>
       </div></AnimatedDisclosure>
       {entry && kind==="expense" ? <div className="space-y-2"><FormField label={t("reason")}><Input name="reason" required maxLength={2000}/></FormField>{entry.movement_id ? <label className="flex min-h-11 items-center gap-2 text-sm"><input className="size-4 accent-[var(--ui-action-primary)]" type="checkbox" name="confirmed" required/>{t("confirmPaymentUpdate")}</label>:null}</div>:null}
+      {autosave&&feedback.state==="error"?<div className="flex items-center justify-between gap-3 lg:col-span-2"><p role="alert" className="text-sm text-[var(--ui-danger-text)]">{feedback.message}</p>{feedback.retry?<Button type="button" size="sm" variant="ghost" onClick={()=>void commit()}>{t("retry")}</Button>:null}</div>:null}
       </div>
     </FinanceActionForm>
   </div>;
-}
+});
