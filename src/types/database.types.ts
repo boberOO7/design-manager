@@ -5857,6 +5857,16 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      edit_finance_trip_entry: {
+        Args: {
+          p_entry_id: string
+          p_input: Json
+          p_request_id: string
+          p_studio_id: string
+          p_trip_id: string
+        }
+        Returns: string
+      }
       ensure_finance_schedule_occurrences: {
         Args: { p_horizon?: string; p_studio_id: string }
         Returns: number

@@ -13,6 +13,7 @@ export const tripInputSchema = z.object({
 }).refine(v => v.endsOn >= v.startsOn);
 export const tripEntrySchema = z.object({
   requestId: z.uuid(), tripId: z.uuid(), kind: z.enum(["plan", "expense", "advance"]),
+  entryId: optionalId, reason: z.string().trim().max(2000).default(""), confirmed: z.coerce.boolean().default(false),
   expenseType: z.enum(tripExpenseTypes), label: z.string().trim().max(160).default(""),
   amount: planningAmount, currency: z.string().regex(/^[A-Z]{3}$/), date: z.iso.date(),
   employeeId: optionalId, accountId: optionalId, movementId: optionalId, planId: optionalId,
@@ -22,6 +23,7 @@ export const tripEntrySchema = z.object({
   dailyRate: z.union([planningAmount, z.literal("")]).default(""), dayCount: z.union([z.string().regex(/^\d{1,3}$/), z.literal("")]).default(""),
 }).superRefine((v, c) => {
   const cash = v.kind === "advance" || (v.kind === "expense" && !v.employeeId);
+  if (v.entryId && (v.kind === "advance" || v.kind === "expense" && !v.reason)) c.addIssue({ code: "custom", message: "edit" });
   if (cash && (!v.accountId && !v.movementId || v.accountId && v.movementId)) c.addIssue({ code: "custom", message: "payment" });
   if (!cash && (v.accountId || v.movementId)) c.addIssue({ code: "custom", message: "payment" });
   if (v.kind === "advance" && !v.employeeId || v.kind === "plan" && v.employeeId) c.addIssue({ code: "custom", message: "traveler" });

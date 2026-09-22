@@ -74,10 +74,22 @@ export async function getFinanceTrip(id: string, manualFx: ForecastFx = []) {
   if (paidPlans?.error) throw new Error("Unable to load planned payments.",{cause:paidPlans.error});
   const candidates = [...(payments.data ?? []),...(paidPlans?.data ?? [])].filter((v,i,all)=>all.findIndex(p=>p.id===v.id)===i).map(v=>({...v,planId:planned.find(p=>allocations?.data?.some(a=>a.expected_item_id===p.expected_item_id && a.movement_id===v.id))?.id ?? null}));
   const estimates = await estimateTripPlans(entries,trip.data.reporting_currency ?? "UAH",manualFx);
+  const movementIds = entries.flatMap(e=>e.movement_id ? [e.movement_id] : []);
+  const expectedIds = planned.flatMap(e=>e.expected_item_id ? [e.expected_item_id] : []);
+  const entryPayments: {movement_id:string;account_id:string}[] = [];
+  const planDates: {id:string;expected_payment_date:string|null}[] = [];
+  for (let offset=0;offset<Math.max(movementIds.length,expectedIds.length);offset+=500) {
+    const [cash,dates] = await Promise.all([
+      client.from("finance_movement_entries").select("movement_id,account_id").eq("studio_id",admin.studio_id).eq("entry_role","primary").in("movement_id",movementIds.slice(offset,offset+500)),
+      client.from("finance_expected_items").select("id,expected_payment_date").eq("studio_id",admin.studio_id).in("id",expectedIds.slice(offset,offset+500)),
+    ]);
+    if (cash.error || dates.error) throw new Error("Unable to load trip edit context.",{cause:cash.error ?? dates.error});
+    entryPayments.push(...cash.data);planDates.push(...dates.data);
+  }
   const coverage = await client.from("finance_trip_entry_travelers").select("entry_id,employee_id").eq("studio_id",admin.studio_id).eq("trip_id",id);
   const calendar = trip.data.calendar_event_id ? await client.from("calendar_events").select("project_id").eq("studio_id",admin.studio_id).eq("id",trip.data.calendar_event_id).maybeSingle() : null;
   if (coverage.error || calendar?.error) throw new Error("Unable to load trip context.",{cause:coverage.error ?? calendar?.error});
-  return { trip: {...trip.data,...tripPlanSummary(entries,estimates.values,estimates.digits,trip.data.actual_amount ?? "0")}, estimates, coverage:coverage.data ?? [], calendar:calendar?.data ?? null, travelers: travelers.data ?? [], entries, balances: balances.data ?? [], payments: candidates };
+  return { trip: {...trip.data,...tripPlanSummary(entries,estimates.values,estimates.digits,trip.data.actual_amount ?? "0")}, estimates, entryPayments, planDates, coverage:coverage.data ?? [], calendar:calendar?.data ?? null, travelers: travelers.data ?? [], entries, balances: balances.data ?? [], payments: candidates };
 }
 export type FinanceTripData = NonNullable<Awaited<ReturnType<typeof getFinanceTrip>>>;
 export type FinanceTripOptions = NonNullable<Awaited<ReturnType<typeof getFinanceTripOptions>>>;

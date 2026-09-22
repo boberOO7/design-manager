@@ -586,6 +586,17 @@ and generation workflow must retain these timing and historical boundaries.
 manage menu. Project Finance shows linked trips and their reporting-currency cost
 separately from contract income. Completed/archived projects remain reconcilable.
 
+Trip detail is a single expense sheet: six persistent type rows show native-currency
+Plan, Actual and Difference, with reporting equivalents secondarily. Plan amounts
+open inline editors; actuals start from their type row and expand into individual
+receipts. A single compatible unused plan is preselected; multiple candidates require
+an explicit choice. Enter submits and Escape cancels without posting. Per-diem rate,
+currency and calculation are inline; coverage/day overrides and optional cash timing
+use the shared reduced-motion-aware disclosures. Summary payer totals and actionable
+traveler balances stay beside this workflow. Calendar linkage is compact metadata
+unless its lifecycle or project attribution needs attention. Trip metadata, advances
+and deliberate plan removal retain dialogs.
+
 - `finance_trips` stores destination, dates, optional same-studio Project, status
   and versioned metadata. `finance_trip_travelers` links same-studio Team identities
   and snapshots names. Removing a traveler only deactivates their participation;
@@ -616,7 +627,7 @@ separately from contract income. Completed/archived projects remain reconcilable
   Explicit per-currency manual assumptions use the same `fx_CODE` URL inputs as
   Forecast; actuals always retain their own historical valuation. The trip list
   and detail label Plan, Actual and Variance, and absent plans show a dash with an
-  actionable planning CTA. Plan offers the existing expense types as quick rows. Only expenses contribute
+  actionable planning cells. Only expenses contribute
   Actual; advances and reimbursements never contribute a second cost. Optional
   dated planned cash creates one tentative estimated expected item. Selecting a
   related plan when recording its actual retires that expectation atomically, while
@@ -654,6 +665,16 @@ separately from contract income. Completed/archived projects remain reconcilable
   explicitly reversed when unallocated. Personal expense corrections append a
   reasoned negative copy; a replacement is a new expense. No financial deletion API
   exists. Historical per-diem inputs remain on the original/correcting entries.
+- `edit_finance_trip_entry` composes existing operations in one studio-locked,
+  idempotent transaction. Plan edits append a correction and replacement without a
+  user-entered reason; allocated/consumed plans remain protected. Personal expense
+  edits require a reason and reconcile reimbursement through the existing receipt
+  correction. Studio payment edits require confirmation and a reason, reverse the
+  original cash at its historical valuation, then record the replacement. Adjusted
+  or refunded payments keep the specialist payment workflow. A failed replacement
+  rolls back the entire edit. The original actual retains its unique plan link and
+  retired expectation; the immutable edit audit connects it to its replacement.
+  No posted row is overwritten, and changes remain available in history.
 - `private.finance_valuation` supplies the shared ledger/receipt valuation: exact
   PostgreSQL arithmetic and currency-catalog rounding, dated NBU for UAH or explicit
   manual rates. Studio receipts copy ledger FX; personal receipts use the

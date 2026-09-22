@@ -32,95 +32,80 @@ test.afterAll(async () => {
   for (const actor of actors) if (actor.id) await client.auth.admin.deleteUser(actor.id);
 });
 
-test("trip planning, personal costs, advance, return and matched cash render in EN/UK", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
-  const t = en.Finance.trips, f = en.Finance;
-  await page.goto("/login"); await page.locator('input[type="email"]').fill(actors[0].email); await page.locator('input[type="password"]').fill(actors[0].password); await page.locator('button[type="submit"]').click(); await expect(page).toHaveURL(/\/dashboard/);
-  await page.goto("/finance"); await page.getByRole("button", { name: f.manageFinance }).click(); await page.getByRole("menuitem", { name: t.title }).click();
-  await page.getByRole("button", { name: t.addTrip }).click(); const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(t.name).fill("Warsaw · site visit"); await dialog.getByLabel(t.destination).fill("Warsaw");
-  await dialog.getByRole("checkbox", { name: "Trip admin" }).check(); await dialog.getByRole("checkbox", { name: "Trip employee" }).check();
-  await dialog.getByRole("combobox", { name: t.project }).click(); await page.getByRole("option", { name: "Dental Warsaw", exact: true }).click();
-  await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0); await expect(page).toHaveURL(/\/finance\/trips\/[\w-]+$/);
-  const href = page.url(), tripId = z.uuid().parse(new URL(href).pathname.split("/").at(-1));
-  await page.getByRole("button", { name: f.edit, exact: true }).click(); await dialog.getByLabel(t.name).fill("Warsaw · inspection"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(page.getByRole("heading", { name: "Warsaw · inspection" })).toBeVisible();
-  await page.getByRole("button", { name: t.addPlan }).click(); await dialog.getByLabel(f.movements.amount, { exact: true }).fill("26000"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  await page.getByRole("button", { name: t.addExpense }).click(); await dialog.getByRole("combobox", { name: t.paidBy }).click(); await page.getByRole("option", { name: "Trip employee", exact: true }).click();
-  await dialog.getByLabel(f.movements.amount, { exact: true }).fill("18400"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe("0");
-  await expect(page.getByText(t.toReimburse, { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: t.issueAdvance, exact: true }).click(); await dialog.getByRole("combobox", { name: t.traveler, exact: true }).click(); await page.getByRole("option", { name: "Trip employee", exact: true }).click(); await dialog.getByLabel(f.movements.amount, { exact: true }).fill("20000"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  await page.getByRole("button", { name: f.edit, exact: true }).click(); await dialog.getByRole("combobox", { name: t.status, exact: true }).click(); await page.getByRole("option", { name: t.statuses.completed, exact: true }).click(); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  await expect(page.getByText(t.toReturn, { exact: true }).first()).toBeVisible(); expect(sql(`select recorded_balance from finance_account_balances where id='${bank}'`)).toBe("-20000");
-  await page.screenshot({ path: testInfo.outputPath("trip-desktop-en-light.png"), fullPage: true });
-  await page.getByRole("link", { name: t.recordReturn, exact: true }).click();
-  await expect(dialog).toBeVisible(); await dialog.getByRole("button", { name: f.movements.record, exact: true }).click(); await expect(page).toHaveURL(href); await expect(page.getByText(t.nothingDue)).toBeVisible();
-  // Per diem uses one traveler and the visible trip day count.
-  await page.getByRole("button", { name: t.addExpense }).click(); await dialog.getByRole("combobox", { name: t.expenseType }).click(); await page.getByRole("option", { name: t.types.meals, exact: true }).click();
-  await dialog.getByRole("combobox", { name: t.paidBy }).click(); await page.getByRole("option", { name: "Trip employee", exact: true }).click(); await dialog.getByRole("checkbox", { name: t.perDiem }).check(); await dialog.getByRole("checkbox", {name:"Trip admin",exact:true}).uncheck(); await dialog.getByLabel(t.dailyRate, { exact: true }).fill("800"); await dialog.getByLabel(t.days, { exact: true }).fill("4"); await expect(dialog.getByLabel(f.movements.amount, { exact: true })).toHaveValue("3200.00"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  const today = sql("select (now() at time zone 'Europe/Kyiv')::date");
-  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false); select record_finance_movement('${studio}','${randomUUID()}',jsonb_build_object('kind','outgoing','date','${today}','accountId','${bank}','amount','100','description','Hotel receipt','categoryId',(select id from finance_categories where studio_id='${studio}' and default_key='business_travel')));`);
-  await page.reload(); await page.getByRole("button", { name: t.addExpense }).click(); await dialog.getByRole("combobox", { name: t.payment, exact: true }).click(); await page.getByRole("option", { name: t.matchPayment, exact: true }).click(); await dialog.getByRole("combobox", { name: t.existingPayment }).click(); await page.getByRole("option", { name: /Hotel receipt/ }).click(); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
-  expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe("3");
-  await page.goto(`/projects/${project}?view=finance`); await expect(page.getByRole("heading", { name: t.title })).toBeVisible(); await expect(page.getByText(t.projectTotal, { exact: false })).toBeVisible();
-  expect(sql(`select count(*) from finance_project_items where studio_id='${studio}'`)).toBe("0");
-  await page.goto(href); await page.context().addCookies([{ name: "studioflow-locale", value: "uk", domain: "127.0.0.1", path: "/" }]); await page.reload();
-  await page.evaluate(() => { document.documentElement.classList.add("dark"); document.documentElement.setAttribute("data-theme", "dark"); });
-  await page.setViewportSize({ width: 390, height: 844 }); await expect(page.getByRole("button", { name: uk.Finance.trips.addExpense })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath("trip-mobile-uk-dark.png"), fullPage: true });
-  await page.getByRole("button", { name: uk.Finance.trips.addExpense }).click(); await expect(dialog).toBeVisible(); await page.screenshot({ path: testInfo.outputPath("expense-mobile-uk-dark.png") }); await page.keyboard.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: uk.Finance.trips.addExpense })).toBeFocused();
-  expect(sql(`select count(*) from finance_trip_entries where trip_id='${tripId}'`)).toBe("5");
-});
-
-test("Calendar trip planning, native currencies, coverage and current FX", async ({page},testInfo)=>{
-  test.setTimeout(180_000);
+test("inline trip sheet: planning, actuals, editing, reconciliation and rendered QA", async({page},testInfo)=>{
+  test.setTimeout(240_000);
   const t=en.Finance.trips,f=en.Finance;
-  sql(`insert into project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values('${project}','${actors[0].id}','designer',0,current_date),('${project}','${actors[1].id}','designer',0,current_date); update projects set city='Warsaw',country_code='PL' where id='${project}';`);
   await page.goto("/login");await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
-  const created=await page.request.post("/api/calendar/events",{data:{title:"Calendar trip",eventType:"business_trip",projectId:project,allDay:true,startsAt:"2026-10-24T00:00:00+03:00",endsAt:"2026-10-27T00:00:00+02:00",participantIds:actors.map(a=>a.id)}});
-  expect(created.status()).toBe(201);
+  sql(`insert into project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values('${project}','${actors[0].id}','designer',0,current_date),('${project}','${actors[1].id}','designer',0,current_date); update projects set city='Warsaw',country_code='PL' where id='${project}';`);
+  const created=await page.request.post("/api/calendar/events",{data:{title:"Warsaw site visit",eventType:"business_trip",projectId:project,allDay:true,startsAt:"2026-10-24T00:00:00+03:00",endsAt:"2026-10-27T00:00:00+02:00",participantIds:actors.map(a=>a.id)}});expect(created.status()).toBe(201);
   const eventId=sql(`select id from calendar_events where studio_id='${studio}' and event_type='business_trip'`);
   const tripId=sql(`select id from finance_trips where calendar_source_id='${eventId}'`);
-  expect(tripId).toMatch(/^[\w-]{36}$/);
-  await page.setViewportSize({width:2560,height:1440});
-  await page.goto(`/calendar?date=2026-10-24&event=${eventId}`);
-  await expect(page.getByRole("link",{name:en.Calendar.tripFinance})).toBeVisible();
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("calendar-trip-2k-en.png")});
-  await page.getByRole("link",{name:en.Calendar.tripFinance}).click();await expect(page).toHaveURL(new RegExp(`/finance/trips/${tripId}$`));
-  await expect(page.getByRole("button",{name:t.openPlan})).toHaveText("—");await expect(page.getByText(t.noPlan,{exact:true}).first()).toBeVisible();
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("trip-no-plan-2k-en.png"),fullPage:true});
   const href=`/finance/trips/${tripId}?fx_PLN=10&fx_USD=40`;
-  await page.goto(href);await page.setViewportSize({width:1920,height:1080});
-  await page.getByRole("button",{name:t.types.accommodation,exact:true}).click();const dialog=page.getByRole("dialog");
-  await expect(dialog.getByRole("combobox",{name:f.movements.account,exact:true})).toHaveCount(0);
-  await dialog.getByLabel(f.movements.amount,{exact:true}).fill("1200");await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"PLN",exact:true}).click();
-  await expect(dialog.getByText(/1200 PLN ≈ 12000.00 UAH/)).toBeVisible();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  await page.getByRole("button",{name:t.types.meals,exact:true}).click();await dialog.getByRole("checkbox",{name:t.perDiem,exact:true}).check();await dialog.getByLabel(t.dailyRate,{exact:true}).fill("50");
-  await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"USD",exact:true}).click();
-  await expect(dialog.getByLabel(t.days,{exact:true})).toHaveValue("3");await expect(dialog.getByLabel(f.movements.amount,{exact:true})).toHaveValue("300.00");
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("per-diem-two-travelers-en.png")});
-  await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).uncheck();await expect(dialog.getByLabel(f.movements.amount,{exact:true})).toHaveValue("150.00");
-  await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).check();await dialog.getByRole("checkbox",{name:t.includeForecast,exact:true}).check();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  expect(sql(`select count(*) from finance_trip_entries where trip_id='${tripId}' and kind='plan' and fx_rate is null`)).toBe("2");
-  await expect(page.getByRole("button",{name:t.openPlan})).toContainText("24,000.00");
-  await page.getByRole("heading",{name:/Business trip/}).scrollIntoViewIfNeeded();
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("multicurrency-plan-fullhd-en.png"),fullPage:true});
-  const planId=sql(`select id from finance_trip_entries where trip_id='${tripId}' and currency='USD'`);
-  const beforeCash=sql(`select count(*) from finance_movements where studio_id='${studio}'`);
-  await page.getByRole("button",{name:t.issueAdvance,exact:true}).click();await expect(dialog.getByRole("checkbox",{name:t.perDiem,exact:true})).toHaveCount(0);await page.keyboard.press("Escape");
-  await page.getByRole("button",{name:t.addExpense,exact:true}).click();await dialog.getByRole("combobox",{name:t.paidBy,exact:true}).click();await page.getByRole("option",{name:"Trip employee",exact:true}).click();
-  await dialog.getByLabel(f.movements.amount,{exact:true}).fill("11000");await dialog.getByRole("combobox",{name:t.replacesPlan,exact:true}).click();await page.getByRole("option",{name:/300.*USD/}).click();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-  expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe(beforeCash);
-  expect(sql(`select commitment from finance_expected_items where id=(select expected_item_id from finance_trip_entries where id='${planId}')`)).toBe("cancelled");
-  await page.goto(`/finance/trips/${tripId}?fx_PLN=11&fx_USD=41`);await expect(page.getByRole("button",{name:t.openPlan})).toContainText("25,500.00");
-  expect(sql(`select reporting_amount from finance_trip_entries where trip_id='${tripId}' and kind='expense'`)).toBe("11000.00");
-  await page.context().addCookies([{name:"studioflow-locale",value:"uk",domain:"127.0.0.1",path:"/"}]);await page.reload();await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.classList.add("dark");document.documentElement.setAttribute("data-theme","dark");});
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("calendar-plan-mobile-uk-dark.png"),fullPage:true});
-  await page.getByRole("button",{name:uk.Finance.trips.openPlan}).click();await page.getByRole("button",{name:uk.Finance.trips.types.meals,exact:true}).click();await dialog.getByRole("checkbox",{name:uk.Finance.trips.perDiem,exact:true}).check();await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).uncheck();await dialog.getByLabel(uk.Finance.trips.dailyRate,{exact:true}).fill("50");
-  await page.screenshot({animations:"disabled",path:testInfo.outputPath("per-diem-subset-mobile-uk-dark.png")});await page.keyboard.press("Escape");
-  await page.goto("/finance/trips?fx_PLN=11&fx_USD=41");await expect(page.getByText(uk.Finance.trips.variance,{exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.evaluate(()=>{document.documentElement.classList.add("dark");document.documentElement.setAttribute("data-theme","dark");});await page.screenshot({animations:"disabled",path:testInfo.outputPath("trip-list-mobile-uk-dark.png"),fullPage:true});
+  await page.goto(`/calendar?date=2026-10-24&event=${eventId}`);await page.getByRole("link",{name:en.Calendar.tripFinance}).click();await expect(page).toHaveURL(new RegExp(`/finance/trips/${tripId}$`));await page.goto(href);
+  await page.setViewportSize({width:1920,height:1080});
+  const row=(type:string)=>page.locator(`[data-expense-type="${type}"]`);
+  const form=(type:string)=>row(type).locator("form");
+  const plan=(type:keyof typeof t.types)=>row(type).getByRole("button",{name:`${t.plan} · ${t.types[type]}`,exact:true});
+  const actual=(type:keyof typeof t.types)=>row(type).getByRole("button",{name:`${t.addExpense} · ${t.types[type]}`,exact:true});
+  const save=async(type:string,update=false)=>{await form(type).getByRole("button",{name:update?t.update:f.planning.save,exact:true}).click();await expect(form(type)).toHaveCount(0);};
+  const chooseCurrency=async(type:string,code:string)=>{await form(type).getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:code,exact:true}).click();};
+  const chooseEmployee=async(type:string)=>{await form(type).getByRole("combobox",{name:t.paidBy,exact:true}).click();await page.getByRole("option",{name:"Trip employee",exact:true}).click();};
+  const manualFx=async(type:string,code="PLN")=>{await form(type).getByRole("combobox",{name:f.movements.valuation.replace("{currency}",code).replace("{base}","UAH"),exact:true}).click();await page.getByRole("option",{name:f.movements.manual,exact:true}).click();await form(type).getByLabel(f.movements.rate.replace("{currency}",code).replace("{base}","UAH"),{exact:true}).fill("10");};
+  await expect(page.getByRole("button",{name:t.openPlan})).toHaveText("—");await expect(row("other")).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath("inline-empty-fullhd-en-light.png"),fullPage:true});
+  // A: four plans, zero dialogs and no type selector. Enter confirms; Escape cancels.
+  await plan("travel").click();await expect(form("travel").getByLabel(f.movements.amount,{exact:true})).toBeFocused();await form("travel").getByLabel(f.movements.amount,{exact:true}).fill("4000");await form("travel").getByLabel(f.movements.amount,{exact:true}).press("Enter");await expect(form("travel")).toHaveCount(0);
+  await plan("accommodation").click();await form("accommodation").getByLabel(f.movements.amount,{exact:true}).fill("1200");await chooseCurrency("accommodation","PLN");await expect(form("accommodation").getByText(/1200 PLN ≈ 12000.00 UAH/)).toBeVisible();
+  await form("accommodation").getByRole("button",{name:t.moreOptions,exact:true}).click();await form("accommodation").getByRole("combobox",{name:t.expectedDate,exact:true}).click();await page.getByRole("button",{name:"Today",exact:true}).click();await save("accommodation");
+  await plan("meals").click();await form("meals").getByLabel(t.dailyRate,{exact:true}).fill("100");await chooseCurrency("meals","PLN");await expect(form("meals").getByText(/100 PLN × 3 days × 2 travelers = 600.00 PLN/)).toBeVisible();await page.screenshot({path:testInfo.outputPath("inline-per-diem-two.png"),fullPage:true});await save("meals");
+  await plan("transport").click();await form("transport").getByLabel(f.movements.amount,{exact:true}).fill("300");await chooseCurrency("transport","PLN");await save("transport");
+  await expect(page.getByRole("dialog")).toHaveCount(0);await expect(page.getByRole("combobox",{name:t.expenseType,exact:true})).toHaveCount(0);
+  expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe("0");await expect(page.getByRole("button",{name:t.openPlan})).toContainText("25,000.00");
+  await page.screenshot({path:testInfo.outputPath("inline-planned-fullhd-en-light.png"),fullPage:true});
+  const hotelPlan=sql(`select id from finance_trip_entries where trip_id='${tripId}' and expense_type='accommodation' and kind='plan'`);
+  await plan("accommodation").click();await expect(form("accommodation").getByLabel(f.movements.amount,{exact:true})).toHaveValue("1200");await form("accommodation").getByLabel(f.movements.amount,{exact:true}).fill("1250");await save("accommodation",true);await plan("accommodation").click();await form("accommodation").getByLabel(f.movements.amount,{exact:true}).fill("1200");await save("accommodation",true);
+  expect(sql(`select amount from finance_trip_entries where id='${hotelPlan}'`)).toBe("1200");
+  await plan("travel").click();await form("travel").getByLabel(f.movements.amount,{exact:true}).fill("999");await page.keyboard.press("Escape");await expect(form("travel")).toHaveCount(0);await expect(plan("travel")).toContainText("4,000.00");
+  await plan("meals").click();await form("meals").getByRole("button",{name:/Travelers & days/}).click();await form("meals").getByRole("button",{name:"Trip admin",exact:true}).click();await expect(form("meals").getByText(/100 PLN × 3 days × 1 travelers = 300.00 PLN/)).toBeVisible();await page.keyboard.press("Escape");
+  // B: studio tickets, employee hotel and taxi. Context supplies the type and plan.
+  await actual("travel").click();await form("travel").getByLabel(f.movements.amount,{exact:true}).fill("3800");await save("travel");
+  await actual("accommodation").click();await chooseEmployee("accommodation");await expect(form("accommodation").getByRole("combobox",{name:t.whichPlan,exact:true})).toHaveCount(0);await form("accommodation").getByLabel(f.movements.amount,{exact:true}).fill("1100");await manualFx("accommodation");await save("accommodation");
+  const hotelActual=sql(`select id from finance_trip_entries where trip_id='${tripId}' and expense_type='accommodation' and kind='expense'`);
+  expect(sql(`select commitment from finance_expected_items where id=(select expected_item_id from finance_trip_entries where id=(select plan_id from finance_trip_entries where id='${hotelActual}'))`)).toBe("cancelled");
+  await actual("transport").click();await chooseEmployee("transport");await form("transport").getByLabel(f.movements.amount,{exact:true}).fill("120");await manualFx("transport");await form("transport").getByRole("button",{name:t.moreOptions,exact:true}).click();await form("transport").getByLabel(t.customLabel,{exact:true}).fill("Taxi");await save("transport");
+  await expect(page.getByRole("dialog")).toHaveCount(0);expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe("1");
+  await page.screenshot({path:testInfo.outputPath("inline-plan-actual-fullhd-en-light.png"),fullPage:true});
+  // C: summary, payer totals and the actionable reimbursement are all on the sheet.
+  await expect(page.locator("#trip-settlements")).toContainText("1,220.00");await expect(page.getByText(t.employeePaid,{exact:false})).toContainText("12,200.00");
+  for(const [label,amount] of [["Uber","85"],["Train","60"]]){await actual("transport").click();await chooseEmployee("transport");await chooseCurrency("transport","PLN");await form("transport").getByLabel(f.movements.amount,{exact:true}).fill(amount);await manualFx("transport");await form("transport").getByRole("button",{name:t.moreOptions,exact:true}).click();await form("transport").getByLabel(t.customLabel,{exact:true}).fill(label);await save("transport");}
+  await row("transport").getByRole("button",{name:`${t.details} · ${t.types.transport}`,exact:true}).click();await expect(row("transport").getByText("Taxi",{exact:true})).toBeVisible();await expect(row("transport")).toContainText("265.00");
+  // Human-facing actual edit retains the immutable receipt and reconciles its debt.
+  await row("accommodation").getByRole("button",{name:`${t.details} · ${t.types.accommodation}`,exact:true}).click();await row("accommodation").getByRole("button",{name:`${f.edit} · ${t.types.accommodation} · ${t.actual}`,exact:true}).click();await form("accommodation").getByLabel(f.movements.amount,{exact:true}).fill("1080");await form("accommodation").getByLabel(t.reason,{exact:true}).fill("Receipt corrected");await save("accommodation",true);
+  expect(sql(`select amount from finance_trip_entries where id='${hotelActual}'`)).toBe("1100");await expect(page.locator("#trip-settlements")).toContainText("1,345.00");
+  await row("travel").getByRole("button",{name:`${t.details} · ${t.types.travel}`,exact:true}).click();await row("travel").getByRole("button",{name:`${f.edit} · ${t.types.travel} · ${t.actual}`,exact:true}).click();await form("travel").getByLabel(f.movements.amount,{exact:true}).fill("3700");await form("travel").getByLabel(t.reason,{exact:true}).fill("Ticket receipt corrected");await form("travel").getByRole("checkbox",{name:t.confirmPaymentUpdate,exact:true}).check();await save("travel",true);expect(sql(`select recorded_balance from finance_account_balances where id='${bank}'`)).toBe("-3700");
+  // Multiple plans require a deliberate choice; plan removal remains a confirmation.
+  await plan("visa").click();await form("visa").getByLabel(f.movements.amount,{exact:true}).fill("100");await save("visa");
+  await row("visa").getByRole("button",{name:`${t.details} · ${t.types.visa}`,exact:true}).click();await row("visa").getByRole("button",{name:t.addPlan,exact:true}).click();await form("visa").getByLabel(f.movements.amount,{exact:true}).fill("200");await save("visa");
+  await actual("visa").click();await form("visa").getByLabel(f.movements.amount,{exact:true}).fill("90");await expect(form("visa").getByRole("button",{name:f.planning.save,exact:true})).toBeDisabled();await form("visa").getByRole("combobox",{name:t.whichPlan,exact:true}).click();await page.getByRole("option",{name:/100 UAH/,exact:false}).click();await save("visa");
+  await plan("other").click();await form("other").getByLabel(f.movements.amount,{exact:true}).fill("50");await save("other");await row("other").getByRole("button",{name:`${t.details} · ${t.types.other}`,exact:true}).click();await row("other").getByRole("button",{name:t.remove,exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:t.remove,exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);await expect(plan("other")).toHaveText("—");
+  for(const locale of ["en","uk"]){await page.context().addCookies([{name:"studioflow-locale",value:locale,domain:"127.0.0.1",path:"/"}]);for(const theme of ["light","dark"]){for(const [size,width,height] of [["fullhd",1920,1080],["2k",2560,1440],["mobile",390,844]] as const){await page.setViewportSize({width,height});await page.evaluate(value=>localStorage.setItem("studioflow-theme",value),theme);await page.goto(href);await expect(page.locator("html")).toHaveAttribute("data-theme",theme);await expect(page.locator('[data-expense-type="other"]')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath(`inline-${size}-${locale}-${theme}.png`),fullPage:true});}}}
+  await page.emulateMedia({reducedMotion:"reduce"});await row("meals").locator("[data-plan-trigger]").click();await expect(form("meals").getByLabel(uk.Finance.trips.dailyRate,{exact:true})).toBeFocused();await page.screenshot({path:testInfo.outputPath("inline-per-diem-mobile-uk-dark.png"),fullPage:true});await page.keyboard.press("Escape");
+});
+
+test("manual trip, inline personal expense, advance, return and matching",async({page},testInfo)=>{
+  const t=en.Finance.trips,f=en.Finance;
+  await page.goto("/login");await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);await page.goto("/finance/trips");
+  await page.getByRole("button",{name:t.addTrip,exact:true}).click();const dialog=page.getByRole("dialog");await dialog.getByLabel(t.name,{exact:true}).fill("Manual inspection");await dialog.getByLabel(t.destination,{exact:true}).fill("Kyiv");await dialog.getByRole("checkbox",{name:"Trip employee",exact:true}).check();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page).toHaveURL(/\/finance\/trips\/[\w-]+$/);const href=page.url();
+  const row=page.locator('[data-expense-type="travel"]'),form=row.locator("form");
+  await row.getByRole("button",{name:`${t.addExpense} · ${t.types.travel}`,exact:true}).click();await form.getByRole("combobox",{name:t.paidBy,exact:true}).click();await page.getByRole("option",{name:"Trip employee",exact:true}).click();await form.getByLabel(f.movements.amount,{exact:true}).fill("18400");await form.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(form).toHaveCount(0);await expect(page.getByRole("button",{name:t.openPlan})).toHaveText("—");await page.screenshot({path:testInfo.outputPath("inline-actual-only.png"),fullPage:true});
+  await page.getByRole("button",{name:t.issueAdvance,exact:true}).click();await dialog.getByLabel(f.movements.amount,{exact:true}).fill("20000");await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);await page.getByRole("button",{name:f.edit,exact:true}).click();await dialog.getByRole("combobox",{name:t.status,exact:true}).click();await page.getByRole("option",{name:t.statuses.completed,exact:true}).click();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.locator("#trip-settlements")).toContainText("1,600.00");
+  await page.getByRole("link",{name:t.recordReturn,exact:true}).click();await expect(dialog).toBeVisible();await dialog.getByRole("button",{name:f.movements.record,exact:true}).click();await expect(page).toHaveURL(href);await expect(page.getByText(t.nothingDue,{exact:true})).toBeVisible();
+  const today=sql("select (now() at time zone 'Europe/Kyiv')::date");sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);select record_finance_movement('${studio}','${randomUUID()}',jsonb_build_object('kind','outgoing','date','${today}','accountId','${bank}','amount','100','description','Matched ticket','categoryId',(select id from finance_categories where studio_id='${studio}' and default_key='business_travel')));`);
+  await page.reload();await row.getByRole("button",{name:`${t.addExpense} · ${t.types.travel}`,exact:true}).click();await form.getByRole("button",{name:t.moreOptions,exact:true}).click();await form.getByRole("combobox",{name:t.payment,exact:true}).click();await page.getByRole("option",{name:t.matchPayment,exact:true}).click();await form.getByRole("combobox",{name:t.existingPayment,exact:true}).click();await page.getByRole("option",{name:/Matched ticket/}).click();await form.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(form).toHaveCount(0);
+  await page.getByRole("button",{name:t.openPlan}).click();await expect(row.locator("[data-plan-trigger]")).toBeFocused();
+  const meals=page.locator('[data-expense-type="meals"]'),mealForm=meals.locator("form");const cashBefore=sql(`select recorded_balance from finance_account_balances where id='${bank}'`);
+  await meals.getByRole("button",{name:`${t.addExpense} · ${t.types.meals}`,exact:true}).click();await mealForm.getByRole("combobox",{name:t.paidBy,exact:true}).click();await page.getByRole("option",{name:"Trip employee",exact:true}).click();await mealForm.getByRole("button",{name:t.perDiem,exact:true}).click();await mealForm.getByLabel(t.dailyRate,{exact:true}).fill("800");await expect(mealForm.getByText(/800 UAH × 1 days × 1 travelers = 800.00 UAH/)).toBeVisible();await page.screenshot({path:testInfo.outputPath("inline-actual-per-diem.png"),fullPage:true});await mealForm.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(mealForm).toHaveCount(0);expect(sql(`select recorded_balance from finance_account_balances where id='${bank}'`)).toBe(cashBefore);await expect(page.locator("#trip-settlements")).toContainText("800.00");
+
 });
 
 test("employee cannot open trips", async ({ page }) => {

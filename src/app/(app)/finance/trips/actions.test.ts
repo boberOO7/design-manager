@@ -38,3 +38,13 @@ it("saves foreign plans without accounts or historical FX lookup", async()=>{
   expect(result.status).toBe("success");expect(mocks.fx).not.toHaveBeenCalled();
   expect(mocks.rpc).toHaveBeenCalledWith("record_finance_trip_entry",expect.objectContaining({p_input:expect.objectContaining({currency:"PLN",amount:"100"})}));
 });
+
+it("routes inline edits through the atomic edit boundary without plan FX",async()=>{
+  expect((await saveFinanceTrip({status:"idle"},form({entryId:id,kind:"plan",employeeId:"",currency:"PLN"}))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledWith("edit_finance_trip_entry",expect.objectContaining({p_entry_id:id,p_studio_id:"verified"}));
+  expect(mocks.fx).not.toHaveBeenCalled();
+});
+it("requires a reason for posted expense edits before touching Finance",async()=>{
+  expect((await saveFinanceTrip({status:"idle"},form({entryId:id}))).status).toBe("error");expect(mocks.rpc).not.toHaveBeenCalled();
+  expect((await saveFinanceTrip({status:"idle"},form({entryId:id,reason:"Receipt corrected"}))).status).toBe("success");
+});

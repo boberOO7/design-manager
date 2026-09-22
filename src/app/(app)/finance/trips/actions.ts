@@ -39,10 +39,11 @@ export async function saveFinanceTrip(_previous: FinanceActionState, form: FormD
       try { fx = await resolveFinanceFx(input.currency, setup.data.base_currency, input.date, input.fxMode, input.manualRate); }
       catch { return { status: "error", message: t("errors.fx") }; }
     }
-    ({ data: id, error } = await client.rpc("record_finance_trip_entry", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_trip_id: input.tripId, p_input: { ...input, ...(fx ? { fx } : {}), submission: input } }));
+    const args = { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_trip_id: input.tripId, p_input: { ...input, ...(fx ? { fx } : {}), submission: input } };
+    ({ data: id, error } = "entryId" in input && input.entryId ? await client.rpc("edit_finance_trip_entry", {...args,p_entry_id:input.entryId}) : await client.rpc("record_finance_trip_entry",args));
   }
   if (error) {
-    const key = error.message === "finance_trip_calendar_owned" ? "calendarOwned" : error.message === "finance_version_conflict" ? "version" : error.message === "finance_request_conflict" ? "conflict"
+    const key = error.message === "finance_trip_edit_unavailable" ? "editUnavailable" : error.message === "finance_trip_calendar_owned" ? "calendarOwned" : error.message === "finance_version_conflict" ? "version" : error.message === "finance_request_conflict" ? "conflict"
       : error.message === "finance_trip_project_locked" ? "projectLocked" : error.message === "finance_trip_plan_settled" ? "planSettled"
       : error.message === "finance_trip_payment_invalid" ? "payment" : error.message === "finance_trip_closed" ? "closed" : "save";
     return { status: "error", message: t(`errors.${key}`) };

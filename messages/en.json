@@ -1905,7 +1905,8 @@
         "planSettled": "This plan has payment history. Match its existing whole payment or release its allocation first.",
         "payment": "Choose an unallocated whole outgoing payment with the same amount, currency and date.",
         "closed": "Reopen this cancelled trip before recording new entries.",
-        "calendarOwned": "Dates, destination, project and travelers are managed in Calendar."
+        "calendarOwned": "Dates, destination, project and travelers are managed in Calendar.",
+        "editUnavailable": "This expense has changed or its payment was adjusted. Reload, or open payment details."
       },
       "advanceToReconcile": "Advance to reconcile",
       "completeHelp": "Mark the trip completed to confirm any unused advance due back.",
@@ -1924,7 +1925,25 @@
       "calendarOwned": "Dates, destination, project and travelers are managed in Calendar.",
       "calendarChanged": "The Calendar event was cancelled, removed or changed. Finance history is preserved; review the trip status and remaining obligations.",
       "calendarProjectRetained": "The Calendar project changed. This trip retains its original financial project.",
-      "openCalendar": "Open in Calendar"
+      "openCalendar": "Open in Calendar",
+      "update": "Update",
+      "expenseSheet": "Trip expenses",
+      "inlineHint": "Click a plan amount to edit",
+      "details": "Details",
+      "whichPlan": "Which plan does this cover?",
+      "coverageOptions": "Travelers & days · {count} people, {days} days",
+      "moreOptions": "More options",
+      "confirmPaymentUpdate": "Update this recorded payment and keep its history.",
+      "planUsed": "Plan already paid or used",
+      "paymentDetails": "Payment details",
+      "remove": "Remove",
+      "removePlan": "Remove planned expense?",
+      "changeHistory": "Change history",
+      "updated": "Updated",
+      "calendarSynced": "Synced with Calendar",
+      "employeePaid": "Employee paid",
+      "settlementsDue": "{count} balances to settle",
+      "reviewTripStatus": "Review trip status"
     },
     "openingFx": {
       "value": "Value opening balance",
