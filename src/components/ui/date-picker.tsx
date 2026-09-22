@@ -61,6 +61,7 @@ export type DatePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   invalid?: boolean;
   locale?: string;
   max?: string;
+  monthOnly?: boolean;
   min?: string;
   name?: string;
   onValueChange?: (value: string) => void;
@@ -69,14 +70,14 @@ export type DatePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   value?: string;
 };
 
-export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValue = "", disabled, invalid = false, locale = "en", max, min, name, onValueChange, placeholder, required, value, ...buttonProps }: DatePickerProps) {
+export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValue = "", disabled, invalid = false, locale = "en", max, min, monthOnly = false, name, onValueChange, placeholder, required, value, ...buttonProps }: DatePickerProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
   const [requiredInvalid, setRequiredInvalid] = React.useState(false);
   const selectedValue = value ?? internalValue;
   const selectedDate = DATE_ONLY.test(selectedValue) ? parseDate(selectedValue) : null;
   const [viewDate, setViewDate] = React.useState(() => selectedDate ?? new Date());
-  const [calendarView, setCalendarView] = React.useState<CalendarView>("day");
+  const [calendarView, setCalendarView] = React.useState<CalendarView>(monthOnly ? "month" : "day");
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [triggerNode, setTriggerNode] = React.useState<HTMLButtonElement | null>(null);
   const popoverId = React.useId();
@@ -99,9 +100,10 @@ export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValu
   }, [defaultValue, value]);
 
   function setDate(nextValue: string) {
-    if (value === undefined) setInternalValue(nextValue);
+    const next = monthOnly && DATE_ONLY.test(nextValue) ? `${nextValue.slice(0, 7)}-01` : nextValue;
+    if (value === undefined) setInternalValue(next);
     setRequiredInvalid(false);
-    onValueChange?.(nextValue);
+    onValueChange?.(next);
     setOpen(false);
   }
 
@@ -136,12 +138,12 @@ export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValu
     setOpen(nextOpen);
     if (nextOpen) {
       setViewDate(selectedDate ?? new Date());
-      setCalendarView("day");
+      setCalendarView(monthOnly ? "month" : "day");
     }
   }}>
     <Popover.Trigger asChild>
       <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" role="combobox" disabled={disabled} data-invalid={invalid || requiredInvalid || undefined} aria-controls={popoverId} aria-expanded={open} aria-haspopup="dialog" aria-invalid={ariaInvalid || invalid || requiredInvalid || undefined} aria-label={buttonProps["aria-label"] ?? copy.chooseDate} aria-required={required || undefined} className={cn(datePickerClassName, (invalid || requiredInvalid) && "border-[var(--ui-danger-border)]", className)} {...buttonProps}>
-        <span className={cn("truncate", selectedDate ? "font-medium" : "text-[var(--ui-text-muted)]")}>{selectedDate ? dateFormatter.format(selectedDate) : placeholder ?? ""}</span>
+        <span className={cn("truncate", selectedDate ? "font-medium" : "text-[var(--ui-text-muted)]")}>{selectedDate ? monthOnly ? monthYearLabel(selectedDate, locale) : dateFormatter.format(selectedDate) : placeholder ?? ""}</span>
         <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-secondary)]" strokeWidth={1.8} />
       </button>
     </Popover.Trigger>
@@ -166,7 +168,7 @@ export function DatePicker({ "aria-invalid": ariaInvalid, className, defaultValu
           {months.map((month) => {
             const unavailable = !isMonthAvailable(month);
             const isSelected = selectedDate?.getFullYear() === currentYear && selectedDate.getMonth() === month.getMonth();
-            return <button key={month.getMonth()} type="button" role="gridcell" disabled={unavailable} aria-selected={isSelected} className={cn("flex h-10 items-center justify-center rounded-[var(--ui-radius-control)] px-2 text-sm font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", isSelected && "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]", !isSelected && !unavailable && "hover:bg-[var(--ui-surface-muted)]", unavailable && "cursor-not-allowed text-[var(--ui-text-subtle)] opacity-45")} onClick={() => { setViewDate(month); setCalendarView("day"); }}>{monthLabel(month, locale, "short")}</button>;
+            return <button key={month.getMonth()} type="button" role="gridcell" disabled={unavailable} aria-selected={isSelected} className={cn("flex h-10 items-center justify-center rounded-[var(--ui-radius-control)] px-2 text-sm font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", isSelected && "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]", !isSelected && !unavailable && "hover:bg-[var(--ui-surface-muted)]", unavailable && "cursor-not-allowed text-[var(--ui-text-subtle)] opacity-45")} onClick={() => { if (monthOnly) setDate(toDateOnly(month)); else { setViewDate(month); setCalendarView("day"); } }}>{monthLabel(month, locale, "short")}</button>;
           })}
         </div> : <div className="grid grid-cols-3 gap-1" role="grid" aria-label={`${copy.yearView}: ${rangeLabel}`}>
           {years.map((year) => {

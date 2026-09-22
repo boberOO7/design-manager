@@ -20,7 +20,7 @@ test.beforeAll(async()=>{
   for(const actor of actors){
     const {data,error}=await client.auth.admin.createUser({email:actor.email,password:actor.password,email_confirm:true});if(error)throw error;actor.id=data.user.id;
     await client.from("profiles").upsert({id:actor.id,email:actor.email,full_name:actor.name,system_role:actor.role,is_active:true}).throwOnError();
-    await client.from("studio_members").insert({studio_id:studio,user_id:actor.id,system_role:actor.role,joined_at:"2026-01-15"}).throwOnError();
+    await client.from("studio_members").insert({studio_id:studio,user_id:actor.id,system_role:actor.role,joined_at:actor.name==="Payroll employee" ? "2026-09-21" : "2026-01-15"}).throwOnError();
   }
   sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values('${studio}','UAH','2026-01-01','${actors[0].id}');
     insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bank}','${studio}','Payroll bank','UAH',10000,'${actors[0].id}');
@@ -52,14 +52,14 @@ test("team setup resumes partial saves and groups preserve financial history", a
   await expect(dialog.getByRole("group", { name: "Payroll admin", exact: true })).toHaveCount(0);
   const employee = dialog.getByRole("group", { name: "Payroll employee", exact: true });
   const designer = dialog.getByRole("group", { name: "Payroll designer", exact: true });
-  await expect(employee.getByLabel(s.effectiveFrom, { exact: true })).toHaveValue("2026-01");
+  await expect(employee.getByRole("combobox", { name: s.effectiveFrom, exact: true })).toHaveText("September 2026");
+  await expect(employee.getByLabel(s.payoutDay, { exact: true })).toHaveValue("21");
   await employee.getByLabel(s.agreedAmount, { exact: true }).fill("50000");
   await designer.getByLabel(s.agreedAmount, { exact: true }).fill("45000.123");
-  await designer.getByRole("button", { name: s.setupOverrides, exact: true }).click();
-  await designer.getByLabel(s.setupCustomDefaults, { exact: true }).check();
   await designer.getByRole("switch").click();
   await designer.getByLabel(s.deductions, { exact: true }).fill("5000");
   await designer.getByLabel(s.payout, { exact: true }).fill("40000");
+  await designer.getByRole("button", { name: s.payrollCosts, exact: true }).click();
   await designer.getByLabel(s.employerCost, { exact: true }).fill("0");
   await dialog.getByRole("button", { name: s.setupSave, exact: true }).click();
   await expect(employee.getByRole("status")).toHaveText(s.setupSaved);
