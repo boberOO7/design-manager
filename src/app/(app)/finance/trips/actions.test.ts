@@ -32,3 +32,9 @@ it("preserves matched movement FX and rejects personal cash inputs", async () =>
   await saveFinanceTrip({ status: "idle" }, form({ employeeId: "", movementId: id })); expect(mocks.fx).not.toHaveBeenCalled();
   mocks.rpc.mockClear(); expect((await saveFinanceTrip({ status: "idle" }, form({ accountId: id }))).status).toBe("error"); expect(mocks.rpc).not.toHaveBeenCalled();
 });
+
+it("saves foreign plans without accounts or historical FX lookup", async()=>{
+  const result=await saveFinanceTrip({status:"idle"},form({kind:"plan",employeeId:"",currency:"PLN"}));
+  expect(result.status).toBe("success");expect(mocks.fx).not.toHaveBeenCalled();
+  expect(mocks.rpc).toHaveBeenCalledWith("record_finance_trip_entry",expect.objectContaining({p_input:expect.objectContaining({currency:"PLN",amount:"100"})}));
+});

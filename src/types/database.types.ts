@@ -2656,19 +2656,20 @@ export type Database = {
           expected_item_id: string | null
           expense_type: string
           financial_date: string
-          fx_effective_date: string
-          fx_rate: number
-          fx_source: string
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
           id: string
           kind: string
           label: string
           movement_id: string | null
           note: string
           plan_id: string | null
-          reporting_amount: number
+          reporting_amount: number | null
           reporting_currency: string
           reverses_id: string | null
           studio_id: string
+          traveler_count: number
           trip_id: string
         }
         Insert: {
@@ -2682,19 +2683,20 @@ export type Database = {
           expected_item_id?: string | null
           expense_type: string
           financial_date: string
-          fx_effective_date: string
-          fx_rate: number
-          fx_source: string
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
           id?: string
           kind: string
           label?: string
           movement_id?: string | null
           note?: string
           plan_id?: string | null
-          reporting_amount: number
+          reporting_amount?: number | null
           reporting_currency: string
           reverses_id?: string | null
           studio_id: string
+          traveler_count?: number
           trip_id: string
         }
         Update: {
@@ -2708,19 +2710,20 @@ export type Database = {
           expected_item_id?: string | null
           expense_type?: string
           financial_date?: string
-          fx_effective_date?: string
-          fx_rate?: number
-          fx_source?: string
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
           id?: string
           kind?: string
           label?: string
           movement_id?: string | null
           note?: string
           plan_id?: string | null
-          reporting_amount?: number
+          reporting_amount?: number | null
           reporting_currency?: string
           reverses_id?: string | null
           studio_id?: string
+          traveler_count?: number
           trip_id?: string
         }
         Relationships: [
@@ -2852,6 +2855,49 @@ export type Database = {
           },
         ]
       }
+      finance_trip_entry_travelers: {
+        Row: {
+          employee_id: string
+          entry_id: string
+          studio_id: string
+          trip_id: string
+        }
+        Insert: {
+          employee_id: string
+          entry_id: string
+          studio_id: string
+          trip_id: string
+        }
+        Update: {
+          employee_id?: string
+          entry_id?: string
+          studio_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_trip_entry_travelers_studio_id_entry_id_trip_id_fkey"
+            columns: ["studio_id", "entry_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entry_travelers_studio_id_entry_id_trip_id_fkey"
+            columns: ["studio_id", "entry_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id", "trip_id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entry_travelers_studio_id_trip_id_employee_id_fkey"
+            columns: ["studio_id", "trip_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_travelers"
+            referencedColumns: ["studio_id", "trip_id", "employee_id"]
+          },
+        ]
+      }
       finance_trip_travelers: {
         Row: {
           active: boolean
@@ -2900,6 +2946,9 @@ export type Database = {
       }
       finance_trips: {
         Row: {
+          calendar_event_id: string | null
+          calendar_source_id: string | null
+          calendar_state: string | null
           created_at: string
           created_by: string
           destination: string
@@ -2915,6 +2964,9 @@ export type Database = {
           version: number
         }
         Insert: {
+          calendar_event_id?: string | null
+          calendar_source_id?: string | null
+          calendar_state?: string | null
           created_at?: string
           created_by: string
           destination: string
@@ -2930,6 +2982,9 @@ export type Database = {
           version?: number
         }
         Update: {
+          calendar_event_id?: string | null
+          calendar_source_id?: string | null
+          calendar_state?: string | null
           created_at?: string
           created_by?: string
           destination?: string
@@ -2945,6 +3000,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "finance_trips_calendar_event_fk"
+            columns: ["studio_id", "calendar_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["studio_id", "id"]
+          },
           {
             foreignKeyName: "finance_trips_created_by_fkey"
             columns: ["created_by"]
@@ -5354,6 +5416,7 @@ export type Database = {
           reporting_currency: string | null
           reverses_id: string | null
           studio_id: string | null
+          traveler_count: number | null
           trip_id: string | null
         }
         Relationships: [
@@ -5488,6 +5551,9 @@ export type Database = {
       finance_trip_totals: {
         Row: {
           actual_amount: string | null
+          calendar_event_id: string | null
+          calendar_source_id: string | null
+          calendar_state: string | null
           created_at: string | null
           created_by: string | null
           destination: string | null
@@ -5514,6 +5580,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_trips_calendar_event_fk"
+            columns: ["studio_id", "calendar_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["studio_id", "id"]
           },
           {
             foreignKeyName: "finance_trips_created_by_fkey"

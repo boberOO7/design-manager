@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tripDays, tripEntrySchema, tripInputSchema, tripPerDiem, sumTripMoney } from "./finance-trips";
+import { tripDays, tripEntrySchema, tripInputSchema, tripPerDiem, sumTripMoney, tripPlanSummary } from "./finance-trips";
 const id = "79000000-0000-4000-8000-000000000001";
 const expense = { requestId: id, tripId: id, kind: "expense", expenseType: "travel", amount: "100.12", currency: "UAH", date: "2026-09-12", employeeId: id };
 describe("business trips", () => {
@@ -29,4 +29,18 @@ describe("business trips", () => {
     expect(sumTripMoney(["9999999999999999.01", "0.02", "-0.01"], 2)).toBe("9999999999999999.02");
     expect(sumTripMoney(["-100", "20"], 2)).toBe("-80.00");
   });
+});
+
+it("calculates covered per diem for all travelers and a selected subset", () => {
+  expect(tripPerDiem("50",3,2,2)).toBe("300.00");
+  expect(tripPerDiem("50",3,2,1)).toBe("150.00");
+  expect(()=>tripPerDiem("50",3,2,0)).toThrow();
+});
+it("distinguishes absent plans, incomplete FX, current estimates and actual variance",()=>{
+  const plan={id:"plan",kind:"plan",reverses_id:null,amount:"1200",currency:"PLN"};
+  expect(tripPlanSummary([],{},2,"33038")).toMatchObject({has_plan:false,planned_amount:null,variance:null});
+  expect(tripPlanSummary([plan],{plan:null},2,"33038")).toMatchObject({has_plan:true,plan_incomplete:true,variance:null});
+  expect(tripPlanSummary([plan],{plan:"35000"},2,"33038")).toMatchObject({planned_amount:"35000.00",variance:"-1962.00"});
+  expect(tripPlanSummary([plan],{plan:"36000"},2,"33038").variance).toBe("-2962.00");
+  expect(tripPlanSummary([plan,{...plan,id:"correction",reverses_id:"plan",amount:"-1200"}],{},2,"0").has_plan).toBe(false);
 });

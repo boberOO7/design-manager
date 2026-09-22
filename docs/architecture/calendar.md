@@ -76,6 +76,27 @@ Invariants:
 - Recurrence preserves a root series and occurrence identity; update/cancel
   behavior must keep Google mappings and reconciliation rooted consistently.
 
+## Finance business-trip projection
+
+When Finance setup is finalized, a real `business_trip` event automatically ensures
+one same-studio Finance trip. Event and participant triggers synchronize operational
+metadata; finalizing Finance also links existing eligible events. Reads never create
+additional trips. Business trips cannot recur. All-day Calendar ends are exclusive;
+Finance stores the inclusive local end date, preserving Kyiv/DST semantics.
+
+Calendar owns dates, destination/project context, note and participants. Finance owns
+plans, actual costs, payments, FX and reconciliation. Once financial entries exist,
+the Finance project attribution is fixed even if Calendar changes its project.
+Removed participants retain their Finance history. Cancellation/type change/deletion
+marks the source state; an empty Finance trip becomes cancelled, while a trip with
+financial entries keeps its status and obligations for explicit admin review.
+Physical deletion clears only the live event FK, preserving source identity.
+
+The event detail offers administrators a contextual Finance link. Employee Calendar
+creation can project operational metadata but never grants Finance access. Manual
+Finance trips remain independent; no reverse Calendar creation or synchronization
+is implied. See [Finance — Business trips](finance.md#business-trips).
+
 ## “Relevant to me”
 
 `isCalendarEventRelevantToUser()` is the canonical predicate for real events:

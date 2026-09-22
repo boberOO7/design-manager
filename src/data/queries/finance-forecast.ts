@@ -37,7 +37,7 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
 }
 export type FinanceForecastData = NonNullable<Awaited<ReturnType<typeof getFinanceForecast>>>;
 
-export async function resolveForecastAssumptions(initial: ForecastReport, manualFx: ForecastFx = [], extraCurrencies: string[] = []) {
+export async function resolveForecastAssumptions(initial: Pick<ForecastReport, "asOf" | "currency" | "items" | "issues">, manualFx: ForecastFx = [], extraCurrencies: string[] = []) {
   const today = initial.asOf;
   const fx = forecastFxSchema.parse(manualFx).filter(row => row.currency !== initial.currency);
   const needed = [...new Set([...extraCurrencies, ...initial.items.filter(item => item.reportingAmount === null).map(item => item.currency), ...initial.issues.filter(issue => issue.reason === "missing_fx").map(issue => issue.currency)])];

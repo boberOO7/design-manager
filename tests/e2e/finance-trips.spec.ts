@@ -28,7 +28,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   sql(`begin; set local session_replication_role=replica;
   do $$ declare tab record; begin for tab in select table_name from information_schema.columns where table_schema='public' and column_name='studio_id' and table_name like 'finance_%' and table_name in(select tablename from pg_tables where schemaname='public') loop execute format('delete from public.%I where studio_id=$1',tab.table_name) using '${studio}'::uuid; end loop; end $$;
-  delete from notifications where studio_id='${studio}'; delete from project_activity where project_id='${project}'; delete from project_task_stage_columns where project_id='${project}'; delete from projects where studio_id='${studio}'; delete from studio_members where studio_id='${studio}'; delete from studios where id='${studio}'; commit;`);
+  delete from calendar_event_participants where event_id in(select id from calendar_events where studio_id='${studio}'); delete from calendar_events where studio_id='${studio}'; delete from project_members where project_id='${project}'; delete from notifications where studio_id='${studio}'; delete from project_activity where project_id='${project}'; delete from project_task_stage_columns where project_id='${project}'; delete from projects where studio_id='${studio}'; delete from studio_members where studio_id='${studio}'; delete from studios where id='${studio}'; commit;`);
   for (const actor of actors) if (actor.id) await client.auth.admin.deleteUser(actor.id);
 });
 
@@ -57,7 +57,7 @@ test("trip planning, personal costs, advance, return and matched cash render in 
   await expect(dialog).toBeVisible(); await dialog.getByRole("button", { name: f.movements.record, exact: true }).click(); await expect(page).toHaveURL(href); await expect(page.getByText(t.nothingDue)).toBeVisible();
   // Per diem uses one traveler and the visible trip day count.
   await page.getByRole("button", { name: t.addExpense }).click(); await dialog.getByRole("combobox", { name: t.expenseType }).click(); await page.getByRole("option", { name: t.types.meals, exact: true }).click();
-  await dialog.getByRole("combobox", { name: t.paidBy }).click(); await page.getByRole("option", { name: "Trip employee", exact: true }).click(); await dialog.getByRole("checkbox", { name: t.perDiem }).check(); await dialog.getByLabel(t.dailyRate, { exact: true }).fill("800"); await dialog.getByLabel(t.days, { exact: true }).fill("4"); await expect(dialog.getByLabel(f.movements.amount, { exact: true })).toHaveValue("3200.00"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
+  await dialog.getByRole("combobox", { name: t.paidBy }).click(); await page.getByRole("option", { name: "Trip employee", exact: true }).click(); await dialog.getByRole("checkbox", { name: t.perDiem }).check(); await dialog.getByRole("checkbox", {name:"Trip admin",exact:true}).uncheck(); await dialog.getByLabel(t.dailyRate, { exact: true }).fill("800"); await dialog.getByLabel(t.days, { exact: true }).fill("4"); await expect(dialog.getByLabel(f.movements.amount, { exact: true })).toHaveValue("3200.00"); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
   const today = sql("select (now() at time zone 'Europe/Kyiv')::date");
   sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false); select record_finance_movement('${studio}','${randomUUID()}',jsonb_build_object('kind','outgoing','date','${today}','accountId','${bank}','amount','100','description','Hotel receipt','categoryId',(select id from finance_categories where studio_id='${studio}' and default_key='business_travel')));`);
   await page.reload(); await page.getByRole("button", { name: t.addExpense }).click(); await dialog.getByRole("combobox", { name: t.payment, exact: true }).click(); await page.getByRole("option", { name: t.matchPayment, exact: true }).click(); await dialog.getByRole("combobox", { name: t.existingPayment }).click(); await page.getByRole("option", { name: /Hotel receipt/ }).click(); await dialog.getByRole("button", { name: f.planning.save, exact: true }).click(); await expect(dialog).toHaveCount(0);
@@ -71,6 +71,56 @@ test("trip planning, personal costs, advance, return and matched cash render in 
   await page.screenshot({ path: testInfo.outputPath("trip-mobile-uk-dark.png"), fullPage: true });
   await page.getByRole("button", { name: uk.Finance.trips.addExpense }).click(); await expect(dialog).toBeVisible(); await page.screenshot({ path: testInfo.outputPath("expense-mobile-uk-dark.png") }); await page.keyboard.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: uk.Finance.trips.addExpense })).toBeFocused();
   expect(sql(`select count(*) from finance_trip_entries where trip_id='${tripId}'`)).toBe("5");
+});
+
+test("Calendar trip planning, native currencies, coverage and current FX", async ({page},testInfo)=>{
+  test.setTimeout(180_000);
+  const t=en.Finance.trips,f=en.Finance;
+  sql(`insert into project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values('${project}','${actors[0].id}','designer',0,current_date),('${project}','${actors[1].id}','designer',0,current_date); update projects set city='Warsaw',country_code='PL' where id='${project}';`);
+  await page.goto("/login");await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
+  const created=await page.request.post("/api/calendar/events",{data:{title:"Calendar trip",eventType:"business_trip",projectId:project,allDay:true,startsAt:"2026-10-24T00:00:00+03:00",endsAt:"2026-10-27T00:00:00+02:00",participantIds:actors.map(a=>a.id)}});
+  expect(created.status()).toBe(201);
+  const eventId=sql(`select id from calendar_events where studio_id='${studio}' and event_type='business_trip'`);
+  const tripId=sql(`select id from finance_trips where calendar_source_id='${eventId}'`);
+  expect(tripId).toMatch(/^[\w-]{36}$/);
+  await page.setViewportSize({width:2560,height:1440});
+  await page.goto(`/calendar?date=2026-10-24&event=${eventId}`);
+  await expect(page.getByRole("link",{name:en.Calendar.tripFinance})).toBeVisible();
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("calendar-trip-2k-en.png")});
+  await page.getByRole("link",{name:en.Calendar.tripFinance}).click();await expect(page).toHaveURL(new RegExp(`/finance/trips/${tripId}$`));
+  await expect(page.getByRole("button",{name:t.openPlan})).toHaveText("—");await expect(page.getByText(t.noPlan,{exact:true}).first()).toBeVisible();
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("trip-no-plan-2k-en.png"),fullPage:true});
+  const href=`/finance/trips/${tripId}?fx_PLN=10&fx_USD=40`;
+  await page.goto(href);await page.setViewportSize({width:1920,height:1080});
+  await page.getByRole("button",{name:t.types.accommodation,exact:true}).click();const dialog=page.getByRole("dialog");
+  await expect(dialog.getByRole("combobox",{name:f.movements.account,exact:true})).toHaveCount(0);
+  await dialog.getByLabel(f.movements.amount,{exact:true}).fill("1200");await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"PLN",exact:true}).click();
+  await expect(dialog.getByText(/1200 PLN ≈ 12000.00 UAH/)).toBeVisible();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await page.getByRole("button",{name:t.types.meals,exact:true}).click();await dialog.getByRole("checkbox",{name:t.perDiem,exact:true}).check();await dialog.getByLabel(t.dailyRate,{exact:true}).fill("50");
+  await dialog.getByRole("combobox",{name:t.currency,exact:true}).click();await page.getByRole("option",{name:"USD",exact:true}).click();
+  await expect(dialog.getByLabel(t.days,{exact:true})).toHaveValue("3");await expect(dialog.getByLabel(f.movements.amount,{exact:true})).toHaveValue("300.00");
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("per-diem-two-travelers-en.png")});
+  await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).uncheck();await expect(dialog.getByLabel(f.movements.amount,{exact:true})).toHaveValue("150.00");
+  await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).check();await dialog.getByRole("checkbox",{name:t.includeForecast,exact:true}).check();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  expect(sql(`select count(*) from finance_trip_entries where trip_id='${tripId}' and kind='plan' and fx_rate is null`)).toBe("2");
+  await expect(page.getByRole("button",{name:t.openPlan})).toContainText("24,000.00");
+  await page.getByRole("heading",{name:/Business trip/}).scrollIntoViewIfNeeded();
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("multicurrency-plan-fullhd-en.png"),fullPage:true});
+  const planId=sql(`select id from finance_trip_entries where trip_id='${tripId}' and currency='USD'`);
+  const beforeCash=sql(`select count(*) from finance_movements where studio_id='${studio}'`);
+  await page.getByRole("button",{name:t.issueAdvance,exact:true}).click();await expect(dialog.getByRole("checkbox",{name:t.perDiem,exact:true})).toHaveCount(0);await page.keyboard.press("Escape");
+  await page.getByRole("button",{name:t.addExpense,exact:true}).click();await dialog.getByRole("combobox",{name:t.paidBy,exact:true}).click();await page.getByRole("option",{name:"Trip employee",exact:true}).click();
+  await dialog.getByLabel(f.movements.amount,{exact:true}).fill("11000");await dialog.getByRole("combobox",{name:t.replacesPlan,exact:true}).click();await page.getByRole("option",{name:/300.*USD/}).click();await dialog.getByRole("button",{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+  expect(sql(`select count(*) from finance_movements where studio_id='${studio}'`)).toBe(beforeCash);
+  expect(sql(`select commitment from finance_expected_items where id=(select expected_item_id from finance_trip_entries where id='${planId}')`)).toBe("cancelled");
+  await page.goto(`/finance/trips/${tripId}?fx_PLN=11&fx_USD=41`);await expect(page.getByRole("button",{name:t.openPlan})).toContainText("25,500.00");
+  expect(sql(`select reporting_amount from finance_trip_entries where trip_id='${tripId}' and kind='expense'`)).toBe("11000.00");
+  await page.context().addCookies([{name:"studioflow-locale",value:"uk",domain:"127.0.0.1",path:"/"}]);await page.reload();await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.classList.add("dark");document.documentElement.setAttribute("data-theme","dark");});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("calendar-plan-mobile-uk-dark.png"),fullPage:true});
+  await page.getByRole("button",{name:uk.Finance.trips.openPlan}).click();await page.getByRole("button",{name:uk.Finance.trips.types.meals,exact:true}).click();await dialog.getByRole("checkbox",{name:uk.Finance.trips.perDiem,exact:true}).check();await dialog.getByRole("checkbox",{name:"Trip admin",exact:true}).uncheck();await dialog.getByLabel(uk.Finance.trips.dailyRate,{exact:true}).fill("50");
+  await page.screenshot({animations:"disabled",path:testInfo.outputPath("per-diem-subset-mobile-uk-dark.png")});await page.keyboard.press("Escape");
+  await page.goto("/finance/trips?fx_PLN=11&fx_USD=41");await expect(page.getByText(uk.Finance.trips.variance,{exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.evaluate(()=>{document.documentElement.classList.add("dark");document.documentElement.setAttribute("data-theme","dark");});await page.screenshot({animations:"disabled",path:testInfo.outputPath("trip-list-mobile-uk-dark.png"),fullPage:true});
 });
 
 test("employee cannot open trips", async ({ page }) => {

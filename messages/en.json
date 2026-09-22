@@ -712,6 +712,7 @@
     "invalidChecklistItem": "Enter a valid checklist item."
   },
   "Calendar": {
+    "tripFinance": "Plan trip expenses",
     "title": "Calendar",
     "addEvent": "Add event",
     "absence": "Absence",
@@ -1843,7 +1844,7 @@
       "emptyHelp": "Start with dates and travelers. Add a plan now and reconcile expenses as they happen.",
       "projectHistory": "The project link is preserved once financial history exists.",
       "addExpense": "Add expense",
-      "addPlan": "Add planned cost",
+      "addPlan": "Plan expenses",
       "issueAdvance": "Issue advance",
       "expenseType": "Expense type",
       "customLabel": "Custom label (optional)",
@@ -1855,9 +1856,9 @@
       "existingPayment": "Existing payment",
       "matchHelp": "Choose a whole, unallocated outgoing payment. Its original amount, date and FX are preserved.",
       "perDiem": "Calculate a daily allowance",
-      "dailyRate": "Amount per day",
+      "dailyRate": "Per person / day",
       "days": "Days",
-      "perDiemHelp": "For one traveler. Days start from the trip dates; enter your studio’s agreed rate.",
+      "perDiemHelp": "Inclusive trip days are prefilled. Change the count only for an agreed eligible-day override.",
       "valuationDate": "Estimate valued on",
       "includeForecast": "Include planned cash in Forecast",
       "expectedDate": "Expected payment date",
@@ -1903,10 +1904,27 @@
         "projectLocked": "A trip with financial history cannot move to another project.",
         "planSettled": "This plan has payment history. Match its existing whole payment or release its allocation first.",
         "payment": "Choose an unallocated whole outgoing payment with the same amount, currency and date.",
-        "closed": "Reopen this cancelled trip before recording new entries."
+        "closed": "Reopen this cancelled trip before recording new entries.",
+        "calendarOwned": "Dates, destination, project and travelers are managed in Calendar."
       },
       "advanceToReconcile": "Advance to reconcile",
-      "completeHelp": "Mark the trip completed to confirm any unused advance due back."
+      "completeHelp": "Mark the trip completed to confirm any unused advance due back.",
+      "coveredTravelers": "Covered travelers · {count}",
+      "calculation": "{rate} {currency} × {days} days × {count} travelers = {total} {currency}",
+      "chooseCoverage": "Select travelers and enter a daily rate.",
+      "noPlan": "No plan yet",
+      "noPlanHelp": "Plan travel costs before recording payments.",
+      "openPlan": "Open trip plan",
+      "currentEstimate": "Approximate value at current planning rates",
+      "estimateUnavailable": "Estimate incomplete — add current FX assumptions.",
+      "planFxHelp": "Current planning assumption only. Actual expenses retain their own historical rates.",
+      "planFxAssumptions": "Planning exchange rates",
+      "applyAssumptions": "Apply assumptions",
+      "fromCalendar": "Linked to Calendar",
+      "calendarOwned": "Dates, destination, project and travelers are managed in Calendar.",
+      "calendarChanged": "The Calendar event was cancelled, removed or changed. Finance history is preserved; review the trip status and remaining obligations.",
+      "calendarProjectRetained": "The Calendar project changed. This trip retains its original financial project.",
+      "openCalendar": "Open in Calendar"
     },
     "openingFx": {
       "value": "Value opening balance",

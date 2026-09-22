@@ -14,7 +14,7 @@ export async function saveFinanceTrip(_previous: FinanceActionState, form: FormD
   const client = await createClient();
   const raw = Object.fromEntries(form);
   const parsed = raw.intent === "trip" ? tripInputSchema.safeParse({ ...raw, travelers: form.getAll("travelers") })
-    : raw.intent === "correct" ? tripCorrectionSchema.safeParse(raw) : tripEntrySchema.safeParse(raw);
+    : raw.intent === "correct" ? tripCorrectionSchema.safeParse(raw) : tripEntrySchema.safeParse({ ...raw, coveredTravelerIds: form.getAll("coveredTravelerIds") });
   if (!parsed.success) return { status: "error", message: t("errors.invalid") };
   const input = parsed.data;
   // Recover identical requests before FX lookup, including after a lost response.
@@ -33,7 +33,7 @@ export async function saveFinanceTrip(_previous: FinanceActionState, form: FormD
     ({ data: id, error } = await client.rpc("save_finance_trip", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: { ...input, submission: input } }));
   } else {
     let fx;
-    if ("kind" in input && !input.movementId) {
+    if ("kind" in input && input.kind !== "plan" && !input.movementId) {
       const setup = await client.from("finance_settings").select("base_currency").eq("studio_id", admin.studio_id).single();
       if (setup.error) return { status: "error", message: t("errors.save") };
       try { fx = await resolveFinanceFx(input.currency, setup.data.base_currency, input.date, input.fxMode, input.manualRate); }
@@ -42,7 +42,7 @@ export async function saveFinanceTrip(_previous: FinanceActionState, form: FormD
     ({ data: id, error } = await client.rpc("record_finance_trip_entry", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_trip_id: input.tripId, p_input: { ...input, ...(fx ? { fx } : {}), submission: input } }));
   }
   if (error) {
-    const key = error.message === "finance_version_conflict" ? "version" : error.message === "finance_request_conflict" ? "conflict"
+    const key = error.message === "finance_trip_calendar_owned" ? "calendarOwned" : error.message === "finance_version_conflict" ? "version" : error.message === "finance_request_conflict" ? "conflict"
       : error.message === "finance_trip_project_locked" ? "projectLocked" : error.message === "finance_trip_plan_settled" ? "planSettled"
       : error.message === "finance_trip_payment_invalid" ? "payment" : error.message === "finance_trip_closed" ? "closed" : "save";
     return { status: "error", message: t(`errors.${key}`) };

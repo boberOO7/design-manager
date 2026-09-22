@@ -32,6 +32,15 @@
       "scope": "Business Trips incremental refresh",
       "token_usage_measured": false,
       "note": "Host semantic extraction usage unavailable; zero fields are unmeasured placeholders, not zero consumption."
+    },
+    {
+      "date": "2026-09-22T11:12:58.569982+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 17,
+      "scope": "Calendar/Finance Business Trips planning integration incremental refresh",
+      "token_usage_measured": false,
+      "note": "Host semantic extraction usage unavailable; zero fields are unmeasured placeholders, not zero consumption."
     }
   ],
   "total_input_tokens": 0,

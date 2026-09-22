@@ -40,10 +40,10 @@ export function projectPaymentAmounts(total: string, percentages: string[], digi
     return projectMoneyText(amount, digits);
   });
 }
-// Informational UAH preview only: never submitted as a contractual value.
-export function projectReferenceValue(amount: string, rate: string, digits: number): string {
+// Informational reporting preview only: never submitted as a contractual or cash value.
+export function projectReferenceValue(amount: string, rate: string, digits: number, reportingDigits = 2): string {
   const rateDigits = rate.split(".")[1]?.length ?? 0;
   const product = projectMoneyUnits(amount, digits) * projectMoneyUnits(rate, rateDigits);
   const divisor = BigInt(10) ** BigInt(digits + rateDigits);
-  return projectMoneyText((product * BigInt(100) + divisor / BigInt(2)) / divisor, 2);
+  return projectMoneyText((product * BigInt(10) ** BigInt(reportingDigits) + divisor / BigInt(2)) / divisor, reportingDigits);
 }

@@ -591,6 +591,16 @@ separately from contract income. Completed/archived projects remain reconcilable
   and snapshots names. Removing a traveler only deactivates their participation;
   receipts and settlements survive. A Project link locks after the first financial
   entry. Metadata edits never revalue historical entries or update settlement labels.
+  Calendar business-trip events link idempotently through `calendar_source_id`;
+  `calendar_event_id` is the live same-studio FK, cleared on physical deletion.
+  Event/participant writes synchronize title, inclusive Kyiv dates, destination
+  (project city/country), note and active travelers. Project changes synchronize
+  only before the first financial entry; afterward the financial project stays
+  fixed and the UI explains divergence. Calendar-linked metadata cannot be edited
+  through Finance. Finance status remains an explicit administrator decision.
+  Eligible existing events are linked on migration and Finance finalization;
+  Calendar never invents Finance setup. Employees can create operational Calendar
+  events without gaining Finance access or creating financial entries.
 - `finance_trip_entries` is immutable, preserving original amount/currency/date,
   payer, optional label/note, valuation provenance and ledger/plan links. Types are
   travel, accommodation, meals, local transport, visa/insurance and other. One
@@ -598,7 +608,15 @@ separately from contract income. Completed/archived projects remain reconcilable
   (or an existing matching custom Business travel category is reused); the
   internal types do not expand the global category catalog. Existing matched cash
   retains its original reporting classification and valuation.
-- Plan and Actual are separate exact reporting totals. Only expenses contribute
+- Plan and Actual are separate exact reporting totals. Plan uses current
+  `resolveForecastAssumptions` rates and exact reporting-currency rounding through
+  the shared project reference-value helper. Original plan amounts/currencies are
+  immutable; new foreign plans store no historical FX valuation and require no
+  account. Missing rates leave the estimate/variance incomplete rather than zero.
+  Explicit per-currency manual assumptions use the same `fx_CODE` URL inputs as
+  Forecast; actuals always retain their own historical valuation. The trip list
+  and detail label Plan, Actual and Variance, and absent plans show a dash with an
+  actionable planning CTA. Plan offers the existing expense types as quick rows. Only expenses contribute
   Actual; advances and reimbursements never contribute a second cost. Optional
   dated planned cash creates one tentative estimated expected item. Selecting a
   related plan when recording its actual retires that expectation atomically, while
@@ -626,20 +644,30 @@ separately from contract income. Completed/archived projects remain reconcilable
   trip allocations cannot be manually released and reused for another expense;
   correct the cash through the ledger. Derived expectation amounts/classification
   cannot be edited from generic Expected payments; those rows link back to the trip.
-- Cancelling a trip preserves existing expenses, plan commitments and settlements;
+- Calendar cancellation, type change or deletion marks the source lifecycle.
+  Without any financial entries the linked trip becomes cancelled. With entries,
+  Finance status, obligations and all financial history remain untouched for
+  explicit administrator reconciliation. Source UUID and financial records survive
+  physical event deletion. Removed travelers remain historical identities.
+- Cancelling a trip in Finance preserves existing expenses, plan commitments and settlements;
   it blocks new entries and confirms unused advance returns. A planned item can be
   explicitly reversed when unallocated. Personal expense corrections append a
   reasoned negative copy; a replacement is a new expense. No financial deletion API
   exists. Historical per-diem inputs remain on the original/correcting entries.
 - `private.finance_valuation` supplies the shared ledger/receipt valuation: exact
   PostgreSQL arithmetic and currency-catalog rounding, dated NBU for UAH or explicit
-  manual rates. Studio receipts copy ledger FX; personal receipts and plans use the
-  same resolver/rule. Plans carry an explicit estimate valuation date. Original
-  currencies are never overwritten. Report totals and detail values use decimal text
-  and complete paginated reads, not JavaScript floating-point valuation.
-- Per diem is an assisted user-entered daily rate × inclusive days for one traveler.
-  The database verifies multiplication and currency precision. There are no statutory
-  rates. Receipt uploads are not introduced: the existing avatar upload path is not
+  manual rates. Studio receipts copy ledger FX; personal receipts use the
+  same historical resolver/rule. Plan reporting uses current assumptions independently. Original
+  currencies are never overwritten. Report totals and detail values use decimal text,
+  exact integer previews and complete paginated reads, not floating-point valuation.
+- Per diem is daily rate × inclusive days × covered travelers. The form defaults
+  to all active travelers, permits a selected subset and an explicit eligible-day
+  override, and displays the live calculation. Immutable entry coverage references
+  keep the selected identities even when Calendar participants later change. The
+  database verifies active same-trip coverage, count, multiplication and precision;
+  corrections copy the original coverage. Payer semantics are unchanged: one payer
+  can cover multiple travelers. Legacy entries retain their original single-person
+  calculation. There are no statutory rates. Receipt uploads are not introduced: the existing avatar upload path is not
   a private Finance document store.
 - New tables are SELECT-only behind strict Finance-admin RLS. Guarded RPCs use the
   existing studio lock and immutable request audit; tenant-safe foreign keys protect
