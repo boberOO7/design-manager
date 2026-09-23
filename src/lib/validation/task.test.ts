@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkPriorityPayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -194,5 +194,16 @@ describe("task status mutation result handling", () => {
     expect(toTaskStatusActionState({ success: false, formError: "The task was not found or is not available." })).toEqual({
       formError: "The task was not found or is not available.",
     });
+  });
+});
+
+describe("bulk task priority validation", () => {
+  it("accepts every single-task priority for a unique multi-task selection", () => {
+    const taskIds = ["123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174001"];
+    for (const priority of TASK_PRIORITY_VALUES) {
+      expect(taskBulkPriorityPayloadSchema.safeParse({ stage: "stage_1", priority, task_ids: taskIds }).success).toBe(true);
+    }
+    expect(taskBulkPriorityPayloadSchema.safeParse({ stage: "stage_1", priority: "medium", task_ids: taskIds }).success).toBe(false);
+    expect(taskBulkPriorityPayloadSchema.safeParse({ stage: "stage_1", priority: "urgent", task_ids: [taskIds[0], taskIds[0]] }).success).toBe(false);
   });
 });

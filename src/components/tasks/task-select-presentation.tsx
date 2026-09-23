@@ -23,8 +23,12 @@ function TaskSelectLabel({ children, className, urgent = false }: { children: st
   return <span className={`inline-flex min-w-0 items-center gap-1.5 font-medium ${className}`}><span className="truncate">{children}</span>{urgent ? <Flame aria-hidden="true" className="size-3.5 shrink-0" /> : null}</span>;
 }
 
+export function taskPriorityLabel(priority: PriorityValue, label: string) {
+  return <TaskSelectLabel className={priorityTone[priority]} urgent={priority === "urgent"}>{label}</TaskSelectLabel>;
+}
+
 export function taskPrioritySelectItem(priority: PriorityValue, label: string) {
-  return <SelectItem key={priority} textValue={label} value={priority}><TaskSelectLabel className={priorityTone[priority]} urgent={priority === "urgent"}>{label}</TaskSelectLabel></SelectItem>;
+  return <SelectItem key={priority} textValue={label} value={priority}>{taskPriorityLabel(priority, label)}</SelectItem>;
 }
 
 function getStatusTone(status: TaskStatus | string) {

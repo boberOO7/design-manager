@@ -11,12 +11,13 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, UserPlus, X } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, Signal, UserPlus, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { ProjectTemplateStageDialog } from "@/components/tasks/project-template-stage-dialog";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
+import { taskPriorityLabel } from "@/components/tasks/task-select-presentation";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
@@ -37,7 +38,7 @@ import {
 } from "@/lib/tasks";
 import { cn, formatDateShort, formatNumber } from "@/lib/utils";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle, getTaskStatusBulkDragStyle, getTaskStatusColumnStyle, getTaskStatusCountBadgeClassName } from "@/lib/semantic-styles";
-import type { ProjectTask } from "@/types/tasks";
+import { TASK_PRIORITY_VALUES, type ProjectTask, type TaskPriority } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, getTaskCreationStagesForProject, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -226,6 +227,7 @@ function BulkTaskContextMenu({
   onClose,
   onDeadline,
   onMove,
+  onPriority,
   position,
   selectedCount,
   selectedStatuses,
@@ -239,14 +241,16 @@ function BulkTaskContextMenu({
   onClose: () => void;
   onDeadline: (deadline: TaskDeadlineInput) => Promise<boolean>;
   onMove: (status: WritableTaskStatus) => Promise<boolean>;
+  onPriority: (priority: TaskPriority) => Promise<boolean>;
   position: TaskContextMenuState;
   selectedCount: number;
   selectedStatuses: Set<string>;
 }) {
   const locale = useLocale();
   const statusT = useTranslations("Status");
+  const priorityT = useTranslations("Priority");
   const isUkrainian = locale === "uk";
-  const [view, setView] = useState<"actions" | "assignee" | "deadline" | "move">("actions");
+  const [view, setView] = useState<"actions" | "assignee" | "deadline" | "priority" | "move">("actions");
   const [query, setQuery] = useState("");
   const availableDeadlineStatuses = TASK_MILESTONE_STATUSES.filter((status) => enabledStatuses.includes(status));
   const [deadlineStatus, setDeadlineStatus] = useState<TaskDeadlineInput["target_status"] | null>(availableDeadlineStatuses[0] ?? null);
@@ -275,7 +279,9 @@ function BulkTaskContextMenu({
   }
 
   const actionClassName = "flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-45";
-  const heading = view === "assignee"
+  const heading = view === "priority"
+    ? (isUkrainian ? "Змінити пріоритет" : "Change priority")
+    : view === "assignee"
     ? (isUkrainian ? "Призначити виконавця" : "Assign assignee")
     : view === "deadline"
       ? (isUkrainian ? "Встановити дедлайн" : "Set deadline")
@@ -295,6 +301,7 @@ function BulkTaskContextMenu({
       <p className="px-3 pb-1 pt-2 text-xs font-semibold text-[var(--ui-text-muted)]">{isUkrainian ? `${selectedCount} задач вибрано` : `${selectedCount} tasks selected`}</p>
       <button type="button" className={actionClassName} disabled={!canManageTasks || isSubmitting} onClick={() => setView("assignee")}><UserPlus className="size-4" aria-hidden="true" />{isUkrainian ? "Призначити виконавця" : "Assign assignee"}</button>
       <button type="button" className={actionClassName} disabled={!canManageTasks || availableDeadlineStatuses.length === 0 || isSubmitting} onClick={() => setView("deadline")}><CalendarClock className="size-4" aria-hidden="true" />{isUkrainian ? "Встановити дедлайн" : "Set deadline"}</button>
+      <button type="button" className={actionClassName} disabled={!canManageTasks || isSubmitting} onClick={() => setView("priority")}><Signal className="size-4" aria-hidden="true" />{isUkrainian ? "Змінити пріоритет" : "Change priority"}</button>
       <button type="button" className={actionClassName} disabled={!canMoveSelection || moveStatuses.length === 0 || isSubmitting} onClick={() => setView("move")}><FolderInput className="size-4" aria-hidden="true" />{isUkrainian ? "Перемістити до…" : "Move to…"}</button>
       <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><button type="button" className={actionClassName} onClick={onClear}><X className="size-4" aria-hidden="true" />{isUkrainian ? "Зняти вибір" : "Clear selection"}</button></div>
     </> : <>
@@ -315,6 +322,7 @@ function BulkTaskContextMenu({
         <DatePicker value={dueDate} disabled={isSubmitting} locale={locale} onValueChange={setDueDate} />
         <button type="button" disabled={!deadlineStatus || !dueDate || isSubmitting} onClick={() => deadlineStatus && void submit(() => onDeadline({ target_status: deadlineStatus, due_date: dueDate }))} className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[var(--ui-action-primary)] px-3 text-sm font-semibold text-[var(--ui-action-primary-text)] hover:bg-[var(--ui-action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? (isUkrainian ? "Збереження…" : "Saving…") : (isUkrainian ? "Застосувати" : "Apply")}</button>
       </div> : null}
+      {view === "priority" ? <div className="space-y-0.5 p-1">{TASK_PRIORITY_VALUES.map((priority) => <button key={priority} type="button" disabled={isSubmitting} onClick={() => void submit(() => onPriority(priority))} className={actionClassName}>{taskPriorityLabel(priority, priorityT(priority))}</button>)}</div> : null}
       {view === "move" ? <div className="max-h-64 space-y-0.5 overflow-y-auto p-1">{moveStatuses.map((status) => <button key={status} type="button" disabled={isSubmitting} onClick={() => void submit(() => onMove(status))} className={actionClassName}>{statusLabel(status)}</button>)}</div> : null}
     </>}
   </div>;
@@ -382,7 +390,7 @@ function TaskCardContent({
         {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
         {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
         {isPending ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ui-info-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-info-text)]">
+          <span className="inline-flex h-4 items-center gap-1 rounded-full bg-[var(--ui-info-surface)] px-1.5 font-medium leading-4 text-[var(--ui-info-text)]">
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> {t("saving")}
           </span>
         ) : null}
@@ -1077,6 +1085,30 @@ export function ProjectTaskBoard({
     }
   }
 
+  async function setSelectedTaskPriority(priority: TaskPriority): Promise<boolean> {
+    const taskIds = taskSelection.taskIds;
+    const stage = taskSelection.stage;
+    if (!stage || taskIds.length === 0 || taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    for (const taskId of taskIds) setTaskPending(taskId, true);
+    setBoardError(null);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-priority`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, priority }) });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося змінити пріоритет вибраних задач." : "The selected task priorities could not be updated.");
+      localTasksRef.current = result.tasks;
+      setLocalTasks(result.tasks);
+      setAnnouncement(locale === "uk" ? `Пріоритет змінено для ${taskIds.length} задач.` : `Priority updated for ${taskIds.length} tasks.`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося змінити пріоритет вибраних задач." : "The selected task priorities could not be updated.");
+      setBoardError(message);
+      setAnnouncement(message);
+      return false;
+    } finally {
+      for (const taskId of taskIds) setTaskPending(taskId, false);
+    }
+  }
+
   async function setSelectedTaskDeadline(deadline: TaskDeadlineInput): Promise<boolean> {
     const taskIds = taskSelection.taskIds;
     const stage = taskSelection.stage;
@@ -1359,6 +1391,7 @@ export function ProjectTaskBoard({
           if (!sourceTask) return Promise.resolve(false);
           return moveTaskBatch({ columnId: getBoardColumn(sourceTask.status), kind: "selection", stage: sourceTask.stage, taskIds: taskSelection.taskIds }, status);
         }}
+        onPriority={setSelectedTaskPriority}
         position={taskContextMenu}
         selectedCount={taskSelection.taskIds.length}
         selectedStatuses={new Set(selectedTasks.map((task) => task.status))}

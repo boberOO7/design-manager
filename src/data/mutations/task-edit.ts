@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
-import { getProjectTaskById, getTaskForStatusUpdate } from "@/data/queries/tasks";
+import { getProjectTaskById, getProjectTasks, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
+import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
-import { taskCompletionDateEditSchema, taskEditSchema } from "@/lib/validation/task";
+import { taskBulkPriorityPayloadSchema, taskCompletionDateEditSchema, taskEditSchema } from "@/lib/validation/task";
 import type { TaskUpdate } from "@/types/tasks";
 
 export async function updateTaskDetailsMutation(
@@ -149,4 +150,42 @@ export async function updateTaskCompletionDateMutation(
   const updatedTask = await getProjectTaskById(task.id);
   if (!updatedTask) return { success: false, formError: "The task was updated, but could not be refreshed. Please refresh the page." };
   return { success: true, task: updatedTask, projectStatus: task.project.status };
+}
+
+export async function bulkUpdateTaskPriorityMutation(projectId: string, input: unknown) {
+  const parsed = taskBulkPriorityPayloadSchema.safeParse(input);
+  if (!parsed.success) return { success: false, formError: "Choose a valid task batch and priority." } as const;
+
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { success: false, formError: "Only active studio administrators can edit task details." } as const;
+  const supabase = await createClient();
+  const { data: project, error: projectError } = await supabase.from("projects")
+    .select("studio_id, status, archived_at").eq("id", projectId).maybeSingle();
+  if (projectError || !project || project.studio_id !== admin.studio_id
+    || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })) {
+    return { success: false, formError: "This project stage is read-only or unavailable." } as const;
+  }
+
+  const { data: selected, error: selectionError } = await supabase.from("tasks")
+    .select("id, stage").eq("project_id", projectId).in("id", parsed.data.task_ids);
+  if (selectionError || selected?.length !== parsed.data.task_ids.length
+    || selected.some((task) => task.stage !== parsed.data.stage)) {
+    return { success: false, formError: "Every selected task must still be in this project stage." } as const;
+  }
+
+  const { data: updated, error } = await supabase.from("tasks")
+    .update({ priority: parsed.data.priority }).eq("project_id", projectId)
+    .eq("stage", parsed.data.stage).in("id", parsed.data.task_ids).select("id");
+  if (error || updated?.length !== parsed.data.task_ids.length) {
+    console.error("Unable to update selected task priorities", error);
+    return { success: false, formError: "The selected task priorities could not be updated. Please refresh and try again." } as const;
+  }
+
+  const tasks = await getProjectTasks(projectId);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/leaderboard");
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { success: true, tasks } as const;
 }

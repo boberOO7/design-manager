@@ -88,6 +88,12 @@ export const taskBulkAssignmentPayloadSchema = z.object({
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
+export const taskBulkPriorityPayloadSchema = z.object({
+  stage: z.enum(TASK_STAGES),
+  priority: z.enum(TASK_PRIORITY_VALUES),
+  task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
+}).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
+
 export const taskBulkDeadlinePayloadSchema = z.object({
   stage: z.enum(TASK_STAGES),
   target_status: z.enum(TASK_MILESTONE_STATUSES),
