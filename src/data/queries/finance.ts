@@ -101,22 +101,23 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   let query=projectId
     ? client.from("finance_project_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream",stream)
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
-  if(itemId) query=query.eq("id",itemId);
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(filter==="cancelled") query=query.eq("commitment","cancelled");
   if(attention==="overdue") query=query.or(FINANCE_OVERDUE_DB_FILTER);
   const bounds=planningPeriodBounds(period,today);
   if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null),and(commitment.neq.cancelled,remaining_amount.gt.0,due_state.eq.overdue),and(commitment.neq.cancelled,remaining_amount.gt.0,payment_state.eq.partial)`);
-  const [items,payments,credits]=await Promise.all([
+  const [items,payments,credits,selected]=await Promise.all([
     query.order("due_date",{ nullsFirst:false }).order("id").range((page-1)*50,page*50-1),
     client.from("finance_payment_availability").select("*").eq("studio_id",admin.studio_id).gt("unapplied_amount",0)
       .order("financial_date",{ ascending:false }).order("id").limit(1000),
     client.from("finance_actionable_unapplied").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id)
       .order("financial_date",{ ascending:false }).order("id").range((creditPage-1)*50,creditPage*50-1),
+    itemId&&!projectId?client.from("finance_expected_balances").select("*").eq("studio_id",admin.studio_id).eq("id",itemId).maybeSingle():Promise.resolve(null),
   ]);
-  if(items.error || payments.error || credits.error) throw new Error("Unable to load Finance planning.",{ cause:items.error??payments.error??credits.error });
-  const ids=(items.data??[]).flatMap((item) => item.id ? [item.id] : []);
+  if(items.error || payments.error || credits.error || selected?.error) throw new Error("Unable to load Finance planning.",{ cause:items.error??payments.error??credits.error??selected?.error });
+  const visibleItems=selected?.data&&!items.data?.some((item)=>item.id===selected.data?.id)?[selected.data,...(items.data??[])]:items.data??[];
+  const ids=visibleItems.flatMap((item) => item.id ? [item.id] : []);
   const history=ids.length ? await client.from("finance_allocations").select("*, movement:finance_movements!finance_allocations_studio_id_movement_id_fkey(financial_date,category)")
     .eq("studio_id",admin.studio_id).in("expected_item_id",ids).order("created_at",{ ascending:false }).limit(500) : null;
   if(history?.error) throw new Error("Unable to load settlement history.",{ cause:history.error });
@@ -130,7 +131,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const tripBalances = ids.length ? await client.from("finance_trip_balances").select("trip_id,expected_item_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   const tripEntries = ids.length ? await client.from("finance_trip_entries").select("trip_id,expected_item_id,movement_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if (tripBalances?.error || tripEntries?.error) throw new Error("Unable to load trip context.",{cause:tripBalances?.error ?? tripEntries?.error});
-  return { tripLinks:[...(tripBalances?.data??[]).map(v=>({...v,cash:false})),...(tripEntries?.data??[]).map(v=>({...v,cash:Boolean(v.movement_id)}))],payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:items.data??[],payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
+  return { tripLinks:[...(tripBalances?.data??[]).map(v=>({...v,cash:false})),...(tripEntries?.data??[]).map(v=>({...v,cash:Boolean(v.movement_id)}))],payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:visibleItems,payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 
