@@ -7,6 +7,7 @@ import {
   getProjectById,
 } from "@/data/mock";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { cache } from "react";
 import type {
   DashboardMetrics,
@@ -21,8 +22,7 @@ import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonu
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
-import { getKyivPeriodBounds, projectProductivityLeaderboard, type CompletedProductivityAttribution, type LeaderboardPeriod, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember } from "@/lib/productivity";
-import { isProjectProgressStage } from "@/lib/project-progress";
+import { getKyivPeriodBounds, projectProductivityContributions, projectProductivityLeaderboard, selectLeaderboardAttributions, type LeaderboardPeriod, type ProductivityContributionAttribution, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember, type ProductivityProjectContribution } from "@/lib/productivity";
 
 export type DataMode = "mock" | "supabase";
 
@@ -185,10 +185,15 @@ export function getEmployeeWorkloadData(): EmployeeWorkloadSummary[] {
   return getEmployeeWorkload();
 }
 
-async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number, referenceTime: Date): Promise<ProductivityLeaderboardEntry[]> {
+type LeaderboardPeriodData = {
+  entries: ProductivityLeaderboardEntry[];
+  contributions: Record<string, ProductivityProjectContribution[]>;
+};
+
+async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number, referenceTime: Date, includeContributions = false): Promise<LeaderboardPeriodData> {
   const bounds = getKyivPeriodBounds(period, referenceTime, periodOffset);
   const supabase = await createClient();
-  const [{ data: members, error: membersError }, { data: projects, error: projectsError }, { data, error }] = await Promise.all([
+  const [{ data: members, error: membersError }, { data: firstAttributions, count, error: attributionError }] = await Promise.all([
     supabase
       .from("studio_members")
       .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url)")
@@ -197,54 +202,97 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
       .eq("profile.is_active", true)
       .in("profile.job_title", PROFESSIONAL_ROLES)
       .overrideTypes<Array<{ profile: { id: string; full_name: string; job_title: string; avatar_url: string | null } }>, { merge: false }>(),
-    supabase
-      .from("projects")
-      .select("id, include_in_productivity")
+    supabase.from("productivity_attributions")
+      .select("id, project_id, task_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at", { count: "exact" })
       .eq("studio_id", studioId)
-      .overrideTypes<Array<{ id: string; include_in_productivity: boolean }>, { merge: false }>(),
-    supabase
-    .from("productivity_attributions")
-    .select("project_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")
-    .eq("studio_id", studioId)
-    .is("voided_at", null)
-    .gte("completed_at", bounds.start)
-    .lt("completed_at", bounds.end)
-    .overrideTypes<Array<CompletedProductivityAttribution & { project_id: string }>, { merge: false }>(),
+      .is("voided_at", null)
+      .gte("completed_at", bounds.start)
+      .lt("completed_at", bounds.end)
+      .order("completed_at", { ascending: false }).order("id", { ascending: false }).range(0, 999)
+      .overrideTypes<ProductivityContributionAttribution[], { merge: false }>(),
   ]);
-  if (membersError || !members || projectsError || !projects || error || !data) {
-    const cause = membersError ?? projectsError ?? error;
+  if (membersError || !members || attributionError || !firstAttributions || count == null) {
+    const cause = membersError ?? attributionError;
     console.error("Unable to load productivity.", cause);
     throw new Error("Unable to load productivity.", { cause });
   }
-  const excludedProjectIds = new Set(projects.filter((project) => !project.include_in_productivity).map((project) => project.id));
+  const attributions = [...firstAttributions];
+  while (attributions.length < count) {
+    const { data, error } = await supabase.from("productivity_attributions")
+      .select("id, project_id, task_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")
+      .eq("studio_id", studioId).is("voided_at", null).gte("completed_at", bounds.start).lt("completed_at", bounds.end)
+      .order("completed_at", { ascending: false }).order("id", { ascending: false }).range(attributions.length, attributions.length + 999)
+      .overrideTypes<ProductivityContributionAttribution[], { merge: false }>();
+    if (error || !data?.length) {
+      const cause = error ?? new Error("An attribution page was empty before the selected period was fully loaded.");
+      console.error("Unable to load productivity.", cause);
+      throw new Error("Unable to load productivity.", { cause });
+    }
+    attributions.push(...data);
+  }
+
+  // Project flags are studio-wide accounting inputs; project names still follow the viewer's RLS.
+  const projectIds = [...new Set(attributions.map((attribution) => attribution.project_id))];
+  const excludedProjectIds = new Set<string>();
+  if (projectIds.length) {
+    const admin = createAdminClient();
+    for (let index = 0; index < projectIds.length; index += 100) {
+      const { data, error } = await admin.from("projects").select("id, include_in_productivity").eq("studio_id", studioId).in("id", projectIds.slice(index, index + 100));
+      if (error || !data) {
+        const cause = error;
+        console.error("Unable to load productivity.", cause);
+        throw new Error("Unable to load productivity.", { cause });
+      }
+      for (const project of data) if (!project.include_in_productivity) excludedProjectIds.add(project.id);
+    }
+  }
   const eligibleMembers: ProductivityLeaderboardMember[] = members.map(({ profile }) => ({
     user_id: profile.id,
     full_name: profile.full_name,
     job_title: profile.job_title,
     avatar_url: profile.avatar_url,
   }));
-  return projectProductivityLeaderboard(
-    data.filter((attribution) =>
-      !excludedProjectIds.has(attribution.project_id)
-      || (attribution.source_type === "task" && attribution.task_stage !== null && attribution.task_stage !== undefined && !isProjectProgressStage(attribution.task_stage)),
-    ),
-    eligibleMembers,
-  );
+  const selected = selectLeaderboardAttributions(attributions, excludedProjectIds);
+  const entries = projectProductivityLeaderboard(selected, eligibleMembers);
+  if (!includeContributions) return { entries, contributions: {} };
+
+  const eligibleIds = new Set(eligibleMembers.map((member) => member.user_id));
+  const visibleProjectIds = [...new Set(selected.flatMap((attribution) => Number(attribution.credited_area_m2) > 0 && eligibleIds.has(attribution.contributor_id) ? [attribution.project_id] : []))];
+  const projectNames = new Map<string, string>();
+  for (let index = 0; index < visibleProjectIds.length; index += 100) {
+    const { data, error } = await supabase.from("projects").select("id, name").eq("studio_id", studioId).in("id", visibleProjectIds.slice(index, index + 100));
+    if (error || !data) {
+      console.error("Unable to load productivity project names.", error);
+      continue;
+    }
+    for (const project of data) projectNames.set(project.id, project.name);
+  }
+  const taskIds = [...new Set(selected.flatMap((attribution) => attribution.task_id && Number(attribution.credited_area_m2) > 0 && eligibleIds.has(attribution.contributor_id) ? [attribution.task_id] : []))];
+  const taskTitles = new Map<string, string>();
+  for (let index = 0; index < taskIds.length; index += 100) {
+    const { data, error } = await supabase.from("tasks").select("id, title").in("id", taskIds.slice(index, index + 100));
+    if (error || !data) {
+      console.error("Unable to load productivity task names.", error);
+      continue;
+    }
+    for (const task of data) taskTitles.set(task.id, task.title);
+  }
+  return { entries, contributions: projectProductivityContributions(selected, eligibleMembers, projectNames, taskTitles) };
 }
 
-export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[]; bonusConfig: LeaderboardBonusConfig }> {
+export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "month"): Promise<{ current: ProductivityLeaderboardEntry[]; previous: ProductivityLeaderboardEntry[]; contributions: Record<string, ProductivityProjectContribution[]>; bonusConfig: LeaderboardBonusConfig }> {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
-  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
+  if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return { current: [], previous: [], contributions: {}, bonusConfig: { enabled: false, rules: [] } };
   if (!canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })) {
-    return { current: [], previous: [], bonusConfig: { enabled: false, rules: [] } };
+    return { current: [], previous: [], contributions: {}, bonusConfig: { enabled: false, rules: [] } };
   }
   const referenceTime = new Date();
   const [current, previous, bonusConfig] = await Promise.all([
-    getLeaderboardForPeriod(membership.studio_id, period, 0, referenceTime),
+    getLeaderboardForPeriod(membership.studio_id, period, 0, referenceTime, true),
     getLeaderboardForPeriod(membership.studio_id, period, -1, referenceTime),
     getStudioLeaderboardBonusConfig(membership.studio_id),
   ]);
-  return { current, previous, bonusConfig };
+  return { current: current.entries, previous: previous.entries, contributions: current.contributions, bonusConfig };
 }
 
 export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {

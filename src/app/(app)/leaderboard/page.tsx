@@ -8,6 +8,7 @@ import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LeaderboardPeriodSwitcher } from "@/components/leaderboard/leaderboard-period-switcher";
 import { LeaderboardBonusMenu } from "@/components/leaderboard/leaderboard-bonus-menu";
+import { LeaderboardRanking } from "@/components/leaderboard/leaderboard-ranking";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import { redirect } from "next/navigation";
@@ -20,9 +21,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const requestedPeriod = (await searchParams).period;
   const period: LeaderboardPeriod = isLeaderboardPeriod(requestedPeriod) ? requestedPeriod : "month";
-  const [t, roles, locale, profile, membership] = await Promise.all([
+  const [t, roles, stages, locale, profile, membership] = await Promise.all([
     getTranslations("Leaderboard"),
     getTranslations("Roles"),
+    getTranslations("TaskStages"),
     getLocale(),
     getCurrentUserProfile(),
     getActiveStudioMembership(),
@@ -57,9 +59,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   }
 
   overview = {
+    ...overview,
     current: overview.current.map((entry) => { const roleKey = getCanonicalRoleTranslationKey(entry.job_title); return roleKey ? { ...entry, job_title: roles(roleKey) } : entry; }),
     previous: overview.previous.map((entry) => { const roleKey = getCanonicalRoleTranslationKey(entry.job_title); return roleKey ? { ...entry, job_title: roles(roleKey) } : entry; }),
-    bonusConfig: overview.bonusConfig,
   };
 
   const currentLeader = overview.current.find(hasQualifyingProductivity) ?? null;
@@ -70,6 +72,11 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const periodRange = getKyivPeriodRangeLabel(period, locale);
   const monthlyBonusesApply = period === "month" && hasLeaderboardBonuses(overview.bonusConfig) && overview.current.some(hasQualifyingProductivity);
   const formatBonusRules = overview.bonusConfig.rules.map((rule) => t("bonusRule", { place: rule.place, bonus: rule.bonusPercent })).join(" · ");
+  const rankedEntries = overview.current.map((entry) => ({
+    ...entry,
+    bonusPercent: getLeaderboardEntryBonusPercent({ rank: entry.rank, completedAreaM2: entry.completed_area_m2, completedTasks: entry.completed_tasks }, overview.bonusConfig),
+  }));
+  const stageLabels = { stage_1: stages("stage_1"), stage_2: stages("stage_2"), stage_3: stages("stage_3"), stage_4: stages("stage_4") };
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
@@ -84,7 +91,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       </section>
       <section aria-labelledby="period-ranking-heading" className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]">
         <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] px-5 py-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="period-ranking-heading" className="font-semibold text-[var(--ui-text)]">{t("ranking", { period: periodLabel })}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{overview.current.length ? t("contributorsSummary", { count: overview.current.length, area: formatArea(totals.completed_area_m2, locale) }) : t("noCompleted")}</p></div>{monthlyBonusesApply && overview.current.length ? <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("bonusRanks", { rules: formatBonusRules })}</p> : null}</div>
-        {overview.current.length === 0 ? <div className="px-5 py-10 text-center"><p className="font-medium text-[var(--ui-text)]">{t("noCompletedPeriod", { period: t(period) })}</p><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("noCompletedPeriodDescription")}</p></div> : <ol className="divide-y divide-[var(--ui-border)]">{overview.current.map((entry) => { const bonus = getLeaderboardEntryBonusPercent({ rank: entry.rank, completedAreaM2: entry.completed_area_m2, completedTasks: entry.completed_tasks }, overview.bonusConfig); return <li key={entry.user_id} className={`grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3.5 sm:px-5 ${monthlyBonusesApply ? "sm:grid-cols-[3rem_minmax(0,1fr)_8rem_5.5rem_5.5rem]" : "sm:grid-cols-[3rem_minmax(0,1fr)_8rem_5.5rem]"}`}><p className={`ui-numeric text-sm font-semibold ${bonus > 0 ? "text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"}`}>#{entry.rank}</p><div className="flex min-w-0 items-center gap-2"><UserAvatar imageUrl={entry.avatar_url} name={entry.full_name} size="boardCard" decorative /><div className="min-w-0"><p className="truncate font-medium text-[var(--ui-text)]">{entry.full_name}</p><p className="truncate text-sm text-[var(--ui-text-secondary)]">{entry.job_title}</p></div></div><p className="hidden text-right text-sm ui-numeric font-medium text-[var(--ui-text)] sm:block">{formatArea(entry.completed_area_m2, locale)}</p><p className="hidden text-right text-sm ui-numeric text-[var(--ui-text-secondary)] sm:block">{t("tasks", { count: entry.completed_tasks })}</p>{monthlyBonusesApply ? <div className="justify-self-end"><BonusBadge config={overview.bonusConfig} entry={entry} compact t={t} /></div> : null}<div className="col-span-2 flex gap-3 text-xs text-[var(--ui-text-secondary)] sm:hidden"><span className="ui-numeric">{formatArea(entry.completed_area_m2, locale)}</span><span className="ui-numeric">{t("tasks", { count: entry.completed_tasks })}</span></div></li>; })}</ol>}
+        {overview.current.length === 0 ? <div className="px-5 py-10 text-center"><p className="font-medium text-[var(--ui-text)]">{t("noCompletedPeriod", { period: t(period) })}</p><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("noCompletedPeriodDescription")}</p></div> : <LeaderboardRanking key={period} entries={rankedEntries} contributions={overview.contributions} locale={locale} monthlyBonusesApply={monthlyBonusesApply} stageLabels={stageLabels} />}
       </section>
     </div>
   );

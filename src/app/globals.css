@@ -477,6 +477,21 @@ body,
 }
 
 @supports (interpolate-size: allow-keywords) {
+  details[data-finance-motion] { interpolate-size: allow-keywords; }
+  details[data-finance-motion]::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 200ms ease-out, opacity 160ms ease-out, content-visibility 200ms allow-discrete;
+  }
+  details[data-finance-motion][open]::details-content { block-size: auto; opacity: 1; }
+  :root[data-motion="off"] details[data-finance-motion]::details-content { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    :root[data-motion="system"] details[data-finance-motion]::details-content { transition: none; }
+  }
+}
+
+@supports (interpolate-size: allow-keywords) {
   [data-project-finance] article details { interpolate-size: allow-keywords; }
   [data-project-finance] article details::details-content {
     block-size: 0;

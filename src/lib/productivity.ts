@@ -1,5 +1,6 @@
 import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
 import type { TaskStage } from "@/lib/task-stages";
+import { isProjectProgressStage } from "@/lib/project-progress";
 
 export const PRODUCTIVITY_STAGE_RATIOS = {
   stage_1: 0.20,
@@ -53,6 +54,26 @@ export type ProductivityAttribution = {
 };
 
 export type CompletedProductivityAttribution = ProductivityAttribution & { completed_at: string };
+
+export type ProductivityContributionAttribution = CompletedProductivityAttribution & {
+  id: string;
+  project_id: string;
+  task_id: string | null;
+};
+
+export type ProductivityProjectContribution = {
+  project_id: string;
+  project_name: string | null;
+  completed_area_m2: number;
+  records: Array<{
+    id: string;
+    task_title: string | null;
+    task_stage: TaskStage | null;
+    source_type: ProductivityAttribution["source_type"];
+    completed_at: string;
+    credited_area_m2: number;
+  }>;
+};
 
 export type ProductivityLeaderboardEntry = {
   avatar_url?: string | null;
@@ -160,7 +181,7 @@ export function getKyivPeriodRangeLabel(period: LeaderboardPeriod, locale: strin
   return `${formatter.format(start)} – ${formatter.format(end)}`;
 }
 
-export function filterProductivityAttributionsForPeriod(attributions: CompletedProductivityAttribution[], period: LeaderboardPeriod, now = new Date(), periodOffset = 0): ProductivityAttribution[] {
+export function filterProductivityAttributionsForPeriod<T extends CompletedProductivityAttribution>(attributions: T[], period: LeaderboardPeriod, now = new Date(), periodOffset = 0): T[] {
   const bounds = getKyivPeriodBounds(period, now, periodOffset);
   return attributions.filter((attribution) => attribution.completed_at >= bounds.start && attribution.completed_at < bounds.end);
 }
@@ -213,4 +234,46 @@ export function projectProductivityLeaderboard(
     previous = entry;
     return { ...entry, rank };
   });
+}
+
+/** Use the same project inclusion rule for the ranking and its contribution rows. */
+export function selectLeaderboardAttributions<T extends ProductivityAttribution & { project_id: string }>(
+  attributions: T[], excludedProjectIds: ReadonlySet<string>,
+): T[] {
+  return attributions.filter((attribution) =>
+    !excludedProjectIds.has(attribution.project_id)
+    || (attribution.source_type === "task" && attribution.task_stage != null && !isProjectProgressStage(attribution.task_stage)));
+}
+
+export function projectProductivityContributions(
+  attributions: ProductivityContributionAttribution[],
+  eligibleMembers: ProductivityLeaderboardMember[],
+  projectNames: ReadonlyMap<string, string>,
+  taskTitles: ReadonlyMap<string, string>,
+): Record<string, ProductivityProjectContribution[]> {
+  const eligibleIds = new Set(eligibleMembers.map((member) => member.user_id));
+  const byMember = new Map<string, Map<string, ProductivityProjectContribution>>();
+  for (const attribution of attributions) {
+    const area = Number(attribution.credited_area_m2);
+    if (!eligibleIds.has(attribution.contributor_id) || area === 0) continue;
+    const projects = byMember.get(attribution.contributor_id) ?? new Map<string, ProductivityProjectContribution>();
+    const project = projects.get(attribution.project_id) ?? {
+      project_id: attribution.project_id,
+      project_name: projectNames.get(attribution.project_id) ?? null,
+      completed_area_m2: 0,
+      records: [],
+    };
+    project.completed_area_m2 += area;
+    project.records.push({
+      id: attribution.id,
+      task_title: attribution.task_id ? taskTitles.get(attribution.task_id) ?? null : null,
+      task_stage: attribution.task_stage ?? null,
+      source_type: attribution.source_type,
+      completed_at: attribution.completed_at,
+      credited_area_m2: area,
+    });
+    projects.set(attribution.project_id, project);
+    byMember.set(attribution.contributor_id, projects);
+  }
+  return Object.fromEntries([...byMember].map(([memberId, projects]) => [memberId, [...projects.values()]]));
 }
