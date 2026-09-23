@@ -62,6 +62,24 @@ pnpm install
 The bootstrap command reports its target and asks for confirmation before it
 writes. Never point it at a remote environment unintentionally.
 
+### Local production snapshot
+
+With local Supabase running and the CLI linked to the production project, set
+`STUDIOFLOW_PROD_READONLY_DB_URL` to a pre-existing **read-only** Postgres
+session/direct URL for that project, then run `pnpm dev:refresh-prod`. The role
+needs `SELECT` on public tables and sequences and `BYPASSRLS`, without write grants. The
+command checks the linked project and role permissions, reads through a
+read-only transaction, preserves application data, neutralizes credential/token
+fields and excludes Google Calendar connections, then rebuilds and restores
+**only the local database**. Production users cannot log in locally; it prints
+a generated password for `dev@studioflow.local`, an active administrator backed by a preserved profile ID.
+Keep `.env.local` pointed at the local Supabase URL and keys.
+
+Run `pnpm dev:reset` to rebuild from migrations and restore the cached sanitized
+snapshot without contacting production. Both commands replace local database
+data. The snapshot and local login credentials live under the ignored
+`.local/prod-snapshot/` directory; the ordinary `supabase/seed.sql` stays separate.
+
 ## Environment variables
 
 | Category | Variables | Notes |
@@ -86,6 +104,8 @@ credentials.
 | `pnpm exec vitest run` | Run the test suite. |
 | `pnpm db:start` / `pnpm db:stop` | Start or stop local Supabase. |
 | `pnpm db:status` | Show local Supabase connection values and services. |
+| `pnpm dev:refresh-prod` | Download, sanitize, and restore a linked production snapshot locally. |
+| `pnpm dev:reset` | Restore the cached sanitized snapshot locally without remote access. |
 | `pnpm bootstrap-studio` | Interactively create a studio and first administrator. |
 | `graphify query "<question>"` | Query the repository knowledge graph. |
 | `graphify update .` | Refresh the graph after source or documentation changes. |

@@ -89,7 +89,7 @@ export async function AdminDashboardView({ administration, dashboard, operations
           </Link>
         </li>)}</ul> : <div className="flex min-h-[5.25rem] items-center gap-3 rounded-[calc(var(--ui-radius-panel)-0.125rem)] px-3 py-3 text-sm text-[var(--ui-text-secondary)]"><span className="flex size-9 items-center justify-center rounded-full bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]"><Check className="size-4" aria-hidden="true" /></span>{t("emptyOperationalAttention")}</div>}</OperationalSurface>
       </DashboardSection>
-      <div id="team-workload" className="dashboard-reveal dashboard-reveal-delay-2 scroll-mt-5"><DashboardSection title={t("teamWorkload")}><OperationalSurface className="p-1.5">{workload.length ? <BoundedDashboardList><TeamWorkload asOf={dashboard.asOf} members={workload} today={dashboard.today} /></BoundedDashboardList> : <EmptyState compact className="border-0 bg-transparent" title={t("emptyWorkload")} />}</OperationalSurface></DashboardSection></div>
+      <div id="team-workload" className="dashboard-reveal dashboard-reveal-delay-2 scroll-mt-5"><DashboardSection title={t("teamWorkload")}><OperationalSurface className="p-1.5">{workload.length ? <BoundedDashboardList resizable resizeLabel={t("resizeWorkload")}><TeamWorkload asOf={dashboard.asOf} members={workload} today={dashboard.today} /></BoundedDashboardList> : <EmptyState compact className="border-0 bg-transparent" title={t("emptyWorkload")} />}</OperationalSurface></DashboardSection></div>
       </div>
       <aside className="grid min-w-0 content-start gap-5 xl:col-span-5">
         <DashboardSection className="dashboard-reveal dashboard-reveal-delay-2" title={t("upcoming")}>

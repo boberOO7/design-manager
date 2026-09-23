@@ -17,18 +17,6 @@ const METRICS: Array<{ category: WorkloadCategory; icon: LucideIcon; risk?: bool
   { category: "overdue", icon: CircleAlert, risk: true },
 ];
 
-function statusKey(status: string) {
-  switch (status) {
-    case "todo": return "todo";
-    case "in_progress": return "inProgress";
-    case "internal_review": return "internal_review";
-    case "review": return "review";
-    case "completed": return "completed";
-    case "cancelled": return "cancelled";
-    default: throw new Error(`Unsupported task status: ${status}`);
-  }
-}
-
 function metricValue(member: TeamWorkloadMember, category: WorkloadCategory) {
   if (category === "todo") return member.todoCount;
   if (category === "in_progress") return member.inProgressCount;
@@ -61,7 +49,26 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
   return <ul className="space-y-1">
     {members.map((member) => {
       const isExpanded = expandedMemberId === member.id;
-      const tasks = member.tasks.filter((task) => isTaskInWorkloadCategory(task, selectedCategory, today));
+      const tasks = member.tasks.filter((task) => isTaskInWorkloadCategory(task, selectedCategory, today)).sort((left, right) => {
+        const overdue = Number(isOverdue(right, today)) - Number(isOverdue(left, today));
+        if (overdue) return overdue;
+        const priority = priorityRank(left.priority) - priorityRank(right.priority);
+        if (priority) return priority;
+        const leftEntered = reliableActiveEntry(left, asOf);
+        const rightEntered = reliableActiveEntry(right, asOf);
+        if (leftEntered && rightEntered) return rightEntered.localeCompare(leftEntered);
+        return Number(Boolean(rightEntered)) - Number(Boolean(leftEntered));
+      });
+      const visibleTasks: DashboardWorkloadTask[] = [];
+      const projectGroups = new Map<string, { name: string; tasks: DashboardWorkloadTask[] }>();
+      for (const task of tasks) {
+        if (visibleTasks.length === 8) break;
+        const group = projectGroups.get(task.project_id) ?? { name: task.project.name, tasks: [] };
+        if (group.tasks.length === 3) continue;
+        group.tasks.push(task);
+        projectGroups.set(task.project_id, group);
+        visibleTasks.push(task);
+      }
       return <li key={member.id} className="rounded-[calc(var(--ui-radius-panel)-0.125rem)]">
         <div className="relative grid gap-3 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
@@ -88,7 +95,16 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
           <div className="overflow-hidden">
             <div className="border-t border-[var(--ui-border)] px-3 pb-2 pt-2.5">
               <p className="mb-2 text-xs font-medium text-[var(--ui-text-secondary)]">{categoryLabel(selectedCategory)} · {tasks.length}</p>
-              <ul className="space-y-1">{tasks.map((task) => <InlineTask key={task.id} asOf={asOf} locale={locale} task={task} today={today} />)}</ul>
+              <div className="space-y-3">{[...projectGroups].map(([projectId, group]) => {
+                const projectTasks = tasks.filter((task) => task.project_id === projectId);
+                const hiddenCount = projectTasks.length - group.tasks.length;
+                return <section key={projectId} aria-label={group.name} className="border-t border-[var(--ui-border)] pt-2 first:border-0 first:pt-0">
+                  <h4 className="mb-1 flex items-center justify-between gap-2 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ui-text-secondary)]"><span className="truncate">{group.name}</span><span className="ui-numeric shrink-0 text-[var(--ui-text-muted)]">{t("workloadProjectTaskCount", { count: projectTasks.length })}</span></h4>
+                  <ul className="space-y-1">{group.tasks.map((task) => <InlineTask key={task.id} asOf={asOf} locale={locale} task={task} today={today} />)}</ul>
+                  {hiddenCount > 0 ? <p className="px-2 pt-1"><Link href={`/projects/${projectId}`} className="text-xs font-medium text-[var(--ui-info-text)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)]">{t("showMoreWorkloadTasks", { count: hiddenCount })}</Link></p> : null}
+                </section>;
+              })}</div>
+              {tasks.length > visibleTasks.length ? <p className="mt-2 text-right text-xs text-[var(--ui-text-muted)]">{t("showingWorkloadTasks", { shown: visibleTasks.length, total: tasks.length })}</p> : null}
             </div>
           </div>
         </div>
@@ -97,23 +113,27 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
   </ul>;
 }
 
+function isOverdue(task: DashboardWorkloadTask, today: string) {
+  return task.due_date !== null && task.due_date < today;
+}
+
+function priorityRank(priority: DashboardWorkloadTask["priority"]) {
+  return priority === "urgent" ? 0 : priority === "high" ? 1 : 2;
+}
+
+function reliableActiveEntry(task: DashboardWorkloadTask, asOf: string) {
+  const enteredAt = task.currentStatusEnteredAt;
+  return task.status !== "completed" && task.status !== "cancelled" && enteredAt && Number.isFinite(Date.parse(enteredAt)) && Date.parse(enteredAt) <= Date.parse(asOf) ? enteredAt : null;
+}
+
 function InlineTask({ asOf, locale, task, today }: { asOf: string; locale: string; task: DashboardWorkloadTask; today: string }) {
   const t = useTranslations("Dashboard");
-  const status = useTranslations("Status");
   const age = formatStatusAge(task.currentStatusEnteredAt, asOf, t);
   const overdue = task.due_date !== null && task.due_date < today;
   return <li><Link href={`/projects/${task.project_id}?task=${task.id}`} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--ui-radius-control)] px-2.5 py-2 transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]">
-    <span className="min-w-0"><span className="block truncate text-sm font-medium text-[var(--ui-text)]">{task.title}</span><span className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{task.project.name}</span></span>
-    <span className="flex shrink-0 flex-col items-end gap-1 text-xs"><span className={`inline-flex items-center gap-1 font-medium ${statusMetadataClass(task.status)}`}><span className="size-1.5 rounded-full bg-current" aria-hidden="true" />{status(statusKey(task.status))}</span>{age ? <span className="inline-flex items-center gap-1 text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("statusAgeInStatus", { duration: age })}</span> : null}{task.due_date ? <time dateTime={task.due_date} className={overdue ? "font-medium text-[var(--ui-danger-text)]" : "text-[var(--ui-text-muted)]"}>{overdue ? `${t("overdue")} · ${formatDate(task.due_date, locale)}` : t("dueDate", { date: formatDate(task.due_date, locale) })}</time> : null}</span>
+    <span className="min-w-0 truncate text-sm font-medium text-[var(--ui-text)]">{task.title}</span>
+    <span className="flex shrink-0 flex-col items-end gap-0.5 text-xs">{age ? <span className="inline-flex items-center gap-1 text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("statusAgeInStatus", { duration: age })}</span> : null}{task.due_date ? <time dateTime={task.due_date} className={overdue ? "font-medium text-[var(--ui-danger-text)]" : "text-[var(--ui-text-muted)]"}>{overdue ? `${t("overdue")} · ${formatDate(task.due_date, locale)}` : t("dueDate", { date: formatDate(task.due_date, locale) })}</time> : null}</span>
   </Link></li>;
-}
-
-function statusMetadataClass(status: DashboardWorkloadTask["status"]) {
-  if (status === "in_progress" || status === "internal_review") return "text-[var(--ui-info-text)]";
-  if (status === "review") return "text-[var(--ui-violet-text)]";
-  if (status === "completed") return "text-[var(--ui-success-text)]";
-  if (status === "cancelled") return "text-[var(--ui-text-muted)]";
-  return "text-[var(--ui-text-secondary)]";
 }
 
 function formatStatusAge(enteredAt: string | null, asOf: string, t: ReturnType<typeof useTranslations<"Dashboard">>) {

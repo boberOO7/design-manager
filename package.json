@@ -7,6 +7,8 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
+    "dev:refresh-prod": "python3 scripts/dev-snapshot.py refresh",
+    "dev:reset": "python3 scripts/dev-snapshot.py reset",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
