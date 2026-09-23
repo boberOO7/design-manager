@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { loadDashboardTask } from "@/app/(app)/dashboard/task-actions";
 import { Drawer } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { FolderKanban, X } from "lucide-react";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getEmployeeTasksNeedingAttention, getTodayDate } from "@/lib/dashboard";
@@ -35,7 +35,7 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
   function openTaskDrawer(taskId: string) {
     isTaskDrawerOpenRef.current = true;
     setSelectedTaskId(taskId);
-    setIsTaskDrawerOpen(true);
+    setIsTaskDrawerOpen(false);
     setSelectedTask(null);
     setLoadFailed(false);
     const request = ++detailRequest.current;
@@ -45,8 +45,12 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
       if (request !== detailRequest.current || !isTaskDrawerOpenRef.current) return;
       if (task) setSelectedTask(task);
       else setLoadFailed(true);
+      setIsTaskDrawerOpen(true);
     }).catch(() => {
-      if (request === detailRequest.current && isTaskDrawerOpenRef.current) setLoadFailed(true);
+      if (request === detailRequest.current && isTaskDrawerOpenRef.current) {
+        setLoadFailed(true);
+        setIsTaskDrawerOpen(true);
+      }
     });
   }
 
@@ -88,12 +92,13 @@ export function DashboardTaskList({ currentUserId, tasks, needsAttentionOnly = f
             <div className="min-w-0"><p className="min-h-11 break-words py-2 font-medium leading-5 text-[var(--ui-text)]">{task.title}</p></div>
             <span className={`w-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
           </div>
-          <div className="pointer-events-none relative z-10 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"><Link href={`/projects/${task.project_id}`} className="pointer-events-auto break-words text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{task.project.name}</Link><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span className={`rounded-full px-1.5 py-0.5 font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>{progress?.kind === "checklist" ? <><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span aria-label={taskT("checklistProgress", { completed: progress.completed, total: progress.total })} className="ui-numeric font-medium text-[var(--ui-text-secondary)]">{progress.completed}/{progress.total}</span></> : null}{task.due_date ? <><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span className={overdue ? "font-medium text-[var(--ui-danger-text)]" : dueToday ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-secondary)]"}>{overdue ? t("overdue") : dueToday ? t("dueToday") : t("dueDate", { date: formatDate(task.due_date, locale) })}</span></> : null}</div>
+          <div className="pointer-events-none relative z-10 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 pr-12 text-xs"><span className="break-words text-[var(--ui-text-muted)]">{task.project.name}</span><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span className={`rounded-full px-1.5 py-0.5 font-medium ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>{progress?.kind === "checklist" ? <><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span aria-label={taskT("checklistProgress", { completed: progress.completed, total: progress.total })} className="ui-numeric font-medium text-[var(--ui-text-secondary)]">{progress.completed}/{progress.total}</span></> : null}{task.due_date ? <><span aria-hidden="true" className="text-[var(--ui-text-muted)]">·</span><span className={overdue ? "font-medium text-[var(--ui-danger-text)]" : dueToday ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-secondary)]"}>{overdue ? t("overdue") : dueToday ? t("dueToday") : t("dueDate", { date: formatDate(task.due_date, locale) })}</span></> : null}</div>
+          <Link href={`/projects/${task.project_id}`} aria-label={taskT("goToProject")} title={taskT("goToProject")} onClick={(event) => event.stopPropagation()} className="absolute bottom-1.5 right-1.5 z-20 inline-flex size-11 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><FolderKanban className="size-4" aria-hidden="true" /></Link>
         </li>;
       })}
       </ul> : null}
     </div>
-    {selectedItem && !selectedTask ? <Drawer className="w-full max-w-[34rem]" title={taskT("taskDetails")} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask}>
+    {selectedItem && isTaskDrawerOpen && !selectedTask ? <Drawer className="w-full max-w-[34rem]" title={taskT("taskDetails")} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask}>
       <div className="flex items-center justify-between border-b border-[var(--ui-border)] p-4"><h2 className="font-semibold">{selectedItem.title}</h2><Button aria-label={taskT("closeTaskDetails")} size="sm" variant="ghost" onClick={closeTaskDrawer}><X className="size-4" /></Button></div>
       <p className="p-4 text-sm text-[var(--ui-text-muted)]" role={loadFailed ? "alert" : "status"}>{loadFailed ? taskT("loadFailed") : common("loading")}</p>
       {loadFailed ? <Button className="mx-4" variant="outline" onClick={() => openTaskDrawer(selectedItem.id)}>{taskT("retryLoad")}</Button> : null}

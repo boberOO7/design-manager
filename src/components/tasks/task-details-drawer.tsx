@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, CircleX, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, CircleX, Clock3, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
@@ -22,6 +22,7 @@ import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborato
 import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { cn, formatDate, formatNumber } from "@/lib/utils";
+import { getCurrentStatusDuration } from "@/lib/dashboard";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
@@ -140,6 +141,8 @@ export function TaskDetailsDrawer({
   const statusLabel = (status: ProjectTask["status"]) => statusT(status === "in_progress" ? "inProgress" : status);
   const selectedChecklistTemplate = templates.find((template) => template.id === selectedChecklistTemplateId);
   const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
+  const currentStatusDuration = getCurrentStatusDuration(task.currentStatusEnteredAt ?? null, new Date().toISOString());
+  const currentStatusDurationLabel = currentStatusDuration === null ? null : currentStatusDuration.days === 0 && currentStatusDuration.hours === 0 ? t("statusDurationUnderHour") : currentStatusDuration.days === 0 ? t("statusDurationHours", { count: currentStatusDuration.hours }) : t("statusDurationDaysHours", { days: currentStatusDuration.days, hours: currentStatusDuration.hours });
 
   const canEditTaskFields = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
   const canEditCompletionDate = canManageTasks && task.status === "completed" && projectStatus !== "archived";
@@ -381,6 +384,7 @@ export function TaskDetailsDrawer({
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{statusLabel(task.status)}</span>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
+                {currentStatusDurationLabel ? <span className="inline-flex items-center gap-1 self-center text-xs text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("currentStatusDuration", { duration: currentStatusDurationLabel })}</span> : null}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">

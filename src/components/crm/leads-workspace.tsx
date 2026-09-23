@@ -39,13 +39,13 @@ function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement)
   return interactiveTarget !== null && interactiveTarget !== row;
 }
 
-export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initialLeadId, leads, members, templates }: { admins: CrmAdmin[]; currentUserId: string | null; defaultStartDate: string; initialLeadId?: string; leads: CrmLead[]; members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }) {
+export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initialAttentionOnly = false, initialLeadId, leads, members, templates }: { admins: CrmAdmin[]; currentUserId: string | null; defaultStartDate: string; initialAttentionOnly?: boolean; initialLeadId?: string; leads: CrmLead[]; members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }) {
   const t = useTranslations("Crm");
   const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [attentionOnly, setAttentionOnly] = useState(initialAttentionOnly);
   const [openLead, setOpenLead] = useState<CrmLead | "new" | null>(() => leads.find((item) => item.id === initialLeadId) ?? null);
   const [view, setView] = useState<"convert" | "detail" | "edit" | "history">("detail");
   const [history, setHistory] = useState<CrmLeadHistory[] | null>(null);

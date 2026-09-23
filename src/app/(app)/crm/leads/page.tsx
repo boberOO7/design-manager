@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("metadata") };
 }
 
-export default async function CrmLeadsPage({ searchParams }: { searchParams: Promise<{ lead?: string | string[] }> }) {
+export default async function CrmLeadsPage({ searchParams }: { searchParams: Promise<{ attention?: string | string[]; lead?: string | string[] }> }) {
   const [result, admins, members, templates, t, params] = await Promise.all([
     getCrmLeads(),
     getCrmAdmins(),
@@ -23,5 +23,5 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pro
     searchParams,
   ]);
   const initialLeadId = typeof params.lead === "string" ? params.lead : undefined;
-  return <div className="space-y-6"><PageHeader title={t("leads.title")} description={t("leads.description")} />{result.error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <LeadsWorkspace leads={result.leads} admins={admins} currentUserId={result.currentUserId} defaultStartDate={getKyivDateOnly()} initialLeadId={initialLeadId} members={members} templates={templates} />}</div>;
+  return <div className="space-y-6"><PageHeader title={t("leads.title")} description={t("leads.description")} />{result.error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <LeadsWorkspace leads={result.leads} admins={admins} currentUserId={result.currentUserId} defaultStartDate={getKyivDateOnly()} initialAttentionOnly={params.attention === "1"} initialLeadId={initialLeadId} members={members} templates={templates} />}</div>;
 }

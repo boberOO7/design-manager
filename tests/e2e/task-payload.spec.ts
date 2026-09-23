@@ -10,6 +10,7 @@ const settings = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST
 if (!["localhost", "127.0.0.1"].includes(new URL(settings.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local fixtures only");
 const service = createClient<Database>(settings.EQUIPMENT_TEST_SUPABASE_URL, settings.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const studioId = randomUUID(); const projectId = randomUUID(); const tasks = [randomUUID(), randomUUID()];
+const recentFocusId = randomUUID(); const legacyWorkId = randomUUID(); const reviewTaskId = randomUUID();
 const accounts = ["admin", "employee"].map((role) => ({ role, id: "", email: `task-ui-${randomUUID()}@example.test`, password: `Ui-${randomUUID()}` }));
 function id(value: string) { return `'${z.uuid().parse(value)}'`; }
 function sql(statement: string) { return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }); }
@@ -32,6 +33,14 @@ test.beforeAll(async () => {
     insert into public.task_checklist_items(task_id,title,is_completed,weight,position) values (${id(tasks[index])},'Checklist ${index} A',false,3,0),(${id(tasks[index])},'Checklist ${index} B',true,1,1);
     insert into public.task_deadlines(task_id,target_status,due_date) values (${id(tasks[index])},'internal_review','2026-09-10'),(${id(tasks[index])},'completed','2026-09-20');
     insert into public.task_collaborators(task_id,user_id) values (${id(tasks[index])},${id(accounts[1-index].id)});`);
+  sql(`insert into public.tasks(id,project_id,title,description,stage,status,priority,assignee_id,created_by,progress_weight) values
+    (${id(recentFocusId)},${id(projectId)},'Recent focus work','Recent focus description','stage_1','in_progress','urgent',${id(accounts[1].id)},${id(accounts[0].id)},1),
+    (${id(legacyWorkId)},${id(projectId)},'Legacy work','Legacy description','stage_1','in_progress','normal',${id(accounts[1].id)},${id(accounts[0].id)},1),
+    (${id(reviewTaskId)},${id(projectId)},'Review queue','Review description','stage_1','internal_review','normal',${id(accounts[1].id)},${id(accounts[0].id)},1);
+    insert into public.task_deadlines(task_id,target_status,due_date) values (${id(recentFocusId)},'completed',current_date - 1);
+    update public.task_status_periods set entered_at=clock_timestamp() - interval '2 days' where task_id=${id(tasks[1])} and exited_at is null;
+    update public.task_status_periods set entered_at=clock_timestamp() - interval '1 day' where task_id=${id(recentFocusId)} and exited_at is null;
+    delete from public.task_status_periods where task_id=${id(legacyWorkId)};`);
 });
 test.afterAll(async () => {
   sql(`delete from public.tasks where project_id=${id(projectId)}; delete from public.project_members where project_id=${id(projectId)}; delete from public.projects where id=${id(projectId)}; delete from public.studios where id=${id(studioId)};`);
@@ -50,6 +59,48 @@ test("Board, Details, Team and Activity preserve project progress and task deep 
   }
   await page.goto(`/projects/${projectId}?task=${tasks[0]}`);
   await expect(page.getByRole("dialog", { name: en.Tasks.taskDetails }).getByText("Full description 0", { exact: true })).toBeVisible();
+});
+
+test("Dashboard workload counters drill into tasks and recent focus follows status history", async ({ page }) => {
+  await login(page);
+  const employeeRow = page.locator("li").filter({ has: page.getByText("Task employee", { exact: true }) }).filter({ hasText: en.Dashboard.recentFocus }).first();
+  await expect(employeeRow).toContainText("Recent focus work");
+  await expect(employeeRow).toContainText("In progress 1d");
+  await expect(employeeRow).toContainText("+2");
+
+  await employeeRow.getByRole("button", { name: `Show 3 In progress tasks for Task employee` }).click();
+  let quickView = page.getByRole("dialog", { name: "Task employee · In progress" });
+  await expect(quickView.getByText("Task 1", { exact: true })).toBeVisible();
+  await expect(quickView.getByText("Recent focus work", { exact: true })).toBeVisible();
+  const legacyLink = quickView.getByRole("link", { name: /Legacy work/ });
+  await expect(legacyLink).toBeVisible();
+  await expect(legacyLink).not.toContainText(/In progress (?:<1h|\d+[hd])/);
+  await quickView.getByRole("button", { name: en.Dashboard.closeWorkloadQuickView }).click();
+
+  await employeeRow.getByRole("button", { name: `Show 1 Review tasks for Task employee` }).click();
+  quickView = page.getByRole("dialog", { name: "Task employee · Review" });
+  await expect(quickView.getByText("Review queue", { exact: true })).toBeVisible();
+  await expect(quickView.getByText("Recent focus work", { exact: true })).toHaveCount(0);
+  await quickView.getByRole("button", { name: en.Dashboard.closeWorkloadQuickView }).click();
+
+  await employeeRow.getByRole("button", { name: `Show 1 Urgent tasks for Task employee` }).click();
+  quickView = page.getByRole("dialog", { name: "Task employee · Urgent" });
+  await expect(quickView.getByText("Recent focus work", { exact: true })).toBeVisible();
+  await quickView.getByRole("button", { name: en.Dashboard.closeWorkloadQuickView }).click();
+
+  await employeeRow.getByRole("button", { name: `Show 2 Overdue tasks for Task employee` }).click();
+  quickView = page.getByRole("dialog", { name: "Task employee · Overdue" });
+  await expect(quickView.getByText("Task 1", { exact: true })).toBeVisible();
+  await expect(quickView.getByText("Recent focus work", { exact: true })).toBeVisible();
+  await quickView.getByRole("link", { name: /Recent focus work/ }).click();
+  await expect(page).toHaveURL(`/projects/${projectId}?task=${recentFocusId}`);
+  await expect(page.getByRole("dialog", { name: en.Tasks.taskDetails }).getByText("Recent focus description", { exact: true })).toBeVisible();
+
+  sql(`update public.tasks set status='internal_review' where id=${id(tasks[1])}; update public.tasks set status='in_progress' where id=${id(tasks[1])};`);
+  await page.goto("/dashboard");
+  const updatedRow = page.locator("li").filter({ has: page.getByText("Task employee", { exact: true }) }).filter({ hasText: en.Dashboard.recentFocus }).first();
+  await expect(updatedRow).toContainText("Task 1");
+  await expect(updatedRow).toContainText("In progress <1h");
 });
 
 for (const index of [0, 1]) test(`Dashboard on-demand task detail and checklist updates for ${accounts[index].role}`, async ({ page }) => {

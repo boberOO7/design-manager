@@ -40,7 +40,7 @@ forms, local interaction, or optimistic state.
 
 | Domain | User routes | Server/data core | Reference |
 | --- | --- | --- | --- |
-| Shell and dashboard | `/dashboard` | `src/app/(app)/layout.tsx`, `src/data/queries/dashboard.ts`, `src/constants/navigation.ts` | This document; [permissions](permissions.md) |
+| Shell and dashboard | `/dashboard` | `src/app/(app)/layout.tsx`, `src/data/queries/dashboard.ts`, `src/data/queries/dashboard-operations.ts`, `src/constants/navigation.ts` | This document; [permissions](permissions.md) |
 | Projects | `/projects`, `/projects/[projectId]`, `/archive`, `/projects/templates` | `src/data/queries/project-*.ts`, `src/data/mutations/project-lifecycle.ts`, project Server Actions | [projects](projects.md) |
 | Tasks | `/my-tasks`, project Board | `src/data/queries/tasks.ts`, `src/data/mutations/task-*.ts`, task Route Handlers | [tasks](tasks.md) |
 | Productivity | `/leaderboard`, project and dashboard summaries | `src/lib/productivity.ts`, `src/data/queries/index.ts`, attribution migrations | [productivity](productivity.md) |
@@ -94,6 +94,11 @@ documents without external verification.
   keyboard-operable, scroll-locked, dismissible when safe, and return focus.
 - Mutations revalidate every affected consumer. Project/task changes commonly
   affect Projects, Dashboard, My Tasks, Calendar, and Leaderboard.
+- The admin Dashboard combines compact project/task orientation metrics with
+  existing domain state: project risks, personal tasks, status-aware team
+  workload, task/project deadlines, canonical Finance forecast items, assigned
+  CRM follow-ups, and Administration time-off summaries. Actions deep-link to
+  the owning module; Dashboard does not define parallel workflow state or thresholds.
 - Add schema changes in a new migration. Never revise an applied migration or
   push remote changes without explicit confirmation.
 

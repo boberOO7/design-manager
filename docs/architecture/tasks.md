@@ -65,6 +65,17 @@ change is valid only when its destination is enabled for that task's stage.
 Project aggregation and attribution are described in
 [productivity.md](productivity.md).
 
+## Status history
+
+- `task_status_periods` stores one row per visit to a workflow status, including
+  To do. The open row's `entered_at` is the current-status start; closed rows
+  retain `exited_at` for historical duration calculations.
+- A database trigger closes and opens periods in the same transaction as every
+  real task status change. Saving the same status creates no period.
+- The migration backfills only unambiguous status events recorded by
+  `project_activity`. A legacy task without trustworthy events has no open
+  period, so its current-status age is unknown until its next transition.
+
 ## Checklists
 
 - Checklist items contain title, completion, weight, and deterministic position.
@@ -120,6 +131,9 @@ Dashboard loads summary/progress fields with checklist weights/completion and
 profile-visible collaborator IDs. Its limited task list opens full details through
 a guarded read-only action using the existing single-task loader and completion
 history. Loading failures can retry; closed/superseded reads cannot reopen a drawer.
+The admin workload view bulk-loads open status periods for current-status age and
+recent-focus ordering. Unknown legacy ages stay blank; task drill-in uses the
+existing project task deep-link and drawer.
 
 Project Board retains full tasks. Details, Team, and Activity use the existing
 progress-query field set and the same progress/health helpers. Their reads exclude

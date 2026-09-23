@@ -5,19 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
 import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
-import type { MyTask, ProjectTask } from "@/types/tasks";
+import type { MyTask, ProjectTask, TaskStatusPeriod } from "@/types/tasks";
 
 const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
-type ProjectTaskRow = Omit<ProjectTask, "collaborators"> & {
+type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt"> & {
   collaborators: TaskCollaboratorRelation[];
 };
 
-type MyTaskRow = Omit<MyTask, "collaborators"> & {
+type MyTaskRow = Omit<MyTask, "collaborators" | "currentStatusEnteredAt"> & {
   collaborators: TaskCollaboratorRelation[];
 };
 
 type DeadlineCompletionRow = { task_id: string; target_status: string; due_date: string; completed_at: string; completed_on: string };
+type CurrentStatusPeriodRow = { task_id: string; status: ProjectTask["status"]; entered_at: string };
 
 async function attachDeadlineCompletions<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
   if (!tasks.length) return tasks;
@@ -31,14 +32,29 @@ async function attachDeadlineCompletions<T extends ProjectTask>(supabase: Awaite
   return tasks.map((task) => ({ ...task, deadlines: task.deadlines?.map((deadline) => ({ ...deadline, completion: completionByMilestone.get(`${task.id}:${deadline.target_status}`) ?? null })) }));
 }
 
+async function attachCurrentStatusEnteredAt<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
+  if (!tasks.length) return tasks;
+  const { data, error } = await supabase.from("task_status_periods")
+    .select("task_id, status, entered_at")
+    .in("task_id", tasks.map((task) => task.id))
+    .is("exited_at", null)
+    .overrideTypes<CurrentStatusPeriodRow[], { merge: false }>();
+  if (error) throw new Error("Unable to load current task status timing.", { cause: error });
+  const periodByTask = new Map((data ?? []).map((period) => [period.task_id, period]));
+  return tasks.map((task) => {
+    const period = periodByTask.get(task.id);
+    return { ...task, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
+  });
+}
+
 function normalizeProjectTask({ collaborators, ...task }: ProjectTaskRow): ProjectTask {
   const deadlines = task.deadlines ?? [];
-  return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
+  return { ...task, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 function normalizeMyTask({ collaborators, ...task }: MyTaskRow): MyTask {
   const deadlines = task.deadlines ?? [];
-  return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
+  return { ...task, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 export async function getProjectTasks(projectId: string): Promise<ProjectTask[]> {
@@ -56,7 +72,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
     throw new Error(`Unable to load tasks for project ${projectId}.`, { cause: error });
   }
 
-  return attachDeadlineCompletions(supabase, data.map(normalizeProjectTask));
+  return attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, data.map(normalizeProjectTask)));
 }
 
 export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
@@ -69,7 +85,7 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
     .overrideTypes<ProjectTaskRow, { merge: false }>();
 
   if (error) throw new Error(`Unable to load task ${taskId}.`, { cause: error });
-  return data ? (await attachDeadlineCompletions(supabase, [normalizeProjectTask(data)]))[0] ?? null : null;
+  return data ? (await attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, [normalizeProjectTask(data)])))[0] ?? null : null;
 }
 
 export async function getMyTasks(): Promise<MyTask[]> {
@@ -115,4 +131,30 @@ export async function getTaskForStatusUpdate(taskId: string) {
 
   if (error) throw new Error(`Unable to load task ${taskId} for a status update.`, { cause: error });
   return data;
+}
+
+export async function getTaskStatusHistory(taskId: string): Promise<TaskStatusPeriod[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("task_status_periods")
+    .select("id, studio_id, project_id, task_id, status, entered_at, exited_at")
+    .eq("task_id", taskId)
+    .order("entered_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) throw new Error(`Unable to load status history for task ${taskId}.`, { cause: error });
+  return data ?? [];
+}
+
+export async function getTaskCurrentStatusEnteredAt(taskId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("task_status_periods")
+    .select("entered_at")
+    .eq("task_id", taskId)
+    .is("exited_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`Unable to load the current status start for task ${taskId}.`, { cause: error });
+  return data?.entered_at ?? null;
 }

@@ -1,5 +1,5 @@
 import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
-import type { MyTask, DashboardTaskSummary } from "../types/tasks";
+import type { MyTask, DashboardTaskSummary, DashboardWorkloadTask } from "../types/tasks";
 import { canWorkOnTaskInProject, isOperationalProjectStatus, type ProjectLifecycleStatus } from "./project-lifecycle";
 import { calculateProjectProgress, type ProjectStageProgressMethods } from "./project-progress";
 import { isTaskStage } from "./task-stages";
@@ -17,6 +17,9 @@ export type DashboardProject = {
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string; avatar_url?: string | null };
+
+export const WORKLOAD_CATEGORIES = ["todo", "in_progress", "review", "urgent", "overdue"] as const;
+export type WorkloadCategory = (typeof WORKLOAD_CATEGORIES)[number];
 
 export function isDashboardTask<T extends { project: DashboardTaskSummary["project"]; priority: string; stage: string; status: string }>(task: T): task is T & Pick<DashboardTaskSummary, "priority" | "stage" | "status"> {
   return Boolean(task.project)
@@ -140,18 +143,87 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
       || right.urgentCount - left.urgentCount || left.name.localeCompare(right.name));
 }
 
-export function getTeamWorkload(members: DashboardMember[], tasks: DashboardTaskSummary[], today: string) {
+export function isTaskInWorkloadCategory(task: DashboardTaskSummary, category: WorkloadCategory, today: string): boolean {
+  if (!isOpenTask(task)) return false;
+  if (category === "review") return isTaskInReview(task.status);
+  if (category === "urgent") return task.priority === "urgent";
+  if (category === "overdue") return isTaskOverdue(task, today);
+  return task.status === category;
+}
+
+export type CurrentStatusAge = { unit: "underHour" } | { unit: "hours" | "days"; value: number };
+
+export function getCurrentStatusAge(enteredAt: string | null, asOf: string): CurrentStatusAge | null {
+  if (!enteredAt) return null;
+  const elapsedMinutes = Math.floor((Date.parse(asOf) - Date.parse(enteredAt)) / 60_000);
+  if (!Number.isFinite(elapsedMinutes) || elapsedMinutes < 0) return null;
+  if (elapsedMinutes < 60) return { unit: "underHour" };
+  if (elapsedMinutes < 1_440) return { unit: "hours", value: Math.floor(elapsedMinutes / 60) };
+  return { unit: "days", value: Math.floor(elapsedMinutes / 1_440) };
+}
+
+export type CurrentStatusDuration = { days: number; hours: number };
+
+export function getCurrentStatusDuration(enteredAt: string | null, asOf: string): CurrentStatusDuration | null {
+  if (!enteredAt) return null;
+  const elapsedHours = Math.floor((Date.parse(asOf) - Date.parse(enteredAt)) / 3_600_000);
+  if (!Number.isFinite(elapsedHours) || elapsedHours < 0) return null;
+  return { days: Math.floor(elapsedHours / 24), hours: elapsedHours % 24 };
+}
+
+export function getTeamWorkload(members: DashboardMember[], tasks: DashboardWorkloadTask[], today: string) {
   return members.map((member) => {
     const assigned = tasks.filter((task) => task.assignee_id === member.id);
     const active = assigned.filter(isOpenTask);
+    const inProgress = active.filter((task) => task.status === "in_progress");
+    const recentFocus = inProgress
+      .filter((task) => task.currentStatusEnteredAt !== null)
+      .sort((left, right) => (right.currentStatusEnteredAt ?? "").localeCompare(left.currentStatusEnteredAt ?? ""))[0] ?? null;
     return {
       ...member,
+      tasks: sortEmployeeTasks(active, today),
+      recentFocus,
+      additionalInProgressCount: recentFocus ? inProgress.length - 1 : 0,
       openTaskCount: active.length,
       todoCount: active.filter((task) => task.status === "todo").length,
-      inProgressCount: active.filter((task) => task.status === "in_progress").length,
+      inProgressCount: inProgress.length,
       reviewCount: active.filter((task) => isTaskInReview(task.status)).length,
       urgentCount: active.filter((task) => task.priority === "urgent").length,
       overdueCount: active.filter((task) => isTaskOverdue(task, today)).length,
     };
   }).sort((left, right) => right.overdueCount - left.overdueCount || right.openTaskCount - left.openTaskCount || left.full_name.localeCompare(right.full_name));
+}
+
+export type TeamWorkloadMember = ReturnType<typeof getTeamWorkload>[number];
+
+export type AdminUpcomingItem = {
+  key: string;
+  kind: "task" | "project" | "finance" | "crm";
+  date: string;
+  title: string;
+  href: string;
+  context?: string;
+  direction?: "incoming" | "outgoing";
+  projectId?: string;
+};
+
+export function selectAdminUpcoming(items: AdminUpcomingItem[], limit = 8): AdminUpcomingItem[] {
+  const ordered = [...new Map(items.map((item) => [item.key, item])).values()]
+    .sort((left, right) => left.date.localeCompare(right.date) || left.key.localeCompare(right.key));
+  const selected: AdminUpcomingItem[] = [];
+  const kindCounts = new Map<AdminUpcomingItem["kind"], number>();
+  const kindLimits: Record<AdminUpcomingItem["kind"], number> = { task: 2, project: 1, finance: 2, crm: 2 };
+  const financeDirections = new Set<AdminUpcomingItem["direction"]>();
+  const taskProjects = new Set<string>();
+  for (const item of ordered) {
+    if (item.kind === "task" && item.projectId && taskProjects.has(item.projectId)) continue;
+    if (item.kind === "finance" && item.direction && financeDirections.has(item.direction)) continue;
+    if ((kindCounts.get(item.kind) ?? 0) >= kindLimits[item.kind]) continue;
+    selected.push(item);
+    kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+    if (item.kind === "task" && item.projectId) taskProjects.add(item.projectId);
+    if (item.kind === "finance") financeDirections.add(item.direction);
+    if (selected.length === limit) break;
+  }
+  return selected;
 }

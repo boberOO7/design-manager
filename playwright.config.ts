@@ -15,7 +15,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: { actionTimeout: 10_000, baseURL: "http://127.0.0.1:3100", viewport: { width: 1440, height: 1000 }, screenshot: "only-on-failure", trace: "retain-on-failure" },
   webServer: {
-    command: "pnpm build && pnpm start --hostname 127.0.0.1 --port 3100",
+    command: process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ?? "pnpm build && pnpm start --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100/login",
     reuseExistingServer: false,
     timeout: 180_000,

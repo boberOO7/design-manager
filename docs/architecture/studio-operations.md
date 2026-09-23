@@ -27,8 +27,9 @@ Invariants:
 
 Dashboard uses a separate admin-only summary: the same capped pending queue count
 and three upcoming absences, without review notes, approval details, history,
-member statistics, checklist templates, or bonus configuration. It starts alongside
-the main Dashboard load. The Administration workspace retains its full model.
+member statistics, checklist templates, or bonus configuration. Pending requests
+join the actionable exception strip; approved absences remain a dedicated compact
+section linking back to Calendar. The Administration workspace retains its full model.
 
 ## Contractors
 
@@ -71,7 +72,9 @@ migrations/tests.
   `last_contacted_at`; the administrator may then schedule the next follow-up.
   The authenticated shell counts overdue active follow-ups assigned to the
   current administrator for the CRM navigation badge, and the Leads workspace
-  exposes the same population as an optional attention filter.
+  exposes the same population as an optional attention filter. The admin
+  Dashboard reuses that assigned population for its overdue exception and
+  upcoming feed; links open the existing Leads workspace/filter or Lead detail.
 - The terminal `invalid` Lead status optionally records a structured invalid
   reason, clears any active follow-up, and cannot be converted to a Project.
 - Lead project type, country, and city selection reuse the canonical Project

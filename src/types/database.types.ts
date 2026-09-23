@@ -4457,6 +4457,58 @@ export type Database = {
           },
         ]
       }
+      task_status_periods: {
+        Row: {
+          entered_at: string
+          exited_at: string | null
+          id: number
+          project_id: string
+          status: string
+          studio_id: string
+          task_id: string
+        }
+        Insert: {
+          entered_at: string
+          exited_at?: string | null
+          id?: never
+          project_id: string
+          status: string
+          studio_id: string
+          task_id: string
+        }
+        Update: {
+          entered_at?: string
+          exited_at?: string | null
+          id?: never
+          project_id?: string
+          status?: string
+          studio_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_status_periods_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_status_periods_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_status_periods_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee_id: string | null

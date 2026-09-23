@@ -27,7 +27,7 @@ Use this map instead of duplicating their fields here.
 | --- | --- |
 | Tenant and identity | `studios`, `profiles`, `studio_members` |
 | Projects | `projects`, `project_members`, `project_task_stage_columns`, `project_templates`, `project_template_tasks`, `project_activity`, legacy `project_area_progress` |
-| Tasks | `tasks`, `task_collaborators`, `task_deadlines`, `task_checklist_items`, `checklist_templates`, `checklist_template_items` |
+| Tasks | `tasks`, `task_status_periods`, `task_collaborators`, `task_deadlines`, `task_checklist_items`, `checklist_templates`, `checklist_template_items` |
 | Productivity | `productivity_attributions`, `project_stage_productivity_budgets`, `leaderboard_bonus_rules` |
 | Calendar | `calendar_events`, `calendar_event_invites`, `calendar_event_participants`, `calendar_event_attendees`, `time_off_requests`, `time_off_request_approvals`, `studio_days_off` |
 | Google projection | `google_calendar_connections`, `google_calendar_server_credentials`, `google_calendar_event_mappings`, `google_calendar_reconciliation_jobs` |
@@ -64,6 +64,9 @@ and Lead history.
 - Database constraints and triggers protect cross-client invariants such as
   lifecycle transitions, immutable identity, snapshot accounting, notification
   shape, and cross-studio references.
+- Task status transitions atomically close the current `task_status_periods` row
+  and open a distinct period with a database timestamp. Legacy periods are
+  backfilled only from an unambiguous `project_activity` transition chain.
 - Mutating RPCs that lock or coordinate records use one transaction; the
   application must not reproduce half of their behavior client-side.
 - Exact task selections use `bulk_assign_selected_project_tasks`,

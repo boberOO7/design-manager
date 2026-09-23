@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardProject, type DashboardTask } from "./dashboard";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getCurrentStatusAge, getCurrentStatusDuration, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, isTaskInWorkloadCategory, selectAdminUpcoming, sortEmployeeTasks, type AdminUpcomingItem, type DashboardProject, type DashboardTask } from "./dashboard";
 import { isTaskOverdue } from "./tasks";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "./project-progress";
 
 const today = "2026-07-27";
 const project: DashboardProject = { id: "p1", name: "Alpha", project_code: null, client_name: null, due_date: null, status: "active", stageProgressMethods: DEFAULT_PROJECT_STAGE_PROGRESS_METHODS };
-function task(overrides: Partial<DashboardTask> = {}): DashboardTask {
-  const value: DashboardTask = { id: "t1", project_id: "p1", stage: "stage_1", title: "Task", description: null, status: "todo", priority: "normal", assignee_id: "u1", due_date: null, completed_at: null, completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], created_at: "2026-07-01T12:00:00Z", created_by: "admin", assignee: null, collaborators: [], creator: null, project: { id: "p1", name: "Alpha", status: "active", archived_at: null }, ...overrides };
+type WorkloadTestTask = DashboardTask & { currentStatusEnteredAt: string | null };
+function task(overrides: Partial<WorkloadTestTask> = {}): WorkloadTestTask {
+  const value: WorkloadTestTask = { id: "t1", project_id: "p1", stage: "stage_1", title: "Task", description: null, status: "todo", priority: "normal", assignee_id: "u1", due_date: null, completed_at: null, completed_area_m2: null, manual_progress_override: false, production_completion: 0, progress_weight: 1, checklist_items: [], created_at: "2026-07-01T12:00:00Z", created_by: "admin", assignee: null, collaborators: [], creator: null, project: { id: "p1", name: "Alpha", status: "active", archived_at: null }, currentStatusEnteredAt: null, ...overrides };
   return { ...value, deadlines: value.deadlines ?? (value.due_date ? [{ id: `deadline-${value.id}`, target_status: "completed", due_date: value.due_date }] : []) };
 }
 
@@ -84,7 +85,7 @@ describe("dashboard calculations", () => {
       ],
       today,
     );
-    expect(workload).toEqual([
+    expect(workload).toMatchObject([
       { id: "u1", full_name: "A", job_title: "Designer", openTaskCount: 2, todoCount: 1, inProgressCount: 1, reviewCount: 0, urgentCount: 1, overdueCount: 1 },
       { id: "u2", full_name: "B", job_title: "Designer", openTaskCount: 2, todoCount: 0, inProgressCount: 0, reviewCount: 2, urgentCount: 0, overdueCount: 0 },
     ]);
@@ -96,5 +97,50 @@ describe("dashboard calculations", () => {
       today,
     );
     expect(workload[0]).toMatchObject({ openTaskCount: 0, urgentCount: 0, overdueCount: 0 });
+  });
+  it("filters each workload counter to its underlying open tasks", () => {
+    const tasks = [
+      task({ id: "work", status: "in_progress" }),
+      task({ id: "internal", status: "internal_review" }),
+      task({ id: "review", status: "review", priority: "urgent" }),
+      task({ id: "late", due_date: "2026-07-20" }),
+      task({ id: "done", status: "completed", priority: "urgent", due_date: "2026-07-20" }),
+    ];
+    expect(tasks.filter((item) => isTaskInWorkloadCategory(item, "in_progress", today)).map((item) => item.id)).toEqual(["work"]);
+    expect(tasks.filter((item) => isTaskInWorkloadCategory(item, "review", today)).map((item) => item.id)).toEqual(["internal", "review"]);
+    expect(tasks.filter((item) => isTaskInWorkloadCategory(item, "urgent", today)).map((item) => item.id)).toEqual(["review"]);
+    expect(tasks.filter((item) => isTaskInWorkloadCategory(item, "overdue", today)).map((item) => item.id)).toEqual(["late"]);
+  });
+  it("uses status history for recent focus and changes focus on re-entry", () => {
+    const members = [{ id: "u1", full_name: "A", job_title: "Designer" }];
+    const first = task({ id: "first", status: "in_progress", currentStatusEnteredAt: "2026-07-25T09:00:00Z" });
+    const second = task({ id: "second", status: "in_progress", currentStatusEnteredAt: "2026-07-26T09:00:00Z" });
+    const legacy = task({ id: "legacy", status: "in_progress", currentStatusEnteredAt: null });
+    expect(getTeamWorkload(members, [first, second, legacy], today)[0].recentFocus?.id).toBe("second");
+    expect(getTeamWorkload(members, [{ ...first, currentStatusEnteredAt: "2026-07-27T09:00:00Z" }, second, legacy], today)[0]).toMatchObject({ recentFocus: { id: "first" }, additionalInProgressCount: 2 });
+  });
+  it("derives current-status age only from a reliable entered-at timestamp", () => {
+    expect(getCurrentStatusAge("2026-07-25T09:00:00Z", "2026-07-27T12:00:00Z")).toEqual({ unit: "days", value: 2 });
+    expect(getCurrentStatusAge(null, "2026-07-27T12:00:00Z")).toBeNull();
+    expect(getCurrentStatusAge("invalid", "2026-07-27T12:00:00Z")).toBeNull();
+  });
+  it("derives detailed status duration only from a reliable entered-at timestamp", () => {
+    expect(getCurrentStatusDuration("2026-07-25T09:00:00Z", "2026-07-27T15:00:00Z")).toEqual({ days: 2, hours: 6 });
+    expect(getCurrentStatusDuration(null, "2026-07-27T15:00:00Z")).toBeNull();
+  });
+  it("keeps the admin upcoming feed mixed and limits each project to one task", () => {
+    const item = (key: string, kind: AdminUpcomingItem["kind"], date: string, projectId?: string, direction?: AdminUpcomingItem["direction"]): AdminUpcomingItem => ({ key, kind, date, direction, projectId, title: key, href: `/${key}` });
+    const upcoming = selectAdminUpcoming([
+      item("finance:1", "finance", "2026-07-27", undefined, "outgoing"),
+      item("finance:2", "finance", "2026-07-27", undefined, "outgoing"),
+      item("finance:3", "finance", "2026-07-27", undefined, "incoming"),
+      item("task:p1:first", "task", "2026-07-28", "p1"),
+      item("task:p1:second", "task", "2026-07-29", "p1"),
+      item("task:p2", "task", "2026-07-30", "p2"),
+      item("task:p3", "task", "2026-07-31", "p3"),
+      item("crm:1", "crm", "2026-08-02"),
+      item("project:1", "project", "2026-08-04"),
+    ], 8);
+    expect(upcoming.map((entry) => entry.key)).toEqual(["finance:1", "finance:3", "task:p1:first", "task:p2", "crm:1", "project:1"]);
   });
 });

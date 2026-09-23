@@ -6,6 +6,7 @@ export type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_items"]["Row"];
+export type TaskStatusPeriod = Database["public"]["Tables"]["task_status_periods"]["Row"];
 
 export const TASK_STATUS_VALUES = [
   "todo",
@@ -51,6 +52,7 @@ export type ProjectTask = Pick<
   deadlines?: TaskDeadline[];
   stage: TaskStage;
   completed_area_m2: TaskRow["completed_area_m2"];
+  currentStatusEnteredAt?: string | null;
   checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;
   collaborators: TaskCollaborator[];
@@ -66,4 +68,8 @@ export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | 
   checklist_items: Pick<TaskChecklistItem, "id" | "is_completed" | "weight">[];
   collaborators: Pick<TaskCollaborator, "id">[];
   deadlines?: Pick<TaskDeadline, "id" | "target_status" | "due_date">[];
+};
+
+export type DashboardWorkloadTask = DashboardTaskSummary & {
+  currentStatusEnteredAt: string | null;
 };

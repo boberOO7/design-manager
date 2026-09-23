@@ -9,7 +9,7 @@ import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isSta
 import { isTaskInReview, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle";
-import type { DashboardTaskSummary } from "@/types/tasks";
+import type { DashboardTaskSummary, DashboardWorkloadTask } from "@/types/tasks";
 
 type DashboardTaskRow = Omit<DashboardTaskSummary, "collaborators"> & {
   collaborators: Array<{ user_id: string; profile: { id: string } | null }>;
@@ -18,17 +18,17 @@ type DashboardProjectRow = DashboardProject;
 
 export type DashboardDeadline = { id: string; kind: "task" | "project"; title: string; dueDate: string; project?: { id: string; name: string } };
 
-export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: string }; metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }; attentionProjects: ReturnType<typeof getProjectsRequiringAttention>; deadlines: DashboardDeadline[]; workload: ReturnType<typeof getTeamWorkload>; myTasks: DashboardTaskSummary[] };
+export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: string }; asOf: string; today: string; metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }; attentionProjects: ReturnType<typeof getProjectsRequiringAttention>; deadlines: DashboardDeadline[]; workload: ReturnType<typeof getTeamWorkload>; myTasks: DashboardTaskSummary[] };
 export type EmployeeDashboard = { kind: "employee"; profile: { id: string; full_name: string }; metrics: { overdue: number; dueToday: number; inProgress: number; upcoming: number }; needsAttention: DashboardTaskSummary[]; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; hasMoreProjects: boolean; deadlines: DashboardDeadline[] };
 export type DashboardData = AdminDashboard | EmployeeDashboard;
 
-function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject[], today: string): DashboardDeadline[] {
-  const endDate = new Date(today + "T12:00:00"); endDate.setDate(endDate.getDate() + 14);
+function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject[], today: string, days = 14, limitCount = 10): DashboardDeadline[] {
+  const endDate = new Date(today + "T12:00:00"); endDate.setDate(endDate.getDate() + days);
   const limit = endDate.toISOString().slice(0, 10);
   return [
     ...tasks.filter((task) => isOpenTask(task) && task.due_date && task.due_date >= today && task.due_date <= limit).map((task) => ({ id: task.id, kind: "task" as const, title: task.title, dueDate: task.due_date!, project: task.project })),
     ...projects.filter((project) => project.due_date && project.due_date >= today && project.due_date <= limit).map((project) => ({ id: project.id, kind: "project" as const, title: project.name, dueDate: project.due_date! })),
-  ].sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title)).slice(0, 10);
+  ].sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title)).slice(0, limitCount);
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
@@ -44,9 +44,15 @@ export async function getDashboard(): Promise<DashboardData | null> {
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
   ]);
   if (projectsResult.error || tasksResult.error || membersResult.error || !projectsResult.data || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: projectsResult.error ?? tasksResult.error ?? membersResult.error });
-  const today = getTodayDate();
-  const stageConfigurationsResult = await supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", projectsResult.data.map((project) => project.id));
-  if (stageConfigurationsResult.error || !stageConfigurationsResult.data) throw new Error("Unable to load Dashboard stage progress methods.", { cause: stageConfigurationsResult.error });
+  const asOf = new Date().toISOString();
+  const today = getTodayDate(new Date(asOf));
+  const [stageConfigurationsResult, currentStatusPeriodsResult] = await Promise.all([
+    supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", projectsResult.data.map((project) => project.id)),
+    membership.system_role === "admin"
+      ? supabase.from("task_status_periods").select("task_id, status, entered_at").eq("studio_id", membership.studio_id).is("exited_at", null)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error });
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
   for (const project of projectsResult.data) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurationsResult.data) {
@@ -61,8 +67,21 @@ export async function getDashboard(): Promise<DashboardData | null> {
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {
-    const myTasks = sortEmployeeTasks(tasks.filter((task) => (task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)) && isOpenTask(task)), today).slice(0, 5);
-    return { kind: "admin", profile, metrics: { activeProjects: projects.length, openTasks: tasks.filter(isOpenTask).length, overdueTasks: tasks.filter((task) => isTaskOverdue(task, today)).length, dueThisWeek: countDueThisWeek(tasks, today) }, attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6), deadlines: makeDeadlines(tasks, projects, today), workload: getTeamWorkload(membersResult.data.map((member) => member.profile), tasks, today), myTasks };
+    const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
+    const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
+      const period = currentPeriodByTask.get(task.id);
+      return { ...task, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
+    });
+    const openTasks = tasks.filter(isOpenTask);
+    const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today).slice(0, 5);
+    return {
+      kind: "admin", profile, asOf, today,
+      metrics: { activeProjects: projects.length, openTasks: openTasks.length, overdueTasks: openTasks.filter((task) => isTaskOverdue(task, today)).length, dueThisWeek: countDueThisWeek(openTasks, today) },
+      attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6),
+      deadlines: makeDeadlines(tasks, projects, today, 30, 50),
+      workload: getTeamWorkload(membersResult.data.map((member) => member.profile), workloadTasks, today),
+      myTasks,
+    };
   }
   const personalTasks = tasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id));
   const taskByProject = new Map<string, DashboardTaskSummary[]>();
