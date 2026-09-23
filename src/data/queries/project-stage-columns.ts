@@ -7,13 +7,13 @@ import { DEFAULT_STAGE_COLUMN_STATUSES, isWritableTaskStatus, type WritableTaskS
 
 export type ProjectStageColumns = Record<TaskStage, WritableTaskStatus[]>;
 export type ConfiguredProjectStage = { stage: TaskStage; displayName: string | null; isEnabled: boolean; displayOrder: number };
-export type ProjectStageConfiguration = { columns: ProjectStageColumns; progressMethods: ProjectStageProgressMethods; stages: ConfiguredProjectStage[]; includeInProductivity: boolean };
+export type ProjectStageConfiguration = { columns: ProjectStageColumns; progressMethods: ProjectStageProgressMethods; stages: ConfiguredProjectStage[]; includeInProductivity: boolean; showProgress: boolean };
 
 export async function getProjectStageConfiguration(projectId: string): Promise<ProjectStageConfiguration> {
   const supabase = await createClient();
   const [{ data, error }, { data: project, error: projectError }] = await Promise.all([
     supabase.from("project_task_stage_columns").select("stage, enabled_statuses, progress_method, display_name, is_enabled, display_order").eq("project_id", projectId),
-    supabase.from("projects").select("include_in_productivity").eq("id", projectId).maybeSingle(),
+    supabase.from("projects").select("include_in_productivity, show_progress").eq("id", projectId).maybeSingle(),
   ]);
   if (error) throw new Error(`Unable to load project stage configuration for ${projectId}.`, { cause: error });
   if (projectError) throw new Error(`Unable to load productivity configuration for ${projectId}.`, { cause: projectError });
@@ -32,7 +32,7 @@ export async function getProjectStageConfiguration(projectId: string): Promise<P
     const row = data?.find((item) => item.stage === stage);
     return { stage, displayName: row?.display_name ?? null, isEnabled: row?.is_enabled ?? true, displayOrder: row?.display_order ?? TASK_STAGES.indexOf(stage) + 1 };
   }).sort((left, right) => left.displayOrder - right.displayOrder);
-  return { columns, progressMethods, stages, includeInProductivity: project?.include_in_productivity ?? true };
+  return { columns, progressMethods, stages, includeInProductivity: project?.include_in_productivity ?? true, showProgress: project?.show_progress ?? true };
 }
 
 export async function getProjectStageColumns(projectId: string): Promise<ProjectStageColumns> {

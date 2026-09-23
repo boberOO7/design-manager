@@ -3917,6 +3917,7 @@ export type Database = {
           project_code: string | null
           project_type: string | null
           project_type_custom: string | null
+          show_progress: boolean
           start_date: string
           status: string
           studio_id: string
@@ -3941,6 +3942,7 @@ export type Database = {
           project_code?: string | null
           project_type?: string | null
           project_type_custom?: string | null
+          show_progress?: boolean
           start_date: string
           status?: string
           studio_id: string
@@ -3965,6 +3967,7 @@ export type Database = {
           project_code?: string | null
           project_type?: string | null
           project_type_custom?: string | null
+          show_progress?: boolean
           start_date?: string
           status?: string
           studio_id?: string
@@ -6372,6 +6375,7 @@ export type Database = {
         Args: {
           p_include_in_productivity: boolean
           p_project_id: string
+          p_show_progress: boolean
           p_stages: Json
         }
         Returns: undefined

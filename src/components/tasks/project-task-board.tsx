@@ -624,6 +624,7 @@ export function ProjectTaskBoard({
   projectTemplates,
   stageColumns,
   stageProgressMethods,
+  showProgress = true,
   stages,
   tasks,
   templates,
@@ -641,6 +642,7 @@ export function ProjectTaskBoard({
   projectTemplates: ProjectTemplate[];
   stageColumns: ProjectStageColumns;
   stageProgressMethods: ProjectStageProgressMethods;
+  showProgress?: boolean;
   stages: ConfiguredProjectStage[];
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
@@ -1279,7 +1281,7 @@ export function ProjectTaskBoard({
                     >
                       {stageName(stage)}
                     </button>
-                    {progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
+                    {showProgress && progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
                   </div>
                   <span onClick={(event) => event.stopPropagation()} className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
                   <div className="flex shrink-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>

@@ -7,6 +7,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pr
   const { projectId } = await params;
   const stages = typeof body === "object" && body !== null && "stages" in body ? body.stages : undefined;
   const includeInProductivity = typeof body === "object" && body !== null && "include_in_productivity" in body ? body.include_in_productivity : undefined;
-  const result = await updateProjectStageConfiguration(projectId, stages, includeInProductivity);
+  const showProgress = typeof body === "object" && body !== null && "show_progress" in body ? body.show_progress : undefined;
+  const result = await updateProjectStageConfiguration(projectId, stages, includeInProductivity, showProgress);
   return NextResponse.json(result, { status: result.success ? 200 : 400 });
 }

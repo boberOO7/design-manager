@@ -49,6 +49,19 @@ const ledger: Fixture[] = [
 ];
 
 describe("Leaderboard contribution selector", () => {
+  it("keeps qualifying task counts while removing only excluded project area", () => {
+    const selected = selectLeaderboardAttributions([
+      row("included", "2026-05-01T10:00:00.000Z", 12),
+      row("excluded-task", "2026-05-02T10:00:00.000Z", 40, { project_id: "excluded-project" }),
+      row("excluded-fallback", "2026-05-03T10:00:00.000Z", 20, { project_id: "excluded-project", task_id: null, source_type: "project_fallback", task_stage: null }),
+    ], new Set(["excluded-project"]));
+    expect(projectProductivityLeaderboard(selected, members).find((entry) => entry.user_id === "ada")).toMatchObject({
+      completed_area_m2: 12,
+      completed_tasks: 2,
+    });
+    expect(selected.map((attribution) => attribution.credited_area_m2)).toEqual([12, 0, 0]);
+  });
+
   it.each([
     ["month", 17.625],
     ["quarter", 25.375],
@@ -74,6 +87,8 @@ describe("Leaderboard contribution selector", () => {
     expect(contributions.ada[0].records[0].task_stage).toBe("stage_2");
     expect(contributions.ada[1].records[0].source_type).toBe("project_fallback");
     expect(contributions.former).toBeUndefined();
+    expect(ranking.find((entry) => entry.user_id === "ada")?.completed_tasks).toBe(selected.filter((attribution) => attribution.contributor_id === "ada" && attribution.source_type === "task").length);
+    expect(selected.find((attribution) => attribution.id === "excluded")?.credited_area_m2).toBe(0);
     expect(contributions.ada.flatMap((group) => group.records).some((record) => record.id === "stage-four")).toBe(false);
   });
 });

@@ -88,6 +88,8 @@ Invariants:
 - Every project has four stable stage IDs. Labels, ordering, visibility, allowed
   columns, and Stage 1–3 progress methods are configuration; stable stage IDs are
   policy inputs and must not be repurposed.
+- `projects.show_progress` defaults to true and controls only the project summary
+  and board stage progress display; completion and lifecycle calculations continue.
 
 ## List presentation
 

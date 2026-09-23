@@ -1,6 +1,5 @@
 import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
 import type { TaskStage } from "@/lib/task-stages";
-import { isProjectProgressStage } from "@/lib/project-progress";
 
 export const PRODUCTIVITY_STAGE_RATIOS = {
   stage_1: 0.20,
@@ -236,13 +235,13 @@ export function projectProductivityLeaderboard(
   });
 }
 
-/** Use the same project inclusion rule for the ranking and its contribution rows. */
+/** Keep task attribution eligibility intact while excluding only configured project area. */
 export function selectLeaderboardAttributions<T extends ProductivityAttribution & { project_id: string }>(
   attributions: T[], excludedProjectIds: ReadonlySet<string>,
 ): T[] {
-  return attributions.filter((attribution) =>
-    !excludedProjectIds.has(attribution.project_id)
-    || (attribution.source_type === "task" && attribution.task_stage != null && !isProjectProgressStage(attribution.task_stage)));
+  return attributions.map((attribution) => excludedProjectIds.has(attribution.project_id)
+    ? { ...attribution, credited_area_m2: 0 }
+    : attribution);
 }
 
 export function projectProductivityContributions(

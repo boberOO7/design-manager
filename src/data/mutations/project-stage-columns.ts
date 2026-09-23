@@ -59,16 +59,16 @@ export async function updateProjectStageSettings(projectId: string, stage: strin
   return { success: true as const, enabledStatuses: data.enabled_statuses.filter(isWritableTaskStatus), progressMethod: data.progress_method, stage };
 }
 
-export async function updateProjectStageConfiguration(projectId: string, stages: unknown, includeInProductivity: unknown) {
+export async function updateProjectStageConfiguration(projectId: string, stages: unknown, includeInProductivity: unknown, showProgress: unknown) {
   const parsed = validateProjectStageConfiguration(stages);
-  if (!parsed || typeof includeInProductivity !== "boolean") return { success: false as const, errorCode: "invalid_configuration", formError: "Choose valid project stages." };
+  if (!parsed || typeof includeInProductivity !== "boolean" || typeof showProgress !== "boolean") return { success: false as const, errorCode: "invalid_configuration", formError: "Choose valid project stages." };
   const admin = await getActiveStudioAdmin();
   const project = await getProjectById(projectId);
   if (!admin || !project || admin.studio_id !== project.studio_id) return { success: false as const, errorCode: "not_admin", formError: "Only active studio administrators can configure project stages." };
   const tasks = await getProjectTasks(projectId);
   if (parsed.some((stage) => !stage.isEnabled && tasks.some((task) => task.stage === stage.stage && task.status !== "completed" && task.status !== "cancelled"))) return { success: false as const, errorCode: "active_tasks", formError: "Move active tasks from this stage before disabling it." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("update_project_stage_configuration", { p_project_id: projectId, p_stages: parsed.map((stage) => ({ stage: stage.stage, display_name: stage.displayName, is_enabled: stage.isEnabled, display_order: stage.displayOrder })), p_include_in_productivity: includeInProductivity });
+  const { error } = await supabase.rpc("update_project_stage_configuration", { p_project_id: projectId, p_stages: parsed.map((stage) => ({ stage: stage.stage, display_name: stage.displayName, is_enabled: stage.isEnabled, display_order: stage.displayOrder })), p_include_in_productivity: includeInProductivity, p_show_progress: showProgress });
   if (error) return { success: false as const, errorCode: "save_failed", formError: "The project stage configuration could not be saved. Please try again." };
   revalidatePath(`/projects/${projectId}`); revalidatePath("/projects"); revalidatePath("/dashboard"); revalidatePath("/leaderboard");
   return { success: true as const };

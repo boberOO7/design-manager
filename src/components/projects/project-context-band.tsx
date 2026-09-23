@@ -35,7 +35,7 @@ export type ProjectContextProject = {
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, backHref = "/projects", canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, stages, tasks, updateAction }: {
+export function ProjectContextBand({ archiveAction, backHref = "/projects", canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, showProgress = true, stages, tasks, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
   canManage: boolean;
@@ -45,6 +45,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", canM
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
   stageProgressMethods: ProjectStageProgressMethods;
+  showProgress?: boolean;
   stages?: ConfiguredProjectStage[];
   tasks: ProjectTaskForProgress[];
   updateAction: ProjectFormAction;
@@ -103,11 +104,11 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", canM
   <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onConfigureStages={onConfigureStages} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} />
     </div>
 
-    <div className={compact ? "border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5" : "grid gap-5 px-4 pb-4 sm:px-5 sm:pb-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)] lg:gap-8"}>
-      <div className={compact ? "grid gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:gap-5" : "contents"}>
-        <div className={compact ? "grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" : "min-w-0 pt-1"}>
-          <ProgressSummary compact={compact} progress={progress} projectName={project.name} stageProgress={stageProgress} stages={stages} />
-          <div className={compact ? "grid grid-cols-3 divide-x divide-[var(--ui-border)] border-t border-[var(--ui-border)] pt-2 sm:border-t-0 sm:pt-0" : "mt-4 grid grid-cols-3 gap-3 sm:gap-5"}>
+    <div className={compact ? "border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5" : `grid gap-5 px-4 pb-4 sm:px-5 sm:pb-5 lg:gap-8 ${showProgress ? "lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]" : "lg:grid-cols-2"}`}>
+      <div className={compact ? `grid gap-3 lg:gap-5 ${showProgress ? "lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]" : "lg:grid-cols-2"}` : "contents"}>
+        <div className={compact ? `grid min-w-0 gap-3 ${showProgress ? "sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" : "sm:items-center"}` : "min-w-0 pt-1"}>
+          {showProgress ? <ProgressSummary compact={compact} progress={progress} projectName={project.name} stageProgress={stageProgress} stages={stages} /> : null}
+          <div className={compact ? `grid grid-cols-3 divide-x divide-[var(--ui-border)] ${showProgress ? "border-t border-[var(--ui-border)] pt-2 sm:border-t-0 sm:pt-0" : ""}` : `${showProgress ? "mt-4 " : ""}grid grid-cols-3 gap-3 sm:gap-5`}>
             <SupportingMetric compact={compact} label={projectMessages("openCount", { count: progress.openTaskCount })} value={String(progress.openTaskCount)} />
             <SupportingMetric compact={compact} label={projectMessages("completedCount", { count: progress.completedTaskCount })} value={String(progress.completedTaskCount)} />
             {!isPaused ? <SupportingMetric compact={compact} danger={progress.overdueTaskCount > 0} label={projectMessages("overdueCount", { count: progress.overdueTaskCount })} value={String(progress.overdueTaskCount)} /> : null}

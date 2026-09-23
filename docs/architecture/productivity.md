@@ -69,9 +69,9 @@ rows without `voided_at`.
 - Active eligible professional members may appear with zero totals.
 - Administrators always have access. Employee access follows
   `studios.leaderboard_visible_to_employees`.
-- `projects.include_in_productivity` is a live filter for production-stage area
-  in all periods. Toggling it does not rewrite snapshots or budgets. Stage 4
-  task-count events remain outside that production-area exclusion.
+- `projects.include_in_productivity` controls credited leaderboard area in all
+  periods. When disabled, its attributions contribute 0 m² while qualifying
+  task events still count. Toggling it does not rewrite snapshots or budgets.
 - Administrator-configured bonus rules are a presentation/reporting layer over
   the base totals; inspect `leaderboard_bonus_rules` and its query/helpers before
   changing calculations.
