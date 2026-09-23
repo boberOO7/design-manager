@@ -154,4 +154,5 @@ export type CalendarPageData = {
   today: string;
   compensableDayOffs: CalendarCompensableDayOff[];
   timeFormat: CalendarTimeFormat;
+  timeZone: string;
 };

@@ -67,9 +67,10 @@ export function getInclusiveAllDayEndDate(endsAt: string): string {
 export function createCalendarEventFormValues(
   item: Extract<CalendarItem, { source: "calendar_event" }> | undefined,
   baseDate: string,
+  timeZone = "Europe/Kyiv",
 ): CalendarEventFormValues {
-  const start = item ? splitWallDateTime(instantToWallInput(item.startsAt)) : { date: baseDate, time: "09:00" };
-  const end = item ? splitWallDateTime(instantToWallInput(item.endsAt)) : { date: baseDate, time: "10:00" };
+  const start = item ? splitWallDateTime(instantToWallInput(item.startsAt, timeZone)) : { date: baseDate, time: "09:00" };
+  const end = item ? splitWallDateTime(instantToWallInput(item.endsAt, timeZone)) : { date: baseDate, time: "10:00" };
 
   return {
     title: item?.title ?? "",
@@ -92,13 +93,13 @@ export function createCalendarEventFormValues(
   };
 }
 
-export function toCalendarEventMutationPayload(values: CalendarEventFormValues) {
+export function toCalendarEventMutationPayload(values: CalendarEventFormValues, timeZone = "Europe/Kyiv") {
   const isSameDayTimedType = values.eventType === "meeting" || values.eventType === "presentation" || values.eventType === "interview";
   const bounds = values.allDay
     ? getAllDayEventBounds(values.startDate, values.endDate)
     : {
-      startsAt: zonedWallTimeToIso(`${values.startDate}T${values.startTime}`),
-      endsAt: zonedWallTimeToIso(`${isSameDayTimedType ? values.startDate : values.endDate}T${values.endTime}`),
+      startsAt: zonedWallTimeToIso(`${values.startDate}T${values.startTime}`, timeZone),
+      endsAt: zonedWallTimeToIso(`${isSameDayTimedType ? values.startDate : values.endDate}T${values.endTime}`, timeZone),
     };
 
   return {
@@ -113,7 +114,7 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues) 
     meetingUrl: values.meetingUrl,
     meetingMode: values.meetingMode,
     description: values.description,
-    recurrenceRule: values.recurrenceRule ?? null,
+    recurrenceRule: values.recurrenceRule ? { ...values.recurrenceRule, ...(!values.allDay ? { timeZone } : {}) } : null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
     assigneeId: values.assigneeId || null,
   };
@@ -131,10 +132,11 @@ export function getWorkMakeupTitle(
   values: CalendarEventFormValues,
   locale: string,
   dayOff?: { startDate: string; remainingMinutes: number; previousContributionMinutes?: number } | null,
+  timeZone = "Europe/Kyiv",
 ): string {
   if (!dayOff) return locale.startsWith("uk") ? "Відпрацювання" : "Work makeup";
 
-  const payload = toCalendarEventMutationPayload(values);
+  const payload = toCalendarEventMutationPayload(values, timeZone);
   const compensatedMinutes = getWorkMakeupMinutes({ startsAt: payload.startsAt, endsAt: payload.endsAt, allDay: payload.allDay });
   const remainingMinutes = dayOff.remainingMinutes + (dayOff.previousContributionMinutes ?? 0);
   const partial = compensatedMinutes < remainingMinutes;

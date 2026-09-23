@@ -4,7 +4,7 @@ import { getCalendarTasks } from "./calendar-tasks";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getInclusiveAllDayEndDate } from "@/lib/calendar-event-form";
-import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, deduplicateCalendarItems, instantToDateOnly, normalizeCalendarTimeFormat, normalizeCalendarTimeZone, normalizeCoworkerTimeOff, normalizePrivateTimeOff, zonedWallTimeToIso } from "@/lib/calendar";
 import { buildCalendarSystemEvents, normalizePayrollCalendar } from "@/lib/calendar-system-events";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "@/lib/calendar-recurrence";
 import { CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS } from "@/lib/crm";
@@ -25,8 +25,8 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     const coverage = await supabase.rpc("ensure_finance_schedule_occurrences", { p_studio_id: membership.studio_id, p_horizon: "12" });
     if (coverage.error) throw new Error("Unable to maintain payroll Calendar coverage.", { cause: coverage.error });
   }
-  const rangeStartInstant = zonedWallTimeToIso(`${start}T00:00`);
-  const rangeEndExclusive = zonedWallTimeToIso(`${addCalendarDays(end, 1)}T00:00`);
+  const rangeStartInstant = zonedWallTimeToIso(`${addCalendarDays(start, -2)}T00:00`);
+  const rangeEndExclusive = zonedWallTimeToIso(`${addCalendarDays(end, 3)}T00:00`);
 
   const projectsPromise = supabase
     .from("projects")
@@ -226,8 +226,8 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     };
     const rule = baseItem.recurrenceRule;
     if (!rule) { items.push(baseItem); continue; }
-    for (const occurrenceDate of recurrenceDates(baseItem.startDate, start, end, rule)) {
-      const bounds = occurrenceBounds(event.starts_at, event.ends_at, event.all_day, occurrenceDate);
+    for (const occurrenceDate of recurrenceDates(event.all_day ? baseItem.startDate : instantToDateOnly(event.starts_at, rule.timeZone ?? "Europe/Kyiv"), addCalendarDays(start, -2), addCalendarDays(end, 2), rule)) {
+      const bounds = occurrenceBounds(event.starts_at, event.ends_at, event.all_day, occurrenceDate, rule.timeZone);
       const originalStart = bounds.startsAt; const override = overrides.get(`${event.id}:${originalStart}`);
       if (override?.cancelled_at) continue;
       if (override) {
@@ -267,5 +267,6 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
     today: instantToDateOnly(new Date().toISOString()),
     compensableDayOffs,
     timeFormat: normalizeCalendarTimeFormat(calendarPreferenceResult.data.user?.user_metadata.calendar_time_format),
+    timeZone: normalizeCalendarTimeZone(calendarPreferenceResult.data.user?.user_metadata.calendar_time_zone),
   };
 }

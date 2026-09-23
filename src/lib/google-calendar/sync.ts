@@ -158,8 +158,8 @@ function buildProjections(events: SyncEventRow[], connectionId: string, userId: 
       continue;
     }
 
-    for (const occurrenceDate of recurrenceDates(instantToDateOnly(event.starts_at), horizon.rangeStart, horizon.rangeEnd, rule)) {
-      const bounds = occurrenceBounds(event.starts_at, event.ends_at, event.all_day, occurrenceDate);
+    for (const occurrenceDate of recurrenceDates(instantToDateOnly(event.starts_at, event.all_day ? APPLICATION_TIME_ZONE : rule.timeZone), horizon.rangeStart, horizon.rangeEnd, rule)) {
+      const bounds = occurrenceBounds(event.starts_at, event.ends_at, event.all_day, occurrenceDate, rule.timeZone);
       const occurrenceStart = bounds.startsAt;
       const sourceKey = `calendar_event:${event.id}:${occurrenceStart}`;
       const override = overrides.get(`${event.id}:${occurrenceStart}`);

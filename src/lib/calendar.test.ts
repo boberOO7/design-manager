@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CALENDAR_FILTERS, canAttendCalendarEvent, canTransitionTimeOff, deduplicateCalendarItems, formatCalendarClockTime, formatCalendarDateTime, formatCalendarTime, formatCalendarWallTime,
   filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
-  isCalendarItemRelevantToUser, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem, reconcileCalendarItems,
+  isCalendarItemRelevantToUser, isKyivTimeZone, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem, reconcileCalendarItems,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
-  MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems,
+  MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems, zonedWallTimeToIso,
 } from "./calendar";
 import type { CalendarItem } from "@/types/calendar";
 
@@ -60,6 +60,23 @@ function timedAbsence(id: string, startDate: string, startTime: string, endTime:
 }
 
 const rawPartialTimeOff = { id: "medical-appointment", userId: "u2", employeeName: "Vasilios Genshin", startDate: "2026-08-12", endDate: "2026-08-12", startTime: "09:00:00", endTime: "12:00:00", allDay: false };
+
+describe("IANA timed event positioning", () => {
+  it("uses one gutter scale for Kyiv aliases and two for Warsaw", () => {
+    expect(isKyivTimeZone("Europe/Kyiv")).toBe(true);
+    expect(isKyivTimeZone("Europe/Kiev")).toBe(true);
+    expect(isKyivTimeZone("Europe/Warsaw")).toBe(false);
+  });
+  it("uses the viewer clock across summer and winter offsets", () => {
+    const summer = zonedWallTimeToIso("2026-07-28T15:00", "Europe/Warsaw");
+    const winter = zonedWallTimeToIso("2026-01-28T15:00", "Europe/Warsaw");
+    expect(summer).toBe("2026-07-28T13:00:00.000Z");
+    expect(winter).toBe("2026-01-28T14:00:00.000Z");
+    expect(getTimedWeekSegments([timedEvent("summer", summer, "2026-07-28T14:00:00.000Z")], ["2026-07-28"], "Europe/Warsaw")[0]?.startMinute).toBe(15 * 60);
+    expect(getTimedWeekSegments([timedEvent("summer", summer, "2026-07-28T14:00:00.000Z")], ["2026-07-28"], "Europe/Kyiv")[0]?.startMinute).toBe(16 * 60);
+    expect(() => zonedWallTimeToIso("2026-03-29T02:30", "Europe/Warsaw")).toThrow();
+  });
+});
 
 describe("Calendar dates and views", () => {
   it("formats every calendar time source with an explicit 24-hour or 12-hour preference", () => {

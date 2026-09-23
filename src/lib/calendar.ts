@@ -16,6 +16,17 @@ export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
 
 export const APPLICATION_TIME_ZONE = "Europe/Kyiv";
 
+export function isKyivTimeZone(timeZone: string): boolean {
+  return new Intl.DateTimeFormat("en", { timeZone }).resolvedOptions().timeZone
+    === new Intl.DateTimeFormat("en", { timeZone: APPLICATION_TIME_ZONE }).resolvedOptions().timeZone;
+}
+
+export function normalizeCalendarTimeZone(value: unknown): string {
+  if (typeof value !== "string") return APPLICATION_TIME_ZONE;
+  try { new Intl.DateTimeFormat("en", { timeZone: value }); return value; }
+  catch { return APPLICATION_TIME_ZONE; }
+}
+
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function normalizeCalendarTimeFormat(value: unknown): CalendarTimeFormat {
@@ -47,8 +58,8 @@ function zonedParts(value: Date, timeZone = APPLICATION_TIME_ZONE) {
   return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), second: get("second") };
 }
 
-export function instantToDateOnly(value: string): string {
-  const parts = zonedParts(new Date(value));
+export function instantToDateOnly(value: string, timeZone = APPLICATION_TIME_ZONE): string {
+  const parts = zonedParts(new Date(value), timeZone);
   return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
@@ -59,8 +70,8 @@ export function formatCalendarClockTime(hour: number, minute: number, timeFormat
   return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
-export function formatCalendarTime(value: string, timeFormat: CalendarTimeFormat = "24h"): string {
-  const parts = zonedParts(new Date(value));
+export function formatCalendarTime(value: string, timeFormat: CalendarTimeFormat = "24h", timeZone = APPLICATION_TIME_ZONE): string {
+  const parts = zonedParts(new Date(value), timeZone);
   return formatCalendarClockTime(parts.hour, parts.minute, timeFormat);
 }
 
@@ -70,28 +81,31 @@ export function formatCalendarWallTime(value: string, timeFormat: CalendarTimeFo
   return formatCalendarClockTime(Number(match[1]), Number(match[2]), timeFormat);
 }
 
-export function formatCalendarDateTime(value: string, locale = "en", timeFormat: CalendarTimeFormat = "24h"): string {
-  const date = new Intl.DateTimeFormat(locale, { timeZone: APPLICATION_TIME_ZONE, month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
-  return `${date}, ${formatCalendarTime(value, timeFormat)}`;
+export function formatCalendarDateTime(value: string, locale = "en", timeFormat: CalendarTimeFormat = "24h", timeZone = APPLICATION_TIME_ZONE): string {
+  const date = new Intl.DateTimeFormat(locale, { timeZone, month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return `${date}, ${formatCalendarTime(value, timeFormat, timeZone)}`;
 }
 
-export function instantToWallInput(value: string): string {
-  const parts = zonedParts(new Date(value));
+export function instantToWallInput(value: string, timeZone = APPLICATION_TIME_ZONE): string {
+  const parts = zonedParts(new Date(value), timeZone);
   return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}T${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
 }
 
-export function zonedWallTimeToIso(value: string): string {
+export function zonedWallTimeToIso(value: string, timeZone = APPLICATION_TIME_ZONE): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) throw new Error("Invalid local date and time");
   const [, year, month, day, hour, minute] = match.map(Number);
   const targetUtc = Date.UTC(year, month - 1, day, hour, minute);
   let guess = targetUtc;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const actual = zonedParts(new Date(guess));
+    const actual = zonedParts(new Date(guess), timeZone);
     const actualAsUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, actual.second);
     guess = targetUtc - (actualAsUtc - guess);
   }
-  return new Date(guess).toISOString();
+  const result = new Date(guess);
+  const actual = zonedParts(result, timeZone);
+  if (actual.year !== year || actual.month !== month || actual.day !== day || actual.hour !== hour || actual.minute !== minute) throw new Error("Local time does not exist in this timezone");
+  return result.toISOString();
 }
 
 export function addCalendarDays(value: string, days: number): string {
@@ -438,10 +452,10 @@ export function getWeekAllDaySegments(items: CalendarItem[], dates: string[]): M
   });
 }
 
-type KyivDateTime = { date: string; minute: number };
+type ZonedDateTime = { date: string; minute: number };
 
-function getKyivDateTime(value: string | Date): KyivDateTime {
-  const parts = zonedParts(value instanceof Date ? value : new Date(value));
+function getZonedDateTime(value: string | Date, timeZone: string): ZonedDateTime {
+  const parts = zonedParts(value instanceof Date ? value : new Date(value), timeZone);
   return { date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`, minute: parts.hour * 60 + parts.minute };
 }
 
@@ -471,10 +485,10 @@ function timeToMinute(value: string): number | null {
   return hour * 60 + minute;
 }
 
-function getTimedWeekItemRange(item: CalendarItem): { item: TimedWeekItem; start: KyivDateTime; end: KyivDateTime } | null {
+function getTimedWeekItemRange(item: CalendarItem, timeZone: string): { item: TimedWeekItem; start: ZonedDateTime; end: ZonedDateTime } | null {
   if (item.source === "calendar_event" || item.source === "crm_follow_up") {
     if (item.allDay) return null;
-    return { item, start: getKyivDateTime(item.startsAt), end: getKyivDateTime(item.endsAt) };
+    return { item, start: getZonedDateTime(item.startsAt, timeZone), end: getZonedDateTime(item.endsAt, timeZone) };
   }
   if ((item.source !== "time_off" && item.source !== "time_off_request_admin") || item.allDay || !item.startTime || !item.endTime) return null;
   const startMinute = timeToMinute(item.startTime);
@@ -483,10 +497,10 @@ function getTimedWeekItemRange(item: CalendarItem): { item: TimedWeekItem; start
   return { item, start: { date: item.startDate, minute: startMinute }, end: { date: item.endDate, minute: endMinute } };
 }
 
-export function getTimedWeekSegments(items: CalendarItem[], dates: string[]): TimedWeekSegment[] {
+export function getTimedWeekSegments(items: CalendarItem[], dates: string[], timeZone = APPLICATION_TIME_ZONE): TimedWeekSegment[] {
   const visibleDates = new Set(dates);
   return items.flatMap((item) => {
-    const range = getTimedWeekItemRange(item);
+    const range = getTimedWeekItemRange(item, timeZone);
     if (!range) return [];
     const { item: timedItem, start, end } = range;
     const lastDate = end.minute === 0 ? addCalendarDays(end.date, -1) : end.date;
@@ -533,8 +547,8 @@ export function getTimedEventHeight(startMinute: number, endMinute: number, pixe
 
 export function getInitialWeekScrollTop(pixelsPerMinute = WEEK_PIXELS_PER_MINUTE): number { return 8 * 60 * pixelsPerMinute; }
 
-export function getCurrentWeekTimePosition(dates: string[], now: Date): { dayIndex: number; minute: number } | null {
-  const current = getKyivDateTime(now);
+export function getCurrentWeekTimePosition(dates: string[], now: Date, timeZone = APPLICATION_TIME_ZONE): { dayIndex: number; minute: number } | null {
+  const current = getZonedDateTime(now, timeZone);
   const dayIndex = dates.indexOf(current.date);
   return dayIndex === -1 ? null : { dayIndex, minute: current.minute };
 }

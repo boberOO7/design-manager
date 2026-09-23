@@ -17,7 +17,7 @@ export async function PATCH(request: Request) {
   const parsed = calendarSettingsSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, error: "Choose a supported time format." }, { status: 400 });
 
-  const { data, error } = await supabase.auth.updateUser({ data: { calendar_time_format: parsed.data.timeFormat } });
+  const { data, error } = await supabase.auth.updateUser({ data: { calendar_time_format: parsed.data.timeFormat, ...(parsed.data.timeZone ? { calendar_time_zone: parsed.data.timeZone } : {}) } });
 
   if (error || !data.user) return NextResponse.json({ success: false, error: "The calendar settings could not be saved." }, { status: 400 });
   return NextResponse.json({ success: true, timeFormat: parsed.data.timeFormat });

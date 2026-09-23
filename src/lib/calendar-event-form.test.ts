@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { formatCalendarTime, instantToDateOnly } from "./calendar";
+import type { CalendarItem } from "../types/calendar";
+import { createCalendarEventFormValues, getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { getTimeOffRequestPresentation } from "./time-off-labels";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
@@ -45,6 +47,36 @@ describe("Calendar event invitee eligibility", () => {
     expect(isCalendarEventInviteeSelectable("meeting", "current-user", "current-user")).toBe(false);
     expect(isCalendarEventInviteeSelectable("internal_review", "current-user", "current-user")).toBe(false);
     expect(isCalendarEventInviteeSelectable("general", "studio-member", "current-user")).toBe(true);
+  });
+});
+
+describe("Calendar event timezone round trips", () => {
+  it.each([
+    ["Europe/Warsaw", "2026-07-28T13:00:00.000Z", "15:00", "16:00"],
+    ["Europe/Kyiv", "2026-07-28T12:00:00.000Z", "15:00", "14:00"],
+  ])("creates, reloads, and edits at 15:00 in %s", (timeZone, expectedInstant, localTime, otherTime) => {
+    const values = { ...baseValues, eventType: "general" as const, allDay: false, startTime: "15:00", endTime: "16:00" };
+    const created = toCalendarEventMutationPayload(values, timeZone);
+    expect(created.startsAt).toBe(expectedInstant);
+    const item: Extract<CalendarItem, { source: "calendar_event" }> = {
+      source: "calendar_event", key: "calendar_event:test", id: "test", title: values.title,
+      startDate: values.startDate, endDate: values.endDate, allDay: false, projectId: null, personIds: [],
+      eventType: "general", startsAt: created.startsAt, endsAt: created.endsAt,
+      description: null, location: null, meetingUrl: null, meetingMode: null,
+      project: null, organizer: { id: "user", full_name: "User", job_title: "", avatar_url: null, projectIds: [] },
+      invitees: [], participants: [],
+    };
+    const reloaded = createCalendarEventFormValues(item, values.startDate, timeZone);
+    expect(reloaded.startTime).toBe(localTime);
+    expect(formatCalendarTime(item.startsAt, "24h", timeZone)).toBe(localTime);
+    expect(formatCalendarTime(item.startsAt, "24h", timeZone === "Europe/Warsaw" ? "Europe/Kyiv" : "Europe/Warsaw")).toBe(otherTime);
+    expect(toCalendarEventMutationPayload(reloaded, timeZone).startsAt).toBe(created.startsAt);
+  });
+
+  it("keeps an all-day date independent of the viewer timezone", () => {
+    const bounds = toCalendarEventMutationPayload(baseValues, "Europe/Warsaw");
+    expect(instantToDateOnly(bounds.startsAt)).toBe(baseValues.startDate);
+    expect(getInclusiveAllDayEndDate(bounds.endsAt)).toBe(baseValues.endDate);
   });
 });
 

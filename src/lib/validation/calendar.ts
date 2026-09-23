@@ -5,12 +5,13 @@ import { getTimeOffRequestPresentation } from "@/lib/time-off-labels";
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("").transform((value) => value || null);
 const optionalUrl = z.string().trim().max(1000).optional().default("").refine((value) => !value || /^https?:\/\//i.test(value), "Use a complete http(s) URL.").transform((value) => value || null);
-const recurrenceRule = z.object({ frequency: z.enum(["daily", "weekly", "monthly", "yearly"]), interval: z.number().int().min(1).max(99), weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]), endsOn: z.iso.date().nullable().default(null), occurrenceCount: z.number().int().min(1).max(999).nullable().default(null) }).strict().nullable().default(null);
+const recurrenceRule = z.object({ timeZone: z.string().min(1).max(100).refine((value) => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).optional(), frequency: z.enum(["daily", "weekly", "monthly", "yearly"]), interval: z.number().int().min(1).max(99), weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]), endsOn: z.iso.date().nullable().default(null), occurrenceCount: z.number().int().min(1).max(999).nullable().default(null) }).strict().nullable().default(null);
 
 const meetingMode = z.enum(["offline", "online"]).nullable().optional();
 
 export const calendarSettingsSchema = z.object({
   timeFormat: z.enum(CALENDAR_TIME_FORMATS),
+  timeZone: z.string().min(1).max(100).refine((value) => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).optional(),
 }).strict();
 
 export const calendarEventSchema = z.object({

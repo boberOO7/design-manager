@@ -2,15 +2,15 @@ import { addCalendarDays, instantToDateOnly, instantToWallInput, parseDateOnly, 
 
 export const RECURRENCE_FREQUENCIES = ["daily", "weekly", "monthly", "yearly"] as const;
 export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
-export type RecurrenceRule = { frequency: RecurrenceFrequency; interval: number; weekdays: number[]; endsOn: string | null; occurrenceCount: number | null };
+export type RecurrenceRule = { frequency: RecurrenceFrequency; interval: number; weekdays: number[]; endsOn: string | null; occurrenceCount: number | null; timeZone?: string };
 
 export const NO_RECURRENCE: RecurrenceRule | null = null;
 
 export function parseRecurrenceRule(value: unknown): RecurrenceRule | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const rule = value as { frequency?: unknown; interval?: unknown; weekdays?: unknown; endsOn?: unknown; occurrenceCount?: unknown };
+  const rule = value as { frequency?: unknown; interval?: unknown; weekdays?: unknown; endsOn?: unknown; occurrenceCount?: unknown; timeZone?: unknown };
   if (!RECURRENCE_FREQUENCIES.includes(rule.frequency as RecurrenceFrequency) || typeof rule.interval !== "number" || !Array.isArray(rule.weekdays)) return null;
-  return normalizeRecurrenceRule({ frequency: rule.frequency as RecurrenceFrequency, interval: rule.interval, weekdays: rule.weekdays.filter((day): day is number => typeof day === "number"), endsOn: typeof rule.endsOn === "string" ? rule.endsOn : null, occurrenceCount: typeof rule.occurrenceCount === "number" ? rule.occurrenceCount : null });
+  return normalizeRecurrenceRule({ frequency: rule.frequency as RecurrenceFrequency, interval: rule.interval, weekdays: rule.weekdays.filter((day): day is number => typeof day === "number"), endsOn: typeof rule.endsOn === "string" ? rule.endsOn : null, occurrenceCount: typeof rule.occurrenceCount === "number" ? rule.occurrenceCount : null, ...(typeof rule.timeZone === "string" ? { timeZone: rule.timeZone } : {}) });
 }
 
 export function normalizeRecurrenceRule(value: RecurrenceRule | null): RecurrenceRule | null {
@@ -37,10 +37,10 @@ export function recurrenceDates(startDate: string, rangeStart: string, rangeEnd:
   return results;
 }
 
-export function occurrenceBounds(startsAt: string, endsAt: string, allDay: boolean, occurrenceDate: string) {
-  const startWall = instantToWallInput(startsAt); const endWall = instantToWallInput(endsAt);
+export function occurrenceBounds(startsAt: string, endsAt: string, allDay: boolean, occurrenceDate: string, timeZone = "Europe/Kyiv") {
+  const startWall = instantToWallInput(startsAt, allDay ? "Europe/Kyiv" : timeZone); const endWall = instantToWallInput(endsAt, allDay ? "Europe/Kyiv" : timeZone);
   const startTime = startWall.slice(11); const endTime = endWall.slice(11);
-  const daySpan = Math.round((parseDateOnly(instantToDateOnly(endsAt)).getTime() - parseDateOnly(instantToDateOnly(startsAt)).getTime()) / 86400000);
+  const daySpan = Math.round((parseDateOnly(instantToDateOnly(endsAt, allDay ? "Europe/Kyiv" : timeZone)).getTime() - parseDateOnly(instantToDateOnly(startsAt, allDay ? "Europe/Kyiv" : timeZone)).getTime()) / 86400000);
   const endDate = addCalendarDays(occurrenceDate, Math.max(0, daySpan));
-  return allDay ? { startsAt: zonedWallTimeToIso(`${occurrenceDate}T00:00`), endsAt: zonedWallTimeToIso(`${addCalendarDays(endDate, 1)}T00:00`) } : { startsAt: zonedWallTimeToIso(`${occurrenceDate}T${startTime}`), endsAt: zonedWallTimeToIso(`${endDate}T${endTime}`) };
+  return allDay ? { startsAt: zonedWallTimeToIso(`${occurrenceDate}T00:00`), endsAt: zonedWallTimeToIso(`${addCalendarDays(endDate, 1)}T00:00`) } : { startsAt: zonedWallTimeToIso(`${occurrenceDate}T${startTime}`, timeZone), endsAt: zonedWallTimeToIso(`${endDate}T${endTime}`, timeZone) };
 }
