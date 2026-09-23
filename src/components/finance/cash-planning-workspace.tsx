@@ -84,7 +84,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
     <input type="hidden" name="intent" value="snapshot" /><input type="hidden" name="horizon" value={report.horizon} /><input type="hidden" name="scenario" value={report.scenario} /><input type="hidden" name="fx" value={JSON.stringify(report.fx.filter(f => f.source !== "identity"))} />
     <FormField label={t("snapshotName")}><Input name="name" required maxLength={120} data-dialog-initial-focus /></FormField>
   </FinanceActionForm> : null;
-  return <div className="mx-auto w-full min-w-0 max-w-[var(--finance-content-width,80rem)] space-y-6" aria-busy={pending}>
+  return <div className="w-full min-w-0 space-y-6" aria-busy={pending}>
     <PageHeader title={t("title")} description={t("description")} />
     {data.invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("invalidManualFx")}</p> : null}
     {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : <>

@@ -5,5 +5,5 @@ import { FinanceNavigation } from "@/components/finance/finance-navigation";
 
 export default async function FinanceLayout({ children }: { children: React.ReactNode }) {
   if (!await getActiveStudioAdmin()) redirect("/dashboard");
-  return <DomainMessages scope="finance"><div className="mx-auto w-full min-w-0 max-w-[120rem] [--finance-content-width:120rem]"><FinanceNavigation />{children}</div></DomainMessages>;
+  return <DomainMessages scope="finance"><div className="w-full min-w-0"><FinanceNavigation />{children}</div></DomainMessages>;
 }
