@@ -9,7 +9,7 @@ const taskMessages = ["Tasks", "Checklists", "Templates", "Status", "Priority", 
 export const messageScopes = {
   root: ["Common", "Account"],
   shell: ["Navigation", "Notifications", "CitySearch"],
-  dashboard: ["Dashboard", ...taskMessages],
+  dashboard: ["Dashboard", "OfficeAssignments", ...taskMessages],
   projects: ["Projects", "ProjectForm", "ProjectTypes", "ProjectWorkspace", "Workspace", "StageConfiguration", "BoardTaskCard", "ProjectTemplates", "Team", "Calendar", ...taskMessages],
   tasks: taskMessages,
   calendar: ["Calendar", "TimeOff", "Status", "Priority"],

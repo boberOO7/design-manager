@@ -74,8 +74,8 @@ test("populated admin Dashboard surfaces actionable domain state and a mixed upc
   await login(page, admins[0]);
   await expect(page.getByRole("heading", { name: en.Dashboard.needsAttention })).toBeVisible();
   await expect(page.locator('a[href="#team-workload"]')).toHaveAccessibleName(/overdue task/);
-  await expect(page.locator('a[href="/finance/expected?filter=receivables"]')).toHaveAccessibleName(/overdue receivable/);
-  await expect(page.locator('a[href="/finance/expected?filter=obligations"]')).toHaveAccessibleName(/overdue obligation/);
+  await expect(page.locator('a[href="/finance/expected?filter=incoming&attention=overdue"]')).toHaveAccessibleName(/overdue receivable/);
+  await expect(page.locator('a[href="/finance/expected?filter=outgoing&attention=overdue"]')).toHaveAccessibleName(/overdue obligation/);
   await expect(page.locator('a[href="/crm/leads?attention=1"]')).toHaveAccessibleName(/overdue follow-up/);
   await expect(page.locator('a[href="/admin#requests"]')).toHaveAccessibleName(/time-off request/);
   for (const label of [en.Dashboard.metricActiveProjects, en.Dashboard.metricOpenTasks, en.Dashboard.metricOverdueTasks, en.Dashboard.metricDueThisWeek]) await expect(page.getByText(label, { exact: true })).toBeVisible();
@@ -94,16 +94,28 @@ test("populated admin Dashboard surfaces actionable domain state and a mixed upc
   await page.getByRole("button", { name: en.Tasks.closeTaskDetails }).click();
   const upcoming = page.getByRole("heading", { name: en.Dashboard.upcoming, exact: true }).locator("..").locator("..");
   await expect(upcoming).toContainText("Upcoming lobby");
-  await expect(upcoming).toContainText("Clinic renewal");
+  await expect(upcoming).toContainText("Extra finance 1");
+  await expect(upcoming).toContainText("Extra finance 2");
+  await expect(upcoming).not.toContainText("Late rent");
   await expect(upcoming).toContainText("Upcoming client payment");
   await expect(upcoming).toContainText("Upcoming CRM client");
-  await expect(upcoming.getByText(/^(Upcoming client payment|Extra finance)/)).toHaveCount(2);
+  await expect(upcoming.getByText(/^(Upcoming client payment|Extra finance)/)).toHaveCount(6);
   const availability = page.getByRole("heading", { name: en.Dashboard.upcomingAvailability, exact: true }).locator("..").locator("..");
   await expect(availability).toContainText("Alex Designer");
   await expect(availability.getByRole("link", { name: en.Dashboard.viewTeamCalendar })).toHaveAttribute("href", "/calendar?timeOff=1");
   await upcoming.getByRole("link", { name: /Upcoming CRM client/ }).click();
   await expect(page).toHaveURL(/\/crm\/leads\?lead=/);
   await expect(page.getByRole("dialog", { name: "Upcoming CRM client" })).toBeVisible();
+  await page.goto("/dashboard");
+  await page.locator('a[href="/finance/expected?filter=incoming&attention=overdue"]').click();
+  await expect(page).toHaveURL(/filter=incoming&attention=overdue/);
+  await expect(page.getByRole("link", { name: en.Finance.planning.income, exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("More filters · Overdue")).toBeVisible();
+  await expect(page.getByText("Late client payment")).toBeVisible();
+  await page.goto("/dashboard");
+  await page.locator('a[href="/finance/expected?filter=outgoing&attention=overdue"]').click();
+  await expect(page.getByRole("link", { name: en.Finance.planning.expenses, exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("Late rent")).toBeVisible();
 });
 
 test("mostly empty admin Dashboard stays compact", async ({ page }) => {

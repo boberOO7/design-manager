@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getCurrentStatusAge, getCurrentStatusDuration, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, isTaskInWorkloadCategory, selectAdminUpcoming, sortEmployeeTasks, type AdminUpcomingItem, type DashboardProject, type DashboardTask } from "./dashboard";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getCurrentStatusAge, getCurrentStatusDuration, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, isTaskInWorkloadCategory, selectAdminMyWork, selectAdminUpcoming, sortEmployeeTasks, type AdminUpcomingItem, type DashboardProject, type DashboardTask } from "./dashboard";
 import { isTaskOverdue } from "./tasks";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "./project-progress";
 
@@ -128,19 +128,34 @@ describe("dashboard calculations", () => {
     expect(getCurrentStatusDuration("2026-07-25T09:00:00Z", "2026-07-27T15:00:00Z")).toEqual({ days: 2, hours: 6 });
     expect(getCurrentStatusDuration(null, "2026-07-27T15:00:00Z")).toBeNull();
   });
-  it("keeps the admin upcoming feed mixed and limits each project to one task", () => {
-    const item = (key: string, kind: AdminUpcomingItem["kind"], date: string, projectId?: string, direction?: AdminUpcomingItem["direction"]): AdminUpcomingItem => ({ key, kind, date, direction, projectId, title: key, href: `/${key}` });
+  it("sorts the future admin feed chronologically before one overall limit", () => {
+    const item = (key: string, kind: AdminUpcomingItem["kind"], date: string): AdminUpcomingItem => ({ key, kind, date, title: key, href: `/${key}` });
     const upcoming = selectAdminUpcoming([
-      item("finance:1", "finance", "2026-07-27", undefined, "outgoing"),
-      item("finance:2", "finance", "2026-07-27", undefined, "outgoing"),
-      item("finance:3", "finance", "2026-07-27", undefined, "incoming"),
-      item("task:p1:first", "task", "2026-07-28", "p1"),
-      item("task:p1:second", "task", "2026-07-29", "p1"),
-      item("task:p2", "task", "2026-07-30", "p2"),
-      item("task:p3", "task", "2026-07-31", "p3"),
+      item("finance:late", "finance", "2026-07-26"),
+      item("finance:1", "finance", "2026-07-27"),
+      item("finance:2", "finance", "2026-07-27"),
+      item("finance:3", "finance", "2026-07-27"),
+      item("task:p1:first", "task", "2026-07-28"),
+      item("task:p1:second", "task", "2026-07-29"),
+      item("project:1", "project", "2026-07-30"),
+      item("assignment:1", "assignment", "2026-07-31"),
+      item("equipment:1", "equipment", "2026-08-01"),
       item("crm:1", "crm", "2026-08-02"),
-      item("project:1", "project", "2026-08-04"),
-    ], 8);
-    expect(upcoming.map((entry) => entry.key)).toEqual(["finance:1", "finance:3", "task:p1:first", "task:p2", "crm:1", "project:1"]);
+    ], today, 8);
+    expect(upcoming.map((entry) => entry.key)).toEqual(["finance:1", "finance:2", "finance:3", "task:p1:first", "task:p1:second", "project:1", "assignment:1", "equipment:1"]);
+  });
+  it("orders personal project tasks and Office assignments by overdue, date, then undated", () => {
+    const items = selectAdminMyWork([
+      task({ id: "task-undated", priority: "urgent" }),
+      task({ id: "task-soon", due_date: "2026-07-29" }),
+      task({ id: "task-late", due_date: "2026-07-25" }),
+    ], [
+      { id: "office-late", title: "Office late", deadline: "2026-07-26", priority: "normal", status: "assigned" },
+      { id: "office-soon", title: "Office soon", deadline: "2026-07-28", priority: "high", status: "in_progress" },
+      { id: "office-undated", title: "Office undated", deadline: null, priority: "normal", status: "assigned" },
+    ], today, 6);
+    const ids = items.map((item) => item.kind === "task" ? item.task.id : item.assignment.id);
+    expect(ids.slice(0, 4)).toEqual(["task-late", "office-late", "office-soon", "task-soon"]);
+    expect(ids.slice(4).sort()).toEqual(["office-undated", "task-undated"]);
   });
 });

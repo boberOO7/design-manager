@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
+import { FINANCE_OVERDUE_DB_FILTER } from "@/lib/finance-planning";
 
 export type FinancePlanningPeriod = "month" | "30days" | "3months" | "6months" | "all";
 
@@ -91,7 +92,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   return `/finance/expected?item=${id}`;
 }
 
-export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string) {
+export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string,attention?:"overdue") {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
@@ -104,6 +105,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(filter==="cancelled") query=query.eq("commitment","cancelled");
+  if(attention==="overdue") query=query.or(FINANCE_OVERDUE_DB_FILTER);
   const bounds=planningPeriodBounds(period,today);
   if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null),and(commitment.neq.cancelled,remaining_amount.gt.0,due_state.eq.overdue),and(commitment.neq.cancelled,remaining_amount.gt.0,payment_state.eq.partial)`);
   const [items,payments,credits]=await Promise.all([
@@ -118,7 +120,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const history=ids.length ? await client.from("finance_allocations").select("*, movement:finance_movements!finance_allocations_studio_id_movement_id_fkey(financial_date,category)")
     .eq("studio_id",admin.studio_id).in("expected_item_id",ids).order("created_at",{ ascending:false }).limit(500) : null;
   if(history?.error) throw new Error("Unable to load settlement history.",{ cause:history.error });
-  const links=ids.length ? await client.from("finance_project_items").select("*").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  const links=ids.length ? await client.from("finance_project_items").select("*,project:projects!finance_project_items_project_id_studio_id_fkey(name)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(links?.error) throw new Error("Unable to load project payment context.",{ cause:links.error });
   const obligations=ids.length ? await client.from("finance_obligation_items").select("obligation_id,expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(obligations?.error) throw new Error("Unable to load obligation context.",{ cause:obligations.error });

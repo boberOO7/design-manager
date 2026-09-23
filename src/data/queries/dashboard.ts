@@ -4,10 +4,11 @@ import { getActiveStudioMembership } from "@/data/queries/active-studio-membersh
 import { getCurrentUserProfile } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
-import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, getTodayDate, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
+import { countDueThisWeek, countDueToday, countUpcomingSevenDays, getEmployeeTasksNeedingAttention, getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
 import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { isTaskInReview, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
+import { getKyivDateOnly } from "@/lib/validation/project";
 import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle";
 import type { DashboardTaskSummary, DashboardWorkloadTask } from "@/types/tasks";
 
@@ -45,7 +46,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   ]);
   if (projectsResult.error || tasksResult.error || membersResult.error || !projectsResult.data || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: projectsResult.error ?? tasksResult.error ?? membersResult.error });
   const asOf = new Date().toISOString();
-  const today = getTodayDate(new Date(asOf));
+  const today = getKyivDateOnly();
   const [stageConfigurationsResult, currentStatusPeriodsResult] = await Promise.all([
     supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", projectsResult.data.map((project) => project.id)),
     membership.system_role === "admin"
@@ -73,12 +74,12 @@ export async function getDashboard(): Promise<DashboardData | null> {
       return { ...task, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
     });
     const openTasks = tasks.filter(isOpenTask);
-    const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today).slice(0, 5);
+    const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today);
     return {
       kind: "admin", profile, asOf, today,
       metrics: { activeProjects: projects.length, openTasks: openTasks.length, overdueTasks: openTasks.filter((task) => isTaskOverdue(task, today)).length, dueThisWeek: countDueThisWeek(openTasks, today) },
       attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6),
-      deadlines: makeDeadlines(tasks, projects, today, 30, 50),
+      deadlines: makeDeadlines(tasks, projects, today, 30, Number.POSITIVE_INFINITY),
       workload: getTeamWorkload(membersResult.data.map((member) => member.profile), workloadTasks, today),
       myTasks,
     };

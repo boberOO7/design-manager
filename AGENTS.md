@@ -71,11 +71,15 @@ Validation must match the risk and scope of the change.
 Typical defaults:
 
 - Small UI/copy/style fix:
-  - inspect the affected rendered flow when useful
   - TypeScript only when the changed code makes it relevant
+  - no browser automation by default
 - Local interaction/UI behavior:
   - relevant TypeScript validation
-  - one focused browser or interactive smoke check when practical
+  - do not run Playwright or start a separate dev server by default
+  - if an already-running local app is readily available, a quick manual/interactive
+    check may be used without changing the environment
+  - use automated browser/E2E validation only when the task explicitly requests it
+    or the behavior cannot reasonably be validated otherwise
 - Local domain logic:
   - focused unit/domain tests for the changed behavior
 - Database/schema/RLS/RPC:
@@ -95,12 +99,19 @@ Do not automatically run:
 
 unless the task genuinely requires them.
 
-For a focused browser check, make one normal attempt using the existing
-environment/fixtures.
+Browser automation is opt-in validation.
 
-If it is blocked by an unrelated `.next` lock, existing dev server, unavailable
-local service, stale unrelated fixture, unrelated database constraint, or other
-environment problem, do not turn the task into infrastructure repair.
+Do not start a new Next.js dev server, Playwright web server, or separate browser
+test environment solely to validate ordinary UI work unless the task explicitly
+requires automated browser/E2E coverage.
+
+If browser automation is explicitly required and the existing environment is
+blocked by an unrelated `.next` lock, existing dev server, unavailable local
+service, stale unrelated fixture, unrelated database constraint, or other
+environment problem, report the blocker and stop.
+
+Do not modify fixtures, dev-server state, ports, Docker state, or unrelated
+application code solely to make optional browser validation run.
 
 Existing unrelated validation failures should be reported, not fixed as part of
 a scoped task.

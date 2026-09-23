@@ -3,6 +3,7 @@ import type { MyTask, DashboardTaskSummary, DashboardWorkloadTask } from "../typ
 import { canWorkOnTaskInProject, isOperationalProjectStatus, type ProjectLifecycleStatus } from "./project-lifecycle";
 import { calculateProjectProgress, type ProjectStageProgressMethods } from "./project-progress";
 import { isTaskStage } from "./task-stages";
+import { isOfficeAssignmentOverdue, type OfficeAssignmentPriority, type OfficeAssignmentStatus } from "./office-assignments";
 
 export type DashboardTask = MyTask;
 
@@ -198,32 +199,42 @@ export type TeamWorkloadMember = ReturnType<typeof getTeamWorkload>[number];
 
 export type AdminUpcomingItem = {
   key: string;
-  kind: "task" | "project" | "finance" | "crm";
+  kind: "task" | "project" | "finance" | "crm" | "assignment" | "equipment";
   date: string;
   title: string;
   href: string;
   context?: string;
-  direction?: "incoming" | "outgoing";
-  projectId?: string;
 };
 
-export function selectAdminUpcoming(items: AdminUpcomingItem[], limit = 8): AdminUpcomingItem[] {
-  const ordered = [...new Map(items.map((item) => [item.key, item])).values()]
-    .sort((left, right) => left.date.localeCompare(right.date) || left.key.localeCompare(right.key));
-  const selected: AdminUpcomingItem[] = [];
-  const kindCounts = new Map<AdminUpcomingItem["kind"], number>();
-  const kindLimits: Record<AdminUpcomingItem["kind"], number> = { task: 2, project: 1, finance: 2, crm: 2 };
-  const financeDirections = new Set<AdminUpcomingItem["direction"]>();
-  const taskProjects = new Set<string>();
-  for (const item of ordered) {
-    if (item.kind === "task" && item.projectId && taskProjects.has(item.projectId)) continue;
-    if (item.kind === "finance" && item.direction && financeDirections.has(item.direction)) continue;
-    if ((kindCounts.get(item.kind) ?? 0) >= kindLimits[item.kind]) continue;
-    selected.push(item);
-    kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
-    if (item.kind === "task" && item.projectId) taskProjects.add(item.projectId);
-    if (item.kind === "finance") financeDirections.add(item.direction);
-    if (selected.length === limit) break;
-  }
-  return selected;
+export function selectAdminUpcoming(items: AdminUpcomingItem[], today: string, limit = 8): AdminUpcomingItem[] {
+  return [...new Map(items.filter((item) => item.date.slice(0, 10) >= today).map((item) => [item.key, item])).values()]
+    .sort((left, right) => left.date.localeCompare(right.date) || left.key.localeCompare(right.key))
+    .slice(0, limit);
+}
+
+export type DashboardOfficeAssignment = {
+  id: string;
+  title: string;
+  deadline: string | null;
+  priority: OfficeAssignmentPriority;
+  status: OfficeAssignmentStatus;
+};
+
+export type AdminMyWorkItem = { kind: "task"; task: DashboardTaskSummary } | { kind: "assignment"; assignment: DashboardOfficeAssignment };
+
+export function selectAdminMyWork(tasks: DashboardTaskSummary[], assignments: DashboardOfficeAssignment[], today: string, limit = 5): AdminMyWorkItem[] {
+  const taskOrder = new Map(sortEmployeeTasks(tasks, today).map((task, index) => [task.id, index]));
+  return [
+    ...tasks.map((task): AdminMyWorkItem => ({ kind: "task", task })),
+    ...assignments.map((assignment): AdminMyWorkItem => ({ kind: "assignment", assignment })),
+  ].sort((left, right) => {
+    const leftDate = left.kind === "task" ? left.task.due_date : left.assignment.deadline;
+    const rightDate = right.kind === "task" ? right.task.due_date : right.assignment.deadline;
+    const leftOverdue = left.kind === "task" ? isTaskOverdue(left.task, today) : isOfficeAssignmentOverdue(leftDate, left.assignment.status, today);
+    const rightOverdue = right.kind === "task" ? isTaskOverdue(right.task, today) : isOfficeAssignmentOverdue(rightDate, right.assignment.status, today);
+    return Number(rightOverdue) - Number(leftOverdue)
+      || (leftDate ?? "9999-12-31").localeCompare(rightDate ?? "9999-12-31")
+      || (left.kind === "task" && right.kind === "task" ? (taskOrder.get(left.task.id) ?? 0) - (taskOrder.get(right.task.id) ?? 0) : 0)
+      || `${left.kind}:${left.kind === "task" ? left.task.id : left.assignment.id}`.localeCompare(`${right.kind}:${right.kind === "task" ? right.task.id : right.assignment.id}`);
+  }).slice(0, limit);
 }

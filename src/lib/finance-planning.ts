@@ -3,6 +3,18 @@ import type { Database } from "@/types/database.types";
 
 export type FinanceCategory = Database["public"]["Tables"]["finance_categories"]["Row"];
 export type FinanceExpected = Database["public"]["Views"]["finance_expected_balances"]["Row"];
+export function projectPaymentPresentation(description: string | null, projectName: string, paymentType: string, fallbackTitle: string) {
+  return { title: description?.trim() || fallbackTitle, context: `${projectName} · ${paymentType}` };
+}
+
+export const FINANCE_OVERDUE_DB_FILTER = "and(due_state.eq.overdue,commitment.neq.cancelled,remaining_amount.gt.0)";
+export function financeOverdueDashboardHref(direction: "incoming" | "outgoing"): string {
+  return `/finance/expected?filter=${direction}&attention=overdue`;
+}
+export function parseFinanceExpectedAttention(value: string | undefined, filter: string): "overdue" | undefined {
+  return value === "overdue" && filter !== "cancelled" ? "overdue" : undefined;
+}
+
 export const planningAmount = z.string().trim().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((value) => value.replace(",", ".")).refine((value) => Number(value)>0);
 const optionalId = z.union([z.uuid(),z.literal("")]).default("");
 const optionalDate = z.union([z.iso.date(),z.literal("")]).default("");

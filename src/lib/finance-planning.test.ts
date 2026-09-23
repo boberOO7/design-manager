@@ -1,8 +1,22 @@
 import { describe,expect,it } from "vitest";
-import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,type FinanceCategory } from "./finance-planning";
+import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,financeOverdueDashboardHref,projectPaymentPresentation,parseFinanceExpectedAttention,FINANCE_OVERDUE_DB_FILTER,type FinanceCategory } from "./finance-planning";
 const id="64000000-0000-4000-8000-000000000100";
 const item={ requestId:id,direction:"incoming",amount:"100,25",currency:"UAH",categoryId:id,commitment:"agreed",certainty:"fixed",established:"true",dueDate:"2026-09-01",expectedDate:"2026-10-01" };
 describe("Finance planning inputs",()=>{
+  it("keeps project payment names and direction visible without replacing custom titles",()=>{
+    expect(projectPaymentPresentation("Design milestone", "Clinic renewal", "Incoming payment", "Project payment")).toEqual({ title:"Design milestone", context:"Clinic renewal · Incoming payment" });
+    expect(projectPaymentPresentation("  ", "Clinic renewal", "Incoming payment", "Project payment")).toEqual({ title:"Project payment", context:"Clinic renewal · Incoming payment" });
+  });
+  it("links each overdue Dashboard count to the same direction and due-state filter",()=>{
+    for(const direction of ["incoming","outgoing"] as const){
+      const url=new URL(financeOverdueDashboardHref(direction),"https://studio.test");
+      expect(url.pathname).toBe("/finance/expected");
+      expect(url.searchParams.get("filter")).toBe(direction);
+      expect(parseFinanceExpectedAttention(url.searchParams.get("attention")??undefined,direction)).toBe("overdue");
+    }
+    expect(FINANCE_OVERDUE_DB_FILTER).toBe("and(due_state.eq.overdue,commitment.neq.cancelled,remaining_amount.gt.0)");
+    expect(parseFinanceExpectedAttention("overdue","cancelled")).toBeUndefined();
+  });
   it("preserves exact expected amounts and distinct contractual/forecast dates",()=>{
     expect(expectedInputSchema.parse(item)).toMatchObject({ amount:"100.25",dueDate:"2026-09-01",expectedDate:"2026-10-01" });
     expect(expectedInputSchema.safeParse({ ...item,dueDate:"" }).success).toBe(true);

@@ -64,7 +64,7 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
       const tasks = member.tasks.filter((task) => isTaskInWorkloadCategory(task, selectedCategory, today));
       return <li key={member.id} className="rounded-[calc(var(--ui-radius-panel)-0.125rem)]">
         <div className="relative grid gap-3 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
+          <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
           <div className="pointer-events-none relative flex min-w-0 items-center gap-2.5">
             <span className="rounded-full ring-2 ring-[var(--ui-surface)] shadow-sm"><UserAvatar imageUrl={member.avatar_url} name={member.full_name} size="boardCard" decorative /></span>
             <div className="min-w-0">
