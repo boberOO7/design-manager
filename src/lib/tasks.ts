@@ -174,7 +174,7 @@ export function getOptimisticTaskForStatus(
     return {
       ...task,
       status,
-      checklist_items: task.checklist_items.map((item) => ({ ...item, is_completed: true })),
+      checklist_items: task.checklist_items.map((item) => ({ ...item, is_completed: item.is_not_needed ? false : true })),
     };
   }
   if (status === "in_progress" && !task.manual_progress_override) {
@@ -233,6 +233,7 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
         && item.id === other.id
         && item.title === other.title
         && item.is_completed === other.is_completed
+        && item.is_not_needed === other.is_not_needed
         && item.weight === other.weight
         && item.position === other.position;
     })

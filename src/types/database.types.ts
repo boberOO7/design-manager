@@ -3808,6 +3808,7 @@ export type Database = {
       }
       project_template_tasks: {
         Row: {
+          checklist_template_id: string | null
           created_at: string
           id: string
           position: number
@@ -3818,6 +3819,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          checklist_template_id?: string | null
           created_at?: string
           id?: string
           position: number
@@ -3828,6 +3830,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          checklist_template_id?: string | null
           created_at?: string
           id?: string
           position?: number
@@ -3838,6 +3841,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_template_tasks_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_template_tasks_template_id_fkey"
             columns: ["template_id"]
@@ -4306,6 +4316,7 @@ export type Database = {
           created_at: string
           id: string
           is_completed: boolean
+          is_not_needed: boolean
           position: number
           task_id: string
           title: string
@@ -4316,6 +4327,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          is_not_needed?: boolean
           position: number
           task_id: string
           title: string
@@ -4326,6 +4338,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          is_not_needed?: boolean
           position?: number
           task_id?: string
           title?: string

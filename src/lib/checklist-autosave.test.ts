@@ -6,7 +6,7 @@ const taskId = "123e4567-e89b-12d3-a456-426614174000";
 const timestamp = "2026-08-02T10:00:00.000Z";
 
 function item(id: string, title = "Plans"): TaskChecklistItem {
-  return { created_at: timestamp, id, is_completed: false, position: 0, task_id: taskId, title, updated_at: timestamp, weight: 1 };
+  return { created_at: timestamp, id, is_completed: false, is_not_needed: false, position: 0, task_id: taskId, title, updated_at: timestamp, weight: 1 };
 }
 
 function task(items: TaskChecklistItem[] = [item("first")]): ProjectTask {
@@ -54,6 +54,24 @@ describe("checklist autosave store", () => {
 
     expect(store.getSnapshot().items[0].is_completed).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends not-needed changes immediately and can restore pending", async () => {
+    const currentTask = task();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(task([{ ...currentTask.checklist_items[0], is_not_needed: true }])))
+      .mockResolvedValueOnce(response(currentTask));
+    vi.stubGlobal("fetch", fetchMock);
+    const store = new ChecklistAutosaveStore();
+
+    store.update(currentTask, "first", { is_not_needed: true }, true);
+    expect(store.getSnapshot().items[0]).toMatchObject({ is_completed: false, is_not_needed: true });
+    await vi.waitFor(() => expect(store.getSnapshot().pendingItemIds.has("first")).toBe(false));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ is_not_needed: true });
+
+    store.update(currentTask, "first", { is_not_needed: false }, true);
+    expect(store.getSnapshot().items[0]).toMatchObject({ is_completed: false, is_not_needed: false });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ is_not_needed: false });
   });
 
   it("debounces title and weight persistence", async () => {

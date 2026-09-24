@@ -6,7 +6,7 @@ import {
   updateChecklistItemLocally,
 } from "@/lib/checklist-interaction";
 
-export type ChecklistChange = Partial<Pick<TaskChecklistItem, "title" | "weight" | "is_completed">>;
+export type ChecklistChange = Partial<Pick<TaskChecklistItem, "title" | "weight" | "is_completed" | "is_not_needed">>;
 
 type ChecklistMutationResult = { success: true; task: ProjectTask; checklistItemId?: string };
 type ChecklistSnapshot = {

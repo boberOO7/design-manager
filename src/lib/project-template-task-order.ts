@@ -23,8 +23,6 @@ export function getProjectTemplateTaskDestination(
 ): ProjectTemplateTaskDestination | null {
   const source = tasks.find((task) => task.id === sourceId);
   if (!source) return null;
-  if (targetStage !== source.stage) return null;
-
   const targetTasks = getTemplateStageTasks({ tasks: [...tasks] }, targetStage);
   const sourceIndex = source.stage === targetStage ? targetTasks.findIndex((task) => task.id === sourceId) : -1;
   const targetIndex = targetId === null ? targetTasks.length : targetTasks.findIndex((task) => task.id === targetId);
@@ -63,8 +61,6 @@ export function moveProjectTemplateTask(
 ) {
   const source = tasks.find((task) => task.id === sourceId);
   if (!source) return [...tasks];
-  if (destination.stage !== source.stage) return [...tasks];
-
   const tasksByStage = new Map(PROJECT_TEMPLATE_STAGES.map((stage) => [
     stage,
     getTemplateStageTasks({ tasks: [...tasks] }, stage).filter((task) => task.id !== sourceId),

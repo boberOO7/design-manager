@@ -46,6 +46,17 @@ describe("task details drawer contract", () => {
     expect(itemRow).toContain('t("savingItem")');
   });
 
+  it("keeps checklist controls mounted and pointer focus visually quiet", async () => {
+    const source = await readFile(drawerPath, "utf8");
+    expect(source).toContain("<ChecklistItemRow key={item.id}");
+    expect(source).toContain("<ChecklistItemEditorRow key={item.id}");
+    expect(source).not.toContain("key={`${item.id}:${item.updated_at}`}");
+    const itemRow = source.slice(source.indexOf("function ChecklistItemRow"), source.indexOf("function ChecklistItemEditorRow"));
+    expect(itemRow).toContain("focus-visible:ring-2");
+    expect(itemRow).not.toContain("focus-within:ring-2");
+    expect(itemRow).toContain("<ChecklistItemAction");
+  });
+
   it("puts the authorized edit action in the header and removes the read-view footer action", async () => {
     const source = await readFile(drawerPath, "utf8");
     const header = source.slice(source.indexOf("<header"), source.indexOf("</header>"));

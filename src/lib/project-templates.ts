@@ -13,6 +13,7 @@ export type ProjectTemplateTask = {
   title: string;
   priority: "low" | "normal" | "high" | "urgent";
   position: number;
+  checklistTemplateId: string | null;
 };
 
 export type ProjectTemplate = {

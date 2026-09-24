@@ -65,6 +65,18 @@ describe("task progress", () => {
     });
   });
 
+  it("counts completed and not-needed items as resolved", () => {
+    const checklist_items = [
+      ...Array.from({ length: 3 }, (_, index) => ({ id: `${index}`, is_completed: true, is_not_needed: false, weight: 1 })),
+      { id: "skipped", is_completed: false, is_not_needed: true, weight: 1 },
+    ];
+    expect(calculateTaskProgress(task({ status: "in_progress", checklist_items }))).toMatchObject({
+      completedChecklistCount: 4,
+      checklistCount: 4,
+      productionPercent: 100,
+    });
+  });
+
   it("uses weighted checklist completion and ignores the manual fallback while items exist", () => {
     const progress = calculateTaskProgress(task({ status: "in_progress", production_completion: 99, checklist_items: [{ id: "a", is_completed: true, weight: 1 }, { id: "b", is_completed: false, weight: 3 }] }));
     expect(progress).toMatchObject({ source: "checklist", productionPercent: 25, overallPercent: 17.5, completedChecklistCount: 1, checklistCount: 2 });

@@ -7,7 +7,7 @@ import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { MyTask, ProjectTask, TaskStatusPeriod } from "@/types/tasks";
 
-const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
+const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
 type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt"> & {
   collaborators: TaskCollaboratorRelation[];
@@ -125,7 +125,7 @@ export async function getTaskForStatusUpdate(taskId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, project_id, stage, assignee_id, status, completed_area_m2, task_checklist_items(id, is_completed), project:projects!tasks_project_id_fkey!inner(studio_id, status, archived_at, total_area_m2)")
+    .select("id, project_id, stage, assignee_id, status, completed_area_m2, task_checklist_items(id, is_completed, is_not_needed), project:projects!tasks_project_id_fkey!inner(studio_id, status, archived_at, total_area_m2)")
     .eq("id", taskId)
     .maybeSingle();
 

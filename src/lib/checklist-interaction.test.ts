@@ -39,6 +39,24 @@ describe("checklist interaction helpers", () => {
     expect(removeChecklistItem([first, second], first.id)).toEqual([second]);
   });
 
+  it("keeps completed and not-needed transitions distinct", () => {
+    const pending = item("first");
+    const completed = updateChecklistItemLocally([pending], pending.id, { is_completed: true })[0];
+    expect(completed).toMatchObject({ is_completed: true, is_not_needed: false });
+    const notNeeded = updateChecklistItemLocally([completed], pending.id, { is_not_needed: true })[0];
+    expect(notNeeded).toMatchObject({ is_completed: false, is_not_needed: true });
+    expect(updateChecklistItemLocally([notNeeded], pending.id, { is_not_needed: false })[0]).toMatchObject({ is_completed: false, is_not_needed: false });
+  });
+
+  it("keeps the label during optimistic state transitions even with an undefined title patch", () => {
+    const pending = item("first");
+    const completed = updateChecklistItemLocally([pending], pending.id, { title: undefined, is_completed: true })[0];
+    const notNeeded = updateChecklistItemLocally([completed], pending.id, { title: undefined, is_not_needed: true })[0];
+    const restored = updateChecklistItemLocally([notNeeded], pending.id, { title: undefined, is_not_needed: false })[0];
+
+    expect([completed, notNeeded, restored].map(({ title }) => title)).toEqual(["Drawings", "Drawings", "Drawings"]);
+  });
+
   it("updates only the requested item during optimistic completion and edits", () => {
     const first = item("first", "Plans");
     const second = item("second", "Lighting");

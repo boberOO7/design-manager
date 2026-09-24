@@ -16,7 +16,7 @@ type ProjectListMembershipRow = {
 };
 type ProjectTaskWithDeadlines = ProjectTaskForProgress & { project_id: string; deadlines: Array<{ id: string; target_status: string; due_date: string }> };
 
-export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, weight)";
+export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, is_not_needed, weight)";
 
 export async function getProjectTasksForProgress(projectId: string): Promise<ProjectTaskForProgress[]> {
   const supabase = await createClient();

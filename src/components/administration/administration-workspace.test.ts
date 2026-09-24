@@ -28,7 +28,7 @@ describe("Administration workspace presentation", () => {
     expect(workspace).toContain('title={t("noRequests")}');
     expect(workspace).toContain('availability("upcoming")');
     expect(workspace).toContain('t("recentDecisions")');
-    expect(workspace).toContain("ChecklistTemplateManager");
+    expect(workspace).not.toContain("ChecklistTemplateManager");
   });
 
   it("bounds recent history on larger screens without forcing a nested mobile scroll", () => {

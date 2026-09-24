@@ -63,7 +63,7 @@ export async function updateTaskStatusMutation(
   if (!authorization.success) return authorization;
 
   if (parsed.data.status === "completed"
-    && authorization.task.task_checklist_items.some((item) => !item.is_completed)) {
+    && authorization.task.task_checklist_items.some((item) => !item.is_completed && !item.is_not_needed)) {
     return { formError: "Complete every checklist item before moving this task to Done.", success: false };
   }
 

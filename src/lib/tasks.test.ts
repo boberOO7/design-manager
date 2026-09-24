@@ -192,7 +192,7 @@ describe("optimistic task Board state", () => {
   });
 
   it("optimistically completes a checklist for Client review and restores it when the move is rejected", () => {
-    const initial = [makeTask({ id: "task-1", status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] })];
+    const initial = [makeTask({ id: "task-1", status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, is_not_needed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] })];
     const optimistic = setProjectTaskStatus(initial, "task-1", "review");
     expect(groupTasksByBoardColumn(optimistic)["client-review"]).toHaveLength(1);
     expect(optimistic[0]?.checklist_items[0]?.is_completed).toBe(true);
@@ -203,7 +203,7 @@ describe("optimistic task Board state", () => {
   });
 
   it("does not change checklist data for status transitions outside Client review", () => {
-    const task = makeTask({ status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] });
+    const task = makeTask({ status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, is_not_needed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] });
     expect(getOptimisticTaskForStatus(task, "completed").checklist_items[0]?.is_completed).toBe(false);
   });
 

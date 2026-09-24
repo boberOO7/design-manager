@@ -141,6 +141,7 @@ export const checklistItemUpdateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   weight: checklistWeightSchema.optional(),
   is_completed: z.boolean().optional(),
+  is_not_needed: z.boolean().optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, "Provide a checklist change");
 
 export type TaskEditInput = z.infer<typeof taskEditSchema>;

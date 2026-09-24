@@ -13,11 +13,11 @@ export async function getStudioProjectTemplates(): Promise<ProjectTemplate[]> {
   if (templateError) throw new Error("Unable to load project templates.", { cause: templateError });
   const validTemplates = (templates ?? []).filter((template): template is typeof template & { project_type: ProjectTypeKey } => isProjectTypeKey(template.project_type));
   if (!validTemplates.length) return [];
-  const { data: tasks, error: taskError } = await supabase.from("project_template_tasks").select("id, template_id, stage, title, priority, position").in("template_id", validTemplates.map((template) => template.id)).order("stage").order("position").order("id");
+  const { data: tasks, error: taskError } = await supabase.from("project_template_tasks").select("id, template_id, stage, title, priority, position, checklist_template_id").in("template_id", validTemplates.map((template) => template.id)).order("stage").order("position").order("id");
   if (taskError) throw new Error("Unable to load project template tasks.", { cause: taskError });
   const validTasks = (tasks ?? []).flatMap((task): Array<ProjectTemplateTask & { templateId: string }> => {
     if (!isProjectTemplateStage(task.stage) || !isProjectPriority(task.priority)) return [];
-    return [{ id: task.id, templateId: task.template_id, stage: task.stage, title: task.title, priority: task.priority, position: task.position }];
+    return [{ id: task.id, templateId: task.template_id, stage: task.stage, title: task.title, priority: task.priority, position: task.position, checklistTemplateId: task.checklist_template_id }];
   });
   return validTemplates.map((template) => ({
     id: template.id, name: template.name, projectType: template.project_type, isActive: template.is_active, isDefault: template.is_default,
@@ -27,6 +27,7 @@ export async function getStudioProjectTemplates(): Promise<ProjectTemplate[]> {
       title: task.title,
       priority: task.priority,
       position: task.position,
+      checklistTemplateId: task.checklistTemplateId,
     })),
   }));
 }

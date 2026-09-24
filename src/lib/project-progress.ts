@@ -8,6 +8,7 @@ export function isStageProgressMethod(value: string): value is StageProgressMeth
 export type ChecklistItemForProgress = {
   id: string;
   is_completed: boolean;
+  is_not_needed?: boolean;
   weight: number;
 };
 
@@ -181,9 +182,9 @@ export function roundProgressPercent(value: number): number {
 
 export function calculateTaskProgress(task: Pick<ProjectTaskForProgress, "status" | "manual_progress_override" | "production_completion" | "checklist_items">): TaskProgress {
   const checklistCount = task.checklist_items.length;
-  const completedChecklistCount = task.checklist_items.filter((item) => item.is_completed).length;
+  const completedChecklistCount = task.checklist_items.filter((item) => item.is_completed || item.is_not_needed).length;
   const totalChecklistWeight = task.checklist_items.reduce((total, item) => total + Number(item.weight), 0);
-  const completedChecklistWeight = task.checklist_items.reduce((total, item) => total + (item.is_completed ? Number(item.weight) : 0), 0);
+  const completedChecklistWeight = task.checklist_items.reduce((total, item) => total + (item.is_completed || item.is_not_needed ? Number(item.weight) : 0), 0);
   const checklistProduction = totalChecklistWeight > 0 ? (completedChecklistWeight / totalChecklistWeight) * 100 : 0;
   const productionPercent = checklistCount > 0 ? checklistProduction : clampPercent(Number(task.production_completion));
   const hasManualProduction = task.status === "in_progress" && checklistCount === 0;

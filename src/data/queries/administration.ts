@@ -4,7 +4,6 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getRequiredTimeOffApprovalCount, getUpcomingEndDate, isUpcomingAbsence, sortPendingRequests, sortRecentDecisions, sortUpcomingAbsences, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
 import { instantToDateOnly } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
-import { getStudioChecklistTemplates } from "@/data/queries/checklist-templates";
 import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonus-rules";
 
 export async function getAdministrationData(): Promise<AdministrationModel | null> {
@@ -18,7 +17,7 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const upcomingPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).eq("status", "approved").is("cancelled_at", null).lte("start_date", upcomingEnd).gte("end_date", today).order("start_date").limit(50);
   const recentPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).in("status", ["approved", "rejected", "cancelled"]).order("updated_at", { ascending: false }).limit(20);
   const membersPromise = supabase.from("studio_members").select("is_active, system_role").eq("studio_id", membership.studio_id).limit(500);
-  const [pendingResult, upcomingResult, recentResult, membersResult, checklistTemplates, leaderboardBonusConfig] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, getStudioChecklistTemplates({ includeArchived: true }), getStudioLeaderboardBonusConfig(membership.studio_id)]);
+  const [pendingResult, upcomingResult, recentResult, membersResult, leaderboardBonusConfig] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, getStudioLeaderboardBonusConfig(membership.studio_id)]);
   const error = [pendingResult.error, upcomingResult.error, recentResult.error, membersResult.error].find(Boolean);
   if (error) throw new Error("Unable to load Administration data.", { cause: error });
   const requestIds = [...(pendingResult.data ?? []), ...(upcomingResult.data ?? []), ...(recentResult.data ?? [])].map((request) => request.id);
@@ -38,5 +37,5 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const upcomingAbsences = sortUpcomingAbsences((upcomingResult.data ?? []).map(mapRequest).filter((request) => isUpcomingAbsence(request, today, upcomingEnd)));
   const recentDecisions = sortRecentDecisions((recentResult.data ?? []).map(mapRequest)).slice(0, 10);
   const members = membersResult.data ?? [];
-  return { studioId: membership.studio_id, checklistTemplates, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
+  return { leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
 }

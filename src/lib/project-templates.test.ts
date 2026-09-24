@@ -19,7 +19,7 @@ describe("project template selection", () => {
   });
 
   it("persists a new non-default template without changing its enabled state", () => {
-    const saved: ProjectTemplate = { id: "dental-large", name: "Стоматологія (великий)", projectType: "medical", isActive: true, isDefault: false, tasks: [{ id: "task-1", stage: "stage_1", title: "Планування", priority: "normal", position: 0 }] };
+    const saved: ProjectTemplate = { id: "dental-large", name: "Стоматологія (великий)", projectType: "medical", isActive: true, isDefault: false, tasks: [{ id: "task-1", stage: "stage_1", title: "Планування", priority: "normal", checklistTemplateId: null, position: 0 }] };
 
     const result = mergeSavedProjectTemplate(templates, saved);
 

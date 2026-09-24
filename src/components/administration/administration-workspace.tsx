@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { applyAdministrationDecision, formatAdministrationDateRange, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
 import { getTimeOffStatusBadgeStyle } from "@/lib/semantic-styles";
 import { updateTimeOffRequest, type TimeOffMutationResult } from "@/lib/time-off-request-client";
-import { ChecklistTemplateManager } from "@/components/administration/checklist-template-manager";
 import type { CalendarItem } from "@/types/calendar";
 
 const typeKey = (type: AdministrationRequest["requestType"]) => ({ vacation: "vacation", day_off: "dayOff", medical_appointment: "medicalAppointment", sick_leave: "sickLeave", other: "other" } as const)[type];
@@ -99,7 +98,6 @@ export function AdministrationWorkspace({ initialData, requestId }: { initialDat
           <SectionHeading accentClassName="border-[var(--ui-border-strong)]" eyebrow={t("history")} title={t("recentDecisions")} description={t("recentDescription")} />
           {data.recentDecisions.length ? <div className="mt-3 border-y border-[var(--ui-border)] md:max-h-72 md:overflow-y-auto md:pr-2" aria-label={t("recentHistory")}><ul className="divide-y divide-[var(--ui-border)]">{data.recentDecisions.map((request) => <DecisionRow key={request.id} request={request} />)}</ul></div> : <EmptyState className="mt-3 bg-[var(--ui-surface)]" compact title={t("noRecent")} />}
         </Panel>
-        <Panel className="p-4 shadow-none sm:p-5"><ChecklistTemplateManager studioId={data.studioId} templates={data.checklistTemplates} /></Panel>
       </div>
     </div>
 

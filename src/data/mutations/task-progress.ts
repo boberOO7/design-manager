@@ -83,10 +83,11 @@ export async function updateChecklistItem(taskId: string, itemId: string, input:
   const authorization = await authorizeChecklistEdit(taskId);
   if (!authorization.success) return authorization;
 
-  const update: Pick<Partial<TaskChecklistItem>, "title" | "weight" | "is_completed"> = {};
+  const update: Pick<Partial<TaskChecklistItem>, "title" | "weight" | "is_completed" | "is_not_needed"> = {};
   if (parsed.data.title !== undefined) update.title = parsed.data.title;
   if (parsed.data.weight !== undefined) update.weight = parsed.data.weight;
-  if (parsed.data.is_completed !== undefined) update.is_completed = parsed.data.is_completed;
+  if (parsed.data.is_completed !== undefined) { update.is_completed = parsed.data.is_completed; update.is_not_needed = false; }
+  if (parsed.data.is_not_needed !== undefined) { update.is_not_needed = parsed.data.is_not_needed; update.is_completed = false; }
   const supabase = await createClient();
   const { data, error } = await supabase.from("task_checklist_items")
     .update(update)

@@ -1,13 +1,11 @@
 "use client";
 
 import { DragDropProvider, DragOverlay, KeyboardSensor, PointerSensor, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from "@dnd-kit/react";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { GripVertical, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/form-field";
-import { Select, SelectItem } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, moveChecklistTemplateStage, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { cn } from "@/lib/utils";
@@ -23,18 +21,20 @@ function toDraft(template: StudioChecklistTemplate | null): Draft { return templ
 
 export function ChecklistTemplateManager({ studioId, templates }: { studioId: string; templates: StudioChecklistTemplate[] }) {
   const t = useTranslations("Templates");
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState(templates);
+  const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id ?? null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const selected = useMemo(() => items.find((template) => template.id === draft?.id) ?? null, [draft?.id, items]);
+  const selected = useMemo(() => items.find((template) => template.id === selectedId) ?? null, [selectedId, items]);
   const isDirty = draft !== null && (draft.name !== (selected?.name ?? "") || getChecklistTemplateWeight({ stages: draft.stages }) !== getChecklistTemplateWeight({ stages: selected?.stages ?? [] }) || draft.stages.some((stage, index) => stage.title !== selected?.stages[index]?.title || stage.weight !== selected?.stages[index]?.weight) || draft.stages.length !== (selected?.stages.length ?? 0));
 
-  function open(template: StudioChecklistTemplate | null) { setError(""); setDraft(toDraft(template)); setIsOpen(true); }
-  function close() { if (isDirty && !window.confirm(t("discardConfirm"))) return; setIsOpen(false); setDraft(null); }
+  function discardChanges() { return !isDirty || window.confirm(t("discardConfirm")); }
+  function select(templateId: string) { if (!discardChanges()) return; setSelectedId(templateId); setDraft(null); setError(""); }
+  function create() { if (!discardChanges()) return; setSelectedId(null); setDraft(toDraft(null)); setError(""); }
+  function edit() { if (selected) { setDraft(toDraft(selected)); setError(""); } }
+  function cancel() { if (!discardChanges()) return; setDraft(null); setError(""); }
+
   async function save() {
     if (!draft || isSaving) return;
     setIsSaving(true); setError("");
@@ -42,19 +42,24 @@ export function ChecklistTemplateManager({ studioId, templates }: { studioId: st
     if (saveError || !data) { setError(t("saveFailed")); setIsSaving(false); return; }
     const next: StudioChecklistTemplate = { id: data, name: draft.name.trim(), archivedAt: selected?.archivedAt ?? null, stages: draft.stages.map((stage) => ({ ...stage, title: stage.title.trim() })) };
     setItems((current) => draft.id ? current.map((template) => template.id === data ? next : template) : [...current, next].sort((left, right) => left.name.localeCompare(right.name)));
-    setDraft(toDraft(next)); setIsSaving(false);
+    setSelectedId(data); setDraft(null); setIsSaving(false);
   }
-  return <>
-    <section aria-labelledby="checklist-templates-heading" className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div className="max-w-xl"><h2 id="checklist-templates-heading" className="text-base font-semibold text-[var(--ui-text)]">{t("checklistTemplates")}</h2><p className="mt-1 text-sm leading-5 text-[var(--ui-text-muted)]">{t("managerDescription")}</p></div><Button ref={triggerRef} size="sm" variant="outline" className="min-h-11 shrink-0" onClick={() => open(items[0] ?? null)}>{t("manage")}</Button></div>
-      {items.length ? <ul className="divide-y divide-[var(--ui-border)] overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">{items.map((template) => <li key={template.id} className="grid min-h-16 gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"><p className="min-w-0 break-words text-sm font-semibold text-[var(--ui-text)]">{template.name}</p><div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--ui-text-muted)] sm:justify-end"><span className="ui-numeric whitespace-nowrap">{t("stages", { count: template.stages.length })}</span><span className="ui-numeric whitespace-nowrap">{t("totalWeight", { weight: getChecklistTemplateWeight(template) })}</span>{template.archivedAt ? <span className="rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-2 py-0.5 font-medium text-[var(--ui-text-secondary)]">{t("archived")}</span> : null}</div></li>)}</ul> : <p className="rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] px-3 py-4 text-sm text-[var(--ui-text-muted)]">{t("noTemplates")}</p>}
-    </section>
-    <Drawer isOpen={isOpen} onClose={close} initialFocusRef={closeRef} returnFocusRef={triggerRef} title={t("checklistTemplates")} description={t("managerDescription")} className="w-full max-w-[34rem]">
-      <header className="flex items-start justify-between gap-3 border-b border-[var(--ui-border)] px-4 py-3 sm:px-5"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--ui-text-muted)]">{t("studioTemplates")}</p><h2 className="mt-0.5 text-lg font-semibold text-[var(--ui-text)]">{t("checklistTemplates")}</h2></div><Button ref={closeRef} type="button" size="sm" variant="ghost" className="size-11 shrink-0 p-0" onClick={close} aria-label={t("closeTemplates")}><X className="size-4" /></Button></header>
-      <main className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">{error ? <p role="alert" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"><label className="sr-only" htmlFor="template-selector">{t("selectTemplate")}</label><Select id="template-selector" value={draft?.id ?? ""} onValueChange={(templateId) => { const template = items.find((item) => item.id === templateId) ?? null; if (!isDirty || window.confirm(t("discardConfirm"))) open(template); }}><SelectItem value="" disabled>{t("chooseTemplate")}</SelectItem>{items.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}{template.archivedAt ? ` (${t("archived")})` : ""}</SelectItem>)}</Select><Button type="button" variant="outline" className="h-11 shrink-0 px-4" onClick={() => open(null)}><Plus className="mr-1 size-4" />{t("newTemplate")}</Button></div>{draft ? <TemplateEditor draft={draft} setDraft={setDraft} isSaving={isSaving} /> : null}</main>
-      <footer className="flex justify-end border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-5"><Button type="button" onClick={() => void save()} disabled={!draft || isSaving}>{isSaving ? t("saving") : t("saveTemplate")}</Button></footer>
-    </Drawer>
-  </>;
+
+  async function setArchived(template: StudioChecklistTemplate, archived: boolean) {
+    if (archived && !window.confirm(t("archiveConfirm", { name: template.name }))) return;
+    setError("");
+    const { data, error: archiveError } = await createClient().rpc("set_checklist_template_archived", { p_template_id: template.id, p_archived: archived });
+    if (archiveError) { setError(t("archiveFailed")); return; }
+    setItems((current) => current.map((item) => item.id === template.id ? { ...item, archivedAt: data } : item));
+  }
+
+  return <div className="grid gap-5 xl:grid-cols-[19rem_minmax(0,1fr)]">
+    <aside className="self-start rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3">
+      <div className="flex items-center justify-between gap-2 px-1 pb-3"><h2 className="text-sm font-semibold text-[var(--ui-text)]">{t("checklistTemplates")}</h2><Button type="button" size="sm" className="size-9 p-0" onClick={create} aria-label={t("newTemplate")}><Plus className="size-4" /></Button></div>
+      {items.length ? <ul className="space-y-1 border-t border-[var(--ui-border)] pt-2">{items.map((template) => <li key={template.id}><button type="button" onClick={() => select(template.id)} aria-current={selectedId === template.id && !draft ? "true" : undefined} className={cn("w-full rounded-[var(--ui-radius-control)] px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", selectedId === template.id && !draft ? "bg-[var(--ui-surface-muted)]" : "hover:bg-[var(--ui-surface-subtle)]")}><span className="flex min-w-0 items-start justify-between gap-2"><span className="min-w-0 truncate text-sm font-semibold text-[var(--ui-text)]">{template.name}</span>{template.archivedAt ? <span className="shrink-0 rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{t("archived")}</span> : null}</span><span className="mt-1 block ui-numeric text-xs text-[var(--ui-text-muted)]">{t("stages", { count: template.stages.length })}</span></button></li>)}</ul> : <p className="border-t border-[var(--ui-border)] px-2 py-5 text-sm text-[var(--ui-text-muted)]">{t("noTemplates")}</p>}
+    </aside>
+    {draft ? <section className="min-w-0 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--ui-border)] pb-4"><h1 className="text-xl font-semibold tracking-tight text-[var(--ui-text)]">{draft.id ? t("editTemplate") : t("newTemplate")}</h1><div className="flex gap-2"><Button type="button" variant="outline" disabled={isSaving} onClick={cancel}>{t("cancel")}</Button><Button type="button" disabled={isSaving} onClick={() => void save()}>{isSaving ? t("saving") : t("saveTemplate")}</Button></div></header>{error ? <p role="alert" className="mt-4 rounded-[var(--ui-radius-control)] bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="mt-5 max-w-[34rem]"><TemplateEditor draft={draft} setDraft={setDraft} isSaving={isSaving} /></div></section> : selected ? <section className="min-w-0 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--ui-border)] pb-4"><div><h1 className="text-xl font-semibold tracking-tight text-[var(--ui-text)]">{selected.name}</h1><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--ui-text-muted)]"><span className="ui-numeric">{t("stages", { count: selected.stages.length })}</span><span className="ui-numeric">{t("totalWeight", { weight: getChecklistTemplateWeight(selected) })}</span>{selected.archivedAt ? <span>{t("archived")}</span> : null}</div></div><div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={edit}><Pencil className="mr-1 size-4" />{t("editTemplate")}</Button><Button type="button" size="sm" variant="ghost" className="size-10 p-0" onClick={() => void setArchived(selected, !selected.archivedAt)} aria-label={selected.archivedAt ? t("restoreTemplate", { name: selected.name }) : t("archiveTemplate", { name: selected.name })}>{selected.archivedAt ? <RotateCcw className="size-4" /> : <Trash2 className="size-4 text-[var(--ui-danger-text)]" />}</Button></div></header>{error ? <p role="alert" className="mt-4 rounded-[var(--ui-radius-control)] bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<ol className="mt-4 divide-y divide-[var(--ui-border-subtle)]">{selected.stages.map((stage, index) => <li key={stage.id} className="flex items-center gap-3 py-3 text-sm"><span className="ui-numeric w-6 shrink-0 text-right text-[var(--ui-text-muted)]">{index + 1}</span><span className="min-w-0 flex-1 break-words font-medium text-[var(--ui-text)]">{stage.title}</span><span className="ui-numeric shrink-0 text-[var(--ui-text-muted)]">{stage.weight}</span></li>)}</ol></section> : <section className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] p-6 text-sm text-[var(--ui-text-muted)]">{t("chooseTemplate")}</section>}
+  </div>;
 }
 
 function TemplateEditor({ draft, isSaving, setDraft }: { draft: Draft; isSaving: boolean; setDraft: (draft: Draft) => void }) {

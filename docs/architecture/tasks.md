@@ -86,6 +86,8 @@ Project aggregation and attribution are described in
 - Moving to Client review atomically completes remaining checklist items and
   normalizes production. Moving to Done requires the checklist already complete.
 - Studio checklist templates may seed a task's items during creation.
+- Checklist items start pending. Completed and not-needed items both count as
+  resolved in weighted progress and Done guards; their stored states stay distinct.
 
 ## Milestone deadlines
 

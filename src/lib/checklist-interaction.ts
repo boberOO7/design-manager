@@ -25,6 +25,7 @@ export function createOptimisticChecklistItem({
     task_id: taskId,
     title,
     is_completed: false,
+    is_not_needed: false,
     weight,
     position,
     created_at: now,
@@ -47,7 +48,13 @@ export function removeChecklistItem(items: readonly TaskChecklistItem[], itemId:
 export function updateChecklistItemLocally(
   items: readonly TaskChecklistItem[],
   itemId: string,
-  update: Partial<Pick<TaskChecklistItem, "title" | "weight" | "is_completed">>,
+  update: Partial<Pick<TaskChecklistItem, "title" | "weight" | "is_completed" | "is_not_needed">>,
 ): TaskChecklistItem[] {
-  return items.map((item) => item.id === itemId ? { ...item, ...update } : item);
+  return items.map((item) => {
+    if (item.id !== itemId) return item;
+    const next = { ...item, ...update, title: update.title ?? item.title };
+    if (update.is_not_needed !== undefined && update.is_completed === undefined) next.is_completed = false;
+    if (update.is_completed !== undefined && update.is_not_needed === undefined) next.is_not_needed = false;
+    return next;
+  });
 }

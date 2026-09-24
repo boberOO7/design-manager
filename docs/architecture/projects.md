@@ -81,6 +81,9 @@ Invariants:
   the impact check and removal RPC keep this atomic.
 - Project templates create the project, memberships, task structure, and defaults
   atomically. Template task priority and ordering are normalized by migrations.
+- A project-template task may reference one same-studio checklist template. Project
+  creation and stage application copy its current items into task checklist rows;
+  created projects do not retain template links.
 - Administrators may also append one non-empty stage from an active same-studio
   template to any enabled, writable destination stage. This cross-stage mapping
   preserves the destination stage configuration and every existing task; it does

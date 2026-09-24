@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, CircleX, Clock3, Ellipsis, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
@@ -346,10 +346,7 @@ export function TaskDetailsDrawer({
   }
 
   function updateChecklistItem(itemId: string, change: ChecklistChange, immediate = false) {
-    const update = {
-      ...change,
-      title: change.title?.trim(),
-    };
+    const update = change.title === undefined ? change : { ...change, title: change.title.trim() };
     checklistStore.update(taskRef.current, itemId, update, immediate);
   }
 
@@ -476,7 +473,7 @@ export function TaskDetailsDrawer({
                   {selectedChecklistTemplate ? <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs leading-4 text-[var(--ui-text-muted)]">{templatesT("stages", { count: selectedChecklistTemplate.stages.length })} · {templatesT("totalWeight", { weight: selectedChecklistTemplate.stages.reduce((total, stage) => total + stage.weight, 0) })}</p><Button type="button" size="sm" disabled={isSaving || isApplyingChecklistTemplate || selectedChecklistTemplate.stages.length === 0} onClick={() => void appendChecklistTemplate()}><Plus className="size-4" aria-hidden="true" />{checklistT("add")}</Button></div> : null}
                 </div> : null}
                 {checklistSnapshot.error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
-                {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemEditorRow key={`${item.id}:${item.updated_at}`} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
+                {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemEditorRow key={item.id} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
                 {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-2 grid gap-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("newItem")}<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("weight")}<Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={isSaving || isApplyingChecklistTemplate || !newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> {checklistT("add")}</Button></form> : null}
               </section>
               </> : null}
@@ -485,7 +482,7 @@ export function TaskDetailsDrawer({
             <div className="space-y-6">
               <section aria-labelledby="task-progress-heading">
                 <div className="flex items-end justify-between gap-3"><h3 id="task-progress-heading" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3><span className="ui-numeric text-lg font-semibold text-[var(--ui-text)]">{formatNumber(taskProgress.presentedOverallPercent, locale)}%</span></div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("overallProgressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={taskProgress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${taskProgress.overallPercent}%` }} /></div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("overallProgressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={taskProgress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)] transition-[width] duration-300 ease-out motion-reduce:transition-none" style={{ width: `${taskProgress.overallPercent}%` }} /></div>
                 {task.status === "in_progress" && displayedChecklistItems.length === 0 ? <div className="mt-4 border-t border-[var(--ui-border-subtle)] pt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("manualProduction")}</span><div className="flex items-center gap-2"><span className="ui-numeric text-sm font-semibold text-[var(--ui-text)]">{formatNumber(taskProgress.presentedProductionPercent, locale)}%</span>{canEditWork && !isEditingManualProgress ? <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setIsEditingManualProgress(true)}>{t("change")}</Button> : null}</div></div>
                   {isEditingManualProgress ? <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><input id={`manual-progress-${task.id}`} aria-label={t("manualProductionCompletion")} type="range" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="min-h-11 flex-1 accent-[var(--ui-action-primary)]" /><div className="flex items-center gap-2"><input aria-label={t("manualProductionPercentage")} type="number" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="h-11 w-20 rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 text-right ui-numeric outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /><span className="text-sm text-[var(--ui-text-muted)]">%</span><Button type="button" size="sm" variant="outline" disabled={isSaving} onClick={() => { setManualProgress(task.production_completion.toString()); setIsEditingManualProgress(false); }}>{t("cancel")}</Button><Button type="button" size="sm" disabled={isSaving || Number(manualProgress) === task.production_completion} onClick={() => void saveManualProgress()}>{t("save")}</Button></div></div> : null}
@@ -494,7 +491,7 @@ export function TaskDetailsDrawer({
               {displayedChecklistItems.length ? <section className="border-t border-[var(--ui-border-subtle)] pt-5" aria-labelledby="task-checklist-heading">
                 <div className="flex items-end justify-between gap-3"><h3 id="task-checklist-heading" className="text-sm font-semibold text-[var(--ui-text)]">{checklistT("checklist")}</h3><span className="ui-numeric text-xs font-medium text-[var(--ui-text-secondary)]">{t("checklistProgress", { completed: taskProgress.completedChecklistCount, total: taskProgress.checklistCount })}</span></div>
                 {checklistSnapshot.error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
-                <ul className="mt-3 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{displayedChecklistItems.map((item) => <ChecklistItemRow key={`${item.id}:${item.updated_at}`} item={item} canToggle={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onToggle={(is_completed) => updateChecklistItem(item.id, { is_completed }, true)} />)}</ul>
+                <ul className="mt-3 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{displayedChecklistItems.map((item) => <ChecklistItemRow key={item.id} item={item} canToggle={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onToggle={(is_completed) => updateChecklistItem(item.id, { is_completed }, true)} onToggleNotNeeded={(is_not_needed) => updateChecklistItem(item.id, { is_not_needed }, true)} />)}</ul>
               </section> : null}
               {task.description?.trim() ? <section>
                 <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("description")}</h3>
@@ -600,19 +597,29 @@ function TaskCollaboratorSummary({ collaborators, emptyLabel }: {
   </div>;
 }
 
-function ChecklistItemRow({ canToggle, item, onToggle, pending }: {
+function ChecklistItemAction({ canEdit, item, onToggleNotNeeded }: { canEdit: boolean; item: TaskChecklistItem; onToggleNotNeeded: (isNotNeeded: boolean) => void }) {
+  const t = useTranslations("Checklists");
+  if (!canEdit) return null;
+  const label = t(item.is_not_needed ? "markPending" : "markNotNeeded");
+  const Icon = item.is_not_needed ? RotateCcw : CircleMinus;
+  return <button type="button" aria-label={label} title={label} onClick={() => onToggleNotNeeded(!item.is_not_needed)} className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4" aria-hidden="true" /></button>;
+}
+
+function ChecklistItemRow({ canToggle, item, onToggle, onToggleNotNeeded, pending }: {
   canToggle: boolean;
   item: TaskChecklistItem;
   onToggle: (isCompleted: boolean) => void;
+  onToggleNotNeeded: (isNotNeeded: boolean) => void;
   pending: boolean;
 }) {
   const t = useTranslations("Checklists");
-  return <li className="py-2.5">
+  return <li className="group py-2.5">
     <div className="flex min-w-0 items-center gap-2">
-      <label className="flex size-11 shrink-0 items-center justify-center text-[var(--ui-text-secondary)] focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--ui-focus)] focus-within:ring-offset-2">
-        <input type="checkbox" checked={item.is_completed} disabled={!canToggle} onChange={(event) => onToggle(event.target.checked)} aria-label={item.is_completed ? t("markIncomplete", { title: item.title }) : t("markComplete", { title: item.title })} className="size-5 accent-[var(--ui-action-primary)]" />
+      <label className="flex size-11 shrink-0 items-center justify-center text-[var(--ui-text-secondary)]">
+        {item.is_not_needed ? <span className="flex size-5 items-center justify-center rounded border border-[var(--ui-border-strong)] text-[var(--ui-text-muted)]" role="img" aria-label={t("notNeeded")}><Minus className="size-3.5" aria-hidden="true" /></span> : <input type="checkbox" checked={item.is_completed} disabled={!canToggle} onChange={(event) => onToggle(event.target.checked)} aria-label={item.is_completed ? t("markIncomplete", { title: item.title }) : t("markComplete", { title: item.title })} className="m-0 size-5 shrink-0 accent-[var(--ui-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" />}
       </label>
-      <p className={item.is_completed ? "min-w-0 break-words text-sm text-[var(--ui-text-muted)] line-through" : "min-w-0 break-words text-sm font-medium text-[var(--ui-text)]"}>{item.title}</p>
+      <p className={cn("min-w-0 flex-1 break-words text-sm font-medium", item.is_completed ? "text-[var(--ui-text-muted)] line-through" : item.is_not_needed ? "text-[var(--ui-text-muted)]" : "text-[var(--ui-text)]")}>{item.title}</p>
+      <ChecklistItemAction canEdit={canToggle} item={item} onToggleNotNeeded={onToggleNotNeeded} />
       {pending ? <span className="sr-only" role="status">{t("savingItem")}</span> : null}
     </div>
   </li>;
@@ -629,12 +636,13 @@ function ChecklistItemEditorRow({ canEdit, item, onDelete, onUpdate, pending }: 
   const [title, setTitle] = useState(item.title);
   const [weight, setWeight] = useState(item.weight.toString());
 
-  return <li className="py-2.5">
+  return <li className="group py-2.5">
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap">
-      <label className="flex size-11 shrink-0 items-center justify-center text-[var(--ui-text-secondary)] focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--ui-focus)] focus-within:ring-offset-2">
-        <input type="checkbox" checked={item.is_completed} disabled={!canEdit} onChange={(event) => onUpdate(item.id, { is_completed: event.target.checked }, true)} aria-label={item.is_completed ? t("markIncomplete", { title: item.title }) : t("markComplete", { title: item.title })} className="size-5 accent-[var(--ui-action-primary)]" />
+      <label className="flex size-11 shrink-0 items-center justify-center text-[var(--ui-text-secondary)]">
+        {item.is_not_needed ? <span className="flex size-5 items-center justify-center rounded border border-[var(--ui-border-strong)] text-[var(--ui-text-muted)]" role="img" aria-label={t("notNeeded")}><Minus className="size-3.5" aria-hidden="true" /></span> : <input type="checkbox" checked={item.is_completed} disabled={!canEdit} onChange={(event) => onUpdate(item.id, { is_completed: event.target.checked }, true)} aria-label={item.is_completed ? t("markIncomplete", { title: item.title }) : t("markComplete", { title: item.title })} className="m-0 size-5 shrink-0 accent-[var(--ui-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" />}
       </label>
-      {canEdit ? <><label className="min-w-0 flex-1"><span className="sr-only">{t("itemTitle")}</span><input value={title} maxLength={200} onChange={(event) => { const value = event.target.value; setTitle(value); if (value.trim()) onUpdate(item.id, { title: value }); }} onBlur={() => { if (!title.trim()) setTitle(item.title); }} className="h-11 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-sm text-[var(--ui-text)] outline-none hover:border-[var(--ui-border)] focus:border-[var(--ui-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="flex w-20 shrink-0 items-center gap-1 text-xs text-[var(--ui-text-muted)]"><span className="sr-only">{t("weight")}</span><input type="number" min="1" max="1000" step="1" inputMode="numeric" value={weight} onChange={(event) => { const value = event.target.value; setWeight(value); if (isValidChecklistWeightInput(value)) onUpdate(item.id, { weight: Number(value) }); }} onBlur={() => { if (!isValidChecklistWeightInput(weight)) setWeight(item.weight.toString()); }} className="h-11 w-full rounded-lg border border-transparent bg-transparent px-2 text-right text-sm ui-numeric outline-none hover:border-[var(--ui-border)] focus:border-[var(--ui-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /><span aria-hidden="true">{t("weightAbbreviation")}</span></label><Button type="button" size="sm" variant="ghost" className="size-11 shrink-0 p-0 text-[var(--ui-danger-text)]" aria-label={t("delete", { title: item.title })} onClick={() => { if (window.confirm(t("confirmDelete", { title: item.title }))) void onDelete(item.id); }}><Trash2 className="size-4" aria-hidden="true" /></Button></> : <div className="min-w-0 flex-1"><p className={item.is_completed ? "break-words text-sm text-[var(--ui-text-muted)] line-through" : "break-words text-sm font-medium text-[var(--ui-text)]"}>{item.title}</p><p className="text-xs text-[var(--ui-text-muted)]">{t("itemWeight", { weight: item.weight })}</p></div>}
+      {canEdit ? <><label className="min-w-0 flex-1"><span className="sr-only">{t("itemTitle")}</span><input value={title} maxLength={200} onChange={(event) => { const value = event.target.value; setTitle(value); if (value.trim()) onUpdate(item.id, { title: value }); }} onBlur={() => { if (!title.trim()) setTitle(item.title); }} className={cn("h-11 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-sm outline-none hover:border-[var(--ui-border)] focus:border-[var(--ui-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", item.is_not_needed ? "text-[var(--ui-text-muted)]" : "text-[var(--ui-text)]")} /></label><label className="flex w-20 shrink-0 items-center gap-1 text-xs text-[var(--ui-text-muted)]"><span className="sr-only">{t("weight")}</span><input type="number" min="1" max="1000" step="1" inputMode="numeric" value={weight} onChange={(event) => { const value = event.target.value; setWeight(value); if (isValidChecklistWeightInput(value)) onUpdate(item.id, { weight: Number(value) }); }} onBlur={() => { if (!isValidChecklistWeightInput(weight)) setWeight(item.weight.toString()); }} className="h-11 w-full rounded-lg border border-transparent bg-transparent px-2 text-right text-sm ui-numeric outline-none hover:border-[var(--ui-border)] focus:border-[var(--ui-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /><span aria-hidden="true">{t("weightAbbreviation")}</span></label><Button type="button" size="sm" variant="ghost" className="size-11 shrink-0 p-0 text-[var(--ui-danger-text)]" aria-label={t("delete", { title: item.title })} onClick={() => { if (window.confirm(t("confirmDelete", { title: item.title }))) void onDelete(item.id); }}><Trash2 className="size-4" aria-hidden="true" /></Button></> : <div className="min-w-0 flex-1"><p className={item.is_completed ? "break-words text-sm text-[var(--ui-text-muted)] line-through" : item.is_not_needed ? "break-words text-sm text-[var(--ui-text-muted)]" : "break-words text-sm font-medium text-[var(--ui-text)]"}>{item.title}</p><p className="text-xs text-[var(--ui-text-muted)]">{t("itemWeight", { weight: item.weight })}</p></div>}
+      <ChecklistItemAction canEdit={canEdit} item={item} onToggleNotNeeded={(isNotNeeded) => onUpdate(item.id, { is_not_needed: isNotNeeded }, true)} />
       {pending ? <span className="sr-only" role="status">{t("savingItem")}</span> : null}
     </div>
   </li>;
