@@ -236,6 +236,8 @@ def sanitize(raw, target, schema):
                     raise RuntimeError(f"Unknown remote column {table}.{field}; review sanitization before importing")
                 if raw_value == r"\N":
                     cleaned.append(raw_value)
+                elif table == "profiles" and field == "avatar_url":
+                    cleaned.append(r"\N")
                 elif SECRET_FIELD.search(field):
                     cleaned.append(r"\N")
                 elif kind in ("json", "jsonb"):
@@ -382,8 +384,8 @@ def self_test():
     member_id = "22222222-2222-4222-8222-222222222222"
     studio_id = "33333333-3333-4333-8333-333333333333"
     rows = [
-        ("profiles", {"id": admin_id, "full_name": "Olena Коваль", "email": "olena@example.com", "job_title": "Lead Architect", "is_active": "t"}),
-        ("profiles", {"id": member_id, "full_name": "Ivan Petrenko", "email": "ivan@example.com", "job_title": "Designer", "is_active": "t"}),
+        ("profiles", {"id": admin_id, "full_name": "Olena Коваль", "email": "olena@example.com", "job_title": "Lead Architect", "avatar_url": "https://production.example/storage/avatar.jpg", "is_active": "t"}),
+        ("profiles", {"id": member_id, "full_name": "Ivan Petrenko", "email": "ivan@example.com", "job_title": "Designer", "avatar_url": "user/avatar.jpg", "is_active": "t"}),
         ("studio_members", {"studio_id": studio_id, "user_id": admin_id, "system_role": "admin", "is_active": "t"}),
         ("projects", {"id": studio_id, "name": "Kyiv family apartment", "description": "Warm oak and stone", "client_name": "Family K"}),
         ("tasks", {"id": studio_id, "title": "Kitchen lighting plan", "description": "Pendant over island\nTrack by window", "status": "in_progress"}),
@@ -408,9 +410,11 @@ def self_test():
             if is_row:
                 preserved.setdefault(table, []).append(dict(zip(fields, (unescape(value) for value in line.rstrip("\n").split("\t")))))
         for table, row in rows:
-            if table == "notifications":
+            if table in ("notifications", "profiles"):
                 continue
             assert row in preserved[table], f"Ordinary {table} data changed"
+        assert all(row["avatar_url"] is None for row in preserved["profiles"])
+        assert [row["id"] for row in preserved["profiles"]] == [admin_id, member_id]
         metadata = json.loads(preserved["notifications"][0]["metadata"])
         assert metadata == {"leadName": "Family K", "contactEmail": "client@example.com", "access_token": None}
         auth = auth_sql(safe, admin_id, "local-test-password")

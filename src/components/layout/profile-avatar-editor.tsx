@@ -30,6 +30,8 @@ export function ProfileAvatarEditor(props: ProfileAvatarEditorProps) {
   const [googleCalendarResult, setGoogleCalendarResult] = useState<string | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(props.avatarUrl);
 
+  useEffect(() => setCurrentAvatarUrl(props.avatarUrl), [props.avatarUrl]);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const result = url.searchParams.get("googleCalendar");

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ProjectActivity } from "@/data/queries/project-activity";
 import { formatRelativeTime, getActivityChange, getActivityMemberId, groupActivityByLocalDate, isUuid, type ActivityChangeDetails } from "@/lib/project-activity";
-
-function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
 
 export async function ProjectActivitySection({ activity, projectId }: { activity: ProjectActivity[]; projectId: string }) {
   const [t, locale] = await Promise.all([getTranslations("ProjectWorkspace"), getLocale()]);
@@ -19,9 +18,8 @@ async function ActivityRow({ activity, locale, projectId }: { activity: ProjectA
   const memberName = (value: string) => activity.memberNames[value] ?? teamT("former");
   const activityMemberId = getActivityMemberId(activity.changes);
   const detail = change ? formatChange(change, locale, { statusT, priorityT, tasksT, t, memberName }) : (activityMemberId ? memberName(activityMemberId) : null);
-  const avatarStyle = activity.actor?.avatar_url ? { backgroundImage: `url("${activity.actor.avatar_url}")` } : undefined;
   const headline = getHeadline(activity.action_type, change?.field, activity.entity_type, taskTitle, locale, t);
-  return <li className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3"><div style={avatarStyle} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--ui-surface-muted)] bg-cover bg-center text-xs font-semibold text-[var(--ui-text-secondary)]" aria-hidden="true">{activity.actor?.avatar_url ? null : initials(activity.actor?.full_name ?? t("system"))}</div><div className="min-w-0 flex-1"><p className="text-sm leading-5 text-[var(--ui-text-secondary)]"><span className="font-semibold text-[var(--ui-text)]">{activity.actor?.full_name ?? t("system")}</span> {taskLink ? <Link href={taskLink} className="font-medium text-[var(--ui-text-secondary)] underline decoration-[var(--ui-border-strong)] underline-offset-2 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{headline}</Link> : headline}</p>{detail ? <p className="mt-1 break-words text-xs text-[var(--ui-text-muted)]">{detail}</p> : null}</div><time dateTime={activity.created_at} title={new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(activity.created_at))} className="shrink-0 text-xs tabular-nums text-[var(--ui-text-muted)]">{formatRelativeTime(activity.created_at, new Date(), locale)}</time></li>;
+  return <li className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3"><UserAvatar className="size-9 border-0 text-xs" decorative imageUrl={activity.actor?.avatar_url} name={activity.actor?.full_name ?? t("system")} size="sm" /><div className="min-w-0 flex-1"><p className="text-sm leading-5 text-[var(--ui-text-secondary)]"><span className="font-semibold text-[var(--ui-text)]">{activity.actor?.full_name ?? t("system")}</span> {taskLink ? <Link href={taskLink} className="font-medium text-[var(--ui-text-secondary)] underline decoration-[var(--ui-border-strong)] underline-offset-2 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{headline}</Link> : headline}</p>{detail ? <p className="mt-1 break-words text-xs text-[var(--ui-text-muted)]">{detail}</p> : null}</div><time dateTime={activity.created_at} title={new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(activity.created_at))} className="shrink-0 text-xs tabular-nums text-[var(--ui-text-muted)]">{formatRelativeTime(activity.created_at, new Date(), locale)}</time></li>;
 }
 
 type ActivityTranslations = { statusT: Awaited<ReturnType<typeof getTranslations>>; priorityT: Awaited<ReturnType<typeof getTranslations>>; tasksT: Awaited<ReturnType<typeof getTranslations>>; t: Awaited<ReturnType<typeof getTranslations>>; memberName: (value: string) => string };

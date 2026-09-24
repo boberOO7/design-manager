@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ProductivityLeaderboardEntry, ProductivityProjectContribution } from "@/lib/productivity";
 import type { TaskStage } from "@/lib/task-stages";
@@ -18,55 +18,6 @@ export function LeaderboardRanking({ entries, contributions, locale, monthlyBonu
 }) {
   const t = useTranslations("Leaderboard");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-  const contributionScrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!expandedUserId) return;
-
-    const handleWheel = (event: WheelEvent) => {
-      const scroller = contributionScrollerRef.current;
-      if (!scroller || event.defaultPrevented || event.ctrlKey || event.deltaY === 0) return;
-      const bounds = scroller.getBoundingClientRect();
-      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) return;
-
-      const lineHeight = Number.parseFloat(getComputedStyle(scroller).lineHeight);
-      const delta = event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE
-        ? Number.isFinite(lineHeight) ? lineHeight : 16
-        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? scroller.clientHeight : 1);
-      const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-      const currentScrollTop = Math.min(maxScrollTop, scroller.scrollTop);
-      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, currentScrollTop + delta));
-      const remainder = delta - (nextScrollTop - currentScrollTop);
-      let handled = nextScrollTop !== currentScrollTop;
-      scroller.scrollTop = nextScrollTop;
-
-      if (remainder !== 0) {
-        let pageScroller: HTMLElement | null = null;
-        for (let parent = scroller.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
-          const overflowY = getComputedStyle(parent).overflowY;
-          if ((overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") && parent.scrollHeight > parent.clientHeight) {
-            pageScroller = parent;
-            break;
-          }
-        }
-
-        if (pageScroller) {
-          const previous = pageScroller.scrollTop;
-          pageScroller.scrollTop = Math.max(0, Math.min(pageScroller.scrollHeight - pageScroller.clientHeight, previous + remainder));
-          handled ||= pageScroller.scrollTop !== previous;
-        } else {
-          const previous = window.scrollY;
-          window.scrollBy(0, remainder);
-          handled ||= window.scrollY !== previous;
-        }
-      }
-
-      if (handled) event.preventDefault();
-    };
-
-    document.addEventListener("wheel", handleWheel, { capture: true, passive: false });
-    return () => document.removeEventListener("wheel", handleWheel, true);
-  }, [expandedUserId]);
   const formatArea = (value: number) => `${value.toLocaleString(locale, { maximumFractionDigits: 2 })} m²`;
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Kyiv" }).format(new Date(value));
 
@@ -86,7 +37,7 @@ export function LeaderboardRanking({ entries, contributions, locale, monthlyBonu
         <div className="col-span-2 flex items-center gap-3 text-xs text-[var(--ui-text-secondary)] sm:hidden">{areaButton}<span className="ui-numeric">{t("tasks", { count: entry.completed_tasks })}</span></div>
       </div>
       <div id={panelId} aria-hidden={!expanded} inert={!expanded} className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-        <div className="overflow-hidden"><div ref={expanded ? contributionScrollerRef : null} className="max-h-[calc(min(28rem,55vh)_+_25px)] overscroll-y-contain overflow-y-auto border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">
+        <div className="overflow-hidden"><div className="max-h-[calc(min(28rem,55vh)_+_25px)] overscroll-y-contain overflow-y-auto border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">
           <div className="px-4 py-3 sm:px-5">{groups.length ? <div className="space-y-2">{groups.map((group) => <section key={group.project_id} aria-label={group.project_name ?? t("unavailableProject")}>
             <h3 className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-secondary)]"><span className="min-w-0 truncate">{group.project_name ?? t("unavailableProject")}</span><span className="ui-numeric shrink-0 text-[var(--ui-text)]">{formatArea(group.completed_area_m2)}</span></h3>
             <ul className="px-1 py-1">{group.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-4 px-2 py-1.5 text-sm"><div className="min-w-0"><p className="break-words text-[var(--ui-text-secondary)]">{record.source_type === "project_fallback" ? t("projectCredit") : record.task_title ?? t("unavailableTask")}</p><p className="mt-0.5 text-xs text-[var(--ui-text-muted)]">{record.task_stage ? `${stageLabels[record.task_stage]} · ` : ""}{formatDate(record.completed_at)}</p></div><span className="ui-numeric shrink-0 font-medium text-[var(--ui-text)]">+{formatArea(record.credited_area_m2)}</span></li>)}</ul>

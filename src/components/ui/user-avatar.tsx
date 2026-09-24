@@ -57,6 +57,7 @@ export function UserAvatar({
         <img
           alt=""
           className="size-full object-cover"
+          key={resolvedImageUrl}
           onError={() => {
             if (resolvedImageUrl) setFailedImageUrl(resolvedImageUrl);
           }}
