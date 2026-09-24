@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
+import { VacationPolicySettings } from "@/components/administration/vacation-policy-settings";
 import { Button } from "@/components/ui/button";
 import { applyAdministrationDecision, formatAdministrationDateRange, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
 import { getTimeOffStatusBadgeStyle } from "@/lib/semantic-styles";
@@ -101,7 +102,10 @@ export function AdministrationWorkspace({ initialData, requestId }: { initialDat
       </div>
     </div>
 
-    <Panel className="flex flex-col gap-3 p-4 shadow-none sm:flex-row sm:items-center sm:justify-between sm:p-5"><div><h2 className="text-sm font-semibold text-[var(--ui-text)]">{t("teamAccess")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("teamAccessSummary", { active: data.team.activeMembers, admins: data.team.administrators, inactive: data.team.inactiveMembers })}</p></div><Button asChild size="sm" variant="outline" className="min-h-11 self-start sm:self-auto"><Link href="/team">{t("openTeam")}</Link></Button></Panel>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,1fr)] items-start">
+      <Panel className="flex flex-col gap-3 p-4 shadow-none sm:flex-row sm:items-center sm:justify-between sm:p-5"><div><h2 className="text-sm font-semibold text-[var(--ui-text)]">{t("teamAccess")}</h2><p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("teamAccessSummary", { active: data.team.activeMembers, admins: data.team.administrators, inactive: data.team.inactiveMembers })}</p></div><Button asChild size="sm" variant="outline" className="min-h-11 self-start sm:self-auto"><Link href="/team">{t("openTeam")}</Link></Button></Panel>
+      <Panel className="p-3 sm:p-4"><VacationPolicySettings studioId={data.studioId} initialPolicy={data.vacationPolicy} /></Panel>
+    </div>
     <RequestDrawer error={error} isPending={pendingRequestId === selected?.id} onClose={() => { if (!pendingRequestId) setSelected(null); }} onDecision={decide} request={selected} returnFocusRef={triggerRef} />
   </div>;
 }

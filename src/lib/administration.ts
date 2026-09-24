@@ -27,7 +27,11 @@ export type AdministrationRequest = {
   hasCurrentAdminApproved: boolean;
 };
 
+export type VacationPolicy = { annualDays: number; carryRule: "carry_all" | "capped" | "none"; carryCapDays: number | null };
+
 export type AdministrationModel = {
+  studioId: string;
+  vacationPolicy: VacationPolicy;
   leaderboardBonusConfig: LeaderboardBonusConfig;
   today: string;
   upcomingEnd: string;

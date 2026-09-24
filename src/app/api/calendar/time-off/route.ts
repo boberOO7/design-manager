@@ -1,82 +1,63 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedTimeOffRequest } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
 import { calendarFieldErrors, timeOffRequestSchema } from "@/lib/validation/calendar";
 import { canCreateTimeOffRequestType } from "@/lib/calendar-creation";
-import type { Database } from "@/types/database.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-type CalendarSupabaseClient = SupabaseClient<Database>;
-
-type VerifiedTimeOffMembership = {
-  authenticatedUserId: string;
-  studioId: string;
-  systemRole: "admin" | "employee";
-};
-
-async function getVerifiedTimeOffMembership(
-  supabase: CalendarSupabaseClient,
-  authenticatedUserId: string,
-): Promise<VerifiedTimeOffMembership | null> {
-  const { data, error } = await supabase
-    .from("studio_members")
-    .select("user_id, studio_id, system_role, is_active")
-    .eq("user_id", authenticatedUserId)
-    .eq("is_active", true)
-    .limit(2);
-
-  if (error || !data || data.length !== 1) return null;
-
-  const membership = data[0];
-  if (
-    membership.user_id !== authenticatedUserId
-    || (membership.system_role !== "admin" && membership.system_role !== "employee")
-  ) {
-    return null;
+export async function GET(request: Request) {
+  const membership = await getActiveStudioMembership();
+  if (!membership) return NextResponse.json({ success: false }, { status: 401 });
+  const params = new URL(request.url).searchParams;
+  const startDate = params.get("startDate");
+  const endDate = params.get("endDate");
+  const supabase = await createClient();
+  if (startDate !== null || endDate !== null) {
+    const start = z.iso.date().safeParse(startDate);
+    const end = z.iso.date().safeParse(endDate);
+    if (!start.success || !end.success || end.data < start.data) return NextResponse.json({ success: false }, { status: 400 });
+    const { data, error } = await supabase.rpc("project_vacation_request", {
+      p_studio_id: membership.studio_id, p_user_id: membership.authenticatedUserId, p_start: start.data, p_end: end.data,
+    }).single();
+    if (error) return NextResponse.json({ success: false }, { status: 403 });
+    if (!data || data.available === null) return NextResponse.json({ success: false, code: "vacation_balance_unconfigured" }, { status: 422 });
+    return NextResponse.json({ success: true, ...data });
   }
-
-  return {
-    authenticatedUserId,
-    studioId: membership.studio_id,
-    systemRole: membership.system_role,
-  };
+  const asOf = z.iso.date().safeParse(params.get("asOf"));
+  if (!asOf.success) return NextResponse.json({ success: false }, { status: 400 });
+  const { data, error } = await supabase.rpc("get_vacation_balance", {
+    p_studio_id: membership.studio_id, p_user_id: membership.authenticatedUserId, p_as_of: asOf.data,
+  });
+  if (error) return NextResponse.json({ success: false }, { status: 403 });
+  if (data === null) return NextResponse.json({ success: false, code: "vacation_balance_unconfigured" }, { status: 422 });
+  return NextResponse.json({ success: true, available: data });
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  const authenticatedUser = userData.user;
-  if (userError || !authenticatedUser) return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
-
-  const membership = await getVerifiedTimeOffMembership(supabase, authenticatedUser.id);
+  const membership = await getActiveStudioMembership();
   if (!membership) return NextResponse.json({ success: false, formError: "Authentication is required." }, { status: 401 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
   const parsed = timeOffRequestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
-  if (!canCreateTimeOffRequestType(membership.systemRole, parsed.data.requestType)) {
+  if (!canCreateTimeOffRequestType(membership.system_role, parsed.data.requestType)) {
     return NextResponse.json({ success: false, fieldErrors: { requestType: "This absence type is not available for your role." } }, { status: 403 });
   }
-
-  const payload = {
-    studio_id: membership.studioId, user_id: membership.authenticatedUserId, request_type: parsed.data.requestType,
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("time_off_requests").insert({
+    studio_id: membership.studio_id, user_id: membership.authenticatedUserId, request_type: parsed.data.requestType,
     start_date: parsed.data.startDate, end_date: parsed.data.endDate, all_day: parsed.data.allDay,
     start_time: parsed.data.allDay ? null : parsed.data.startTime,
     end_time: parsed.data.allDay ? null : parsed.data.endTime, private_note: parsed.data.privateNote,
-  };
-  const { data, error } = await supabase.from("time_off_requests").insert(payload).select("id").single();
-  if (error) {
-    console.error("time_off_requests insert error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      authenticatedUserMatchesInsertUser: authenticatedUser.id === payload.user_id,
-      membershipStudioMatchesInsertStudio: membership.studioId === payload.studio_id,
-      membershipSystemRole: membership.systemRole,
-    });
+  }).select("id").single();
+  if (error?.message.includes("vacation_balance_exceeded")) {
+    return NextResponse.json({ success: false, fieldErrors: { endDate: "vacation_balance_exceeded" } }, { status: 400 });
   }
-  if (error || !data) return NextResponse.json({ success: false, formError: "The time-off request could not be created. Check the date range and try again." }, { status: 400 });
+  if (error || !data) {
+    console.error("time_off_requests insert error", error);
+    return NextResponse.json({ success: false, formError: "The time-off request could not be created. Check the date range and try again." }, { status: 400 });
+  }
   const item = await getNormalizedTimeOffRequest(data.id, membership.authenticatedUserId);
   return item ? NextResponse.json({ success: true, item }, { status: 201 }) : NextResponse.json({ success: false, formError: "The request was created but could not be reloaded." }, { status: 500 });
 }

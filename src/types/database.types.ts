@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       calendar_event_attendees: {
@@ -4056,6 +4031,8 @@ export type Database = {
           studio_id: string
           system_role: string
           user_id: string
+          vacation_opening_date: string | null
+          vacation_opening_days: number | null
         }
         Insert: {
           id?: string
@@ -4066,6 +4043,8 @@ export type Database = {
           studio_id: string
           system_role?: string
           user_id: string
+          vacation_opening_date?: string | null
+          vacation_opening_days?: number | null
         }
         Update: {
           id?: string
@@ -4076,6 +4055,8 @@ export type Database = {
           studio_id?: string
           system_role?: string
           user_id?: string
+          vacation_opening_date?: string | null
+          vacation_opening_days?: number | null
         }
         Relationships: [
           {
@@ -6033,6 +6014,18 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_studio_vacation_policy: {
+        Args: { p_studio_id: string }
+        Returns: {
+          annual_days: number
+          carry_cap_days: number
+          carry_rule: string
+        }[]
+      }
+      get_vacation_balance: {
+        Args: { p_as_of: string; p_studio_id: string; p_user_id: string }
+        Returns: number
+      }
       import_equipment_catalog_batch: {
         Args: {
           p_generation: string
@@ -6072,6 +6065,19 @@ export type Database = {
           p_submission_id: string
         }
         Returns: undefined
+      }
+      project_vacation_request: {
+        Args: {
+          p_end: string
+          p_start: string
+          p_studio_id: string
+          p_user_id: string
+        }
+        Returns: {
+          available: number
+          exceeds: boolean
+          remaining: number
+        }[]
       }
       record_equipment_history_event: {
         Args: {
@@ -6281,6 +6287,15 @@ export type Database = {
         }
         Returns: string
       }
+      save_studio_vacation_policy: {
+        Args: {
+          p_annual_days: number
+          p_carry_cap_days?: number
+          p_carry_rule: string
+          p_studio_id: string
+        }
+        Returns: undefined
+      }
       search_equipment_catalog: {
         Args: {
           p_family?: string
@@ -6303,6 +6318,10 @@ export type Database = {
       }
       set_leaderboard_employee_visibility: {
         Args: { p_studio_id: string; p_visible: boolean }
+        Returns: undefined
+      }
+      set_vacation_opening_balance: {
+        Args: { p_days: number; p_effective_date: string; p_user_id: string }
         Returns: undefined
       }
       start_crm_recruiting_cycle: {
@@ -6645,9 +6664,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],

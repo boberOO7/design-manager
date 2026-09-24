@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { getRequiredTimeOffApprovalCount, getUpcomingEndDate, isUpcomingAbsence, sortPendingRequests, sortRecentDecisions, sortUpcomingAbsences, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
+import { getRequiredTimeOffApprovalCount, getUpcomingEndDate, isUpcomingAbsence, sortPendingRequests, sortRecentDecisions, sortUpcomingAbsences, type AdministrationModel, type AdministrationRequest, type VacationPolicy } from "@/lib/administration";
 import { instantToDateOnly } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonus-rules";
@@ -16,9 +16,10 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const pendingPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).eq("status", "pending").order("created_at").limit(50);
   const upcomingPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).eq("status", "approved").is("cancelled_at", null).lte("start_date", upcomingEnd).gte("end_date", today).order("start_date").limit(50);
   const recentPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).in("status", ["approved", "rejected", "cancelled"]).order("updated_at", { ascending: false }).limit(20);
+  const policyPromise = supabase.rpc("get_studio_vacation_policy", { p_studio_id: membership.studio_id }).single();
   const membersPromise = supabase.from("studio_members").select("is_active, system_role").eq("studio_id", membership.studio_id).limit(500);
-  const [pendingResult, upcomingResult, recentResult, membersResult, leaderboardBonusConfig] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, getStudioLeaderboardBonusConfig(membership.studio_id)]);
-  const error = [pendingResult.error, upcomingResult.error, recentResult.error, membersResult.error].find(Boolean);
+  const [pendingResult, upcomingResult, recentResult, membersResult, policyResult, leaderboardBonusConfig] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, policyPromise, getStudioLeaderboardBonusConfig(membership.studio_id)]);
+  const error = [pendingResult.error, upcomingResult.error, recentResult.error, membersResult.error, policyResult.error].find(Boolean);
   if (error) throw new Error("Unable to load Administration data.", { cause: error });
   const requestIds = [...(pendingResult.data ?? []), ...(upcomingResult.data ?? []), ...(recentResult.data ?? [])].map((request) => request.id);
   const reviewNotesResult = requestIds.length
@@ -37,5 +38,8 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const upcomingAbsences = sortUpcomingAbsences((upcomingResult.data ?? []).map(mapRequest).filter((request) => isUpcomingAbsence(request, today, upcomingEnd)));
   const recentDecisions = sortRecentDecisions((recentResult.data ?? []).map(mapRequest)).slice(0, 10);
   const members = membersResult.data ?? [];
-  return { leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
+  const policy = policyResult.data;
+  if (!policy || !["carry_all", "capped", "none"].includes(policy.carry_rule)) throw new Error("Unable to load vacation policy.");
+  const vacationPolicy: VacationPolicy = { annualDays: policy.annual_days, carryRule: policy.carry_rule === "capped" ? "capped" : policy.carry_rule === "none" ? "none" : "carry_all", carryCapDays: policy.carry_cap_days };
+  return { studioId: membership.studio_id, vacationPolicy, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
 }

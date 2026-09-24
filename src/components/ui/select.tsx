@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 export type SelectItemProps = React.HTMLAttributes<HTMLDivElement> & {
   disabled?: boolean;
+  endAdornment?: React.ReactNode;
   textValue?: string;
   value: string;
 };
@@ -67,6 +68,7 @@ export type SelectProps = Omit<
   children: React.ReactNode;
   contentMinWidth?: "default" | "natural";
   defaultValue?: string;
+  endAdornment?: React.ReactNode;
   name?: string;
   onValueChange?: (value: string) => void;
   placeholder?: React.ReactNode;
@@ -78,7 +80,7 @@ export type SelectProps = Omit<
   width?: "content" | "full";
 };
 
-const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, name, onClick, onKeyDown, onValueChange, placeholder, required, searchEmptyMessage, searchPlaceholder, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, endAdornment, name, onClick, onKeyDown, onValueChange, placeholder, required, searchEmptyMessage, searchPlaceholder, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
   const items = collectSelectItems(children);
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
@@ -238,7 +240,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           aria-invalid={ariaInvalid || requiredInvalid || undefined}
           aria-required={required || undefined}
           className={cn(
-            "group grid min-w-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus-visible:ring-[var(--ui-danger-text)] data-[placeholder]:text-[var(--ui-text-muted)] data-[state=open]:border-[var(--ui-focus)] data-[state=open]:bg-[var(--ui-surface-subtle)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--ui-focus)] data-[state=open]:ring-offset-2",
+            "group grid min-w-0 items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus-visible:ring-[var(--ui-danger-text)] data-[placeholder]:text-[var(--ui-text-muted)] data-[state=open]:border-[var(--ui-focus)] data-[state=open]:bg-[var(--ui-surface-subtle)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--ui-focus)] data-[state=open]:ring-offset-2",
+            endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_2.5rem]" : "grid-cols-[minmax(0,1fr)_2.5rem]",
             size === "compact" ? "h-8 text-xs" : "h-11",
             width === "content" ? contentMinWidth === "natural" ? "w-fit max-w-[calc(100vw-2rem)]" : "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full",
             className,
@@ -256,6 +259,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
               {items.map((item) => <span key={item.props.value} className="col-start-1 row-start-1 whitespace-nowrap">{item.props.textValue ?? getNodeText(item.props.children)}</span>)}
             </span> : null}
           </span>
+          {endAdornment ? <span className="min-w-0 truncate whitespace-nowrap px-1 text-right text-xs text-[var(--ui-text-muted)]" aria-live="polite">{endAdornment}</span> : null}
           <span className={cn("flex w-10 shrink-0 items-center justify-center border-l border-[var(--ui-border-subtle)] text-[var(--ui-text-muted)]", size === "compact" ? "h-6" : "h-7")}>
             <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
           </span>
@@ -314,7 +318,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
 });
 Select.displayName = "Select";
 
-const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(function SelectItem({ children, className, disabled, onClick, onPointerMove, textValue, value, ...props }, ref) {
+const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(function SelectItem({ children, className, disabled, endAdornment, onClick, onPointerMove, textValue, value, ...props }, ref) {
   const context = React.useContext(SelectContext);
   if (!context || !context.matchesSearch(textValue ?? getNodeText(children))) return null;
   const isSelected = context.selectedValue === value;
@@ -342,7 +346,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(function Se
     {...props}
   >
     <span className="flex size-4 items-center justify-center text-[var(--ui-text)]">{isSelected ? <Check aria-hidden="true" className="size-3.5" /> : null}</span>
-    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-normal break-normal [overflow-wrap:normal] sm:whitespace-nowrap">{children}</span>
+    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-normal break-normal [overflow-wrap:normal] sm:whitespace-nowrap">{endAdornment ? <span className="flex min-w-0 items-center gap-2"><span className="min-w-0 truncate">{children}</span><span className="ml-auto min-w-0 truncate whitespace-nowrap text-right text-xs font-normal text-[var(--ui-text-muted)]">{endAdornment}</span></span> : children}</span>
   </div>;
 });
 SelectItem.displayName = "SelectItem";
