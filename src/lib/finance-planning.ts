@@ -14,6 +14,11 @@ export function financeOverdueDashboardHref(direction: "incoming" | "outgoing"):
 export function parseFinanceExpectedAttention(value: string | undefined, filter: string): "overdue" | undefined {
   return value === "overdue" && filter !== "cancelled" ? "overdue" : undefined;
 }
+export function parseFinanceExpectedStatus(value: string | undefined, filter: string, attention: string | undefined): "overdue" | "cancelled" | undefined {
+  if (value === "overdue" || value === "cancelled") return value;
+  if (filter === "cancelled") return "cancelled";
+  return parseFinanceExpectedAttention(attention, filter);
+}
 
 export const planningAmount = z.string().trim().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((value) => value.replace(",", ".")).refine((value) => Number(value)>0);
 const optionalId = z.union([z.uuid(),z.literal("")]).default("");

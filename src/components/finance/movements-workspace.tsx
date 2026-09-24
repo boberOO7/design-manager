@@ -18,7 +18,7 @@ import { FinanceFxFields as FxFields } from "./finance-fx-fields";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCategorySelect } from "./category-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
-import { financeMovementCategoryLabel } from "@/lib/finance-planning";
+import { financeCategoryLabel, financeMovementCategoryLabel } from "@/lib/finance-planning";
 import type { getFinanceData, FinanceMovementWithEntries } from "@/data/queries/finance";
 
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
@@ -31,6 +31,11 @@ function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending
   const active = data.accounts.filter((account) => !account.archived_at && (!expected || account.currency===expected.currency));
   const originalAccount = refund?.entries.find((entry) => entry.entry_role === "primary")?.account_id;
   const expectedCategory=data.categories.find((category)=>category.id===expected?.category_id);
+  const expectedDescription=expected?.description??"";
+  const expectedLabel=expectedCategory?.name&&expectedDescription.startsWith(`${expectedCategory.name} · `)
+    ? financeCategoryLabel(expectedCategory,expectedDescription,(key)=>t(`planning.defaults.${key}`))
+    : expectedDescription;
+  const expectedCurrency=data.currencies.find((currency)=>currency.code===expected?.currency);
   const [kind, setKind] = useState(refund ? "refund" : transfer ? "transfer" : expectedCategory?.nature === "owner_distribution" ? "owner_withdrawal" : expected?.direction??"incoming");
   const allowedCategories=expected?data.categories.filter((category)=>category.nature===expectedCategory?.nature):data.categories;
   const [categoryId,setCategoryId]=useState(expectedCategory&&!expectedCategory.archived_at?expectedCategory.id:"");
@@ -47,7 +52,7 @@ function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending
   const accounts = (exclude?: string) => active.filter((account) => account.id !== exclude).map((account) => <SelectItem key={account.id} value={account.id}>{account.name} · {account.currency}</SelectItem>);
   return <FinanceActionForm action={saveFinanceMovement} onSaved={onSaved} onPending={onPending} label={t("movements.record")}>
     {transfer || refund || expected ? <input type="hidden" name="kind" value={kind} /> : <FormField label={t("movements.type")}><Select name="kind" aria-label={t("movements.type")} value={kind} onValueChange={(value)=>{setKind(value);setCategoryId("");}}>{["incoming","outgoing","owner_withdrawal"].map((value) => <SelectItem key={value} value={value}>{t(`movements.kinds.${value}`)}</SelectItem>)}</Select></FormField>}
-    {expected?<><input type="hidden" name="expectedItemId" value={expected.id??""}/><p className="text-sm text-[var(--ui-text-secondary)]">{t("planning.recordFor",{ item:expected.description??"",currency:expected.currency??"" })}</p><FormField label={t("planning.allocateAmount")}><Input name="allocationAmount" inputMode="decimal" defaultValue={expected.remaining_amount??""} required/></FormField></>:null}
+    {expected?<><input type="hidden" name="expectedItemId" value={expected.id??""}/><p className="text-sm text-[var(--ui-text-secondary)]">{t("planning.recordFor",{ item:expectedLabel,currency:expected.currency??"" })}</p>{expected.certainty==="estimated"?<p className="text-xs text-[var(--ui-text-muted)]">≈ {expectedCurrency?formatFinanceAmount(expected.remaining_amount??0,expectedCurrency,locale):`${expected.remaining_amount??0} ${expected.currency??""}`}</p>:null}<FormField label={t("planning.allocateAmount")}><Input name="allocationAmount" inputMode="decimal" defaultValue={expected.remaining_amount??""} required/></FormField></>:null}
     {refund ? <><input type="hidden" name="relatedMovementId" value={refund.id} /><p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.refundHelp", { category: refundCategory })}</p></> : null}
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField label={transfer ? t("movements.fromAccount") : t("movements.account")}>{refund ? <><Input value={source ? `${source.name} · ${source.currency}` : t("movements.errors.archived")} readOnly /><input type="hidden" name="accountId" value={accountId} /></> : <Select name="accountId" aria-label={transfer ? t("movements.fromAccount") : t("movements.account")} value={accountId} onValueChange={setAccountId} required>{accounts()}</Select>}</FormField>

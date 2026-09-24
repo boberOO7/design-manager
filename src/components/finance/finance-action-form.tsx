@@ -18,7 +18,7 @@ export function FinanceActionForm({ children,action,onSaved,onPending,onResult,l
     catch { const result:FinanceActionState={ status:"error",message:t("movements.errors.save") }; onResult?.(result); return result; }
     finally { onPending?.(false); }
   },{ status:"idle" });
-  return <form ref={formRef} action={submit} onSubmit={(event)=>event.stopPropagation()} onReset={(event)=>event.preventDefault()} className={className??"space-y-4"}>
+  return <form ref={formRef} action={submit} autoComplete="off" onSubmit={(event)=>event.stopPropagation()} onReset={(event)=>event.preventDefault()} className={className??"space-y-4"}>
     <input type="hidden" name="requestId" value={requestId}/>
     <fieldset disabled={pending} className={fieldsetClassName??"min-w-0 space-y-4"}>{children}{hideActions?null:onCancel&&cancelLabel?<div className={actionsClassName??"flex justify-end gap-2"}><Button type="button" variant="outline" onClick={onCancel}>{cancelLabel}</Button><Button type="submit" disabled={pending||disabled} className={submitClassName}>{pending?t("movements.saving"):label}</Button></div>:<Button type="submit" disabled={pending||disabled} className={submitClassName}>{pending?t("movements.saving"):label}</Button>}</fieldset>
     {showMessage&&state.message?<p role="alert" className="text-sm text-[var(--ui-danger-text)]">{state.message}</p>:null}

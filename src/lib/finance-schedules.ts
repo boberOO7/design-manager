@@ -7,7 +7,7 @@ export const scheduleInputSchema = z.object({
   requestId: z.uuid(), id: z.union([z.uuid(), z.literal("")]).default(""), revision: z.coerce.number().int().min(0),
   groupId: z.union([z.uuid(), z.literal("")]).optional(),
   kind: z.enum(["payroll", "recurring"]), employeeId: z.union([z.uuid(), z.literal("")]).default(""),
-  name: z.string().trim().min(1).max(120), amount: planningAmount, currency: z.string().regex(/^[A-Z]{3}$/), categoryId: z.uuid(),
+  name: z.string().trim().max(120).default(""), amount: planningAmount, currency: z.string().regex(/^[A-Z]{3}$/), categoryId: z.uuid(),
   intervalMonths: z.coerce.number().pipe(z.union([z.literal(1), z.literal(3), z.literal(12)])),
   payoutDay: z.coerce.number().int().min(1).max(31), paymentMonthOffset: z.coerce.number().int().min(0).max(1).default(0),
   effectiveFrom: monthStart, effectiveThrough: z.union([z.iso.date(), z.literal("")]).default(""),
@@ -18,9 +18,29 @@ export const scheduleInputSchema = z.object({
   new Date(Date.parse(`${v.effectiveThrough}T00:00:00Z`) + 86400000).getUTCDate() === 1), { path: ["effectiveThrough"] })
   .refine((v) => (v.employerCostStatus === "unknown") === (v.employerCost === ""), { path: ["employerCost"] })
   .refine((v) => v.kind !== "payroll" || Boolean(v.employeeId), { path: ["employeeId"] })
+  .refine((v) => v.kind !== "payroll" || Boolean(v.name), { path: ["name"] })
   .refine((v) => v.kind !== "payroll" || Boolean(v.basis && v.employeePayout) && (v.basis !== "gross" || v.employeeDeductions !== ""), { path: ["compensation"] })
   .refine((v) => v.kind !== "payroll" || v.intervalMonths === 1 && v.commitment === "agreed" && v.certainty === "fixed", { path: ["configuration"] })
   .refine((v) => v.kind !== "recurring" || !v.employeeId && !v.basis && !v.employeePayout && !v.employeeDeductions && !v.employerCost, { path: ["configuration"] });
+export function payrollCompensationSummary(amount: string, basis: "net" | "gross", deductions: string, employerCost: string) {
+  const units = (value: string) => {
+    if (!/^\d{1,10}(?:[.,]\d{1,4})?$/.test(value)) return null;
+    const [whole, fraction = ""] = value.replace(",", ".").split(".");
+    return BigInt(whole) * BigInt(10000) + BigInt(fraction.padEnd(4, "0") || "0");
+  };
+  const amountUnits = units(amount), deductionUnits = deductions === "" ? null : units(deductions), employerUnits = employerCost === "" ? null : units(employerCost);
+  const text = (value: bigint | null) => {
+    if (value === null || value < BigInt(0)) return null;
+    const whole = value / BigInt(10000), fraction = String(value % BigInt(10000)).padStart(4, "0").replace(/0+$/, "");
+    return fraction ? `${whole}.${fraction}` : String(whole);
+  };
+  const employeeReceives = basis === "net" ? amountUnits : amountUnits === null || deductionUnits === null ? null : amountUnits - deductionUnits;
+  const studioCost = amountUnits === null || employerUnits === null || (basis === "net" && deductionUnits === null)
+    ? null
+    : amountUnits + employerUnits + (basis === "net" ? deductionUnits ?? BigInt(0) : BigInt(0));
+  return { employeeReceives: text(employeeReceives !== null && employeeReceives > BigInt(0) ? employeeReceives : null), studioCost: text(studioCost) };
+}
+
 // Exact monetary agreement arithmetic and minor-unit precision are enforced in PostgreSQL.
 export const generateObligationsSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart, through: monthStart })
   .refine((v) => v.through >= v.from && (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);

@@ -1,5 +1,5 @@
 import { describe,expect,it } from "vitest";
-import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,financeOverdueDashboardHref,projectPaymentPresentation,parseFinanceExpectedAttention,FINANCE_OVERDUE_DB_FILTER,type FinanceCategory } from "./finance-planning";
+import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,financeOverdueDashboardHref,projectPaymentPresentation,parseFinanceExpectedAttention,parseFinanceExpectedStatus,FINANCE_OVERDUE_DB_FILTER,type FinanceCategory } from "./finance-planning";
 const id="64000000-0000-4000-8000-000000000100";
 const item={ requestId:id,direction:"incoming",amount:"100,25",currency:"UAH",categoryId:id,commitment:"agreed",certainty:"fixed",established:"true",dueDate:"2026-09-01",expectedDate:"2026-10-01" };
 describe("Finance planning inputs",()=>{
@@ -16,6 +16,10 @@ describe("Finance planning inputs",()=>{
     }
     expect(FINANCE_OVERDUE_DB_FILTER).toBe("and(due_state.eq.overdue,commitment.neq.cancelled,remaining_amount.gt.0)");
     expect(parseFinanceExpectedAttention("overdue","cancelled")).toBeUndefined();
+    expect(parseFinanceExpectedStatus("overdue","incoming",undefined)).toBe("overdue");
+    expect(parseFinanceExpectedStatus("cancelled","incoming","overdue")).toBe("cancelled");
+    expect(parseFinanceExpectedStatus(undefined,"cancelled",undefined)).toBe("cancelled");
+    expect(parseFinanceExpectedStatus(undefined,"outgoing",undefined)).toBeUndefined();
   });
   it("preserves exact expected amounts and distinct contractual/forecast dates",()=>{
     expect(expectedInputSchema.parse(item)).toMatchObject({ amount:"100.25",dueDate:"2026-09-01",expectedDate:"2026-10-01" });

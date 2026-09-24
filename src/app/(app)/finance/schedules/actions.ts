@@ -13,7 +13,7 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
   if (!admin) return { status: "error", message: t("planning.errors.forbidden") };
   const raw = Object.fromEntries(form);
   if (raw.intent === "schedule" && raw.kind === "payroll" && !String(raw.reason ?? "").trim()) raw.reason = t(raw.id ? "schedules.defaultRevisionNote" : "schedules.defaultAgreementNote");
-  if (raw.intent === "schedule" && raw.kind === "recurring" && !raw.id && !String(raw.reason ?? "").trim()) raw.reason = t("schedules.defaultRecurringNote");
+  if (raw.intent === "schedule" && raw.kind === "recurring" && !String(raw.reason ?? "").trim()) raw.reason = t("schedules.defaultRecurringNote");
   if (raw.intent === "bonus" && !String(raw.description ?? "").trim()) raw.description = t("schedules.addBonus");
   const client = await createClient();
   let error: { message: string } | null;
@@ -21,6 +21,11 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
     const parsed = scheduleInputSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t(`schedules.errors.${financeScheduleValidationError(parsed.error.issues)}`) };
     const { requestId, ...input } = parsed.data;
+    if (input.kind === "recurring" && !input.name) {
+      const { data: category, error: categoryError } = await client.from("finance_categories").select("name").eq("studio_id", admin.studio_id).eq("id", input.categoryId).maybeSingle();
+      if (categoryError || !category) return { status: "error", message: t("schedules.errors.invalid") };
+      input.name = category.name.slice(0, 120);
+    }
     ({ error } = await client.rpc(input.kind === "recurring" ? "save_finance_recurring_schedule" : "save_finance_schedule", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
   } else if (raw.intent === "payrollCost") {
     const parsed = payrollCostSchema.safeParse(raw);

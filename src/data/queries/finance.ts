@@ -92,7 +92,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   return `/finance/expected?item=${id}`;
 }
 
-export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string,attention?:"overdue") {
+export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string,attention?:"overdue",status?:"overdue"|"cancelled") {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
@@ -103,7 +103,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
-  if(filter==="cancelled") query=query.eq("commitment","cancelled");
+  if(status==="cancelled" || filter==="cancelled") query=query.eq("commitment","cancelled");
   if(attention==="overdue") query=query.or(FINANCE_OVERDUE_DB_FILTER);
   const bounds=planningPeriodBounds(period,today);
   if(bounds) query=query.or(`and(expected_payment_date.gte.${bounds[0]},expected_payment_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.gte.${bounds[0]},due_date.lte.${bounds[1]}),and(expected_payment_date.is.null,due_date.is.null),and(commitment.neq.cancelled,remaining_amount.gt.0,due_state.eq.overdue),and(commitment.neq.cancelled,remaining_amount.gt.0,payment_state.eq.partial)`);
