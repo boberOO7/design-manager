@@ -94,6 +94,40 @@ test.afterAll(async () => {
     delete from public.notifications where studio_id='${studio}';delete from public.studio_members where studio_id='${studio}';delete from public.studios where id='${studio}';commit;`);
   for (const actor of actors) if (actor.id) { const { error } = await client.auth.admin.deleteUser(actor.id); if (error) throw error; }
 });
+test("Forecast primary view stays focused with complete data and no budget", async ({ page }) => {
+  sql(`update public.finance_expected_items set expected_payment_date=(now() at time zone 'Europe/Kyiv')::date where studio_id='${studio}' and description='Undated receipt'`);
+  await login(page); await page.goto("/finance/planning");
+  await expect(page.getByText(en.Finance.overview.cash, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.horizonCash, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.Finance.overview.lowPoint, { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: en.Finance.overview.cashChart, exact: true })).toBeVisible();
+  await expect(page.getByText(en.Finance.overview.flows, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(t.incompletePlain, { exact: true })).toHaveCount(0);
+  const comparison = page.getByRole("button", { name: new RegExp(t.comparison) });
+  await expect(comparison).toHaveAttribute("aria-expanded", "false");
+  await comparison.click();
+  await expect(page.getByText(t.noBudgetForScope, { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: t.comparison, exact: true })).toHaveCount(0);
+});
+test("Forecast primary view summarizes incomplete data and reveals individual reasons on demand", async ({ page }) => {
+  sql(`update public.finance_expected_items set expected_payment_date=null,due_date=null where studio_id='${studio}' and description='Undated receipt'`);
+  await login(page); await page.goto("/finance/planning");
+  await expect(page.getByText(t.incompletePlain, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.incompletePlain, { exact: true })).toHaveCount(1);
+  const attention = page.getByRole("button", { name: new RegExp(t.attentionDetails.split("{")[0].trim()) });
+  await expect(attention).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByText("Undated receipt", { exact: true })).toHaveCount(0);
+  await attention.click();
+  const undated = page.getByText(t.issues.undated, { exact: true });
+  await expect(undated).toBeVisible();
+  await undated.click();
+  await expect(page.getByText("Undated receipt", { exact: true })).toBeVisible();
+  const comparison = page.getByRole("button", { name: new RegExp(t.comparison) });
+  await expect(comparison).toHaveAttribute("aria-expanded", "false");
+  await comparison.click();
+  await expect(page.getByText(t.noBudgetForScope, { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: t.comparison, exact: true })).toHaveCount(0);
+});
 test("annual revisions, scenarios, horizons, attention and stable snapshot comparison", async ({ page }, testInfo) => {
   const pageErrors: string[] = []; page.on("pageerror", error => pageErrors.push(error.message));
   await login(page); await page.goto("/finance/planning");

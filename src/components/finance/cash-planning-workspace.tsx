@@ -8,6 +8,7 @@ import { formatFinanceAmount } from "@/lib/finance";
 import { useLocale, useTranslations } from "next-intl";
 import type { getFinanceData } from "@/data/queries/finance";
 import type { FinanceForecastData } from "@/data/queries/finance-forecast";
+import type { ForecastReport } from "@/lib/finance-forecast";
 import { saveFinanceCashPlan } from "@/app/(app)/finance/planning/actions";
 import { forecastIssueHref } from "@/lib/finance-forecast";
 import { financeCategoryLabel } from "@/lib/finance-planning";
@@ -75,7 +76,14 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const monthLabel = (date: string) => new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const categoryLabel = (id: string | null, fallback: string | null = null) => financeCategoryLabel(data.categories.find(c => c.id === id), fallback, key => ft(`planning.defaults.${key}`)) || t("unclassified");
   const href = (key: string, value: string) => { const next = new URLSearchParams(params); next.set(key, value); if (key === "snapshot") next.set("mode", "history"); return `/finance/planning?${next}`; };
-  const incomplete = Boolean(report?.issues.length || report?.cashIncomplete);
+  const attentionCount = report ? report.issues.length + Number(Boolean(data.overview?.historyIncomplete || report.cashIncomplete)) : 0;
+  const comparisonHasBudget = Boolean(report?.comparisons.some(row => row.budget !== null));
+  const issueGroups = report?.issues.reduce((groups, issue) => {
+    let group = groups.find(row => row.reason === issue.reason);
+    if (!group) groups.push(group = { reason: issue.reason, items: [] });
+    group.items.push(issue);
+    return groups;
+  }, [] as { reason: ForecastReport["issues"][number]["reason"]; items: ForecastReport["issues"] }[]) ?? [];
   const foreignCurrencies = [...new Set([...(report?.fx.filter(f => f.source !== "identity").map(f => f.currency) ?? []), ...(report?.items.filter(i => i.currency !== currency).map(i => i.currency) ?? []), ...(report?.issues.filter(i => i.reason === "missing_fx").map(i => i.currency) ?? [])])].sort();
   const navigate = (key: string, value: string) => startTransition(() => router.replace(href(key, value), { scroll: false }));
   const reportingCurrency = data.currencies.find(c => c.code === currency);
@@ -107,30 +115,39 @@ export function FinanceCashPlanningWorkspace(data: Props) {
           {snapshotSurface === "dialog" ? <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">{snapshotForm}</div> : null}
         </Dialog>
       </div>
-      {incomplete || data.overview?.historyIncomplete ? <AnimatedDisclosure className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-4 [&>button]:min-h-14" title={`${t("attention", { count: report.issues.length + Number(Boolean(data.overview?.historyIncomplete)) })}${incomplete ? ` · ${o("knownSubtotal")}` : ""}`}>
-        <div className="pb-4 text-sm">
-          {incomplete ? <p className="max-w-3xl text-[var(--ui-text-secondary)]">{t("incomplete")}</p> : null}
-          <ul className="mt-3 divide-y divide-[var(--ui-border)]">
-            {data.overview?.historyIncomplete ? <li className="py-2">{o("historyIncomplete")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></li> : null}
-            {report.issues.map((issue, index) => <li key={index} className="py-2"><Link href={issue.source === "expected" ? `/finance/expected?item=${issue.id}` : forecastIssueHref(issue)} className="font-medium underline underline-offset-4">{issue.label || t("item")}</Link><span className="block pt-1 text-xs text-[var(--ui-text-secondary)]">{t(`issues.${issue.reason}`)}{issue.date ? ` · ${issue.date}` : ""}{issue.amount !== null ? ` · ${amount(issue.amount, issue.currency)}` : ""}</span></li>)}
-          </ul>
-        </div>
-      </AnimatedDisclosure> : null}
-      {data.overview && reportingCurrency ? <PlanningForecast data={data.overview} currency={reportingCurrency} categories={data.categories} onOpenComparison={() => setComparisonOpen(true)} /> : null}
+      {data.overview && reportingCurrency ? <PlanningForecast data={data.overview} currency={reportingCurrency} /> : null}
+      {attentionCount ? <section aria-labelledby="forecast-attention-heading" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-4 py-3">
+        <h2 id="forecast-attention-heading" className="font-medium">{t("attention", { count: attentionCount })}</h2>
+        <p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("incompletePlain")}</p>
+        <AnimatedDisclosure className="mt-2" title={t("attentionDetails", { count: attentionCount })}>
+          <div className="pb-3 text-sm">
+            {data.overview?.historyIncomplete ? <p className="py-2">{o("historyIncomplete")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : null}
+            <ul className="divide-y divide-[var(--ui-border)]">{issueGroups.map(group => <li key={group.reason} className="py-1">
+              <details>
+                <summary className="cursor-pointer py-2">{t(`issues.${group.reason}`)} · {group.items.length}</summary>
+                <ul className="divide-y divide-[var(--ui-border)] pl-4">{group.items.map((issue, index) => <li key={`${issue.id}:${index}`} className="py-2">
+                  <Link href={issue.source === "expected" ? `/finance/expected?item=${issue.id}` : forecastIssueHref(issue)} className="font-medium underline underline-offset-4">{issue.label || t("item")}</Link>
+                  {issue.date || issue.amount !== null ? <span className="block pt-1 text-xs text-[var(--ui-text-secondary)]">{issue.date ?? ""}{issue.date && issue.amount !== null ? " · " : ""}{issue.amount !== null ? amount(issue.amount, issue.currency) : ""}</span> : null}
+                </li>)}</ul>
+              </details>
+            </li>)}</ul>
+          </div>
+        </AnimatedDisclosure>
+      </section> : null}
       <div className="space-y-3">
         <AnimatedDisclosure className={disclosureClass} title={`${t("monthlyCash")} · ${t(`horizons.${report.horizon}`)} · ${currency}`}>
           <div className="space-y-3 pb-4">
             <p className="text-xs text-[var(--ui-text-secondary)]">{t("cashBase", { amount: amount(report.cashBase), date: report.asOf })}</p>
-            <div className="overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><table className={`${detailTableClass.replace("[&_th]:whitespace-nowrap", "").replaceAll("p-3", "p-2")} sm:[&_th]:p-3 sm:[&_td]:p-3`}><caption className="sr-only">{t("cashProjection")}</caption><thead><tr><th scope="col">{t("month")}</th><th scope="col" className="text-right">{t("netRemaining")}</th><th scope="col" className="text-right">{incomplete ? t("knownClosing") : t("closing")}</th></tr></thead>
+            <div className="overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><table className={`${detailTableClass.replace("[&_th]:whitespace-nowrap", "").replaceAll("p-3", "p-2")} sm:[&_th]:p-3 sm:[&_td]:p-3`}><caption className="sr-only">{t("cashProjection")}</caption><thead><tr><th scope="col">{t("month")}</th><th scope="col" className="text-right">{t("netRemaining")}</th><th scope="col" className="text-right">{t("closing")}</th></tr></thead>
               <tbody>{report.months.map(row => <tr key={row.month}><th scope="row" className="text-xs text-[var(--ui-text-secondary)] sm:text-sm">{monthLabel(row.month)}</th><td className={`whitespace-nowrap text-right ${row.remaining.startsWith("-") ? "text-[var(--ui-danger-text)]" : /[1-9]/.test(row.remaining) ? "text-[var(--ui-success-text)]" : "text-[var(--ui-text-secondary)]"}`}>{amount(row.remaining)}</td><td className="whitespace-nowrap text-right font-semibold">{amount(row.closing)}</td></tr>)}</tbody></table></div>
           </div>
         </AnimatedDisclosure>
         <div id="planning-comparison" className="scroll-mt-4">
           <AnimatedDisclosure className={disclosureClass} open={comparisonOpen} onOpenChange={setComparisonOpen} title={`${t("comparison")} · ${currency}`}>
             <div className="pb-4">
-              <div className="overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><table className={`${detailTableClass} [&_td]:whitespace-nowrap [&_td]:text-right`}><caption className="sr-only">{t("comparison")}</caption><thead><tr>{["category", "month", "budget", "actual", "remaining", "full"].map((key, index) => <th key={key} scope="col" className={`${index > 1 ? "text-right" : ""} ${key === "remaining" ? "border-l border-[var(--ui-border)]" : ""}`}>{t(key)}</th>)}</tr></thead>
+              {!comparisonHasBudget ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noBudgetForScope")}</p> : <div className="overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><table className={`${detailTableClass} [&_td]:whitespace-nowrap [&_td]:text-right`}><caption className="sr-only">{t("comparison")}</caption><thead><tr>{["category", "month", "budget", "actual", "remaining", "full"].map((key, index) => <th key={key} scope="col" className={`${index > 1 ? "text-right" : ""} ${key === "remaining" ? "border-l border-[var(--ui-border)]" : ""}`}>{t(key)}</th>)}</tr></thead>
                 <tbody>{report.comparisons.map((row, index) => <tr key={index}><th scope="row" className="min-w-44"><span>{categoryLabel(row.category_id, row.category)}</span><span className="mt-1 block text-xs font-normal text-[var(--ui-text-secondary)]">{ft(`movements.kinds.${row.direction}`)} · {ft(`movements.natures.${row.nature}`)}</span></th><td className="text-xs text-[var(--ui-text-secondary)]">{monthLabel(row.month)}</td><td className="text-[var(--ui-text-secondary)]">{amount(row.budget)}</td><td className="font-medium">{amount(row.actual)}</td><td className="border-l border-[var(--ui-border)] text-[var(--ui-text-secondary)]">{amount(row.remaining)}{row.incomplete ? " *" : ""}</td><td className="font-semibold">{amount(row.full_period)}{row.incomplete ? " *" : ""}</td></tr>)}</tbody></table></div>
-              {!report.comparisons.length ? <p className="p-3 text-sm text-[var(--ui-text-secondary)]">{t("empty")}</p> : null}
+              }
             </div>
           </AnimatedDisclosure>
         </div>

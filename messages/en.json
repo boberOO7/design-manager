@@ -2091,6 +2091,9 @@
     "forecast": {
       "snapshotRules": "About snapshot comparisons",
       "budgetRules": "Budget approval & revisions",
+      "incompletePlain": "Forecast incomplete: some payments or valuations are still unresolved.",
+      "attentionDetails": "Review reasons and records ({count})",
+      "noBudgetForScope": "There is no approved budget for this period.",
       "modesLabel": "Planning workspace",
       "modes": {
         "forecast": "Forecast",

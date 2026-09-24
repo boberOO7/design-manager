@@ -312,8 +312,9 @@ or notifications containing private data.
 - The configuration page stacks full-width compensation and recurring sections.
   Compact salary rows show employee, amount/basis, payout timing and actionable
   attention; only exceptional periods are exposed. Detailed costs and immutable
-  history sit behind disclosure. Unspecified payroll costs produce
-  one attention state and remain unknown until explicitly supplied.
+  history sit behind disclosure. New agreements default employer cost to explicit
+  zero; admins can choose unknown. Forecast groups missing payroll costs by
+  employee and component.
 - Forms use month-level effective periods, with remittances/employer costs exposed
   for gross pay or on request. Bonus notes and initial recurring-agreement notes
   are optional, with localized defaults; recurring revisions still require a reason.
@@ -342,7 +343,9 @@ or notifications containing private data.
   employee's monthly payroll or a recurring studio obligation; immutable
   `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
   month starts and optional inclusive ends are month ends. Later revisions must
-  start in a future month and cannot split an existing multi-month service period.
+  start in a future month, except payroll may amend the current month while
+  that occurrence has no allocation history or completed cost revision.
+  Recurring revisions cannot split an existing multi-month service period.
   The first payroll form suggests the employee's current Team start month when
   available; the saved term is independent and later Team edits do not change it.
   History derives valid-through from the next revision, submitted end and permanent
@@ -352,7 +355,9 @@ or notifications containing private data.
   supply amounts; PostgreSQL validates exact currency precision and agreement
   arithmetic. Net equals payout, with remittances additional; gross equals payout
   plus explicit deductions. Unknown costs remain null, confirmed zero is explicit,
-  and estimated employer cost remains estimated. There is no statutory tax engine.
+  and estimated employer cost remains estimated. New payroll defaults employer
+  contributions to explicit zero; existing unknown terms remain unchanged.
+  There is no statutory tax engine.
 - Net-pay forms accept additional remittances: blank is unknown, zero explicitly
   confirms none, and a known amount is additional to payout. Gross arithmetic is
   unchanged. Employer costs retain fixed/estimated choices.
@@ -365,8 +370,9 @@ or notifications containing private data.
   Established components and any allocation history prohibit further completion
   edits. The global editor cannot bypass these audited amount/state corrections.
   Salary terms, payouts and cash remain unchanged; automatic maintenance preserves
-  completed occurrences. Compensation amendments cannot overlap completed occurrences,
-  even if the payout's earned flag is later cleared. Forecast diagnostics read the latest explicit
+  completed occurrences. Compensation amendments preserve each settled period,
+  including any released allocation; other unpaid periods can adopt the new terms.
+  Forecast diagnostics read the latest explicit
   completion state, and estimated expectations retain existing forecast semantics.
 - Recurring studio terms select any outgoing category, monthly/quarterly/yearly
   cadence, fixed/estimated value and tentative/agreed commitment. The category's
@@ -458,8 +464,9 @@ recurrence generation job or tax engine is implied.
   selected 3/6/year-end/12-month horizon. It creates or updates stable expected
   occurrences, then `calculate_finance_forecast` reads those items only. Rule rows
   remain diagnostics and never contribute a second amount. Repeated reconciliation
-  is duplicate-safe; future revisions update only unearned, unallocated projections,
-  while past, established, partial, settled and manually cancelled items remain intact.
+  is duplicate-safe; payroll revisions update eligible unpaid current and future
+  projections, preserving earned status. Past, allocated and manually cancelled
+  items remain intact.
 - Expected payment date takes priority over contractual due date; due date is
   the fallback only when expected timing is absent. Past outgoing dates roll
   forward to today as immediate exposure, including overdue obligations without
@@ -486,7 +493,8 @@ recurrence generation job or tax engine is implied.
   This cash valuation is distinct from historical category actuals and introduces
   no manufactured operating exchange gains/losses.
 - Unknown employer costs/remittances remain null and produce attention items,
-  even if the known payout was settled. Missing schedule periods are coverage
+  even if the known payout was settled. Payroll diagnostics are grouped by
+  employee and missing component. Missing schedule periods are coverage
   diagnostics only, starting one service month before the current month to catch
   next-month payroll. Missing supervision months and unscheduled contract value
   are also flagged. Schedule coverage is normally repaired before calculation;
