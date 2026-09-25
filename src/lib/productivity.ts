@@ -1,5 +1,6 @@
 import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
 import type { TaskStage } from "@/lib/task-stages";
+import { isTaskFinished } from "@/lib/tasks";
 
 export const PRODUCTIVITY_STAGE_RATIOS = {
   stage_1: 0.20,
@@ -43,6 +44,44 @@ export function allocateRemainingStageBudget(input: {
     / input.remainingEligibleUnsnapshottedTasks;
 }
 
+export function getProductivityWorkloadAreaByTask(
+  tasks: ReadonlyArray<{ id: string; project_id: string; stage: TaskStage; status: string; assignee_id: string | null; completed_area_m2: number | null; productivity_area_m2: number | null }>,
+  projects: ReadonlyArray<{ id: string; total_area_m2: number | null; include_in_productivity: boolean }>,
+  budgets: ReadonlyArray<{ project_id: string; stage: string; productivity_budget_m2: number; allocated_productivity_m2: number }>,
+  activeAssignments: ReadonlySet<string>,
+): Map<string, number> {
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
+  const budgetsByStage = new Map(budgets.map((budget) => [`${budget.project_id}:${budget.stage}`, budget]));
+  const unsnapshottedCounts = new Map<string, number>();
+  for (const task of tasks) {
+    if (getProductivityStageMode(task.stage) !== "project_area_ratio" || task.status === "cancelled" || task.productivity_area_m2 !== null) continue;
+    const key = `${task.project_id}:${task.stage}`;
+    unsnapshottedCounts.set(key, (unsnapshottedCounts.get(key) ?? 0) + 1);
+  }
+  const areas = new Map<string, number>();
+  for (const task of tasks) {
+    const project = projectsById.get(task.project_id);
+    if (!project?.include_in_productivity || !task.assignee_id || !activeAssignments.has(`${task.project_id}:${task.assignee_id}`) || isTaskFinished(task.status)) continue;
+    const mode = getProductivityStageMode(task.stage);
+    if (mode === "none") continue;
+    let area = Number(task.productivity_area_m2);
+    if (task.productivity_area_m2 === null) {
+      if (mode === "task_area") area = Number(task.completed_area_m2 ?? 0);
+      else {
+        const key = `${task.project_id}:${task.stage}`;
+        const budget = budgetsByStage.get(key);
+        area = allocateRemainingStageBudget({
+          productivityBudgetM2: budget ? Number(budget.productivity_budget_m2) : Math.max(0, Number(project.total_area_m2 ?? 0)) * (task.stage === "stage_1" ? PRODUCTIVITY_STAGE_RATIOS.stage_1 : PRODUCTIVITY_STAGE_RATIOS.stage_3),
+          allocatedProductivityM2: Number(budget?.allocated_productivity_m2 ?? 0),
+          remainingEligibleUnsnapshottedTasks: unsnapshottedCounts.get(key) ?? 0,
+        });
+      }
+    }
+    if (area > 0) areas.set(task.id, area);
+  }
+  return areas;
+}
+
 export type ProductivityAttribution = {
   contributor_id: string;
   contributor_name: string;
@@ -83,6 +122,11 @@ export type ProductivityLeaderboardEntry = {
   completed_area_m2: number;
   completed_tasks: number;
 };
+
+export function selectPersonalDashboardProductivity(entries: ProductivityLeaderboardEntry[], userId: string, showRank: boolean) {
+  const own = entries.find((entry) => entry.user_id === userId);
+  return showRank ? { areaM2: own?.completed_area_m2 ?? 0, rank: own?.rank ?? null } : { areaM2: own?.completed_area_m2 ?? 0 };
+}
 
 export type ProductivityLeaderboardMember = Pick<
   ProductivityLeaderboardEntry,

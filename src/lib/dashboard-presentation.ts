@@ -1,47 +1,50 @@
+import { formatDate } from "./utils";
+
 export type DashboardRole = "admin" | "employee";
 export type DashboardMetricTone = "neutral" | "warning" | "danger";
 
 export type DashboardMetric = {
-  labelKey: "metricActiveProjects" | "metricOpenTasks" | "metricOverdueTasks" | "metricDueThisWeek" | "metricDueToday" | "metricInProgress" | "metricUpcoming";
-  value: number;
-  descriptionKey: "metricActiveProjectsHint" | "metricOpenTasksHint" | "metricOverdueTasksHint" | "metricDueThisWeekHint" | "metricDueTodayHint" | "metricInProgressHint" | "metricUpcomingHint";
+  labelKey: "metricActiveProjects" | "metricOpenTasks" | "metricOverdueTasks" | "metricActiveLeads" | "metricExpectedInflow" | "metricProfitLoss" | "metricInProgress" | "metricInReview" | "metricCompletedMonth" | "metricProductivity" | "metricVacationBalance" | "metricNextAbsence";
+  value: string | number;
   tone: DashboardMetricTone;
 };
 
 export const DASHBOARD_SECTIONS = {
   admin: ["attention", "deadlines", "workload", "my-tasks"],
-  employee: ["attention", "deadlines", "projects"],
+  employee: ["attention", "my-tasks", "deadlines", "projects"],
 } as const satisfies Record<DashboardRole, readonly string[]>;
 
 export const DASHBOARD_EMPTY_STATES = {
   adminAttention: { title: "No projects currently require attention." },
-  employeeAttention: {
-    title: "You have no assigned work requiring attention.",
-    description: "You have no overdue, urgent, or near-due tasks.",
-    linkHref: "/my-tasks",
-    linkLabel: "View My Tasks",
-  },
+  employeeAttention: { title: "You have no assigned work requiring attention.", description: "You have no overdue or urgent tasks.", linkHref: "/my-tasks", linkLabel: "View My Tasks" },
   deadlines: { title: "No upcoming deadlines in the next 14 days." },
   workload: { title: "No active studio members." },
   myTasks: { title: "No open tasks assigned to you." },
   projects: { title: "No active project assignments." },
 } as const;
 
-export function getAdminDashboardMetrics(metrics: { activeProjects: number; openTasks: number; overdueTasks: number; dueThisWeek: number }): DashboardMetric[] {
+export function getAdminDashboardMetrics(metrics: { activeProjects: number; activeTasks: number; overdueTasks: number; activeLeads: number; expectedInflow: string; profitAndLoss: string }): DashboardMetric[] {
   return [
-    { labelKey: "metricActiveProjects", value: metrics.activeProjects, descriptionKey: "metricActiveProjectsHint", tone: "neutral" },
-    { labelKey: "metricOpenTasks", value: metrics.openTasks, descriptionKey: "metricOpenTasksHint", tone: "neutral" },
-    { labelKey: "metricOverdueTasks", value: metrics.overdueTasks, descriptionKey: "metricOverdueTasksHint", tone: metrics.overdueTasks > 0 ? "danger" : "neutral" },
-    { labelKey: "metricDueThisWeek", value: metrics.dueThisWeek, descriptionKey: "metricDueThisWeekHint", tone: metrics.dueThisWeek > 0 ? "warning" : "neutral" },
+    { labelKey: "metricActiveProjects", value: metrics.activeProjects, tone: "neutral" },
+    { labelKey: "metricOpenTasks", value: metrics.activeTasks, tone: "neutral" },
+    { labelKey: "metricOverdueTasks", value: metrics.overdueTasks, tone: metrics.overdueTasks ? "danger" : "neutral" },
+    { labelKey: "metricActiveLeads", value: metrics.activeLeads, tone: "neutral" },
+    { labelKey: "metricExpectedInflow", value: metrics.expectedInflow, tone: "neutral" },
+    { labelKey: "metricProfitLoss", value: metrics.profitAndLoss, tone: metrics.profitAndLoss.startsWith("-") ? "danger" : "neutral" },
   ];
 }
 
-export function getEmployeeDashboardMetrics(metrics: { overdue: number; dueToday: number; inProgress: number; upcoming: number }): DashboardMetric[] {
+export function getEmployeeDashboardMetrics(metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: { areaM2: number; rank?: number | null }; vacationBalance: number | null; nextAbsence: string | null }, locale: string): DashboardMetric[] {
+  const area = `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(metrics.productivity.areaM2)} m²`;
   return [
-    { labelKey: "metricOverdueTasks", value: metrics.overdue, descriptionKey: "metricOverdueTasksHint", tone: metrics.overdue > 0 ? "danger" : "neutral" },
-    { labelKey: "metricDueToday", value: metrics.dueToday, descriptionKey: "metricDueTodayHint", tone: metrics.dueToday > 0 ? "warning" : "neutral" },
-    { labelKey: "metricInProgress", value: metrics.inProgress, descriptionKey: "metricInProgressHint", tone: "neutral" },
-    { labelKey: "metricUpcoming", value: metrics.upcoming, descriptionKey: "metricUpcomingHint", tone: "neutral" },
+    { labelKey: "metricInProgress", value: metrics.inProgress, tone: "neutral" },
+    { labelKey: "metricInReview", value: metrics.inReview, tone: "neutral" },
+    { labelKey: "metricOverdueTasks", value: metrics.overdue, tone: metrics.overdue ? "danger" : "neutral" },
+    { labelKey: "metricCompletedMonth", value: metrics.completedThisMonth, tone: "neutral" },
+    { labelKey: "metricProductivity", value: metrics.productivity.rank == null ? area : `#${metrics.productivity.rank} · ${area}`, tone: "neutral" },
+    metrics.vacationBalance !== null
+      ? { labelKey: "metricVacationBalance", value: metrics.vacationBalance, tone: "neutral" }
+      : { labelKey: "metricNextAbsence", value: metrics.nextAbsence ? formatDate(metrics.nextAbsence, locale) : "—", tone: "neutral" },
   ];
 }
 

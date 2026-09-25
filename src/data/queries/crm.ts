@@ -2,6 +2,7 @@ import "server-only";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS } from "@/lib/crm";
+import { CRM_LEAD_STATUSES } from "@/lib/validation/crm";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
@@ -56,6 +57,16 @@ export async function getCrmLeads(): Promise<{ currentUserId: string | null; err
   const admins = await getCrmAdmins();
   const adminNames = new Map(admins.map((admin) => [admin.id, admin]));
   return { currentUserId: context.membership.authenticatedUserId, error: false, leads: data.map((lead) => ({ ...lead, responsibleAdmin: lead.responsible_admin_id ? adminNames.get(lead.responsible_admin_id) ?? null : null })) };
+}
+
+export async function getActiveCrmLeadCount(): Promise<number> {
+  const context = await getCrmContext();
+  if (!context) return 0;
+  const { count, error } = await context.supabase.from("crm_leads").select("id", { count: "exact", head: true })
+    .eq("studio_id", context.membership.studio_id)
+    .in("status", CRM_LEAD_STATUSES.filter((status) => !["won", "lost", "invalid"].includes(status)));
+  if (error) throw new Error("Unable to load active CRM leads.", { cause: error });
+  return count ?? 0;
 }
 
 export async function getCrmOverdueLeadFollowUpCount(now = new Date()): Promise<number> {

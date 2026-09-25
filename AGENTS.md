@@ -60,9 +60,14 @@ materially affects behavior, surface it instead of silently deciding.
 - Do not use `any`, `@ts-ignore`, unsafe assertions, or duplicate domain types
   unless there is a clearly justified and documented exception.
 - Preserve the existing visual design unless redesign is explicitly requested.
+- For interactive UI state/layout transitions (expand/collapse, drawers, panels,
+  stage focus, tabs, and show/hide states), preserve or add short, subtle
+  transitions by default (~160–220ms) unless instant feedback is functionally
+  preferable. Prefer CSS/native transitions for simple motion. Avoid abrupt
+  layout jumps, bounce, scale-heavy motion, opacity dimming that hurts clarity,
+  or animations that move surrounding content unexpectedly.
 - Preserve localization behavior and existing translation patterns.
 - Prefer the narrowest relevant implementation change over broad refactors.
-- Do not modify unrelated application code while solving a scoped task.
 
 ## Validation budget
 

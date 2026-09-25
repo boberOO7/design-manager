@@ -4,6 +4,7 @@ import {
   allocateRemainingStageBudget,
   doesTaskCompletionRequireProductivityAttribution,
   getProductivityStageMode,
+  getProductivityWorkloadAreaByTask,
   getTaskCreationProgressField,
 } from "./productivity";
 
@@ -56,6 +57,40 @@ describe("stage productivity accounting", () => {
       allocatedProductivityM2: 0,
       remainingEligibleUnsnapshottedTasks: 4,
     })).toBe(0);
+  });
+
+  it("counts full unfinished area regardless of progress and excludes ineligible work", () => {
+    type WorkTask = Parameters<typeof getProductivityWorkloadAreaByTask>[0][number] & { production_completion: number };
+    const task = (id: string, overrides: Partial<WorkTask> = {}): WorkTask => ({ id, project_id: "p1", stage: "stage_2", status: "in_progress", assignee_id: "u1", completed_area_m2: 10, productivity_area_m2: null, production_completion: 0, ...overrides });
+    const tasks = [
+      task("zero"), task("half", { production_completion: 50 }), task("ninety", { production_completion: 90 }),
+      task("done", { status: "completed" }), task("cancelled", { status: "cancelled" }),
+      task("excluded", { project_id: "p2" }), task("unassigned", { assignee_id: null }),
+      task("inactive-assignment", { assignee_id: "u2" }), task("nonproductive", { stage: "stage_4" }),
+      task("reopened", { stage: "stage_1", productivity_area_m2: 7 }),
+      task("new-stage-1", { stage: "stage_1", completed_area_m2: null }),
+      task("other-person", { stage: "stage_1", assignee_id: "u2", completed_area_m2: null }),
+    ];
+    const areas = getProductivityWorkloadAreaByTask(tasks, [
+      { id: "p1", total_area_m2: 100, include_in_productivity: true },
+      { id: "p2", total_area_m2: 100, include_in_productivity: false },
+    ], [], new Set(["p1:u1"]));
+    expect([areas.get("zero"), areas.get("half"), areas.get("ninety")]).toEqual([10, 10, 10]);
+    for (const id of ["done", "cancelled", "excluded", "unassigned", "inactive-assignment", "nonproductive", "other-person"]) expect(areas.has(id)).toBe(false);
+    expect(areas.get("reopened")).toBe(7);
+    expect(areas.get("new-stage-1")).toBeCloseTo(10); // 20 m² stage budget / two unsnapshotted tasks.
+  });
+
+  it("uses the persisted unallocated stage budget for unfinished tasks", () => {
+    const tasks = [
+      { id: "a", project_id: "p1", stage: "stage_3" as const, status: "review", assignee_id: "u1", completed_area_m2: null, productivity_area_m2: null },
+      { id: "b", project_id: "p1", stage: "stage_3" as const, status: "todo", assignee_id: "u1", completed_area_m2: null, productivity_area_m2: null },
+    ];
+    const areas = getProductivityWorkloadAreaByTask(tasks, [{ id: "p1", total_area_m2: 200, include_in_productivity: true }], [
+      { project_id: "p1", stage: "stage_3", productivity_budget_m2: 80, allocated_productivity_m2: 30 },
+    ], new Set(["p1:u1"]));
+    expect(areas.get("a")).toBe(25);
+    expect(areas.get("b")).toBe(25);
   });
 
   it("treats a frozen snapshot as independent from later project-area changes", () => {

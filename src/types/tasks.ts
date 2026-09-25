@@ -72,4 +72,5 @@ export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | 
 
 export type DashboardWorkloadTask = DashboardTaskSummary & {
   currentStatusEnteredAt: string | null;
+  workloadAreaM2: number;
 };

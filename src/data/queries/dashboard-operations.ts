@@ -8,7 +8,9 @@ import { isOfficeAssignmentOverdue, isTerminalOfficeAssignmentStatus } from "@/l
 import { isTerminalSubmissionStatus } from "@/lib/submissions";
 import type { SubmissionSummary } from "@/data/queries/submissions";
 import type { DashboardOfficeAssignment } from "@/lib/dashboard";
-import { financeOverviewSchema } from "@/lib/finance-overview";
+import { financeDashboardMonthSummary } from "@/lib/finance-overview";
+import { getFinanceOverview } from "./finance-overview";
+import { getActiveCrmLeadCount } from "./crm";
 import { FINANCE_OVERDUE_DB_FILTER } from "@/lib/finance-planning";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,8 +26,8 @@ export type DashboardFinanceEvent = {
 };
 
 export type DashboardOperations = {
-  crm: { overdueCount: number; upcoming: DashboardCrmFollowUp[] };
-  finance: null | { overdueReceivableCount: number; overdueObligationCount: number; upcoming: DashboardFinanceEvent[] };
+  crm: { activeCount: number; overdueCount: number; upcoming: DashboardCrmFollowUp[] };
+  finance: null | { overdueReceivableCount: number; overdueObligationCount: number; upcoming: DashboardFinanceEvent[]; month: ReturnType<typeof financeDashboardMonthSummary> };
   office: { overdueAssignmentCount: number; myAssignments: DashboardOfficeAssignment[]; upcoming: Array<DashboardOfficeAssignment & { deadline: string }> };
   equipment: { overdueCount: number; upcoming: Array<{ id: string; title: string; date: string }> };
   submissions: { urgentCount: number };
@@ -42,8 +44,9 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     .eq("responsible_admin_id", admin.authenticatedUserId)
     .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
     .not("next_contact_at", "is", null);
-  const [financeSettings, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await Promise.all([
+  const [financeSettings, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await Promise.all([
     client.from("finance_settings").select("finalized_at").eq("studio_id", admin.studio_id).maybeSingle(),
+    getActiveCrmLeadCount(),
     leadScope().lt("next_contact_at", nowIso).order("next_contact_at").limit(1),
     leadScope().gte("next_contact_at", nowIso).lt("next_contact_at", upcomingEndExclusive).order("next_contact_at"),
     client.from("office_assignments").select("id,title,deadline,priority,status,responsible_id").eq("studio_id", admin.studio_id).overrideTypes<Array<DashboardOfficeAssignment & { responsible_id: string }>, { merge: false }>(),
@@ -54,6 +57,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
   if (queryError) throw new Error("Unable to load Dashboard operational signals.", { cause: queryError });
 
   const crm = {
+    activeCount: activeLeadCount,
     overdueCount: overdueFollowUps.count ?? 0,
     upcoming: (upcomingFollowUps.data ?? []).flatMap((lead) => lead.next_contact_at
       ? [{ id: lead.id, clientName: lead.client_name, nextContactAt: lead.next_contact_at }]
@@ -80,15 +84,8 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
   ]);
   if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
-  const raw = await client.rpc("get_finance_overview", {
-    p_studio_id: admin.studio_id,
-    p_horizon: "3",
-    p_scenario: "confirmed",
-    p_fx: [],
-    p_period: "month",
-  });
-  if (raw.error) throw new Error("Unable to load Dashboard Finance signals.", { cause: raw.error });
-  const overview = financeOverviewSchema.parse(raw.data);
+  const overview = await getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" });
+  if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
   const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
   const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", admin.studio_id).in("id", projectIds) : null;
   if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
@@ -111,6 +108,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
       overdueReceivableCount: incomingOverdue.count ?? 0,
       overdueObligationCount: outgoingOverdue.count ?? 0,
       upcoming,
+      month: financeDashboardMonthSummary(overview),
     },
     office, equipment, submissions,
   };

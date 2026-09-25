@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   not: vi.fn(),
   neq: vi.fn(),
   lt: vi.fn(),
+  in: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -30,6 +31,7 @@ describe("CRM overdue lead follow-up count", () => {
       not: mocks.not,
       neq: mocks.neq,
       lt: mocks.lt,
+      in: mocks.in,
     };
     mocks.getActiveStudioAdmin.mockResolvedValue({ authenticatedUserId: "admin-1", studio_id: "studio-1", system_role: "admin" });
     mocks.createClient.mockResolvedValue({ from: mocks.from });
@@ -39,6 +41,7 @@ describe("CRM overdue lead follow-up count", () => {
     mocks.not.mockReturnValue(builder);
     mocks.neq.mockReturnValue(builder);
     mocks.lt.mockResolvedValue({ count: 3, error: null });
+    mocks.in.mockResolvedValue({ count: 4, error: null });
   });
 
   it("counts only past active follow-ups assigned to the authenticated administrator", async () => {
@@ -52,6 +55,13 @@ describe("CRM overdue lead follow-up count", () => {
     expect(mocks.not).toHaveBeenCalledWith("next_contact_at", "is", null);
     expect(mocks.neq).toHaveBeenCalledWith("status", "invalid");
     expect(mocks.lt).toHaveBeenCalledWith("next_contact_at", "2026-09-15T12:00:00.000Z");
+  });
+
+  it("counts active lead pipeline statuses across the studio", async () => {
+    const { getActiveCrmLeadCount } = await loadQuery();
+    await expect(getActiveCrmLeadCount()).resolves.toBe(4);
+    expect(mocks.eq).toHaveBeenCalledWith("studio_id", "studio-1");
+    expect(mocks.in).toHaveBeenCalledWith("status", ["new", "contacted", "discussion", "proposal"]);
   });
 
   it("does not query CRM without active administrator access", async () => {

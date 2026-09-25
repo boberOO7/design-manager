@@ -10,16 +10,20 @@ const metricToneClasses = {
   danger: "text-[var(--ui-danger-text)]",
 } as const;
 
-export function MetricStrip({ className, metricClassName, metrics }: { className?: string; metricClassName?: string; metrics: DashboardMetric[] }) {
+export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {
   const t = useTranslations("Dashboard");
   const locale = useLocale();
-  return <Panel className={cn("grid grid-cols-2 divide-x-0 divide-y divide-[var(--ui-border)] overflow-hidden sm:grid-cols-4 sm:divide-x sm:divide-y-0", className)}>
-    {metrics.map((metric) => <div key={metric.labelKey} className={cn("min-w-0 px-4 py-3 sm:px-5", metricClassName)}>
-      <p className="text-xs font-medium text-[var(--ui-text-muted)]">{t(metric.labelKey)}</p>
-      <p className={cn("ui-numeric mt-1 text-2xl font-semibold tracking-tight", metricToneClasses[metric.tone])}>{formatNumber(metric.value, locale)}</p>
-      <p className="mt-0.5 text-xs leading-5 text-[var(--ui-text-muted)]">{t(metric.descriptionKey)}</p>
+  return <Panel className="grid grid-cols-2 overflow-hidden md:grid-cols-3 xl:grid-cols-6">
+    {metrics.map((metric) => <div key={metric.labelKey} className="min-w-0 border-b border-r border-[var(--ui-border)] px-4 py-3.5 last:border-r-0 xl:last:border-b-0">
+      <p className="text-xs font-medium leading-4 text-[var(--ui-text-muted)]">{t(metric.labelKey)}</p>
+      <p className={cn("ui-numeric mt-2 break-words text-xl font-semibold tracking-tight", metricToneClasses[metric.tone])}>{typeof metric.value === "number" ? formatNumber(metric.value, locale) : metric.value}</p>
     </div>)}
   </Panel>;
+}
+
+export function DashboardOverview({ metrics }: { metrics: DashboardMetric[] }) {
+  const t = useTranslations("Dashboard");
+  return <section className="dashboard-reveal space-y-3"><h1 className="text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1><MetricStrip metrics={metrics} /></section>;
 }
 
 export function DashboardSection({ children, className, description, title }: { children: ReactNode; className?: string; description?: string; title: string }) {

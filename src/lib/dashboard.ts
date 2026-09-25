@@ -59,6 +59,20 @@ export function isOpenTask(task: Pick<DashboardTask, "status">): boolean {
   return !isTaskFinished(task.status);
 }
 
+export function selectAdminTaskMetrics(tasks: DashboardTaskSummary[], today: string) {
+  const open = tasks.filter(isOpenTask);
+  return { activeTasks: open.filter((task) => task.status === "in_progress").length, overdueTasks: open.filter((task) => isTaskOverdue(task, today)).length };
+}
+
+export function selectEmployeeTaskMetrics(tasks: DashboardTaskSummary[], today: string) {
+  const open = tasks.filter(isOpenTask);
+  return {
+    inProgress: open.filter((task) => task.status === "in_progress").length,
+    inReview: open.filter((task) => isTaskInReview(task.status)).length,
+    overdue: open.filter((task) => isTaskOverdue(task, today)).length,
+  };
+}
+
 export function countDueToday(tasks: DashboardTaskSummary[], today: string): number {
   return tasks.filter((task) => isOpenTask(task) && task.due_date === today).length;
 }
@@ -115,6 +129,24 @@ export function getEmployeeTasksNeedingAttention<T extends EmployeeAttentionTask
     || (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31")
     || left.title.localeCompare(right.title)
     || left.created_at.localeCompare(right.created_at));
+}
+
+export type EmployeeAttentionSummaryItem =
+  | { kind: "overdueTasks" | "urgentTasks"; count: number }
+  | { kind: "overdueAssignments" | "urgentAssignments"; count: number };
+
+export function selectEmployeeAttentionSummary(tasks: DashboardTaskSummary[], assignments: DashboardOfficeAssignment[], today: string): EmployeeAttentionSummaryItem[] {
+  const openTasks = tasks.filter(isOpenTask);
+  const overdueTasks = openTasks.filter((task) => isTaskOverdue(task, today));
+  const urgentTasks = openTasks.filter((task) => !isTaskOverdue(task, today) && (task.priority === "urgent" || task.priority === "high"));
+  const overdueAssignments = assignments.filter((item) => isOfficeAssignmentOverdue(item.deadline, item.status, today));
+  const urgentAssignments = assignments.filter((item) => !isOfficeAssignmentOverdue(item.deadline, item.status, today) && (item.priority === "urgent" || item.priority === "high"));
+  return [
+    { kind: "overdueTasks" as const, count: overdueTasks.length },
+    { kind: "urgentTasks" as const, count: urgentTasks.length },
+    { kind: "overdueAssignments" as const, count: overdueAssignments.length },
+    { kind: "urgentAssignments" as const, count: urgentAssignments.length },
+  ].filter((item) => item.count > 0);
 }
 
 export type AttentionProject = DashboardProject & { openTaskCount: number; overdueCount: number; urgentCount: number; deadlineDaysAway: number | null; progressPercent: number | null };
@@ -186,6 +218,7 @@ export function getTeamWorkload(members: DashboardMember[], tasks: DashboardWork
       recentFocus,
       additionalInProgressCount: recentFocus ? inProgress.length - 1 : 0,
       openTaskCount: active.length,
+      workloadAreaM2: active.reduce((total, task) => total + task.workloadAreaM2, 0),
       todoCount: active.filter((task) => task.status === "todo").length,
       inProgressCount: inProgress.length,
       reviewCount: active.filter((task) => isTaskInReview(task.status)).length,
@@ -232,7 +265,14 @@ export function selectAdminMyWork(tasks: DashboardTaskSummary[], assignments: Da
     const rightDate = right.kind === "task" ? right.task.due_date : right.assignment.deadline;
     const leftOverdue = left.kind === "task" ? isTaskOverdue(left.task, today) : isOfficeAssignmentOverdue(leftDate, left.assignment.status, today);
     const rightOverdue = right.kind === "task" ? isTaskOverdue(right.task, today) : isOfficeAssignmentOverdue(rightDate, right.assignment.status, today);
+    const leftPriority = left.kind === "task" ? left.task.priority : left.assignment.priority;
+    const rightPriority = right.kind === "task" ? right.task.priority : right.assignment.priority;
+    const priorityRank = (priority: string) => priority === "urgent" ? 2 : priority === "high" ? 1 : 0;
+    const leftCurrent = left.kind === "task" ? left.task.status === "in_progress" : left.assignment.status === "in_progress";
+    const rightCurrent = right.kind === "task" ? right.task.status === "in_progress" : right.assignment.status === "in_progress";
     return Number(rightOverdue) - Number(leftOverdue)
+      || priorityRank(rightPriority) - priorityRank(leftPriority)
+      || Number(rightCurrent) - Number(leftCurrent)
       || (leftDate ?? "9999-12-31").localeCompare(rightDate ?? "9999-12-31")
       || (left.kind === "task" && right.kind === "task" ? (taskOrder.get(left.task.id) ?? 0) - (taskOrder.get(right.task.id) ?? 0) : 0)
       || `${left.kind}:${left.kind === "task" ? left.task.id : left.assignment.id}`.localeCompare(`${right.kind}:${right.kind === "task" ? right.task.id : right.assignment.id}`);

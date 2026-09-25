@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ArrowUpRight, Banknote, CalendarDays, Check, CircleAlert, ClipboardCheck, ClipboardClock, FolderKanban, ListChecks, PhoneCall, Wrench, type LucideIcon } from "lucide-react";
-import { DashboardSection, MetricStrip, OperationalSurface } from "@/components/dashboard/dashboard-patterns";
+import { DashboardOverview, DashboardSection, OperationalSurface } from "@/components/dashboard/dashboard-patterns";
 import { BoundedDashboardList } from "@/components/dashboard/bounded-list";
 import { TeamWorkload } from "@/components/dashboard/team-workload";
 import { DashboardTaskList } from "@/components/tasks/dashboard-task-list";
@@ -14,6 +14,7 @@ import { formatAdministrationDateRange } from "@/lib/administration";
 import { formatCalendarDateTime } from "@/lib/calendar";
 import { selectAdminMyWork, selectAdminUpcoming, type AdminUpcomingItem } from "@/lib/dashboard";
 import { getAdminDashboardMetrics } from "@/lib/dashboard-presentation";
+import { formatFinanceDecimal } from "@/lib/finance";
 import { financeOverdueDashboardHref, projectPaymentPresentation } from "@/lib/finance-planning";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import { formatDate } from "@/lib/utils";
@@ -26,6 +27,10 @@ export async function AdminDashboardView({ administration, dashboard, operations
   operations: DashboardOperations | null;
 }) {
   const [t, roles, locale] = await Promise.all([getTranslations("Dashboard"), getTranslations("Roles"), getLocale()]);
+  const month = operations?.finance?.month;
+  const money = (value: string | null | undefined) => month && value != null
+    ? formatFinanceDecimal(value, locale, { style: "currency", currency: month.currency, currencyDisplay: "code" })
+    : "—";
   const workload = dashboard.workload.map((member) => {
     const roleKey = getCanonicalRoleTranslationKey(member.job_title);
     return roleKey ? { ...member, job_title: roles(roleKey) } : member;
@@ -70,14 +75,14 @@ export async function AdminDashboardView({ administration, dashboard, operations
   ], dashboard.today);
 
   return <div className="space-y-5">
-    <section className="dashboard-reveal">
-      <div className="grid min-w-0 lg:grid-cols-[minmax(15rem,0.82fr)_minmax(0,1.18fr)]">
-        <header className="flex min-h-32 items-end px-5 py-5 sm:px-7 sm:py-6">
-          <h1 className="max-w-5xl text-3xl font-semibold tracking-[-0.035em] text-[var(--ui-text)] sm:text-4xl"><span className="block text-[var(--ui-text-secondary)]">{t("welcome")}</span><span className="block">{dashboard.profile.full_name}</span></h1>
-        </header>
-        <MetricStrip metrics={getAdminDashboardMetrics(dashboard.metrics)} className="rounded-none border-x-0 border-b-0 border-t border-[var(--ui-border)] bg-transparent shadow-none lg:border-l lg:border-t-0" metricClassName="px-4 py-4 sm:px-5 sm:py-5" />
-      </div>
-    </section>
+    <DashboardOverview metrics={getAdminDashboardMetrics({
+      activeProjects: dashboard.metrics.activeProjects,
+      activeTasks: dashboard.metrics.activeTasks,
+      overdueTasks: dashboard.metrics.overdueTasks,
+      activeLeads: operations?.crm.activeCount ?? 0,
+      expectedInflow: money(month?.expectedInflow),
+      profitAndLoss: money(month?.profitAndLoss),
+    })} />
     <div className="grid items-start gap-5 xl:grid-cols-12">
       <div className="grid min-w-0 content-start gap-5 xl:col-span-7">
       <DashboardSection className="dashboard-reveal dashboard-reveal-delay-1" title={t("needsAttention")}>
@@ -111,7 +116,7 @@ async function AttentionProjects({ dashboard }: { dashboard: AdminDashboard }) {
 async function MyTasks({ dashboard, operations }: { dashboard: AdminDashboard; operations: DashboardOperations | null }) {
   const t = await getTranslations("Dashboard");
   const items = selectAdminMyWork(dashboard.myTasks, operations?.office.myAssignments ?? [], dashboard.today);
-  return <DashboardSection className="dashboard-reveal dashboard-reveal-delay-3" title={t("myTasks")} description={t("myTasksDescription")}><OperationalSurface className="p-1.5">{items.length ? <BoundedDashboardList><DashboardTaskList currentUserId={dashboard.profile.id} tasks={dashboard.myTasks} adminItems={items} today={dashboard.today} /></BoundedDashboardList> : <EmptyState compact className="border-0 bg-transparent" title={t("emptyMyTasks")} />}</OperationalSurface></DashboardSection>;
+  return <DashboardSection className="dashboard-reveal dashboard-reveal-delay-3" title={t("myTasks")} description={t("myTasksDescription")}><OperationalSurface className="p-1.5">{items.length ? <BoundedDashboardList><DashboardTaskList currentUserId={dashboard.profile.id} tasks={dashboard.myTasks} items={items} today={dashboard.today} /></BoundedDashboardList> : <EmptyState compact className="border-0 bg-transparent" title={t("emptyMyTasks")} />}</OperationalSurface></DashboardSection>;
 }
 
 async function Availability({ absences }: { absences: DashboardAbsence[] }) {

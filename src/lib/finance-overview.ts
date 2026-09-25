@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { forecastFxSchema, forecastOptionsSchema, forecastReportSchema } from "./finance-forecast";
+import { projectMoneyText } from "./finance-project-plan";
 
 const money = z.string().regex(/^-?\d+(?:\.\d+)?$/);
 const point = z.object({ date: z.iso.date(), amount: money });
@@ -15,6 +16,28 @@ export const financeOverviewSchema = z.object({
   requiredCurrencies: z.array(z.string()),
 });
 export type FinanceOverview = z.infer<typeof financeOverviewSchema>;
+
+export function financeDashboardMonthSummary(data: {
+  forecast: Pick<FinanceOverview["forecast"], "asOf" | "currency"> & { items: Array<Pick<FinanceOverview["forecast"]["items"][number], "direction" | "nature" | "date" | "reportingAmount">> };
+  flows: FinanceOverview["flows"];
+}) {
+  const month = data.forecast.asOf.slice(0, 7);
+  const amounts = [...data.forecast.items.map((item) => item.reportingAmount), ...data.flows.map((flow) => flow.amount)];
+  const digits = Math.max(4, ...amounts.map((value) => value?.split(".")[1]?.length ?? 0));
+  const scale = BigInt(10) ** BigInt(digits);
+  const units = (value: string) => {
+    const negative = value.startsWith("-");
+    const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".");
+    const amount = BigInt(whole) * scale + BigInt(fraction.padEnd(digits, "0") || "0");
+    return negative ? -amount : amount;
+  };
+  const inflows = data.forecast.items.filter((item) => item.direction === "incoming" && item.nature === "operating" && item.date?.slice(0, 7) === month);
+  const expectedInflow = inflows.some((item) => item.reportingAmount === null) ? null
+    : projectMoneyText(inflows.reduce((sum, item) => sum + units(item.reportingAmount ?? "0"), BigInt(0)), digits);
+  const profit = data.flows.filter((flow) => flow.month.slice(0, 7) === month && flow.nature === "operating")
+    .reduce((sum, flow) => sum + (flow.direction === "incoming" ? units(flow.amount) : -units(flow.amount)), BigInt(0));
+  return { currency: data.forecast.currency, expectedInflow, profitAndLoss: projectMoneyText(profit, digits) };
+}
 
 // Crop canonical daily closing points for display; carry the last balance to the
 // window edge without recalculating any cash or changing expected-item timing.
