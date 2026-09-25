@@ -11,7 +11,7 @@ export const messageScopes = {
   shell: ["Navigation", "Notifications", "CitySearch"],
   dashboard: ["Dashboard", "OfficeAssignments", ...taskMessages],
   projects: ["Projects", "ProjectForm", "ProjectTypes", "ProjectWorkspace", "Workspace", "StageConfiguration", "BoardTaskCard", "ProjectTemplates", "Team", "Calendar", ...taskMessages],
-  tasks: taskMessages,
+  tasks: ["OfficeAssignments", ...taskMessages],
   calendar: ["Calendar", "TimeOff", "Status", "Priority"],
   crm: ["Crm", "ProjectForm", "ProjectTypes", "Priority", "Roles"],
   finance: ["Finance"],

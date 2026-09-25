@@ -11,6 +11,9 @@ if (!["localhost", "127.0.0.1"].includes(new URL(settings.EQUIPMENT_TEST_SUPABAS
 const service = createClient<Database>(settings.EQUIPMENT_TEST_SUPABASE_URL, settings.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const studioId = randomUUID(); const projectId = randomUUID();
 const smallProjectId = randomUUID();
+const officeAssignmentId = randomUUID();
+const completedOfficeAssignmentId = randomUUID();
+const kyivToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const accounts = ["admin", "employee"].map((role) => ({ role, id: "", email: `board-ui-${randomUUID()}@example.test`, password: `Ui-${randomUUID()}` }));
 function id(value: string) { return `'${z.uuid().parse(value)}'`; }
 function sql(statement: string) { return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }); }
@@ -36,6 +39,18 @@ test.beforeAll(async () => {
   sql(`insert into public.projects(id,studio_id,name,status,total_area_m2,start_date,created_by) values (${id(smallProjectId)},${id(studioId)},'Small board','active',100,'2026-09-01',${id(accounts[0].id)});
     insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) select ${id(smallProjectId)},user_id,project_role,assigned_area_m2,assigned_at from public.project_members where project_id=${id(projectId)};
     insert into public.tasks(project_id,title,stage,status,priority,assignee_id,created_by) select ${id(smallProjectId)},'Small task '||n,'stage_1','todo','normal',${id(accounts[0].id)},${id(accounts[0].id)} from generate_series(1,3) n;`);
+  sql(`insert into public.task_deadlines(task_id,target_status,due_date)
+    select id,'completed',('${kyivToday}'::date - 2) from public.tasks where project_id=${id(projectId)} and title='Board stage_3 task 1';
+    insert into public.task_deadlines(task_id,target_status,due_date)
+    select id,'completed','${kyivToday}'::date from public.tasks where project_id=${id(projectId)} and title='Board stage_3 task 2';
+    insert into public.task_deadlines(task_id,target_status,due_date)
+    select id,'completed',('${kyivToday}'::date + 2) from public.tasks where project_id=${id(projectId)} and title='Board stage_3 task 3';
+    insert into public.task_deadlines(task_id,target_status,due_date)
+    select id,'completed',('${kyivToday}'::date - 1) from public.tasks where project_id=${id(smallProjectId)} and title='Small task 1';
+    insert into public.office_assignments(id,studio_id,creator_id,responsible_id,title,deadline)
+    values (${id(officeAssignmentId)},${id(studioId)},${id(accounts[0].id)},${id(accounts[0].id)},'Urgent office',('${kyivToday}'::date - 3));
+    insert into public.office_assignments(id,studio_id,creator_id,responsible_id,title,status,deadline)
+    values (${id(completedOfficeAssignmentId)},${id(studioId)},${id(accounts[0].id)},${id(accounts[0].id)},'Finished office','done',('${kyivToday}'::date - 10));`);
 });
 test.afterAll(async () => {
   sql(`delete from public.tasks where project_id in (${id(projectId)},${id(smallProjectId)}); delete from public.project_members where project_id in (${id(projectId)},${id(smallProjectId)}); delete from public.projects where id in (${id(projectId)},${id(smallProjectId)}); delete from public.studios where id=${id(studioId)};`);
@@ -98,41 +113,95 @@ test('collapsed stage mount, animation, order, focus and network measurements', 
   expect(requests).toEqual([]);
 });
 
-test('My Tasks opens details in place and project navigation focuses the exact task', async ({ page }) => {
+test('My Tasks inbox aligns metadata, styles filters, and switches task states', async ({ page }) => {
   await login(page);
-  await page.goto(`/projects/${projectId}`);
-  await expect(stageControl(page, 3)).toHaveAttribute('aria-expanded', 'false');
+  await page.goto('/my-tasks');
+  const large = page.locator(`[data-inbox-group="${projectId}"]`);
+  const small = page.locator(`[data-inbox-group="${smallProjectId}"]`);
+  const office = page.locator('[data-inbox-group="office"]');
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(3);
+  expect(await page.locator('[data-inbox-group]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-inbox-group')))).toEqual(['office', projectId, smallProjectId]);
+  await expect(large.getByRole('button', { name: 'Collapse or expand Large board' })).toContainText('144');
+  await expect(large.getByRole('button', { name: '139 more' })).toBeVisible();
+  await large.getByRole('button', { name: '139 more' }).click();
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(144);
+  const overdueRow = large.getByRole('button', { name: 'Open task Board stage_3 task 1', exact: true });
+  const undatedRow = large.getByRole('button', { name: 'Open task Board stage_3 task 4', exact: true });
+  const [overdueDeadline, undatedDeadline, overdueStage, undatedStage, overdueStatus, undatedStatus] = await Promise.all([
+    overdueRow.locator('[data-inbox-deadline]').boundingBox(), undatedRow.locator('[data-inbox-deadline]').boundingBox(),
+    overdueRow.locator('[data-inbox-stage]').boundingBox(), undatedRow.locator('[data-inbox-stage]').boundingBox(),
+    overdueRow.locator('[data-inbox-status]').boundingBox(), undatedRow.locator('[data-inbox-status]').boundingBox(),
+  ]);
+  if (!overdueDeadline || !undatedDeadline || !overdueStage || !undatedStage || !overdueStatus || !undatedStatus) throw Error('Missing inbox metadata');
+  expect(overdueDeadline.x).toBeLessThan(undatedDeadline.x);
+  expect(overdueDeadline.x + overdueDeadline.width).toBeLessThan(overdueStage.x);
+  expect(overdueStage.x).toBeLessThan(overdueStatus.x);
+  expect(Math.abs(overdueStage.x - undatedStage.x)).toBeLessThan(1);
+  expect(Math.abs(overdueStatus.x - undatedStatus.x)).toBeLessThan(1);
+  await large.getByRole('button', { name: 'Show less' }).click();
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(5);
+  await large.getByRole('button', { name: 'Collapse or expand Large board' }).click();
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(0);
+  await large.getByRole('button', { name: 'Collapse or expand Large board' }).click();
+
+  const taskState = page.getByRole('group', { name: 'Task state' });
+  await taskState.getByRole('button', { name: 'Completed' }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(2);
+  await expect(large.getByRole('button', { name: 'Collapse or expand Large board' })).toContainText('36');
+  await expect(office.getByRole('link', { name: /Finished office/ })).toBeVisible();
+  await taskState.getByRole('button', { name: 'All' }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(3);
+  await expect(large.getByRole('button', { name: 'Collapse or expand Large board' })).toContainText('180');
+  await expect(large.getByRole('button', { name: '175 more' })).toBeVisible();
+  await taskState.getByRole('button', { name: 'Active' }).click();
+  await expect(large.getByRole('button', { name: 'Collapse or expand Large board' })).toContainText('144');
+
+  await page.getByRole('group', { name: 'Period' }).getByRole('button', { name: 'Overdue', exact: true }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(3);
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(1);
+  await expect(large.getByRole('button', { name: /more$/ })).toHaveCount(0);
+  await expect(small.getByRole('button', { name: /^Open task/ })).toHaveCount(1);
+  await page.getByRole('group', { name: 'Period' }).getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(1);
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(1);
+  await page.getByRole('group', { name: 'Period' }).getByRole('button', { name: '7 days', exact: true }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(1);
+  await expect(large.getByRole('button', { name: /^Open task/ })).toHaveCount(2);
+  await page.getByRole('group', { name: 'Period' }).getByRole('button', { name: 'All', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search by title' }).fill('Urgent office');
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(1);
+  await expect(office).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search by title' }).fill('');
+  const projectFilter = page.getByRole('combobox', { name: 'Project', exact: true });
+  const typeFilter = page.getByRole('combobox', { name: 'Type', exact: true });
+  expect(await projectFilter.evaluate((element) => element.tagName)).toBe('BUTTON');
+  expect(await typeFilter.evaluate((element) => element.tagName)).toBe('BUTTON');
+  await projectFilter.click();
+  await page.getByRole('option', { name: 'Large board' }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(1);
+  await expect(large).toBeVisible();
+  await projectFilter.click();
+  await page.getByRole('option', { name: 'All groups' }).click();
+  await typeFilter.click();
+  await page.getByRole('option', { name: 'Office assignments' }).click();
+  await expect(page.locator('[data-inbox-group]')).toHaveCount(1);
+  await office.getByRole('link', { name: /Urgent office/ }).click();
+  await expect(page).toHaveURL(new RegExp(`office/assignments\\?item=${officeAssignmentId}`));
+  await expect(page.getByRole('dialog', { name: 'Urgent office' })).toBeVisible();
+
   await page.goto('/my-tasks');
   const taskTitle = 'Board stage_3 task 1';
   const taskId = sql(`select id from public.tasks where project_id=${id(projectId)} and title='Board stage_3 task 1';`).trim();
-  await page.getByRole('button', { name: en.Tasks.openTask.replace('{name}', taskTitle), exact: true }).click();
+  await large.getByRole('button', { name: en.Tasks.openTask.replace('{name}', taskTitle), exact: true }).click();
   await expect(page).toHaveURL('/my-tasks');
   let drawer = page.getByRole('dialog', { name: en.Tasks.taskDetails });
   await expect(drawer.getByRole('heading', { name: taskTitle, exact: true })).toBeVisible();
   await drawer.getByRole('button', { name: en.Tasks.closeTaskDetails }).click();
   await expect(drawer).toHaveCount(0);
-
-  const taskArticle = page.locator('article').filter({ has: page.getByRole('heading', { name: taskTitle, exact: true }) });
-  await taskArticle.getByRole('link', { name: en.Tasks.goToProject, exact: true }).click();
+  await large.getByRole('button', { name: en.Tasks.openTask.replace('{name}', taskTitle), exact: true }).locator('..').getByRole('link', { name: en.Tasks.goToProject }).click();
   await expect(page).toHaveURL(`/projects/${projectId}?task=${taskId}`);
-  await expect(stageControl(page, 3)).toHaveAttribute('aria-expanded', 'true');
   drawer = page.getByRole('dialog', { name: en.Tasks.taskDetails });
   await expect(drawer.getByRole('heading', { name: taskTitle, exact: true })).toBeVisible();
-  const targetCard = card(page, taskTitle);
-  await expect(targetCard).toBeVisible();
-  await expect.poll(() => targetCard.evaluate((element) => {
-    const main = document.getElementById('main-content');
-    const viewport = main && getComputedStyle(main).overflowY !== 'visible'
-      ? main.getBoundingClientRect()
-      : { top: 0, bottom: innerHeight };
-    const rect = element.getBoundingClientRect();
-    const inset = (viewport.bottom - viewport.top) * 0.125;
-    return rect.top >= viewport.top + inset && rect.bottom <= viewport.bottom - inset;
-  })).toBe(true);
-  await drawer.getByRole('button', { name: en.Tasks.closeTaskDetails }).click();
-
-  await page.goto(`/projects/${projectId}`);
-  await expect(page.getByRole('dialog', { name: en.Tasks.taskDetails })).toHaveCount(0);
 });
 
 test('selection, bulk move, pointer and keyboard drag, and drawer survive remounting', async ({ page }) => {

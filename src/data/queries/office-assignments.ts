@@ -19,6 +19,21 @@ export type OfficeAssignmentItem = {
   updatedAt: string;
 };
 
+export type MyOfficeAssignment = Pick<OfficeAssignmentItem, "id" | "title" | "deadline" | "status">;
+
+export async function getMyOfficeAssignments(): Promise<MyOfficeAssignment[]> {
+  const membership = await getActiveStudioMembership();
+  if (!membership) throw new Error("An active studio membership is required to load personal office assignments.");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("office_assignments")
+    .select("id, title, deadline, status")
+    .eq("studio_id", membership.studio_id)
+    .eq("responsible_id", membership.authenticatedUserId)
+    .in("status", ["assigned", "in_progress", "done"]);
+  if (error) throw new Error("Unable to load personal office assignments.", { cause: error });
+  return data ?? [];
+}
+
 type AssignmentRow = {
   id: string; studio_id: string; title: string; description: string | null;
   priority: OfficeAssignmentPriority; deadline: string | null; status: OfficeAssignmentStatus;

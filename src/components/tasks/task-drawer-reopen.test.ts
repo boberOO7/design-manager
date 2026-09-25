@@ -34,8 +34,8 @@ describe("task drawer reopen state", () => {
     ]);
 
     expect(myTasks).toContain("<TaskDetailsDrawer");
-    expect(myTasks).toContain('onClick={() => openTaskDrawer(task.id)}');
-    expect(myTasks).toContain('href={`/projects/${task.project_id}?task=${task.id}`}');
+    expect(myTasks).toContain('onClick={() => openTaskDrawer(item.task.id)}');
+    expect(myTasks).toContain('href={`/projects/${item.task.project_id}?task=${item.task.id}`}');
     expect(myTasks).toContain('aria-label={t("goToProject")}');
     expect(myTasks).toContain("onClick={(event) => event.stopPropagation()}");
     expect(projectBoard).toContain("const task = localTasks.find((item) => item.id === initialTaskId)");

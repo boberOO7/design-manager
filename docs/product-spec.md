@@ -38,7 +38,7 @@ person to that project.
 | --- | --- |
 | Dashboard | Role-specific operational summary: studio attention and workload for administrators; personal priorities and deadlines for employees. |
 | Projects | Active project portfolio, project health, lifecycle, project details, team membership, task board, and activity history. |
-| My Tasks | Personal assigned and collaborative work across accessible projects. |
+| My Tasks | Personal assigned and collaborative project tasks plus Office assignments grouped as a work inbox. |
 | Calendar | Month, week, and agenda views combining studio events, availability, project deadlines, and task milestone deadlines. |
 | Office | Internal work outside project production: submissions and standalone office assignments. |
 | Team | Active and former studio members, profiles, invitations, and membership lifecycle. |

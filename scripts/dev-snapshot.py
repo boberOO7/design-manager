@@ -18,7 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / ".local/prod-snapshot"
 MANIFEST = CACHE / "current.json"
-DEV_EMAIL = "dev@studioflow.local"
+ADMIN_EMAIL = "admin@studioflow.local"
+EMPLOYEE_EMAIL = "employee@studioflow.local"
 EXCLUDED = (
     "google_calendar_server_credentials",
     "google_calendar_connections",
@@ -171,11 +172,13 @@ def copy_blocks(path):
 
 
 def identities(path):
-    profile_ids = set()
-    active_profiles = set()
-    admins = []
+    profiles = {}
+    memberships = []
+    projects = {}
+    project_members = set()
+    tasks = []
     for table, fields, line, is_row in copy_blocks(path):
-        if not is_row or table not in ("profiles", "studio_members"):
+        if not is_row or table not in ("profiles", "studio_members", "projects", "project_members", "tasks"):
             continue
         values = line.rstrip("\n").split("\t")
         if len(values) != len(fields):
@@ -184,15 +187,38 @@ def identities(path):
         if table == "profiles":
             if not row["id"] or not UUID.fullmatch(row["id"]):
                 raise RuntimeError("Invalid production profile identifier")
-            profile_ids.add(row["id"])
-            if row["is_active"] == "t":
-                active_profiles.add(row["id"])
-        elif row["system_role"] == "admin" and row["is_active"] == "t":
-            admins.append((row["studio_id"], row["user_id"]))
-    selected = next((user for _, user in sorted(admins) if user in active_profiles), None)
-    if not selected or not profile_ids:
+            profiles[row["id"]] = row
+        elif table == "studio_members" and row["is_active"] == "t":
+            memberships.append(row)
+        elif table == "projects":
+            projects[row["id"]] = row
+        elif table == "project_members" and row["is_active"] == "t":
+            project_members.add((row["project_id"], row["user_id"]))
+        elif table == "tasks" and row["status"] not in ("completed", "cancelled"):
+            tasks.append(row)
+    active_profiles = {user_id for user_id, row in profiles.items() if row["is_active"] == "t"}
+    admin_id = next((member["user_id"] for member in sorted(memberships, key=lambda member: (member["studio_id"], member["user_id"]))
+                     if member["system_role"] == "admin" and member["user_id"] in active_profiles
+                     and profiles[member["user_id"]]["system_role"] == "admin"), None)
+    if not admin_id:
         raise RuntimeError("Production dump has no active studio administrator to use for local login")
-    return selected
+    counts = {}
+    for task in tasks:
+        user_id = task["assignee_id"]
+        project = projects.get(task["project_id"])
+        if (user_id and project and project["status"] in ("planned", "active")
+                and project["archived_at"] is None
+                and (task["project_id"], user_id) in project_members):
+            key = (project["studio_id"], user_id)
+            counts[key] = counts.get(key, 0) + 1
+    employees = [(counts.get((member["studio_id"], member["user_id"]), 0), member["user_id"])
+                 for member in memberships if member["system_role"] == "employee"
+                 and member["user_id"] in active_profiles
+                 and profiles[member["user_id"]]["system_role"] == "employee"]
+    employee_count, employee_id = min(employees, key=lambda item: (-item[0], item[1])) if employees else (0, None)
+    if not employee_id or employee_count == 0:
+        raise RuntimeError("Production dump has no active employee with assigned active tasks")
+    return admin_id, employee_id, employee_count
 
 
 def redact_secret_values(value):
@@ -261,21 +287,21 @@ def sanitize(raw, target, schema):
     return hashlib.sha256(data.encode()).hexdigest()
 
 
-def auth_sql(snapshot, dev_id, password):
+def auth_sql(snapshot, admin_id, employee_id, password):
     rows = []
     for table, fields, line, is_row in copy_blocks(snapshot):
         if not is_row or table != "profiles":
             continue
         values = dict(zip(fields, (unescape(value) for value in line.rstrip("\n").split("\t"))))
         user_id = values["id"]
-        is_dev = user_id == dev_id
-        email = f"'{DEV_EMAIL}'" if is_dev else "NULL"
-        hashed = f"extensions.crypt('{password}', extensions.gen_salt('bf'))" if is_dev else "NULL"
-        confirmed = "now()" if is_dev else "NULL"
-        app_meta = "'{\"provider\":\"email\",\"providers\":[\"email\"]}'::jsonb" if is_dev else "'{}'::jsonb"
+        email = ADMIN_EMAIL if user_id == admin_id else EMPLOYEE_EMAIL if user_id == employee_id else None
+        email_sql = f"'{email}'" if email else "NULL"
+        hashed = f"extensions.crypt('{password}', extensions.gen_salt('bf'))" if email else "NULL"
+        confirmed = "now()" if email else "NULL"
+        app_meta = "'{\"provider\":\"email\",\"providers\":[\"email\"]}'::jsonb" if email else "'{}'::jsonb"
         rows.append(
             f"('00000000-0000-0000-0000-000000000000','{user_id}',"
-            f"'authenticated','authenticated',{email},{hashed},{confirmed},"
+            f"'authenticated','authenticated',{email_sql},{hashed},{confirmed},"
             f"'','','','','','','','',{app_meta},'{{}}'::jsonb,now(),now())"
         )
     return (
@@ -285,7 +311,7 @@ def auth_sql(snapshot, dev_id, password):
         "raw_app_meta_data,raw_user_meta_data,created_at,updated_at) VALUES\n"
         + ",\n".join(rows) + ";\n"
         + "INSERT INTO auth.identities (provider_id,user_id,identity_data,provider,created_at,updated_at) "
-        + f"SELECT id::text,id,jsonb_build_object('sub',id::text,'email',email,'email_verified',false,'phone_verified',false),'email',now(),now() FROM auth.users WHERE id='{dev_id}';\n"
+        + f"SELECT id::text,id,jsonb_build_object('sub',id::text,'email',email,'email_verified',false,'phone_verified',false),'email',now(),now() FROM auth.users WHERE id IN ('{admin_id}','{employee_id}');\n"
     )
 
 
@@ -311,28 +337,35 @@ END $$;
 """
 
 
-def restore(db_url, api_url, anon_key, snapshot, dev_id, password):
+def restore(db_url, api_url, anon_key, snapshot, admin_id, employee_id, password):
     auth_file = CACHE / ".auth-restore.sql"
     verify_file = CACHE / ".verify-restore.sql"
     try:
-        auth_file.write_text(auth_sql(snapshot, dev_id, password), encoding="utf-8")
+        auth_file.write_text(auth_sql(snapshot, admin_id, employee_id, password), encoding="utf-8")
         verify_file.write_text(VERIFY_SQL, encoding="utf-8")
         os.chmod(auth_file, 0o600)
         command(["pnpm", "exec", "supabase", "db", "reset", "--local", "--no-seed", "--yes"])
         command(["psql", db_url, "-X", "-v", "ON_ERROR_STOP=1", "-1", "-f", str(auth_file), "-f", str(snapshot), "-f", str(verify_file)])
-        payload = json.dumps({"email": DEV_EMAIL, "password": password}).encode()
-        request = urllib.request.Request(api_url + "/auth/v1/token?grant_type=password", data=payload,
-                                         headers={"apikey": anon_key, "Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=15) as response:
-            user = json.load(response)["user"]
-        if user["id"] != dev_id:
-            raise RuntimeError("Local Auth signed in the wrong profile")
-        check = command(["psql", db_url, "-XAt", "-c", f"SELECT count(*) FROM public.studio_members WHERE user_id='{dev_id}' AND system_role='admin' AND is_active"])
-        if check.strip() == "0":
-            raise RuntimeError("Local dev account has no active admin membership")
+        for email, user_id, role in ((ADMIN_EMAIL, admin_id, "admin"), (EMPLOYEE_EMAIL, employee_id, "employee")):
+            payload = json.dumps({"email": email, "password": password}).encode()
+            request = urllib.request.Request(api_url + "/auth/v1/token?grant_type=password", data=payload,
+                                             headers={"apikey": anon_key, "Content-Type": "application/json"})
+            with urllib.request.urlopen(request, timeout=15) as response:
+                user = json.load(response)["user"]
+            if user["id"] != user_id:
+                raise RuntimeError(f"Local Auth signed {email} in as the wrong profile")
+            check = command(["psql", db_url, "-XAt", "-c", f"SELECT count(*) FROM public.studio_members WHERE user_id='{user_id}' AND system_role='{role}' AND is_active"])
+            if check.strip() != "1":
+                raise RuntimeError(f"Local {role} account has no matching active membership")
     finally:
         auth_file.unlink(missing_ok=True)
         verify_file.unlink(missing_ok=True)
+
+
+def print_personas(password, employee_count):
+    print(f"Local dev personas (shared password: {password}):")
+    print(f"  {ADMIN_EMAIL} — admin")
+    print(f"  {EMPLOYEE_EMAIL} — employee ({employee_count} assigned active tasks)")
 
 
 def refresh():
@@ -346,19 +379,20 @@ def refresh():
         # An unnamed file disappears even if the process is interrupted.
         with tempfile.TemporaryFile(mode="w+t", encoding="utf-8", dir=CACHE) as raw:
             remote_dump(raw)
-            dev_id = identities(raw)
+            admin_id, employee_id, employee_count = identities(raw)
             digest = sanitize(raw, sanitized, schema)
         os.chmod(sanitized, 0o600)
         password = secrets.token_urlsafe(18)
-        restore(db_url, api_url, anon_key, sanitized, dev_id, password)
+        restore(db_url, api_url, anon_key, sanitized, admin_id, employee_id, password)
         previous = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else None
         staged = CACHE / ".current.json.tmp"
-        staged.write_text(json.dumps({"file": name, "sha256": digest, "dev_id": dev_id, "password": password}) + "\n")
+        staged.write_text(json.dumps({"file": name, "sha256": digest, "password": password}) + "\n")
         os.chmod(staged, 0o600)
         staged.replace(MANIFEST)
         if previous:
             (CACHE / previous["file"]).unlink(missing_ok=True)
-        print(f"Sanitized snapshot saved. Local login: {DEV_EMAIL} / {password}")
+        print("Sanitized snapshot saved.")
+        print_personas(password, employee_count)
     except Exception:
         sanitized.unlink(missing_ok=True)
         raise
@@ -372,8 +406,10 @@ def reset():
     snapshot = CACHE / saved["file"]
     if not snapshot.is_file() or hashlib.sha256(snapshot.read_bytes()).hexdigest() != saved["sha256"]:
         raise RuntimeError("Cached snapshot is missing or changed; refresh it before resetting")
-    restore(db_url, api_url, anon_key, snapshot, saved["dev_id"], saved["password"])
-    print(f"Restored cached snapshot. Local login: {DEV_EMAIL} / {saved['password']}")
+    admin_id, employee_id, employee_count = identities(snapshot)
+    restore(db_url, api_url, anon_key, snapshot, admin_id, employee_id, saved["password"])
+    print("Restored cached snapshot.")
+    print_personas(saved["password"], employee_count)
 
 
 def self_test():
@@ -383,12 +419,22 @@ def self_test():
     admin_id = "11111111-1111-4111-8111-111111111111"
     member_id = "22222222-2222-4222-8222-222222222222"
     studio_id = "33333333-3333-4333-8333-333333333333"
+    other_id = "44444444-4444-4444-8444-444444444444"
     rows = [
-        ("profiles", {"id": admin_id, "full_name": "Olena Коваль", "email": "olena@example.com", "job_title": "Lead Architect", "avatar_url": "https://production.example/storage/avatar.jpg", "is_active": "t"}),
-        ("profiles", {"id": member_id, "full_name": "Ivan Petrenko", "email": "ivan@example.com", "job_title": "Designer", "avatar_url": "user/avatar.jpg", "is_active": "t"}),
+        ("profiles", {"id": admin_id, "full_name": "Olena Коваль", "email": "olena@example.com", "job_title": "Lead Architect", "avatar_url": "https://production.example/storage/avatar.jpg", "system_role": "admin", "is_active": "t"}),
+        ("profiles", {"id": member_id, "full_name": "Ivan Petrenko", "email": "ivan@example.com", "job_title": "Designer", "avatar_url": "user/avatar.jpg", "system_role": "employee", "is_active": "t"}),
+        ("profiles", {"id": other_id, "full_name": "Other Employee", "email": "other@example.com", "job_title": "Designer", "avatar_url": None, "system_role": "employee", "is_active": "t"}),
         ("studio_members", {"studio_id": studio_id, "user_id": admin_id, "system_role": "admin", "is_active": "t"}),
-        ("projects", {"id": studio_id, "name": "Kyiv family apartment", "description": "Warm oak and stone", "client_name": "Family K"}),
-        ("tasks", {"id": studio_id, "title": "Kitchen lighting plan", "description": "Pendant over island\nTrack by window", "status": "in_progress"}),
+        ("studio_members", {"studio_id": studio_id, "user_id": member_id, "system_role": "employee", "is_active": "t"}),
+        ("studio_members", {"studio_id": studio_id, "user_id": other_id, "system_role": "employee", "is_active": "t"}),
+        ("project_members", {"project_id": studio_id, "user_id": member_id, "is_active": "t"}),
+        ("project_members", {"project_id": studio_id, "user_id": other_id, "is_active": "t"}),
+        ("projects", {"id": studio_id, "name": "Kyiv family apartment", "description": "Warm oak and stone", "client_name": "Family K", "studio_id": studio_id, "status": "active", "archived_at": None}),
+        ("tasks", {"id": studio_id, "title": "Kitchen lighting plan", "description": "Pendant over island\nTrack by window", "status": "in_progress", "project_id": studio_id, "assignee_id": member_id}),
+        ("tasks", {"id": other_id, "title": "Finish lighting plan", "status": "todo", "project_id": studio_id, "assignee_id": member_id}),
+        ("tasks", {"id": admin_id, "title": "Review samples", "status": "todo", "project_id": studio_id, "assignee_id": other_id}),
+        ("tasks", {"id": "55555555-5555-4555-8555-555555555555", "title": "Old sample task", "status": "completed", "project_id": studio_id, "assignee_id": other_id}),
+        ("tasks", {"id": "66666666-6666-4666-8666-666666666666", "title": "Cancelled sample task", "status": "cancelled", "project_id": studio_id, "assignee_id": other_id}),
         ("office_assignments", {"id": studio_id, "title": "Prepare samples", "description": "Bring oak and stone"}),
         ("equipment", {"id": studio_id, "display_name": "Rendering workstation", "serial_number": "ABC-123"}),
         ("finance_accounts", {"id": studio_id, "name": "Operating account", "opening_balance": "12500.00"}),
@@ -403,7 +449,7 @@ def self_test():
             for table, row in rows:
                 output.write(f'COPY "public"."{table}" (' + ", ".join(f'"{field}"' for field in row) + ") FROM stdin;\n")
                 output.write("\t".join(escape(value) for value in row.values()) + "\n\\.\n")
-        assert identities(raw) == admin_id
+        assert identities(raw) == (admin_id, member_id, 2)
         sanitize(raw, safe, schema)
         preserved = {}
         for table, fields, line, is_row in copy_blocks(safe):
@@ -414,13 +460,14 @@ def self_test():
                 continue
             assert row in preserved[table], f"Ordinary {table} data changed"
         assert all(row["avatar_url"] is None for row in preserved["profiles"])
-        assert [row["id"] for row in preserved["profiles"]] == [admin_id, member_id]
+        assert [row["id"] for row in preserved["profiles"]] == [admin_id, member_id, other_id]
         metadata = json.loads(preserved["notifications"][0]["metadata"])
         assert metadata == {"leadName": "Family K", "contactEmail": "client@example.com", "access_token": None}
-        auth = auth_sql(safe, admin_id, "local-test-password")
-        assert "olena@example.com" not in auth and "ivan@example.com" not in auth
-        assert auth.count("extensions.crypt(") == 1 and auth.count("INSERT INTO auth.identities") == 1
-        assert f"'{member_id}','authenticated','authenticated',NULL,NULL,NULL" in auth
+        auth = auth_sql(safe, admin_id, member_id, "local-test-password")
+        assert all(email not in auth for email in ("olena@example.com", "ivan@example.com", "other@example.com"))
+        assert auth.count("extensions.crypt(") == 2 and auth.count("INSERT INTO auth.identities") == 1
+        assert ADMIN_EMAIL in auth and EMPLOYEE_EMAIL in auth
+        assert f"'{other_id}','authenticated','authenticated',NULL,NULL,NULL" in auth
         with raw.open("a") as output:
             output.write('COPY "public"."google_calendar_server_credentials" ("encrypted_refresh_token") FROM stdin;\nsecret\n\\.\n')
         try:

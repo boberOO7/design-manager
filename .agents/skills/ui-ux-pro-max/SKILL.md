@@ -156,6 +156,16 @@ Comprehensive design guide for web, mobile, and desktop applications. Contains 6
 - `orientation-support` - Keep layout readable and operable in landscape mode
 - `content-priority` - Show core content first on mobile; fold or hide secondary content
 - `visual-hierarchy` - Establish hierarchy via size, spacing, contrast — not color alone
+- `content-driven-sizing` - Prefer intrinsic/content-driven width and height for cards, panels, forms, and settings surfaces.
+- `no-accidental-stretch` - Do not stretch sparse cards to match sibling height unless equal height has a deliberate visual or functional purpose.
+- `space-utilization` - Avoid layouts where content occupies only a small corner while most of the component remains empty without purpose.
+- `control-width-by-content` - Size short numeric inputs, compact selectors, and small controls according to expected content instead of defaulting to full width.
+- `horizontal-before-vertical` - Before stacking related controls vertically on desktop, check whether they fit naturally in the available horizontal space.
+
+Avoid:
+- `h-full`, `min-height`, `flex: 1`, grid stretch, or equal-height cards that create large unused regions;
+- oversized full-width inputs for short values;
+- vertical stacking that leaves most horizontal space unused.
 
 ### 6. Typography & Color (MEDIUM)
 
@@ -350,9 +360,27 @@ Extract key information from user request:
   (iOS/Android/React Native/Flutter) and do not apply to desktop-web work —
   safe areas, haptics, bottom nav and Dynamic Type are mobile-only concerns.
 
-### Step 2: Generate Design System (REQUIRED)
+### Step 2: Generate Design System (Conditional)
 
-**Always start with `--design-system`** to get comprehensive recommendations with reasoning:
+Use `--design-system` when the task requires establishing or reconsidering the overall visual direction.
+
+Required for:
+- new pages or substantial new UI surfaces;
+- substantial redesigns;
+- a new visual direction or style;
+- broad page-level layout decisions;
+- establishing a new UI system when no reliable existing pattern exists.
+
+Skip for:
+- local UI bugs;
+- spacing/alignment fixes;
+- small layout regressions;
+- existing-component interaction fixes;
+- small visual polish tasks where the current product language should be preserved.
+
+For local fixes, inspect the existing implementation and rendered UI first. Use only the relevant Quick Reference/domain rules instead of generating a new design system.
+
+When an existing project already has an established visual language, preserve it unless the task explicitly requests a redesign.
 
 ```bash
 python3 skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
@@ -574,6 +602,17 @@ python3 skills/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system 
 - Verify behavior with **reduced-motion** enabled and **Dynamic Type** at largest size
 - Check dark mode contrast independently (don't assume light mode values work)
 - Confirm all touch targets ≥44pt and no content hidden behind safe areas
+
+## General Layout Quality Checks
+
+Applies to web and app UI.
+
+- [ ] Component height is driven by content unless deliberate fixed/stretched sizing is required.
+- [ ] No card/panel contains a large unexplained empty region.
+- [ ] Compact controls are not unnecessarily full-width.
+- [ ] Desktop layouts use available horizontal space before introducing additional vertical height.
+- [ ] Sparse sibling cards are not stretched to equal height without a clear reason.
+- [ ] Grid/flex stretching (`h-full`, `min-height`, `flex: 1`, `align-items: stretch`) is not creating accidental empty space.
 
 ---
 

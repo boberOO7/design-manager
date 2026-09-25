@@ -88,6 +88,18 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
   return data ? (await attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, [normalizeProjectTask(data)])))[0] ?? null : null;
 }
 
+export async function getMyTaskStageNames(projectIds: string[]): Promise<Record<string, string>> {
+  if (!projectIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("project_task_stage_columns")
+    .select("project_id, stage, display_name")
+    .in("project_id", projectIds);
+  if (error) throw new Error("Unable to load personal task stage names.", { cause: error });
+  const names: Record<string, string> = {};
+  for (const row of data ?? []) if (row.display_name) names[`${row.project_id}:${row.stage}`] = row.display_name;
+  return names;
+}
+
 export async function getMyTasks(): Promise<MyTask[]> {
   const profile = await getCurrentUserProfile();
   if (!profile || !profile.is_active) throw new Error("An active authenticated profile is required.");

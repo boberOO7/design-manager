@@ -72,7 +72,9 @@ command checks the linked project and role permissions, reads through a
 read-only transaction, preserves application data, neutralizes credential/token
 fields and excludes Google Calendar connections, then rebuilds and restores
 **only the local database**. Production users cannot log in locally; it prints
-a generated password for `dev@studioflow.local`, an active administrator backed by a preserved profile ID.
+a generated shared password for `admin@studioflow.local` and `employee@studioflow.local`.
+Both local Auth identities use existing restored profile IDs. The employee is the
+active non-admin with the most assigned open tasks on operational projects.
 Keep `.env.local` pointed at the local Supabase URL and keys.
 
 Run `pnpm dev:reset` to rebuild from migrations and restore the cached sanitized
