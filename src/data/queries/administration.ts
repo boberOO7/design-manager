@@ -41,5 +41,5 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const policy = policyResult.data;
   if (!policy || !["carry_all", "capped", "none"].includes(policy.carry_rule)) throw new Error("Unable to load vacation policy.");
   const vacationPolicy: VacationPolicy = { annualDays: policy.annual_days, carryRule: policy.carry_rule === "capped" ? "capped" : policy.carry_rule === "none" ? "none" : "carry_all", carryCapDays: policy.carry_cap_days };
-  return { studioId: membership.studio_id, vacationPolicy, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
+  return { studioId: membership.studio_id, vacationPolicy, vacationVisibleToEmployees: membership.vacationVisibleToEmployees, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
 }

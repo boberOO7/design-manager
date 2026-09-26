@@ -13,6 +13,7 @@ export type ActiveStudioMembership = Omit<Pick<
 >, "system_role"> & {
   authenticatedUserId: string;
   leaderboardVisibleToEmployees: boolean;
+  vacationVisibleToEmployees: boolean;
   system_role: SystemRole;
   studioName: string;
 };
@@ -26,7 +27,7 @@ export type ActiveStudioMembershipResolution =
 
 type ActiveStudioMembershipQuery = Pick<StudioMembershipRow, "joined_at" | "studio_id" | "system_role"> & {
   profile: Pick<Database["public"]["Tables"]["profiles"]["Row"], "is_active">;
-  studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "leaderboard_visible_to_employees" | "name">;
+  studio: Pick<Database["public"]["Tables"]["studios"]["Row"], "leaderboard_visible_to_employees" | "vacation_visible_to_employees" | "name">;
 };
 
 export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudioMembershipResolution> => {
@@ -44,7 +45,7 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
 
   const { data, error } = await supabase
     .from("studio_members")
-    .select("studio_id, system_role, joined_at, profile:profiles!studio_members_user_id_fkey!inner(is_active), studio:studios!inner(name, leaderboard_visible_to_employees)")
+    .select("studio_id, system_role, joined_at, profile:profiles!studio_members_user_id_fkey!inner(is_active), studio:studios!inner(name, leaderboard_visible_to_employees, vacation_visible_to_employees)")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .eq("profile.is_active", true)
@@ -76,6 +77,7 @@ export const resolveActiveStudioMembership = cache(async (): Promise<ActiveStudi
       authenticatedUserId: user.id,
       joined_at: data[0].joined_at,
       leaderboardVisibleToEmployees: data[0].studio.leaderboard_visible_to_employees,
+      vacationVisibleToEmployees: data[0].studio.vacation_visible_to_employees,
       studio_id: data[0].studio_id,
       studioName: data[0].studio.name,
       system_role: data[0].system_role,

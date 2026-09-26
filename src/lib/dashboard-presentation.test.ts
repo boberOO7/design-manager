@@ -17,16 +17,20 @@ describe("dashboard selectors", () => {
     const visible = selectPersonalDashboardProductivity(entries, "me", true);
     const hidden = selectPersonalDashboardProductivity(entries, "me", false);
     const base = { inProgress: 2, inReview: 1, overdue: 3, completedThisMonth: 4, vacationBalance: 6, nextAbsence: null };
-    const visibleMetrics = getEmployeeDashboardMetrics({ ...base, productivity: visible }, "uk");
-    const hiddenMetrics = getEmployeeDashboardMetrics({ ...base, productivity: hidden }, "uk");
+    const visibleMetrics = getEmployeeDashboardMetrics({ ...base, productivity: visible }, "uk", true);
+    const hiddenMetrics = getEmployeeDashboardMetrics({ ...base, productivity: hidden }, "uk", false);
     expect(visibleMetrics.map(({ labelKey, value }) => [labelKey, value])).toEqual([
       ["metricInProgress", 2], ["metricInReview", 1], ["metricOverdueTasks", 3],
       ["metricCompletedMonth", 4], ["metricProductivity", "#3 · 86,58 m²"], ["metricVacationBalance", 6],
     ]);
-    expect(hiddenMetrics[4].value).toBe("86,58 m²");
+    expect(hiddenMetrics.map(({ labelKey }) => labelKey)).toEqual(["metricInProgress", "metricInReview", "metricOverdueTasks", "metricCompletedMonth", "metricVacationBalance"]);
+    expect(hiddenMetrics).toHaveLength(5);
+    expect(hiddenMetrics.some((metric) => metric.labelKey === "metricProductivity")).toBe(false);
     expect(JSON.stringify(hidden)).not.toMatch(/rank|placement|"3"/i);
     expect(JSON.stringify(hiddenMetrics)).not.toContain("#3");
-    expect(getEmployeeDashboardMetrics({ ...base, productivity: hidden, vacationBalance: null, nextAbsence: "2026-10-02" }, "en")[5].labelKey).toBe("metricNextAbsence");
+    const hiddenVacation = getEmployeeDashboardMetrics({ ...base, productivity: hidden, vacationBalance: null, nextAbsence: "2026-10-02" }, "en", false);
+    expect(hiddenVacation[4].labelKey).toBe("metricNextAbsence");
+    expect(hiddenVacation.some((metric) => metric.labelKey === "metricVacationBalance")).toBe(false);
   });
 
   it("keeps role boundaries and project links", () => {

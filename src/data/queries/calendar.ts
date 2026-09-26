@@ -261,7 +261,7 @@ export async function getCalendarData({ start, end }: CalendarQueryInput): Promi
 
   return {
     items: deduplicateCalendarItems(items), projects, people,
-    currentUserId: membership.authenticatedUserId, isAdmin,
+    currentUserId: membership.authenticatedUserId, isAdmin, vacationVisibleToEmployees: membership.vacationVisibleToEmployees,
     pendingCount: isAdmin ? items.filter((item) => item.source === "time_off_request_admin" && item.status === "pending").length : 0,
     rangeStart: start, rangeEnd: end,
     today: instantToDateOnly(new Date().toISOString()),

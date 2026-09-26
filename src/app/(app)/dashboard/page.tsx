@@ -34,7 +34,7 @@ async function Employee({ dashboard }: { dashboard: EmployeeDashboard }) {
     ...dashboard.myAssignments.flatMap((assignment): AdminUpcomingItem[] => assignment.deadline && assignment.deadline >= dashboard.today ? [{ key: `assignment:${assignment.id}`, kind: "assignment", date: assignment.deadline, title: assignment.title, context: t("officeAssignment"), href: `/office/assignments?item=${assignment.id}` }] : []),
   ], dashboard.today);
   return <div className="space-y-5">
-    <DashboardOverview metrics={getEmployeeDashboardMetrics(dashboard.metrics, locale)} />
+    <DashboardOverview metrics={getEmployeeDashboardMetrics(dashboard.metrics, locale, dashboard.productivityVisible)} />
     <div className="grid items-start gap-5 xl:grid-cols-12">
       <div className="grid min-w-0 content-start gap-5 xl:col-span-7">
         {dashboard.attention.length ? <DashboardSection title={t("needsAttention")}><OperationalSurface className="p-2"><ul className="flex flex-wrap gap-2">{dashboard.attention.map((item) => {

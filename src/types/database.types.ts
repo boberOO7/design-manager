@@ -4128,6 +4128,7 @@ export type Database = {
           leaderboard_visible_to_employees: boolean
           name: string
           updated_at: string
+          vacation_visible_to_employees: boolean
         }
         Insert: {
           created_at?: string
@@ -4136,6 +4137,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name: string
           updated_at?: string
+          vacation_visible_to_employees?: boolean
         }
         Update: {
           created_at?: string
@@ -4144,6 +4146,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name?: string
           updated_at?: string
+          vacation_visible_to_employees?: boolean
         }
         Relationships: []
       }
@@ -6405,6 +6408,10 @@ export type Database = {
         Returns: undefined
       }
       set_leaderboard_employee_visibility: {
+        Args: { p_studio_id: string; p_visible: boolean }
+        Returns: undefined
+      }
+      set_vacation_employee_visibility: {
         Args: { p_studio_id: string; p_visible: boolean }
         Returns: undefined
       }

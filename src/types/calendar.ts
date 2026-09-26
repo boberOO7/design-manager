@@ -148,6 +148,7 @@ export type CalendarPageData = {
   people: CalendarPerson[];
   currentUserId: string;
   isAdmin: boolean;
+  vacationVisibleToEmployees: boolean;
   pendingCount: number;
   rangeStart: string;
   rangeEnd: string;

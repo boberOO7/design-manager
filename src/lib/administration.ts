@@ -32,6 +32,7 @@ export type VacationPolicy = { annualDays: number; carryRule: "carry_all" | "cap
 export type AdministrationModel = {
   studioId: string;
   vacationPolicy: VacationPolicy;
+  vacationVisibleToEmployees: boolean;
   leaderboardBonusConfig: LeaderboardBonusConfig;
   today: string;
   upcomingEnd: string;

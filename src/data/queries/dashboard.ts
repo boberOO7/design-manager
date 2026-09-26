@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import { getCurrentUserProfile, getMyDashboardProductivity } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
@@ -23,7 +24,7 @@ type DashboardProjectRow = DashboardProject & { total_area_m2: number | null; in
 export type DashboardDeadline = { id: string; kind: "task" | "project"; title: string; dueDate: string; project?: { id: string; name: string } };
 
 export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: string }; asOf: string; today: string; metrics: { activeProjects: number; activeTasks: number; overdueTasks: number }; attentionProjects: ReturnType<typeof getProjectsRequiringAttention>; deadlines: DashboardDeadline[]; workload: ReturnType<typeof getTeamWorkload>; myTasks: DashboardTaskSummary[] };
-export type EmployeeDashboard = { kind: "employee"; profile: { id: string; full_name: string }; today: string; metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: NonNullable<Awaited<ReturnType<typeof getMyDashboardProductivity>>>; vacationBalance: number | null; nextAbsence: string | null }; myTasks: DashboardTaskSummary[]; myAssignments: import("@/lib/dashboard").DashboardOfficeAssignment[]; needsAttention: DashboardTaskSummary[]; attention: ReturnType<typeof selectEmployeeAttentionSummary>; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; deadlines: DashboardDeadline[] };
+export type EmployeeDashboard = { kind: "employee"; productivityVisible: boolean; profile: { id: string; full_name: string }; today: string; metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: NonNullable<Awaited<ReturnType<typeof getMyDashboardProductivity>>>; vacationBalance: number | null; nextAbsence: string | null }; myTasks: DashboardTaskSummary[]; myAssignments: import("@/lib/dashboard").DashboardOfficeAssignment[]; needsAttention: DashboardTaskSummary[]; attention: ReturnType<typeof selectEmployeeAttentionSummary>; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; deadlines: DashboardDeadline[] };
 export type DashboardData = AdminDashboard | EmployeeDashboard;
 
 function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject[], today: string, days = 14, limitCount = 10): DashboardDeadline[] {
@@ -110,7 +111,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const [productivity, assignmentsResult, balanceResult, absencesResult, completedAssigned, completedCollaborating, completedBoth] = await Promise.all([
     getMyDashboardProductivity(),
     supabase.from("office_assignments").select("id,title,deadline,priority,status").eq("studio_id", membership.studio_id).eq("responsible_id", profile.id).overrideTypes<import("@/lib/dashboard").DashboardOfficeAssignment[], { merge: false }>(),
-    supabase.rpc("project_vacation_request", { p_studio_id: membership.studio_id, p_user_id: profile.id, p_start: today, p_end: today }),
+    membership.vacationVisibleToEmployees ? supabase.rpc("project_vacation_request", { p_studio_id: membership.studio_id, p_user_id: profile.id, p_start: today, p_end: today }) : Promise.resolve({ data: null, error: null }),
     supabase.from("time_off_requests").select("start_date").eq("studio_id", membership.studio_id).eq("user_id", profile.id).eq("status", "approved").is("cancelled_at", null).gte("end_date", today).order("start_date").limit(1),
     completedScope().eq("assignee_id", profile.id),
     completedWithCollaboration(),
@@ -123,9 +124,9 @@ export async function getDashboard(): Promise<DashboardData | null> {
 
   const taskByProject = new Map<string, DashboardTaskSummary[]>();
   for (const task of personalTasks) taskByProject.set(task.project_id, [...(taskByProject.get(task.project_id) ?? []), task]);
-  return { kind: "employee", profile, today, metrics: {
+  return { kind: "employee", productivityVisible: canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees }), profile, today, metrics: {
     ...selectEmployeeTaskMetrics(personalTasks, today), completedThisMonth,
-    productivity, vacationBalance: balanceResult.data?.[0]?.available ?? null,
+    productivity, vacationBalance: membership.vacationVisibleToEmployees ? balanceResult.data?.[0]?.available ?? null : null,
     nextAbsence: absencesResult.data?.[0]?.start_date ?? null,
   }, myTasks: sortEmployeeTasks(openPersonalTasks, today), myAssignments,
     needsAttention: getEmployeeTasksNeedingAttention(openPersonalTasks, today).slice(0, 8),

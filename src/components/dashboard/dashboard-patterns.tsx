@@ -13,8 +13,8 @@ const metricToneClasses = {
 export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {
   const t = useTranslations("Dashboard");
   const locale = useLocale();
-  return <Panel className="grid grid-cols-2 overflow-hidden md:grid-cols-3 xl:grid-cols-6">
-    {metrics.map((metric) => <div key={metric.labelKey} className="min-w-0 border-b border-r border-[var(--ui-border)] px-4 py-3.5 last:border-r-0 xl:last:border-b-0">
+  return <Panel className={metrics.length === 5 ? "flex flex-wrap overflow-hidden" : "grid grid-cols-2 overflow-hidden md:grid-cols-3 xl:grid-cols-6"}>
+    {metrics.map((metric) => <div key={metric.labelKey} className={cn("min-w-0 border-b border-r border-[var(--ui-border)] px-4 py-3.5 last:border-r-0 xl:last:border-b-0", metrics.length === 5 && "basis-1/2 grow md:basis-1/3 xl:basis-1/5")}>
       <p className="text-xs font-medium leading-4 text-[var(--ui-text-muted)]">{t(metric.labelKey)}</p>
       <p className={cn("ui-numeric mt-2 break-words text-xl font-semibold tracking-tight", metricToneClasses[metric.tone])}>{typeof metric.value === "number" ? formatNumber(metric.value, locale) : metric.value}</p>
     </div>)}

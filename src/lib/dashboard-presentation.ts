@@ -34,14 +34,14 @@ export function getAdminDashboardMetrics(metrics: { activeProjects: number; acti
   ];
 }
 
-export function getEmployeeDashboardMetrics(metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: { areaM2: number; rank?: number | null }; vacationBalance: number | null; nextAbsence: string | null }, locale: string): DashboardMetric[] {
+export function getEmployeeDashboardMetrics(metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: { areaM2: number; rank?: number | null }; vacationBalance: number | null; nextAbsence: string | null }, locale: string, productivityVisible: boolean): DashboardMetric[] {
   const area = `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(metrics.productivity.areaM2)} m²`;
   return [
     { labelKey: "metricInProgress", value: metrics.inProgress, tone: "neutral" },
     { labelKey: "metricInReview", value: metrics.inReview, tone: "neutral" },
     { labelKey: "metricOverdueTasks", value: metrics.overdue, tone: metrics.overdue ? "danger" : "neutral" },
     { labelKey: "metricCompletedMonth", value: metrics.completedThisMonth, tone: "neutral" },
-    { labelKey: "metricProductivity", value: metrics.productivity.rank == null ? area : `#${metrics.productivity.rank} · ${area}`, tone: "neutral" },
+    ...(productivityVisible ? [{ labelKey: "metricProductivity" as const, value: metrics.productivity.rank == null ? area : `#${metrics.productivity.rank} · ${area}`, tone: "neutral" as const }] : []),
     metrics.vacationBalance !== null
       ? { labelKey: "metricVacationBalance", value: metrics.vacationBalance, tone: "neutral" }
       : { labelKey: "metricNextAbsence", value: metrics.nextAbsence ? formatDate(metrics.nextAbsence, locale) : "—", tone: "neutral" },

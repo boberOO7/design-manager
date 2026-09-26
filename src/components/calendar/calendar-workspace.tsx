@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { Banknote, CakeSlice, CalendarHeart, CalendarOff, CalendarPlus, Check, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, PhoneCall, Plus, Repeat2, RotateCcw, Search, Settings2, Trash2, TreePalm, Cross, UserRoundMinus, Video, X, type LucideIcon } from "lucide-react";
+import { Banknote, CakeSlice, CalendarHeart, CalendarOff, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, PhoneCall, Plus, Repeat2, RotateCcw, Search, Settings2, Trash2, TreePalm, Cross, UserRoundMinus, Video, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectNavigationLink } from "@/components/projects/project-navigation-link";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -87,7 +87,7 @@ function useCalendarItemTypeLabel() {
 
 const monthItemPresentationClassName = "box-border min-w-0 overflow-hidden border-y-0 border-r-0 p-0 text-left text-xs font-medium leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1";
 
-const ABSENCE_ICONS: Partial<Record<TimeOffRequestType, LucideIcon>> = { vacation: TreePalm, sick_leave: Cross };
+const ABSENCE_ICONS: Partial<Record<TimeOffRequestType, LucideIcon>> = { vacation: TreePalm, day_off: CalendarClock, sick_leave: Cross };
 
 const SYSTEM_CALENDAR_CHIP_ICONS: Partial<Record<CalendarItem["source"], LucideIcon>> = {
   birthday: CakeSlice,
@@ -719,7 +719,7 @@ function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: 
   const balanceAsOf = values.startDate < data.today ? data.today : values.startDate;
   const validVacationRange = Boolean(values.startDate && values.endDate && values.endDate >= values.startDate);
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || values.requestType !== "vacation") return;
     const controller = new AbortController();
     setAvailable(null); setProjection(null); setBalanceError(null);
     const params = validVacationRange
@@ -736,7 +736,7 @@ function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: 
       })
       .catch((error: unknown) => { if (!controller.signal.aborted) setBalanceError(error instanceof Error && error.message === "unconfigured" ? "unconfigured" : "load"); });
     return () => controller.abort();
-  }, [isOpen, balanceAsOf, validVacationRange, values.startDate, values.endDate]);
+  }, [isOpen, balanceAsOf, validVacationRange, values.requestType, values.startDate, values.endDate]);
   const requestedDays = values.startDate && values.endDate && values.endDate >= values.startDate
     ? getRequiredDayOffMinutes({ id: "", startDate: values.startDate, endDate: values.endDate, startTime: null, endTime: null, allDay: true }) / 480
     : 0;
@@ -773,7 +773,7 @@ function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: 
     finally { setPending(false); }
   }
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={calendar("requestTimeOffTitle")} eyebrow={t("privateRequest")} onClose={requestClose}><form autoComplete="off" className="space-y-4" aria-busy={pending} onSubmit={(event) => event.preventDefault()}>
-    <Input label={t("requestType")} error={fieldErrors.requestType || (values.requestType === "vacation" && balanceError ? t(balanceError === "unconfigured" ? "balanceUnconfigured" : "balanceUnavailable") : undefined)}><Select value={values.requestType} endAdornment={values.requestType === "vacation" && available !== null ? datesSelected && requestedDays > 0 && projection ? t("vacationProjection", { remaining: projection.remaining }) : t("vacationAvailable", { count: available }) : undefined} onValueChange={(requestType) => updateRequestType(requestType as TimeOffRequestType)}>{getCreatableTimeOffRequestTypes(data.isAdmin ? "admin" : "employee").map((type) => { const Icon = ABSENCE_ICONS[type]; return <SelectItem key={type} value={type} textValue={t(timeOffRequestTypeKey[type])} endAdornment={type === "vacation" && available !== null ? t("vacationAvailable", { count: available }) : undefined}><span className="inline-flex min-w-0 items-center gap-2">{Icon ? <Icon aria-hidden="true" className="size-4 shrink-0 stroke-[1.75]" /> : null}<span className="truncate">{t(timeOffRequestTypeKey[type])}</span></span></SelectItem>; })}</Select></Input>
+    <Input label={t("requestType")} error={fieldErrors.requestType || (values.requestType === "vacation" && balanceError ? t(balanceError === "unconfigured" ? "balanceUnconfigured" : "balanceUnavailable") : undefined)}><Select value={values.requestType} endAdornment={values.requestType === "vacation" && (data.isAdmin || data.vacationVisibleToEmployees) && available !== null ? datesSelected && requestedDays > 0 && projection ? t("vacationProjection", { remaining: projection.remaining }) : t("vacationAvailable", { count: available }) : undefined} onValueChange={(requestType) => updateRequestType(requestType as TimeOffRequestType)}>{getCreatableTimeOffRequestTypes(data.isAdmin ? "admin" : "employee").map((type) => { const Icon = ABSENCE_ICONS[type]; return <SelectItem key={type} value={type} textValue={t(timeOffRequestTypeKey[type])} endAdornment={type === "vacation" && (data.isAdmin || data.vacationVisibleToEmployees) && available !== null ? t("vacationAvailable", { count: available }) : undefined}><span className="inline-flex min-w-0 items-center gap-2">{Icon ? <Icon aria-hidden="true" className="size-4 shrink-0 stroke-[1.75]" /> : null}<span className="truncate">{t(timeOffRequestTypeKey[type])}</span></span></SelectItem>; })}</Select></Input>
     {requestPresentation.supportsPartialDay ? <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.allDay} onChange={(event) => { const allDay = event.target.checked; if (!allDay) setEndDateLinked(true); setValues({ ...values, allDay, endDate: allDay ? values.endDate : values.startDate }); }} />{t("allDay")}</label> : null}
     <div className="grid gap-4 sm:grid-cols-2"><Input label={t("startDate")}><DatePicker locale={locale} value={values.startDate} onValueChange={(startDate) => { setDatesSelected(true); setValues({ ...values, ...updateLinkedStartDate(values, startDate, endDateLinked) }); }} /></Input><Input label={t("endDate")} error={insufficient ? t("insufficientVacation") : fieldErrors.endDate}><DatePicker locale={locale} min={values.startDate} value={values.endDate} disabled={!values.allDay} invalid={Boolean(fieldErrors.endDate) || insufficient} onValueChange={(endDate) => { setDatesSelected(true); setEndDateLinked(false); setValues({ ...values, endDate }); }} /></Input></div>
 

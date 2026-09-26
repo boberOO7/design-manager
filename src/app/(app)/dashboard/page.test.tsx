@@ -21,7 +21,7 @@ it("loads admin-only summaries after resolving the admin dashboard", async () =>
 it("does not request admin summaries for an employee", async () => {
   mocks.administration.mockClear();
   mocks.operations.mockClear();
-  mocks.dashboard.mockResolvedValue({ kind: "employee", today: "2026-09-25", profile: { id: "me" }, metrics: { inProgress: 0, inReview: 0, overdue: 0, completedThisMonth: 0, productivity: { areaM2: 0 }, vacationBalance: null, nextAbsence: null }, myTasks: [], myAssignments: [], needsAttention: [], attention: [], deadlines: [], projects: [] });
+  mocks.dashboard.mockResolvedValue({ kind: "employee", productivityVisible: false, today: "2026-09-25", profile: { id: "me" }, metrics: { inProgress: 0, inReview: 0, overdue: 0, completedThisMonth: 0, productivity: { areaM2: 0 }, vacationBalance: null, nextAbsence: null }, myTasks: [], myAssignments: [], needsAttention: [], attention: [], deadlines: [], projects: [] });
   await DashboardPage();
   expect(mocks.administration).not.toHaveBeenCalled();
   expect(mocks.operations).not.toHaveBeenCalled();
