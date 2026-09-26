@@ -21,9 +21,9 @@ export async function getFinanceData() {
   const supabase = await createClient();
   const [settings, accounts, currencies, balances, categories] = await Promise.all([
     supabase.from("finance_settings").select("*").eq("studio_id", admin.studio_id).maybeSingle(),
-    supabase.from("finance_accounts").select("id,studio_id,name,currency,opening_balance,archived_at,created_at,updated_at,created_by,opening_fx_effective_date,opening_fx_rate::text,opening_fx_source,opening_reporting_amount::text,opening_valued_at,opening_valued_by").eq("studio_id", admin.studio_id).order("created_at").order("id"),
+    supabase.from("finance_accounts").select("id,studio_id,name,currency,account_type,opening_balance,archived_at,created_at,updated_at,created_by,opening_fx_effective_date,opening_fx_rate::text,opening_fx_source,opening_reporting_amount::text,opening_valued_at,opening_valued_by").eq("studio_id", admin.studio_id).order("created_at").order("id"),
     supabase.from("finance_currencies").select("*").order("code"),
-    supabase.from("finance_account_balances").select("id,studio_id,name,currency,opening_balance,archived_at,recorded_balance::text").eq("studio_id", admin.studio_id),
+    supabase.from("finance_account_balances").select("id,studio_id,name,currency,opening_balance,archived_at,recorded_balance::text,ledger_entry_count").eq("studio_id", admin.studio_id),
     supabase.from("finance_categories").select("*").eq("studio_id",admin.studio_id).order("created_at").order("name"),
   ]);
   const error = settings.error ?? accounts.error ?? currencies.error ?? balances.error ?? categories.error;

@@ -5,7 +5,7 @@ import type { FinanceAccount } from "./finance";
 const first = "63000000-0000-4000-8000-000000000020";
 const second = "63000000-0000-4000-8000-000000000021";
 const base = { requestId: first, kind: "incoming", date: "2026-09-02", accountId: first, amount: "12,34", categoryId:first };
-const account = (id: string, currency: string): FinanceAccount => ({ id, currency, name: "Bank", studio_id: first, archived_at: null, created_at: "", updated_at: "", created_by: first, opening_fx_effective_date:null,opening_fx_rate:null,opening_fx_source:null,opening_reporting_amount:null,opening_valued_at:null,opening_valued_by:null,opening_balance: 0 });
+const account = (id: string, currency: string): FinanceAccount => ({ id, currency, account_type: "other", name: "Bank", studio_id: first, archived_at: null, created_at: "", updated_at: "", created_by: first, opening_fx_effective_date:null,opening_fx_rate:null,opening_fx_source:null,opening_reporting_amount:null,opening_valued_at:null,opening_valued_by:null,opening_balance: 0 });
 
 describe("actual movement inputs", () => {
   it("keeps decimal amounts as normalized strings through the RPC boundary", () => {

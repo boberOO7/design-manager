@@ -1102,6 +1102,7 @@ export type Database = {
       }
       finance_accounts: {
         Row: {
+          account_type: string
           archived_at: string | null
           created_at: string
           created_by: string
@@ -1119,6 +1120,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_type?: string
           archived_at?: string | null
           created_at?: string
           created_by: string
@@ -1136,6 +1138,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_type?: string
           archived_at?: string | null
           created_at?: string
           created_by?: string
@@ -4800,6 +4803,7 @@ export type Database = {
           archived_at: string | null
           currency: string | null
           id: string | null
+          ledger_entry_count: number | null
           name: string | null
           opening_balance: number | null
           recorded_balance: number | null
@@ -5858,6 +5862,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_finance_account_with_opening: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       create_finance_employee_bonus: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
@@ -6092,6 +6100,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_finance_account_balance: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       record_finance_expected_payment: {
         Args: {
           p_allocation_amount: number
@@ -6189,6 +6201,7 @@ export type Database = {
       save_finance_account: {
         Args: {
           p_account_id?: string
+          p_account_type?: string
           p_currency: string
           p_name: string
           p_opening_balance: number

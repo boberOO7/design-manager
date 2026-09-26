@@ -16,8 +16,8 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
 ## Foundation and historical boundary
 
 - One `finance_settings` row defines the studio's reporting currency and cutover
-  date. Opening balances represent cash at the **beginning** of that date; they
-  are neither revenue nor expense and are not transaction records.
+  date. Historical setup openings represent cash at the **beginning** of that
+  date; they are neither revenue nor expense and are not transaction records.
 - Setup starts as a draft. Administrators can correct settings and account
   currencies/openings until explicitly finalizing setup. Finalization records
   the actor/date, requires an active account, and cannot be undone through the API.
@@ -27,17 +27,24 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   If legacy future-finalized state is found, preserve its history and wait until
   cutover before using current-cash reports. An incorrectly recorded date requires
   a separately reviewed repair; ordinary setup APIs never unlock finalized history.
-- After finalization, reporting currency, cutover date, and existing account
-  currencies/openings are immutable. Later accounts start at zero. Renaming,
-  archiving, and restoring remain available; restoring does not unlock openings.
-- An account represents one independent cash pool/currency pocket. A card using
+- After finalization, reporting currency, cutover date, and historical account
+  currencies/openings are immutable. Later accounts keep the historical opening
+  column at zero and may record a dated account-opening ledger event. An existing
+  account with zero historical opening and no ledger activity can record that
+  event once. Renaming, archiving, and restoring remain available; restoring
+  does not unlock openings.
+- An account represents one independent cash pool/currency pocket. Its
+  `account_type` (`bank`, `cash`, `payment_service`, `other`) is UI metadata only;
+  existing accounts default to `other`. A card using
   an existing balance does not create another pool. Archived accounts and their
   openings remain historical data; archival never removes balances.
 - Accounts have a `(studio_id, id)` unique key for future tenant-safe references.
   There is no client delete path; foreign keys restrict destructive parent deletion.
 - Account creation requires a request UUID, retained for the create form's lifetime
-  and renewed for each new Add account flow. `save_finance_account` uses the existing
-  studio lock and immutable `finance_planning_requests` audit. Identical retries,
+  and renewed for each new Add account flow. Draft account creation uses
+  `save_finance_account`; finalized creation with a dated opening uses
+  `create_finance_account_with_opening`. Both use the studio lock and immutable
+  `finance_planning_requests` audit. Identical retries,
   including concurrent or lost-response retries, return the original account ID;
   changed payloads conflict. Recovery still works after finalization, valuation,
   rename or archival and never resets those fields. Separate request IDs allow
@@ -79,11 +86,15 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   holds its signed account effects. A single guarded RPC creates the whole event.
   Ordinary incoming/outgoing movements and owner distributions have one primary
   entry. Transfers have source and destination entries and an optional fee entry.
-- Recorded balance is opening balance plus **all** signed entries, including
-  corrections and archived-account history. `finance_account_balances` derives it;
-  there is no mutable balance cache. `finance_cash_effects` exposes classification
-  for later reporting and never contains opening balances. Both views use
-  `security_invoker=true` and preserve underlying RLS.
+- Recorded balance is historical setup opening plus **all** signed entries,
+  including dated account openings, balance adjustments, reversals, and
+  archived-account history. `finance_account_balances` derives it; there is no
+  mutable balance cache. `account_opening` and `balance_adjustment` movements
+  have `balance` nature, a financial date, immutable signed entries, and no
+  operating category or expected-payment availability. `finance_cash_effects`
+  retains them for dated cash-balance history; `finance_planning_actuals`
+  excludes them from Cash Flow, P&L, budgets, payroll and forecast actuals.
+  Both balance and cash-effect views use `security_invoker=true` and preserve RLS.
 - Every new movement requires finalized setup and an actual financial date from
   cutover through today in `Europe/Kyiv`. New postings reject archived accounts.
   The `(studio_id, account_id, currency)` and studio/reporting-currency references

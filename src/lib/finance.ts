@@ -14,11 +14,14 @@ export function financeSettingsSchema(currencies: FinanceCurrency[]) {
   });
 }
 
+export const financeAccountTypeSchema = z.enum(["bank", "cash", "payment_service", "other"]);
+
 export function financeAccountSchema(currencies: FinanceCurrency[]) {
   return z.object({
     requestId: z.uuid(),
     accountId: z.union([z.uuid(), z.literal("")]),
     name: z.string().trim().min(1).max(120),
+    accountType: financeAccountTypeSchema.default("other"),
     currency: z.string(),
     // Validate text before conversion: reject exponent notation, blanks, and rounding.
     openingBalance: z.string().trim().regex(/^-?\d{1,10}(?:[.,]\d{1,4})?$/),
@@ -33,6 +36,27 @@ export function financeAccountSchema(currencies: FinanceCurrency[]) {
       context.addIssue({ code: "custom", path: ["openingBalance"], message: "precision" });
     }
   }).transform((value) => ({ ...value, openingBalance: Number(value.openingBalance.replace(",", ".")) }));
+}
+
+export const financeBalanceEntrySchema = z.object({
+  requestId: z.uuid(), accountId: z.uuid(), kind: z.enum(["account_opening", "balance_adjustment"]),
+  date: z.iso.date(), amount: z.string().trim().regex(/^-?\d{1,10}(?:[.,]\d{1,4})?$/)
+    .transform((value) => value.replace(",", ".")),
+  note: z.string().trim().max(2000).default(""),
+  fxMode: z.enum(["nbu", "manual"]).default("manual"), manualRate: z.string().default(""),
+});
+
+export function financeAmountUnits(value: string, digits: number): bigint {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  if (!match || (match[3] ?? "").slice(digits).replaceAll("0", "")) throw new Error("amount");
+  const units = BigInt(match[2]) * BigInt(10) ** BigInt(digits) + BigInt((match[3] ?? "").slice(0, digits).padEnd(digits, "0") || "0");
+  return match[1] ? -units : units;
+}
+export function financeAmountText(units: bigint, digits: number): string {
+  const negative = units < BigInt(0);
+  const absolute = negative ? -units : units;
+  const scale = BigInt(10) ** BigInt(digits);
+  return `${negative ? "-" : ""}${absolute / scale}${digits ? `.${String(absolute % scale).padStart(digits, "0")}` : ""}`;
 }
 
 // Intl accepts decimal strings without first rounding them to binary floating point.

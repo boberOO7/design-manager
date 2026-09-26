@@ -103,13 +103,13 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         const destination = movement.entries.find((entry) => entry.entry_role === "destination");
         const activeOriginalAccount = active.some((account) => account.id === primary?.account_id);
         const category=financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`));
-        const title=movement.description || (movement.kind==="transfer"?t("movements.kinds.transfer"):category);
+        const title=movement.description || (["account_opening","balance_adjustment","transfer"].includes(movement.kind)?t(`movements.kinds.${movement.kind}`):category);
         const accountName=(id?:string)=>props.accounts.find((account)=>account.id===id)?.name??"—";
         const accountText=movement.kind==="transfer"?`${accountName(primary?.account_id)} → ${accountName(destination?.account_id)}`:accountName(primary?.account_id);
         const displayMoney=(entry:typeof primary)=>{if(!entry)return "—";const formatted=money(entry.amount,entry.currency);return Number(entry.amount)>0?`+${formatted}`:formatted;};
         const absoluteMoney=(entry:typeof primary)=>entry?money(String(entry.amount).replace(/^-/,""),entry.currency):"—";
         const sameCurrencyTransfer=movement.kind==="transfer"&&primary?.currency===destination?.currency;
-        const amountTone=movement.nature==="transfer"?"text-[var(--ui-text)]":Number(primary?.amount??0)>0?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]";
+        const amountTone=["transfer","balance"].includes(movement.nature)?"text-[var(--ui-text)]":Number(primary?.amount??0)>0?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]";
         return <li key={movement.id}><details className="group"><summary aria-label={t("movements.detailsNamed",{name:title})} className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] lg:py-2">
           <span className="col-start-1 row-start-2 text-xs text-[var(--ui-text-muted)] lg:col-start-1 lg:row-start-1">{formatDateOnly(movement.financial_date, locale)}<span className="lg:hidden"> · {t(`movements.kinds.${movement.kind}`)}</span></span>
           <span className="col-start-1 row-start-1 min-w-0 truncate text-sm font-medium text-[var(--ui-text)] lg:col-start-2">{title}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
@@ -118,7 +118,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
           <span className={`ui-numeric col-start-2 row-span-3 row-start-1 whitespace-nowrap text-right text-sm font-semibold lg:col-start-5 lg:row-span-1 ${amountTone}`}>{movement.kind==="transfer"?(sameCurrencyTransfer?absoluteMoney(primary):`${absoluteMoney(primary)} → ${absoluteMoney(destination)}`):displayMoney(primary)}</span>
           <ChevronDown className="col-start-3 row-span-3 row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none lg:col-start-6 lg:row-span-1" aria-hidden="true"/>
         </summary><div className="space-y-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm">
-          {title !== category ? <p className="text-[var(--ui-text-secondary)]">{category}</p> : null}
+          {title !== category && movement.nature !== "balance" ? <p className="text-[var(--ui-text-secondary)]">{category}</p> : null}
           <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <p key={entry.id}>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency!==entry.reporting_currency?` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}`:""}</p>)}</div>
           {!reversed && movement.kind !== "reversal" ? <div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => { setReversalDate(props.today); setReversing(movement); }}>{t("movements.reverse")}</Button>{["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button variant="ghost" onClick={() => setEditor(movement)}>{t("movements.refund")}</Button> : null}</div> : null}
         </div></details></li>;

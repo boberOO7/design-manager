@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), rpc: vi.fn(), revalidate: vi.fn(), select: vi.fn(), fx: vi.fn(), context: vi.fn(), eq: vi.fn() }));
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), rpc: vi.fn(), revalidate: vi.fn(), select: vi.fn(), fx: vi.fn(), financeData: vi.fn(), context: vi.fn(), eq: vi.fn() }));
 vi.mock("@/lib/finance-fx", () => ({ resolveFinanceFx: mocks.fx }));
+vi.mock("@/data/queries/finance", () => ({ getFinanceData: mocks.financeData }));
+vi.mock("@/lib/validation/project", () => ({ getKyivDateOnly: () => "2026-09-26" }));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
@@ -18,9 +20,10 @@ beforeEach(() => {
     mocks.select.mockResolvedValue({ data: [{ code: "UAH", minor_units: 2 }], error: null });
     mocks.rpc.mockResolvedValue({ error: null });
     mocks.fx.mockResolvedValue({ rate: "39", source: "nbu", effectiveDate: "2026-09-01" });
-    mocks.context.mockImplementation((table: string) => Promise.resolve({ data: table === "finance_settings" ? { base_currency: "UAH", cutover_date: "2026-09-01", finalized_at: "2026-09-02" } : { currency: "USD", opening_balance: 5000 }, error: null }));
+    mocks.context.mockImplementation((table: string) => Promise.resolve({ data: table === "finance_settings" ? { base_currency: "UAH", cutover_date: "2026-09-01", finalized_at: "2026-09-02" } : ["finance_planning_requests", "finance_movements"].includes(table) ? null : { currency: "USD", opening_balance: 5000 }, error: null }));
+    mocks.financeData.mockResolvedValue({ settings: { base_currency: "UAH", cutover_date: "2026-09-01", finalized_at: "2026-09-02" }, accounts: [{ id: "62000000-0000-4000-8000-000000000001", currency: "UAH", opening_balance: 0, archived_at: null }], currencies: [{ code: "UAH", minor_units: 2 }], balances: [{ id: "62000000-0000-4000-8000-000000000001", recorded_balance: "0", ledger_entry_count: 0 }] });
     mocks.eq.mockReturnThis();
-    mocks.client.mockResolvedValue({ from: (table: string) => table === "finance_currencies" ? { select: mocks.select } : { select() { return this; }, eq: mocks.eq, maybeSingle: () => mocks.context(table) }, rpc: mocks.rpc });
+    mocks.client.mockResolvedValue({ from: (table: string) => table === "finance_currencies" ? { select: mocks.select } : { select() { return this; }, eq: mocks.eq, maybeSingle: () => mocks.context(table), single: () => mocks.context(table) }, rpc: mocks.rpc });
   });
 describe("Finance actions", () => {
   it("keeps the submitted creation identity and returns the recovered account on retry", async () => {
@@ -45,9 +48,9 @@ describe("Finance actions", () => {
     expect(mocks.client).not.toHaveBeenCalled();
   });
   it("takes tenant identity only from verified membership", async () => {
-    const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "account", studioId: "spoofed", accountId: "", name: "Bank", currency: "UAH", openingBalance: "-12,34" }));
+    const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "account", studioId: "spoofed", accountId: "", name: "Bank", accountType: "cash", currency: "UAH", openingBalance: "-12,34" }));
     expect(result.status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("save_finance_account", { p_studio_id: "verified-studio", p_name: "Bank", p_currency: "UAH", p_opening_balance: -12.34, p_request_id: requestId });
+    expect(mocks.rpc).toHaveBeenCalledWith("save_finance_account", { p_studio_id: "verified-studio", p_name: "Bank", p_currency: "UAH", p_account_type: "cash", p_opening_balance: -12.34, p_request_id: requestId });
     expect(mocks.revalidate).toHaveBeenCalledWith("/finance", "layout");
   });
   it("rejects invalid precision before mutation", async () => {
@@ -93,5 +96,24 @@ describe("opening valuation action", () => {
     mocks.rpc.mockClear(); mocks.fx.mockClear();
     for (const patch of [{ date: "2026-09-02" }, { openingAmount: "5001" }, { confirmed: "" }, { fxMode: "manual", manualRate: "0" }]) expect((await saveFinanceFoundation({ status: "idle" }, form({ ...valuation, ...patch }))).status).toBe("error");
     expect(mocks.fx).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("dated account balances", () => {
+  const accountId = "62000000-0000-4000-8000-000000000001";
+  it("creates a finalized account and opening in one guarded RPC", async () => {
+    const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "account-dated", accountId: "", name: "New bank", accountType: "bank", currency: "UAH", openingBalance: "12.50", date: "2026-09-25" }));
+    expect(result.status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("create_finance_account_with_opening", expect.objectContaining({
+      p_studio_id: "verified-studio", p_request_id: requestId,
+      p_input: expect.objectContaining({ name: "New bank", accountType: "bank", openingBalance: "12.50", date: "2026-09-25" }),
+    }));
+  });
+  it("posts a late opening through the balance ledger RPC", async () => {
+    const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "balance-entry", accountId, kind: "account_opening", date: "2026-09-26", amount: "20.00" }));
+    expect(result.status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_account_balance", expect.objectContaining({
+      p_studio_id: "verified-studio", p_input: expect.objectContaining({ kind: "account_opening", amount: "20.00", accountId }),
+    }));
   });
 });

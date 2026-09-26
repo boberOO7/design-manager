@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financeAccountSchema, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount } from "./finance";
+import { financeAccountSchema, financeBalanceEntrySchema, financeAmountUnits, financeAmountText, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount } from "./finance";
 
 const currencies = ["UAH", "USD", "EUR", "PLN"].map((code) => ({ code, minor_units: 2 })).concat([
   { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 }, { code: "IQD", minor_units: 3 },
@@ -8,7 +8,8 @@ const account = { requestId: "62000000-0000-4000-8000-000000000020", accountId: 
 
 describe("Finance foundation inputs", () => {
   it("preserves signed opening amounts and currency precision without truncation", () => {
-    expect(financeAccountSchema(currencies).parse(account)).toMatchObject({ name: "Bank", openingBalance: -1200.25 });
+    expect(financeAccountSchema(currencies).parse(account)).toMatchObject({ name: "Bank", accountType: "other", openingBalance: -1200.25 });
+    expect(financeAccountSchema(currencies).parse({ ...account, accountType: "payment_service" }).accountType).toBe("payment_service");
     for (const [currency, openingBalance] of [["UAH", "0"], ["JPY", "25"], ["KWD", "1.234"], ["CLF", "1.2345"]]) {
       expect(financeAccountSchema(currencies).safeParse({ ...account, currency, openingBalance }).success).toBe(true);
     }
@@ -17,7 +18,7 @@ describe("Finance foundation inputs", () => {
     expect(financeAccountSchema(currencies).safeParse({ ...account, openingBalance }).success).toBe(false);
   });
   it("rejects unknown currencies, blank names, foreign-shaped IDs, and fractional yen", () => {
-    for (const patch of [{ requestId: "" }, { requestId: undefined }, { currency: "ABC" }, { name: " " }, { accountId: "not-a-uuid" }, { currency: "JPY", openingBalance: "1.5" }]) {
+    for (const patch of [{ requestId: "" }, { requestId: undefined }, { currency: "ABC" }, { name: " " }, { accountId: "not-a-uuid" }, { accountType: "card" }, { currency: "JPY", openingBalance: "1.5" }]) {
       expect(financeAccountSchema(currencies).safeParse({ ...account, ...patch }).success).toBe(false);
     }
   });
@@ -67,3 +68,15 @@ it("validates opening FX context and explicit positive manual assumptions", () =
   expect(canChartFinanceAmount("1234567890123456.78", 2)).toBe(false);
   expect(canChartFinanceAmount("40898.00", 2)).toBe(true);
  });
+
+it("keeps account corrections and currency totals exact in minor units", () => {
+  const book = financeAmountUnits("9999999999.99", 2);
+  const actual = financeAmountUnits("9999999999.95", 2);
+  expect(financeAmountText(actual - book, 2)).toBe("-0.04");
+  expect(financeAmountText(financeAmountUnits("-5.125", 3) + financeAmountUnits("2.005", 3), 3)).toBe("-3.120");
+  expect(financeAmountUnits("50.2500", 2)).toBe(financeAmountUnits("50.25", 2));
+  expect(() => financeAmountUnits("1.001", 2)).toThrow();
+  const input = { requestId: account.requestId, accountId: "62000000-0000-4000-8000-000000000001", kind: "balance_adjustment", date: "2026-09-26", amount: "-12,34" };
+  expect(financeBalanceEntrySchema.parse(input).amount).toBe("-12.34");
+  expect(financeBalanceEntrySchema.safeParse({ ...input, amount: "1e3" }).success).toBe(false);
+});
