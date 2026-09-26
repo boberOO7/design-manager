@@ -84,10 +84,11 @@ Project aggregation and attribution are described in
 - Checklist editing is allowed only while the task is To do or In progress.
 - Position is assigned on insertion and not user-reorderable.
 - Moving to Client review atomically completes remaining checklist items and
-  normalizes production. Moving to Done requires the checklist already complete.
+  normalizes production. Moving to Internal review or Done requires every
+  checklist item resolved.
 - Studio checklist templates may seed a task's items during creation.
 - Checklist items start pending. Completed and not-needed items both count as
-  resolved in weighted progress and Done guards; their stored states stay distinct.
+  resolved in weighted progress and status guards; their stored states stay distinct.
 
 ## Milestone deadlines
 
