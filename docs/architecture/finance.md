@@ -20,16 +20,21 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   date; they are neither revenue nor expense and are not transaction records.
 - Setup starts as a draft. Administrators can correct settings and account
   currencies/openings until explicitly finalizing setup. Finalization records
-  the actor/date, requires an active account, and cannot be undone through the API.
+  the actor/date and requires an active account. Admins can reopen only while
+  substantive Finance history is absent.
   Draft cutover dates may be in the future, but finalization requires cutover on
   or before today's `Europe/Kyiv` business date. A database trigger also protects
   direct finalized inserts/updates; the requested date is never silently changed.
-  If legacy future-finalized state is found, preserve its history and wait until
-  cutover before using current-cash reports. An incorrectly recorded date requires
-  a separately reviewed repair; ordinary setup APIs never unlock finalized history.
+  If legacy future-finalized state has history, preserve it and wait until cutover
+  before using current-cash reports.
 - After finalization, reporting currency, cutover date, and historical account
-  currencies/openings are immutable. Later accounts keep the historical opening
-  column at zero and may record a dated account-opening ledger event. An existing
+  currencies/openings are locked. Reopening requires no movements (including dated
+  openings/corrections and transfers), expected items, obligations, trip entries,
+  project terms, budget revisions, forecast snapshots or payroll cost revisions.
+  Accounts, seeded categories and schedule configuration do not block it. The
+  guarded RPC returns settings to draft, keeps account opening amounts and
+  unrelated data, and clears only opening FX valuations for re-entry. Later
+  accounts keep the historical opening column at zero and may record a dated account-opening ledger event. An existing
   account with zero historical opening and no ledger activity can record that
   event once. Renaming, archiving, and restoring remain available; restoring
   does not unlock openings.

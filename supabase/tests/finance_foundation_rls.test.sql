@@ -103,7 +103,7 @@ select throws_like($$select * from public.finance_accounts$$,'%permission denied
 select throws_like($$select * from public.finance_settings$$,'%permission denied%','anonymous settings access denied');
 select throws_like($$select public.save_finance_settings('62000000-0000-0000-0000-000000000001','USD','2026-09-01')$$,'%permission denied%','anonymous RPC denied');
 set local role postgres;
-select throws_like($$update public.finance_settings set finalized_at=null,finalized_by=null where studio_id='62000000-0000-0000-0000-000000000001'$$,'%finance_setup_finalized%','trigger protects finalization against direct reset');
+select throws_like($$update public.finance_settings set base_currency='USD' where studio_id='62000000-0000-0000-0000-000000000001'$$,'%finance_setup_finalized%','trigger protects finalized context from direct edits');
 select throws_like($$update public.finance_accounts set studio_id='62000000-0000-0000-0000-000000000002' where id=current_setting('finance.test_account_id')::uuid$$,'%finance_identity_immutable%','trigger forbids tenant reassignment');
 select throws_like($$delete from public.studios where id='62000000-0000-0000-0000-000000000001'$$,'%foreign key%','studio deletion cannot cascade away Finance history');
 select * from finish();

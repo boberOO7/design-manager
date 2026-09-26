@@ -5748,6 +5748,10 @@ export type Database = {
         }
         Returns: Json
       }
+      can_reopen_finance_setup: {
+        Args: { p_studio_id: string }
+        Returns: boolean
+      }
       cancel_finance_project_expectation: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
@@ -6167,6 +6171,10 @@ export type Database = {
           }
       rename_contractor_category: {
         Args: { p_category_id: string; p_name: string }
+        Returns: undefined
+      }
+      reopen_finance_setup: {
+        Args: { p_studio_id: string }
         Returns: undefined
       }
       replace_business_trip_participants: {

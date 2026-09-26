@@ -66,6 +66,12 @@ describe("Finance actions", () => {
     await saveFinanceFoundation({ status: "idle" }, form({ intent: "archive", accountId: "62000000-0000-4000-8000-000000000001" }));
     expect(mocks.rpc).toHaveBeenLastCalledWith("set_finance_account_archived", { p_studio_id: "verified-studio", p_account_id: "62000000-0000-4000-8000-000000000001", p_archived: true });
   });
+  it("reopens through the verified studio and reports newly posted history", async () => {
+    expect(await saveFinanceFoundation({ status: "idle" }, form({ intent: "reopen", studioId: "spoofed" }))).toEqual({ status: "success", message: "saved" });
+    expect(mocks.rpc).toHaveBeenCalledWith("reopen_finance_setup", { p_studio_id: "verified-studio" });
+    mocks.rpc.mockResolvedValueOnce({ error: { message: "finance_reopen_history_exists" } });
+    expect(await saveFinanceFoundation({ status: "idle" }, form({ intent: "reopen" }))).toEqual({ status: "error", message: "reopenUnavailable" });
+  });
   it("reports a concurrent finalization without revalidating a failed save", async () => {
     mocks.rpc.mockResolvedValue({ error: { message: "finance_opening_locked" } });
     const result = await saveFinanceFoundation({ status: "idle" }, form({ intent: "account", accountId: "", name: "Bank", currency: "UAH", openingBalance: "1" }));

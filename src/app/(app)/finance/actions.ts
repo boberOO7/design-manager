@@ -125,6 +125,8 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
       p_studio_id: admin.studio_id, p_account_id: input.accountId,
       p_input: { currency: input.currency, reportingCurrency: input.reportingCurrency, openingAmount: input.openingAmount, date: input.date, fx },
     }));
+  } else if (intent === "reopen") {
+    ({ error } = await supabase.rpc("reopen_finance_setup", { p_studio_id: admin.studio_id }));
   } else if (intent === "finalize" && form.get("confirmed") === "on") {
     ({ error } = await supabase.rpc("finalize_finance_setup", { p_studio_id: admin.studio_id }));
   } else if (intent === "archive" || intent === "restore") {
@@ -138,6 +140,7 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
   }
 
   if (error) {
+    if (error.message === "finance_reopen_history_exists") return { status: "error", message: t("reopenUnavailable") };
     if (error.message === "finance_cutover_future") return { status: "error", message: t("errors.futureCutover") };
     if (error.message === "finance_request_conflict") return { status: "error", message: t("errors.accountRequestConflict") };
     const openingErrors: Record<string, string> = { finance_opening_fx_required: "required", finance_opening_fx_invalid: "invalid", finance_setup_context_changed: "changed", finance_opening_valuation_locked: "locked" };
