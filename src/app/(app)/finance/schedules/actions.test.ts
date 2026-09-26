@@ -38,6 +38,13 @@ it("checks verified administration before applying defaults or creating a client
   expect(mocks.client).not.toHaveBeenCalled();
 });
 
+it("removes only a validated payroll configuration through the guarded RPC", async () => {
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ intent: "remove", scheduleId: id, revision: "1" }))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("remove_unconsumed_finance_payroll", { p_studio_id: "verified", p_request_id: id, p_schedule_id: id, p_revision: 1 });
+  mocks.rpc.mockClear();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ intent: "remove", scheduleId: id, revision: "0" }))).status).toBe("error");
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
 it("bulk setup reports partial success and reuses original request IDs on retry", async () => {
   const row = { requestId: id, employeeId: id, id: "", revision: 0, kind: "payroll", name: "Base salary", amount: "1000", currency: "UAH", categoryId: id, intervalMonths: 1, payoutDay: 10, paymentMonthOffset: 1, effectiveFrom: "2026-09-01", commitment: "agreed", certainty: "fixed", basis: "net", employeePayout: "1000", employeeDeductions: "", employerCost: "", employerCostStatus: "unknown", reason: "Agreement" };
   const second = { ...row, employeeId: "64000000-0000-4000-8000-000000000101", requestId: "64000000-0000-4000-8000-000000000102" };

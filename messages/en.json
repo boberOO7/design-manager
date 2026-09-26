@@ -2624,6 +2624,9 @@
       "effectiveThrough": "Valid through (optional)",
       "hasEndDate": "Agreement has an end date",
       "endDate": "Valid through",
+      "editPay": "Edit",
+      "removePay": "Remove compensation",
+      "removePayHelp": "Unpaid compensation plans will be cancelled. You can configure compensation again.",
       "revisionDateHelp": "Choose the month the change takes effect. Earlier terms and payment history stay unchanged.",
       "taxWarning": "Taxes are not calculated automatically.",
       "note": "Note",
@@ -2661,6 +2664,7 @@
         "bonus": "Employee bonus"
       },
       "errors": {
+        "payrollConsumed": "This compensation has financial history. Change the terms from a new date.",
         "costLocked": "This cost cannot be changed here. Use a future compensation revision for planned payroll; settled or established costs are protected.",
         "costCategory": "Restore the Employer contributions category in Finance → Categories before saving payroll costs.",
         "invalid": "Check the required schedule fields.",

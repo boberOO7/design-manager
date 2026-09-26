@@ -184,16 +184,17 @@ export async function getFinanceSchedules() {
   const client = await createClient();
   const coverage = await client.rpc("ensure_finance_schedule_occurrences", { p_studio_id: admin.studio_id, p_horizon: "12" });
   if (coverage.error) throw new Error("Unable to maintain Finance schedule coverage.", { cause: coverage.error });
-  const [schedules, terms, members, groups] = await Promise.all([
+  const [schedules, terms, members, groups, payrollEditability] = await Promise.all([
     client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
     client.from("finance_schedule_history").select("*, obligations:finance_obligations!finance_obligations_studio_id_terms_id_schedule_id_fkey(items:finance_obligation_items!finance_obligation_items_studio_id_obligation_id_fkey(expected:finance_expected_balances!finance_obligation_items_studio_id_expected_item_id_fkey(id,expected_payment_date,due_date,remaining_amount,commitment)))").eq("studio_id", admin.studio_id).eq("obligations.kind", "recurring").order("revision", { ascending: false }),
     client.from("studio_members").select("user_id,is_active,joined_at,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
     client.from("finance_recurring_groups").select("*").eq("studio_id", admin.studio_id).order("position").order("id"),
+    client.rpc("get_finance_payroll_editability", { p_studio_id: admin.studio_id }),
   ]);
-  const error = schedules.error ?? terms.error ?? members.error ?? groups.error;
+  const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error;
   if (error) throw new Error("Unable to load Finance schedules.", { cause: error });
   const today = getKyivDateOnly();
-  return { groups: groups.data ?? [], schedules: (schedules.data ?? []).map((schedule) => ({ ...schedule,
+  return { groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
     nextPayment: (terms.data ?? []).filter((term) => term.schedule_id === schedule.id).flatMap((term) => term.obligations).flatMap((obligation) => obligation.items.flatMap(({ expected }) => {
       const date = expected?.expected_payment_date ?? expected?.due_date;
       return expected?.id && date && date >= today && expected.commitment !== "cancelled" && Number(expected.remaining_amount) > 0

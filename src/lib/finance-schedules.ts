@@ -44,6 +44,7 @@ export function payrollCompensationSummary(amount: string, basis: "net" | "gross
 // Exact monetary agreement arithmetic and minor-unit precision are enforced in PostgreSQL.
 export const generateObligationsSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart, through: monthStart })
   .refine((v) => v.through >= v.from && (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
+export const removePayrollSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), revision: z.coerce.number().int().min(1) });
 export const stopScheduleSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart });
 export const payrollCostSchema = z.object({
   requestId: z.uuid(), obligationId: z.uuid(), component: z.enum(["deductions", "employer_cost"]),
@@ -57,6 +58,7 @@ export const employeeBonusSchema = z.object({
 
 export function financeScheduleError(message: string) {
   if (message === "finance_group_invalid") return "group";
+  if (message === "finance_payroll_consumed") return "payrollConsumed";
   if (message === "finance_payroll_cost_locked") return "costLocked";
   if (message === "finance_payroll_cost_category_required") return "costCategory";
   if (message === "finance_schedule_effective_date") return "effectiveDate";

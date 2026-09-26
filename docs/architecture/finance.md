@@ -356,10 +356,16 @@ or notifications containing private data.
   remain selected for retry, and assigning the same destination again is safe.
   No financial fields are accepted by the bulk organization action.
 - `/finance/schedules` is admin-only. `finance_schedules` identifies either an
-  employee's monthly payroll or a recurring studio obligation; immutable
+  employee's monthly payroll or a recurring studio obligation;
   `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
-  month starts and optional inclusive ends are month ends. Later revisions must
-  start in a future month, except payroll may amend the current month while
+  month starts and optional inclusive ends are month ends. The latest payroll
+  term can be edited in place while its generated obligations are unearned,
+  unpaid, and have no completed payroll-cost revision. This refreshes unpaid
+  projections, including manually generated periods. An entirely unused payroll
+  configuration can be removed; its audit record remains, while projections are
+  cancelled and the employee returns to unconfigured status. Once consumed,
+  terms remain immutable and changes create a dated revision. Later revisions
+  normally start in a future month; payroll may amend the current month while
   that occurrence has no allocation history or completed cost revision.
   Recurring revisions cannot split an existing multi-month service period.
   The first payroll form suggests the employee's current Team start month when

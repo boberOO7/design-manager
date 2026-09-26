@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { employeeBonusSchema, financeScheduleError, financeScheduleValidationError, generateObligationsSchema, payrollCostSchema, scheduleInputSchema, stopScheduleSchema } from "@/lib/finance-schedules";
+import { employeeBonusSchema, financeScheduleError, financeScheduleValidationError, generateObligationsSchema, payrollCostSchema, removePayrollSchema, scheduleInputSchema, stopScheduleSchema } from "@/lib/finance-schedules";
 import type { FinanceActionState } from "@/lib/finance";
 
 export async function saveFinanceSchedule(_state: FinanceActionState, form: FormData): Promise<FinanceActionState> {
@@ -42,6 +42,11 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
     const v = parsed.data;
     ({ error } = await client.rpc("stop_finance_schedule", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_schedule_id: v.scheduleId, p_from: v.from }));
+  } else if (raw.intent === "remove") {
+    const parsed = removePayrollSchema.safeParse(raw);
+    if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
+    const v = parsed.data;
+    ({ error } = await client.rpc("remove_unconsumed_finance_payroll", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_schedule_id: v.scheduleId, p_revision: v.revision }));
   } else if (raw.intent === "bonus") {
     const parsed = employeeBonusSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };

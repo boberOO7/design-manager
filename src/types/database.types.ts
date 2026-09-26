@@ -6012,6 +6012,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finance_payroll_editability: {
+        Args: { p_studio_id: string }
+        Returns: {
+          editable: boolean
+          removable: boolean
+          schedule_id: string
+        }[]
+      }
       get_personal_task_ids: {
         Args: never
         Returns: {
@@ -6169,6 +6177,15 @@ export type Database = {
             }
             Returns: undefined
           }
+      remove_unconsumed_finance_payroll: {
+        Args: {
+          p_request_id: string
+          p_revision: number
+          p_schedule_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       rename_contractor_category: {
         Args: { p_category_id: string; p_name: string }
         Returns: undefined
