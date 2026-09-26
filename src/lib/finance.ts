@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeIntlSpacing } from "@/lib/utils";
 import { financeRateSchema } from "./finance-movements";
 import type { Database } from "@/types/database.types";
 
@@ -66,7 +67,7 @@ function isDecimal(value: string): value is `${number}` {
 export function formatFinanceDecimal(amount: string | number, locale: string, options: Intl.NumberFormatOptions): string {
   const decimal = String(amount);
   if (!isDecimal(decimal)) throw new Error("Invalid Finance decimal");
-  return new Intl.NumberFormat(locale, options).format(decimal);
+  return normalizeIntlSpacing(new Intl.NumberFormat(locale, options).format(decimal));
 }
 
 // Coordinates are approximate; use the exact table if minor units exceed safe integers.

@@ -26,8 +26,9 @@ const optionalDate = z.union([z.iso.date(),z.literal("")]).default("");
 export const categoryInputSchema = z.object({
   requestId:z.uuid(),id:optionalId,name:z.string().trim().min(1).max(120),
   direction:z.enum(["incoming","outgoing"]),nature:z.enum(["operating","financing","owner_distribution"]),
-  archived:z.enum(["true","false"]).default("false"),
-}).refine((value) => value.nature!=="owner_distribution" || value.direction==="outgoing");
+  projectExpenseEnabled:z.enum(["true","false"]).optional(),archived:z.enum(["true","false"]).default("false"),
+}).refine((value) => value.nature!=="owner_distribution" || value.direction==="outgoing")
+  .refine((value) => value.projectExpenseEnabled!=="true" || (value.direction==="outgoing" && value.nature==="operating"));
 export const expectedInputSchema = z.object({
   requestId:z.uuid(),id:optionalId,version:z.coerce.number().int().min(0).default(0),
   direction:z.enum(["incoming","outgoing"]),amount:planningAmount,currency:z.string().regex(/^[A-Z]{3}$/),categoryId:z.uuid(),

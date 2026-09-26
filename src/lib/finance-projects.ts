@@ -17,7 +17,7 @@ export const projectCancellationSchema = z.object({
   reason: z.string().trim().min(1).max(2000),
 }).refine((v) => Number(v.settledAmount) === 0 || v.retainSettlement === "true");
 
-export const projectStreams = ["design", "supervision", "contractor_bonus", "other"] as const;
+export const projectStreams = ["design", "supervision", "contractor_bonus", "other", "expenses"] as const;
 export const projectContextSchema = z.object({
   projectId: z.uuid(), stream: z.enum(projectStreams),
   source: z.enum(["manual", "visit"]).default("manual"),
@@ -27,7 +27,8 @@ export const projectContextSchema = z.object({
   visitPricing: z.enum(["contract", "manual"]).default("manual"),
   visitTermsId: z.union([z.uuid(), z.literal("")]).default(""),
 }).refine((v) => v.source !== "visit" || (v.stream === "supervision" && Boolean(v.visitId)))
-  .refine((v) => !v.contractorId || v.stream === "contractor_bonus");
+  .refine((v) => !v.contractorId || v.stream === "contractor_bonus")
+  .refine((v) => v.stream !== "expenses" || v.source === "manual");
 
 export const projectTermsSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
@@ -48,6 +49,7 @@ export const supervisionMonthsSchema = z.object({
   (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 
 export function financeProjectError(message: string) {
+  if (message === "finance_project_expense_invalid" || message === "finance_project_direction_required") return "expenseInvalid";
   if (message === "finance_project_plan_remainder") return "planRemainder";
   if (message === "finance_project_cancellation_required") return "cancellationRequired";
   if (message === "finance_project_retention_required") return "retentionRequired";

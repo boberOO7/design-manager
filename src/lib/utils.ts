@@ -34,10 +34,15 @@ export function formatDateShort(value?: string | null, locale = "en") {
   });
 }
 
+/** Keep Intl spacing identical across Node and browser ICU versions. */
+export function normalizeIntlSpacing(value: string) {
+  return value.replace(/[ \u00a0\u202f]/g, "\u00a0");
+}
+
 /** Formats a database `date` value without converting it through UTC midnight. */
 export function formatDateOnly(value?: string | null, locale = "en") {
   if (!value) return "—";
-  return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+  return normalizeIntlSpacing(new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" }));
 }
 
 /** Formats a database `date` as a localized day and month without exposing its year. */

@@ -39,12 +39,14 @@ export async function getFinanceCategories() {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const [settings, categories] = await Promise.all([
+  const [settings, categories, scopes] = await Promise.all([
     client.from("finance_settings").select("studio_id").eq("studio_id", admin.studio_id).maybeSingle(),
     client.rpc("get_finance_category_management", { p_studio_id: admin.studio_id }),
+    client.from("finance_categories").select("id,project_expense_enabled").eq("studio_id",admin.studio_id),
   ]);
-  if (settings.error || categories.error) throw new Error("Unable to load Finance categories.", { cause: settings.error ?? categories.error });
-  return { ready: Boolean(settings.data), categories: categories.data ?? [] };
+  if (settings.error || categories.error || scopes.error) throw new Error("Unable to load Finance categories.", { cause: settings.error ?? categories.error ?? scopes.error });
+  const scopeById=new Map((scopes.data??[]).map((category)=>[category.id,category.project_expense_enabled]));
+  return { ready: Boolean(settings.data), categories: (categories.data??[]).map((category)=>({...category,project_expense_enabled:scopeById.get(category.id)??false})) };
 }
 
 export async function getFinanceMovements(page: number) {
@@ -121,6 +123,13 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const history=ids.length ? await client.from("finance_allocations").select("*, movement:finance_movements!finance_allocations_studio_id_movement_id_fkey(financial_date,category)")
     .eq("studio_id",admin.studio_id).in("expected_item_id",ids).order("created_at",{ ascending:false }).limit(500) : null;
   if(history?.error) throw new Error("Unable to load settlement history.",{ cause:history.error });
+  const movementIds=[...new Set((history?.data??[]).map((entry)=>entry.movement_id))];
+  const cashEntries=projectId&&movementIds.length ? await client.from("finance_movement_entries")
+    .select("movement_id,amount::text,currency,account_id").eq("studio_id",admin.studio_id)
+    .eq("entry_role","primary").in("movement_id",movementIds) : null;
+  if(cashEntries?.error) throw new Error("Unable to load settlement cash.",{cause:cashEntries.error});
+  const cashByMovement=new Map((cashEntries?.data??[]).map((entry)=>[entry.movement_id,entry]));
+
   const links=ids.length ? await client.from("finance_project_items").select("*,project:projects!finance_project_items_project_id_studio_id_fkey(name)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(links?.error) throw new Error("Unable to load project payment context.",{ cause:links.error });
   const obligations=ids.length ? await client.from("finance_obligation_items").select("obligation_id,expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
@@ -131,7 +140,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const tripBalances = ids.length ? await client.from("finance_trip_balances").select("trip_id,expected_item_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   const tripEntries = ids.length ? await client.from("finance_trip_entries").select("trip_id,expected_item_id,movement_id").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if (tripBalances?.error || tripEntries?.error) throw new Error("Unable to load trip context.",{cause:tripBalances?.error ?? tripEntries?.error});
-  return { tripLinks:[...(tripBalances?.data??[]).map(v=>({...v,cash:false})),...(tripEntries?.data??[]).map(v=>({...v,cash:Boolean(v.movement_id)}))],payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:visibleItems,payments:payments.data??[],credits:credits.data??[],history:history?.data??[],links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
+  return { tripLinks:[...(tripBalances?.data??[]).map(v=>({...v,cash:false})),...(tripEntries?.data??[]).map(v=>({...v,cash:Boolean(v.movement_id)}))],payrollCosts:payrollCosts?.data??[],obligations:obligations?.data??[],items:visibleItems,payments:payments.data??[],credits:credits.data??[],history:(history?.data??[]).map((entry)=>({...entry,cash:cashByMovement.get(entry.movement_id)??null})),links:links?.data??[],total:items.count??0,creditTotal:credits.count??0 };
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 
@@ -184,17 +193,18 @@ export async function getFinanceSchedules() {
   const client = await createClient();
   const coverage = await client.rpc("ensure_finance_schedule_occurrences", { p_studio_id: admin.studio_id, p_horizon: "12" });
   if (coverage.error) throw new Error("Unable to maintain Finance schedule coverage.", { cause: coverage.error });
-  const [schedules, terms, members, groups, payrollEditability] = await Promise.all([
+  const [schedules, terms, members, groups, payrollEditability, payrollHistory] = await Promise.all([
     client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
     client.from("finance_schedule_history").select("*, obligations:finance_obligations!finance_obligations_studio_id_terms_id_schedule_id_fkey(items:finance_obligation_items!finance_obligation_items_studio_id_obligation_id_fkey(expected:finance_expected_balances!finance_obligation_items_studio_id_expected_item_id_fkey(id,expected_payment_date,due_date,remaining_amount,commitment)))").eq("studio_id", admin.studio_id).eq("obligations.kind", "recurring").order("revision", { ascending: false }),
     client.from("studio_members").select("user_id,is_active,joined_at,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
     client.from("finance_recurring_groups").select("*").eq("studio_id", admin.studio_id).order("position").order("id"),
     client.rpc("get_finance_payroll_editability", { p_studio_id: admin.studio_id }),
+    client.rpc("get_finance_payroll_historical_terms", { p_studio_id: admin.studio_id }),
   ]);
-  const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error;
+  const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error ?? payrollHistory.error;
   if (error) throw new Error("Unable to load Finance schedules.", { cause: error });
   const today = getKyivDateOnly();
-  return { groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
+  return { groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], historicalTermIds: (payrollHistory.data ?? []).map((term) => term.term_id), schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
     nextPayment: (terms.data ?? []).filter((term) => term.schedule_id === schedule.id).flatMap((term) => term.obligations).flatMap((obligation) => obligation.items.flatMap(({ expected }) => {
       const date = expected?.expected_payment_date ?? expected?.due_date;
       return expected?.id && date && date >= today && expected.commitment !== "cancelled" && Number(expected.remaining_amount) > 0

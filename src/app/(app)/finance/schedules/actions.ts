@@ -47,13 +47,21 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
     const v = parsed.data;
     ({ error } = await client.rpc("remove_unconsumed_finance_payroll", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_schedule_id: v.scheduleId, p_revision: v.revision }));
+  } else if (raw.intent === "deleteRevision") {
+    const parsed = removePayrollSchema.safeParse(raw);
+    if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
+    const v = parsed.data;
+    ({ error } = await client.rpc("delete_unconsumed_finance_payroll_revision", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_schedule_id: v.scheduleId, p_revision: v.revision }));
   } else if (raw.intent === "bonus") {
     const parsed = employeeBonusSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
     const { requestId, ...input } = parsed.data;
     ({ error } = await client.rpc("create_finance_employee_bonus", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
   } else return { status: "error", message: t("schedules.errors.invalid") };
-  if (error) return { status: "error", message: t(`schedules.errors.${financeScheduleError(error.message)}`) };
+  if (error) {
+    const code = financeScheduleError(error.message);
+    return { status: "error", message: t(`schedules.errors.${raw.intent === "schedule" && raw.kind === "payroll" && code === "effectiveDate" ? "payrollEffectiveDate" : code}`) };
+  }
   revalidatePath("/finance", "layout");
   revalidatePath("/calendar");
   return { status: "success" };

@@ -1195,8 +1195,14 @@ export type Database = {
           expected_item_id: string
           id: string
           movement_id: string
+          obligation_currency: string
+          payment_amount: number
+          payment_currency: string
           reason: string
           released_allocation_id: string | null
+          settlement_effective_date: string
+          settlement_rate: number
+          settlement_source: string
           studio_id: string
         }
         Insert: {
@@ -1207,8 +1213,14 @@ export type Database = {
           expected_item_id: string
           id?: string
           movement_id: string
+          obligation_currency: string
+          payment_amount: number
+          payment_currency: string
           reason?: string
           released_allocation_id?: string | null
+          settlement_effective_date: string
+          settlement_rate: number
+          settlement_source: string
           studio_id: string
         }
         Update: {
@@ -1219,8 +1231,14 @@ export type Database = {
           expected_item_id?: string
           id?: string
           movement_id?: string
+          obligation_currency?: string
+          payment_amount?: number
+          payment_currency?: string
           reason?: string
           released_allocation_id?: string | null
+          settlement_effective_date?: string
+          settlement_rate?: number
+          settlement_source?: string
           studio_id?: string
         }
         Relationships: [
@@ -1230,6 +1248,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_obligation_currency_fkey"
+            columns: ["obligation_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_allocations_payment_currency_fkey"
+            columns: ["payment_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
@@ -1405,6 +1437,7 @@ export type Database = {
           id: string
           name: string
           nature: string
+          project_expense_enabled: boolean
           studio_id: string
         }
         Insert: {
@@ -1416,6 +1449,7 @@ export type Database = {
           id?: string
           name: string
           nature: string
+          project_expense_enabled?: boolean
           studio_id: string
         }
         Update: {
@@ -1427,6 +1461,7 @@ export type Database = {
           id?: string
           name?: string
           nature?: string
+          project_expense_enabled?: boolean
           studio_id?: string
         }
         Relationships: [
@@ -5918,6 +5953,15 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      delete_unconsumed_finance_payroll_revision: {
+        Args: {
+          p_request_id: string
+          p_revision: number
+          p_schedule_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       edit_finance_trip_entry: {
         Args: {
           p_entry_id: string
@@ -6020,6 +6064,12 @@ export type Database = {
           schedule_id: string
         }[]
       }
+      get_finance_payroll_historical_terms: {
+        Args: { p_studio_id: string }
+        Returns: {
+          term_id: string
+        }[]
+      }
       get_personal_task_ids: {
         Args: never
         Returns: {
@@ -6118,7 +6168,7 @@ export type Database = {
       }
       record_finance_expected_payment: {
         Args: {
-          p_allocation_amount: number
+          p_allocation_amount?: number
           p_input: Json
           p_item_id: string
           p_request_id: string

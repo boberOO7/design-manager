@@ -11,7 +11,7 @@ const local = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SE
 if (!["127.0.0.1", "localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Finance fixtures require local Supabase");
 const client = createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL, local.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const studioId = randomUUID();
-const projectId=randomUUID(),bankId=randomUUID(),contractorId=randomUUID(),categoryId=randomUUID();
+const projectId=randomUUID(),bankId=randomUUID(),euroId=randomUUID(),contractorId=randomUUID(),categoryId=randomUUID();
 const actors = ["admin", "employee"].map((role) => ({ role, id: "", email: `project-finance-${randomUUID()}@example.test`, password: `Finance-${randomUUID()}` }));
 function sql(statement: string) {
   return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }).trim();
@@ -45,7 +45,7 @@ test.beforeAll(async () => {
 });
 test.beforeAll(async()=>{
   sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values(${studioLiteral},'UAH','2026-09-01','${actors[0].id}');
-    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bankId}',${studioLiteral},'Bank','UAH',0,'${actors[0].id}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${bankId}',${studioLiteral},'Bank','UAH',0,'${actors[0].id}'),('${euroId}',${studioLiteral},'Euro','EUR',0,'${actors[0].id}');
     select set_config('request.jwt.claim.sub','${actors[0].id}',false); select public.finalize_finance_setup(${studioLiteral});
     insert into public.projects(id,studio_id,name,total_area_m2,start_date,created_by,status,country_code) values('${projectId}',${studioLiteral},'Finance project',100,'2026-09-01','${actors[0].id}','active','UA');
     insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values('${projectId}','${actors[1].id}','designer',0,'2026-09-01');
@@ -79,8 +79,11 @@ test("project agreements, shared settlement, supervision, bonus and archived col
   await createPayment("400","Advance",true);await createPayment("300","After concept");
   expect(sql(`select concat(trim_scale(scheduled_amount),'|',trim_scale(unscheduled_amount),'|',trim_scale(outstanding_amount),'|',trim_scale(planned_amount)) from public.finance_project_totals where project_id='${projectId}' and stream='design'`)).toBe("700|300|400|300");
   const advance=page.locator("article").filter({has:page.getByRole("heading",{name:"Advance",exact:true})});
-  await advance.locator("summary").click();await advance.getByRole("link",{name:plan.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");
-  await dialog.getByLabel(t.movements.amount,{exact:true}).fill("150");await dialog.getByLabel(plan.allocateAmount,{exact:true}).fill("150");await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
+  await advance.locator("summary").click();await advance.getByRole("button",{name:plan.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
+  await expect(dialog.getByText(new RegExp(t.movements.fullSettlement))).toHaveCount(0);
+  await expect(dialog.getByLabel(t.movements.actualAmount.replace("{currency}","UAH"),{exact:true})).toHaveValue("400");
+  await dialog.getByLabel(t.movements.actualAmount.replace("{currency}","UAH"),{exact:true}).fill("150");await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
   await expect(advance.getByText(plan.states.partial,{exact:true})).toBeVisible();
   expect(sql(`select concat(trim_scale(collected_amount),'|',trim_scale(outstanding_amount)) from public.finance_project_totals where project_id='${projectId}' and stream='design'`)).toBe("150|250");
   await page.goto("/finance/movements");await page.getByRole("button",{name:t.movements.add,exact:true}).click();dialog=page.getByRole("dialog");
@@ -102,6 +105,26 @@ test("project agreements, shared settlement, supervision, bonus and archived col
   expect(sql(`select concat(trim_scale(outstanding_amount),'|',trim_scale(planned_amount)) from public.finance_project_totals where project_id='${projectId}' and stream='contractor_bonus'`)).toBe("0|80");
   sql(`select set_config('request.jwt.claim.sub','${actor.id}',false);update public.projects set status='completed',completed_at='2026-09-10' where id='${projectId}';update public.projects set status='archived',archived_at='2026-09-11' where id='${projectId}';`);
   await page.goto(projectHref);await expect(page.getByRole("button",{name:p.addPayment,exact:true})).toBeVisible();await createPayment("100","Post-completion collection",true);
+  const movementsBeforeEquivalent=sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`);
+  await page.getByRole("combobox",{name:plan.equivalent,exact:true}).click();
+  await page.getByRole("option",{name:"EUR",exact:true}).click();
+  expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe(movementsBeforeEquivalent);
+  const postCompletion=page.locator("article").filter({has:page.getByRole("heading",{name:"Post-completion collection",exact:true})});
+  await expect(postCompletion.getByText(/100[.,]00\s*UAH|UAH\s*100[.,]00/)).toBeVisible();
+  await postCompletion.locator("summary").click();
+  await postCompletion.getByRole("button",{name:plan.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");
+  await dialog.getByRole("combobox",{name:t.movements.account,exact:true}).click();
+  await page.getByRole("option",{name:"Euro · EUR",exact:true}).click();
+  await dialog.getByRole("combobox",{name:t.movements.settlementRateLabel,exact:true}).click();
+  await page.getByRole("option",{name:t.movements.manualShort,exact:true}).click();
+  await dialog.getByLabel(t.movements.settlementRate.replace("{currency}","EUR").replace("{obligation}","UAH"),{exact:true}).fill("40");
+  await expect(dialog.getByText(/2[.,]50\s*EUR|EUR\s*2[.,]50/)).toBeVisible();
+  const actual=dialog.getByLabel(t.movements.actualAmount.replace("{currency}","EUR"),{exact:true});
+  await expect(actual).toHaveValue("2.50");
+  await actual.fill("2");
+  await expect(dialog.getByText(/80[.,]00\s*UAH|UAH\s*80[.,]00/)).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
+  await dialog.getByRole("button",{name:t.movements.close,exact:true}).click();
   await page.setViewportSize({width:375,height:900});await page.emulateMedia({colorScheme:"dark",reducedMotion:"reduce"});await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100"}]);await page.reload();
   await expect(page.getByRole("navigation",{name:uk.ProjectWorkspace.navigation,exact:true}).getByRole("link",{name:uk.ProjectWorkspace.finance,exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath("project-finance-mobile.png"),fullPage:true});
 });

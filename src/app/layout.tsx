@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { motionBootstrapScript } from "@/lib/motion";
 import { DARK_THEME_COLOR, LIGHT_THEME_COLOR, themeBootstrapScript } from "@/lib/theme";
@@ -52,8 +53,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang={locale} data-motion="on" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: motionBootstrapScript }} />
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <Script id="motion-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: motionBootstrapScript }} />
+        <Script id="theme-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
         <NextIntlClientProvider locale={locale} messages={selectMessages(messages, "root")}>{children}</NextIntlClientProvider>

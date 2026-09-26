@@ -44,9 +44,11 @@ describe("Project Finance inputs", () => {
     expect(projectContextSchema.safeParse({ projectId: id, stream: "supervision", source: "visit", visitId: id }).success).toBe(true);
     expect(projectContextSchema.safeParse({ projectId: id, stream: "design", contractorId: id }).success).toBe(false);
     expect(projectContextSchema.safeParse({ projectId: id, stream: "contractor_bonus", contractorId: id }).success).toBe(true);
+    expect(projectContextSchema.safeParse({ projectId: id, stream: "expenses" }).success).toBe(true);
+    expect(projectContextSchema.safeParse({ projectId: id, stream: "expenses", source: "visit", visitId: id }).success).toBe(false);
   });
   it("provides actionable localizations for domain conflicts", () => {
-    for (const message of ["finance_project_cancellation_required", "finance_project_retention_required", "finance_project_visit_price_changed", "finance_project_over_scheduled", "finance_project_currency_locked", "finance_project_settled_terms_locked", "finance_supervision_generated_period", "finance_supervision_range_invalid", "finance_project_visit_not_billable", "finance_project_agreement_required", "duplicate key finance_project_visit_once"]) {
+    for (const message of ["finance_project_cancellation_required", "finance_project_retention_required", "finance_project_visit_price_changed", "finance_project_over_scheduled", "finance_project_currency_locked", "finance_project_settled_terms_locked", "finance_supervision_generated_period", "finance_supervision_range_invalid", "finance_project_visit_not_billable", "finance_project_agreement_required", "finance_project_expense_invalid", "duplicate key finance_project_visit_once"]) {
       const key = financeProjectError(message);
       expect(key).not.toBeNull();
       if (key) { expect(en.Finance.project.errors[key]).toBeTruthy(); expect(uk.Finance.project.errors[key]).toBeTruthy(); }

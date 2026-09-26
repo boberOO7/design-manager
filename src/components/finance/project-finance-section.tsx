@@ -13,5 +13,5 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
   const [foundation, project, planning] = await Promise.all([getFinanceData(), getFinanceProject(projectId), getFinancePlanning(page, creditPage, filter, projectId, stream)]);
   if (!foundation || !project || !planning) notFound();
   const currency = foundation.currencies.find(v => v.code === foundation.settings?.base_currency);
-  return <><ProjectFinanceWorkspace {...foundation} {...planning} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>{currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}</>;
+  return <><ProjectFinanceWorkspace {...foundation} {...planning} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>{stream === "expenses" && currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}</>;
 }

@@ -23,7 +23,7 @@ it("uses maintained open payment dates, excluding cancelled, paid and past items
   expect(data?.schedules.map((rule) => rule.id)).toEqual(["rule", "empty"]);
   expect(queries[0].pathname).toContain("ensure_finance_schedule_occurrences");
   for (const url of queries.slice(1)) {
-    if (url.pathname.endsWith("/get_finance_payroll_editability")) expect(url.searchParams.get("studio_id")).toBeNull();
+    if (url.pathname.endsWith("/get_finance_payroll_editability") || url.pathname.endsWith("/get_finance_payroll_historical_terms")) expect(url.searchParams.get("studio_id")).toBeNull();
     else expect(url.searchParams.get("studio_id")).toBe("eq.verified");
   }
 });

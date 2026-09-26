@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { getTranslations } from "next-intl/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getFinanceData } from "@/data/queries/finance";
@@ -42,7 +43,15 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     const account = data.accounts.find((item) => item.id === input.accountId);
     const destination = data.accounts.find((item) => item.id === input.destinationId);
     if (!account) return { status: "error", message: t("errors.invalid") };
-    let fx; let destinationFx;
+    let fx; let destinationFx; let settlementFx;
+    if (input.expectedItemId && input.autoAllocate) {
+      const expected = await client.from("finance_expected_balances").select("currency,remaining_amount").eq("studio_id", admin.studio_id).eq("id", input.expectedItemId).maybeSingle();
+      if (expected.error || !expected.data?.currency || !expected.data.remaining_amount || expected.data.remaining_amount <= 0) return { status: "error", message: t("errors.invalid") };
+      if (account.currency !== expected.data.currency) {
+        try { settlementFx = await resolveFinanceFx(account.currency, expected.data.currency, input.date, input.settlementFxMode, input.settlementManualRate); }
+        catch { return { status: "error", message: t("errors.fx") }; }
+      }
+    }
     try {
       fx = await resolveFinanceFx(account.currency, data.settings.base_currency, input.date, input.fxMode, input.manualRate);
       if (input.kind === "transfer" && destination) destinationFx = account.currency === destination.currency ? fx : await resolveFinanceFx(destination.currency, data.settings.base_currency, input.date, input.destinationFxMode, input.destinationManualRate);
@@ -51,12 +60,12 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     }
     const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
-      category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, submission: input,
+      category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, settlementFx, submission: input,
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
       ...(input.kind === "refund" ? { relatedMovementId: input.relatedMovementId } : {}),
     };
     ({ error } = input.expectedItemId
-      ? await client.rpc("record_finance_expected_payment",{ p_studio_id:admin.studio_id,p_request_id:input.requestId,p_item_id:input.expectedItemId,p_input:payload,p_allocation_amount:Number(input.allocationAmount) })
+      ? await client.rpc("record_finance_expected_payment",{ p_studio_id:admin.studio_id,p_request_id:input.requestId,p_item_id:input.expectedItemId,p_input:payload,...(input.autoAllocate?{}:{p_allocation_amount:Number(input.allocationAmount)}) })
       : await client.rpc("record_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input:payload }));
   }
   if (error) {
@@ -70,4 +79,39 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
   revalidatePath("/finance", "layout");
   revalidatePath("/projects/[projectId]", "page");
   return { status: "success", message: t("saved") };
+}
+
+const quoteSchema = z.object({ currency: z.string().regex(/^[A-Z]{3}$/), obligationCurrency: z.string().regex(/^[A-Z]{3}$/), date: z.iso.date() });
+type QuoteInput = z.infer<typeof quoteSchema>;
+
+async function datedFinanceQuote(input: QuoteInput, today: string) {
+  const date = input.date > today ? today : input.date;
+  try { return { ...await resolveFinanceFx(input.currency, input.obligationCurrency, date, "nbu", ""), indicative: input.date > today }; }
+  catch { return null; }
+}
+
+export async function quoteFinanceSettlement(input: QuoteInput) {
+  const admin = await getActiveStudioAdmin();
+  const parsed = quoteSchema.safeParse(input);
+  if (!admin || !parsed.success) return null;
+  return datedFinanceQuote(parsed.data, getKyivDateOnly());
+}
+
+export async function quoteFinanceSchedule(inputs: QuoteInput[]) {
+  const admin = await getActiveStudioAdmin();
+  const parsed = z.array(quoteSchema).safeParse(inputs);
+  if (!admin || !parsed.success) return [];
+  const today = getKyivDateOnly();
+  const cache = new Map<string, Promise<Awaited<ReturnType<typeof resolveFinanceFx>> | null>>();
+  return Promise.all(parsed.data.map(async (input) => {
+    const date = input.date > today ? today : input.date;
+    const key = `${input.currency}:${input.obligationCurrency}:${date}`;
+    let quote = cache.get(key);
+    if (!quote) {
+      quote = resolveFinanceFx(input.currency, input.obligationCurrency, date, "nbu", "").catch(() => null);
+      cache.set(key, quote);
+    }
+    const value = await quote;
+    return value ? { ...value, indicative: input.date > today } : null;
+  }));
 }

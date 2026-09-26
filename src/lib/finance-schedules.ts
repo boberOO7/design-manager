@@ -22,6 +22,19 @@ export const scheduleInputSchema = z.object({
   .refine((v) => v.kind !== "payroll" || Boolean(v.basis && v.employeePayout) && (v.basis !== "gross" || v.employeeDeductions !== ""), { path: ["compensation"] })
   .refine((v) => v.kind !== "payroll" || v.intervalMonths === 1 && v.commitment === "agreed" && v.certainty === "fixed", { path: ["configuration"] })
   .refine((v) => v.kind !== "recurring" || !v.employeeId && !v.basis && !v.employeePayout && !v.employeeDeductions && !v.employerCost, { path: ["configuration"] });
+export function shiftFinanceMonth(month: string, offset: number) {
+  if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)) return "";
+  return new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + offset, 1)).toISOString().slice(0, 7);
+}
+
+export function payrollPayoutDate(serviceDate: string | null, offset: number | null, day: number | null) {
+  if (!serviceDate) return null;
+  const month = shiftFinanceMonth(serviceDate.slice(0, 7), offset ?? 0);
+  if (!month) return null;
+  const last = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
+  return `${month}-${String(Math.min(Math.max(day ?? 1, 1), last)).padStart(2, "0")}`;
+}
+
 export function payrollCompensationSummary(amount: string, basis: "net" | "gross", deductions: string, employerCost: string) {
   const units = (value: string) => {
     if (!/^\d{1,10}(?:[.,]\d{1,4})?$/.test(value)) return null;

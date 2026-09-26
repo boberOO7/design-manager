@@ -21,8 +21,17 @@ describe("historical Finance FX", () => {
     const fetcher=vi.fn(); vi.stubGlobal("fetch",fetcher);
     expect(await resolveFinanceFx("EUR","EUR","2026-09-05","nbu","")).toMatchObject({ rate: "1", source: "identity" });
     expect(await resolveFinanceFx("USD","EUR","2026-09-05","manual","0.91")).toMatchObject({ rate: "0.91", source: "manual" });
-    await expect(resolveFinanceFx("USD","EUR","2026-09-05","nbu","")).rejects.toThrow();
     expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("derives NBU cross-rates through UAH for two foreign currencies", async () => {
+    const fetcher = vi.fn((input: URL) => Promise.resolve(new Response(JSON.stringify([{
+      cc: input.searchParams.get("valcode")?.toUpperCase(), exchangedate: "05.09.2026",
+      rate_per_unit: input.searchParams.get("valcode") === "eur" ? 45 : 40,
+    }]))));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await resolveFinanceFx("EUR", "USD", "2026-09-05", "nbu", "")).toEqual({ rate: "1.125", source: "nbu", effectiveDate: "2026-09-05" });
+    expect(await resolveFinanceFx("UAH", "USD", "2026-09-05", "nbu", "")).toMatchObject({ rate: "0.025" });
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
   it("fails closed for outages and mismatched dates instead of substituting a rate", async () => {
     vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response("unavailable",{ status: 503 })));

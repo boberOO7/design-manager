@@ -33,7 +33,7 @@ export async function saveFinancePlanning(_state:FinanceActionState,form:FormDat
     const parsed=categoryInputSchema.safeParse(raw);
     if(!parsed.success) return { status:"error",message:t("errors.invalid") };
     const { requestId,...input }=parsed.data;
-    ({ error,data:id }=await client.rpc("save_finance_category",{ p_studio_id:admin.studio_id,p_request_id:requestId,p_input:{ ...input,archived:input.archived==="true" } }));
+    ({ error,data:id }=await client.rpc("save_finance_category",{ p_studio_id:admin.studio_id,p_request_id:requestId,p_input:{ ...input,archived:input.archived==="true",...(input.projectExpenseEnabled?{projectExpenseEnabled:input.projectExpenseEnabled==="true"}:{}) } }));
   } else if(raw.intent==="allocate") {
     const parsed=allocationInputSchema.safeParse(raw);
     if(!parsed.success) return { status:"error",message:t("errors.invalid") };

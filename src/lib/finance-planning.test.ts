@@ -6,6 +6,7 @@ describe("Finance planning inputs",()=>{
   it("keeps project payment names and direction visible without replacing custom titles",()=>{
     expect(projectPaymentPresentation("Design milestone", "Clinic renewal", "Incoming payment", "Project payment")).toEqual({ title:"Design milestone", context:"Clinic renewal · Incoming payment" });
     expect(projectPaymentPresentation("  ", "Clinic renewal", "Incoming payment", "Project payment")).toEqual({ title:"Project payment", context:"Clinic renewal · Incoming payment" });
+    expect(projectPaymentPresentation("", "Clinic renewal", "Outgoing", "Measurements")).toEqual({ title:"Measurements", context:"Clinic renewal · Outgoing" });
   });
   it("links each overdue Dashboard count to the same direction and due-state filter",()=>{
     for(const direction of ["incoming","outgoing"] as const){
@@ -36,11 +37,15 @@ describe("Finance planning inputs",()=>{
     for(const amount of ["0","-1","NaN","Infinity","1e2","1.23456","10000000000"]) expect(allocationInputSchema.safeParse({ ...allocation,amount }).success).toBe(false);
     expect(allocationInputSchema.safeParse({ ...allocation,movementId:"spoofed" }).success).toBe(false);
   });
-  it("cannot classify incoming categories as owner distributions",()=>{
-    expect(categoryInputSchema.safeParse({ requestId:id,name:"Owner",direction:"incoming",nature:"owner_distribution" }).success).toBe(false);
+  it("limits project expense applicability to operating outgoing Finance categories",()=>{
+    const scoped={ requestId:id,name:"Measurements",direction:"outgoing",nature:"operating",projectExpenseEnabled:"true" };
+    expect(categoryInputSchema.safeParse(scoped).success).toBe(true);
+    expect(categoryInputSchema.safeParse({ ...scoped,nature:"financing" }).success).toBe(false);
+    expect(categoryInputSchema.safeParse({ ...scoped,direction:"incoming" }).success).toBe(false);
+    expect(categoryInputSchema.safeParse({ ...scoped,nature:"owner_distribution" }).success).toBe(false);
   });
   it("localizes system identity while preserving custom and legacy labels",()=>{
-    const system:FinanceCategory={ id,studio_id:id,name:"Rent",direction:"outgoing",nature:"operating",default_key:"rent",custom_name:false,archived_at:null,created_at:"" };
+    const system:FinanceCategory={ id,studio_id:id,name:"Rent",direction:"outgoing",nature:"operating",default_key:"rent",custom_name:false,project_expense_enabled:false,archived_at:null,created_at:"" };
     expect(financeCategoryLabel(system,system.name,(key)=>({ rent:"Оренда" })[key]??key)).toBe("Оренда");
     expect(financeCategoryLabel({ ...system,name:"Оренда офісу",custom_name:true },system.name,()=>"Rent")).toBe("Оренда офісу");
     expect(financeMovementCategoryLabel(id,"Rent",[{ ...system,name:"Оренда офісу",custom_name:true }],()=>"Оренда")).toBe("Rent");

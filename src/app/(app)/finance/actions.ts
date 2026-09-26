@@ -141,6 +141,8 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
 
   if (error) {
     if (error.message === "finance_reopen_history_exists") return { status: "error", message: t("reopenUnavailable") };
+    if (error.message === "finance_opening_cutover_locked") return { status: "error", message: t("openingCutoverLocked") };
+    if (error.message === "finance_base_currency_locked") return { status: "error", message: t("baseCurrencyLocked") };
     if (error.message === "finance_cutover_future") return { status: "error", message: t("errors.futureCutover") };
     if (error.message === "finance_request_conflict") return { status: "error", message: t("errors.accountRequestConflict") };
     const openingErrors: Record<string, string> = { finance_opening_fx_required: "required", finance_opening_fx_invalid: "invalid", finance_setup_context_changed: "changed", finance_opening_valuation_locked: "locked" };

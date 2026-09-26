@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { employeeBonusSchema, financeScheduleValidationError, generateObligationsSchema, payrollCompensationSummary, payrollCostSchema, scheduleInputSchema } from "./finance-schedules";
+import { employeeBonusSchema, financeScheduleValidationError, generateObligationsSchema, payrollCompensationSummary, payrollPayoutDate, shiftFinanceMonth, payrollCostSchema, scheduleInputSchema } from "./finance-schedules";
 import { movementInputSchema } from "./finance-movements";
 const id = "66000000-0000-4000-8000-000000000001";
 const payroll = { requestId:id,revision:0,kind:"payroll",employeeId:id,name:"Salary",amount:"1000",currency:"UAH",categoryId:id,intervalMonths:1,payoutDay:31,paymentMonthOffset:1,effectiveFrom:"2026-01-01",commitment:"agreed",certainty:"fixed",basis:"net",employeePayout:"1000",employerCostStatus:"unknown",reason:"Agreement" };
@@ -11,6 +11,11 @@ describe("Finance schedule input", () => {
     expect(payrollCompensationSummary("1000", "gross", "1000", "50").employeeReceives).toBeNull();
     expect(payrollCompensationSummary("1000", "net", "", "0")).toEqual({ employeeReceives: "1000", studioCost: null });
     expect(payrollCompensationSummary("1000", "net", "0", "0")).toEqual({ employeeReceives: "1000", studioCost: "1000" });
+  });
+  it("maps a selected payout month to its service month and actual payout day", () => {
+    expect(shiftFinanceMonth("2026-09", -1)).toBe("2026-08");
+    expect(payrollPayoutDate("2026-08-01", 1, 23)).toBe("2026-09-23");
+    expect(payrollPayoutDate("2026-01-01", 1, 31)).toBe("2026-02-28");
   });
   it("preserves unknown employer costs and supports explicit zero", () => {
     expect(scheduleInputSchema.parse(payroll).employerCost).toBe("");

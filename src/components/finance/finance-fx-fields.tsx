@@ -6,12 +6,12 @@ import { Select, SelectItem } from "@/components/ui/select";
 
 export function FinanceFxFields({ currency, base, destination = false }: { currency: string; base: string; destination?: boolean }) {
   const t = useTranslations("Finance");
-  const [mode, setMode] = useState(base === "UAH" ? "nbu" : "manual");
+  const [mode, setMode] = useState("nbu");
   if (currency === base || !currency) return null;
   return <div className="space-y-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] p-3">
     <FormField label={t("movements.valuation", { currency, base })}>
       <Select aria-label={t("movements.valuation", { currency, base })} name={destination ? "destinationFxMode" : "fxMode"} value={mode} onValueChange={setMode}>
-        {base === "UAH" ? <SelectItem value="nbu">{t("movements.nbu")}</SelectItem> : null}
+        <SelectItem value="nbu">{t("movements.nbu")}</SelectItem>
         <SelectItem value="manual">{t("movements.manual")}</SelectItem>
       </Select>
     </FormField>

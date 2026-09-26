@@ -37,9 +37,9 @@ describe("Finance actions", () => {
   it("rejects missing create identity and reports actionable cutover and retry conflicts", async () => {
     expect((await saveFinanceFoundation({status:"idle"},form({intent:"account",requestId:undefined,accountId:"",name:"Bank",currency:"UAH",openingBalance:"0"}))).status).toBe("error");
     expect(mocks.rpc).not.toHaveBeenCalled();
-    for(const [message,key] of [["finance_cutover_future","futureCutover"],["finance_request_conflict","accountRequestConflict"]]) {
+    for(const [message,key] of [["finance_cutover_future","errors.futureCutover"],["finance_request_conflict","errors.accountRequestConflict"],["finance_opening_cutover_locked","openingCutoverLocked"],["finance_base_currency_locked","baseCurrencyLocked"]]) {
       mocks.rpc.mockResolvedValueOnce({error:{message}});
-      expect(await saveFinanceFoundation({status:"idle"},form({intent:"finalize",confirmed:"on"}))).toEqual({status:"error",message:`errors.${key}`});
+      expect(await saveFinanceFoundation({status:"idle"},form({intent:"finalize",confirmed:"on"}))).toEqual({status:"error",message:key});
     }
   });
   it("rejects unauthorized callers before opening a database client", async () => {

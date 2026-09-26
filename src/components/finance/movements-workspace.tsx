@@ -2,10 +2,11 @@
 
 import { ChevronDown, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { saveFinanceMovement } from "@/app/(app)/finance/movements/actions";
+import { quoteFinanceSettlement, saveFinanceMovement } from "@/app/(app)/finance/movements/actions";
+import { fullFinanceSettlementAmount, indicativeFinanceConversion } from "@/lib/finance-fx-preview";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
@@ -25,46 +26,79 @@ type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 
 
-function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; expected?:FinanceExpected|null; onSaved: () => void; onPending: (pending: boolean) => void }) {
+export function EntryForm({ data, today, transfer, refund, expected, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; expected?:FinanceExpected|null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
-  const active = data.accounts.filter((account) => !account.archived_at && (!expected || account.currency===expected.currency));
+  const active = data.accounts.filter((account) => !account.archived_at);
   const originalAccount = refund?.entries.find((entry) => entry.entry_role === "primary")?.account_id;
   const expectedCategory=data.categories.find((category)=>category.id===expected?.category_id);
   const expectedDescription=expected?.description??"";
   const expectedLabel=expectedCategory?.name&&expectedDescription.startsWith(`${expectedCategory.name} · `)
     ? financeCategoryLabel(expectedCategory,expectedDescription,(key)=>t(`planning.defaults.${key}`))
     : expectedDescription;
-  const expectedCurrency=data.currencies.find((currency)=>currency.code===expected?.currency);
   const [kind, setKind] = useState(refund ? "refund" : transfer ? "transfer" : expectedCategory?.nature === "owner_distribution" ? "owner_withdrawal" : expected?.direction??"incoming");
   const allowedCategories=expected?data.categories.filter((category)=>category.nature===expectedCategory?.nature):data.categories;
   const [categoryId,setCategoryId]=useState(expectedCategory&&!expectedCategory.archived_at?expectedCategory.id:"");
   const [accountId, setAccountId] = useState(originalAccount ?? active[0]?.id ?? "");
   const [destinationId, setDestinationId] = useState(active.find((account) => account.id !== accountId)?.id ?? "");
   const [date, setDate] = useState(today);
-  const [amount, setAmount] = useState(expected?.remaining_amount?.toString()??"");
+  const [amount, setAmount] = useState(expected && active[0]?.currency===expected.currency?expected.remaining_amount?.toString()??"":"");
+  const [amountEdited,setAmountEdited]=useState(false);
   const [received, setReceived] = useState("");
+  const [settlementMode,setSettlementMode]=useState<"nbu"|"manual">("nbu");
+  const [settlementRate,setSettlementRate]=useState("");
+  const [quoted,setQuoted]=useState<{key:string;value:Awaited<ReturnType<typeof quoteFinanceSettlement>>}|null>(null);
   const source = active.find((account) => account.id === accountId);
   const destination = active.find((account) => account.id === destinationId);
   const base = data.settings?.base_currency ?? "";
   const sameCurrency = source?.currency === destination?.currency;
+  const quoteKey=source&&expected?`${source.currency}:${expected.currency}:${date}`:"";
+  useEffect(()=>{
+    if (!expected || !source || source.currency===expected.currency || settlementMode!=="nbu") return;
+    let current=true;
+    const key=`${source.currency}:${expected.currency}:${date}`;
+    quoteFinanceSettlement({currency:source.currency,obligationCurrency:expected.currency??"",date}).then((value)=>{if(current)setQuoted({key,value});}).catch(()=>{if(current)setQuoted({key,value:null});});
+    return ()=>{current=false;};
+  },[expected,source,date,settlementMode]);
+  const currentQuote=quoted?.key===quoteKey?quoted.value:null;
+  const quoteLoaded=quoted?.key===quoteKey;
+  const effectiveRate=settlementMode==="manual"?settlementRate:currentQuote?.rate??"";
+  const settlementCurrency=data.currencies.find((currency)=>currency.code===expected?.currency);
+  const accountCurrency=data.currencies.find((currency)=>currency.code===source?.currency);
+  const fullAmount=expected&&settlementCurrency&&accountCurrency&&effectiveRate?fullFinanceSettlementAmount(expected.remaining_amount??0,effectiveRate,accountCurrency.minor_units,settlementCurrency.minor_units):null;
+  useEffect(()=>{
+    if (!expected || amountEdited) return;
+    if (source?.currency===expected.currency) setAmount(String(expected.remaining_amount??""));
+    else if (fullAmount) setAmount(fullAmount);
+  },[expected,source?.currency,fullAmount,amountEdited]);
+  const converted=settlementCurrency&&accountCurrency&&effectiveRate&&amount?indicativeFinanceConversion(amount,effectiveRate,accountCurrency.minor_units,settlementCurrency.minor_units):null;
+  const credited=converted&&expected?Number(converted)>Number(expected.remaining_amount??0)?String(expected.remaining_amount??0):converted:null;
   const refundCategory=refund?financeMovementCategoryLabel(refund.category_id,refund.category,data.categories,(key)=>t(`planning.defaults.${key}`)):"";
+  const moneyLabel=(value:string|number,code:string)=>{const currency=data.currencies.find((item)=>item.code===code);return currency?formatFinanceAmount(value,currency,locale):`${value} ${code}`;};
   const accounts = (exclude?: string) => active.filter((account) => account.id !== exclude).map((account) => <SelectItem key={account.id} value={account.id}>{account.name} · {account.currency}</SelectItem>);
   return <FinanceActionForm action={saveFinanceMovement} onSaved={onSaved} onPending={onPending} label={t("movements.record")}>
     {transfer || refund || expected ? <input type="hidden" name="kind" value={kind} /> : <FormField label={t("movements.type")}><Select name="kind" aria-label={t("movements.type")} value={kind} onValueChange={(value)=>{setKind(value);setCategoryId("");}}>{["incoming","outgoing","owner_withdrawal"].map((value) => <SelectItem key={value} value={value}>{t(`movements.kinds.${value}`)}</SelectItem>)}</Select></FormField>}
-    {expected?<><input type="hidden" name="expectedItemId" value={expected.id??""}/><p className="text-sm text-[var(--ui-text-secondary)]">{t("planning.recordFor",{ item:expectedLabel,currency:expected.currency??"" })}</p>{expected.certainty==="estimated"?<p className="text-xs text-[var(--ui-text-muted)]">≈ {expectedCurrency?formatFinanceAmount(expected.remaining_amount??0,expectedCurrency,locale):`${expected.remaining_amount??0} ${expected.currency??""}`}</p>:null}<FormField label={t("planning.allocateAmount")}><Input name="allocationAmount" inputMode="decimal" defaultValue={expected.remaining_amount??""} required/></FormField></>:null}
+    {expected?<div className="space-y-0.5"><input type="hidden" name="expectedItemId" value={expected.id??""}/><input type="hidden" name="autoAllocate" value="true"/><p className="text-sm font-semibold">{expectedLabel}</p><p className="ui-numeric text-sm text-[var(--ui-text-secondary)]">{t("planning.remaining")}: <span className="font-medium text-[var(--ui-text)]">{settlementCurrency?formatFinanceAmount(expected.remaining_amount??0,settlementCurrency,locale):`${expected.remaining_amount??0} ${expected.currency??""}`}</span></p></div>:null}
     {refund ? <><input type="hidden" name="relatedMovementId" value={refund.id} /><p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.refundHelp", { category: refundCategory })}</p></> : null}
-    <div className="grid gap-4 sm:grid-cols-2">
-      <FormField label={transfer ? t("movements.fromAccount") : t("movements.account")}>{refund ? <><Input value={source ? `${source.name} · ${source.currency}` : t("movements.errors.archived")} readOnly /><input type="hidden" name="accountId" value={accountId} /></> : <Select name="accountId" aria-label={transfer ? t("movements.fromAccount") : t("movements.account")} value={accountId} onValueChange={setAccountId} required>{accounts()}</Select>}</FormField>
+    <div className={expected?"grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)_minmax(9rem,11rem)] sm:items-end":"grid gap-4 sm:grid-cols-2"}>
+      <FormField label={transfer ? t("movements.fromAccount") : t("movements.account")}>{refund ? <><Input value={source ? `${source.name} · ${source.currency}` : t("movements.errors.archived")} readOnly /><input type="hidden" name="accountId" value={accountId} /></> : <Select name="accountId" aria-label={transfer ? t("movements.fromAccount") : t("movements.account")} value={accountId} onValueChange={(value)=>{setAccountId(value);if(expected){setAmountEdited(false);setSettlementMode("nbu");setSettlementRate("");setAmount(active.find((entry)=>entry.id===value)?.currency===expected.currency?String(expected.remaining_amount??""):"");}}} required>{accounts()}</Select>}</FormField>
       {transfer ? <FormField label={t("movements.toAccount")}><Select name="destinationId" aria-label={t("movements.toAccount")} value={destinationId} onValueChange={setDestinationId} required>{accounts(accountId)}</Select></FormField> : null}
-      <FormField label={transfer ? t("movements.sentAmount") : t("movements.amount")}><Input name="amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} required autoComplete="off" /></FormField>
+      <FormField label={transfer ? t("movements.sentAmount") : expected ? expected.direction==="incoming" ? t("movements.actualAmount",{currency:source?.currency??""}) : `${t("movements.sentAmount")} (${source?.currency??""})` : t("movements.amount")}><Input className={expected?"max-w-48":undefined} name="amount" inputMode="decimal" value={amount} onChange={(event) => {setAmount(event.target.value);if(expected)setAmountEdited(true);}} required autoComplete="off" /></FormField>
       {transfer ? sameCurrency ? <input type="hidden" name="receivedAmount" value={amount}/> : <FormField label={t("movements.receivedAmount")}><Input name="receivedAmount" inputMode="decimal" value={received} onChange={(event) => setReceived(event.target.value)} required autoComplete="off" /></FormField> : null}
-      <FormField label={t("movements.date")}><DatePicker name="date" aria-label={t("movements.date")} value={date} onValueChange={setDate} min={data.settings?.cutover_date} max={today} locale={locale} required /></FormField>
+      <FormField label={t("movements.date")}><DatePicker className={expected?"max-w-44":undefined} name="date" aria-label={t("movements.date")} value={date} onValueChange={(value)=>{setDate(value);if(expected&&source?.currency!==expected.currency&&settlementMode==="nbu"&&!amountEdited)setAmount("");}} min={data.settings?.cutover_date} max={today} locale={locale} required /></FormField>
     </div>
     {kind === "owner_withdrawal" ? <p className="text-sm text-[var(--ui-text-muted)]">{t("movements.ownerHelp")}</p> : null}
-    {!transfer&&!refund?<FinanceCategorySelect categories={allowedCategories} direction={kind==="incoming"?"incoming":"outgoing"} owner={kind==="owner_withdrawal"} value={categoryId} onValueChange={setCategoryId}/>:null}
-    {(source?.currency !== base || transfer && destination?.currency !== base && !sameCurrency) ? <div className="space-y-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3"><p className="text-xs font-medium text-[var(--ui-text-secondary)]">{t("movements.reportingDetails")}</p><div className="grid gap-3 sm:grid-cols-2">{source ? <FxFields key={source.currency} currency={source.currency} base={base} /> : null}{transfer && destination && !sameCurrency ? <FxFields key={destination.currency} currency={destination.currency} base={base} destination /> : null}</div></div> : null}
+    {expected&&expectedCategory&&!expectedCategory.archived_at?<input type="hidden" name="categoryId" value={expectedCategory.id}/>:!transfer&&!refund?<FinanceCategorySelect categories={allowedCategories} direction={kind==="incoming"?"incoming":"outgoing"} owner={kind==="owner_withdrawal"} value={categoryId} onValueChange={setCategoryId}/>:null}
+    {expected&&source?.currency!==expected.currency?<div className="space-y-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3">
+      <div className="flex flex-wrap items-end gap-2"><span className="pb-2 text-xs font-medium text-[var(--ui-text-secondary)]">{t("movements.settlementSourceLabel")}:</span><Select name="settlementFxMode" aria-label={t("movements.settlementRateLabel")} size="compact" width="content" value={settlementMode} onValueChange={(value)=>{setSettlementMode(value==="manual"?"manual":"nbu");if(!amountEdited)setAmount("");}}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select>
+      {settlementMode==="manual"?<FormField label={t("movements.settlementRate",{currency:source?.currency??"",obligation:expected.currency??""})}><Input className="max-w-44" name="settlementManualRate" inputMode="decimal" value={settlementRate} onChange={(event)=>setSettlementRate(event.target.value)} required/></FormField>:null}</div>
+      {effectiveRate&&source?<p className="text-xs text-[var(--ui-text-muted)]">{t("movements.settlementRateCompact",{currency:source.currency,obligation:expected.currency??"",rate:effectiveRate,source:settlementMode==="nbu"?t("movements.nbuShort"):t("movements.manualShort"),date:formatDateOnly(settlementMode==="nbu"?currentQuote?.effectiveDate??date:date,locale)})}{settlementMode==="nbu"&&currentQuote?.indicative?<> · {t("movements.indicativeRate")}</>:null}</p>:null}
+      {credited!==null&&source?<p className="ui-numeric text-sm font-medium text-[var(--ui-text)]">{moneyLabel(amount,source.currency)} → {moneyLabel(credited,expected.currency??"")}</p>:null}
+      {settlementMode==="nbu"&&!effectiveRate?<p className="text-xs text-[var(--ui-text-muted)]">{quoteLoaded?t("movements.quoteUnavailable"):t("movements.quoteLoading")}</p>:null}
+    </div>:null}
+    {expected&&source?.currency===base?<input type="hidden" name="fxMode" value="nbu"/>:null}
     <details className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("movements.additionalDetails")}</summary><div className="space-y-4 border-t border-[var(--ui-border)] p-3">
+      {(source?.currency !== base || transfer && destination?.currency !== base && !sameCurrency) ? <div className="space-y-2"><p className="text-xs font-medium">{t("movements.reportingDetails")}</p><div className="grid gap-3 sm:grid-cols-2">{source ? <FxFields key={source.currency} currency={source.currency} base={base} /> : null}{transfer && destination && !sameCurrency ? <FxFields key={destination.currency} currency={destination.currency} base={base} destination /> : null}</div></div> : null}
       {transfer ? <FormField label={t("movements.fee", { currency: source?.currency ?? "" })}><Input name="fee" inputMode="decimal" defaultValue="0" required /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.feeHelp")}</span></FormField> : null}
       {!transfer&&!refund&&!expected&&["incoming","outgoing"].includes(kind)?<label className="flex items-start gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" name="allocationIntent" value="true" className="mt-1 size-4"/><span>{t("movements.advanceForMatching")}<span className="mt-0.5 block text-xs text-[var(--ui-text-muted)]">{t("movements.advanceForMatchingHelp")}</span></span></label>:null}
       <FormField label={t("movements.description")}><Textarea name="description" rows={2} maxLength={2000} /></FormField>

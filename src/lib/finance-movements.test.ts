@@ -19,6 +19,10 @@ describe("actual movement inputs", () => {
     expect(movementInputSchema.safeParse({ ...base, destinationId: second }).success).toBe(false);
     expect(movementInputSchema.safeParse({ ...base, kind: "refund" }).success).toBe(false);
   });
+  it("accepts automatic settlement without a separately editable obligation amount", () => {
+    expect(movementInputSchema.safeParse({ ...base, expectedItemId:first,autoAllocate:"true" }).success).toBe(true);
+    expect(movementInputSchema.safeParse({ ...base, expectedItemId:first,autoAllocate:"true",allocationAmount:"12" }).success).toBe(false);
+  });
   it("validates active accounts, currency minor units, and same-currency equality", () => {
     const currencies = [{ code: "UAH", minor_units: 2 }, { code: "JPY", minor_units: 0 }];
     const input = movementInputSchema.parse({ ...base, kind: "transfer", destinationId: second, receivedAmount: "10" });

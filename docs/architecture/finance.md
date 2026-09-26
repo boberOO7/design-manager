@@ -20,23 +20,25 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   date; they are neither revenue nor expense and are not transaction records.
 - Setup starts as a draft. Administrators can correct settings and account
   currencies/openings until explicitly finalizing setup. Finalization records
-  the actor/date and requires an active account. Admins can reopen only while
-  substantive Finance history is absent.
-  Draft cutover dates may be in the future, but finalization requires cutover on
+  the actor/date and requires an active account. Admins can reopen while no
+  posted cash movement or realized trip expense exists. Draft cutover dates may be in the future, but finalization requires cutover on
   or before today's `Europe/Kyiv` business date. A database trigger also protects
   direct finalized inserts/updates; the requested date is never silently changed.
   If legacy future-finalized state has history, preserve it and wait until cutover
   before using current-cash reports.
 - After finalization, reporting currency, cutover date, and historical account
-  currencies/openings are locked. Reopening requires no movements (including dated
-  openings/corrections and transfers), expected items, obligations, trip entries,
-  project terms, budget revisions, forecast snapshots or payroll cost revisions.
-  Accounts, seeded categories and schedule configuration do not block it. The
-  guarded RPC returns settings to draft, keeps account opening amounts and
-  unrelated data, and clears only opening FX valuations for re-entry. Later
-  accounts keep the historical opening column at zero and may record a dated account-opening ledger event. An existing
-  account with zero historical opening and no ledger activity can record that
-  event once. Renaming, archiving, and restoring remain available; restoring
+  currencies/openings are locked. Reopening is blocked by posted movements
+  (including dated openings/corrections and transfers) or realized trip expenses. Unpaid payroll,
+  expectations, budgets, forecasts, project terms and other planning records do
+  not block it. The guarded RPC returns settings to draft, keeps account opening
+  amounts and unrelated data, and clears opening FX valuations for re-entry.
+  A non-zero opening must be explicitly cleared before changing the cutover
+  date; zero openings can move with the date. Reporting-currency changes stay
+  locked while opening stock, realized history, budgets, saved forecasts or
+  trip valuations depend on the old currency. Later accounts keep the historical
+  opening column at zero and may record a dated account-opening ledger event. An
+  existing account with zero historical opening and no ledger activity can record
+  that event once. Renaming, archiving, and restoring remain available; restoring
   does not unlock openings.
 - An account represents one independent cash pool/currency pocket. Its
   `account_type` (`bank`, `cash`, `payment_service`, `other`) is UI metadata only;
@@ -72,8 +74,8 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   resolver as movements. NBU requests use the cutover date, never today. Missing
   rates save nothing and require retry or an explicit manual fallback. Same-currency
   openings use their original amount; zero foreign openings require no assumed rate.
-- Draft valuations may be corrected. Changing the opening amount, account currency,
-  reporting currency or cutover clears stale draft valuations. Finalization requires
+- Draft valuations may be corrected. Changing the opening amount or account currency clears stale draft
+  valuations. Permitted reporting-currency or cutover changes also clear them. Finalization requires
   all nonzero foreign openings to be valued, including archived accounts. Context
   checks under the Finance parent lock reject stale submissions.
 - Older finalized setups retain missing valuations until an admin explicitly
@@ -120,7 +122,7 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   rounded reporting amount, source and effective date. Rates are reporting units
   per **one** account-currency unit, with up to ten decimal places. Matching
   currencies use explicit identity valuation. Foreign currencies require manual
-  valuation or, for UAH reporting, the NBU rate effective for the financial date.
+  valuation or a dated NBU rate; cross rates are derived through UAH when needed.
   The server uses NBU's dated range endpoint and `rate_per_unit`, checking the
   returned currency and `exchangedate` exactly. Missing, ambiguous, or mismatched
   results fail closed; an administrator must explicitly choose a manual rate.
@@ -186,8 +188,11 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
 - `finance_allocations` is immutable signed matching history referencing original
   incoming/outgoing movement IDs and expected-item IDs through same-studio keys.
   Positive allocations support many-to-many and partial matching; negative releases
-  reference a specific earlier allocation. No match or release creates money. Same
-  currency, direction and nature are required. Owner withdrawals are allocatable
+  reference a specific earlier allocation. No match or release creates money.
+  Allocation amount is in obligation currency; payment amount is in account
+  currency. Contextual payment recording supports cross-currency settlement with
+  a frozen dated rate, while matching an existing movement still requires the same
+  currency. Direction and nature must match. Owner withdrawals are allocatable
   as outgoing owner distributions; they cannot settle operating expenses. Transfers,
   fees and refunds are not independently allocatable payments.
 - `finance_payment_availability` derives original principal less unreversed refunds
@@ -227,7 +232,7 @@ writing, serializing them with settings changes/finalization; triggers enforce
 identity and historical invariants. Finance emits no ordinary project activity
 or notifications containing private data.
 
-## Project agreements and revenue streams
+## Project agreements, income, and expenses
 
 - Project Finance presents project value, collected, outstanding receivables and
   future planned payments separately. Unscheduled contract value is an actionable
@@ -265,6 +270,11 @@ or notifications containing private data.
   contractor bonus, and other income use incoming Finance expectations. Project
   payment recording composes the existing ledger/allocation RPC and returns to
   the originating project; global matching sees the same expected and movement IDs.
+  The separate project-expense stream uses the same project link with outgoing
+  operating expectations. Payment or matching creates a ledger allocation, not a
+  second expense; paid amounts and cross-currency settlement/cash snapshots remain
+  immutable. `finance_categories.project_expense_enabled` limits the project selector
+  to outgoing operating categories while keeping the global category identity.
 - Design schedules have arbitrary names/counts, independent due/expected dates,
   and the agreement currency. Active scheduled amounts cannot exceed the current
   contract. A shortfall stays **unscheduled**, with no invented forecast date.
@@ -357,21 +367,21 @@ or notifications containing private data.
   No financial fields are accepted by the bulk organization action.
 - `/finance/schedules` is admin-only. `finance_schedules` identifies either an
   employee's monthly payroll or a recurring studio obligation;
-  `finance_schedule_terms` holds numbered, effective-dated revisions. Starts are
-  month starts and optional inclusive ends are month ends. The latest payroll
-  term can be edited in place while its generated obligations are unearned,
-  unpaid, and have no completed payroll-cost revision. This refreshes unpaid
-  projections, including manually generated periods. An entirely unused payroll
-  configuration can be removed; its audit record remains, while projections are
-  cancelled and the employee returns to unconfigured status. Once consumed,
-  terms remain immutable and changes create a dated revision. Later revisions
-  normally start in a future month; payroll may amend the current month while
-  that occurrence has no allocation history or completed cost revision.
+  `finance_schedule_terms` holds numbered, effective-dated revisions. Terms use
+  service-month starts and optional inclusive month ends internally; payroll forms
+  select and display the effective payout occurrence, derived from the configured
+  payout day and month offset. A payroll term stays editable until a payout is
+  established/allocated or a payroll cost completion is recorded. Saving collapses
+  the unused revision suffix and refreshes unpaid expectations, including overdue
+  and manually generated periods. Paid or finalized terms stay immutable, and
+  later changes create new revisions. A newer unused revision can be deleted
+  to restore the preceding agreement for unpaid payouts. An entirely unused payroll configuration
+  can be removed; its audit record remains while projections are cancelled.
   Recurring revisions cannot split an existing multi-month service period.
-  The first payroll form suggests the employee's current Team start month when
-  available; the saved term is independent and later Team edits do not change it.
-  History derives valid-through from the next revision, submitted end and permanent
-  stop boundary.
+  The first payroll form suggests the employee's Team start payout month when
+  available; later Team edits do not change the saved term. History lists only
+  finalized payroll terms and derives valid-through from the next revision,
+  submitted end and permanent stop boundary.
 - Payroll keeps agreed compensation (net/gross), employee payout, optional
   employee deductions/remittances and additional employer cost separate. Admins
   supply amounts; PostgreSQL validates exact currency precision and agreement

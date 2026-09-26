@@ -11,8 +11,9 @@ import { Select, SelectItem } from "@/components/ui/select";
 import { BinarySwitch } from "@/components/ui/binary-switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FinanceCurrencySelect } from "./currency-select";
-import { payrollCompensationSummary } from "@/lib/finance-schedules";
+import { payrollCompensationSummary, payrollPayoutDate, shiftFinanceMonth } from "@/lib/finance-schedules";
 import { formatFinanceAmount } from "@/lib/finance";
+import { formatDateOnly } from "@/lib/utils";
 
 type Data = FinanceSchedulesData & NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & { today: string };
 export function initialPayrollMembers(data: Pick<Data, "members" | "schedules">) {
@@ -28,7 +29,7 @@ function SetupRow({ member, data, result }: { member: Data["members"][number]; d
   const name = (field: string) => `${member.user_id}.${field}`;
   const earliest = data.schedules.filter((schedule) => schedule.employee_id === member.user_id).map((schedule) => schedule.stopped_from?.slice(0, 7) ?? "").sort().at(-1) ?? "";
   const start = [member.joined_at?.slice(0, 7) ?? data.today.slice(0, 7), earliest].sort().at(-1);
-  const [month, setMonth] = useState(start), [day, setDay] = useState(String(Number(member.joined_at?.slice(8, 10) ?? "1"))), [offset, setOffset] = useState("1");
+  const [month, setMonth] = useState(start ? shiftFinanceMonth(start, 1) : ""), [day, setDay] = useState(String(Number(member.joined_at?.slice(8, 10) ?? "1"))), [offset, setOffset] = useState("1");
   const label = (value: string) => <span className="lg:sr-only">{value}</span>;
   const summary = payrollCompensationSummary(amount, basis, deductions, employerCost);
   const unit = data.currencies.find((item) => item.code === currency);
@@ -42,7 +43,7 @@ function SetupRow({ member, data, result }: { member: Data["members"][number]; d
       <FormField as="div" label={label(t("schedules.basis"))}><BinarySwitch hideLabel label={t("schedules.basis")} emptyLabel={t("schedules.net")} options={["net", "gross"] as const} value={basis} onChange={setBasis} optionLabel={(value) => t(`schedules.${value}`)} /><input type="hidden" name={name("basis")} value={basis} /></FormField>
       <FormField label={label(t("schedules.payoutDay"))}><Input name={name("day")} type="number" min={1} max={31} value={day} onChange={(event) => setDay(event.target.value)} required={selected} /></FormField>
       <FormField label={label(t("schedules.paymentMonth"))}><Select name={name("offset")} aria-label={t("schedules.paymentMonth")} value={offset} onValueChange={setOffset}><SelectItem value="0">{t("schedules.sameMonth")}</SelectItem><SelectItem value="1">{t("schedules.nextMonth")}</SelectItem></Select></FormField>
-      <FormField label={label(t("schedules.effectiveFrom"))}><input type="hidden" name={name("month")} value={month ? `${month}-01` : ""} /><DatePicker aria-label={t("schedules.effectiveFrom")} monthOnly min={earliest ? `${earliest}-01` : undefined} value={month ? `${month}-01` : ""} onValueChange={(value) => setMonth(value.slice(0, 7))} locale={locale} required={selected} /></FormField>
+      <FormField label={label(t("schedules.effectivePayout"))}><input type="hidden" name={name("month")} value={month ? `${shiftFinanceMonth(month, -Number(offset))}-01` : ""} /><DatePicker aria-label={t("schedules.effectivePayout")} monthOnly min={earliest ? `${shiftFinanceMonth(earliest, Number(offset))}-01` : undefined} value={month ? `${month}-01` : ""} onValueChange={(value) => setMonth(value.slice(0, 7))} locale={locale} required={selected} />{month ? <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("schedules.payoutBoundary", { date: formatDateOnly(payrollPayoutDate(`${shiftFinanceMonth(month, -Number(offset))}-01`, Number(offset), Number(day)) ?? "", locale) })}</p> : null}</FormField>
     </div>
     <AnimatedDisclosure className="mt-1" title={t("schedules.payrollCosts")}>
       <div className="space-y-3 pt-3">
@@ -87,7 +88,7 @@ export function PayrollSetup({ data, onPending, onClose }: { data: Data; onPendi
   }} className="space-y-4">
     <p className="text-sm text-[var(--ui-text-secondary)]">{t("schedules.setupHelp")}</p>
     <fieldset disabled={pending} className="space-y-4">
-      <div className="overflow-x-auto"><div className="lg:min-w-[72rem]"><div className="hidden grid-cols-[2.75rem_minmax(9rem,1fr)_minmax(9rem,1fr)_7rem_minmax(12rem,1fr)_5rem_10rem_10rem] gap-3 border-b border-[var(--ui-border)] px-0 pb-2 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span /><span>{t("schedules.employee")}</span><span>{t("schedules.agreedAmount")}</span><span>{t("planning.currency")}</span><span>{t("schedules.basis")}</span><span>{t("schedules.payoutDay")}</span><span>{t("schedules.paymentMonth")}</span><span>{t("schedules.effectiveFrom")}</span></div>{members.map((member) => <SetupRow key={member.user_id} member={member} data={data} result={result.rows.find((row) => row.employeeId === member.user_id)} />)}</div></div>
+      <div className="overflow-x-auto"><div className="lg:min-w-[72rem]"><div className="hidden grid-cols-[2.75rem_minmax(9rem,1fr)_minmax(9rem,1fr)_7rem_minmax(12rem,1fr)_5rem_10rem_10rem] gap-3 border-b border-[var(--ui-border)] px-0 pb-2 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span /><span>{t("schedules.employee")}</span><span>{t("schedules.agreedAmount")}</span><span>{t("planning.currency")}</span><span>{t("schedules.basis")}</span><span>{t("schedules.payoutDay")}</span><span>{t("schedules.paymentMonth")}</span><span>{t("schedules.effectivePayout")}</span></div>{members.map((member) => <SetupRow key={member.user_id} member={member} data={data} result={result.rows.find((row) => row.employeeId === member.user_id)} />)}</div></div>
       {result.error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{result.error}</p> : null}
       <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>{t("movements.close")}</Button><Button type="submit" disabled={pending || members.every((member) => result.rows.some((row) => row.employeeId === member.user_id && row.saved))}>{t(pending ? "movements.saving" : "schedules.setupSave")}</Button></div>
     </fieldset>

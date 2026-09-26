@@ -13,10 +13,8 @@ export function parseNbuRate(payload: unknown, currency: string, date: string) {
   return financeRateSchema.parse(String(matches[0].rate_per_unit));
 }
 
-export async function resolveFinanceFx(currency: string, reportingCurrency: string, date: string, mode: "nbu" | "manual", manualRate: string) {
-  if (currency === reportingCurrency) return { rate: "1", source: "identity", effectiveDate: date };
-  if (mode === "manual") return { rate: financeRateSchema.parse(manualRate), source: "manual", effectiveDate: date };
-  if (reportingCurrency !== "UAH") throw new Error("finance_fx_unavailable");
+async function nbuUahRate(currency: string, date: string) {
+  if (currency === "UAH") return "1";
   const day = z.iso.date().parse(date).replaceAll("-", "");
   const code = z.string().regex(/^[A-Z]{3}$/).parse(currency);
   const url = new URL("https://bank.gov.ua/NBU_Exchange/exchange_site");
@@ -24,5 +22,13 @@ export async function resolveFinanceFx(currency: string, reportingCurrency: stri
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error("finance_fx_unavailable");
   const payload: unknown = await response.json();
-  return { rate: parseNbuRate(payload, code, date), source: "nbu", effectiveDate: date };
+  return parseNbuRate(payload, code, date);
+}
+
+export async function resolveFinanceFx(currency: string, reportingCurrency: string, date: string, mode: "nbu" | "manual", manualRate: string) {
+  if (currency === reportingCurrency) return { rate: "1", source: "identity", effectiveDate: date };
+  if (mode === "manual") return { rate: financeRateSchema.parse(manualRate), source: "manual", effectiveDate: date };
+  const [fromUah, toUah] = await Promise.all([nbuUahRate(currency, date), nbuUahRate(reportingCurrency, date)]);
+  const rate = reportingCurrency === "UAH" ? fromUah : financeRateSchema.parse((Number(fromUah) / Number(toUah)).toFixed(10).replace(/0+$/, "").replace(/\.$/, ""));
+  return { rate, source: "nbu", effectiveDate: date };
 }
