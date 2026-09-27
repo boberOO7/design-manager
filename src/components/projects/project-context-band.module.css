@@ -8,18 +8,16 @@
 }
 
 .toolbar, .identity, .measurements, .dates { padding-inline: 28px; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding-top: 16px; }
-.identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; padding-block: 12px 24px; transition: padding 180ms ease; }
-.statusBlock { grid-column: 2; grid-row: span 2; align-self: start; padding-top: 5px; text-align: right; }
-.healthReason { margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--ui-text-muted); }
-.title { min-width: 0; font-size: clamp(28px, 2.65cqi, 38px); font-weight: 600; letter-spacing: -0.045em; line-height: 1.18; overflow-wrap: anywhere; transition: font-size 180ms ease; }
-.statuses { display: flex; justify-content: flex-end; flex-shrink: 0; flex-wrap: wrap; align-items: center; gap: 10px; }
-.lifecycle { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; color: var(--ui-text-secondary); font-size: 12px; }
-.metadata { grid-column: 1; display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 14px; color: var(--ui-text-secondary); font-size: 14px; line-height: 1.5; }
-.metadata p { display: flex; align-items: flex-start; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
-.metadata svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 3px; color: var(--ui-text-muted); }
-.property { display: flex; flex-wrap: wrap; gap: 8px 14px; font-weight: 500; }
-.property > div + div { padding-left: 14px; border-left: 1px solid var(--ui-border-strong); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding-top: 8px; }
+.identity { padding-block: 2px 16px; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.title { min-width: 0; font-size: clamp(26px, 2.3cqi, 32px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; overflow-wrap: anywhere; }
+.statuses { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.lifecycle { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-text-secondary); font-size: 12px; }
+.metadata { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 13px; line-height: 1.5; }
+.metadata > div { min-width: 0; }
+.metadata dd { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.metadata svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--ui-text-muted); }
 .measurements { transition: padding 180ms ease; padding-block: 20px 16px; border-top: 1px solid var(--ui-border); }
 .progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
 .overall { display: grid; grid-template-columns: 1fr auto; align-items: end; column-gap: 12px; }
@@ -31,12 +29,16 @@
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; align-content: end; gap: 16px 8px; }
 .stageValue { font-size: 28px; font-weight: 500; }
 .stageValue > span { margin-left: 2px; font-size: 15px; color: var(--ui-text-muted); }
-.overallTrack, .stageTrack { grid-column: 1 / -1; align-self: end; overflow: hidden; background: var(--ui-border); }
-.overallTrack { height: 12px; margin-top: 16px; clip-path: inset(4px 0 round 2px); }
+.trackWrap { grid-column: 1 / -1; align-self: end; position: relative; }
+.overallTrack, .stageTrack { overflow: hidden; background: var(--ui-border); }
+.overall .trackWrap { margin-top: 16px; }
+.overallTrack { height: 12px; clip-path: inset(4px 0 round 2px); }
 .stageTrack { height: 12px; mask-image: linear-gradient(#000, #000), repeating-linear-gradient(to right, #000 0 1px, transparent 1px 10%); mask-size: 100% 2px, 100% 100%; mask-position: center; mask-repeat: no-repeat; }
 .overallTrack > div, .stageTrack > div { height: 100%; background: var(--ui-text); transition: width 180ms ease; }
+.endpoint { position: absolute; top: 50%; width: 8px; height: 8px; background: var(--ui-text); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); pointer-events: none; transform: translate(-50%, -50%); transition: left 180ms ease; }
+.stageEndpoint { width: 7px; height: 7px; }
 .taskLine { margin-top: 16px; }
-.dates { transition: padding 180ms ease; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 28px; border-top: 1px solid var(--ui-border); background: var(--ui-surface-subtle); padding-block: 18px 20px; }
+.dates { transition: padding 180ms ease; display: flex; justify-content: space-between; gap: 24px 20px; border-top: 1px solid var(--ui-border); background: var(--ui-surface-subtle); padding-block: 18px 20px; }
 .dates > div { min-width: 0; }
 .dates svg { width: 15px; height: 15px; flex-shrink: 0; stroke-width: 1.6; }
 .dates dt { display: flex; align-items: center; gap: 7px; color: var(--ui-text-muted); font-size: 12px; }
@@ -44,23 +46,20 @@
 .paused { display: flex; gap: 12px; margin: 16px 28px 0; padding: 12px; border-radius: var(--ui-radius-control); background: var(--ui-info-surface); color: var(--ui-info-text); font-size: 14px; }
 
 @container (max-width: 1000px) {
-  .identity { grid-template-columns: 1fr; }
-  .statusBlock { grid-column: 1; grid-row: auto; text-align: left; margin-top: 14px; padding-top: 0; }
-  .statuses { justify-content: flex-start; }
-  .metadata { grid-row: 2; }
-  .healthReason { margin-top: 6px; }
+  .dates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .overallValue { font-size: 38px; }
 }
 @container (max-width: 700px) {
   .toolbar, .identity, .measurements, .dates { padding-inline: 20px; }
-  .identity { padding-block: 20px 24px; }
+  .identity { padding-block: 4px 16px; }
   .progress { grid-template-columns: 1fr; gap: 24px; }
-  .overallTrack { margin-top: 2px; }
+  .overall .trackWrap { margin-top: 2px; }
   .stages { grid-column: auto; gap: 20px; }
   .stage { grid-template-columns: 1fr; }
   .dates { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
   .dates dd { padding-left: 0; }
-  .metadata { column-gap: 20px; }
+  .heading { column-gap: 16px; }
+  .metadata { column-gap: 16px; }
   .paused { margin-inline: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {

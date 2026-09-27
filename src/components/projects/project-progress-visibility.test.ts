@@ -43,7 +43,7 @@ describe("project progress visibility", () => {
     const localized = render(true, "uk", "2000-01-01");
     expect(localized).toContain("Активний");
     expect(localized).toContain("Прострочено");
-    expect(localized).toContain("Дедлайн проєкту минув");
+    expect(localized).not.toContain("Дедлайн проєкту минув");
     expect(localized).toContain("Звичайний");
     expect(localized).not.toMatch(/Overdue|Normal|Project deadline passed|Дедлайн наступного завдання/);
   });
