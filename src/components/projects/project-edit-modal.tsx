@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
@@ -25,7 +26,8 @@ export function ProjectEditModal({ action, defaultValues, projectName }: {
     onSuccess={() => router.refresh()}
     title={t("editProject")}
     triggerLabel={workspace("edit")}
+    triggerIcon={<Pencil aria-hidden="true" className="size-4" />}
     triggerSize="sm"
-    triggerVariant="outline"
+    triggerVariant="ghost"
   />;
 }

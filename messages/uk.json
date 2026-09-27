@@ -636,6 +636,11 @@
     "startDate": "Дата початку"
   },
   "ProjectWorkspace": {
+    "areaValue": "{area} м²",
+    "deadlinePassed": "Дедлайн проєкту минув",
+    "overdueTasks": "{count, plural, one {# прострочене завдання} few {# прострочені завдання} many {# прострочених завдань} other {# простроченого завдання}}",
+    "urgentTasks": "{count, plural, one {# термінове завдання} few {# термінові завдання} many {# термінових завдань} other {# термінового завдання}}",
+    "highPriorityTasks": "{count, plural, one {# завдання високого пріоритету} few {# завдання високого пріоритету} many {# завдань високого пріоритету} other {# завдання високого пріоритету}}",
     "finance": "Фінанси",
     "board": "Дошка",
     "details": "Деталі",

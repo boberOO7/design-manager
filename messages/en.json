@@ -636,6 +636,11 @@
     "startDate": "Start date"
   },
   "ProjectWorkspace": {
+    "areaValue": "{area} m²",
+    "deadlinePassed": "Project deadline passed",
+    "overdueTasks": "{count, plural, one {# overdue task} other {# overdue tasks}}",
+    "urgentTasks": "{count, plural, one {# urgent task} other {# urgent tasks}}",
+    "highPriorityTasks": "{count, plural, one {# high-priority task} other {# high-priority tasks}}",
     "finance": "Finance",
     "board": "Board",
     "details": "Details",

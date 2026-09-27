@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { ProjectFormAction, ProjectFormDefaults } from "@/components/projects/project-form";
 import { LazyProjectForm as ProjectForm } from "@/components/projects/lazy-project-form";
 import { Button, type ButtonProps } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export function ProjectFormModal({
   onSuccess,
   title,
   triggerLabel,
+  triggerIcon,
   triggerSize,
   triggerVariant,
   members = [],
@@ -33,6 +34,7 @@ export function ProjectFormModal({
   onSuccess: (projectId: string) => void;
   title: string;
   triggerLabel: string;
+  triggerIcon?: ReactNode;
   triggerSize?: ButtonProps["size"];
   triggerVariant?: ButtonProps["variant"];
   members?: ActiveStudioAssignee[];
@@ -53,7 +55,7 @@ export function ProjectFormModal({
   }
 
   return <>
-    <Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} onClick={() => setIsOpen(true)}>{triggerLabel}</Button>
+    <Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} className={triggerIcon ? "size-9 p-0" : undefined} aria-label={triggerIcon ? triggerLabel : undefined} title={triggerIcon ? triggerLabel : undefined} onClick={() => setIsOpen(true)}>{triggerIcon ?? triggerLabel}</Button>
     <Dialog
       closeDisabled={isPending}
       closeLabel={closeLabel}
