@@ -1,0 +1,3 @@
+interface:
+  display_name: "StudioFlow Review"
+  short_description: "Review a StudioFlow diff for meaningful issues"

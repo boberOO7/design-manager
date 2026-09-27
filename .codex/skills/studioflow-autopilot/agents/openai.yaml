@@ -1,0 +1,5 @@
+interface:
+  display_name: "StudioFlow Autopilot"
+  short_description: "Implement and review a StudioFlow request"
+policy:
+  allow_implicit_invocation: false
