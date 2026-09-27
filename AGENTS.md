@@ -340,3 +340,19 @@ Do not update documentation for:
 
 Keep documentation concise, retrieval-oriented, and optimized for future
 coding-agent use.
+
+## Subagents
+
+Use `code_mapper` when a task requires tracing existing behavior across multiple files, layers, or data flows before making a change.
+
+Good uses include:
+- finding the real execution path behind a bug;
+- tracing UI → server action/query → database;
+- understanding unfamiliar existing behavior;
+- locating where a cross-cutting feature is implemented.
+
+Do not use `code_mapper` for small, obvious, local changes where the relevant file and implementation are already clear.
+
+`code_mapper` is for investigation only. Use its findings in the main thread and make implementation decisions there.
+
+Keep delegation proportional to the task. Do not spawn subagents when the main agent can resolve the task quickly.

@@ -79,10 +79,11 @@ post-completion work and does not contribute to the production progress total.
 
 ### Productivity
 
-Productivity records completed work as durable attribution rather than
-recalculating history from a task's current fields. Reopening work voids the
-active completion attribution; completing it again creates a fresh attribution
-from its stable snapshot.
+Productivity records completion identity and date as durable attribution.
+Stage 1 and Stage 3 area credit is split equally across the stage's current
+non-cancelled tasks, so task roster or project-area changes rebalance active
+completed credit. Reopening work voids its active attribution; completing it
+again creates one new attribution.
 
 The Leaderboard reports eligible credited area and task completions for a Kyiv
 calendar month, quarter, or year. It is an operational production view, not a

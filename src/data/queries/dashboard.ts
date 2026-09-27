@@ -52,19 +52,16 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const now = new Date();
   const asOf = now.toISOString();
   const today = getKyivDateOnly(now);
-  const [stageConfigurationsResult, currentStatusPeriodsResult, budgetsResult, projectMembersResult] = await Promise.all([
+  const [stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
     supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", projectsResult.data.map((project) => project.id)),
     membership.system_role === "admin"
       ? supabase.from("task_status_periods").select("task_id, status, entered_at").eq("studio_id", membership.studio_id).is("exited_at", null)
       : Promise.resolve({ data: [], error: null }),
     membership.system_role === "admin"
-      ? supabase.from("project_stage_productivity_budgets").select("project_id, stage, productivity_budget_m2, allocated_productivity_m2").in("project_id", projectsResult.data.map((project) => project.id))
-      : Promise.resolve({ data: [], error: null }),
-    membership.system_role === "admin"
       ? supabase.from("project_members").select("project_id, user_id").in("project_id", projectsResult.data.map((project) => project.id)).eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
   ]);
-  if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || budgetsResult.error || !budgetsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? budgetsResult.error ?? projectMembersResult.error });
+  if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? projectMembersResult.error });
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
   for (const project of projectsResult.data) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurationsResult.data) {
@@ -82,7 +79,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
     const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
     const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
     const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks, projectsResult.data, budgetsResult.data, activeAssignments);
+    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks, projectsResult.data, activeAssignments);
     const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
       const period = currentPeriodByTask.get(task.id);
       return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
