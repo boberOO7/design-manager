@@ -8,37 +8,31 @@ Optimize for the smallest correct implementation and validation path.
 
 Default to direct inspection of the relevant current code.
 
-The following are opt-in, not default steps:
+Broader workflows such as Graphify, architecture-document sweeps, specialized
+skills, external web research, browser automation, broad validation, production
+builds, Graphify refreshes, and documentation updates are opt-in.
 
-- Graphify
-- architecture-document sweeps
-- repo-local specialized skills
-- external web research
-- browser automation
-- broad test suites
-- production builds
-- Graphify refreshes
-- documentation updates
-- unrelated cleanup or refactoring
-
-Use them only when they materially reduce uncertainty or are required by the
-actual risk of the task.
+Use them only when required by the task or when they materially reduce relevant
+uncertainty.
 
 Do not invoke tools, skills, documentation, or additional validation merely to
 be thorough.
 
 Do not broaden a scoped task because nearby code could also be improved.
 
-If requested validation is blocked by unrelated infrastructure, environment, or
-fixture problems, make one reasonable attempt to verify that the blocker is
-unrelated, then report it and stop. Do not repair unrelated test infrastructure,
-dev-server state, Docker state, fixtures, or application code unless the task
-itself requires that repair.
-
 Do not invent new product rules, prioritization schemes, thresholds, quotas,
 heuristics, or business behavior to complete an implementation. Reuse existing
 domain rules and established product patterns. If a genuinely unresolved choice
 materially affects behavior, surface it instead of silently deciding.
+
+When the user's requested outcome is clear, proceed with the work instead of
+stopping to ask for confirmation.
+
+Use reasonable assumptions for routine implementation details. Ask a question
+only when missing information could materially change the result.
+
+For reversible, read-only, investigative, or already-authorized work, continue
+autonomously.
 
 ## Working rules
 
@@ -60,12 +54,13 @@ materially affects behavior, surface it instead of silently deciding.
 - Do not use `any`, `@ts-ignore`, unsafe assertions, or duplicate domain types
   unless there is a clearly justified and documented exception.
 - Preserve the existing visual design unless redesign is explicitly requested.
-- For interactive UI state/layout transitions (expand/collapse, drawers, panels,
-  stage focus, tabs, and show/hide states), preserve or add short, subtle
+- For interactive UI state/layout transitions such as expand/collapse, drawers,
+  panels, stage focus, tabs, and show/hide states, preserve or add short, subtle
   transitions by default (~160–220ms) unless instant feedback is functionally
-  preferable. Prefer CSS/native transitions for simple motion. Avoid abrupt
-  layout jumps, bounce, scale-heavy motion, opacity dimming that hurts clarity,
-  or animations that move surrounding content unexpectedly.
+  preferable.
+- Prefer CSS/native transitions for simple motion.
+- Avoid abrupt layout jumps, bounce, scale-heavy motion, opacity dimming that
+  hurts clarity, or animations that move surrounding content unexpectedly.
 - Preserve localization behavior and existing translation patterns.
 - Prefer the narrowest relevant implementation change over broad refactors.
 
@@ -78,18 +73,22 @@ Typical defaults:
 - Small UI/copy/style fix:
   - TypeScript only when the changed code makes it relevant
   - no browser automation by default
+
 - Local interaction/UI behavior:
   - relevant TypeScript validation
   - do not run Playwright or start a separate dev server by default
-  - if an already-running local app is readily available, a quick manual/interactive
-    check may be used without changing the environment
-  - use automated browser/E2E validation only when the task explicitly requests it
-    or the behavior cannot reasonably be validated otherwise
+  - if an already-running local app is readily available, a quick
+    manual/interactive check may be used without changing the environment
+  - use automated browser/E2E validation only when the task explicitly requests
+    it or the behavior cannot reasonably be validated otherwise
+
 - Local domain logic:
   - focused unit/domain tests for the changed behavior
+
 - Database/schema/RLS/RPC:
   - focused migration/domain/security validation for the changed invariant
   - TypeScript when generated or application contracts changed
+
 - Large cross-domain feature:
   - broader validation only where the integration risk justifies it
 
@@ -104,19 +103,26 @@ Do not automatically run:
 
 unless the task genuinely requires them.
 
+Do not write tests for reversible, low-impact changes when those tests would
+merely mirror the implementation.
+
+Once relevant checks pass, do not broaden or repeat validation unless a new
+change, failure, or unresolved concern justifies it.
+
 Browser automation is opt-in validation.
 
 Do not start a new Next.js dev server, Playwright web server, or separate browser
 test environment solely to validate ordinary UI work unless the task explicitly
 requires automated browser/E2E coverage.
 
-If browser automation is explicitly required and the existing environment is
-blocked by an unrelated `.next` lock, existing dev server, unavailable local
-service, stale unrelated fixture, unrelated database constraint, or other
-environment problem, report the blocker and stop.
+If requested validation is blocked by an unrelated `.next` lock, existing dev
+server, unavailable local service, stale unrelated fixture, unrelated database
+constraint, Docker problem, or other environment issue, make one reasonable
+attempt to verify that the blocker is unrelated, then report it and stop.
 
-Do not modify fixtures, dev-server state, ports, Docker state, or unrelated
-application code solely to make optional browser validation run.
+Do not modify fixtures, dev-server state, ports, Docker state, unrelated test
+infrastructure, or unrelated application code solely to make optional validation
+run.
 
 Existing unrelated validation failures should be reported, not fixed as part of
 a scoped task.
@@ -152,16 +158,16 @@ Use architecture documentation when:
 For unfamiliar, cross-domain, or architectural work, start with
 `docs/architecture/overview.md`, then read only the relevant owning reference.
 
-| Change                                                      | Relevant reference                         |
-| ----------------------------------------------------------- | ------------------------------------------ |
-| Auth, membership, visibility, authorization, RLS            | `docs/architecture/permissions.md`         |
-| Project lifecycle, metadata, team, templates, activity      | `docs/architecture/projects.md`            |
-| Task stages, workflow, checklists, deadlines, collaborators | `docs/architecture/tasks.md`               |
-| Progress, attribution, productivity, Leaderboard            | `docs/architecture/productivity.md`        |
-| Events, time off, recurrence, Google Calendar               | `docs/architecture/calendar.md`            |
-| Team, Administration, contractors, Office, notifications    | `docs/architecture/studio-operations.md`   |
-| Tables, functions, triggers, migrations, generated types    | `docs/architecture/database.md`            |
-| Product scope, vocabulary, product-level non-goals          | `docs/product-spec.md`                     |
+| Change | Relevant reference |
+| --- | --- |
+| Auth, membership, visibility, authorization, RLS | `docs/architecture/permissions.md` |
+| Project lifecycle, metadata, team, templates, activity | `docs/architecture/projects.md` |
+| Task stages, workflow, checklists, deadlines, collaborators | `docs/architecture/tasks.md` |
+| Progress, attribution, productivity, Leaderboard | `docs/architecture/productivity.md` |
+| Events, time off, recurrence, Google Calendar | `docs/architecture/calendar.md` |
+| Team, Administration, contractors, Office, notifications | `docs/architecture/studio-operations.md` |
+| Tables, functions, triggers, migrations, generated types | `docs/architecture/database.md` |
+| Product scope, vocabulary, product-level non-goals | `docs/product-spec.md` |
 
 Before editing, inspect only what is needed to establish the current contract:
 
@@ -178,25 +184,17 @@ Do not load unrelated architecture documents for additional context.
 
 Graphify is optional.
 
-Use it when direct source inspection would be inefficient or uncertain, especially
-for:
+Use it when direct source inspection or normal repository search would be
+inefficient or uncertain, especially for:
 
 - unfamiliar areas with unclear ownership;
 - genuinely cross-domain relationships;
 - architecture questions;
-- non-obvious dependency paths;
-- locating likely owners when normal repository search is insufficient.
+- non-obvious dependency paths.
 
-Do not use Graphify for:
-
-- local UI fixes;
-- copy/style changes;
-- known modules;
-- restoring or modifying an already identified implementation;
-- changes that can be understood from current files, focused search, or git history.
-
-Prefer direct inspection and repository search when the relevant files are
-already known.
+Do not use Graphify for local UI/copy/style fixes, known modules, restoration of
+already identified behavior, or changes that can be understood from current
+files, focused search, or git history.
 
 Useful commands when Graphify is actually needed:
 
@@ -206,89 +204,58 @@ Useful commands when Graphify is actually needed:
 
 Do not refresh Graphify automatically after ordinary implementation work.
 
-Refresh it only when the completed change materially changes repository/domain
-relationships that future agents need to discover, such as:
+Refresh it only when a completed change materially changes repository/domain
+relationships future agents need to discover, such as introducing or removing a
+significant module or persisted domain concept, or materially changing
+cross-domain ownership, dependency direction, or architecture.
 
-- introducing or removing a significant module/domain;
-- creating a new persisted domain concept;
-- materially changing cross-domain ownership or dependency direction;
-- materially changing architecture represented by the graph.
-
-Do not refresh Graphify for:
-
-- local imports;
-- ordinary route edits;
-- local query/mutation changes;
-- styling or copy;
-- translations;
-- local component refactors;
-- ordinary feature implementation inside an existing domain.
+Do not refresh it for ordinary route, query, mutation, component, styling,
+translation, or existing-domain feature changes.
 
 ## Skill routing
 
 Specialized skills are optional context, not a checklist.
 
-Do not load a skill merely because the task belongs to its general category.
+Do not load a skill merely because a task belongs to its general category.
 Use one only when its specialized guidance materially helps solve the task.
 
-Typical cases:
+| Skill | Use when |
+| --- | --- |
+| `supabase` / `supabase-postgres-best-practices` | Non-trivial schema design, migrations, RLS, SQL, indexes, concurrency, security, or database performance |
+| `ui-ux-pro-max` | Genuine UX/UI decisions, new interaction structure, or unresolved usability questions |
+| `gpt-taste` | Intentional visual redesign or art-direction work |
+| `impeccable` | Explicit UI audit, refinement, or final whole-feature polish pass |
+| `design-system` | Design-token, theme, CSS-variable, or component-state architecture |
+| `brand` | Brand identity, voice, or brand-system work |
+| `slides` | Presentation/slide work |
+| GSAP skills | Non-trivial motion work where GSAP is actually needed |
 
-- `supabase` / `supabase-postgres-best-practices`
-  - non-trivial schema design, migrations, RLS, SQL, indexes, concurrency,
-    security, or database performance
-  - not required for ordinary application queries or small UI changes that
-    happen to read Supabase data
+For ordinary application queries, obvious implementation bugs, local restoration
+work, existing-layout preservation, or small UI fixes, normally use no
+specialized skill.
 
-- `ui-ux-pro-max`
-  - genuine UX/UI decisions, new interaction structure, or unresolved usability
-    questions
-  - not required to preserve an existing layout, restore old UI, or fix an
-    obvious local interaction bug
-
-- `gpt-taste`
-  - intentional visual redesign or art-direction work
-
-- `impeccable`
-  - explicit UI audit, refinement, or final whole-feature polish pass
-
-- `design-system`
-  - design-token, theme, CSS-variable, or component-state architecture
-
-- `brand`
-  - brand identity, voice, or brand-system work
-
-- `slides`
-  - presentation/slide work
-
-- GSAP skills
-  - non-trivial motion work where GSAP is actually needed
-  - prefer CSS/native transitions for simple hover/focus/state animation
+Prefer CSS/native transitions for simple hover, focus, and state animation.
 
 Do not load multiple overlapping design skills unless each has a distinct,
 necessary role.
 
-For obvious implementation bugs, local restoration work, or small UI fixes,
-normally use no specialized skill.
-
 ## External research
 
-Do not use external web research for repository-local implementation by default.
+Do not use external web research for repository-local StudioFlow behavior when
+the answer can be determined from current code, migrations, tests, local
+documentation, installed code/types, or git history.
 
 Use external sources only when current external information is necessary, such as:
 
-- current third-party API/library documentation;
-- behavior that cannot be determined from installed code/types;
+- current third-party API or library documentation;
+- behavior not determinable from installed code or types;
 - a version-specific external integration issue;
-- an explicitly requested external comparison or research task.
-
-Do not search the web to understand StudioFlow behavior that can be determined
-from the repository, git history, local documentation, migrations, or tests.
+- an explicitly requested comparison or research task.
 
 ## Database workflow
 
-Use the full database workflow only when the task actually changes database
-schema, RLS, grants, constraints, triggers, RPC contracts, or persisted domain
-behavior.
+Use the full database workflow only when the task changes database schema, RLS,
+grants, constraints, triggers, RPC contracts, or persisted domain behavior.
 
 When applicable:
 
@@ -304,55 +271,49 @@ When applicable:
 8. Update architecture documentation only if a stable invariant or domain
    relationship materially changed.
 
-Do not:
+Do not repair unrelated Docker/Supabase environment problems solely to complete
+optional validation.
 
-- push migrations remotely without explicit confirmation;
-- modify remote data without explicit confirmation;
-- repair unrelated Docker/Supabase environment problems solely to complete
-  optional validation;
-- run broad database regressions for unrelated UI/application changes;
-- infer remote deployment state from repository files alone.
+Do not run broad database regressions for unrelated UI/application changes.
+
+Do not infer remote deployment state from repository files alone.
 
 ## Documentation maintenance
 
-Update documentation only when the completed change affects stable information
-that future implementation work depends on, such as:
+Update documentation only when a completed change affects stable information
+future implementation work depends on, such as:
 
-- architecture;
+- architecture or important cross-domain data flow;
 - business/domain invariants;
-- permissions/security rules;
+- permissions or security rules;
 - persisted concepts;
-- important cross-domain data flow;
 - stable product behavior that would otherwise become materially misdocumented.
 
-Do not update documentation for:
-
-- styling;
-- copy;
-- local interaction fixes;
-- small implementation refactors;
-- temporary implementation details;
-- obvious code structure;
-- exhaustive schemas or field lists;
-- validation-only changes;
-- speculative roadmap items;
-- remote deployment status that cannot be verified.
+Do not update documentation for styling, copy, local interaction fixes, small
+implementation refactors, temporary details, obvious code structure,
+validation-only changes, speculative roadmap items, or unverifiable remote
+deployment state.
 
 Keep documentation concise, retrieval-oriented, and optimized for future
 coding-agent use.
 
 ## Subagents
 
-Use `code_mapper` when a task requires tracing existing behavior across multiple files, layers, or data flows before making a change.
+Use `code_mapper` when a task requires tracing existing behavior across multiple
+files, layers, or data flows before making a change.
 
 Good uses include:
+
 - finding the real execution path behind a bug;
 - tracing UI → server action/query → database;
 - understanding unfamiliar existing behavior;
 - locating where a cross-cutting feature is implemented.
 
-Do not use `code_mapper` for small, obvious, local changes where the relevant file and implementation are already clear.
+Do not use `code_mapper` for small, obvious, local changes where the relevant
+file and implementation are already clear.
 
-`code_mapper` is for investigation only. Use its findings in the main thread and make implementation decisions there.
+`code_mapper` is for investigation only. Use its findings in the main thread
+and make implementation decisions there.
 
-Keep delegation proportional to the task. Do not spawn subagents when the main agent can resolve the task quickly.
+Keep delegation proportional to the task. Do not spawn subagents when the main
+agent can resolve the task quickly.
