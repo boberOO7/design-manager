@@ -11,6 +11,7 @@ import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
+import { getProjectCalendarTime } from "@/data/queries/project-calendar-time";
 import { getProjectActivity } from "@/data/queries/project-activity";
 import { getAssignableProjectMembers, getAssignableStudioMembers, getProjectMembers } from "@/data/queries/project-members";
 import { getProjectTasksForProgress } from "@/data/queries/project-progress";
@@ -65,7 +66,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
   if (view === "finance" && !canManage) notFound();
-  const [boardTasks, contextTasks, taskAssignees, projectMembers, activity, checklistTemplates, projectTemplates, stageConfiguration] = await Promise.all([
+  const [boardTasks, contextTasks, taskAssignees, projectMembers, activity, checklistTemplates, projectTemplates, stageConfiguration, calendarTime] = await Promise.all([
     view === "board" ? getProjectTasks(project.id) : Promise.resolve([]),
     view === "board" ? Promise.resolve([]) : getProjectTasksForProgress(project.id),
     view === "board" && canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]),
@@ -74,7 +75,12 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     view === "board" && canManage ? getStudioChecklistTemplates() : Promise.resolve([]),
     view === "board" && canManage ? getStudioProjectTemplates() : Promise.resolve([]),
     getProjectStageConfiguration(project.id),
+    getProjectCalendarTime(project.id, project.studio_id),
   ]);
+  const hours = Math.floor(calendarTime.minutes / 60);
+  const minutes = calendarTime.minutes % 60;
+  const duration = [hours && `${hours} ${t("hoursShort")}`, minutes && `${minutes} ${t("minutesShort")}`].filter(Boolean).join(" ") || `0 ${t("minutesShort")}`;
+  const calendarTimeSummary = calendarTime.count ? `${calendarTime.count} · ${duration}` : "0";
   const assignableStudioMembers = view === "team" && canManage ? await getAssignableStudioMembers(project, projectMembers.map((member) => member.user_id)) : [];
   const archiveAction = archiveProject.bind(null, project.id);
   const restoreAction = restoreProject.bind(null, project.id);
@@ -84,7 +90,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   if (canManage) navItems.push({ id: "finance", label: t("finance") });
   const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
-  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} showProgress={stageConfiguration.showProgress} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} stageProgressMethods={stageConfiguration.progressMethods} showProgress={stageConfiguration.showProgress} stages={stageConfiguration.stages} tasks={contextTasks} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
+  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} showProgress={stageConfiguration.showProgress} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} stageProgressMethods={stageConfiguration.progressMethods} showProgress={stageConfiguration.showProgress} stages={stageConfiguration.stages} tasks={contextTasks} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
 }
 
 async function ProjectDetails({ canManage, completionDateAction, locale, project }: { canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {

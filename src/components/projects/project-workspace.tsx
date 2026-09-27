@@ -16,10 +16,11 @@ import type { ProjectTemplate } from "@/lib/project-templates";
 import { useTranslations } from "next-intl";
 
 export function ProjectWorkspace({
-  archiveAction, backHref, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, projectTemplates, restoreAction, stageColumns, stageProgressMethods, stages, includeInProductivity, showProgress, tasks, templates, updateAction,
+  archiveAction, backHref, calendarTimeSummary, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, projectTemplates, restoreAction, stageColumns, stageProgressMethods, stages, includeInProductivity, showProgress, tasks, templates, updateAction,
 }: {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
+  calendarTimeSummary: string;
   canCreate: boolean;
   canManage: boolean;
   canManageTasks: boolean;
@@ -52,7 +53,7 @@ export function ProjectWorkspace({
     setContextTasks((currentTasks) => getProjectTaskSnapshotUpdate(currentTasks, nextTasks));
   }, []);
   return <>
-    <ProjectContextBand archiveAction={archiveAction} backHref={backHref} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={restoreAction} stageProgressMethods={stageProgressMethods} showProgress={localShowProgress} stages={localStages} tasks={contextTasks} updateAction={updateAction} />
+    <ProjectContextBand archiveAction={archiveAction} backHref={backHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={restoreAction} stageProgressMethods={stageProgressMethods} showProgress={localShowProgress} stages={localStages} tasks={contextTasks} updateAction={updateAction} />
     {navigation}
     <ProjectTaskBoard canCreate={canCreate} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly} members={members} projectId={project.id} projectStatus={status} projectTemplates={projectTemplates} stageColumns={stageColumns} stageProgressMethods={stageProgressMethods} showProgress={localShowProgress} stages={localStages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onTasksChange={handleBoardTasksChange} />
     {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={localIncludeInProductivity} showProgress={localShowProgress} onClose={() => setStageConfigurationOpen(false)} onSaved={(nextStages, nextIncludeInProductivity, nextShowProgress) => { setLocalStages(nextStages); setLocalIncludeInProductivity(nextIncludeInProductivity); setLocalShowProgress(nextShowProgress); setStageConfigurationOpen(false); }} projectId={project.id} stageLabels={stageLabels} stages={localStages} /> : null}

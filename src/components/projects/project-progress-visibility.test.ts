@@ -10,9 +10,10 @@ import { ProjectContextBand } from "./project-context-band";
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
 describe("project progress visibility", () => {
-  it("renders summary progress when enabled and removes it when disabled", () => {
+  it("renders progress and Calendar time in the project summary", () => {
     const props = {
       archiveAction: async () => {},
+      calendarTimeSummary: "1 · 2 hr 30 min",
       canManage: false,
       currentUserId: "member",
       isArchived: false,
@@ -35,6 +36,8 @@ describe("project progress visibility", () => {
         children: createElement(ProjectContextBand, { ...props, showProgress }) }),
     }));
     expect(render(true).match(/role="progressbar"/g)).toHaveLength(4);
+    expect(render(true)).toContain("Site visits");
+    expect(render(true)).toContain("1 · 2 hr 30 min");
     expect(render(false)).not.toContain('role="progressbar"');
   });
 

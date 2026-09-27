@@ -35,9 +35,10 @@ export type ProjectContextProject = {
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, backHref = "/projects", canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, showProgress = true, stages, tasks, updateAction }: {
+export function ProjectContextBand({ archiveAction, backHref = "/projects", calendarTimeSummary, canManage, currentUserId, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, showProgress = true, stages, tasks, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
+  calendarTimeSummary: string;
   canManage: boolean;
   currentUserId: string;
   isArchived: boolean;
@@ -51,6 +52,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", canM
   updateAction: ProjectFormAction;
 }) {
   const t = useTranslations("Workspace");
+  const projectWorkspace = useTranslations("ProjectWorkspace");
   const common = useTranslations("Common");
   const form = useTranslations("ProjectForm");
   const projectMessages = useTranslations("Projects");
@@ -125,6 +127,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", canM
       <Metadata compact={compact} label={t("projectType")} value={getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes) ?? common("notAvailable")} />
       <Metadata compact={compact} label={t("totalArea")} value={`${formatNumber(project.total_area_m2, locale)} m²`} />
       <Metadata compact={compact} label={t("startDate")} value={formatDateOnly(project.start_date, locale)} />
+      <Metadata compact={compact} label={projectWorkspace("siteVisits")} value={calendarTimeSummary} />
     </dl>
   </section>;
 }
