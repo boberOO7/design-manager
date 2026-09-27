@@ -42,11 +42,10 @@ describe("project progress visibility", () => {
   });
 
   it("defaults to visible and hides summary and board indicators when disabled", async () => {
-    const [query, page, workspace, summary, board, dialog] = await Promise.all([
+    const [query, page, workspace, board, dialog] = await Promise.all([
       read("../../data/queries/project-stage-columns.ts"),
       read("../../app/(app)/projects/[projectId]/page.tsx"),
       read("./project-workspace.tsx"),
-      read("./project-context-band.tsx"),
       read("../tasks/project-task-board.tsx"),
       read("../tasks/project-stage-configuration-dialog.tsx"),
     ]);
@@ -54,7 +53,6 @@ describe("project progress visibility", () => {
     expect(page).toContain("showProgress={stageConfiguration.showProgress}");
     expect(workspace).toContain("showProgress={localShowProgress}");
     expect(workspace).toContain("setLocalShowProgress(nextShowProgress)");
-    expect(summary).toContain("{showProgress ? <ProgressSummary");
     expect(board).toContain("{showProgress && progress ?");
     expect(dialog).toContain("show_progress: progressVisible");
     expect(dialog).toContain('t("showProgress")');

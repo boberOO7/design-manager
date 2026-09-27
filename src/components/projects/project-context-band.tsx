@@ -92,43 +92,39 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", cale
     });
   }
 
-  return <section aria-labelledby="project-context-heading" className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]">
-    <div className={compact ? "flex flex-col gap-2 px-4 py-2.5 sm:px-5 lg:flex-row lg:items-start lg:justify-between" : "flex flex-col gap-4 px-4 py-4 sm:px-5 xl:flex-row xl:items-start xl:justify-between"}>
-      <div className="min-w-0">
-        <Link href={backHref} className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-[var(--ui-text-secondary)] transition-colors hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          {t("backToProjects")}
-        </Link>
-        <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5" : "mt-2 flex flex-wrap items-center gap-x-3 gap-y-2"}><h1 id="project-context-heading" className={`flex min-w-0 items-center gap-2 break-words font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"}`}><LifecycleDot label={statusMessages(isArchived ? "archived" : status)} status={isArchived ? "archived" : status} />{project.name}</h1>{!isArchived ? <Badge className={`font-semibold ${healthStyle.className}`} label={getProjectHealthLabel(health.health)} /> : null}<Badge className={priorityStyle.className} label={getTaskPriorityLabel(project.priority)} /></div>
-        {!isArchived && status === "paused" ? <div className="mt-3 flex max-w-2xl items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] px-3 py-2.5 text-sm text-[var(--ui-info-text)]"><Pause aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><div><p className="font-semibold">{projectMessages("pausedBannerTitle")}</p><p className="mt-0.5 leading-5 text-[var(--ui-text-secondary)]">{projectMessages("pausedBannerDescription")}</p></div></div> : null}
-        {(project.client_name || location) ? <div className={compact ? "mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-4 text-[var(--ui-text-muted)]" : "mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 text-[var(--ui-text-muted)]"}>{project.client_name ? <p className="flex min-w-0 items-center gap-1.5"><span aria-label={form("clientName")} title={form("clientName")}><Building2 aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /></span><span className="truncate text-[var(--ui-text-secondary)]">{project.client_name}</span></p> : null}{location ? <p className="flex min-w-0 items-center gap-1.5"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}</div> : null}
-      </div>
-  <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onConfigureStages={onConfigureStages} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} />
-    </div>
+  const taskStats = <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+    <span className="font-medium text-[var(--ui-text-secondary)]">{projectMessages("openCount", { count: progress.openTaskCount })}</span>
+    <span className="text-[var(--ui-text-muted)]">{projectMessages("completedCount", { count: progress.completedTaskCount })}</span>
+    {!isPaused ? <span className={progress.overdueTaskCount > 0 ? "font-medium text-[var(--ui-danger-text)]" : "text-[var(--ui-text-muted)]"}>{projectMessages("overdueCount", { count: progress.overdueTaskCount })}</span> : null}
+  </div>;
 
-    <div className={compact ? "border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 sm:px-5" : `grid gap-5 px-4 pb-4 sm:px-5 sm:pb-5 lg:gap-8 ${showProgress ? "lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]" : "lg:grid-cols-2"}`}>
-      <div className={compact ? `grid gap-3 lg:gap-5 ${showProgress ? "lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]" : "lg:grid-cols-2"}` : "contents"}>
-        <div className={compact ? `grid min-w-0 gap-3 ${showProgress ? "sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" : "sm:items-center"}` : "min-w-0 pt-1"}>
-          {showProgress ? <ProgressSummary compact={compact} progress={progress} projectName={project.name} stageProgress={stageProgress} stages={stages} /> : null}
-          <div className={compact ? `grid grid-cols-3 divide-x divide-[var(--ui-border)] ${showProgress ? "border-t border-[var(--ui-border)] pt-2 sm:border-t-0 sm:pt-0" : ""}` : `${showProgress ? "mt-4 " : ""}grid grid-cols-3 gap-3 sm:gap-5`}>
-            <SupportingMetric compact={compact} label={projectMessages("openCount", { count: progress.openTaskCount })} value={String(progress.openTaskCount)} />
-            <SupportingMetric compact={compact} label={projectMessages("completedCount", { count: progress.completedTaskCount })} value={String(progress.completedTaskCount)} />
-            {!isPaused ? <SupportingMetric compact={compact} danger={progress.overdueTaskCount > 0} label={projectMessages("overdueCount", { count: progress.overdueTaskCount })} value={String(progress.overdueTaskCount)} /> : null}
-          </div>
+  return <section aria-labelledby="project-context-heading" className="@container overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]">
+    <div className={"flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-4 sm:px-5 " + (compact ? "pt-2.5" : "pt-4")}>
+      <Link href={backHref} className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-[var(--ui-text-secondary)] transition-colors hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><ArrowLeft className="size-4" aria-hidden="true" />{t("backToProjects")}</Link>
+      <ProjectContextActions archiveAction={archiveAction} canManage={canManage} compact={compact} isArchived={isArchived} onConfigureStages={onConfigureStages} onToggleCompact={toggleCompact} project={project} restoreAction={restoreAction} status={status} updateAction={updateAction} />
+    </div>
+    {!isArchived && isPaused ? <div className={"mx-4 flex items-start gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] px-3 py-2.5 text-sm text-[var(--ui-info-text)] sm:mx-5 " + (compact ? "mt-2" : "mt-3")}><Pause aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><div><p className="font-semibold">{projectMessages("pausedBannerTitle")}</p><p className="mt-0.5 leading-5 text-[var(--ui-text-secondary)]">{projectMessages("pausedBannerDescription")}</p></div></div> : null}
+    <div className={"grid min-w-0 gap-5 px-4 sm:px-5 @min-[56rem]:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] @min-[56rem]:gap-7 " + (compact ? "pb-3 pt-3" : "pb-5 pt-4")}>
+      <div className="flex min-w-0 flex-col">
+        <div className="min-w-0">
+          <h1 id="project-context-heading" className={"flex min-w-0 items-start gap-2.5 break-words font-semibold leading-[1.18] tracking-tight text-[var(--ui-text)] " + (compact ? "text-2xl" : "text-[1.75rem]")}><span className="mt-[0.45em] flex shrink-0"><LifecycleDot label={statusMessages(isArchived ? "archived" : status)} status={isArchived ? "archived" : status} /></span><span className="min-w-0">{project.name}</span></h1>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">{!isArchived ? <Badge className={"font-semibold " + healthStyle.className} label={getProjectHealthLabel(health.health)} /> : null}<Badge className={priorityStyle.className} label={getTaskPriorityLabel(project.priority)} /></div>
+          {health.reason && !isArchived ? <p className="mt-2 text-xs leading-5 text-[var(--ui-text-secondary)]">{health.reason}</p> : null}
         </div>
-        <div className={compact ? "border-t border-[var(--ui-border)] pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0" : "rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-4 py-3.5 sm:px-5"}>
-          <DeadlineSummary compact={compact} locale={locale} nextTaskDueDate={progress.nearestOpenTaskDueDate} overdueTaskCount={progress.overdueTaskCount} paused={isPaused} projectDueDate={project.due_date} />
-          {health.reason && !isArchived ? <p className={compact ? "mt-1.5 text-xs leading-4 text-[var(--ui-text-secondary)]" : "mt-3 text-xs leading-5 text-[var(--ui-text-secondary)]"}>{health.reason}</p> : null}
+        <div className={"border-t border-[var(--ui-border)] " + (compact ? "mt-3 pt-3" : "mt-4 pt-4")}>
+          <dl className="flex flex-wrap items-end gap-x-5 gap-y-1.5"><div><dt className="sr-only">{t("totalArea")}</dt><dd className="ui-numeric text-[1.875rem] font-semibold leading-none tracking-tight text-[var(--ui-text)]">{formatNumber(project.total_area_m2, locale)} <span className="text-base font-medium text-[var(--ui-text-secondary)]">m²</span></dd></div><div className="min-w-0"><dt className="sr-only">{t("projectType")}</dt><dd className="break-words text-sm font-medium text-[var(--ui-text-secondary)]">{getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes) ?? common("notAvailable")}</dd></div></dl>
+          {(project.client_name || location) ? <div className="mt-4 space-y-1.5 text-sm leading-5 text-[var(--ui-text-secondary)]">{project.client_name ? <p className="flex min-w-0 items-start gap-2 font-medium"><Building2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" /><span aria-label={form("clientName")} className="min-w-0 break-words">{project.client_name}</span></p> : null}{location ? <p className="flex min-w-0 items-start gap-2"><MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" /><span className="min-w-0 break-words">{location}</span></p> : null}</div> : null}
+          <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t("startDate")} <span className="ui-numeric ml-1 font-medium text-[var(--ui-text-secondary)]">{formatDateOnly(project.start_date, locale)}</span></p>
+        </div>
+        {!showProgress ? <div className="mt-4">{taskStats}</div> : null}
+      </div>
+      <div className={"min-w-0 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] " + (compact ? "p-3" : "p-4")}>
+        {showProgress ? <><ProgressSummary compact={compact} progress={progress} projectName={project.name} stageProgress={stageProgress} stages={stages} /><div className="mt-3">{taskStats}</div></> : null}
+        <div className={showProgress ? "mt-3 border-t border-[var(--ui-border)] pt-3" : ""}>
+          <DeadlineSummary calendarTimeSummary={calendarTimeSummary} compact={compact} locale={locale} nextTaskDueDate={progress.nearestOpenTaskDueDate} overdueTaskCount={progress.overdueTaskCount} paused={isPaused} projectDueDate={project.due_date} siteVisitsLabel={projectWorkspace("siteVisits")} />
         </div>
       </div>
     </div>
-
-    <dl className={compact ? "grid grid-cols-2 gap-x-6 gap-y-2 border-t border-[var(--ui-border)] px-4 py-2.5 text-sm sm:grid-cols-3 sm:px-5" : "grid gap-x-6 gap-y-3 bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm sm:grid-cols-3 sm:px-5"}>
-      <Metadata compact={compact} label={t("projectType")} value={getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes) ?? common("notAvailable")} />
-      <Metadata compact={compact} label={t("totalArea")} value={`${formatNumber(project.total_area_m2, locale)} m²`} />
-      <Metadata compact={compact} label={t("startDate")} value={formatDateOnly(project.start_date, locale)} />
-      <Metadata compact={compact} label={projectWorkspace("siteVisits")} value={calendarTimeSummary} />
-    </dl>
   </section>;
 }
 
@@ -144,45 +140,35 @@ function ProjectContextActions({ archiveAction, canManage, compact, isArchived, 
 function ProgressSummary({ compact, progress, projectName, stageProgress, stages }: { compact: boolean; progress: ReturnType<typeof calculateProjectProgress>; projectName: string; stageProgress: ReturnType<typeof calculateStageProgress>; stages?: ConfiguredProjectStage[] }) {
   const t = useTranslations("Projects");
   const stageLabels = useTranslations("TaskStages");
-  if (progress.eligibleTaskCount === 0) return <div><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><p className={compact ? "mt-0.5 text-sm text-[var(--ui-text-muted)]" : "mt-1 text-sm text-[var(--ui-text-muted)]"}>{t("noTasks")}</p></div>;
-  const markerOffset = progress.progressPercent === 100 ? "calc(100% - 0.375rem)" : `${progress.progressPercent}%`;
-  return <div>
-    <div className="flex items-end justify-between gap-4"><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><span className={`ui-numeric font-semibold tracking-tight text-[var(--ui-text)] ${compact ? "text-2xl" : "text-3xl"}`}>{progress.progressPercent}%</span></div>
-    <div className={`relative min-w-0 ${compact ? "mt-1.5 h-2.5" : "mt-3 h-3"}`} role="progressbar" aria-label={t("progressAria", { name: projectName, progress: progress.progressPercent })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}>
-      <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)] ${compact ? "h-1.5" : "h-2"}`} />
-      <div className={`absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)] ${compact ? "h-1.5" : "h-2"}`} style={{ width: `${progress.progressPercent}%` }} />
-      {progress.progressPercent > 0 ? <span aria-hidden="true" className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)] ${compact ? "size-2.5" : "size-3"}`} style={{ left: markerOffset }} /> : null}
-    </div>
-    <div className={`mt-2.5 grid grid-cols-3 gap-3 ${compact ? "sm:gap-4" : "sm:gap-5"}`}>
-      {Object.entries(stageProgress).filter(([stage]) => stages?.find((item) => item.stage === stage)?.isEnabled ?? true).map(([stage, value]) => <div key={stage} className="min-w-0">
-        <div className="flex min-w-0 items-baseline gap-1 text-xs text-[var(--ui-text-muted)]"><span className="truncate">{stages?.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage)}</span><span aria-hidden="true">·</span><span className="ui-numeric shrink-0 font-semibold text-[var(--ui-text-secondary)]">{value.progressPercent}%</span></div>
-        <div className="relative mt-1.5 h-2" role="progressbar" aria-label={`${stages?.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage)} ${value.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value.progressPercent}>
-          <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" />
-          <div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${value.progressPercent}%` }} />
-          {value.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: value.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${value.progressPercent}%` }} /> : null}
-        </div>
-      </div>)}
+  if (progress.eligibleTaskCount === 0) return <div><p className="text-xs font-medium text-[var(--ui-text-muted)]">{t("progress")}</p><p className="mt-2 text-sm text-[var(--ui-text-secondary)]">{t("noTasks")}</p></div>;
+  const visibleStages = Object.entries(stageProgress).filter(([stage]) => stages?.find((item) => item.stage === stage)?.isEnabled ?? true);
+  return <div className="min-w-0">
+    <div className="flex items-end justify-between gap-3"><p className="text-xs font-medium text-[var(--ui-text-muted)]">{t("progress")}</p><span className={"ui-numeric font-semibold leading-none tracking-tight text-[var(--ui-text)] " + (compact ? "text-2xl" : "text-[1.75rem]")}>{progress.progressPercent}%</span></div>
+    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("progressAria", { name: projectName, progress: progress.progressPercent })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)] transition-[width] duration-200 motion-reduce:transition-none" style={{ width: progress.progressPercent + "%" }} /></div>
+    <div className={"grid grid-cols-3 gap-x-2 gap-y-3 " + (compact ? "mt-3" : "mt-4")}>
+      {visibleStages.map(([stage, value]) => {
+        const label = stages?.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage);
+        return <div key={stage} className="flex min-w-0 flex-col items-center gap-1.5 @min-[30rem]:flex-row @min-[30rem]:items-center @min-[30rem]:gap-2">
+          <svg viewBox="0 0 48 48" role="progressbar" aria-label={label + " " + value.progressPercent + "%"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value.progressPercent} className={"ui-numeric shrink-0 " + (compact ? "size-10" : "size-11 @min-[70rem]:size-12")}>
+            <circle cx="24" cy="24" r="19" fill="none" stroke="var(--ui-border-strong)" strokeWidth="3.5" />
+            {value.progressPercent > 0 ? <circle cx="24" cy="24" r="19" fill="none" stroke="var(--ui-action-primary)" strokeWidth="3.5" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - value.progressPercent} transform="rotate(-90 24 24)" /> : null}
+            <text x="24" y="25" textAnchor="middle" dominantBaseline="middle" fill="var(--ui-text)" fontSize="11" fontWeight="600">{value.progressPercent}%</text>
+          </svg>
+          <span className="min-w-0 break-words text-center text-xs font-medium leading-4 text-[var(--ui-text-secondary)] @min-[30rem]:text-left">{label}</span>
+        </div>;
+      })}
     </div>
   </div>;
 }
 
-function DeadlineSummary({ compact, locale, nextTaskDueDate, overdueTaskCount, paused, projectDueDate }: { compact: boolean; locale: string; nextTaskDueDate: string | null; overdueTaskCount: number; paused: boolean; projectDueDate: string | null }) {
+function DeadlineSummary({ calendarTimeSummary, compact, locale, nextTaskDueDate, overdueTaskCount, paused, projectDueDate, siteVisitsLabel }: { calendarTimeSummary: string; compact: boolean; locale: string; nextTaskDueDate: string | null; overdueTaskCount: number; paused: boolean; projectDueDate: string | null; siteVisitsLabel: string }) {
   const t = useTranslations("Workspace");
   const projectDeadlineNeedsAttention = !paused && Boolean(projectDueDate && projectDueDate <= getTodayDateOnly());
-  return <div className={compact ? "flex flex-wrap items-baseline gap-x-4 gap-y-1" : "space-y-3"}><TimelineMetric attention={projectDeadlineNeedsAttention} compact={compact} label={t("projectDeadline")} value={projectDueDate ? formatDateOnly(projectDueDate, locale) : t("noDeadline")} /><TimelineMetric attention={!paused && overdueTaskCount > 0} compact={compact} label={t("nextTaskDue")} value={nextTaskDueDate ? formatDateOnly(nextTaskDueDate, locale) : t("noOpenDueDate")} />{!paused && overdueTaskCount > 0 ? <TimelineMetric attention compact={compact} label={t("overdueTasks", { count: overdueTaskCount })} value={String(overdueTaskCount)} /> : null}</div>;
-}
-
-function SupportingMetric({ compact = false, danger = false, label, value }: { compact?: boolean; danger?: boolean; label: string; value: string }) {
-  return <div className={compact ? "min-w-0 flex-1 px-2.5 py-2" : "min-w-0"}><p className={`ui-numeric text-base font-semibold ${danger ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]"}`}>{value}</p><p className={`mt-0.5 text-xs leading-4 ${danger ? "font-medium text-[var(--ui-danger-text)]" : "text-[var(--ui-text-muted)]"}`}>{label}</p></div>;
-}
-
-function TimelineMetric({ attention = false, compact = false, label, value }: { attention?: boolean; compact?: boolean; label: string; value: string }) {
-  return <div className={compact ? "flex items-baseline gap-1.5" : "flex items-baseline justify-between gap-4"}><p className="text-xs text-[var(--ui-text-muted)]">{label}</p><p className={`ui-numeric shrink-0 text-sm font-medium ${attention ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]"}`}>{value}</p></div>;
-}
-
-function Metadata({ compact = false, label, value }: { compact?: boolean; label: string; value: string }) {
-  if (compact) return <div className="min-w-0"><dt className="text-xs text-[var(--ui-text-muted)]">{label}</dt><dd className="mt-0.5 break-words font-medium text-[var(--ui-text-secondary)]">{value}</dd></div>;
-  return <div className="min-w-0"><dd className="break-words font-medium text-[var(--ui-text-secondary)]">{value}</dd><dt className="mt-0.5 text-xs text-[var(--ui-text-muted)]">{label}</dt></div>;
+  return <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4 @min-[42rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,0.75fr)]">
+    <div className="min-w-0"><p className="text-xs text-[var(--ui-text-muted)]">{t("projectDeadline")}</p><p className={"ui-numeric mt-1 break-words font-semibold leading-snug " + (projectDeadlineNeedsAttention ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]") + (compact ? " text-base" : " text-lg")}>{projectDueDate ? formatDateOnly(projectDueDate, locale) : t("noDeadline")}</p></div>
+    <div className="min-w-0"><p className="text-xs text-[var(--ui-text-muted)]">{t("nextTaskDue")}</p><p className={"ui-numeric mt-1 break-words text-sm font-medium leading-snug " + (!paused && overdueTaskCount > 0 ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text-secondary)]")}>{nextTaskDueDate ? formatDateOnly(nextTaskDueDate, locale) : t("noOpenDueDate")}</p></div>
+    <div className="col-span-2 min-w-0 @min-[42rem]:col-span-1"><p className="text-xs text-[var(--ui-text-muted)]">{siteVisitsLabel}</p><p className="ui-numeric mt-1 break-words text-sm font-semibold text-[var(--ui-text)]">{calendarTimeSummary}</p></div>
+  </div>;
 }
 
 function LifecycleDot({ label, status }: { label: string; status: string }) {
