@@ -477,6 +477,16 @@
     "emptyFilteredDescription": "Adjust or reset the filters to see your accessible projects."
   },
   "Tasks": {
+    "schedule": "Schedule",
+    "scheduleDuration": "{count, plural, one {# working day} other {# working days}}",
+    "scheduleBaseline": "Baseline",
+    "scheduleCurrent": "Current",
+    "schedulePaused": "Paused",
+    "scheduleBlocked": "Blocked",
+    "scheduleShifted": "Shifted",
+    "scheduleDependsOn": "Depends on",
+    "scheduleDone": "done",
+    "scheduleWaiting": "waiting",
     "stage": "Stage",
     "overdue": "Overdue",
     "today": "Today",
@@ -780,6 +790,7 @@
     "removeStage": "Remove {title}"
   },
   "ProjectTemplates": {
+    "stageScheduleStartDate": "Stage schedule start date",
     "defaultTemplate": "Default template",
     "applyStageAction": "Apply template",
     "applyStageTitle": "Apply template to stage",

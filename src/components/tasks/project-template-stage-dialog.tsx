@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { getTemplateStageTasks, isProjectTemplateStage, PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStage } from "@/lib/project-templates";
@@ -30,6 +31,7 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
   templates: ProjectTemplate[];
 }) {
   const t = useTranslations("ProjectTemplates");
+  const locale = useLocale();
   const tasksT = useTranslations("Tasks");
   const stages = useTranslations("TaskStages");
   const initialTemplate = templates[0] ?? null;
@@ -37,9 +39,11 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
   const [templateId, setTemplateId] = useState(initialTemplate?.id ?? "");
   const [sourceStage, setSourceStage] = useState<ProjectTemplateStage>(initialSourceStage);
   const [saving, setSaving] = useState(false);
+  const [anchorDate, setAnchorDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const selectedTemplate = templates.find((template) => template.id === templateId) ?? null;
   const selectedTasks = getTemplateStageTasks(selectedTemplate, sourceStage);
+  const hasScheduledTasks = selectedTasks.some((task) => task.expectedWorkdays !== null);
 
   function selectTemplate(nextTemplateId: string) {
     const nextTemplate = templates.find((template) => template.id === nextTemplateId) ?? null;
@@ -50,14 +54,14 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
   }
 
   async function apply() {
-    if (!selectedTemplate || selectedTasks.length === 0 || saving) return;
+    if (!selectedTemplate || selectedTasks.length === 0 || saving || (hasScheduledTasks && !anchorDate)) return;
     setSaving(true);
     setError(null);
     try {
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/apply-template-stage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage }),
+        body: JSON.stringify({ template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage, anchor_date: anchorDate }),
       });
       const result: unknown = await response.json().catch(() => null);
       if (!response.ok || !isSuccessfulResponse(result)) throw new Error(t("applyStageFailed"));
@@ -88,12 +92,13 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
             })}
           </Select>
         </FormField>
+        {hasScheduledTasks ? <FormField label={t("stageScheduleStartDate")}><DatePicker value={anchorDate} locale={locale} disabled={saving} onValueChange={setAnchorDate} /></FormField> : null}
       </div>
       {selectedTemplate && selectedTasks.length > 0 ? <div className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-3 py-3"><p className="text-sm font-medium text-[var(--ui-text)]">{t("tasksWillBeAdded", { count: selectedTasks.length })}</p><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{t("existingTasksRemain")}</p></div> : <p className="mt-4 text-sm text-[var(--ui-text-muted)]">{templates.length === 0 ? t("noTemplates") : t("emptySourceStage")}</p>}
       {error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-2 border-t border-[var(--ui-border-subtle)] pt-4">
         <Button type="button" variant="outline" onClick={onClose} disabled={saving}>{tasksT("cancel")}</Button>
-        <Button type="submit" disabled={saving || !selectedTemplate || selectedTasks.length === 0}>{saving ? t("applyingStage") : t("applyStage")}</Button>
+        <Button type="submit" disabled={saving || !selectedTemplate || selectedTasks.length === 0 || (hasScheduledTasks && !anchorDate)}>{saving ? t("applyingStage") : t("applyStage")}</Button>
       </div>
     </form>
   </Dialog>;

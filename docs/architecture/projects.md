@@ -88,6 +88,9 @@ Invariants:
   template to any enabled, writable destination stage. This cross-stage mapping
   preserves the destination stage configuration and every existing task; it does
   not replace or deduplicate stage work.
+- A template task may also specify expected working days and dependencies on
+  earlier scheduled tasks in its stage. Stage application accepts an optional
+  start-date anchor; existing unscheduled templates remain usable without one.
 - Every project has four stable stage IDs. Labels, ordering, visibility, allowed
   columns, and Stage 1–3 progress methods are configuration; stable stage IDs are
   policy inputs and must not be repurposed.

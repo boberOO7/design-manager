@@ -3,7 +3,7 @@ import { getProjectTemplateTaskDestination, isProjectTemplateTaskDestinationChan
 import type { ProjectTemplateTask } from "@/lib/project-templates";
 
 function tasks(...ids: string[]): ProjectTemplateTask[] {
-  return ids.map((id, position) => ({ id, title: id, stage: "stage_1", priority: "normal", checklistTemplateId: null, position }));
+  return ids.map((id, position) => ({ id, title: id, stage: "stage_1", priority: "normal", checklistTemplateId: null, expectedWorkdays: null, dependsOnIds: [], position }));
 }
 
 function move(tasksBefore: ProjectTemplateTask[], sourceId: string, targetId: string | null, insertAfter: boolean) {
@@ -51,8 +51,8 @@ describe("project template task ordering", () => {
   it("moves tasks across stages and renumbers both stages", () => {
     const initial: ProjectTemplateTask[] = [
       ...tasks("A", "B"),
-      { id: "C", title: "C", stage: "stage_2", priority: "normal", checklistTemplateId: null, position: 0 },
-      { id: "D", title: "D", stage: "stage_2", priority: "normal", checklistTemplateId: null, position: 1 },
+      { id: "C", title: "C", stage: "stage_2", priority: "normal", checklistTemplateId: null, expectedWorkdays: null, dependsOnIds: [], position: 0 },
+      { id: "D", title: "D", stage: "stage_2", priority: "normal", checklistTemplateId: null, expectedWorkdays: null, dependsOnIds: [], position: 1 },
     ];
     const destination = getProjectTemplateTaskDestination(initial, "A", "stage_2", "D", false);
     expect(destination).toEqual({ stage: "stage_2", index: 1 });

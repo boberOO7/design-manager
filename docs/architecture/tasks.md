@@ -103,6 +103,28 @@ Project aggregation and attribution are described in
   exact same-stage task selection through one guarded atomic RPC. Other
   milestones on those tasks are preserved.
 
+## Template working schedules
+
+- Template tasks may carry a positive expected duration in Mon–Fri working days
+  and dependencies on earlier scheduled tasks in the same stage. Applying a
+  template with a stage start date creates the task dependency graph and a
+  baseline start/due date for each scheduled task.
+- `task_schedules` stores baseline and current dates separately;
+  `task_schedule_dependencies` stores the copied task edges. Current dates move
+  only forward through unfinished dependents when a Done date, manual scheduled
+  deadline, or elapsed time makes their predecessor's finish later. Completed
+  tasks and reached milestone history do not move.
+- Open dependents stay blocked until their predecessors finish. Blocked and
+  stage-paused tasks do not contribute normal overdue counts. Schedule refresh
+  runs before task, project, and Dashboard reads so an overdue unfinished
+  predecessor cannot leave downstream current dates in the past. Closed
+  production stages do not refresh after project completion; Stage 4 may.
+- Administrators pause or resume a stage schedule independently of the project
+  lifecycle. Resume shifts unfinished current dates by the paused working days;
+  baseline dates remain fixed. Scheduled tasks remain in their applied stage.
+- Workflow status entry times are history, not inputs to planned duration.
+  Factual Done completion and its Kyiv calendar date drive dependency updates.
+
 ## Board interaction
 
 - The project Board is the primary task workspace. Details and Team remain

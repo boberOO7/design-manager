@@ -1,5 +1,7 @@
 import "server-only";
 
+import { z } from "zod";
+
 import { revalidatePath } from "next/cache";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -8,7 +10,7 @@ import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { canCompleteAttributedTask, doesTaskCompletionRequireProductivityAttribution } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
-import { isTaskStage } from "@/lib/task-stages";
+import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { projectTemplateStageApplicationSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
@@ -169,6 +171,7 @@ export async function applyProjectTemplateStageMutation(projectId: string, input
   const supabase = await createClient();
   const { data: createdCount, error } = await supabase.rpc("apply_project_template_stage", {
     p_destination_stage: parsed.data.destination_stage,
+    ...(parsed.data.anchor_date ? { p_anchor_date: parsed.data.anchor_date } : {}),
     p_project_id: parsed.data.project_id,
     p_source_stage: parsed.data.source_stage,
     p_template_id: parsed.data.template_id,
@@ -184,6 +187,24 @@ export async function applyProjectTemplateStageMutation(projectId: string, input
   revalidatePath("/dashboard");
   revalidatePath("/my-tasks");
   return { createdCount, projectId: parsed.data.project_id, success: true, tasks };
+}
+
+export async function setProjectStageSchedulePausedMutation(projectId: string, input: unknown) {
+  const parsed = z.object({ stage: z.enum(TASK_STAGES), paused: z.boolean() }).strict().safeParse(input);
+  if (!z.uuid().safeParse(projectId).success || !parsed.success) {
+    return { success: false, formError: "Choose a valid stage schedule action." } as const;
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_project_stage_schedule_paused", {
+    p_project_id: projectId, p_stage: parsed.data.stage, p_paused: parsed.data.paused,
+  });
+  if (error) return { success: false, formError: error.message } as const;
+  const tasks = await getProjectTasks(projectId);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/my-tasks");
+  return { success: true, tasks } as const;
 }
 
 export async function bulkAssignTaskStageMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {

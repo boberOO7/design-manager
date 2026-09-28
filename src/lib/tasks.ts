@@ -73,7 +73,7 @@ export function isTaskFinished(status: string): boolean {
 }
 
 export function isTaskOverdue(
-  task: Pick<ProjectTask, "deadlines" | "status">,
+  task: { status: string; deadlines?: ProjectTask["deadlines"]; schedule?: { is_blocked: boolean; is_paused: boolean } | null },
   today = [new Date().getFullYear(), String(new Date().getMonth() + 1).padStart(2, "0"), String(new Date().getDate()).padStart(2, "0")].join("-"),
 ): boolean {
   return isTaskDeadlineOverdue(task, today);

@@ -10,7 +10,7 @@ describe("project template stage UI", () => {
   it("opens from a writable destination stage and reconciles the returned project tasks", async () => {
     const source = await readFile(boardPath, "utf8");
 
-    expect(source).toContain('const canApplyTemplate = canCreateInStage && localStageColumns[stage].includes("todo")');
+    expect(source).toContain('const canApplyTemplate = canCreateInStage && !localSchedulePaused[stage] && localStageColumns[stage].includes("todo")');
     expect(source).toContain("setTemplateStage(stage)");
     expect(source).toContain("destinationStage={templateStage}");
     expect(source).toContain("localTasksRef.current = nextTasks; setLocalTasks(nextTasks)");
@@ -19,7 +19,7 @@ describe("project template stage UI", () => {
   it("submits explicit source and destination stages and communicates append-only behavior", async () => {
     const source = await readFile(dialogPath, "utf8");
 
-    expect(source).toContain("template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage");
+    expect(source).toContain("template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage, anchor_date: anchorDate");
     expect(source).toContain('t("existingTasksRemain")');
     expect(source).toContain("getTemplateStageTasks(selectedTemplate, sourceStage)");
     expect(source).toContain("disabled={taskCount === 0}");

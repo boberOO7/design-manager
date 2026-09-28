@@ -17,6 +17,7 @@ export type ProjectTaskForProgress = {
   status: string;
   priority: string;
   due_date: string | null;
+  schedule?: { is_blocked: boolean; is_paused: boolean } | null;
   assignee_id: string | null;
   completed_area_m2: number | null;
   manual_progress_override: boolean;
@@ -229,7 +230,7 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
     todoTaskCount: open.filter((task) => task.status === "todo").length,
     inProgressTaskCount: open.filter((task) => task.status === "in_progress").length,
     reviewTaskCount: open.filter((task) => task.status === "review").length,
-    overdueTaskCount: open.filter((task) => task.due_date !== null && task.due_date < today).length,
+    overdueTaskCount: open.filter((task) => task.due_date !== null && task.due_date < today && !task.schedule?.is_blocked && !task.schedule?.is_paused).length,
     urgentOpenTaskCount: open.filter((task) => task.priority === "urgent").length,
     highPriorityOpenTaskCount: open.filter((task) => task.priority === "high").length,
     nearestOpenTaskDueDate: dueDates.sort((left, right) => left.localeCompare(right))[0] ?? null,

@@ -1,13 +1,14 @@
 import "server-only";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import { getCurrentUserProfile, getMyDashboardProductivity } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
 import { getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, selectAdminTaskMetrics, selectEmployeeTaskMetrics, selectEmployeeAttentionSummary, sortEmployeeTasks, getEmployeeTasksNeedingAttention, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
 import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods } from "@/lib/project-progress";
-import { isTaskInReview, isTaskOverdue } from "@/lib/tasks";
+import { isTaskInReview } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { getKyivMonthBounds, getProductivityWorkloadAreaByTask } from "@/lib/productivity";
 import { getKyivDateOnly } from "@/lib/validation/project";
@@ -42,34 +43,36 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (membership.system_role !== "admin" && membership.system_role !== "employee") throw new Error("Active studio membership has an unsupported role.");
   const supabase = await createClient();
   const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date, status, total_area_m2, include_in_productivity").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", OPERATIONAL_PROJECT_STATUSES);
+  const { data: visibleProjects, error: visibleProjectsError } = await projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>();
+  if (visibleProjectsError || !visibleProjects) throw new Error("Unable to load Dashboard projects.", { cause: visibleProjectsError });
+  await refreshProjectTaskSchedules(visibleProjects.map((project) => project.id));
   const taskQuery = supabase.from("tasks").select(`${PROJECT_TASK_PROGRESS_SELECT}, productivity_area_m2, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`).eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived");
-  const [projectsResult, tasksResult, membersResult] = await Promise.all([
-    projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>(),
+  const [tasksResult, membersResult] = await Promise.all([
     taskQuery.overrideTypes<DashboardTaskRow[], { merge: false }>(),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
   ]);
-  if (projectsResult.error || tasksResult.error || membersResult.error || !projectsResult.data || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: projectsResult.error ?? tasksResult.error ?? membersResult.error });
+  if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
   const now = new Date();
   const asOf = now.toISOString();
   const today = getKyivDateOnly(now);
   const [stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
-    supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", projectsResult.data.map((project) => project.id)),
+    supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
     membership.system_role === "admin"
       ? supabase.from("task_status_periods").select("task_id, status, entered_at").eq("studio_id", membership.studio_id).is("exited_at", null)
       : Promise.resolve({ data: [], error: null }),
     membership.system_role === "admin"
-      ? supabase.from("project_members").select("project_id, user_id").in("project_id", projectsResult.data.map((project) => project.id)).eq("is_active", true)
+      ? supabase.from("project_members").select("project_id, user_id").in("project_id", visibleProjects.map((project) => project.id)).eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? projectMembersResult.error });
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
-  for (const project of projectsResult.data) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
+  for (const project of visibleProjects) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurationsResult.data) {
     if (!PROJECT_PROGRESS_STAGES.includes(configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]) || !isStageProgressMethod(configuration.progress_method)) continue;
     const methods = methodsByProject.get(configuration.project_id);
     if (methods) methods[configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]] = configuration.progress_method;
   }
-  const projects = projectsResult.data.map((project) => ({ ...project, stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
+  const projects = visibleProjects.map((project) => ({ ...project, stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
   const tasks = tasksResult.data.map(({ collaborators, ...task }) => {
     const deadlines = task.deadlines ?? [];
     return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.filter((row) => row.profile !== null).map((row) => ({ id: row.user_id })) };
@@ -79,7 +82,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
     const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
     const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
     const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks, projectsResult.data, activeAssignments);
+    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks, visibleProjects, activeAssignments);
     const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
       const period = currentPeriodByTask.get(task.id);
       return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };

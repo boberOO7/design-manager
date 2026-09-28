@@ -477,6 +477,16 @@
     "emptyFilteredDescription": "Змініть або скиньте фільтри, щоб переглянути доступні проєкти."
   },
   "Tasks": {
+    "schedule": "Графік",
+    "scheduleDuration": "{count, plural, one {# робочий день} few {# робочі дні} other {# робочих днів}}",
+    "scheduleBaseline": "Початковий",
+    "scheduleCurrent": "Поточний",
+    "schedulePaused": "Призупинено",
+    "scheduleBlocked": "Заблоковано",
+    "scheduleShifted": "Зміщено",
+    "scheduleDependsOn": "Залежить від",
+    "scheduleDone": "готово",
+    "scheduleWaiting": "очікується",
     "stage": "Етап",
     "overdue": "Прострочено",
     "today": "Сьогодні",
@@ -780,6 +790,7 @@
     "removeStage": "Видалити «{title}»"
   },
   "ProjectTemplates": {
+    "stageScheduleStartDate": "Дата початку графіка етапу",
     "defaultTemplate": "Шаблон за замовчуванням",
     "applyStageAction": "Застосувати шаблон",
     "applyStageTitle": "Застосувати шаблон до етапу",

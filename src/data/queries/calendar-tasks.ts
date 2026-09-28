@@ -6,8 +6,21 @@ import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 /** Keep the full milestone set until the canonical selector has chosen the active one. */
 export async function getCalendarTasks(supabase: Awaited<ReturnType<typeof createClient>>, studioId: string, { start, end }: { start: string; end: string }) {
   const taskIds: string[] = [];
-  // Below the Data API row cap; paginate candidates and keep detail URLs bounded.
+  // Refresh before filtering by persisted deadline dates, including projects
+  // outside the requested range whose dependent tasks may move into it.
+  const projectIds: string[] = [];
   const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data } = await supabase.from("projects").select("id")
+      .eq("studio_id", studioId).order("id")
+      .range(offset, offset + pageSize - 1).throwOnError();
+    projectIds.push(...data.map((project) => project.id));
+    if (data.length < pageSize) break;
+  }
+  if (projectIds.length) {
+    await supabase.rpc("refresh_project_task_schedules", { p_project_ids: projectIds }).throwOnError();
+  }
+  // Below the Data API row cap; paginate candidates and keep detail URLs bounded.
   for (let offset = 0; ; offset += pageSize) {
     const { data } = await supabase.from("tasks")
       .select("id, status, deadlines:task_deadlines(id, target_status, due_date), in_range:task_deadlines!inner(), project:projects!tasks_project_id_fkey!inner(studio_id)")

@@ -1,19 +1,22 @@
 import "server-only";
 
 import { getCurrentUserProfile } from "@/data/queries";
+import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
 import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
-import type { MyTask, ProjectTask, TaskStatusPeriod } from "@/types/tasks";
+import type { MyTask, ProjectTask, TaskSchedule, TaskStatusPeriod } from "@/types/tasks";
 
-const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
+const TASK_SELECT = "id, project_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
-type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt"> & {
+type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt" | "schedule"> & {
+  schedule: Omit<TaskSchedule, "predecessors"> | null;
   collaborators: TaskCollaboratorRelation[];
 };
 
-type MyTaskRow = Omit<MyTask, "collaborators" | "currentStatusEnteredAt"> & {
+type MyTaskRow = Omit<MyTask, "collaborators" | "currentStatusEnteredAt" | "schedule"> & {
+  schedule: Omit<TaskSchedule, "predecessors"> | null;
   collaborators: TaskCollaboratorRelation[];
 };
 
@@ -47,17 +50,44 @@ async function attachCurrentStatusEnteredAt<T extends ProjectTask>(supabase: Awa
   });
 }
 
+async function attachSchedulePredecessors<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
+  const scheduledIds = tasks.filter((task) => task.schedule).map((task) => task.id);
+  if (!scheduledIds.length) return tasks;
+  const { data: dependencies, error } = await supabase.from("task_schedule_dependencies")
+    .select("task_id, predecessor_task_id").in("task_id", scheduledIds);
+  if (error) throw new Error("Unable to load task schedule dependencies.", { cause: error });
+  const predecessorIds = [...new Set((dependencies ?? []).map((row) => row.predecessor_task_id))];
+  if (!predecessorIds.length) return tasks;
+  const { data: predecessors, error: predecessorError } = await supabase.from("tasks")
+    .select("id, title, status").in("id", predecessorIds);
+  if (predecessorError) throw new Error("Unable to load task schedule predecessors.", { cause: predecessorError });
+  const predecessorById = new Map((predecessors ?? []).map((row) => [row.id, row]));
+  return tasks.map((task) => !task.schedule ? task : {
+    ...task,
+    schedule: {
+      ...task.schedule,
+      predecessors: (dependencies ?? [])
+        .filter((row) => row.task_id === task.id)
+        .flatMap((row) => {
+          const predecessor = predecessorById.get(row.predecessor_task_id);
+          return predecessor ? [predecessor] : [];
+        }),
+    },
+  });
+}
+
 function normalizeProjectTask({ collaborators, ...task }: ProjectTaskRow): ProjectTask {
   const deadlines = task.deadlines ?? [];
-  return { ...task, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
+  return { ...task, schedule: task.schedule ? { ...task.schedule, predecessors: [] } : null, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 function normalizeMyTask({ collaborators, ...task }: MyTaskRow): MyTask {
   const deadlines = task.deadlines ?? [];
-  return { ...task, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
+  return { ...task, schedule: task.schedule ? { ...task.schedule, predecessors: [] } : null, currentStatusEnteredAt: null, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: normalizeTaskCollaborators(collaborators) };
 }
 
 export async function getProjectTasks(projectId: string): Promise<ProjectTask[]> {
+  await refreshProjectTaskSchedules([projectId]);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
@@ -72,11 +102,16 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
     throw new Error(`Unable to load tasks for project ${projectId}.`, { cause: error });
   }
 
-  return attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, data.map(normalizeProjectTask)));
+  return attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, data.map(normalizeProjectTask))));
 }
 
 export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
   const supabase = await createClient();
+  const { data: identity, error: identityError } = await supabase.from("tasks")
+    .select("project_id").eq("id", taskId).maybeSingle();
+  if (identityError) throw new Error(`Unable to load task ${taskId}.`, { cause: identityError });
+  if (!identity) return null;
+  await refreshProjectTaskSchedules([identity.project_id]);
   const { data, error } = await supabase
     .from("tasks")
     .select(TASK_SELECT)
@@ -85,7 +120,7 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
     .overrideTypes<ProjectTaskRow, { merge: false }>();
 
   if (error) throw new Error(`Unable to load task ${taskId}.`, { cause: error });
-  return data ? (await attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, [normalizeProjectTask(data)])))[0] ?? null : null;
+  return data ? (await attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, await attachCurrentStatusEnteredAt(supabase, [normalizeProjectTask(data)]))))[0] ?? null : null;
 }
 
 export async function getMyTaskStageNames(projectIds: string[]): Promise<Record<string, string>> {
@@ -108,6 +143,10 @@ export async function getMyTasks(): Promise<MyTask[]> {
   const { data: personalTaskIds, error: personalTaskIdsError } = await supabase.rpc("get_personal_task_ids");
   if (personalTaskIdsError || !personalTaskIds) throw new Error("Unable to load tasks assigned to the current user.", { cause: personalTaskIdsError });
   if (personalTaskIds.length === 0) return [];
+  const { data: projectRows, error: projectError } = await supabase.from("tasks")
+    .select("project_id").in("id", personalTaskIds.map((row) => row.task_id));
+  if (projectError) throw new Error("Unable to load personal task projects.", { cause: projectError });
+  await refreshProjectTaskSchedules([...new Set((projectRows ?? []).map((row) => row.project_id))]);
   const { data, error } = await supabase
     .from("tasks")
     .select(`${TASK_SELECT}, project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)`)
@@ -120,7 +159,7 @@ export async function getMyTasks(): Promise<MyTask[]> {
     throw new Error("Unable to load tasks assigned to the current user.", { cause: error });
   }
 
-  return (await attachDeadlineCompletions(supabase, data.map(normalizeMyTask))).sort((left, right) => {
+  return (await attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, data.map(normalizeMyTask)))).sort((left, right) => {
     const leftRank = isTaskFinished(left.status) ? 2 : isTaskOverdue(left) ? 0 : 1;
     const rightRank = isTaskFinished(right.status) ? 2 : isTaskOverdue(right) ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;

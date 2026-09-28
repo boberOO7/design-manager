@@ -3,11 +3,11 @@ begin;
 select plan(22);
 
 select ok(
-  has_function_privilege('authenticated', 'public.apply_project_template_stage(uuid, uuid, text, text)', 'execute'),
+  has_function_privilege('authenticated', 'public.apply_project_template_stage(uuid, uuid, text, text, date)', 'execute'),
   'authenticated callers can apply a project template stage'
 );
 select ok(
-  not has_function_privilege('anon', 'public.apply_project_template_stage(uuid, uuid, text, text)', 'execute'),
+  not has_function_privilege('anon', 'public.apply_project_template_stage(uuid, uuid, text, text, date)', 'execute'),
   'anonymous callers cannot apply a project template stage'
 );
 select ok(

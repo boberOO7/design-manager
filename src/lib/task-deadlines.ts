@@ -41,11 +41,11 @@ export function isTaskMilestoneStatus(value: string): value is TaskDeadlineInput
 
 export type TaskDeadlinePresentation = {
   deadline: TaskDeadline;
-  state: "upcoming" | "overdue" | "completed_on_time" | "completed_late";
+  state: "upcoming" | "overdue" | "completed_on_time" | "completed_late" | "blocked" | "paused";
 };
 
 export function getTaskDeadlinePresentation(
-  task: { status: string; deadlines?: readonly TaskDeadlineRow[] },
+  task: { status: string; deadlines?: readonly TaskDeadlineRow[]; schedule?: { is_blocked: boolean; is_paused: boolean } | null },
   today: string,
 ): TaskDeadlinePresentation[] {
   const currentOrder = statusOrder.get(task.status as WritableTaskStatus) ?? -1;
@@ -56,7 +56,10 @@ export function getTaskDeadlinePresentation(
       deadline,
       state: deadline.completion
         ? deadline.completion.completed_on > deadline.completion.due_date ? "completed_late" : "completed_on_time"
-        : (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder ? "completed_on_time" : deadline.due_date < today ? "overdue" : "upcoming",
+        : (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder ? "completed_on_time"
+        : task.schedule?.is_paused ? "paused"
+        : task.schedule?.is_blocked ? "blocked"
+        : deadline.due_date < today ? "overdue" : "upcoming",
     }));
 }
 
@@ -69,7 +72,8 @@ export function getActiveTaskDeadline(task: { status: string; deadlines?: readon
     .sort((left, right) => (statusOrder.get(left.target_status) ?? 0) - (statusOrder.get(right.target_status) ?? 0))[0] ?? null;
 }
 
-export function isTaskDeadlineOverdue(task: { status: string; deadlines?: readonly TaskDeadlineRow[] }, today: string): boolean {
+export function isTaskDeadlineOverdue(task: { status: string; deadlines?: readonly TaskDeadlineRow[]; schedule?: { is_blocked: boolean; is_paused: boolean } | null }, today: string): boolean {
+  if (task.schedule?.is_blocked || task.schedule?.is_paused) return false;
   const deadline = getActiveTaskDeadline(task);
   return deadline !== null && deadline.due_date < today;
 }

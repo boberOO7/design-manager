@@ -438,7 +438,7 @@ export function TaskDetailsDrawer({
                     </Select>
                   </FormField>
                   <FormField label={t("stage")}>
-                    <Select value={values.stage} disabled={isSaving} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
+                    <Select value={values.stage} disabled={isSaving || Boolean(task.schedule)} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
                       {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
                     </Select>
                   </FormField>
@@ -446,7 +446,7 @@ export function TaskDetailsDrawer({
                     <DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale} onValueChange={(completed_at) => setValues((current) => ({ ...current, completed_at }))} />
                   </FormField> : null}
                 </div>
-                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
+                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} scheduledDone={Boolean(task.schedule)} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
               <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
@@ -504,7 +504,12 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
-                  <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} status={task.status} statusLabel={statusLabel} /></dd></div>
+                  {task.schedule ? <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("schedule")}</dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
+                    <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })} · {t("scheduleBaseline")}: {formatDate(task.schedule.baseline_start, locale)} – {formatDate(task.schedule.baseline_due, locale)}</p>
+                    <p>{t("scheduleCurrent")}: {formatDate(task.schedule.current_start, locale)} – {formatDate(task.schedule.current_due, locale)}{task.schedule.is_paused ? ` · ${t("schedulePaused")}` : task.schedule.is_blocked ? ` · ${t("scheduleBlocked")}` : task.schedule.current_due !== task.schedule.baseline_due ? ` · ${t("scheduleShifted")}` : ""}</p>
+                    {task.schedule.predecessors.length ? <p>{t("scheduleDependsOn")}: {task.schedule.predecessors.map((predecessor) => `${predecessor.title} (${predecessor.status === "completed" ? t("scheduleDone") : t("scheduleWaiting")})`).join(", ")}</p> : null}
+                  </dd></div> : null}
+                  <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} schedule={task.schedule} status={task.status} statusLabel={statusLabel} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.created_at, locale)}</dd></div>
                   {canManageTasks && task.status === "completed" && task.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.completed_at, locale)}</dd></div> : null}
@@ -535,14 +540,15 @@ export function TaskDetailsDrawer({
   );
 }
 
-function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, statusLabel }: {
+function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, schedule, status, statusLabel }: {
   deadlines: NonNullable<ProjectTask["deadlines"]>;
   locale: string;
   noDeadlinesLabel: string;
+  schedule?: ProjectTask["schedule"];
   status: ProjectTask["status"];
   statusLabel: (status: ProjectTask["status"]) => string;
 }) {
-  const deadlinesWithState = getTaskDeadlinePresentation({ status, deadlines }, new Date().toISOString().slice(0, 10));
+  const deadlinesWithState = getTaskDeadlinePresentation({ status, deadlines, schedule }, new Date().toISOString().slice(0, 10));
 
   if (!deadlinesWithState.length) return <span className="font-medium text-[var(--ui-text)]">{noDeadlinesLabel}</span>;
 
@@ -556,6 +562,7 @@ function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, status, stat
         {isCompletedLate ? <CircleX aria-label="Completed late" className="size-4 shrink-0 text-[var(--ui-danger-text)]" /> : isCompleted ? <Check aria-label="Completed on time" className="size-4 shrink-0 text-[var(--ui-success-text)]" /> : null}
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", workflowStyle.className, isCompleted && "opacity-70")}>{statusLabel(deadline.target_status)}</span>
         <span className={cn("ui-numeric font-medium", isCompleted && "line-through", (isOverdue || isCompletedLate) && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
+        {state === "blocked" || state === "paused" ? <span className="text-xs text-[var(--ui-info-text)]">{locale === "uk" ? state === "paused" ? "Пауза графіка" : "Очікує попередні задачі" : state === "paused" ? "Schedule paused" : "Waiting for predecessors"}</span> : null}
       </li>;
     })}
   </ul>;

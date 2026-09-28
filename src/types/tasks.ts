@@ -7,6 +7,7 @@ export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_items"]["Row"];
 export type TaskStatusPeriod = Database["public"]["Tables"]["task_status_periods"]["Row"];
+export type TaskSchedule = Pick<Database["public"]["Tables"]["task_schedules"]["Row"], "expected_workdays" | "baseline_start" | "baseline_due" | "current_start" | "current_due" | "is_blocked" | "is_paused"> & { predecessors: Array<{ id: string; title: string; status: string }> };
 
 export const TASK_STATUS_VALUES = [
   "todo",
@@ -50,6 +51,7 @@ export type ProjectTask = Pick<
   | "progress_weight"
 > & {
   deadlines?: TaskDeadline[];
+  schedule?: TaskSchedule | null;
   stage: TaskStage;
   completed_area_m2: TaskRow["completed_area_m2"];
   currentStatusEnteredAt?: string | null;
@@ -68,6 +70,7 @@ export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | 
   checklist_items: Pick<TaskChecklistItem, "id" | "is_completed" | "is_not_needed" | "weight">[];
   collaborators: Pick<TaskCollaborator, "id">[];
   deadlines?: Pick<TaskDeadline, "id" | "target_status" | "due_date">[];
+  schedule?: Pick<TaskSchedule, "is_blocked" | "is_paused"> | null;
 };
 
 export type DashboardWorkloadTask = DashboardTaskSummary & {

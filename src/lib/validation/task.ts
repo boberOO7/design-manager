@@ -106,6 +106,7 @@ export const projectTemplateStageApplicationSchema = z.object({
   template_id: z.uuid("Choose a valid project template"),
   source_stage: z.enum(TASK_STAGES),
   destination_stage: z.enum(TASK_STAGES),
+  anchor_date: optionalDateSchema,
 }).strict();
 
 export const taskEditSchema = z.object({

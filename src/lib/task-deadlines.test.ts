@@ -24,6 +24,18 @@ describe("task milestone deadlines", () => {
     expect(isTaskDeadlineOverdue({ status: "internal_review", deadlines }, "2026-09-11")).toBe(false);
   });
 
+  it("keeps paused and blocked unfinished schedules out of normal overdue state", () => {
+    const scheduleDeadline = [deadlines[2]!];
+    for (const [state, schedule] of [
+      ["blocked", { is_blocked: true, is_paused: false }],
+      ["paused", { is_blocked: false, is_paused: true }],
+    ] as const) {
+      const task = { status: "todo", deadlines: scheduleDeadline, schedule };
+      expect(isTaskDeadlineOverdue(task, "2026-09-30")).toBe(false);
+      expect(getTaskDeadlinePresentation(task, "2026-09-30")[0]?.state).toBe(state);
+    }
+  });
+
   it("serializes only the deadline fields accepted by the task-details RPC", () => {
     expect(toTaskDeadlineInputs([{ ...deadlines[0]!, created_at: "2026-09-01T00:00:00Z" }])).toEqual([
       { target_status: "internal_review", due_date: "2026-09-10" },

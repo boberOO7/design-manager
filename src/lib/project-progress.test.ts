@@ -135,6 +135,15 @@ describe("project task progress", () => {
     expect(progress.nearestOpenTaskDueDate).toBe("2026-07-27");
   });
 
+  it("does not count blocked or paused task deadlines as overdue", () => {
+    const progress = calculateProjectProgress([
+      task({ id: "blocked", due_date: "2026-07-27", schedule: { is_blocked: true, is_paused: false } }),
+      task({ id: "paused", due_date: "2026-07-27", schedule: { is_blocked: false, is_paused: true } }),
+      task({ id: "late", due_date: "2026-07-27" }),
+    ], "2026-07-28");
+    expect(progress.overdueTaskCount).toBe(1);
+  });
+
   it("deduplicates joined task rows and calculates personal contribution", () => {
     const tasks = [{ ...task({ id: "same", status: "completed" }), stage: "stage_1" }, { ...task({ id: "same", status: "completed" }), stage: "stage_1" }, { ...task({ id: "other", assignee_id: "employee-2" }), stage: "stage_1" }];
     expect(calculateProjectProgress(tasks, "2026-07-28")).toMatchObject({ eligibleTaskCount: 2, completedTaskCount: 1, progressPercent: 10 });

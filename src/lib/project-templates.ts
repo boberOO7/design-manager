@@ -14,6 +14,8 @@ export type ProjectTemplateTask = {
   priority: "low" | "normal" | "high" | "urgent";
   position: number;
   checklistTemplateId: string | null;
+  expectedWorkdays: number | null;
+  dependsOnIds: string[];
 };
 
 export type ProjectTemplate = {

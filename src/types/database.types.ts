@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       calendar_event_attendees: {
@@ -3786,6 +3811,8 @@ export type Database = {
           is_enabled: boolean
           progress_method: string
           project_id: string
+          schedule_anchor_date: string | null
+          schedule_paused_on: string | null
           stage: string
           updated_at: string
         }
@@ -3796,6 +3823,8 @@ export type Database = {
           is_enabled?: boolean
           progress_method?: string
           project_id: string
+          schedule_anchor_date?: string | null
+          schedule_paused_on?: string | null
           stage: string
           updated_at?: string
         }
@@ -3806,6 +3835,8 @@ export type Database = {
           is_enabled?: boolean
           progress_method?: string
           project_id?: string
+          schedule_anchor_date?: string | null
+          schedule_paused_on?: string | null
           stage?: string
           updated_at?: string
         }
@@ -3823,6 +3854,8 @@ export type Database = {
         Row: {
           checklist_template_id: string | null
           created_at: string
+          depends_on_positions: number[]
+          expected_workdays: number | null
           id: string
           position: number
           priority: string
@@ -3834,6 +3867,8 @@ export type Database = {
         Insert: {
           checklist_template_id?: string | null
           created_at?: string
+          depends_on_positions?: number[]
+          expected_workdays?: number | null
           id?: string
           position: number
           priority?: string
@@ -3845,6 +3880,8 @@ export type Database = {
         Update: {
           checklist_template_id?: string | null
           created_at?: string
+          depends_on_positions?: number[]
+          expected_workdays?: number | null
           id?: string
           position?: number
           priority?: string
@@ -4490,6 +4527,93 @@ export type Database = {
             foreignKeyName: "task_deadlines_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_schedule_dependencies: {
+        Row: {
+          predecessor_task_id: string
+          task_id: string
+        }
+        Insert: {
+          predecessor_task_id: string
+          task_id: string
+        }
+        Update: {
+          predecessor_task_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_schedule_dependencies_predecessor_task_id_fkey"
+            columns: ["predecessor_task_id"]
+            isOneToOne: false
+            referencedRelation: "task_schedules"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_schedule_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_schedules"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
+      task_schedules: {
+        Row: {
+          baseline_due: string
+          baseline_start: string
+          current_due: string
+          current_start: string
+          expected_workdays: number
+          is_blocked: boolean
+          is_paused: boolean
+          project_id: string
+          sort_order: number
+          stage: string
+          task_id: string
+        }
+        Insert: {
+          baseline_due: string
+          baseline_start: string
+          current_due: string
+          current_start: string
+          expected_workdays: number
+          is_blocked?: boolean
+          is_paused?: boolean
+          project_id: string
+          sort_order: number
+          stage: string
+          task_id: string
+        }
+        Update: {
+          baseline_due?: string
+          baseline_start?: string
+          current_due?: string
+          current_start?: string
+          expected_workdays?: number
+          is_blocked?: boolean
+          is_paused?: boolean
+          project_id?: string
+          sort_order?: number
+          stage?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_schedules_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -5716,6 +5840,7 @@ export type Database = {
       }
       apply_project_template_stage: {
         Args: {
+          p_anchor_date?: string
           p_destination_stage: string
           p_project_id: string
           p_source_stage: string
@@ -6192,6 +6317,10 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_project_task_schedules: {
+        Args: { p_project_ids: string[] }
+        Returns: undefined
+      }
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }
         Returns: undefined
@@ -6409,6 +6538,10 @@ export type Database = {
       }
       set_leaderboard_employee_visibility: {
         Args: { p_studio_id: string; p_visible: boolean }
+        Returns: undefined
+      }
+      set_project_stage_schedule_paused: {
+        Args: { p_paused: boolean; p_project_id: string; p_stage: string }
         Returns: undefined
       }
       set_vacation_employee_visibility: {
@@ -6759,6 +6892,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],

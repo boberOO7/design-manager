@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { Database } from "@/types/database.types";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
@@ -16,9 +17,10 @@ type ProjectListMembershipRow = {
 };
 type ProjectTaskWithDeadlines = ProjectTaskForProgress & { project_id: string; deadlines: Array<{ id: string; target_status: string; due_date: string }> };
 
-export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), checklist_items:task_checklist_items(id, is_completed, is_not_needed, weight)";
+export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, priority, due_date, assignee_id, completed_area_m2, manual_progress_override, production_completion, progress_weight, deadlines:task_deadlines(id, target_status, due_date), schedule:task_schedules(is_blocked, is_paused), checklist_items:task_checklist_items(id, is_completed, is_not_needed, weight)";
 
 export async function getProjectTasksForProgress(projectId: string): Promise<ProjectTaskForProgress[]> {
+  await refreshProjectTaskSchedules([projectId]);
   const supabase = await createClient();
   const { data, error } = await supabase.from("tasks").select(PROJECT_TASK_PROGRESS_SELECT)
     .eq("project_id", projectId).order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true })
@@ -49,6 +51,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   }
   if (projects.length === 0) return { projects: [], error: null };
   const ids = projects.map((project) => project.id);
+  await refreshProjectTaskSchedules(ids);
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
     supabase
       .from("tasks")
