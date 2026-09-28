@@ -7,7 +7,7 @@ export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_items"]["Row"];
 export type TaskStatusPeriod = Database["public"]["Tables"]["task_status_periods"]["Row"];
-export type TaskSchedule = Pick<Database["public"]["Tables"]["task_schedules"]["Row"], "expected_workdays" | "baseline_start" | "baseline_due" | "current_start" | "current_due" | "is_blocked" | "is_paused"> & { predecessors: Array<{ id: string; title: string; status: string }> };
+export type TaskSchedule = Pick<Database["public"]["Tables"]["task_schedules"]["Row"], "expected_workdays" | "baseline_start" | "baseline_due" | "current_start" | "current_due" | "is_blocked" | "is_paused"> & { predecessors: Array<{ id: string; title: string; status: string; scheduleCompleted: boolean }> };
 
 export const TASK_STATUS_VALUES = [
   "todo",

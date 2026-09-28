@@ -1,0 +1,104 @@
+\set ON_ERROR_STOP on
+begin;
+insert into public.studios(id,name) values ('89000000-0000-0000-0000-000000000001','Upgrade check');
+insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+ values ('89000000-0000-0000-0000-000000000010','authenticated','authenticated','upgrade-check@example.test','{}','{}',now(),now());
+insert into public.profiles(id,full_name,email,system_role)
+ values ('89000000-0000-0000-0000-000000000010','Upgrade check','upgrade-check@example.test','admin');
+insert into public.studio_members(studio_id,user_id,system_role)
+ values ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000010','admin');
+insert into public.projects(id,studio_id,name,project_type,total_area_m2,status,start_date,created_by)
+ values ('89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000001','Upgrade project','private',100,'active','2026-09-07','89000000-0000-0000-0000-000000000010');
+insert into public.tasks(id,project_id,title,stage,status,priority,created_by) values
+ ('89000000-0000-0000-0000-000000000030','89000000-0000-0000-0000-000000000020','Early review','stage_1','todo','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000031','89000000-0000-0000-0000-000000000020','Reopened review','stage_1','in_progress','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000032','89000000-0000-0000-0000-000000000020','Skipped review','stage_1','review','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000033','89000000-0000-0000-0000-000000000020','Converted upstream','stage_1','todo','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000034','89000000-0000-0000-0000-000000000020','Converted dependent','stage_1','todo','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000035','89000000-0000-0000-0000-000000000020','Backward first review','stage_1','internal_review','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000036','89000000-0000-0000-0000-000000000020','Already correct review','stage_1','internal_review','normal','89000000-0000-0000-0000-000000000010'),
+ ('89000000-0000-0000-0000-000000000037','89000000-0000-0000-0000-000000000020','Same-day later review','stage_1','in_progress','normal','89000000-0000-0000-0000-000000000010');
+insert into public.task_schedules(task_id,project_id,stage,sort_order,expected_workdays,baseline_start,baseline_due,current_start,current_due) values
+ ('89000000-0000-0000-0000-000000000030','89000000-0000-0000-0000-000000000020','stage_1',0,5,'2026-09-14','2026-09-18','2026-09-14','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000031','89000000-0000-0000-0000-000000000020','stage_1',1,5,'2026-09-07','2026-09-11','2026-09-07','2026-09-11'),
+ ('89000000-0000-0000-0000-000000000032','89000000-0000-0000-0000-000000000020','stage_1',2,5,'2026-09-14','2026-09-18','2026-09-14','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000033','89000000-0000-0000-0000-000000000020','stage_1',3,5,'2099-11-09','2099-11-13','2099-11-09','2099-11-13'),
+ ('89000000-0000-0000-0000-000000000034','89000000-0000-0000-0000-000000000020','stage_1',4,2,'2099-11-16','2099-11-17','2099-11-16','2099-11-17'),
+ ('89000000-0000-0000-0000-000000000035','89000000-0000-0000-0000-000000000020','stage_1',5,5,'2026-09-14','2026-09-18','2026-09-14','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000036','89000000-0000-0000-0000-000000000020','stage_1',6,5,'2026-09-14','2026-09-18','2026-09-14','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000037','89000000-0000-0000-0000-000000000020','stage_1',7,5,'2026-09-14','2026-09-18','2026-09-14','2026-09-18');
+insert into public.task_deadlines(task_id,target_status,due_date) values
+ ('89000000-0000-0000-0000-000000000030','internal_review','2026-09-16'),
+ ('89000000-0000-0000-0000-000000000030','completed','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000031','internal_review','2026-09-20'),
+ ('89000000-0000-0000-0000-000000000031','completed','2026-09-11'),
+ ('89000000-0000-0000-0000-000000000032','internal_review','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000032','completed','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000033','internal_review','2099-11-17'),
+ ('89000000-0000-0000-0000-000000000033','completed','2099-11-13'),
+ ('89000000-0000-0000-0000-000000000034','completed','2099-11-17'),
+ ('89000000-0000-0000-0000-000000000035','internal_review','2026-09-19'),
+ ('89000000-0000-0000-0000-000000000035','completed','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000036','internal_review','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000036','completed','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000037','internal_review','2026-09-21'),
+ ('89000000-0000-0000-0000-000000000037','completed','2026-09-18');
+insert into public.task_schedule_dependencies(task_id,predecessor_task_id)
+ values ('89000000-0000-0000-0000-000000000034','89000000-0000-0000-0000-000000000033');
+update public.task_status_periods set entered_at='2026-09-14T09:00:00Z',exited_at='2026-09-15T09:00:00Z'
+ where task_id='89000000-0000-0000-0000-000000000031' and exited_at is null;
+insert into public.task_status_periods(studio_id,project_id,task_id,status,entered_at,exited_at) values
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','internal_review','2026-09-15T09:00:00Z','2026-09-16T09:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','in_progress','2026-09-16T09:00:00Z','2026-09-18T09:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','internal_review','2026-09-18T09:00:00Z','2026-09-19T09:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','in_progress','2026-09-19T09:00:00Z',null);
+insert into public.task_deadline_completions(studio_id,project_id,task_id,assignee_id,target_status,due_date,completed_at,completed_on,voided_at)
+ values ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','89000000-0000-0000-0000-000000000010','internal_review','2026-09-10','2026-09-15T09:00:00Z','2026-09-15','2026-09-16T09:00:00Z');
+insert into public.task_deadline_completions(studio_id,project_id,task_id,target_status,due_date,completed_at,completed_on)
+ values ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000032','internal_review','2026-09-18','2026-09-15T09:00:00Z','2026-09-15'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000031','internal_review','2026-09-20','2026-09-18T09:00:00Z','2026-09-18'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000035','internal_review','2026-09-17','2026-09-14T09:00:00Z','2026-09-14');
+update public.task_status_periods set entered_at='2026-09-15T09:00:00Z'
+ where task_id='89000000-0000-0000-0000-000000000035' and status='internal_review' and exited_at is null;
+insert into public.task_status_periods(studio_id,project_id,task_id,status,entered_at,exited_at)
+ values ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000035','review','2026-09-14T09:00:00Z','2026-09-15T09:00:00Z');
+update public.task_status_periods set entered_at='2026-09-15T09:00:00Z'
+ where task_id='89000000-0000-0000-0000-000000000036' and status='internal_review' and exited_at is null;
+insert into public.task_status_periods(studio_id,project_id,task_id,status,entered_at,exited_at)
+ values ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000036','in_progress','2026-09-14T09:00:00Z','2026-09-15T09:00:00Z');
+insert into public.task_deadline_completions(id,studio_id,project_id,task_id,assignee_id,target_status,due_date,completed_at,completed_on)
+ values ('89000000-0000-0000-0000-000000000046','89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000036','89000000-0000-0000-0000-000000000010','internal_review','2026-09-18','2026-09-15T09:00:00Z','2026-09-15');
+update public.task_schedules set is_blocked=true where task_id='89000000-0000-0000-0000-000000000036';
+update public.task_status_periods set entered_at='2026-09-14T09:00:00Z',exited_at='2026-09-15T09:00:00Z'
+ where task_id='89000000-0000-0000-0000-000000000037' and exited_at is null;
+insert into public.task_status_periods(studio_id,project_id,task_id,status,entered_at,exited_at) values
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000037','internal_review','2026-09-15T09:00:00Z','2026-09-15T10:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000037','in_progress','2026-09-15T10:00:00Z','2026-09-15T11:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000037','internal_review','2026-09-15T11:00:00Z','2026-09-15T12:00:00Z'),
+ ('89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000037','in_progress','2026-09-15T12:00:00Z',null);
+insert into public.task_deadline_completions(id,studio_id,project_id,task_id,target_status,due_date,completed_at,completed_on)
+ values ('89000000-0000-0000-0000-000000000047','89000000-0000-0000-0000-000000000001','89000000-0000-0000-0000-000000000020','89000000-0000-0000-0000-000000000037','internal_review','2026-09-21','2026-09-15T11:00:00Z','2026-09-15');
+\set QUIET 1
+\ir ../migrations/20260928172811_internal_review_schedule_cascade.sql
+\unset QUIET
+do $$
+begin
+ if (select current_due from public.task_schedules where task_id='89000000-0000-0000-0000-000000000030') is distinct from date '2026-09-18' then raise exception 'duration shortened'; end if;
+ if (select due_date from public.task_deadlines where task_id='89000000-0000-0000-0000-000000000030' and target_status='internal_review') is distinct from date '2026-09-18' then raise exception 'deadline not aligned'; end if;
+ if (select due_date from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000031' and target_status='internal_review' and voided_at is null) is distinct from date '2026-09-10' then raise exception 'historical due rewritten'; end if;
+ if (select completed_on from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000031' and target_status='internal_review' and voided_at is null) is distinct from date '2026-09-15' then raise exception 'first handoff rewritten'; end if;
+ if (select count(*) from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000032' and target_status='internal_review' and voided_at is null) is distinct from 0 then raise exception 'phantom handoff retained'; end if;
+ if (select count(*) from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000031' and target_status='internal_review' and voided_at is null) is distinct from 1 then raise exception 'later review remains active'; end if;
+ if (select assignee_id from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000031' and target_status='internal_review' and voided_at is null) is distinct from '89000000-0000-0000-0000-000000000010'::uuid then raise exception 'first handoff assignee rewritten'; end if;
+ if (select id from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000036' and target_status='internal_review' and voided_at is null) is distinct from '89000000-0000-0000-0000-000000000046'::uuid then raise exception 'correct first handoff replaced'; end if;
+ if (select assignee_id from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000036' and target_status='internal_review' and voided_at is null) is distinct from '89000000-0000-0000-0000-000000000010'::uuid then raise exception 'correct handoff assignee rewritten'; end if;
+ if (select is_blocked from public.task_schedules where task_id='89000000-0000-0000-0000-000000000036') is distinct from false then raise exception 'handed-off task stayed blocked'; end if;
+ if (select completed_at from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000037' and target_status='internal_review' and voided_at is null) is distinct from '2026-09-15T09:00:00Z'::timestamptz then raise exception 'same-day later review replaced first'; end if;
+ if (select voided_at from public.task_deadline_completions where id='89000000-0000-0000-0000-000000000047') is null then raise exception 'same-day later completion stayed active'; end if;
+ if (select due_date from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000035' and target_status='internal_review' and voided_at is null) is distinct from date '2026-09-19' then raise exception 'phantom due reused after backward review'; end if;
+ if (select completed_on from public.task_deadline_completions where task_id='89000000-0000-0000-0000-000000000035' and target_status='internal_review' and voided_at is null) is distinct from date '2026-09-15' then raise exception 'backward review handoff missing'; end if;
+ if (select current_due from public.task_schedules where task_id='89000000-0000-0000-0000-000000000033') is distinct from date '2099-11-17' then raise exception 'converted upstream due missing'; end if;
+ if (select (current_start,current_due,baseline_due) from public.task_schedules where task_id='89000000-0000-0000-0000-000000000034') is distinct from (date '2099-11-18',date '2099-11-19',date '2099-11-17') then raise exception 'converted dependent not reflowed'; end if;
+end;
+$$;
+rollback;

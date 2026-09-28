@@ -111,10 +111,12 @@ Project aggregation and attribution are described in
   creates the task dependency graph and baseline start/due dates.
 - `task_schedules` stores baseline and current dates separately;
   `task_schedule_dependencies` stores the copied task edges. Current dates move
-  only forward through unfinished dependents when a Done date, manual scheduled
-  deadline, or elapsed time makes their predecessor's finish later. Completed
-  tasks and reached milestone history do not move.
-- Open dependents stay blocked until their predecessors finish. Blocked and
+  only forward through unfinished dependents when an internal-review deadline,
+  the first actual entry into internal review, or elapsed time makes their
+  predecessor's handoff later. Baseline dates, completed tasks, and tasks that
+  have already reached internal review remain fixed. Earlier deadline edits
+  do not pull dependents earlier.
+- Open dependents stay blocked until their predecessors enter internal review. Blocked and
   stage-paused tasks do not contribute normal overdue counts. Schedule refresh
   runs before task, project, and Dashboard reads so an overdue unfinished
   predecessor cannot leave downstream current dates in the past. Closed
@@ -122,8 +124,10 @@ Project aggregation and attribution are described in
 - Administrators pause or resume a stage schedule independently of the project
   lifecycle. Resume shifts unfinished current dates by the paused working days;
   baseline dates remain fixed. Scheduled tasks remain in their applied stage.
-- Workflow status entry times are history, not inputs to planned duration.
-  Factual Done completion and its Kyiv calendar date drive dependency updates.
+- The first internal-review entry is the scheduling completion milestone and
+  supplies the actual Kyiv date to dependent schedules. Its deadline completion
+  remains historical through later review or reopening. Done remains the final
+  workflow status.
 
 ## Board interaction
 

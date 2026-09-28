@@ -9,13 +9,13 @@ import { isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, type TaskDeadlineInput 
 import { getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask } from "@/types/tasks";
 
-export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChange, scheduledDone = false, statusLabel }: {
+export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChange, scheduledReview = false, statusLabel }: {
   deadlines: TaskDeadlineInput[];
   disabled: boolean;
   error?: string;
   locale: string;
   onChange: (deadlines: TaskDeadlineInput[]) => void;
-  scheduledDone?: boolean;
+  scheduledReview?: boolean;
   statusLabel: (status: ProjectTask["status"]) => string;
 }) {
   const t = useTranslations("Tasks");
@@ -36,7 +36,7 @@ export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChang
           {availableStatuses.map((status) => <SelectItem key={status} value={status} className={getTaskStatusBadgeStyle(status).className}>{statusLabel(status)}</SelectItem>)}
         </Select>
         <DatePicker value={deadline.due_date} disabled={disabled} locale={locale} onValueChange={(due_date) => updateDeadline(index, { due_date })} />
-        <Button type="button" size="sm" variant="ghost" disabled={disabled || (scheduledDone && deadline.target_status === "completed")} className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("removeDeadline", { status: statusLabel(deadline.target_status) })} onClick={() => onChange(deadlines.filter((_, deadlineIndex) => deadlineIndex !== index))}><Trash2 className="size-4" aria-hidden="true" /></Button>
+        <Button type="button" size="sm" variant="ghost" disabled={disabled || (scheduledReview && deadline.target_status === "internal_review")} className="size-11 p-0 text-[var(--ui-danger-text)]" aria-label={t("removeDeadline", { status: statusLabel(deadline.target_status) })} onClick={() => onChange(deadlines.filter((_, deadlineIndex) => deadlineIndex !== index))}><Trash2 className="size-4" aria-hidden="true" /></Button>
       </div>)}
     </div>
     {error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}

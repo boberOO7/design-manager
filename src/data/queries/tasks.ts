@@ -32,7 +32,10 @@ async function attachDeadlineCompletions<T extends ProjectTask>(supabase: Awaite
     .overrideTypes<DeadlineCompletionRow[], { merge: false }>();
   if (error) throw new Error("Unable to load task deadline completion history.", { cause: error });
   const completionByMilestone = new Map((data ?? []).map((completion) => [`${completion.task_id}:${completion.target_status}`, completion]));
-  return tasks.map((task) => ({ ...task, deadlines: task.deadlines?.map((deadline) => ({ ...deadline, completion: completionByMilestone.get(`${task.id}:${deadline.target_status}`) ?? null })) }));
+  return tasks.map((task) => {
+    const deadlines = task.deadlines?.map((deadline) => ({ ...deadline, completion: completionByMilestone.get(`${task.id}:${deadline.target_status}`) ?? null }));
+    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null };
+  });
 }
 
 async function attachCurrentStatusEnteredAt<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
@@ -61,6 +64,11 @@ async function attachSchedulePredecessors<T extends ProjectTask>(supabase: Await
   const { data: predecessors, error: predecessorError } = await supabase.from("tasks")
     .select("id, title, status").in("id", predecessorIds);
   if (predecessorError) throw new Error("Unable to load task schedule predecessors.", { cause: predecessorError });
+  const { data: handoffs, error: handoffError } = await supabase.from("task_deadline_completions")
+    .select("task_id").in("task_id", predecessorIds)
+    .eq("target_status", "internal_review").is("voided_at", null);
+  if (handoffError) throw new Error("Unable to load task schedule handoffs.", { cause: handoffError });
+  const handedOffIds = new Set((handoffs ?? []).map((row) => row.task_id));
   const predecessorById = new Map((predecessors ?? []).map((row) => [row.id, row]));
   return tasks.map((task) => !task.schedule ? task : {
     ...task,
@@ -70,7 +78,7 @@ async function attachSchedulePredecessors<T extends ProjectTask>(supabase: Await
         .filter((row) => row.task_id === task.id)
         .flatMap((row) => {
           const predecessor = predecessorById.get(row.predecessor_task_id);
-          return predecessor ? [predecessor] : [];
+          return predecessor ? [{ ...predecessor, scheduleCompleted: handedOffIds.has(predecessor.id) || ["completed", "cancelled"].includes(predecessor.status) }] : [];
         }),
     },
   });

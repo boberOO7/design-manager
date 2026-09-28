@@ -36,6 +36,19 @@ describe("task milestone deadlines", () => {
     }
   });
 
+  it("does not make a recorded review handoff overdue when work is reopened", () => {
+    const reached = { ...deadlines[0]!, completion: { due_date: "2026-09-10", completed_on: "2026-09-12", completed_at: "2026-09-12T08:00:00Z" } };
+    const task = { status: "in_progress", deadlines: [reached], schedule: { is_blocked: false, is_paused: false } };
+    expect(getActiveTaskDeadline(task)).toBeNull();
+    expect(isTaskDeadlineOverdue(task, "2026-09-30")).toBe(false);
+    expect(getTaskDeadlinePresentation(task, "2026-09-30")[0]?.state).toBe("completed_late");
+  });
+
+  it("does not claim on-time delivery when a scheduled task skips internal review", () => {
+    const task = { status: "review", deadlines: [deadlines[0]!], schedule: { is_blocked: false, is_paused: false } };
+    expect(getTaskDeadlinePresentation(task, "2026-09-30")[0]?.state).toBe("unrecorded");
+  });
+
   it("serializes only the deadline fields accepted by the task-details RPC", () => {
     expect(toTaskDeadlineInputs([{ ...deadlines[0]!, created_at: "2026-09-01T00:00:00Z" }])).toEqual([
       { target_status: "internal_review", due_date: "2026-09-10" },

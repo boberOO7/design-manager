@@ -1,9 +1,10 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -21,7 +22,7 @@ import { getTaskDeadlinePresentation, toTaskDeadlineInputs, type TaskDeadlineInp
 import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborator-multi-select";
 import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
-import { cn, formatDate, formatNumber } from "@/lib/utils";
+import { cn, formatDate, formatDateOnlyDayMonth, formatNumber } from "@/lib/utils";
 import { getCurrentStatusDuration } from "@/lib/dashboard";
 import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
@@ -103,6 +104,7 @@ export function TaskDetailsDrawer({
   task: ProjectTask;
   templates?: StudioChecklistTemplate[];
 }) {
+  const router = useRouter();
   const t = useTranslations("Tasks");
   const checklistT = useTranslations("Checklists");
   const templatesT = useTranslations("Templates");
@@ -235,6 +237,7 @@ export function TaskDetailsDrawer({
       }
       if (response.ok && isTaskEditResponse(result) && result.success) {
         onTaskUpdated(result.task);
+        if (task.schedule) router.refresh();
         checklistStore.seed(result.task);
         if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
         setValues(makeFormValues(result.task));
@@ -289,6 +292,7 @@ export function TaskDetailsDrawer({
       }
       if (isTaskWorkResponse(result) && result.success) {
         onTaskUpdated(result.task);
+        if (task.schedule) router.refresh();
         checklistStore.seed(result.task);
       }
       setSuccessMessage(t("statusSaved"));
@@ -446,7 +450,7 @@ export function TaskDetailsDrawer({
                     <DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale} onValueChange={(completed_at) => setValues((current) => ({ ...current, completed_at }))} />
                   </FormField> : null}
                 </div>
-                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} scheduledDone={Boolean(task.schedule)} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
+                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} scheduledReview={Boolean(task.schedule)} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
               <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
@@ -505,9 +509,12 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
                   {task.schedule ? <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("schedule")}</dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
-                    <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })} · {t("scheduleBaseline")}: {formatDate(task.schedule.baseline_start, locale)} – {formatDate(task.schedule.baseline_due, locale)}</p>
-                    <p>{t("scheduleCurrent")}: {formatDate(task.schedule.current_start, locale)} – {formatDate(task.schedule.current_due, locale)}{task.schedule.is_paused ? ` · ${t("schedulePaused")}` : task.schedule.is_blocked ? ` · ${t("scheduleBlocked")}` : task.schedule.current_due !== task.schedule.baseline_due ? ` · ${t("scheduleShifted")}` : ""}</p>
-                    {task.schedule.predecessors.length ? <p>{t("scheduleDependsOn")}: {task.schedule.predecessors.map((predecessor) => `${predecessor.title} (${predecessor.status === "completed" ? t("scheduleDone") : t("scheduleWaiting")})`).join(", ")}</p> : null}
+                    <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })}</p>
+                    <details className="group">
+                      <summary className="w-fit cursor-pointer list-none font-medium marker:hidden focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("scheduleDue")}: {formatDateOnlyDayMonth(task.schedule.current_due, locale)}{task.schedule.current_due > task.schedule.baseline_due ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-secondary)]">{t("scheduleDrift", { count: scheduleWorkdayDrift(task.schedule.baseline_due, task.schedule.current_due) })}</span> : null}<ChevronDown className="ml-1 inline size-3 text-[var(--ui-text-muted)] transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /></summary>
+                      <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("scheduleBaseline")}: {formatDate(task.schedule.baseline_start, locale)} – {formatDate(task.schedule.baseline_due, locale)}<br />{t("scheduleCurrent")}: {formatDate(task.schedule.current_start, locale)} – {formatDate(task.schedule.current_due, locale)}</p>
+                    </details>
+                    {task.schedule.is_paused ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("schedulePaused")}</p> : task.schedule.is_blocked ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("scheduleWaitingFor")}: {task.schedule.predecessors.filter((predecessor) => !predecessor.scheduleCompleted).map((predecessor) => predecessor.title).join(", ")}</p> : null}
                   </dd></div> : null}
                   <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} schedule={task.schedule} status={task.status} statusLabel={statusLabel} /></dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
@@ -548,6 +555,7 @@ function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, schedule, st
   status: ProjectTask["status"];
   statusLabel: (status: ProjectTask["status"]) => string;
 }) {
+  const t = useTranslations("Tasks");
   const deadlinesWithState = getTaskDeadlinePresentation({ status, deadlines, schedule }, new Date().toISOString().slice(0, 10));
 
   if (!deadlinesWithState.length) return <span className="font-medium text-[var(--ui-text)]">{noDeadlinesLabel}</span>;
@@ -563,6 +571,7 @@ function TaskDeadlineSummary({ deadlines, locale, noDeadlinesLabel, schedule, st
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", workflowStyle.className, isCompleted && "opacity-70")}>{statusLabel(deadline.target_status)}</span>
         <span className={cn("ui-numeric font-medium", isCompleted && "line-through", (isOverdue || isCompletedLate) && "text-[var(--ui-danger-text)]")}>{formatDate(deadline.due_date, locale)}</span>
         {state === "blocked" || state === "paused" ? <span className="text-xs text-[var(--ui-info-text)]">{locale === "uk" ? state === "paused" ? "Пауза графіка" : "Очікує попередні задачі" : state === "paused" ? "Schedule paused" : "Waiting for predecessors"}</span> : null}
+        {state === "unrecorded" ? <span className="text-xs text-[var(--ui-text-muted)]">{t("scheduleHandoffUnrecorded")}</span> : null}
       </li>;
     })}
   </ul>;
@@ -653,4 +662,15 @@ function ChecklistItemEditorRow({ canEdit, item, onDelete, onUpdate, pending }: 
       {pending ? <span className="sr-only" role="status">{t("savingItem")}</span> : null}
     </div>
   </li>;
+}
+
+function scheduleWorkdayDrift(from: string, to: string): number {
+  const day = new Date(`${from}T12:00:00Z`);
+  const end = new Date(`${to}T12:00:00Z`);
+  let count = 0;
+  while (day < end) {
+    day.setUTCDate(day.getUTCDate() + 1);
+    if (day.getUTCDay() !== 0 && day.getUTCDay() !== 6) count++;
+  }
+  return count;
 }

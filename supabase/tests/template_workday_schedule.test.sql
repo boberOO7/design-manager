@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(61);
 
 insert into public.studios (id,name) values ('87000000-0000-0000-0000-000000000001','Schedule studio');
 insert into auth.users (id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
@@ -40,41 +40,107 @@ select throws_like(
  '%Dependencies must reference earlier scheduled tasks%','forward or cyclic template edges are rejected');
 select lives_ok(
  $$insert into public.task_deadlines(task_id,target_status,due_date)
- select id,'internal_review','2026-09-17' from public.tasks
+ select id,'review','2026-09-17' from public.tasks
  where project_id='87000000-0000-0000-0000-000000000020' and title='B'$$,
- 'a feasible review milestone can be added to a scheduled task');
+ 'a client review milestone can be added to a scheduled task');
 select lives_ok(
  $$select public.bulk_set_project_task_deadline('87000000-0000-0000-0000-000000000020','stage_1',
  array(select id from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='A'),
- 'completed','2026-09-17')$$,'moving A two workdays later succeeds');
+ 'internal_review','2026-09-17')$$,'moving A two workdays later succeeds');
 set local role postgres;
 select is((select current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000020'),private.schedule_add_workdays(private.schedule_add_workdays(greatest('2026-09-17'::date,private.schedule_workday_on_or_after((now() at time zone 'Europe/Kyiv')::date)),1),2),'B shifts to the earliest feasible working days');
 select is((select deadline.due_date from public.task_deadlines deadline join public.tasks t on t.id=deadline.task_id
- where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000020' and deadline.target_status='internal_review'),
+ where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000020' and deadline.target_status='review'),
  private.schedule_add_workdays(greatest('2026-09-17'::date,private.schedule_workday_on_or_after((now() at time zone 'Europe/Kyiv')::date)),2),'review milestone shifts with the delayed scheduled start');
 set local role authenticated;
 select throws_like(
  $$select public.bulk_set_project_task_deadline('87000000-0000-0000-0000-000000000020','stage_1',
  array(select id from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='B'),
  'internal_review','2026-09-17')$$,
- '%Milestone deadline cannot precede scheduled work%','manual review milestone cannot precede scheduled work');
+ '%Scheduled internal review deadline must remain feasible%','manual review deadline cannot precede scheduled work');
 set local role postgres;
 select is((select current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='D' and t.project_id='87000000-0000-0000-0000-000000000020'),private.schedule_add_workdays(greatest('2026-09-17'::date,private.schedule_workday_on_or_after((now() at time zone 'Europe/Kyiv')::date)),4),'the joined successor follows the shifted longer branch');
 select is((select baseline_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='D' and t.project_id='87000000-0000-0000-0000-000000000020'),'2026-09-21'::date,'manual change never rewrites baseline');
+create temp table before_earlier_move as
+ select t.title,s.current_start,s.current_due from public.task_schedules s
+ join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title in ('B','D');
+set local role authenticated;
+select lives_ok(
+ $$select public.bulk_set_project_task_deadline('87000000-0000-0000-0000-000000000020','stage_1',
+ array(select id from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='A'),
+ 'internal_review','2026-09-16')$$,'moving A earlier is accepted');
+set local role postgres;
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),
+ (select current_due from before_earlier_move where title='B'),'earlier upstream date does not pull B');
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='D'),
+ (select current_due from before_earlier_move where title='D'),'earlier upstream date does not pull transitive D');
+set local role authenticated;
+select lives_ok(
+ $$select public.bulk_set_project_task_deadline('87000000-0000-0000-0000-000000000020','stage_1',
+ array(select id from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='A'),
+ 'internal_review','2026-09-17')$$,'restoring A date leaves the chain feasible');
 set local role authenticated;
 select throws_like(
  $$select public.bulk_set_project_task_deadline('87000000-0000-0000-0000-000000000020','stage_1',
  array(select id from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='A'),
- 'completed','2026-09-14')$$,
+ 'internal_review','2026-09-14')$$,
  '%remain feasible%','manual deadline cannot be earlier than its own duration');
 select lives_ok(
- $$update public.tasks set status='completed'
+ $$update public.tasks set status='internal_review'
  where project_id='87000000-0000-0000-0000-000000000020' and title='A'$$,
- 'factual Done completion succeeds');
+ 'factual internal-review handoff succeeds');
 set local role postgres;
 select is((select current_start from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000020'),
- private.schedule_add_workdays((now() at time zone 'Europe/Kyiv')::date,1),'unfinished successor starts after actual completion');
-select is((select current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='A' and t.project_id='87000000-0000-0000-0000-000000000020'),'2026-09-17'::date,'completed predecessor retains its planned history');
+ private.schedule_add_workdays((now() at time zone 'Europe/Kyiv')::date,1),'unfinished successor starts after actual handoff');
+select is((select current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.title='A' and t.project_id='87000000-0000-0000-0000-000000000020'),'2026-09-17'::date,'handed-off predecessor retains its planned history');
+select is((select completion.completed_on from public.task_deadline_completions completion
+ join public.tasks task on task.id=completion.task_id
+ where task.project_id='87000000-0000-0000-0000-000000000020'
+   and task.title='A' and completion.target_status='internal_review' and completion.voided_at is null),
+ (now() at time zone 'Europe/Kyiv')::date,'first internal-review entry records the actual schedule milestone');
+select is((select completion.due_date from public.task_deadline_completions completion
+ join public.tasks task on task.id=completion.task_id
+ where task.project_id='87000000-0000-0000-0000-000000000020'
+   and task.title='A' and completion.target_status='internal_review' and completion.voided_at is null),
+ '2026-09-17'::date,'late handoff is compared with the original scheduled review deadline');
+select is((select current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='D'),
+ private.schedule_add_workdays((now() at time zone 'Europe/Kyiv')::date,4),
+ 'late actual handoff cascades through the joined successor');
+create temp table first_handoff as
+ select completion.id,completion.completed_on from public.task_deadline_completions completion
+ join public.tasks task on task.id=completion.task_id
+ where task.project_id='87000000-0000-0000-0000-000000000020'
+   and task.title='A' and completion.target_status='internal_review' and completion.voided_at is null;
+set local role authenticated;
+select lives_ok($$update public.tasks set status='in_progress'
+ where project_id='87000000-0000-0000-0000-000000000020' and title='A'$$,
+ 'review can return work without voiding its first schedule milestone');
+set local role postgres;
+select is((select count(*)::integer from public.task_deadline_completions completion
+ join public.tasks task on task.id=completion.task_id
+ where task.project_id='87000000-0000-0000-0000-000000000020'
+   and task.title='A' and completion.target_status='internal_review' and completion.voided_at is null),
+ 1,'reopening keeps one active first handoff');
+select is((select is_blocked from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),
+ false,'a reopened predecessor with a recorded handoff does not reblock B');
+set local role authenticated;
+select lives_ok($$update public.tasks set status='internal_review'
+ where project_id='87000000-0000-0000-0000-000000000020' and title='A'$$,
+ 'later review entry succeeds without replacing the first');
+set local role postgres;
+select is((select completion.id from public.task_deadline_completions completion
+ join public.tasks task on task.id=completion.task_id
+ where task.project_id='87000000-0000-0000-0000-000000000020'
+   and task.title='A' and completion.target_status='internal_review' and completion.voided_at is null),
+ (select id from first_handoff),'later review entry preserves the first completion record');
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='A'),
+ '2026-09-17'::date,'scheduling-completed A remains fixed after reopen');
 select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
 select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true)$$,'stage schedule can pause');
@@ -147,6 +213,22 @@ select is((select s.current_start from public.task_schedules s join public.tasks
  where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000021'),
  private.schedule_add_workdays(private.schedule_workday_on_or_after((now() at time zone 'Europe/Kyiv')::date),1),
  'overdue unfinished A pushes B to the next feasible working day');
+select is((select s.is_blocked from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000021' and t.title='B'),
+ true,'unfinished predecessor keeps B blocked');
+select ok((select d.due_date >= (now() at time zone 'Europe/Kyiv')::date
+ from public.task_deadlines d join public.tasks t on t.id=d.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000021'
+   and t.title='B' and d.target_status='internal_review'),
+ 'blocked B schedule deadline stays out of the past');
+set local role authenticated;
+select lives_ok($$update public.tasks set status='internal_review'
+ where project_id='87000000-0000-0000-0000-000000000021' and title='B'$$,
+ 'a blocked dependent can hand off its work');
+set local role postgres;
+select is((select s.is_blocked from public.task_schedules s join public.tasks t on t.id=s.task_id
+ where t.project_id='87000000-0000-0000-0000-000000000021' and t.title='B'),false,
+ 'handoff clears stale blocked state without moving its schedule');
 select is(private.schedule_add_workdays(private.schedule_workday_on_or_after('2026-09-26'),1),
  '2026-09-29'::date,'a weekend cannot count as predecessor working time');
 update public.projects set status='archived', archived_at=(now() at time zone 'Europe/Kyiv')::date
@@ -175,6 +257,33 @@ select is((select s.current_start from public.task_schedules s join public.tasks
  where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000022'),
  private.schedule_add_workdays(private.schedule_workday_on_or_after((now() at time zone 'Europe/Kyiv')::date),1),
  'completed project Stage 4 dependent remains feasible');
+
+-- A backward first entry still counts; passing through client review does not.
+insert into public.projects (id,studio_id,name,project_type,total_area_m2,status,start_date,created_by)
+ values ('87000000-0000-0000-0000-000000000023','87000000-0000-0000-0000-000000000001',
+ 'Backward review project','private',100,'active','2026-09-17','87000000-0000-0000-0000-000000000010');
+insert into public.tasks(id,project_id,title,stage,status,priority,created_by)
+ values ('87000000-0000-0000-0000-000000000063','87000000-0000-0000-0000-000000000023','Backward review','stage_1','todo','normal','87000000-0000-0000-0000-000000000010');
+insert into public.task_schedules(task_id,project_id,stage,sort_order,expected_workdays,baseline_start,baseline_due,current_start,current_due)
+ values ('87000000-0000-0000-0000-000000000063','87000000-0000-0000-0000-000000000023','stage_1',0,2,'2026-09-17','2026-09-18','2026-09-17','2026-09-18');
+insert into public.task_deadlines(task_id,target_status,due_date)
+ values ('87000000-0000-0000-0000-000000000063','internal_review','2026-09-18');
+update public.tasks set status='review' where id='87000000-0000-0000-0000-000000000063';
+select is((select count(*)::integer from public.task_deadline_completions
+ where task_id='87000000-0000-0000-0000-000000000063' and target_status='internal_review' and voided_at is null),
+ 0,'skipping directly to client review does not invent an internal handoff');
+update public.tasks set status='internal_review' where id='87000000-0000-0000-0000-000000000063';
+select is((select count(*)::integer from public.task_deadline_completions
+ where task_id='87000000-0000-0000-0000-000000000063' and target_status='internal_review' and voided_at is null),
+ 1,'first backward entry into internal review records the handoff');
+update public.tasks set status='in_progress' where id='87000000-0000-0000-0000-000000000063';
+select is((select count(*)::integer from public.task_deadline_completions
+ where task_id='87000000-0000-0000-0000-000000000063' and target_status='internal_review' and voided_at is null),
+ 1,'reopening preserves the backward handoff');
+update public.tasks set status='internal_review' where id='87000000-0000-0000-0000-000000000063';
+select is((select count(*)::integer from public.task_deadline_completions
+ where task_id='87000000-0000-0000-0000-000000000063' and target_status='internal_review' and voided_at is null),
+ 1,'later review entries do not replace a backward first handoff');
 
 select * from finish();
 rollback;

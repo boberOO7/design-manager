@@ -31,7 +31,7 @@ export function toTaskDeadlineInputs<T extends Pick<TaskDeadline, "target_status
     .map(({ target_status, due_date }) => ({ target_status, due_date }));
 }
 
-type TaskDeadlineRow = { id: string; target_status: string; due_date: string; created_at?: string; updated_at?: string };
+type TaskDeadlineRow = { id: string; target_status: string; due_date: string; created_at?: string; updated_at?: string; completion?: TaskDeadline["completion"] };
 
 const statusOrder = new Map(BOARD_COLUMNS.map((column, index) => [column.status, index]));
 
@@ -41,7 +41,7 @@ export function isTaskMilestoneStatus(value: string): value is TaskDeadlineInput
 
 export type TaskDeadlinePresentation = {
   deadline: TaskDeadline;
-  state: "upcoming" | "overdue" | "completed_on_time" | "completed_late" | "blocked" | "paused";
+  state: "upcoming" | "overdue" | "completed_on_time" | "completed_late" | "blocked" | "paused" | "unrecorded";
 };
 
 export function getTaskDeadlinePresentation(
@@ -56,6 +56,7 @@ export function getTaskDeadlinePresentation(
       deadline,
       state: deadline.completion
         ? deadline.completion.completed_on > deadline.completion.due_date ? "completed_late" : "completed_on_time"
+        : task.schedule && deadline.target_status === "internal_review" && (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder ? "unrecorded"
         : (statusOrder.get(deadline.target_status) ?? -1) <= currentOrder ? "completed_on_time"
         : task.schedule?.is_paused ? "paused"
         : task.schedule?.is_blocked ? "blocked"
@@ -68,7 +69,7 @@ export function getActiveTaskDeadline(task: { status: string; deadlines?: readon
   const currentOrder = statusOrder.get(task.status as WritableTaskStatus) ?? -1;
   return (task.deadlines ?? [])
     .filter((deadline): deadline is TaskDeadline => isTaskMilestoneStatus(deadline.target_status))
-    .filter((deadline) => (statusOrder.get(deadline.target_status) ?? -1) > currentOrder)
+    .filter((deadline) => !deadline.completion && (statusOrder.get(deadline.target_status) ?? -1) > currentOrder)
     .sort((left, right) => (statusOrder.get(left.target_status) ?? 0) - (statusOrder.get(right.target_status) ?? 0))[0] ?? null;
 }
 
