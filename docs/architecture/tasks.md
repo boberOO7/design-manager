@@ -105,10 +105,10 @@ Project aggregation and attribution are described in
 
 ## Template working schedules
 
-- Template tasks may carry a positive expected duration in Mon–Fri working days
-  and dependencies on earlier scheduled tasks in the same stage. Applying a
-  template with a stage start date creates the task dependency graph and a
-  baseline start/due date for each scheduled task.
+- Template tasks may carry a positive expected duration in Mon–Fri working days.
+  Their dependency mode is order-following, independent, or custom direct
+  predecessors in the same stage. Applying a template with a stage start date
+  creates the task dependency graph and baseline start/due dates.
 - `task_schedules` stores baseline and current dates separately;
   `task_schedule_dependencies` stores the copied task edges. Current dates move
   only forward through unfinished dependents when a Done date, manual scheduled

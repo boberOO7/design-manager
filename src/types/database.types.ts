@@ -3854,6 +3854,7 @@ export type Database = {
         Row: {
           checklist_template_id: string | null
           created_at: string
+          dependency_mode: string
           depends_on_positions: number[]
           expected_workdays: number | null
           id: string
@@ -3867,6 +3868,7 @@ export type Database = {
         Insert: {
           checklist_template_id?: string | null
           created_at?: string
+          dependency_mode?: string
           depends_on_positions?: number[]
           expected_workdays?: number | null
           id?: string
@@ -3880,6 +3882,7 @@ export type Database = {
         Update: {
           checklist_template_id?: string | null
           created_at?: string
+          dependency_mode?: string
           depends_on_positions?: number[]
           expected_workdays?: number | null
           id?: string

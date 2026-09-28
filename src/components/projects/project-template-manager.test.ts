@@ -14,8 +14,8 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain("PROJECT_TYPE_KEYS.map");
     expect(source).toContain("За замовчуванням");
     expect(source).toContain('isDefault: false');
-    expect(source).toContain('checked={draft.isDefault}');
-    expect(source).toContain('onUpdate({ isDefault: event.target.checked })');
+    expect(source).toContain('role="switch" aria-checked={draft.isDefault}');
+    expect(source).toContain('onUpdate({ isDefault: !draft.isDefault })');
     expect(source).toContain('projectTemplates("defaultTemplate")');
     expect(source).not.toContain('checked={draft.isActive}');
     expect(source).toContain("mergeSavedProjectTemplate(current, next)");
@@ -31,6 +31,9 @@ describe("ProjectTemplateManager presentation", () => {
     expect(source).toContain("moveProjectTemplateTask");
     expect(source).toContain("useDroppable");
     expect(source).toContain("commitPendingTask");
+    expect(source).toContain('dependencyMode: position > 0 ? "after_previous" : "independent"');
+    expect(source).toContain('getTemplateTaskDirectDependencies(orderedTasks, task.id)');
+    expect(source).toContain('task.dependencyMode === "custom" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"');
     expect(source).toContain('priority: "normal"');
     expect(source).toContain("tasks.map((task, order)");
     expect(source).toContain("order={order + 1}");
