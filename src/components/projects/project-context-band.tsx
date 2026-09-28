@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import styles from "./project-context-band.module.css";
-import { ArrowLeft, Building2, CalendarClock, CalendarDays, Flag, MapPin, Pause, Ruler, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Building, Building2, CalendarClock, CalendarDays, Cross, Flag, House, MapPin, Pause, Ruler, Shapes, SlidersHorizontal, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
 import { ProjectLifecycleControls } from "@/components/projects/project-lifecycle-controls";
@@ -15,8 +15,10 @@ import { getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
 import { PROJECT_LIST_HEALTH_LABEL_KEYS } from "@/lib/project-list-presentation";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
-import { getProjectTypeDisplayName, isProjectPriority } from "@/lib/validation/project";
+import { getProjectTypeDisplayName, isProjectPriority, isProjectTypeKey, type ProjectTypeKey } from "@/lib/validation/project";
 import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
+
+const PROJECT_TYPE_ICONS = { private: House, commercial: Building, horeca: UtensilsCrossed, medical: Cross, other: Shapes } satisfies Record<ProjectTypeKey, LucideIcon>;
 
 export type ProjectContextProject = {
   id: string;
@@ -66,6 +68,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", cale
   const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
   const healthStyle = getProjectHealthBadgeStyle(health.health);
   const location = [project.city, getCountryName(project.country_code, locale)].filter(Boolean).join(", ");
+  const ProjectTypeIcon = isProjectTypeKey(project.project_type) ? PROJECT_TYPE_ICONS[project.project_type] : null;
   const healthReason = health.health === "needs_attention" ? progress.overdueTaskCount > 0
       ? projectWorkspace("overdueTasks", { count: progress.overdueTaskCount })
       : progress.urgentOpenTaskCount > 0 ? projectWorkspace("urgentTasks", { count: progress.urgentOpenTaskCount })
@@ -93,7 +96,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", cale
         </div>
       </div>
       <dl className={styles.metadata}>
-        <div><dt className="sr-only">{t("projectType")}</dt><dd className="font-medium">{getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes) ?? common("notAvailable")}</dd></div>
+        <div><dt className="sr-only">{t("projectType")}</dt><dd className="font-medium">{ProjectTypeIcon ? <ProjectTypeIcon aria-hidden="true" /> : null}{getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes) ?? common("notAvailable")}</dd></div>
         {project.client_name ? <div><dt className="sr-only">{form("clientName")}</dt><dd><Building2 aria-hidden="true" />{project.client_name}</dd></div> : null}
         {location ? <div><dt className="sr-only">{form("city")}</dt><dd><MapPin aria-hidden="true" />{location}</dd></div> : null}
       </dl>

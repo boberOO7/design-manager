@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
+import styles from "./project-task-board.module.css";
 import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, Signal, UserPlus, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -678,6 +679,7 @@ export function ProjectTaskBoard({
   const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [boardError, setBoardError] = useState<string | null>(null);
+  const [stageHeaderVariant, setStageHeaderVariant] = useState<"hairline" | "wash">("hairline");
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
@@ -1265,7 +1267,10 @@ export function ProjectTaskBoard({
           <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
           <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {process.env.NODE_ENV === "development" ? <div role="group" aria-label={locale === "uk" ? "Порівняння прогресу етапів" : "Compare stage progress"} className={styles.variantSwitch}>
+            {(["hairline", "wash"] as const).map((variant) => <button key={variant} type="button" aria-pressed={stageHeaderVariant === variant} onClick={() => setStageHeaderVariant(variant)} className={styles.variantOption}>{variant === "hairline" ? "Hairline" : "Wash"}</button>)}
+          </div> : null}
           {canCreate && defaultTaskCreationStage ? <AddTaskDialog ref={addTaskDialogRef} allowedStages={taskCreationStages} defaultStage={defaultTaskCreationStage} members={members} projectId={projectId} templates={templates} /> : null}
           <Popover.Root>
             <Popover.Trigger asChild>
@@ -1301,8 +1306,12 @@ export function ProjectTaskBoard({
               + groupsByStage[stage].done.length;
             const progress = isProjectProgressStage(stage) ? stageProgress[stage] : null;
             return (
-              <section key={stage} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
-                <div className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-4" onClick={() => toggleStage(stage)}>
+              <section key={stage} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
+                <div className={cn("flex min-h-12 cursor-pointer items-center gap-2 px-4", stageHeaderVariant === "wash" && "rounded-xl", styles.stageHeader)} data-stage-expanded={isExpanded} onClick={() => toggleStage(stage)}>
+                  {showProgress && progress ? stageHeaderVariant === "hairline" ? <div className={styles.stageHairline} role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}>
+                    <span aria-hidden="true" className={styles.stageProgressFill} style={{ width: `${progress.progressPercent}%` }} />
+                    {progress.progressPercent > 0 && progress.progressPercent < 100 ? <span aria-hidden="true" className={styles.stageRailMarker} style={{ left: `${progress.progressPercent}%` }} /> : null}
+                  </div> : <div className={styles.stageWash} role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent} style={{ width: `${progress.progressPercent}%` }} /> : null}
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <button
                       type="button"
@@ -1313,7 +1322,7 @@ export function ProjectTaskBoard({
                     >
                       {stageName(stage)}
                     </button>
-                    {showProgress && progress ? <div className="hidden min-w-24 flex-1 items-center gap-2 sm:flex lg:max-w-36"><span className="ui-numeric text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span><div className="relative h-3 min-w-0 flex-1" role="progressbar" aria-label={`${stageLabels(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}><div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-border-strong)]" /><div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--ui-action-primary)]" style={{ width: `${progress.progressPercent}%` }} />{progress.progressPercent > 0 ? <span aria-hidden="true" className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface-muted)] bg-[var(--ui-action-primary)] shadow-[var(--ui-shadow-panel)]" style={{ left: progress.progressPercent === 100 ? "calc(100% - 0.3125rem)" : `${progress.progressPercent}%` }} /> : null}</div></div> : null}
+                    {showProgress && progress ? <span className="ui-numeric shrink-0 text-xs font-semibold text-[var(--ui-text-secondary)]">{progress.progressPercent}%</span> : null}
                   </div>
                   <span onClick={(event) => event.stopPropagation()} className="ui-numeric rounded-full bg-[var(--ui-surface)] px-2 py-0.5 text-xs font-medium text-[var(--ui-text-secondary)]">{taskCount}</span>
                   <div className="flex shrink-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
@@ -1335,7 +1344,7 @@ export function ProjectTaskBoard({
                   </div>
                 </div>
                 <StageContent stage={stage} expanded={isExpanded} keepMounted={activeTaskId !== null || activeBulkDrag !== null}>
-                    <div data-task-board-scroll className="overflow-x-auto border-t border-[var(--ui-border-subtle)] p-3" onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
+                    <div data-task-board-scroll className={cn("overflow-x-auto border-t p-3", stageHeaderVariant === "hairline" ? "border-t-transparent" : "border-t-[var(--ui-border-subtle)]")} onClick={(event) => { if (!suppressSelectionClearRef.current && event.target instanceof Element && !event.target.closest("[data-task-card]")) clearTaskSelection(); }}>
                       <div className="grid min-w-0 gap-4" style={{ gridTemplateColumns: `repeat(${enabledColumns.length}, minmax(12rem, 1fr))` }}>
                       {enabledColumns.map((column) => (
                         <BoardColumn

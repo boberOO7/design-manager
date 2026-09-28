@@ -1,0 +1,13 @@
+.stageHeader { position: relative; isolation: isolate; }
+.stageHeader > :not(.stageHairline):not(.stageWash) { position: relative; z-index: 1; }
+.stageHairline, .stageWash { position: absolute; pointer-events: none; }
+.stageHairline { bottom: -1px; left: calc(var(--ui-radius-panel) - 1px); right: calc(var(--ui-radius-panel) - 1px); z-index: 2; height: 2px; border-radius: 999px; background: var(--ui-border-strong); transition: left 200ms ease-out, right 200ms ease-out; }
+.stageHeader[data-stage-expanded="true"] .stageHairline { left: 0; right: 0; border-radius: 0; }
+.stageProgressFill { display: block; height: 100%; border-radius: inherit; background: var(--ui-text); transition: width 200ms ease-out; }
+.stageRailMarker { position: absolute; top: 50%; width: 4px; height: 4px; background: var(--ui-text); transform: translate(-50%, -50%) rotate(45deg); transition: left 200ms ease-out; }
+.stageWash { left: 0; top: 0; bottom: 0; z-index: 0; border-radius: inherit; background: color-mix(in srgb, var(--ui-text) 6%, transparent); transition: width 180ms ease; }
+.variantSwitch { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-control); background: var(--ui-surface-muted); }
+.variantOption { min-height: 28px; padding: 0 9px; border-radius: calc(var(--ui-radius-control) - 3px); color: var(--ui-text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 180ms ease, color 180ms ease; }
+.variantOption[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-text); box-shadow: var(--ui-shadow-panel); }
+.variantOption:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .stageHairline, .stageProgressFill, .stageRailMarker, .stageWash, .variantOption { transition: none; } }
