@@ -5,7 +5,7 @@ const idSchema = z.uuid("Enter a valid identifier");
 
 export const addProjectMemberSchema = z.object({
   projectId: idSchema,
-  profileId: idSchema,
+  profileIds: z.array(idSchema).min(1),
 });
 
 export const removeProjectMemberSchema = z.object({

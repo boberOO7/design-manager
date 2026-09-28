@@ -17,7 +17,7 @@ export type ProjectMemberWithProfile = Pick<
 
 export type AssignableStudioMember = Pick<
   ProfileRow,
-  "id" | "full_name" | "job_title"
+  "id" | "full_name" | "job_title" | "avatar_url"
 >;
 
 export type AssignableProjectMember = Pick<
@@ -120,7 +120,7 @@ export async function getAssignableStudioMembers(
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, full_name, job_title")
+    .select("id, full_name, job_title, avatar_url")
     .in("id", assignableUserIds)
     .eq("is_active", true)
     .order("full_name", { ascending: true });

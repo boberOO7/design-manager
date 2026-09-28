@@ -13,7 +13,7 @@ import type { ProjectMemberInsert } from "@/types/project-members";
 
 export type ProjectMemberActionState = {
   formError?: string;
-  success?: "removed";
+  success?: "added" | "removed";
 };
 
 function getFormString(formData: FormData, field: string): string | undefined {
@@ -26,22 +26,20 @@ function revalidateProjectMembership(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addProjectMember(
+export async function addProjectMembers(
   projectId: string,
   _previousState: ProjectMemberActionState,
   formData: FormData,
 ): Promise<ProjectMemberActionState> {
   const membership = await getActiveStudioAdmin();
-  if (!membership) {
-    return { formError: "Only active studio administrators can assign project members." };
-  }
+  if (!membership) return { formError: "Only active studio administrators can assign project members." };
 
   const parsed = addProjectMemberSchema.safeParse({
     projectId,
-    profileId: getFormString(formData, "profile_id"),
+    profileIds: formData.getAll("profile_ids"),
   });
-  if (!parsed.success) {
-    return { formError: "Choose a valid studio member." };
+  if (!parsed.success || new Set(parsed.data.profileIds).size !== parsed.data.profileIds.length) {
+    return { formError: "Choose valid studio members." };
   }
 
   const project = await getProjectById(parsed.data.projectId);
@@ -50,62 +48,56 @@ export async function addProjectMember(
   }
 
   const supabase = await createClient();
-  const { data: targetMembership, error: targetMembershipError } = await supabase
+  const { data: targetMemberships, error: targetMembershipError } = await supabase
     .from("studio_members")
-    .select("id")
+    .select("user_id, profile:profiles!studio_members_user_id_fkey!inner(is_active)")
     .eq("studio_id", project.studio_id)
-    .eq("user_id", parsed.data.profileId)
     .eq("is_active", true)
-    .maybeSingle();
+    .eq("profile.is_active", true)
+    .in("user_id", parsed.data.profileIds);
 
   if (targetMembershipError) {
-    console.error("Unable to verify assignable studio member", targetMembershipError);
-    return { formError: "The selected studio member could not be verified." };
+    console.error("Unable to verify assignable studio members", targetMembershipError);
+    return { formError: "The selected studio members could not be verified." };
   }
-  if (!targetMembership) {
-    return { formError: "The selected profile is not an active member of this studio." };
+  if (targetMemberships?.length !== parsed.data.profileIds.length) {
+    return { formError: "One or more selected profiles are not active members of this studio." };
   }
 
-  const { data: existingAssignment, error: existingAssignmentError } = await supabase
+  const { data: existingAssignments, error: existingAssignmentError } = await supabase
     .from("project_members")
-    .select("id")
+    .select("user_id")
     .eq("project_id", project.id)
-    .eq("user_id", parsed.data.profileId)
     .eq("is_active", true)
-    .maybeSingle();
+    .in("user_id", parsed.data.profileIds);
 
   if (existingAssignmentError) {
-    console.error("Unable to check existing project assignment", existingAssignmentError);
-    return { formError: "The project assignment could not be verified." };
+    console.error("Unable to check existing project assignments", existingAssignmentError);
+    return { formError: "The project assignments could not be verified." };
   }
-  if (existingAssignment) {
-    return { formError: "This studio member is already assigned to the project." };
+  if (existingAssignments?.length) {
+    return { formError: "One or more studio members are already assigned to the project." };
   }
 
-  const assignment: ProjectMemberInsert = {
+  const assignedAt = new Date().toISOString().slice(0, 10);
+  const assignments: ProjectMemberInsert[] = parsed.data.profileIds.map((userId) => ({
     project_id: project.id,
-    user_id: parsed.data.profileId,
+    user_id: userId,
     project_role: "other",
     assigned_area_m2: 0,
-    assigned_at: new Date().toISOString().slice(0, 10),
-  };
-  const { data: insertedAssignment, error: insertError } = await supabase
-    .from("project_members")
-    .insert(assignment)
-    .select("id")
-    .maybeSingle();
-
-  if (insertError || !insertedAssignment) {
-    if (insertError?.code === "23505") {
-      return { formError: "This studio member is already assigned to the project." };
+    assigned_at: assignedAt,
+  }));
+  const { error: insertError } = await supabase.from("project_members").insert(assignments);
+  if (insertError) {
+    if (insertError.code === "23505") {
+      return { formError: "One or more studio members are already assigned to the project." };
     }
-
-    console.error("Unable to add project member", insertError);
-    return { formError: "The project member could not be added. Please try again." };
+    console.error("Unable to add project members", insertError);
+    return { formError: "The project members could not be added. Please try again." };
   }
 
   revalidateProjectMembership(project.id);
-  return {};
+  return { success: "added" };
 }
 
 export async function removeProjectMember(

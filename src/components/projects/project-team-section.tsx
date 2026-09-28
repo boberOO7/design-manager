@@ -25,28 +25,22 @@ export async function ProjectTeamSection({
   ]);
   return (
     <section className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-sm">
-      <div>
-        <h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectTeam")}</h2>
-        <p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("teamDescription")}</p>
-      </div>
-
-      {canManage ? (
-        <div className="mt-5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4">
-          <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("addMember")}</h3>
-          <div className="mt-3">
-            <AddProjectMemberForm assignableMembers={assignableMembers} projectId={projectId} />
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectTeam")}</h2>
+          <p className="mt-1 text-sm text-[var(--ui-text-muted)]">{t("teamDescription")}</p>
         </div>
-      ) : null}
+        {canManage ? <AddProjectMemberForm assignableMembers={assignableMembers} projectId={projectId} /> : null}
+      </div>
 
       {members.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed border-[var(--ui-border)] p-5 text-center">
           <p className="text-sm text-[var(--ui-text-muted)]">{t("noMembers")}</p>
         </div>
       ) : (
-        <div className="mt-5 divide-y divide-[var(--ui-border-subtle)]">
+        <div className="mt-5">
           {members.map((member) => (
-            <div key={member.id} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between">
+            <div key={member.id} className="group relative -mx-3 flex flex-col gap-4 rounded-lg px-3 py-4 transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[var(--ui-border-subtle)] after:content-[''] last:after:hidden hover:bg-[var(--ui-surface-muted)] focus-within:bg-[var(--ui-surface-muted)] md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <UserAvatar imageUrl={member.profile.avatar_url} name={member.profile.full_name} size="md" decorative />
                 <div className="min-w-0">
