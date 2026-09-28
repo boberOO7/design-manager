@@ -1,5 +1,5 @@
 begin;
-select plan(61);
+select plan(81);
 
 insert into public.studios (id,name) values ('87000000-0000-0000-0000-000000000001','Schedule studio');
 insert into auth.users (id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
@@ -143,13 +143,16 @@ select is((select s.current_due from public.task_schedules s join public.tasks t
  '2026-09-17'::date,'scheduling-completed A remains fixed after reopen');
 select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
-select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true)$$,'stage schedule can pause');
+select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true,'waiting_for_client')$$,'stage schedule can pause');
 select is((select count(*)::integer from public.task_schedules where project_id='87000000-0000-0000-0000-000000000020' and is_paused),3,'all unfinished tasks are marked paused');
+select is((select schedule_pause_reason from public.project_task_stage_columns where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1'),'waiting_for_client','pause reason is persisted');
+select is((select schedule_paused_on from public.project_task_stage_columns where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1'),(now() at time zone 'Europe/Kyiv')::date,'pause begins on the studio date');
+select is((select status from public.tasks where project_id='87000000-0000-0000-0000-000000000020' and title='B'),'todo','pausing does not change workflow status');
 set local role postgres;
 create temp table schedule_before_resume as
  select t.title,s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
  where t.project_id='87000000-0000-0000-0000-000000000020';
-update public.project_task_stage_columns set schedule_paused_on=current_date-3
+update public.project_task_stage_columns set schedule_paused_on=(now() at time zone 'Europe/Kyiv')::date-3
  where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1';
 select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
 set local role authenticated;
@@ -157,15 +160,48 @@ select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000
 set local role postgres;
 select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
  where t.title='B' and t.project_id='87000000-0000-0000-0000-000000000020'),
- (select private.schedule_add_workdays(current_due,private.schedule_workdays_elapsed(current_date-3,current_date))
+ (select private.schedule_add_workdays(current_due,private.schedule_workdays_elapsed((now() at time zone 'Europe/Kyiv')::date-3,(now() at time zone 'Europe/Kyiv')::date))
  from schedule_before_resume where title='B'),'resume shifts remaining dates by paused working days');
 select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id
  where t.title='A' and t.project_id='87000000-0000-0000-0000-000000000020'),
  (select current_due from schedule_before_resume where title='A'),'resume does not move completed history');
+select is((select count(*)::integer from public.task_schedules where project_id='87000000-0000-0000-0000-000000000020' and is_paused),0,'resume clears pause flags');
+select is((select schedule_pause_reason from public.project_task_stage_columns where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1'),null::text,'resume clears the active reason');
+select is((select baseline_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),'2026-09-18'::date,'pause never changes baseline');
+select ok((select every(successor.current_start>predecessor.current_due) from public.task_schedule_dependencies dependency join public.task_schedules successor on successor.task_id=dependency.task_id join public.task_schedules predecessor on predecessor.task_id=dependency.predecessor_task_id where successor.project_id='87000000-0000-0000-0000-000000000020'),'resume leaves dependency dates feasible');
+select is(private.schedule_workdays_elapsed('2026-09-25','2026-09-28'),1,'Friday to Monday counts one paused workday');
+select is(private.schedule_workdays_elapsed('2026-09-26','2026-09-28'),0,'Saturday to Monday counts no paused workdays');
+create temp table schedule_after_first_resume as select t.title,s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020';
+select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
+set local role authenticated;
+select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true,'internal_pause')$$,'a second pause can start');
+set local role postgres;
+select is((select schedule_pause_reason from public.project_task_stage_columns where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1'),'internal_pause','second cycle stores its own reason');
+update public.project_task_stage_columns set schedule_paused_on=(now() at time zone 'Europe/Kyiv')::date-7 where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1';
+select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
+set local role authenticated;
+select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',false)$$,'a second pause can resume');
+set local role postgres;
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),(select private.schedule_add_workdays(current_due,5) from schedule_after_first_resume where title='B'),'second resume adds exactly five working days');
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='A'),(select current_due from schedule_after_first_resume where title='A'),'second resume still preserves completed scheduling work');
+select is((select baseline_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),'2026-09-18'::date,'baseline survives repeated cycles');
+create temp table schedule_before_handoff_during_pause as select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B';
+select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
+set local role authenticated;
+select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true,'other')$$,'a third pause can start');
+select lives_ok($$update public.tasks set status='internal_review' where project_id='87000000-0000-0000-0000-000000000020' and title='B'$$,'task may reach review during a pause');
+set local role postgres;
+select is((select s.is_paused from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),false,'review handoff clears its inherited pause flag');
+update public.project_task_stage_columns set schedule_paused_on=(now() at time zone 'Europe/Kyiv')::date-2 where project_id='87000000-0000-0000-0000-000000000020' and stage='stage_1';
+select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
+set local role authenticated;
+select lives_ok($$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',false)$$,'third pause can resume');
+set local role postgres;
+select is((select s.current_due from public.task_schedules s join public.tasks t on t.id=s.task_id where t.project_id='87000000-0000-0000-0000-000000000020' and t.title='B'),(select current_due from schedule_before_handoff_during_pause),'handoff during pause stays fixed on resume');
 select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000011',true);
 set local role authenticated;
 select throws_like(
- $$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true)$$,
+ $$select public.set_project_stage_schedule_paused('87000000-0000-0000-0000-000000000020','stage_1',true,'waiting_for_client')$$,
  '%administrators%','employee cannot pause a stage schedule');
 select set_config('request.jwt.claim.sub','87000000-0000-0000-0000-000000000010',true);
 select throws_like(

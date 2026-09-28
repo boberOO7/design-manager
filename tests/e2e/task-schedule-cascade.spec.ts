@@ -101,3 +101,39 @@ test("deadline edit cascades and the dependent drawer shows the compact schedule
   await summary.click();
   await expect(dependent.getByText(/Baseline:/)).toBeVisible();
 });
+
+test("stage pause keeps review handoff fixed and resume shifts only open deadlines", async ({ page }) => {
+  sql(`update public.tasks set status='internal_review' where id=${id(taskIds[0]!)};`);
+  const fixedDue = due(taskIds[0]!);
+  const dependentDue = due(taskIds[1]!);
+  const lastDue = due(taskIds[2]!);
+  const baseline = sql(`select baseline_due from public.task_schedules where task_id=${id(taskIds[1]!)};`);
+
+  await login(page);
+  await page.goto(`/projects/${projectId}`);
+  const stage = page.getByRole("button", { name: "Stage 1", exact: true }).first().locator("xpath=ancestor::section[1]");
+  await stage.getByRole("button", { name: "Configure columns" }).click();
+  await page.getByRole("button", { name: en.Tasks.schedulePauseReasonClient }).click();
+  await expect(stage.getByText("Schedule paused · Waiting for client")).toBeVisible();
+  expect(sql(`select schedule_pause_reason from public.project_task_stage_columns where project_id=${id(projectId)} and stage='stage_1';`)).toBe("waiting_for_client");
+  expect(sql(`select status from public.tasks where id=${id(taskIds[1]!)};`)).toBe("todo");
+
+  await page.goto(`/projects/${projectId}?task=${taskIds[1]}`);
+  const drawer = page.getByRole("dialog", { name: en.Tasks.taskDetails });
+  await expect(drawer.getByText(en.Tasks.schedulePaused, { exact: true })).toBeVisible();
+  await drawer.getByRole("button", { name: en.Tasks.closeTaskDetails }).click();
+  const today = sql("select (now() at time zone 'Europe/Kyiv')::date;");
+  sql(`update public.project_task_stage_columns set schedule_paused_on='${today}'::date-3 where project_id=${id(projectId)} and stage='stage_1';`);
+  const elapsed = Number(sql(`select private.schedule_workdays_elapsed('${today}'::date-3,'${today}'::date);`));
+  await stage.getByRole("button", { name: "Configure columns" }).click();
+  await page.getByRole("button", { name: en.Tasks.resumeSchedule }).click();
+  await expect(stage.getByText("Schedule paused · Waiting for client")).toBeHidden();
+  await page.locator("[data-task-card]").filter({ hasText: "Dependent task" }).first().click();
+  await expect(page.getByRole("dialog", { name: en.Tasks.taskDetails }).getByText(en.Tasks.schedulePaused, { exact: true })).toBeHidden();
+
+  expect(due(taskIds[0]!)).toBe(fixedDue);
+  expect(due(taskIds[1]!)).toBe(after(dependentDue, elapsed));
+  expect(due(taskIds[2]!)).toBe(after(lastDue, elapsed));
+  expect(sql(`select baseline_due from public.task_schedules where task_id=${id(taskIds[1]!)};`)).toBe(baseline);
+  expect(sql(`select due_date from public.task_deadlines where task_id=${id(taskIds[1]!)} and target_status='internal_review';`)).toBe(due(taskIds[1]!));
+});

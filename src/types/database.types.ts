@@ -3812,6 +3812,7 @@ export type Database = {
           progress_method: string
           project_id: string
           schedule_anchor_date: string | null
+          schedule_pause_reason: string | null
           schedule_paused_on: string | null
           stage: string
           updated_at: string
@@ -3824,6 +3825,7 @@ export type Database = {
           progress_method?: string
           project_id: string
           schedule_anchor_date?: string | null
+          schedule_pause_reason?: string | null
           schedule_paused_on?: string | null
           stage: string
           updated_at?: string
@@ -3836,6 +3838,7 @@ export type Database = {
           progress_method?: string
           project_id?: string
           schedule_anchor_date?: string | null
+          schedule_pause_reason?: string | null
           schedule_paused_on?: string | null
           stage?: string
           updated_at?: string
@@ -6544,7 +6547,12 @@ export type Database = {
         Returns: undefined
       }
       set_project_stage_schedule_paused: {
-        Args: { p_paused: boolean; p_project_id: string; p_stage: string }
+        Args: {
+          p_paused: boolean
+          p_project_id: string
+          p_reason?: string
+          p_stage: string
+        }
         Returns: undefined
       }
       set_vacation_employee_visibility: {

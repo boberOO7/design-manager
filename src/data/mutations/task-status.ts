@@ -190,21 +190,25 @@ export async function applyProjectTemplateStageMutation(projectId: string, input
 }
 
 export async function setProjectStageSchedulePausedMutation(projectId: string, input: unknown) {
-  const parsed = z.object({ stage: z.enum(TASK_STAGES), paused: z.boolean() }).strict().safeParse(input);
+  const parsed = z.object({ stage: z.enum(TASK_STAGES), paused: z.boolean(), reason: z.enum(["waiting_for_client", "internal_pause", "other"]).nullable().optional() }).strict().safeParse(input);
   if (!z.uuid().safeParse(projectId).success || !parsed.success) {
     return { success: false, formError: "Choose a valid stage schedule action." } as const;
   }
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_project_stage_schedule_paused", {
-    p_project_id: projectId, p_stage: parsed.data.stage, p_paused: parsed.data.paused,
+    p_project_id: projectId, p_stage: parsed.data.stage, p_paused: parsed.data.paused, p_reason: parsed.data.paused ? parsed.data.reason ?? undefined : undefined,
   });
   if (error) return { success: false, formError: error.message } as const;
+  const { data: stagePause, error: pauseError } = await supabase.from("project_task_stage_columns")
+    .select("schedule_paused_on, schedule_pause_reason")
+    .eq("project_id", projectId).eq("stage", parsed.data.stage).single();
+  if (pauseError || !stagePause) return { success: false, formError: "Unable to load the stage schedule pause." } as const;
   const tasks = await getProjectTasks(projectId);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   revalidatePath("/dashboard");
   revalidatePath("/my-tasks");
-  return { success: true, tasks } as const;
+  return { success: true, tasks, pause: stagePause.schedule_paused_on ? { startedOn: stagePause.schedule_paused_on, reason: stagePause.schedule_pause_reason } : null } as const;
 }
 
 export async function bulkAssignTaskStageMutation(projectId: string, input: unknown): Promise<BulkTaskStageAssignmentMutationResult> {

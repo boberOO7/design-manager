@@ -7,12 +7,13 @@ import { DEFAULT_STAGE_COLUMN_STATUSES, isWritableTaskStatus, type WritableTaskS
 
 export type ProjectStageColumns = Record<TaskStage, WritableTaskStatus[]>;
 export type ConfiguredProjectStage = { stage: TaskStage; displayName: string | null; isEnabled: boolean; displayOrder: number };
-export type ProjectStageConfiguration = { columns: ProjectStageColumns; progressMethods: ProjectStageProgressMethods; schedulePaused: Record<TaskStage, boolean>; stages: ConfiguredProjectStage[]; includeInProductivity: boolean; showProgress: boolean };
+export type StageSchedulePause = { startedOn: string; reason: string | null } | null;
+export type ProjectStageConfiguration = { columns: ProjectStageColumns; progressMethods: ProjectStageProgressMethods; schedulePause: Record<TaskStage, StageSchedulePause>; stages: ConfiguredProjectStage[]; includeInProductivity: boolean; showProgress: boolean };
 
 export async function getProjectStageConfiguration(projectId: string): Promise<ProjectStageConfiguration> {
   const supabase = await createClient();
   const [{ data, error }, { data: project, error: projectError }] = await Promise.all([
-    supabase.from("project_task_stage_columns").select("stage, enabled_statuses, progress_method, display_name, is_enabled, display_order, schedule_paused_on").eq("project_id", projectId),
+    supabase.from("project_task_stage_columns").select("stage, enabled_statuses, progress_method, display_name, is_enabled, display_order, schedule_paused_on, schedule_pause_reason").eq("project_id", projectId),
     supabase.from("projects").select("include_in_productivity, show_progress").eq("id", projectId).maybeSingle(),
   ]);
   if (error) throw new Error(`Unable to load project stage configuration for ${projectId}.`, { cause: error });
@@ -28,15 +29,16 @@ export async function getProjectStageConfiguration(projectId: string): Promise<P
     result[stage] = row && isStageProgressMethod(row.progress_method) ? row.progress_method : DEFAULT_PROJECT_STAGE_PROGRESS_METHODS[stage];
     return result;
   }, {} as ProjectStageProgressMethods);
-  const schedulePaused = TASK_STAGES.reduce<Record<TaskStage, boolean>>((result, stage) => {
-    result[stage] = data?.find((item) => item.stage === stage)?.schedule_paused_on != null;
+  const schedulePause = TASK_STAGES.reduce<Record<TaskStage, StageSchedulePause>>((result, stage) => {
+    const row = data?.find((item) => item.stage === stage);
+    result[stage] = row?.schedule_paused_on ? { startedOn: row.schedule_paused_on, reason: row.schedule_pause_reason } : null;
     return result;
-  }, {} as Record<TaskStage, boolean>);
+  }, {} as Record<TaskStage, StageSchedulePause>);
   const stages = TASK_STAGES.map((stage) => {
     const row = data?.find((item) => item.stage === stage);
     return { stage, displayName: row?.display_name ?? null, isEnabled: row?.is_enabled ?? true, displayOrder: row?.display_order ?? TASK_STAGES.indexOf(stage) + 1 };
   }).sort((left, right) => left.displayOrder - right.displayOrder);
-  return { columns, progressMethods, schedulePaused, stages, includeInProductivity: project?.include_in_productivity ?? true, showProgress: project?.show_progress ?? true };
+  return { columns, progressMethods, schedulePause, stages, includeInProductivity: project?.include_in_productivity ?? true, showProgress: project?.show_progress ?? true };
 }
 
 export async function getProjectStageColumns(projectId: string): Promise<ProjectStageColumns> {
