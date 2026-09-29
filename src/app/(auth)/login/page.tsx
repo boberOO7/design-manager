@@ -5,13 +5,16 @@ import { useForm } from "react-hook-form";
 import { LockKeyhole, Mail } from "lucide-react";
 import { loginSchema } from "@/lib/validation/auth";
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, setRememberMe } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/form-field";
+import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [rememberMe, setRememberMeChecked] = useState(true);
+  const t = useTranslations("Account");
   const {
     register,
     handleSubmit,
@@ -34,6 +37,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: { email: string; password: string }) => {
     setError(null);
+    setRememberMe(rememberMe);
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
@@ -55,7 +59,7 @@ export default function LoginPage() {
           <h1 className="mt-2 text-2xl font-semibold text-[var(--ui-text)]">Interior design studio workspace</h1>
           <p className="mt-2 text-sm text-[var(--ui-text-secondary)]">Sign in to review projects, tasks, and team productivity.</p>
         </div>
-        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <form method="post" className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">
             <span className="mb-2 flex items-center gap-2"><Mail size={16} /> Email</span>
             <Input type="email" autoComplete="email" {...register("email")} className="mt-1" />
@@ -65,6 +69,10 @@ export default function LoginPage() {
             <span className="mb-2 flex items-center gap-2"><LockKeyhole size={16} /> Password</span>
             <Input type="password" autoComplete="current-password" {...register("password")} className="mt-1" />
             {errors.password ? <p className="mt-1 text-sm text-[var(--ui-danger-text)]">{errors.password.message}</p> : null}
+          </label>
+          <label className="flex items-center gap-2 text-sm text-[var(--ui-text-secondary)]">
+            <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMeChecked(event.target.checked)} className="size-4 accent-[var(--ui-action-primary)]" />
+            {t("rememberMe")}
           </label>
           {error && <p className="text-sm text-[var(--ui-danger-text)]">{error}</p>}
           <div className="text-right">

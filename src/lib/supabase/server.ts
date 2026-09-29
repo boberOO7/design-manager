@@ -1,9 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { ApplicationDatabase } from "@/types/application-database";
+import { authCookieOptions, SESSION_ONLY_COOKIE } from "@/lib/supabase/session-cookie-policy";
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const sessionOnly = cookieStore.get(SESSION_ONLY_COOKIE)?.value === "1";
 
   return createServerClient<ApplicationDatabase>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +19,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              cookieStore.set(name, value, authCookieOptions(options, sessionOnly));
             });
           } catch {
             // Server Components можуть читати cookies,

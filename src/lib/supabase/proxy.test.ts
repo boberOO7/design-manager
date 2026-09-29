@@ -12,7 +12,7 @@ describe("Supabase SSR session proxy", () => {
     expect(source).not.toContain("supabase.auth.signOut(");
     expect(source).toContain("setAll(cookiesToSet, headers)");
     expect(source).toContain("request.cookies.set(name, value)");
-    expect(source).toContain("response.cookies.set(name, value, options)");
+    expect(source).toContain("response.cookies.set(name, value, authCookieOptions(options, sessionOnly))");
     expect(source).toContain("response.headers.set(name, value)");
   });
 });
