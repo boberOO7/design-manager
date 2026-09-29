@@ -22,3 +22,12 @@ it("uses current-month operating client inflows and actual operating P&L with ex
 it("does not cap a report aggregate at the project-plan input limit", () => {
   expect(financeDashboardMonthSummary({ forecast: { asOf: "2026-09-25", currency: "UAH", items: [{ direction: "incoming", nature: "operating", date: "2026-09-30", reportingAmount: "12345678901.25" }] }, flows: [] }).expectedInflow).toBe("12345678901.2500");
 });
+
+it("P&L excludes project VAT while cash receipts remain gross", () => {
+  const result = financeDashboardMonthSummary({
+    forecast: { asOf: "2026-09-25", currency: "USD", items: [] },
+    flows: [{ month: "2026-09-01", nature: "operating", direction: "incoming", amount: "4920.00" }],
+    vatAdjustments: [{ date: "2026-09-20", amount: "920.00" }, { date: "2026-08-20", amount: "500.00" }],
+  });
+  expect(result.profitAndLoss).toBe("4000.0000");
+});

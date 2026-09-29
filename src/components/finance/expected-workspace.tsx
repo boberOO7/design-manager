@@ -24,6 +24,7 @@ import type { FinanceExpected } from "@/lib/finance-planning";
 import { financeCategoryLabel,financeMovementCategoryLabel,projectPaymentPresentation } from "@/lib/finance-planning";
 import { formatFinanceAmount,formatFinanceDecimal } from "@/lib/finance";
 import { indicativeFinanceConversion } from "@/lib/finance-fx-preview";
+import { projectVatAmounts } from "@/lib/finance-project-plan";
 import { formatDateOnly } from "@/lib/utils";
 import type { FinancePlanningPeriod,getFinanceData,FinancePlanningData,FinanceProjectData } from "@/data/queries/finance";
 import type { projectStreams } from "@/lib/finance-projects";
@@ -62,6 +63,12 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
   const effectiveCurrency=contractDefault?visitTerms.currency:monthlyExtra&&!currencyEntered?"":currency;
   const canEstablish=commitment==="agreed"&&!estimated;
   const effectiveEstablished=canEstablish&&(establishedTouched?established:Boolean(due)&&(!project||due<=project.today));
+  const rawExpectedVatRate=item?item.vat_rate??null:(contractDefault?visitTerms?.vat_rate:terms?.vat_rate)??null;
+  const expectedVatRate=rawExpectedVatRate===null?null:String(rawExpectedVatRate);
+  const rawExpectedPriceBasis=item?item.price_basis??null:(contractDefault?visitTerms?.price_basis:terms?.price_basis)??null;
+  const expectedPriceBasis=rawExpectedPriceBasis==="net"||rawExpectedPriceBasis==="gross"?rawExpectedPriceBasis:null;
+  let vatPreview="";
+  if(expectedVatRate!==null&&effectiveAmount){try{const currencyInfo=data.currencies.find((entry)=>entry.code===effectiveCurrency);if(!currencyInfo)throw new Error("currency");const composition=projectVatAmounts(effectiveAmount||"0",expectedVatRate,contractDefault?(expectedPriceBasis??"net"):"gross",currencyInfo.minor_units);const unchangedSnapshot=item&&String(item.amount??"")===effectiveAmount;vatPreview=`${t("builder.net")} ${formatFinanceAmount(unchangedSnapshot?item.net_amount??composition.net:composition.net,currencyInfo,locale)} · ${t("builder.vat")} ${formatFinanceAmount(unchangedSnapshot?item.vat_amount??composition.vat:composition.vat,currencyInfo,locale)} · ${t("builder.gross")} ${formatFinanceAmount(composition.gross,currencyInfo,locale)}`;}catch{vatPreview="";}}
   if(isExpense&&project) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending}>
     <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value={item?.id??""}/><input type="hidden" name="version" value={item?.version??0}/>
     <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value="expenses"/><input type="hidden" name="direction" value="outgoing"/>
@@ -84,7 +91,7 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
           {source==="visit"?<><FormField label={t("project.visit")}><Select name="visitId" aria-label={t("project.visit")} value={visit} onValueChange={setVisit} required searchPlaceholder={t("project.searchVisits")}>{project.visits.map((v)=><SelectItem key={v.id} value={v.id}>{v.title} · {formatDateOnly(instantToDateOnly(v.starts_at),locale)}</SelectItem>)}</Select></FormField><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={extraVisit} required={monthlyExtra} onChange={(e)=>setExtraVisit(e.target.checked)}/>{t("project.extraVisit")}</label><input type="hidden" name="extraVisit" value={String(extraVisit)}/></>:null}</>:null}
         {project.stream==="contractor_bonus"?<FormField label={t("project.contractor")}><Select name="contractorId" aria-label={t("project.contractor")} value={contractor} onValueChange={setContractor} searchPlaceholder={t("project.searchContractors")}><SelectItem value="">{t("project.noContractor")}</SelectItem>{project.contractors.map((c)=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</Select></FormField>:null}
       </>:null}</>:null}
-    {selectedVisit?<><input type="hidden" name="visitPricing" value={contractDefault?"contract":"manual"}/><input type="hidden" name="visitTermsId" value={visitTerms?.id??""}/>
+    {selectedVisit?<><input type="hidden" name="visitPricing" value={contractDefault?"contract":"manual"}/><input type="hidden" name="visitTermsId" value={visitTerms?.id??""}/><input type="hidden" name="useAgreementBasis" value={String(contractDefault)}/>
       {visitTerms?.mode==="per_visit"?<div className="space-y-2 text-sm"><p>{t("project.contractVisitPrice",{amount:visitTerms.amount??0,currency:visitTerms.currency})}</p><label className="flex items-start gap-2"><input type="checkbox" checked={priceOverride} onChange={(e)=>{if(e.target.checked){setAmount(effectiveAmount);setCurrency(effectiveCurrency);setAmountEntered(true);setCurrencyEntered(true);}setPriceOverride(e.target.checked);}}/>{t("project.overrideVisitPrice")}</label></div>:null}
     </>:null}
     {obligation?<p className="text-xs text-[var(--ui-text-muted)]">{t("schedules.sourceHelp")}</p>:null}
@@ -92,9 +99,10 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
     <div className={`grid gap-4 ${obligation?"":"sm:grid-cols-2"}`}>
     <div className="space-y-1">
       <div className={`grid gap-3 ${obligation?"":"grid-cols-[minmax(0,1fr)_8rem]"}`}>
-        <FormField label={t("movements.amount")}><Input name="amount" readOnly={fixedPayroll||contractDefault} value={effectiveAmount} onChange={(e)=>{setAmount(e.target.value);setAmountEntered(true);if(monthlyExtra)setPriceOverride(true);}} inputMode="decimal" required/></FormField>
+        <FormField label={project&&!isExpense&&expectedVatRate?(contractDefault?t("project.agreementPrice"):t("project.clientAmount")):t("movements.amount")}><Input name="amount" readOnly={fixedPayroll||contractDefault} value={effectiveAmount} onChange={(e)=>{setAmount(e.target.value);setAmountEntered(true);if(monthlyExtra)setPriceOverride(true);}} inputMode="decimal" required/></FormField>
         {contractDefault?<FormField label={t("planning.currency")}><Input name="currency" value={effectiveCurrency} readOnly/></FormField>:obligation?<input type="hidden" name="currency" value={currency}/>:<FormField label={t("planning.currency")}><FinanceCurrencySelect aria-label={t("planning.currency")} name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency??""} value={effectiveCurrency} onValueChange={(value)=>{setCurrency(value);setCurrencyEntered(true);if(monthlyExtra)setPriceOverride(true);}}/></FormField>}
       </div>
+      {vatPreview?<p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{vatPreview}</p>:null}
       {!fixedPayroll?<label className="flex min-h-11 items-center gap-3 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={estimated} onChange={(event)=>setEstimated(event.target.checked)} className="size-4"/>{t("planning.estimatedAmount")}</label>:null}
     </div>
     {obligation?<input type="hidden" name="categoryId" value={category}/>:<FinanceCategorySelect categories={data.categories} direction={direction} operatingOnly={isExpense} owner={data.categories.find((c)=>c.id===item?.category_id)?.nature==="owner_distribution"} value={category} onValueChange={setCategory} currentId={item?.category_id}/>}

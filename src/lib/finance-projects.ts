@@ -3,7 +3,7 @@ import { planningAmount } from "./finance-planning";
 import { instantToDateOnly } from "./calendar";
 import type { Database } from "@/types/database.types";
 
-export function supervisionVisitTerms(history: Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "id"|"stream"|"mode"|"amount"|"currency"|"effective_from"|"effective_through"|"revision">[], startsAt: string) {
+export function supervisionVisitTerms(history: (Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "id"|"stream"|"mode"|"amount"|"currency"|"effective_from"|"effective_through"|"revision"> & Partial<Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "vat_rate"|"price_basis">>)[], startsAt: string) {
   const date = instantToDateOnly(startsAt);
   const term = history.filter((v) => v.stream === "supervision" && v.effective_from && v.effective_from <= date)
     .sort((a,b) => (b.effective_from??"").localeCompare(a.effective_from??"") || b.revision-a.revision)[0];
@@ -25,6 +25,7 @@ export const projectContextSchema = z.object({
   visitId: z.union([z.uuid(), z.literal("")]).default(""),
   extraVisit: z.enum(["true", "false"]).default("false"),
   visitPricing: z.enum(["contract", "manual"]).default("manual"),
+  useAgreementBasis: z.enum(["true", "false"]).default("false"),
   visitTermsId: z.union([z.uuid(), z.literal("")]).default(""),
 }).refine((v) => v.source !== "visit" || (v.stream === "supervision" && Boolean(v.visitId)))
   .refine((v) => !v.contractorId || v.stream === "contractor_bonus")
@@ -34,11 +35,14 @@ export const projectTermsSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
   stream: z.enum(["design", "supervision"]), mode: z.enum(["design", "monthly", "per_visit", "custom", "stopped"]),
   amount: z.union([planningAmount, z.literal("")]), currency: z.string().regex(/^[A-Z]{3}$/),
+  vatRate: z.union([z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/), z.literal("")]).transform((rate) => rate ? rate.replace(",", ".") : null).refine((rate) => rate === null || Number(rate) >= 0),
+  priceBasis: z.union([z.enum(["net", "gross"]), z.literal("")]).transform((basis) => basis || null),
   effectiveFrom: z.union([z.iso.date(), z.literal("")]).default(""),
   effectiveThrough: z.union([z.iso.date(), z.literal("")]).default(""),
   reason: z.string().trim().min(1).max(2000),
 }).refine((v) => v.stream === "design" ? v.mode === "design" && Boolean(v.amount) && !v.effectiveFrom && !v.effectiveThrough
   : v.mode !== "design" && Boolean(v.effectiveFrom) && (["custom", "stopped"].includes(v.mode) || Boolean(v.amount)))
+  .refine((v) => (v.vatRate === null) === (v.priceBasis === null))
   .refine((v) => !v.effectiveThrough || v.effectiveThrough >= v.effectiveFrom)
   .refine((v) => v.mode !== "monthly" || (v.effectiveFrom.endsWith("-01") && (!v.effectiveThrough ||
     new Date(`${v.effectiveThrough}T00:00:00Z`).getUTCMonth() !== new Date(new Date(`${v.effectiveThrough}T00:00:00Z`).getTime() + 86400000).getUTCMonth())));

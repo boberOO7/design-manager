@@ -1220,6 +1220,7 @@ export type Database = {
           expected_item_id: string
           id: string
           movement_id: string
+          net_amount: number
           obligation_currency: string
           payment_amount: number
           payment_currency: string
@@ -1229,6 +1230,7 @@ export type Database = {
           settlement_rate: number
           settlement_source: string
           studio_id: string
+          vat_amount: number
         }
         Insert: {
           amount: number
@@ -1238,6 +1240,7 @@ export type Database = {
           expected_item_id: string
           id?: string
           movement_id: string
+          net_amount: number
           obligation_currency: string
           payment_amount: number
           payment_currency: string
@@ -1247,6 +1250,7 @@ export type Database = {
           settlement_rate: number
           settlement_source: string
           studio_id: string
+          vat_amount: number
         }
         Update: {
           amount?: number
@@ -1256,6 +1260,7 @@ export type Database = {
           expected_item_id?: string
           id?: string
           movement_id?: string
+          net_amount?: number
           obligation_currency?: string
           payment_amount?: number
           payment_currency?: string
@@ -1265,6 +1270,7 @@ export type Database = {
           settlement_rate?: number
           settlement_source?: string
           studio_id?: string
+          vat_amount?: number
         }
         Relationships: [
           {
@@ -1529,8 +1535,12 @@ export type Database = {
           expected_payment_date: string | null
           id: string
           is_established: boolean
+          net_amount: number
+          price_basis: string | null
           studio_id: string
           updated_at: string
+          vat_amount: number
+          vat_rate: number | null
           version: number
         }
         Insert: {
@@ -1547,8 +1557,12 @@ export type Database = {
           expected_payment_date?: string | null
           id?: string
           is_established?: boolean
+          net_amount: number
+          price_basis?: string | null
           studio_id: string
           updated_at?: string
+          vat_amount: number
+          vat_rate?: number | null
           version?: number
         }
         Update: {
@@ -1565,8 +1579,12 @@ export type Database = {
           expected_payment_date?: string | null
           id?: string
           is_established?: boolean
+          net_amount?: number
+          price_basis?: string | null
           studio_id?: string
           updated_at?: string
+          vat_amount?: number
+          vat_rate?: number | null
           version?: number
         }
         Relationships: [
@@ -2276,13 +2294,19 @@ export type Database = {
           currency: string
           effective_from: string | null
           effective_through: string | null
+          gross_amount: number | null
           id: string
           mode: string
+          net_amount: number | null
+          price_basis: string | null
           project_id: string
           reason: string
+          revenue_tax_rate: number | null
           revision: number
           stream: string
           studio_id: string
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           amount?: number | null
@@ -2291,13 +2315,19 @@ export type Database = {
           currency: string
           effective_from?: string | null
           effective_through?: string | null
+          gross_amount?: number | null
           id?: string
           mode: string
+          net_amount?: number | null
+          price_basis?: string | null
           project_id: string
           reason: string
+          revenue_tax_rate?: number | null
           revision: number
           stream: string
           studio_id: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           amount?: number | null
@@ -2306,13 +2336,19 @@ export type Database = {
           currency?: string
           effective_from?: string | null
           effective_through?: string | null
+          gross_amount?: number | null
           id?: string
           mode?: string
+          net_amount?: number | null
+          price_basis?: string | null
           project_id?: string
           reason?: string
+          revenue_tax_rate?: number | null
           revision?: number
           stream?: string
           studio_id?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -5188,12 +5224,16 @@ export type Database = {
           expected_payment_date: string | null
           id: string | null
           is_established: boolean | null
+          net_amount: number | null
           outstanding_amount: number | null
           payment_state: string | null
+          price_basis: string | null
           remaining_amount: number | null
           settled_amount: number | null
           studio_id: string | null
           updated_at: string | null
+          vat_amount: number | null
+          vat_rate: number | null
           version: number | null
         }
         Relationships: [
@@ -5345,13 +5385,19 @@ export type Database = {
           currency: string | null
           effective_from: string | null
           effective_through: string | null
+          gross_amount: number | null
           id: string | null
           mode: string | null
+          net_amount: number | null
+          price_basis: string | null
           project_id: string | null
           reason: string | null
+          revenue_tax_rate: number | null
           revision: number | null
           stream: string | null
           studio_id: string | null
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Relationships: [
           {
@@ -5402,9 +5448,11 @@ export type Database = {
           expected_payment_date: string | null
           id: string | null
           is_established: boolean | null
+          net_amount: number | null
           outstanding_amount: number | null
           payment_state: string | null
           period_start: string | null
+          price_basis: string | null
           project_id: string | null
           remaining_amount: number | null
           settled_amount: number | null
@@ -5412,6 +5460,8 @@ export type Database = {
           stream: string | null
           studio_id: string | null
           updated_at: string | null
+          vat_amount: number | null
+          vat_rate: number | null
           version: number | null
           visit_id: string | null
         }
@@ -5479,9 +5529,11 @@ export type Database = {
           has_settlement_history: boolean | null
           id: string | null
           is_established: boolean | null
+          net_amount: number | null
           outstanding_amount: number | null
           payment_state: string | null
           period_start: string | null
+          price_basis: string | null
           project_id: string | null
           remaining_amount: number | null
           settled_amount: number | null
@@ -5489,6 +5541,8 @@ export type Database = {
           stream: string | null
           studio_id: string | null
           updated_at: string | null
+          vat_amount: number | null
+          vat_rate: number | null
           version: number | null
           visit_id: string | null
         }
@@ -5540,15 +5594,30 @@ export type Database = {
       finance_project_totals: {
         Row: {
           collected_amount: number | null
+          collected_net_amount: number | null
+          collected_vat_amount: number | null
           contract_amount: number | null
+          contract_gross_amount: number | null
+          contract_net_amount: number | null
+          contract_vat_amount: number | null
           currency: string | null
           outstanding_amount: number | null
           planned_amount: number | null
           project_id: string | null
           scheduled_amount: number | null
+          scheduled_net_amount: number | null
+          scheduled_vat_amount: number | null
           stream: string | null
           studio_id: string | null
           unscheduled_amount: number | null
+        }
+        Relationships: []
+      }
+      finance_project_vat_actuals: {
+        Row: {
+          financial_date: string | null
+          studio_id: string | null
+          vat_reporting_amount: number | null
         }
         Relationships: []
       }

@@ -1,0 +1,163 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import uk from "../../messages/uk.json";
+import type { Database } from "../../src/types/database.types";
+
+const local = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SERVICE_KEY: z.string() }).parse(process.env);
+if (!["127.0.0.1", "localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Finance fixtures require local Supabase");
+const client = createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL, local.EQUIPMENT_TEST_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const studioId = randomUUID(), projectId = randomUUID(), accountId = randomUUID();
+const email = `finance-vat-${randomUUID()}@example.test`, password = `Finance-${randomUUID()}`;
+let userId = "";
+function sql(statement: string) {
+  return execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-At"], { input: statement, encoding: "utf8" }).trim();
+}
+
+test.beforeAll(async () => {
+  await client.from("studios").insert({ id: studioId, name: "Finance VAT browser test" }).throwOnError();
+  const created = await client.auth.admin.createUser({ email, password, email_confirm: true });
+  if (created.error) throw created.error;
+  userId = created.data.user.id;
+  await client.from("profiles").upsert({ id: userId, email, full_name: "Finance VAT admin", system_role: "admin", is_active: true }).throwOnError();
+  await client.from("studio_members").insert({ studio_id: studioId, user_id: userId, system_role: "admin" }).throwOnError();
+  sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values('${studioId}','UAH','2026-09-01','${userId}');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${accountId}','${studioId}','Bank','UAH',0,'${userId}');
+    select set_config('request.jwt.claim.sub','${userId}',false); select public.finalize_finance_setup('${studioId}');
+    insert into public.projects(id,studio_id,name,total_area_m2,start_date,created_by,status,country_code) values('${projectId}','${studioId}','VAT project',100,'2026-09-01','${userId}','active','UA');`);
+});
+
+test.afterAll(async () => {
+  sql(`begin; set local session_replication_role=replica;
+    delete from public.finance_project_items where studio_id='${studioId}';
+    delete from public.finance_project_plan_revisions where studio_id='${studioId}';
+    delete from public.finance_project_terms where studio_id='${studioId}';
+    delete from public.finance_allocations where studio_id='${studioId}';
+    delete from public.finance_expected_items where studio_id='${studioId}';
+    delete from public.finance_planning_requests where studio_id='${studioId}';
+    delete from public.finance_movements where studio_id='${studioId}';
+    delete from public.finance_accounts where studio_id='${studioId}';
+    delete from public.finance_categories where studio_id='${studioId}';
+    delete from public.finance_settings where studio_id='${studioId}';
+    delete from public.notifications where studio_id='${studioId}';
+    delete from public.project_activity where project_id='${projectId}';
+    delete from public.project_task_stage_columns where project_id='${projectId}';
+    delete from public.projects where studio_id='${studioId}';
+    delete from public.studio_members where studio_id='${studioId}';
+    delete from public.studios where id='${studioId}'; commit;`);
+  if (userId) { const deleted = await client.auth.admin.deleteUser(userId); if (deleted.error) throw deleted.error; }
+});
+
+test("agreement VAT chips, switch, and revenue-tax estimate keep Expected gross", async ({ page }) => {
+  const t = uk.Finance, p = t.project, b = t.builder;
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://127.0.0.1:3100" }]);
+  await page.goto(`/projects/${projectId}?view=finance`);
+  await page.getByRole("button", { name: p.editAgreement, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: b.fixedShort, exact: true }).click();
+  await dialog.getByLabel(p.contract, { exact: true }).fill("4000");
+  const vat = dialog.getByRole("group", { name: b.vatRate });
+  const included = dialog.getByRole("switch", { name: b.priceBasis });
+  await expect(vat.getByRole("button", { name: b.vatNone, exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(included).toHaveCount(0);
+  await dialog.getByLabel(p.contract, { exact: true }).fill("10560");
+  await vat.getByRole("button", { name: "8%", exact: true }).click();
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]")).toHaveCount(2);
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]").first()).toHaveAttribute("data-derived-amount", "5702.40");
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]").last()).toHaveAttribute("data-derived-amount", "5702.40");
+  const reconciliation = dialog.getByRole("region", { name: b.reconciliation });
+  await expect(reconciliation.getByText(b.newSchedule, { exact: true }).locator("..").locator("dd")).toHaveText(await reconciliation.getByText(p.clientTotal, { exact: true }).locator("..").locator("dd").textContent() ?? "");
+  await vat.getByRole("button", { name: "23%", exact: true }).click();
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]")).toHaveCount(2);
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]").first()).toHaveAttribute("data-derived-amount", "6494.40");
+  await included.click();
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]")).toHaveCount(2);
+  await expect(dialog.locator("[data-plan-row] [data-derived-amount]").first()).toHaveAttribute("data-derived-amount", "5280.00");
+  await included.click();
+  await dialog.getByLabel(p.contract, { exact: true }).fill("4000");
+  expect(await included.evaluate((node) => getComputedStyle(node.querySelector<HTMLElement>('span[aria-hidden="true"] span')!).transitionProperty)).toContain("translate");
+  for (const theme of ["light", "dark"] as const) {
+    await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+    const colors = () => included.evaluate((switchNode) => {
+      const track = switchNode.querySelector<HTMLElement>('span[aria-hidden="true"]')!;
+      const thumb = track.querySelector<HTMLElement>("span")!;
+      return { track: getComputedStyle(track).backgroundColor, thumb: getComputedStyle(thumb).backgroundColor };
+    });
+    await expect(included).toHaveAttribute("aria-checked", "false");
+    await page.waitForTimeout(250);
+    const off = await colors();
+    await included.click();
+    await expect(included).toHaveAttribute("aria-checked", "true");
+    await expect.poll(async () => (await colors()).track).not.toBe(off.track);
+    const on = await colors();
+    expect(on.thumb).not.toBe(on.track);
+    await included.click();
+    await expect(included).toHaveAttribute("aria-checked", "false");
+    await expect.poll(async () => (await colors()).track).toBe(off.track);
+    await expect.poll(colors).toEqual(off);
+  }
+  await expect(dialog.getByText(/ПДВ[^·]*920/u).last()).toBeVisible();
+  await vat.getByRole("button", { name: b.vatOther, exact: true }).click();
+  await dialog.locator('input[aria-label="Власна ставка (%)"]:visible').fill("12.5");
+  await expect(dialog.getByText(/ПДВ[^·]*500/u).last()).toBeVisible();
+  await dialog.getByRole("button", { name: b.perAreaShort, exact: true }).click();
+  await expect(dialog.locator('input[aria-label="Власна ставка (%)"]:visible')).toHaveValue("12.5");
+  await dialog.getByRole("button", { name: b.fixedShort, exact: true }).click();
+  await vat.getByRole("button", { name: "23%", exact: true }).click();
+  const revenueTax = dialog.getByRole("group", { name: b.revenueTax });
+  await revenueTax.getByRole("button", { name: "6%", exact: true }).click();
+  await expect(dialog.getByText(/Податок з доходу 6%:[^·]*240/u).last()).toBeVisible();
+  await revenueTax.getByRole("button", { name: b.vatOther, exact: true }).click();
+  await dialog.locator(`input[aria-label="${b.revenueTaxCustomRate}"]:visible`).fill("7");
+  await expect(dialog.getByText(/Податок з доходу 7%:[^·]*280/u).last()).toBeVisible();
+  await revenueTax.getByRole("button", { name: "6%", exact: true }).click();
+  await vat.getByRole("button", { name: b.vatNone, exact: true }).click();
+  await expect(included).toHaveCount(0);
+  await expect(dialog.getByText(/Податок з доходу 6%:[^·]*240/u).last()).toBeVisible();
+  await vat.getByRole("button", { name: "23%", exact: true }).click();
+  await dialog.getByRole("button", { name: "100%", exact: true }).click();
+  await dialog.locator("[data-plan-row]").getByLabel(t.planning.dueDate, { exact: true }).click();
+  await page.getByRole("button", { name: "Сьогодні", exact: true }).click();
+  await dialog.getByRole("button", { name: t.planning.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(sql(`select trim_scale(net_amount)||'|'||trim_scale(vat_amount)||'|'||trim_scale(amount) from public.finance_expected_items where id in(select expected_item_id from public.finance_project_items where project_id='${projectId}')`)).toBe("4000|920|4920");
+  expect(sql(`select trim_scale(contract_net_amount)||'|'||trim_scale(contract_vat_amount)||'|'||trim_scale(contract_gross_amount) from public.finance_project_totals where project_id='${projectId}' and stream='design'`)).toBe("4000|920|4920");
+  expect(sql(`select trim_scale(revenue_tax_rate) from public.finance_project_current_terms where project_id='${projectId}' and stream='design'`)).toBe("6");
+  const summary = page.getByRole("region", { name: p.summary });
+  await expect(summary.getByText(p.clientTotal, { exact: true })).toBeVisible();
+  await expect(summary.getByText(p.vatMetric.replace("{rate}", "23"), { exact: true })).toBeVisible();
+  await expect(summary.getByText(p.revenueTaxMetric.replace("{rate}", "6"), { exact: true })).toBeVisible();
+  await expect(summary.getByText(b.afterTax, { exact: true })).toBeVisible();
+  const details = summary.locator("details");
+  await expect(details).not.toHaveAttribute("open");
+  await details.locator("summary").click();
+  await expect(details.getByText(/За графіком: нетто/u)).toBeVisible();
+  await details.locator("summary").click();
+
+  await page.getByRole("button", { name: p.editAgreement, exact: true }).click();
+  await dialog.getByRole("group", { name: b.vatRate }).getByRole("button", { name: b.vatNone, exact: true }).click();
+  await dialog.getByRole("button", { name: "100%", exact: true }).click();
+  await dialog.getByLabel(p.reason, { exact: true }).fill("VAT off");
+  await dialog.getByRole("button", { name: b.saveRevision, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(summary.getByText(p.vatMetric.replace("{rate}", "23"), { exact: true })).toHaveCount(0);
+  await expect(summary.getByText(p.revenueTaxMetric.replace("{rate}", "6"), { exact: true })).toBeVisible();
+  await expect(summary.locator("dl")).toHaveCount(2);
+  await expect(summary.getByText(p.calculationDetails, { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: p.editAgreement, exact: true }).click();
+  await dialog.getByRole("group", { name: b.revenueTax }).getByRole("button", { name: b.revenueTaxNone, exact: true }).click();
+  await dialog.getByLabel(p.reason, { exact: true }).fill("Tax estimate off");
+  await dialog.getByRole("button", { name: b.saveRevision, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(summary.getByText(p.clientTotal, { exact: true })).toBeVisible();
+  await expect(summary.locator("dl")).toHaveCount(1);
+  await expect(summary.getByText(p.calculationDetails, { exact: true })).toHaveCount(0);
+});

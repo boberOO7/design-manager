@@ -74,9 +74,9 @@ create temporary table partial_allocations as select * from public.finance_alloc
 create temporary table partial_cash as select * from public.finance_movement_entries;
 select lives_ok($$select pg_temp.close_item(121,120,'{"settledAmount":"40000","retainSettlement":true}')$$,'explicit adjustment preserves retained settlement in replacement');
 select lives_ok($$select pg_temp.close_item(121,120,'{"settledAmount":"40000","retainSettlement":true}')$$,'partial adjustment retry creates no second replacement');
-select is((select concat(amount,'|',settled_amount,'|',commitment) from public.finance_expected_balances where id=pg_temp.result(120)),'100000|0|cancelled','original partial-refund expectation preserves amount');
-select is((select concat(amount,'|',settled_amount,'|',payment_state) from public.finance_expected_balances where id=pg_temp.result(121)),'40000|40000|settled','replacement contains exactly retained payment');
-select is((select concat(collected_amount,'|',outstanding_amount,'|',planned_amount,'|',scheduled_amount) from public.finance_project_totals where stream='design'),'40000|0|0|40000','retention closes unpaid forecast without discarding collection');
+select is((select row(amount,settled_amount,commitment) from public.finance_expected_balances where id=pg_temp.result(120)),row(100000::numeric,0::numeric,'cancelled'::text),'original partial-refund expectation preserves amount');
+select is((select row(amount,settled_amount,payment_state) from public.finance_expected_balances where id=pg_temp.result(121)),row(40000::numeric,40000::numeric,'settled'::text),'replacement contains exactly retained payment');
+select is((select row(collected_amount,outstanding_amount,planned_amount,scheduled_amount) from public.finance_project_totals where stream='design'),row(40000::numeric,0::numeric,0::numeric,40000::numeric),'retention closes unpaid forecast without discarding collection');
 select results_eq('select a.* from public.finance_allocations a join partial_allocations b using(id) order by a.id','select * from partial_allocations order by id','partial adjustment appends without rewriting allocation history');
 select results_eq('select * from public.finance_movement_entries','select * from partial_cash','retention adjustment never changes cash');
 select is((select count(*) from public.finance_allocations where expected_item_id=pg_temp.result(120) and reason='Engagement terminated'),1::bigint,'retained allocation released with reason');

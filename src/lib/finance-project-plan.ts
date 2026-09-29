@@ -5,11 +5,14 @@ const date = z.union([z.iso.date(), z.literal("")]);
 export const projectPlanSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
   pricingMethod: z.enum(["fixed", "area"]), amount: planningAmount,
+  vatRate: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((rate) => rate.replace(",", ".")).nullable().refine((rate) => rate === null || Number(rate) >= 0),
+  priceBasis: z.enum(["net", "gross"]).nullable(),
+  revenueTaxRate: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((rate) => rate.replace(",", ".")).nullable().default(null),
   currency: z.string().regex(/^[A-Z]{3}$/), area: z.union([planningAmount,z.literal("")]).default(""), rate: z.union([planningAmount,z.literal("")]).default(""),
   reason: z.string().trim().min(1).max(2000), allowUnscheduled: z.boolean(),
   known: z.array(z.object({ id: z.uuid(), version: z.number().int().positive(), protected: z.boolean() })),
   items: z.array(z.object({ id: z.union([z.uuid(), z.literal("")]), name: z.string().trim().min(1).max(2000), amount: planningAmount, dueDate: date, expectedDate: date })),
-}).refine(v => v.pricingMethod !== "area" || (planningAmount.safeParse(v.area).success && planningAmount.safeParse(v.rate).success));
+}).refine(v => (v.vatRate === null) === (v.priceBasis === null)).refine(v => v.pricingMethod !== "area" || (planningAmount.safeParse(v.area).success && planningAmount.safeParse(v.rate).success));
 export type ProjectPlanInput = z.infer<typeof projectPlanSchema>;
 export const projectPaymentTemplates = [[100], [50, 50], [30, 50, 20], [25, 25, 25, 25]] as const;
 
@@ -25,6 +28,51 @@ export function projectMoneyText(units: bigint, digits: number): string {
   const sign = units < BigInt(0) ? "-" : "", absolute = units < BigInt(0) ? -units : units, scale = BigInt(10) ** BigInt(digits);
   return `${sign}${absolute / scale}${digits ? `.${String(absolute % scale).padStart(digits, "0")}` : ""}`;
 }
+export function projectVatAmounts(amount: string, vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number) {
+  const entered = projectMoneyUnits(amount, digits);
+  if (vatRate === null || priceBasis === null) return { net: projectMoneyText(entered, digits), vat: projectMoneyText(BigInt(0), digits), gross: projectMoneyText(entered, digits) };
+  const decimalRate = vatRate.trim().replace(",", ".");
+  const rateDigits = decimalRate.split(".")[1]?.length ?? 0;
+  const rate = projectMoneyUnits(decimalRate, rateDigits), rateScale = BigInt(10) ** BigInt(rateDigits), divisor = BigInt(100) * rateScale;
+  const round = (numerator: bigint, denominator: bigint) => (numerator + denominator / BigInt(2)) / denominator;
+  if (priceBasis === "net") {
+    const vat = round(entered * rate, divisor);
+    return { net: projectMoneyText(entered, digits), vat: projectMoneyText(vat, digits), gross: projectMoneyText(entered + vat, digits) };
+  }
+  const net = round(entered * divisor, divisor + rate);
+  return { net: projectMoneyText(net, digits), vat: projectMoneyText(entered - net, digits), gross: projectMoneyText(entered, digits) };
+}
+export function projectRevenueTaxAmounts(net: string, revenueTaxRate: string | null, digits: number) {
+  const tax = projectVatAmounts(net, revenueTaxRate, "net", digits).vat;
+  return { tax, afterTax: projectMoneyText(projectMoneyUnits(net, digits) - projectMoneyUnits(tax, digits), digits) };
+}
+// Allocate rounded tax across a schedule so its parts close to the agreement total.
+export function projectScheduleVatAmounts(amounts: string[], vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number, grossTarget?: string) {
+  const values = amounts.map((amount) => projectMoneyUnits(amount, digits));
+  const total = values.reduce((sum, amount) => sum + amount, BigInt(0));
+  if (vatRate === null || priceBasis === null) return values.map((amount) => ({ net: projectMoneyText(amount, digits), vat: projectMoneyText(BigInt(0), digits), gross: projectMoneyText(amount, digits) }));
+  if (total === BigInt(0)) throw new Error("amount");
+  const totalParts = projectVatAmounts(projectMoneyText(total, digits), vatRate, priceBasis, digits);
+  const distributed = priceBasis === "net"
+    ? grossTarget === undefined ? projectMoneyUnits(totalParts.vat, digits) : projectMoneyUnits(grossTarget, digits) - total
+    : projectMoneyUnits(totalParts.net, digits);
+  if (distributed < BigInt(0)) throw new Error("amount");
+  let cumulative = BigInt(0), assigned = BigInt(0);
+  return values.map((value) => {
+    cumulative += value;
+    const portion = (cumulative * distributed + total / BigInt(2)) / total - assigned;
+    assigned += portion;
+    const net = priceBasis === "net" ? value : portion;
+    const vat = priceBasis === "net" ? portion : value - portion;
+    return { net: projectMoneyText(net, digits), vat: projectMoneyText(vat, digits), gross: projectMoneyText(net + vat, digits) };
+  });
+}
+export function projectGrossToBasis(gross: string, vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number) {
+  return vatRate !== null && priceBasis === "net" ? projectVatAmounts(gross, vatRate, "gross", digits).net : gross;
+}
+export function projectBasisToGross(amount: string, vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number) {
+  return projectVatAmounts(amount, vatRate, priceBasis, digits).gross;
+}
 export function projectAreaValue(area: string, rate: string, digits: number): string {
   const product = projectMoneyUnits(area, 4) * projectMoneyUnits(rate, 4), divisor = BigInt(10) ** BigInt(8 - digits);
   return projectMoneyText((product + divisor / BigInt(2)) / divisor, digits);
@@ -39,6 +87,24 @@ export function projectPaymentAmounts(total: string, percentages: string[], digi
     assigned += amount;
     return projectMoneyText(amount, digits);
   });
+}
+// Percentage schedules divide client cash; the save RPC still accepts agreement-basis amounts.
+export function projectClientPaymentSchedule(grossPool: string, percentages: string[], vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number, reserve = "0") {
+  const grossPoolUnits = projectMoneyUnits(grossPool, digits);
+  const reserved = projectMoneyUnits(reserve, digits);
+  const grossAmounts = projectPaymentAmounts(projectMoneyText(grossPoolUnits - reserved, digits), percentages, digits, false);
+  const basisAmounts = grossAmounts.map((amount) => projectGrossToBasis(amount, vatRate, priceBasis, digits));
+  const balanced = percentages.reduce((sum, percentage) => sum + projectMoneyUnits(percentage, 4), BigInt(0)) === BigInt(1000000);
+  const basisPool = projectMoneyUnits(projectGrossToBasis(grossPool, vatRate, priceBasis, digits), digits);
+  if (balanced && reserved === BigInt(0) && basisAmounts.length) {
+    const last = basisAmounts.length - 1;
+    const assigned = basisAmounts.reduce((sum, amount) => sum + projectMoneyUnits(amount, digits), BigInt(0));
+    basisAmounts[last] = projectMoneyText(projectMoneyUnits(basisAmounts[last], digits) + basisPool - assigned, digits);
+  }
+  const scheduledBasis = basisAmounts.reduce((sum, amount) => sum + projectMoneyUnits(amount, digits), BigInt(0));
+  const schedule = projectScheduleVatAmounts(basisAmounts, vatRate, priceBasis, digits,
+    vatRate !== null && priceBasis === "net" && scheduledBasis === basisPool ? grossPool : undefined);
+  return { basisAmounts, grossAmounts: schedule.map((item) => item.gross) };
 }
 // Informational reporting preview only: never submitted as a contractual or cash value.
 export function projectReferenceValue(amount: string, rate: string, digits: number, reportingDigits = 2): string {

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { CircleAlert, ClipboardCheck, Clock3, Flame, ListTodo, Play, Ruler, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { CircleAlert, ClipboardCheck, Clock3, Flame, ListTodo, Play, Ruler, type LucideProps } from "lucide-react";
+import { useState, type ComponentType } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getCurrentStatusAge, isTaskInWorkloadCategory, type TeamWorkloadMember, type WorkloadCategory } from "@/lib/dashboard";
 import { formatDate } from "@/lib/utils";
 import type { DashboardWorkloadTask } from "@/types/tasks";
 
-const METRICS: Array<{ category: WorkloadCategory; icon: LucideIcon; risk?: boolean; iconClassName?: string }> = [
+const METRICS: Array<{ category: WorkloadCategory; icon: ComponentType<LucideProps>; risk?: boolean; iconClassName?: string }> = [
   { category: "todo", icon: ListTodo },
   { category: "in_progress", icon: Play, iconClassName: "text-[var(--ui-info-text)]" },
   { category: "review", icon: ClipboardCheck, iconClassName: "text-[var(--ui-violet-text)]" },

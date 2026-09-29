@@ -20,9 +20,10 @@ export type FinanceOverview = z.infer<typeof financeOverviewSchema>;
 export function financeDashboardMonthSummary(data: {
   forecast: Pick<FinanceOverview["forecast"], "asOf" | "currency"> & { items: Array<Pick<FinanceOverview["forecast"]["items"][number], "direction" | "nature" | "date" | "reportingAmount">> };
   flows: FinanceOverview["flows"];
+  vatAdjustments?: Array<{ date: string; amount: string }>;
 }) {
   const month = data.forecast.asOf.slice(0, 7);
-  const amounts = [...data.forecast.items.map((item) => item.reportingAmount), ...data.flows.map((flow) => flow.amount)];
+  const amounts = [...data.forecast.items.map((item) => item.reportingAmount), ...data.flows.map((flow) => flow.amount), ...(data.vatAdjustments ?? []).map((item) => item.amount)];
   const digits = Math.max(4, ...amounts.map((value) => value?.split(".")[1]?.length ?? 0));
   const scale = BigInt(10) ** BigInt(digits);
   const units = (value: string) => {
@@ -34,8 +35,10 @@ export function financeDashboardMonthSummary(data: {
   const inflows = data.forecast.items.filter((item) => item.direction === "incoming" && item.nature === "operating" && item.date?.slice(0, 7) === month);
   const expectedInflow = inflows.some((item) => item.reportingAmount === null) ? null
     : projectMoneyText(inflows.reduce((sum, item) => sum + units(item.reportingAmount ?? "0"), BigInt(0)), digits);
+  const vatAdjustments = (data.vatAdjustments ?? []).filter((item) => item.date.slice(0, 7) === month);
   const profit = data.flows.filter((flow) => flow.month.slice(0, 7) === month && flow.nature === "operating")
-    .reduce((sum, flow) => sum + (flow.direction === "incoming" ? units(flow.amount) : -units(flow.amount)), BigInt(0));
+    .reduce((sum, flow) => sum + (flow.direction === "incoming" ? units(flow.amount) : -units(flow.amount)), BigInt(0))
+    - vatAdjustments.reduce((sum, item) => sum + units(item.amount), BigInt(0));
   return { currency: data.forecast.currency, expectedInflow, profitAndLoss: projectMoneyText(profit, digits) };
 }
 

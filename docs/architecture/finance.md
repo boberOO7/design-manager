@@ -245,6 +245,20 @@ or notifications containing private data.
   with the actor and a required agreement/amendment note. Current terms are the
   latest revision, not a copied CRM budget. Saves use the existing studio lock,
   request audit/idempotency, and optimistic revision checks.
+- Project terms also snapshot optional VAT rate and net/gross input basis. Their
+  stored net, VAT and gross amounts use the agreement currency's minor units;
+  existing revisions remain VAT-not-applicable with unchanged amounts. A schedule
+  inherits its applicable revision, without a per-payment VAT override.
+- Project Expected items store gross receivables plus their own net/VAT snapshot;
+  existing items retain their exact gross values and zero VAT. Later agreement
+  revisions never revalue existing items or allocations. The builder allocates
+  rounded VAT cents across agreement-basis installments so a full schedule
+  closes to the agreement gross amount; metadata edits retain each installment's
+  allocated split, while manual amount edits enter gross. Allocation rows snapshot signed net/VAT in obligation currency,
+  including partial refund releases. Reversing a refund restores that VAT only
+  while the cash remains unapplied; a later match uses the new obligation
+  snapshot. Cross-currency cash and settlement FX stay in their existing
+  currencies and rates.
 - The value/payment builder supports fixed pricing or area × rate. Immutable
   `finance_project_plan_revisions` records the area/rate used and reviewed item
   order alongside the canonical terms revision; legacy revisions remain fixed
@@ -296,6 +310,12 @@ or notifications containing private data.
   leaves receivables and timed forecasts; the commercial agreement total stays intact
   and its unscheduled remainder still requires a separate explicit agreement amendment.
 - `finance_project_totals` uses exact database numeric, grouped by stream/currency.
+  Design contract totals expose net revenue, VAT, and gross client amount;
+  collected net/VAT comes from allocation snapshots while collected, outstanding,
+  planned and unscheduled cash values remain gross. Cash Flow, balances and
+  forecasts stay gross. `finance_project_vat_actuals` is a separate caller-context
+  VAT adjustment for dashboard P&L, so project VAT is excluded from revenue and
+  never inserted as an expense or tax payable.
   Collected is effective allocated money (net of releases), not all cash on a
   receipt that happens to partly settle the project. Excess remains a global
   actionable credit. Planned is active remaining value not established as receivable; the
@@ -760,6 +780,10 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
 - `src/components/finance/project-value-builder.tsx`, `src/lib/finance-project-plan.ts`
 - `supabase/migrations/20260921184630_finance_project_payment_builder.sql`
 - `supabase/tests/finance_project_plan_rls.test.sql`, `tests/e2e/finance-project-builder.spec.ts`
+- `supabase/migrations/20260929112931_finance_project_vat_net_gross.sql`
+- `supabase/migrations/20260929121100_finance_project_vat_reallocation_baseline.sql`
+- `supabase/migrations/20260929122842_finance_project_vat_schedule_rounding.sql`
+- `supabase/tests/finance_project_vat.test.sql`, `tests/e2e/finance-project-vat.spec.ts`
 
 - `supabase/migrations/20260917141123_finance_compensation_recurring.sql`
 - `supabase/migrations/20260917142641_finance_schedule_lifecycle_guards.sql`
