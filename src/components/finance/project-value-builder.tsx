@@ -16,14 +16,14 @@ import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animate
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCurrencySelect } from "./currency-select";
 import { formatFinanceAmount, type FinanceCurrency } from "@/lib/finance";
-import { projectAreaValue, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput } from "@/lib/finance-project-plan";
+import { projectAreaValue, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectPaymentDefaultKey, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput } from "@/lib/finance-project-plan";
 import { cn } from "@/lib/utils";
 import type { FinanceProjectData } from "@/data/queries/finance";
 
-type Row = ProjectPlanInput["items"][number] & { key: string; percentage: string; differentDate: boolean };
+type Row = ProjectPlanInput["items"][number] & { key: string; percentage: string; differentDate: boolean; defaultName: string };
 type RowCopy = {
   actions: string; amount: string; differentDate: string; drag: string; dueDate: string; expectedDate: string;
-  moveDown: string; moveUp: string; name: string; percentage: string; remove: string;
+  moveDown: string; moveUp: string; name: string; percentage: string; remove: string; note: string;
 };
 
 const paymentSensors = [PointerSensor.configure({})];
@@ -116,6 +116,7 @@ function PaymentRow({ amount, copy, index, locale, money, onMove, onRemove, onUp
         <button type="button" role="menuitem" className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => act(() => onRemove(index))}><Trash2 className="size-4" aria-hidden="true"/>{copy.remove}</button>
       </Popover.Content></Popover.Portal></Popover.Root>
     </div>
+    <label className="mt-2 block lg:ml-[3.25rem]"><span className="sr-only">{copy.note}</span><Input aria-label={copy.note} placeholder={copy.note} value={row.clientNote} maxLength={300} onChange={(event) => onUpdate(index, { clientNote: event.target.value })} className="h-9 text-xs"/></label>
     <AnimatedDisclosure title={copy.differentDate} className="mt-0.5 max-w-sm" open={row.differentDate} onOpenChange={(differentDate) => onUpdate(index, { differentDate })}><div className="pb-1 pt-2"><FormField label={copy.expectedDate}><DatePicker aria-label={copy.expectedDate} className={compactControl} value={row.expectedDate} onValueChange={(expectedDate) => onUpdate(index, { expectedDate })} locale={locale}/></FormField></div></AnimatedDisclosure>
   </li>;
 }
@@ -142,16 +143,21 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const [reserve, setReserve] = useState("0");
   const [addGuidance, setAddGuidance] = useState(false);
 
-  function freshRow(index: number, count: number, percentage = ""): Row {
-    const name = protectedItems.length ? "builder.paymentNumber" : index === 0 ? "builder.advance" : index === count - 1 ? "builder.finalPayment" : "builder.paymentNumber";
-    return { key: crypto.randomUUID(), id: "", name: t(name, { number: protectedItems.length + index + 1 }), amount: "", percentage, dueDate: "", expectedDate: "", differentDate: false };
+  function defaultName(name: string, index: number) {
+    return ["projectPayment", "advance", "finalPayment", "planningStage", "visualizationStage", "documentationStage", "paymentNumber"].some((key) => name === t(`builder.${key}`, { number: protectedItems.length + index + 1 })) ? name : "";
+  }
+  function freshRow(index: number, count: number, percentage = "", percentages?: readonly number[]): Row {
+    const key = percentages ? projectPaymentDefaultKey(percentages, index) : count === 2 ? index === 0 ? "advance" : "finalPayment" : "paymentNumber";
+    const name = t(`builder.${key}`, { number: protectedItems.length + index + 1 });
+    return { key: crypto.randomUUID(), id: "", name, defaultName: name, clientNote: "", amount: "", percentage, dueDate: "", expectedDate: "", differentDate: false };
   }
 
   const [rows, setRows] = useState<Row[]>(() => current ? project.planItems.filter((item) => !item.has_settlement_history).sort((left, right) => {
     const order = pricing?.item_order ?? [];
     const leftIndex = order.indexOf(left.id ?? ""), rightIndex = order.indexOf(right.id ?? "");
     return (leftIndex < 0 ? order.length : leftIndex) - (rightIndex < 0 ? order.length : rightIndex) || (left.due_date ?? "9999").localeCompare(right.due_date ?? "9999");
-  }).map((item) => ({ key: item.id ?? crypto.randomUUID(), id: item.id ?? "", name: item.description ?? "", amount: item.amount, percentage: "", dueDate: item.due_date ?? "", expectedDate: item.expected_payment_date ?? "", differentDate: Boolean(item.expected_payment_date && item.expected_payment_date !== item.due_date) })) : [freshRow(0, 2, "50"), freshRow(1, 2, "50")]);
+  }).map((item, index) => ({ key: item.id ?? crypto.randomUUID(), id: item.id ?? "", name: item.description ?? "", defaultName: defaultName(item.description ?? "", index), clientNote: item.client_note ?? "", amount: item.amount, percentage: item.schedule_percentage == null ? "" : String(item.schedule_percentage), dueDate: item.due_date ?? "", expectedDate: item.expected_payment_date ?? "", differentDate: Boolean(item.expected_payment_date && item.expected_payment_date !== item.due_date) })) : [freshRow(0, 2, "50"), freshRow(1, 2, "50")]);
+  const [protectedNotes, setProtectedNotes] = useState(() => protectedItems.map((item) => ({ id: item.id, clientNote: item.client_note ?? "" })));
   const [referenceState, setReferenceState] = useState<{ currency: string; failed: boolean; value: { rate: string; effectiveDate: string } | null }>({ currency: "", failed: false, value: null });
   const [referenceAttempt, setReferenceAttempt] = useState(0);
 
@@ -221,10 +227,10 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     if (reference && currency !== "UAH") referenceAmount = projectReferenceValue(total, reference.rate, digits);
   } catch { error = t("builder.invalidPreview"); }
 
-  const payload = { projectId: project.projectId, revision: current?.revision ?? 0, pricingMethod: method, amount: total, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, known: project.planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, name: row.name, amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.differentDate ? row.expectedDate : row.dueDate })) };
+  const payload = { projectId: project.projectId, revision: current?.revision ?? 0, pricingMethod: method, amount: total, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: project.planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.differentDate ? row.expectedDate : row.dueDate })) };
 
   function update(index: number, patch: Partial<Row>) { setAddGuidance(false); setRows((currentRows) => currentRows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row)); }
-  function applyTemplate(percentages: readonly number[]) { setAddGuidance(false); setStrategy("redistribute"); setReserve("0"); setRows((old) => percentages.map((percentage, index) => ({ ...(old[index]?.id ? old[index] : freshRow(index, percentages.length)), percentage: String(percentage) }))); }
+  function applyTemplate(percentages: readonly number[]) { setAddGuidance(false); setStrategy("redistribute"); setReserve("0"); setRows((old) => percentages.map((percentage, index) => (() => { const fresh = freshRow(index, percentages.length, String(percentage), percentages); const previous = old[index]; return { ...fresh, ...(previous ? { ...previous, name: previous.name !== previous.defaultName ? previous.name : fresh.name, defaultName: fresh.defaultName } : {}), percentage: String(percentage) }; })())); }
   function selectStrategy(next: string) { setAddGuidance(false); if (strategy === "redistribute" && next === "manual") setRows((old) => old.map((row, index) => ({ ...row, amount: amounts[index] ?? row.amount }))); setStrategy(next); if (next === "keep") setRows((old) => old.map((row) => ({ ...row, amount: (() => { const item = project.planItems.find((entry) => entry.id === row.id); return item ? item.amount : row.amount; })() }))); }
   function move(index: number, offset: number) { setRows((old) => { const destination = index + offset; if (destination < 0 || destination >= old.length) return old; const copy = [...old]; [copy[index], copy[destination]] = [copy[destination], copy[index]]; return copy; }); }
   function handleDragEnd(event: DragEndEvent) {
@@ -255,7 +261,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const zeroMoney = projectMoneyText(BigInt(0), digits);
   const allocationMessage = addGuidance ? "" : allocationPercent ? overAmount !== zeroMoney ? t("builder.allocationOver", { percent: allocationPercent, amount: money(overAmount) }) : remainder !== zeroMoney ? t(allowUnscheduled ? "builder.allocationUnderAllowed" : "builder.allocationUnder", { percent: allocationPercent, amount: money(remainder) }) : t("builder.allocationBalanced", { percent: allocationPercent }) : "";
   const allocationTone = overAmount !== zeroMoney ? "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]" : remainder !== zeroMoney ? "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]" : "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]";
-  const rowCopy: RowCopy = { actions: t("builder.paymentActions"), amount: t("movements.amount"), differentDate: t("planning.differentExpectedDate"), drag: "", dueDate: t("planning.dueDate"), expectedDate: t("planning.expectedDate"), moveDown: t("builder.moveDown"), moveUp: t("builder.moveUp"), name: t("builder.paymentName"), percentage: t("builder.percentage"), remove: t("builder.remove") };
+  const rowCopy: RowCopy = { actions: t("builder.paymentActions"), amount: t("movements.amount"), differentDate: t("planning.differentExpectedDate"), drag: "", dueDate: t("planning.dueDate"), expectedDate: t("planning.expectedDate"), moveDown: t("builder.moveDown"), moveUp: t("builder.moveUp"), name: t("builder.paymentName"), percentage: t("builder.percentage"), remove: t("builder.remove"), note: t("builder.clientNote") };
 
   return <FinanceActionForm action={async (state, form) => { form.set("plan", JSON.stringify({ ...payload, reason: current ? form.get("reason") : t("builder.initialReason") })); return saveFinanceProject(state, form); }} label={t(current ? "builder.saveRevision" : "planning.save")} cancelLabel={t("planning.cancel")} onCancel={onSaved} disabled={!valid} onSaved={onSaved} onPending={onPending} className="min-w-0" fieldsetClassName="min-w-0" actionsClassName="sticky bottom-0 z-20 flex justify-end gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-6">
     <input type="hidden" name="intent" value="plan"/>
@@ -267,7 +273,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     </div>
     <section className="space-y-3 border-t border-[var(--ui-border)] px-4 py-5 sm:px-6" aria-labelledby="payment-schedule-heading">
       <h3 id="payment-schedule-heading" className="font-semibold text-[var(--ui-text)]">{t("builder.schedule")}</h3>
-      {protectedItems.length ? <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2.5 text-sm"><p className="flex items-center gap-2 font-medium text-[var(--ui-text)]"><LockKeyhole aria-hidden="true" className="size-4 shrink-0"/>{t("builder.protectedHelp")}</p><ul className="mt-2 divide-y divide-[var(--ui-border)]">{protectedItems.map((item) => <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2 first:pt-0 last:pb-0"><span className="min-w-0 truncate text-[var(--ui-text-secondary)]">{item.description}</span><span className="ui-numeric font-medium text-[var(--ui-text)]">{money(item.amount)}</span></li>)}</ul></div> : null}
+      {protectedItems.length ? <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2.5 text-sm"><p className="flex items-center gap-2 font-medium text-[var(--ui-text)]"><LockKeyhole aria-hidden="true" className="size-4 shrink-0"/>{t("builder.protectedHelp")}</p><ul className="mt-2 divide-y divide-[var(--ui-border)]">{protectedItems.map((item) => <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2 first:pt-0 last:pb-0"><span className="min-w-0 truncate text-[var(--ui-text-secondary)]">{item.description}</span><span className="ui-numeric font-medium text-[var(--ui-text)]">{money(item.amount)}</span><Input aria-label={t("builder.clientNote")} placeholder={t("builder.clientNote")} value={protectedNotes.find((note) => note.id === item.id)?.clientNote ?? ""} maxLength={300} className="col-span-2 h-9 text-xs" onChange={(event) => setProtectedNotes((notes) => notes.map((note) => note.id === item.id ? { ...note, clientNote: event.target.value } : note))}/></li>)}</ul></div> : null}
       <AnimatedFormContent isOpen={protectedItems.length > 0}><FormField label={t("builder.strategy")} className="max-w-xl"><Select aria-label={t("builder.strategy")} value={strategy} onValueChange={selectStrategy} size="compact"><SelectItem value="redistribute">{t("builder.redistribute")}</SelectItem><SelectItem value="keep">{t("builder.keep")}</SelectItem><SelectItem value="manual">{t("builder.manual")}</SelectItem></Select></FormField></AnimatedFormContent>
       <div className="flex flex-wrap items-center gap-2" aria-label={t("builder.templates")}>{projectPaymentTemplates.map((percentages) => { const key = percentages.join("/"), isSelected = selectedTemplate === key; return <Button key={key} type="button" variant="outline" aria-pressed={isSelected} className={cn("min-h-11 px-3 sm:min-h-9", isSelected && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => applyTemplate(percentages)}>{percentages.join(" / ")}{percentages.length === 1 ? "%" : ""}</Button>; })}<Button type="button" variant="outline" aria-pressed={selectedTemplate === "custom"} className={cn("min-h-11 px-3 sm:min-h-9", selectedTemplate === "custom" && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => selectStrategy("manual")}>{t("builder.custom")}</Button><Button type="button" variant="ghost" className="min-h-11 px-2 text-[var(--ui-text-secondary)] sm:ml-auto sm:min-h-9" onClick={() => { setRows([]); setStrategy("manual"); setAllowUnscheduled(true); setAddGuidance(false); }}>{t("builder.scheduleLater")}</Button></div>
       <div data-template-transition><AnimatedFormContent isOpen><div className="space-y-3">

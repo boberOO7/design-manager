@@ -15,7 +15,7 @@ const projectPagePath = new URL("../../app/(app)/projects/[projectId]/page.tsx",
 describe("compact project creation contract", () => {
   it("uses one shared ordered form and omits manual project code entry", async () => {
     const source = await readFile(formPath, "utf8");
-    const fields = ["project_name", "project_type", "project_type_custom", "client_name", "country_code", "city_search", "city", "city_geonames_id", "total_area_m2", "priority", "start_date", "due_date", "description"];
+    const fields = ["project_name", "project_type", "project_type_custom", "client_name", "country_code", "city_search", "city", "city_geonames_id", "site_address", "total_area_m2", "priority", "start_date", "due_date", "description"];
     const positions = fields.map((field) => source.indexOf(`name=\"${field}\"`));
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -48,7 +48,7 @@ describe("compact project creation contract", () => {
     expect(editAction).toContain('project.status === "completed"');
     expect(editAction).toContain('getTranslations("ProjectForm")');
     expect(editAction).not.toContain("Please correct the highlighted fields.");
-    for (const field of ["name", "project_type", "project_type_custom", "country_code", "city", "city_geonames_id", "client_name", "description", "total_area_m2", "priority", "start_date", "due_date"]) {
+    for (const field of ["name", "project_type", "project_type_custom", "country_code", "city", "city_geonames_id", "site_address", "client_name", "description", "total_area_m2", "priority", "start_date", "due_date"]) {
       expect(context).toContain(`${field}: project.${field}`);
     }
   });

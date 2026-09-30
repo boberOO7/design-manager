@@ -11,7 +11,8 @@ export const projectPlanSchema = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/), area: z.union([planningAmount,z.literal("")]).default(""), rate: z.union([planningAmount,z.literal("")]).default(""),
   reason: z.string().trim().min(1).max(2000), allowUnscheduled: z.boolean(),
   known: z.array(z.object({ id: z.uuid(), version: z.number().int().positive(), protected: z.boolean() })),
-  items: z.array(z.object({ id: z.union([z.uuid(), z.literal("")]), name: z.string().trim().min(1).max(2000), amount: planningAmount, dueDate: date, expectedDate: date })),
+  protectedNotes: z.array(z.object({ id: z.uuid(), clientNote: z.string().trim().max(300) })).default([]),
+  items: z.array(z.object({ id: z.union([z.uuid(), z.literal("")]), name: z.string().trim().min(1).max(2000), clientNote: z.string().trim().max(300).default(""), percentage: z.union([z.string().regex(/^\d{1,3}(?:\.\d{1,4})?$/), z.literal("")]).default(""), amount: planningAmount, dueDate: date, expectedDate: date })),
 }).refine(v => (v.vatRate === null) === (v.priceBasis === null)).refine(v => v.pricingMethod !== "area" || (planningAmount.safeParse(v.area).success && planningAmount.safeParse(v.rate).success));
 export type ProjectPlanInput = z.infer<typeof projectPlanSchema>;
 export const projectPaymentTemplates = [[100], [50, 50], [30, 50, 20], [25, 25, 25, 25]] as const;
@@ -112,4 +113,12 @@ export function projectReferenceValue(amount: string, rate: string, digits: numb
   const product = projectMoneyUnits(amount, digits) * projectMoneyUnits(rate, rateDigits);
   const divisor = BigInt(10) ** BigInt(digits + rateDigits);
   return projectMoneyText((product * BigInt(10) ** BigInt(reportingDigits) + divisor / BigInt(2)) / divisor, reportingDigits);
+}
+
+export function projectPaymentDefaultKey(percentages: readonly number[], index: number) {
+  const template = percentages.join("/");
+  if (template === "100") return "projectPayment";
+  if (template === "50/50") return index === 0 ? "advance" : "finalPayment";
+  if (template === "30/50/20") return (["planningStage", "visualizationStage", "documentationStage"] as const)[index];
+  return "paymentNumber";
 }

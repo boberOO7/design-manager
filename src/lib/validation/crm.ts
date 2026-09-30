@@ -56,6 +56,7 @@ export const crmLeadSchema = z.object({
   expected_project_type: z.union([z.literal(""), z.enum(PROJECT_TYPE_KEYS)]).optional().default(""),
   expected_project_type_custom: optionalText(100),
   city: optionalText(160),
+  site_address: optionalText(500),
   city_geonames_id: z.union([z.literal(""), z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER)]).optional().default(""),
   country_code: z.string().trim().refine((value) => value === "__legacy__" || isCountryCode(value)),
   approximate_area: z.union([z.literal(""), z.coerce.number().min(0).max(9999999999)]).optional().default(""),

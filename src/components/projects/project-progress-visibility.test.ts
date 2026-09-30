@@ -20,7 +20,7 @@ describe("project progress visibility", () => {
       isArchived: false,
       project: {
         id: "project", name: "Example", project_code: null, project_type: null,
-        project_type_custom: null, city: null, city_geonames_id: null,
+        project_type_custom: null, city: null, city_geonames_id: null, site_address: null,
         country_code: "UA", client_name: null, description: null, due_date: null,
         priority: "normal", start_date: "2026-05-01", total_area_m2: 0,
       },

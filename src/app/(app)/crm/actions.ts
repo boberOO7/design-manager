@@ -101,6 +101,7 @@ export async function saveLead(leadId: string | null, _state: CrmActionState, fo
     expected_project_type: nullable(value.expected_project_type),
     expected_project_type_custom: value.expected_project_type === "other" ? nullable(value.expected_project_type_custom) : null,
     city: nullable(value.city),
+    site_address: nullable(value.site_address),
     city_geonames_id: value.city_geonames_id === "" ? null : value.city_geonames_id,
     country: preservesLegacyCountry ? legacyLead?.country ?? null : null,
     country_code: value.country_code === "__legacy__" ? null : value.country_code,

@@ -61,6 +61,7 @@ async function createProjectRecord(
       country_code: project.country_code,
       city: project.city || null,
       city_geonames_id: project.city_geonames_id ?? null,
+      site_address: project.site_address || null,
       client_name: project.client_name || null,
       description: project.description || null,
       total_area_m2: project.total_area_m2,

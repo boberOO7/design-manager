@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowUpRight, ChevronDown, History } from "lucide-react";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -25,6 +26,7 @@ type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinancePl
   displayCurrency: FinanceDisplayCurrency; conversions: Record<string, { gross: string | null; net: string | null }>;
   project: FinanceProjectData; stream: typeof projectStreams[number]; today: string; page: number; creditPage: number; filter: string;
 };
+const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5";
 
 function TermsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => void; onPending: (v: boolean) => void }) {
@@ -63,6 +65,7 @@ function MonthsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => 
 }
 
 export function ProjectFinanceWorkspace(props: Props) {
+  const [proposalOpen, setProposalOpen] = useState(false);
   const t = useTranslations("Finance"), locale = useLocale();
   const [editor, setEditor] = useState<"design" | "supervision" | "months" | null>(null), [historyOpen,setHistoryOpen]=useState(false), [pending, setPending] = useState(false);
   const terms = props.project.terms.find((v) => v.stream === props.stream);
@@ -88,6 +91,7 @@ export function ProjectFinanceWorkspace(props: Props) {
     <nav aria-label={t("project.streamNavigation")} className="grid grid-cols-2 gap-1 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] p-1.5 text-sm sm:flex sm:flex-wrap">{projectStreams.map((stream) => <Link key={stream} href={`/projects/${props.project.projectId}?view=finance&stream=${stream}`} aria-current={stream === props.stream ? "page" : undefined} className={`flex min-h-11 items-center justify-center rounded-[var(--ui-radius-control)] border border-transparent px-3 py-2 text-center text-[var(--ui-text-secondary)] transition-colors duration-[220ms] hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none aria-[current=page]:border-[var(--ui-border-strong)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--ui-text)] ${stream === "expenses" ? "col-span-2 border-t border-[var(--ui-border)] sm:ml-auto sm:border-t-0 sm:border-l" : ""}`}>{t(`project.streams.${stream}`)}</Link>)}</nav>
     {props.stream !== "expenses" && (props.stream === "design" || props.stream === "supervision" || props.project.totals.some((v) => v.stream === props.stream)) ? <section className={`${panel} space-y-3`} aria-label={t("project.summary")}>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{t("project.summary")}</h2><div className="flex flex-wrap items-center gap-2"><DisplayCurrencySelect value={props.displayCurrency} />
+        {props.stream === "design" ? <Button variant="outline" onClick={() => setProposalOpen(true)}>{t("proposal.action")}</Button> : null}
         {props.stream === "design" || props.stream === "supervision" ? <Button variant={props.stream==="design"?"default":"outline"} onClick={() => setEditor(props.stream === "design" ? "design" : "supervision")}>{t(props.stream === "design" ? "project.editAgreement" : "project.editSupervision")}</Button> : null}
         {props.project.termHistory.some((term)=>term.stream===props.stream) ? <Button size="sm" variant="outline" className="size-10 p-0" aria-label={t("project.history")} title={t("project.history")} onClick={()=>setHistoryOpen(true)}><History aria-hidden="true" className="size-4"/></Button> : null}
         {props.stream === "supervision" && props.project.termHistory.some((term)=>term.mode==="monthly") ? <Button variant="outline" onClick={() => setEditor("months")}>{t("project.generate")}</Button> : null}
@@ -121,6 +125,7 @@ export function ProjectFinanceWorkspace(props: Props) {
     </section> : null}
     <div id="project-payments"><FinanceExpectedWorkspace {...props} items={items} project={{ ...props.project, stream: props.stream, today: props.today }}/></div>
     <Dialog isOpen={historyOpen} onRequestClose={()=>setHistoryOpen(false)} title={t("project.history")} closeLabel={t("movements.close")} className="sm:max-w-[34rem]"><div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5"><ul className="mt-4 space-y-3">{props.project.termHistory.filter((v) => v.stream === props.stream).map((v) => <li key={v.id}><p className="font-medium">{t(`project.streams.${v.stream}`)} · {t("project.revision", { version: v.revision })} · {v.amount ? money(v.amount, v.currency) : t(`project.modes.${v.mode}`)}{v.price_basis ? ` · ${t(v.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>{v.vat_rate !== null ? <p className="text-xs text-[var(--ui-text-secondary)]">{v.amount === null ? `${t("builder.vat")} ${v.vat_rate}%` : t("project.vatBreakdown", { net: money(v.net_amount, v.currency), vat: money(v.vat_amount, v.currency), gross: money(v.gross_amount, v.currency) })}</p> : null}{v.revenue_tax_rate !== null ? <p className="text-xs text-[var(--ui-text-secondary)]">{revenueTaxEstimate(v.revenue_tax_rate, v.net_amount, v.currency)}</p> : null}<p className="text-xs text-[var(--ui-text-muted)]">{formatDateOnly(v.created_at.slice(0, 10), locale)}{v.effective_from ? ` · ${formatDateOnly(v.effective_from, locale)}` : ""}</p>{props.project.planRevisions.filter(p=>p.terms_id===v.id&&p.pricing_method==="area").map(p=><p key={p.terms_id} className="text-xs text-[var(--ui-text-secondary)]">{t("builder.areaSummary",{area:p.area_snapshot??0,rate:rateMoney(p.rate_per_m2,v.currency)})}</p>)}<p className="mt-1 whitespace-pre-wrap">{v.reason}</p></li>)}</ul></div></Dialog>
+    {proposalOpen ? <ProposalEditor projectId={props.project.projectId} onClose={() => setProposalOpen(false)}/> : null}
     <Dialog className={editor==="design"?"sm:!max-w-[70rem]":undefined} isOpen={editor !== null} onRequestClose={() => setEditor(null)} closeDisabled={pending} title={t(editor === "months" ? "project.generate" : editor === "supervision" ? "project.editSupervision" : "project.editAgreement")} closeLabel={t("movements.close")}>
       <div className={`min-h-0 overflow-y-auto overscroll-contain ${editor==="design"?"":"p-4 sm:p-6"}`}>{editor === "design" ? <ProjectValueBuilder project={props.project} currencies={props.currencies} reportingCurrency={props.settings?.base_currency??"UAH"} onSaved={()=>setEditor(null)} onPending={setPending}/> : editor === "months" ? <MonthsForm data={props} onSaved={() => setEditor(null)} onPending={setPending}/> : editor ? <TermsForm data={props} onSaved={() => setEditor(null)} onPending={setPending}/> : null}</div>
     </Dialog>

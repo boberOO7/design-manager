@@ -652,6 +652,7 @@ export type Database = {
           project_id: string | null
           request_description: string | null
           responsible_admin_id: string | null
+          site_address: string | null
           source: string | null
           status: Database["public"]["Enums"]["crm_lead_status"]
           studio_id: string
@@ -684,6 +685,7 @@ export type Database = {
           project_id?: string | null
           request_description?: string | null
           responsible_admin_id?: string | null
+          site_address?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["crm_lead_status"]
           studio_id: string
@@ -716,6 +718,7 @@ export type Database = {
           project_id?: string | null
           request_description?: string | null
           responsible_admin_id?: string | null
+          site_address?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["crm_lead_status"]
           studio_id?: string
@@ -1525,6 +1528,7 @@ export type Database = {
           amount: number
           category_id: string
           certainty: string
+          client_note: string | null
           commitment: string
           created_at: string
           created_by: string
@@ -1537,6 +1541,7 @@ export type Database = {
           is_established: boolean
           net_amount: number
           price_basis: string | null
+          schedule_percentage: number | null
           studio_id: string
           updated_at: string
           vat_amount: number
@@ -1547,6 +1552,7 @@ export type Database = {
           amount: number
           category_id: string
           certainty: string
+          client_note?: string | null
           commitment: string
           created_at?: string
           created_by: string
@@ -1559,6 +1565,7 @@ export type Database = {
           is_established?: boolean
           net_amount: number
           price_basis?: string | null
+          schedule_percentage?: number | null
           studio_id: string
           updated_at?: string
           vat_amount: number
@@ -1569,6 +1576,7 @@ export type Database = {
           amount?: number
           category_id?: string
           certainty?: string
+          client_note?: string | null
           commitment?: string
           created_at?: string
           created_by?: string
@@ -1581,6 +1589,7 @@ export type Database = {
           is_established?: boolean
           net_amount?: number
           price_basis?: string | null
+          schedule_percentage?: number | null
           studio_id?: string
           updated_at?: string
           vat_amount?: number
@@ -2283,6 +2292,64 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_project_terms"
             referencedColumns: ["studio_id", "id", "project_id"]
+          },
+        ]
+      }
+      finance_project_proposals: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          pdf: string
+          project_id: string
+          request_id: string
+          revision: number
+          snapshot: Json
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          pdf: string
+          project_id: string
+          request_id: string
+          revision: number
+          snapshot: Json
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          pdf?: string
+          project_id?: string
+          request_id?: string
+          revision?: number
+          snapshot?: Json
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_proposals_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_proposals_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
           },
         ]
       }
@@ -4020,6 +4087,7 @@ export type Database = {
           project_type: string | null
           project_type_custom: string | null
           show_progress: boolean
+          site_address: string | null
           start_date: string
           status: string
           studio_id: string
@@ -4045,6 +4113,7 @@ export type Database = {
           project_type?: string | null
           project_type_custom?: string | null
           show_progress?: boolean
+          site_address?: string | null
           start_date: string
           status?: string
           studio_id: string
@@ -4070,6 +4139,7 @@ export type Database = {
           project_type?: string | null
           project_type_custom?: string | null
           show_progress?: boolean
+          site_address?: string | null
           start_date?: string
           status?: string
           studio_id?: string
@@ -4201,31 +4271,43 @@ export type Database = {
       }
       studios: {
         Row: {
+          business_address: string | null
           created_at: string
+          email: string | null
           id: string
           leaderboard_bonuses_enabled: boolean
           leaderboard_visible_to_employees: boolean
           name: string
+          phone: string | null
           updated_at: string
           vacation_visible_to_employees: boolean
+          website: string | null
         }
         Insert: {
+          business_address?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           leaderboard_bonuses_enabled?: boolean
           leaderboard_visible_to_employees?: boolean
           name: string
+          phone?: string | null
           updated_at?: string
           vacation_visible_to_employees?: boolean
+          website?: string | null
         }
         Update: {
+          business_address?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           leaderboard_bonuses_enabled?: boolean
           leaderboard_visible_to_employees?: boolean
           name?: string
+          phone?: string | null
           updated_at?: string
           vacation_visible_to_employees?: boolean
+          website?: string | null
         }
         Relationships: []
       }
@@ -5515,6 +5597,7 @@ export type Database = {
           amount: number | null
           category_id: string | null
           certainty: string | null
+          client_note: string | null
           commitment: string | null
           context_label: string | null
           contractor_id: string | null
@@ -5536,6 +5619,7 @@ export type Database = {
           price_basis: string | null
           project_id: string | null
           remaining_amount: number | null
+          schedule_percentage: number | null
           settled_amount: number | null
           source: string | null
           stream: string | null
@@ -6273,6 +6357,10 @@ export type Database = {
           term_id: string
         }[]
       }
+      get_finance_proposal_source: {
+        Args: { p_project_id: string; p_studio_id: string }
+        Returns: Json
+      }
       get_personal_task_ids: {
         Args: never
         Returns: {
@@ -6533,6 +6621,18 @@ export type Database = {
         }
         Returns: string
       }
+      save_finance_project_proposal: {
+        Args: {
+          p_actor_id: string
+          p_pdf: string
+          p_presentation: Json
+          p_project_id: string
+          p_request_id: string
+          p_source: Json
+          p_studio_id: string
+        }
+        Returns: string
+      }
       save_finance_project_terms: {
         Args: {
           p_input: Json
@@ -6581,6 +6681,16 @@ export type Database = {
           p_template_id?: string
         }
         Returns: string
+      }
+      save_studio_contact_details: {
+        Args: {
+          p_business_address: string
+          p_email: string
+          p_phone: string
+          p_studio_id: string
+          p_website: string
+        }
+        Returns: undefined
       }
       save_studio_vacation_policy: {
         Args: {

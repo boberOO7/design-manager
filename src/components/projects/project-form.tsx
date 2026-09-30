@@ -28,6 +28,7 @@ export type ProjectFormDefaults = {
   project_type?: string;
   project_type_custom?: string;
   start_date?: string;
+  site_address?: string;
   total_area_m2?: number;
 };
 
@@ -143,6 +144,10 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
       <CityCombobox className="mt-2" countryCode={metadata.countryCode} describedBy={fieldError("city") ? "city-error" : undefined} invalid={Boolean(fieldError("city"))} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} />
       <input type="hidden" name="city" value={metadata.city} />
       <input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} />
+    </Field>
+
+    <Field className="md:col-span-2" error={fieldError("site_address")} id="site_address" label={t("siteAddress")}>
+      <input name="site_address" maxLength={500} defaultValue={defaultValues.site_address} className={inputClassName} autoComplete="street-address" {...errorAttributes("site_address")} />
     </Field>
 
     <Field error={fieldError("total_area_m2")} id="total_area_m2" label={t("totalArea")} required>

@@ -171,7 +171,7 @@ export async function getFinanceProject(projectId:string) {
   }
   const planRevisions = await client.from("finance_project_plan_revisions").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).in("terms_id",termHistory.filter(v=>v.stream==="design").slice(0,50).map(v=>v.id));
   if(planRevisions.error) throw new Error("Unable to load pricing revisions.",{cause:planRevisions.error});
-  const planQuery = () => client.from("finance_project_plan_items").select("id,version,amount::text,currency,description,due_date,expected_payment_date,has_settlement_history,settled_amount::text,net_amount::text,vat_amount::text,vat_rate,price_basis").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("id");
+  const planQuery = () => client.from("finance_project_plan_items").select("id,version,amount::text,currency,description,due_date,expected_payment_date,has_settlement_history,client_note,schedule_percentage,settled_amount::text,net_amount::text,vat_amount::text,vat_rate,price_basis").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("id");
   const firstPlanPage = await planQuery().range(0,999);
   if(firstPlanPage.error) throw new Error("Unable to load project payment schedule.",{cause:firstPlanPage.error});
   const planItems=firstPlanPage.data;

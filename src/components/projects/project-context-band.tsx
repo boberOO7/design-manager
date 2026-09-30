@@ -28,6 +28,7 @@ export type ProjectContextProject = {
   project_type_custom: string | null;
   city: string | null;
   city_geonames_id: number | null;
+  site_address: string | null;
   country_code: string;
   client_name: string | null;
   description: string | null;
@@ -115,7 +116,7 @@ function ProjectContextActions({ archiveAction, canManage, isArchived, onConfigu
   if (!canManage) return null;
   return <div className={styles.actions}>
     {isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : <>
-      {status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}
+      {status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, site_address: project.site_address ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}
       <ProjectLifecycleControls projectId={project.id}>
         {onConfigureStages ? <PopoverPrimitive.Close asChild><button type="button" onClick={onConfigureStages} className={styles.menuAction}><SlidersHorizontal aria-hidden="true" className="size-4" />{stages("configure")}</button></PopoverPrimitive.Close> : null}
         <div className={styles.archiveAction}><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: project.name })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div>

@@ -33,6 +33,7 @@ describe("project form metadata", () => {
     expect(projectSchema.safeParse({ ...project, country_code: "ZZ" }).success).toBe(false);
     expect(projectSchema.safeParse({ ...project, city: "x".repeat(101) }).success).toBe(false);
     expect(projectSchema.safeParse({ ...project, city_geonames_id: "not-an-id" }).success).toBe(false);
+    expect(projectSchema.safeParse({ ...project, site_address: "x".repeat(501) }).success).toBe(false);
   });
 
   it("accepts a null project type but requires a country", () => {
@@ -56,8 +57,9 @@ describe("project form metadata", () => {
     formData.set("project_name", project.name);
     formData.set("city", project.city);
     formData.set("city_geonames_id", String(project.city_geonames_id));
+    formData.set("site_address", "Kyiv, Khreshchatyk 1");
     formData.set("project_type_custom", "Auto showroom");
-    expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city, city_geonames_id: String(project.city_geonames_id), project_type_custom: "Auto showroom" });
+    expect(getProjectFormInput(formData)).toMatchObject({ name: project.name, city: project.city, city_geonames_id: String(project.city_geonames_id), site_address: "Kyiv, Khreshchatyk 1", project_type_custom: "Auto showroom" });
     expect(getProjectFormInput(formData)).not.toHaveProperty("project_name");
   });
 

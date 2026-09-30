@@ -36,6 +36,7 @@ export type ProjectValidationMessages = {
   countryInvalid: string;
   dateInvalid: string;
   descriptionTooLong: string;
+  siteAddressTooLong: string;
   dueDateBeforeStart: string;
   nameRequired: string;
   nameTooLong: string;
@@ -57,6 +58,7 @@ export function getProjectValidationMessages(translate: (key: ProjectValidationM
     countryInvalid: translate("validation.countryInvalid"),
     dateInvalid: translate("validation.dateInvalid"),
     descriptionTooLong: translate("validation.descriptionTooLong"),
+    siteAddressTooLong: translate("validation.siteAddressTooLong"),
     dueDateBeforeStart: translate("validation.dueDateBeforeStart"),
     nameRequired: translate("validation.nameRequired"),
     nameTooLong: translate("validation.nameTooLong"),
@@ -86,6 +88,7 @@ function createProjectFields(messages: ProjectValidationMessages) {
     country_code: z.string({ error: messages.countryInvalid }).trim().refine(isCountryCode, messages.countryInvalid),
     city: z.string().trim().max(100, messages.cityTooLong).optional(),
     city_geonames_id: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number({ error: messages.cityGeoNamesInvalid }).int(messages.cityGeoNamesInvalid).positive(messages.cityGeoNamesInvalid).max(Number.MAX_SAFE_INTEGER, messages.cityGeoNamesInvalid).optional()),
+    site_address: z.string().trim().max(500, messages.siteAddressTooLong).optional(),
     client_name: z.string().trim().max(200, messages.clientNameTooLong).optional(),
     description: z.string().trim().max(5000, messages.descriptionTooLong).optional(),
     total_area_m2: z.coerce.number({ error: messages.areaInvalid }).positive(messages.areaPositive),
@@ -148,6 +151,7 @@ const projectFormFields: Record<ProjectFormField, true> = {
   project_type: true,
   project_type_custom: true,
   start_date: true,
+  site_address: true,
   total_area_m2: true,
 };
 
@@ -177,6 +181,7 @@ export function getProjectFormInput(formData: FormData) {
     country_code: getOptionalString(formData, "country_code"),
     city: getOptionalString(formData, "city"),
     city_geonames_id: getOptionalString(formData, "city_geonames_id"),
+    site_address: getOptionalString(formData, "site_address"),
     client_name: getOptionalString(formData, "client_name"),
     description: getOptionalString(formData, "description"),
     total_area_m2: getOptionalString(formData, "total_area_m2"),

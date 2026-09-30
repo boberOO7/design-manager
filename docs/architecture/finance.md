@@ -234,6 +234,24 @@ or notifications containing private data.
 
 ## Project agreements, income, and expenses
 
+- Commercial proposals on Project Finance use the saved design agreement’s Gross
+  client total and the same active payment rows, names, percentages and compact
+  client notes. Project/site address is carried from CRM Lead through project
+  create/edit; linked Lead company/email/phone remain the contact source.
+  The leading number in the project name becomes the proposal number; revisions
+  retain the first generated number. Presentation fields may change for a proposal,
+  while prices and schedule remain Finance-owned. `finance_project_proposals`
+  stores an immutable client-only JSON snapshot and the generated PDF bytes.
+  Reusable business contacts live on `studios` (website, email, phone, business
+  address); guarded admin saves supply new drafts, and each proposal snapshots
+  the actual contact values used.
+  Guarded creation checks current source data under Finance/project locks, supports
+  request retries, and applies Finance-admin RLS. Only the trusted server renderer
+  may persist PDF bytes; its verified actor is rechecked in SQL; saved downloads never regenerate
+  from live data. React PDF creates A4 documents with embedded Ukrainian fonts;
+  PDF.js previews those same bytes. Internal revenue-tax/P&L estimates are excluded.
+
+
 - Project Finance presents project value, collected, outstanding receivables and
   future planned payments separately. Unscheduled contract value is an actionable
   exception, not dated forecast cash. The next project payment uses expected date

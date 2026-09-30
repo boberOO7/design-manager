@@ -48,6 +48,11 @@ describe("CRM lead source selection", () => {
     expect(crmLeadSchema.safeParse({ ...validLead, source: "", phone: "+44 20 1234 5678" }).success).toBe(true);
   });
 
+  it("keeps the optional site address bounded and trimmed", () => {
+    expect(crmLeadSchema.parse({ ...validLead, source: "", site_address: "  Kyiv, Khreshchatyk 1  " }).site_address).toBe("Kyiv, Khreshchatyk 1");
+    expect(crmLeadSchema.safeParse({ ...validLead, source: "", site_address: "x".repeat(501) }).success).toBe(false);
+  });
+
   it("validates Candidate phone and profile link values before persistence", () => {
     const candidate = { ...validLead, full_name: "Candidate", target_position: "Architect", source: "" };
     expect(crmCandidateSchema.safeParse({ ...candidate, phone: "+380 (67) 123" }).success).toBe(false);
