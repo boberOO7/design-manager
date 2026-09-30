@@ -2597,6 +2597,7 @@
     "finalized": "Finalized",
     "baseCurrency": "Reporting currency",
     "currency": "Account currency",
+    "displayCurrency": "Display currency",
     "reportingCurrencyGroup": "Reporting currency",
     "commonCurrencies": "Common currencies",
     "otherCurrencies": "Other currencies",

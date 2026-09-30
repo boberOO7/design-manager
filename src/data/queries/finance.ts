@@ -185,6 +185,43 @@ export async function getFinanceProject(projectId:string) {
   const nextPayment = [...(nextExpected.data??[]),...(nextDue.data??[])].sort((a,b)=>(a.expected_payment_date??a.due_date??"").localeCompare(b.expected_payment_date??b.due_date??""))[0] ?? null;
   return { projectId,nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
+export async function getFinanceProjectRecordedRates(projectId: string, stream: string) {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return new Map<string, { rate: string; date: string; base: string }>();
+  const client = await createClient();
+  const ids: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const page = await client.from("finance_project_items").select("expected_item_id")
+      .eq("studio_id", admin.studio_id).eq("project_id", projectId).eq("stream", stream).range(offset, offset + 999);
+    if (page.error || !page.data) throw new Error("Unable to load project payment valuation links.", { cause: page.error });
+    ids.push(...page.data.map(row => row.expected_item_id));
+    if (page.data.length < 1000) break;
+  }
+  const movements = new Set<string>();
+  for (let start = 0; start < ids.length; start += 50) {
+    for (let offset = 0; ; offset += 1000) {
+      const page = await client.from("finance_allocations").select("movement_id")
+        .eq("studio_id", admin.studio_id).in("expected_item_id", ids.slice(start, start + 50)).range(offset, offset + 999);
+      if (page.error || !page.data) throw new Error("Unable to load project payment valuations.", { cause: page.error });
+      page.data.forEach(row => movements.add(row.movement_id));
+      if (page.data.length < 1000) break;
+    }
+  }
+  const rates = new Map<string, { rate: string; date: string; base: string }>();
+  const movementIds = [...movements];
+  for (let start = 0; start < movementIds.length; start += 50) {
+    const page = await client.from("finance_movement_entries")
+      .select("currency,reporting_currency,fx_rate::text,fx_effective_date")
+      .eq("studio_id", admin.studio_id).eq("entry_role", "primary").in("movement_id", movementIds.slice(start, start + 50));
+    if (page.error || !page.data) throw new Error("Unable to load project recorded FX.", { cause: page.error });
+    for (const row of page.data) {
+      const previous = rates.get(row.currency);
+      if (!previous || row.fx_effective_date > previous.date) rates.set(row.currency, { rate: row.fx_rate, date: row.fx_effective_date, base: row.reporting_currency });
+    }
+  }
+  return rates;
+}
+
 export type FinanceProjectData=NonNullable<Awaited<ReturnType<typeof getFinanceProject>>>;
 
 export async function getFinanceSchedules() {

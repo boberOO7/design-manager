@@ -2597,6 +2597,7 @@
     "finalized": "Зафіксовано",
     "baseCurrency": "Валюта звітності",
     "currency": "Валюта рахунку",
+    "displayCurrency": "Валюта відображення",
     "reportingCurrencyGroup": "Валюта звітності",
     "commonCurrencies": "Основні валюти",
     "otherCurrencies": "Інші валюти",

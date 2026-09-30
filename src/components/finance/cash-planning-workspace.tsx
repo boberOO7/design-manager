@@ -19,11 +19,14 @@ import { Dialog } from "@/components/ui/dialog";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectGroup, SelectItem } from "@/components/ui/select";
 import { PlanningForecast } from "./planning-forecast";
+import { DisplayCurrencySelect } from "./display-currency-select";
+import type { FinanceOverview } from "@/lib/finance-overview";
+import type { FinanceDisplayCurrency } from "@/lib/finance-display-currency";
 import { Panel } from "@/components/ui/panel";
 import { budgetYearTotal } from "@/lib/finance-forecast";
 import { FinanceActionForm } from "./finance-action-form";
 
-type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinanceForecastData & { year: number; invalidFx: boolean };
+type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinanceForecastData & { year: number; invalidFx: boolean; displayOverview: FinanceOverview | null; displayCurrency: FinanceDisplayCurrency };
 const tableClass = "w-full text-left text-sm [&_th]:whitespace-nowrap [&_th]:p-3 [&_th]:font-medium [&_td]:p-3 [&_tr]:border-b [&_tr]:border-[var(--ui-border)]";
 const detailTableClass = `${tableClass} [&_thead]:bg-[var(--ui-surface-muted)] [&_thead]:text-xs [&_thead]:text-[var(--ui-text-secondary)] [&_tbody_tr:last-child]:border-0 [&_td]:tabular-nums`;
 const disclosureClass = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 sm:px-4 [&>button]:min-h-14 [&>button]:text-[var(--ui-text)]";
@@ -67,8 +70,10 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const [snapshotPending, setSnapshotPending] = useState(false);
   const snapshotTrigger = useRef<HTMLButtonElement>(null);
   const [comparisonOpen, setComparisonOpen] = useState(params.get("detail") === "comparison");
-  const report = data.report;
-  const currency = data.settings?.base_currency ?? "UAH";
+  const baseReport = data.report;
+  const report = mode === "forecast" ? data.displayOverview?.forecast ?? baseReport : baseReport;
+  const baseCurrency = data.settings?.base_currency ?? "UAH";
+  const currency = mode === "forecast" ? data.displayCurrency : baseCurrency;
   const amount = (value: string | null, code?: string) => {
     const catalogCurrency = data.currencies.find(c => c.code === (code ?? currency));
     return value === null || !catalogCurrency ? "—" : formatFinanceAmount(value, catalogCurrency, locale, code ? "currency" : "decimal");
@@ -84,7 +89,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
     group.items.push(issue);
     return groups;
   }, [] as { reason: ForecastReport["issues"][number]["reason"]; items: ForecastReport["issues"] }[]) ?? [];
-  const foreignCurrencies = [...new Set([...(report?.fx.filter(f => f.source !== "identity").map(f => f.currency) ?? []), ...(report?.items.filter(i => i.currency !== currency).map(i => i.currency) ?? []), ...(report?.issues.filter(i => i.reason === "missing_fx").map(i => i.currency) ?? [])])].sort();
+  const foreignCurrencies = [...new Set([...(baseReport?.fx.filter(f => f.source !== "identity").map(f => f.currency) ?? []), ...(baseReport?.items.filter(i => i.currency !== baseCurrency).map(i => i.currency) ?? []), ...(baseReport?.issues.filter(i => i.reason === "missing_fx").map(i => i.currency) ?? [])])].sort();
   const navigate = (key: string, value: string) => startTransition(() => router.replace(href(key, value), { scroll: false }));
   const reportingCurrency = data.currencies.find(c => c.code === currency);
   const closeSnapshot = () => { if (!snapshotPending) setSnapshotSurface(null); };
@@ -93,7 +98,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
     <FormField label={t("snapshotName")}><Input name="name" required maxLength={120} data-dialog-initial-focus /></FormField>
   </FinanceActionForm> : null;
   return <div className="w-full min-w-0 space-y-6" aria-busy={pending}>
-    <PageHeader title={t("title")} description={t("description")} />
+    <PageHeader title={t("title")} description={t("description")} action={<DisplayCurrencySelect value={data.displayCurrency} />} />
     {data.invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("invalidManualFx")}</p> : null}
     {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : <>
       <nav aria-label={t("modesLabel")} className="flex flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:w-fit">
@@ -115,7 +120,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
           {snapshotSurface === "dialog" ? <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">{snapshotForm}</div> : null}
         </Dialog>
       </div>
-      {data.overview && reportingCurrency ? <PlanningForecast data={data.overview} currency={reportingCurrency} /> : null}
+      {data.displayOverview ? <PlanningForecast data={data.displayOverview} currency={data.currencies.find(c => c.code === data.displayCurrency) ?? reportingCurrency!} /> : null}
       {attentionCount ? <section aria-labelledby="forecast-attention-heading" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-4 py-3">
         <h2 id="forecast-attention-heading" className="font-medium">{t("attention", { count: attentionCount })}</h2>
         <p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("incompletePlain")}</p>
@@ -156,12 +161,12 @@ export function FinanceCashPlanningWorkspace(data: Props) {
             {!report.items.length ? <p className="p-3 text-sm text-[var(--ui-text-secondary)]">{t("empty")}</p> : null}
           </div>
         </AnimatedDisclosure>
-        <AnimatedDisclosure className={`rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] px-3 sm:px-4 [&>button]:min-h-14 ${report.issues.some(issue => issue.reason === "missing_fx") ? "border border-[var(--ui-warning-text)] [&>button]:text-[var(--ui-warning-text)]" : ""}`} title={`${t("fxTitle")}${foreignCurrencies.length ? ` · ${foreignCurrencies.join(", ")} → ${currency}` : ` · ${currency}`}`}>
+        <AnimatedDisclosure className={`rounded-[var(--ui-radius-panel)] bg-[var(--ui-surface-muted)] px-3 sm:px-4 [&>button]:min-h-14 ${report.issues.some(issue => issue.reason === "missing_fx") ? "border border-[var(--ui-warning-text)] [&>button]:text-[var(--ui-warning-text)]" : ""}`} title={`${t("fxTitle")}${foreignCurrencies.length ? ` · ${foreignCurrencies.join(", ")} → ${baseCurrency}` : ` · ${baseCurrency}`}`}>
           <div className="max-w-3xl space-y-4 pb-4 text-sm">
             <p className="text-xs leading-relaxed text-[var(--ui-text-secondary)]">{t("fxHelp")}</p>
-            <ul className="divide-y divide-[var(--ui-border)]">{report.fx.map(f => <li key={f.currency} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"><span className="font-medium tabular-nums">{f.currency} → {currency}: {f.rate}</span><span className="text-xs text-[var(--ui-text-secondary)]">{t(`fxSources.${f.source}`)} · {f.effectiveDate}</span></li>)}</ul>
+            <ul className="divide-y divide-[var(--ui-border)]">{report.fx.map(f => <li key={f.currency} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"><span className="font-medium tabular-nums">{f.currency} → {baseCurrency}: {f.rate}</span><span className="text-xs text-[var(--ui-text-secondary)]">{t(`fxSources.${f.source}`)} · {f.effectiveDate}</span></li>)}</ul>
             {foreignCurrencies.length ? <form method="get" className="space-y-3"><input type="hidden" name="year" value={data.year} /><input type="hidden" name="horizon" value={report.horizon} /><input type="hidden" name="scenario" value={report.scenario} />
-              <div className="grid gap-3 sm:grid-cols-2">{foreignCurrencies.map(code => <FormField key={code} label={t("manualRate", { currency: code, reporting: currency })}><Input name={`fx_${code}`} inputMode="decimal" defaultValue={report.fx.find(f => f.currency === code && f.source === "manual")?.rate ?? ""} /></FormField>)}</div>
+              <div className="grid gap-3 sm:grid-cols-2">{foreignCurrencies.map(code => <FormField key={code} label={t("manualRate", { currency: code, reporting: baseCurrency })}><Input name={`fx_${code}`} inputMode="decimal" defaultValue={report.fx.find(f => f.currency === code && f.source === "manual")?.rate ?? ""} /></FormField>)}</div>
               <Button type="submit" variant="outline">{t("applyFx")}</Button>
             </form> : null}
           </div>

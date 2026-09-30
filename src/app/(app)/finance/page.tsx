@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getFinanceData } from "@/data/queries/finance";
-import { getFinanceOverview } from "@/data/queries/finance-overview";
+import { getFinanceDisplayOverview, getFinanceOverview } from "@/data/queries/finance-overview";
+import { getFinanceDisplayCurrency } from "@/data/queries/finance-display-currency";
 import { FinanceWorkspace } from "@/components/finance/finance-workspace";
 import { FinanceOverviewWorkspace } from "@/components/finance/finance-overview";
 import { parseFinanceReportParams } from "@/lib/finance-overview";
@@ -18,7 +19,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const today = getKyivDateOnly();
   if (!foundation.settings?.finalized_at) return <FinanceWorkspace {...foundation} today={today} />;
   const context = parseFinanceReportParams(await searchParams, today);
-  const data = await getFinanceOverview(context);
+  const [data, displayCurrency] = await Promise.all([getFinanceOverview(context), getFinanceDisplayCurrency()]);
   if (!data) redirect("/dashboard");
-  return <FinanceOverviewWorkspace key={`${data.period}-${data.forecast.horizon}-${data.forecast.scenario}`} data={data} categories={foundation.categories} currencies={foundation.currencies} invalidFx={context.invalidFx} />;
+  const displayData = await getFinanceDisplayOverview(data, displayCurrency);
+  if (!displayData) redirect("/dashboard");
+  return <FinanceOverviewWorkspace key={`${data.period}-${data.forecast.horizon}-${data.forecast.scenario}`} data={data} displayData={displayData} displayCurrency={displayCurrency} categories={foundation.categories} currencies={foundation.currencies} invalidFx={context.invalidFx} />;
 }
