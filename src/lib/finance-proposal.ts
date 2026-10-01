@@ -27,6 +27,7 @@ export const studioContactDetailsSchema = z.object({
   website: z.string().trim().max(300).pipe(z.union([z.literal(""), z.url({protocol: /^https?$/})])),
   email: z.string().trim().max(254).pipe(z.union([z.literal(""), z.email()])),
   phone: z.string().trim().max(100), businessAddress: z.string().trim().max(500),
+  contactPerson: z.string().trim().max(200).optional(),
 });
 export type StudioContactDetails = z.infer<typeof studioContactDetailsSchema>;
 // Studio storage and proposal snapshots retain URLs; only editor/API input accepts bare domains.
@@ -38,8 +39,10 @@ export const proposalPresentationSchema = z.object({
   contact: z.string().trim().max(1000), address: z.string().trim().max(1000), intro: z.string().trim().max(1000),
   studioContacts: z.string().trim().max(300).optional(),
   designVariant: proposalDesignVariantSchema.optional(),
+  // Presentation override; the generated snapshot freezes it in studioContactDetails.
+  studioContactPerson: z.string().trim().max(200).optional(),
 });
-export const proposalSnapshotSchema = proposalPresentationSchema.extend({
+export const proposalSnapshotSchema = proposalPresentationSchema.omit({ studioContactPerson: true }).extend({
   schemaVersion: z.literal(1), projectId: z.uuid(), projectNumber: z.string().regex(/^\d+$/),
   revision: z.number().int().positive(), date: z.iso.date(), area: decimal.nullable(),
   clientRatePerM2: decimal.nullable().optional(),
@@ -62,10 +65,16 @@ export function resolveProposalDesignVariant(snapshot: Pick<ProposalSnapshot, "d
 
 // Parsing copies the allowlisted client data, never retaining mutable source references.
 export function createProposalSnapshot(source: unknown, presentation: unknown): ProposalSnapshot {
-  return proposalSnapshotSchema.parse({ ...proposalSnapshotSchema.parse(source), ...proposalPresentationSchema.parse(presentation) });
+  const snapshot = proposalSnapshotSchema.parse(source);
+  const { studioContactPerson, ...fields } = proposalPresentationSchema.parse(presentation);
+  return proposalSnapshotSchema.parse({ ...snapshot, ...fields,
+    ...(studioContactPerson !== undefined && snapshot.studioContactDetails ? {
+      studioContactDetails: { ...snapshot.studioContactDetails, contactPerson: studioContactPerson },
+    } : {}),
+  });
 }
 export function proposalPresentation(source: ProposalSnapshot): ProposalPresentation {
-  return proposalPresentationSchema.parse(source);
+  return proposalPresentationSchema.parse({ ...source, studioContactPerson: source.studioContactDetails?.contactPerson });
 }
 export function proposalFilename(snapshot: Pick<ProposalSnapshot, "projectNumber" | "revision">) {
   return `SPACE-${snapshot.projectNumber}-r${snapshot.revision}.pdf`;

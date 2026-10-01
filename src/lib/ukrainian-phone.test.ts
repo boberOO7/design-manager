@@ -34,6 +34,13 @@ describe("Ukrainian contractor phone numbers", () => {
     expect(contractorSchema.parse({ category: "Освітлення", name: "Світло", phone: "+380 (67) 123-45-67" }).phone).toBe("+380671234567");
   });
 
+  it("accepts international contractor numbers without treating their digits as UA", () => {
+    for (const phone of ["+44 (20) 1234-5678", "+299123456", "0044 20 1234 5678"]) {
+      expect(contractorSchema.parse({ category: "Освітлення", name: "Світло", phone }).phone).toBe(phone);
+    }
+    expect(contractorSchema.safeParse({ category: "Освітлення", name: "Світло", phone: "+44 text" }).success).toBe(false);
+  });
+
   it("uses the UA mask without capturing foreign Lead phone values", () => {
     expect(shouldFormatAsUkrainianPhone("0671234567", "UA", true)).toBe(true);
     expect(shouldFormatAsUkrainianPhone("+44 20 1234 5678", "UA", true)).toBe(false);

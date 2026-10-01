@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Svg, Path, StyleSheet } from "@react-pdf/renderer";
+import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { projectDiscountAmounts } from "@/lib/finance-project-plan";
 import { parseProposalProjectName, proposalPriceBasis, studioWebsiteDisplay, type ProposalSnapshot } from "@/lib/finance-proposal";
 
@@ -40,7 +41,7 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
   const percent = (value: string) => new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 4 }).format(Number(value));
   const details = s.studioContactDetails;
   const digitalContacts = details ? [studioWebsiteDisplay(details.website), details.email].filter(Boolean) : (s.studioContacts?.split(" · ").filter(Boolean).map(studioWebsiteDisplay) ?? []);
-  const physicalContacts = details ? [details.phone, details.businessAddress].filter(Boolean) : [];
+  const physicalContacts = details ? [details.contactPerson, phoneDisplay(details.phone), details.businessAddress].filter(Boolean) : [];
   const priceBasis = proposalPriceBasis(s);
   const discount = s.pricing && Number(s.pricing.discountAmount) > 0 ? s.pricing : null;
   const discountPercent = discount ? projectDiscountAmounts(discount.listAmount, discount.discountType, discount.discountValue, s.minorUnits).percentage : null;
@@ -59,7 +60,7 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
         {s.clientName || s.contact ? <View style={styles.contextColumn}>
           <Text style={styles.label}>Клієнт</Text>
           {s.clientName ? <Text style={styles.client}>{s.clientName}</Text> : null}
-          {s.contact ? <Text style={styles.detail}>{s.contact}</Text> : null}
+          {s.contact ? <Text style={styles.detail}>{phoneDisplay(s.contact)}</Text> : null}
         </View> : null}
         {s.address || s.area ? <View style={styles.contextColumn}>
           <Text style={styles.label}>Об’єкт / адреса</Text>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Document, Page, View, Text, Svg, Path, StyleSheet } from "@react-pdf/renderer";
+import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { projectDiscountAmounts } from "@/lib/finance-project-plan";
 import { parseProposalProjectName, proposalPriceBasis, studioWebsiteDisplay, type ProposalSnapshot, type ProposalConceptVariant } from "@/lib/finance-proposal";
 
@@ -99,7 +100,7 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
   const discountPercent = discount ? projectDiscountAmounts(discount.listAmount, discount.discountType, discount.discountValue, s.minorUnits).percentage : null;
   const details = s.studioContactDetails;
   const digitalContacts = details ? [studioWebsiteDisplay(details.website), details.email].filter(Boolean) : (s.studioContacts?.split(" · ").filter(Boolean).map(studioWebsiteDisplay) ?? []);
-  const physicalContacts = details ? [details.phone, details.businessAddress].filter(Boolean) : [];
+  const physicalContacts = details ? [details.contactPerson, phoneDisplay(details.phone), details.businessAddress].filter(Boolean) : [];
   const facts = [
     ...(discount ? [
       { label: `До знижки${s.vatRate !== null ? " (з ПДВ)" : ""}`, value: money(discount.listGross) },
@@ -129,7 +130,7 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
         {s.clientName || s.contact ? <View style={[styles.contextColumn, quiet ? layouts.quietContextColumn : {}]}>
           {!quiet ? <Text style={styles.label}>Клієнт</Text> : null}
           {s.clientName ? <Text style={styles.client}>{s.clientName}</Text> : null}
-          {s.contact ? <Text style={styles.detail}>{s.contact}</Text> : null}
+          {s.contact ? <Text style={styles.detail}>{phoneDisplay(s.contact)}</Text> : null}
         </View> : null}
         {s.address || s.area ? <View style={[styles.contextColumn, quiet ? layouts.quietContextColumn : {}]}>
           {!quiet ? <Text style={styles.label}>Об’єкт / адреса</Text> : null}

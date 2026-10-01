@@ -9,7 +9,7 @@ export async function PATCH(request: Request) {
   const parsed = studioContactDetailsInputSchema.safeParse(await request.json().catch(()=>null));
   if (!parsed.success) return NextResponse.json({error:"invalid"},{status:400});
   const contacts=parsed.data, client=await createClient();
-  const {error}=await client.rpc("save_studio_contact_details",{p_studio_id:admin.studio_id,p_website:contacts.website,p_email:contacts.email,p_phone:contacts.phone,p_business_address:contacts.businessAddress});
+  const {error}=await client.rpc("save_studio_contact_details",{p_studio_id:admin.studio_id,p_website:contacts.website,p_email:contacts.email,p_phone:contacts.phone,p_business_address:contacts.businessAddress,p_contact_person:contacts.contactPerson});
   if(error) return NextResponse.json({error:"save"},{status:400});
   return NextResponse.json(contacts,{headers:{"Cache-Control":"no-store"}});
 }

@@ -49,3 +49,42 @@ export function normalizeUkrainianPhone(value: string) {
   const digits = removeCountryPrefix(trimmed.replace(/\D/g, ""));
   return digits.length === 9 ? `+380${digits}` : undefined;
 }
+
+/** Display complete UA numbers without masking/truncating international or legacy values. */
+export function phoneDisplay(value: string) {
+  const trimmed = value.trim(), digits = trimmed.replace(/\D/g, "");
+  if (!ukrainianPhoneCharacters.test(trimmed) ||
+    (trimmed.startsWith("+") && !digits.startsWith("380")) ||
+    (trimmed.startsWith("00") && !digits.startsWith("00380"))) return value;
+  const normalized = normalizeUkrainianPhone(trimmed.startsWith("00") ? trimmed.slice(2) : trimmed);
+  return normalized ? formatUkrainianPhone(normalized).replace("+380 (", "+38 (0") : value;
+}
+
+/** Shared entry mask. Incomplete country prefixes and foreign numbers stay editable. */
+export function formatPhoneInput(value: string, countryCode = "UA", preserveInternational = true) {
+  const allowed = value.replace(/[^\d+()\s-]/g, "").trimStart();
+  const raw = (allowed.startsWith("+") ? "+" : "") + allowed.replace(/\+/g, "");
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return raw.startsWith("+") ? "+" : "";
+  if (countryCode !== "UA" || (preserveInternational && (
+    (raw.startsWith("+") && !digits.startsWith("380")) ||
+    (digits.startsWith("00") && !digits.startsWith("00380")))) ||
+    digits === "0" || digits === "3" || digits === "38") return raw;
+  const local = digits.startsWith("00380") ? digits.slice(5) : digits.startsWith("380") ? digits.slice(3) : digits.startsWith("0") ? digits.slice(1) : digits;
+  // Do not truncate a pasted number that exceeds the UA mask.
+  return local.length > 9 ? raw : local ? formatUkrainianPhone(`+380${local}`) : "+380";
+}
+
+/** Format recognized complete UA values without rewriting foreign or legacy content. */
+export function phoneInputDisplay(value: string, countryCode = "UA") {
+  return countryCode === "UA" ? phoneDisplay(value).replace(/^\+38 \(0(?=\d{2}\) \d{3}-\d{2}-\d{2}$)/u, "+380 (") : value;
+}
+
+export function phoneInputEdit(raw: string, position: number, countryCode = "UA", preserveInternational = true) {
+  const value = formatPhoneInput(raw, countryCode, preserveInternational);
+  // Anchor the caret to remaining digits rather than moving it to the end.
+  const remaining = raw.slice(position).replace(/\D/g, "").length;
+  const positions = [...value.matchAll(/\d/g)].map(match => match.index);
+  const caret = remaining ? positions[Math.max(0, positions.length - remaining)] ?? 0 : value.length;
+  return { value, caret };
+}

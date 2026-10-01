@@ -4281,6 +4281,7 @@ export type Database = {
       studios: {
         Row: {
           business_address: string | null
+          contact_person: string | null
           created_at: string
           email: string | null
           id: string
@@ -4294,6 +4295,7 @@ export type Database = {
         }
         Insert: {
           business_address?: string | null
+          contact_person?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -4307,6 +4309,7 @@ export type Database = {
         }
         Update: {
           business_address?: string | null
+          contact_person?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -6697,6 +6700,7 @@ export type Database = {
       save_studio_contact_details: {
         Args: {
           p_business_address: string
+          p_contact_person?: string
           p_email: string
           p_phone: string
           p_studio_id: string
@@ -7205,3 +7209,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -30,8 +30,11 @@ export function createContractorSchema(messages: ContractorValidationMessages) {
   ),
   phone: z.string().trim().max(32, messages.phoneTooLong).optional().transform((value, context) => {
     if (!value) return undefined;
-    const phone = normalizeUkrainianPhone(value);
+    const compact = value.replace(/[()\s-]/g, "").replace(/^00/u, "+");
+    const international = compact.startsWith("+") && !compact.startsWith("+380");
+    const phone = international ? undefined : normalizeUkrainianPhone(compact);
     if (phone) return phone;
+    if (international && z.e164().safeParse(compact).success) return value;
     context.addIssue({ code: "custom", message: messages.phoneInvalid });
     return z.NEVER;
   }),
