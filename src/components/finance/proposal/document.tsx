@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, Svg, Path, StyleSheet } from "@react-pdf/renderer";
-import { proposalPriceBasis, type ProposalSnapshot } from "@/lib/finance-proposal";
+import { projectDiscountAmounts } from "@/lib/finance-project-plan";
+import { parseProposalProjectName, proposalPriceBasis, studioWebsiteDisplay, type ProposalSnapshot } from "@/lib/finance-proposal";
 
 const mm = (value: number) => value * 72 / 25.4;
 const styles = StyleSheet.create({
@@ -13,10 +14,14 @@ const styles = StyleSheet.create({
   client: { fontSize: 12, fontWeight: 500, marginBottom: 3 },
   detail: { color: "#57534e", marginBottom: 3 },
   intro: { marginTop: mm(5), maxWidth: mm(150), fontSize: 9.5, color: "#57534e", lineHeight: 1.5 },
-  basis: { fontSize: 10, color: "#57534e", marginTop: 5 },
-  total: { backgroundColor: "#f5f5f4", padding: mm(4.5), marginTop: mm(6), marginBottom: mm(6) },
-  totalValue: { fontSize: 30, fontWeight: 500, lineHeight: 1.25, marginTop: 3 },
-  vat: { fontSize: 9, color: "#57534e", marginTop: 4 },
+  total: { marginTop: mm(8), marginBottom: mm(8) },
+  priceBreakdown: { flexDirection: "row", gap: mm(10), marginBottom: mm(5) },
+  priceContext: { maxWidth: "50%", flexShrink: 1 },
+  priceLabel: { fontSize: 9, color: "#57534e", marginBottom: 3 },
+  priceAmount: { fontSize: 12, color: "#57534e" },
+  totalLabel: { fontSize: 10.5 },
+  totalValue: { fontSize: 34, fontWeight: 500, lineHeight: 1.15, marginTop: 3 },
+  calculationContext: { marginTop: mm(3), gap: mm(1), fontSize: 9, color: "#57534e" },
   section: { fontSize: 13, fontWeight: 500, marginBottom: mm(3) },
   columns: { flexDirection: "row", fontSize: 9, color: "#57534e", paddingBottom: mm(3), borderBottom: "1 solid #1c1917" },
   row: { flexDirection: "row", paddingVertical: mm(3.5), borderBottom: "0.5 solid #d6d3d1" },
@@ -25,16 +30,21 @@ const styles = StyleSheet.create({
   note: { fontSize: 9.5, color: "#57534e", marginTop: 4, lineHeight: 1.4 },
   percentage: { width: "11%", textAlign: "right" },
   amount: { width: "28%", textAlign: "right", fontWeight: 500 },
-  footer: { marginTop: "auto", borderTop: "0.5 solid #d6d3d1", paddingTop: mm(3), fontSize: 8.5, color: "#57534e" },
-  contacts: { fontSize: 8, lineHeight: 1.5 },
+  footer: { marginTop: "auto", borderTop: "0.5 solid #d6d3d1", paddingTop: mm(4), flexDirection: "row", gap: mm(8), fontSize: 8.5, color: "#57534e" },
+  footerBrand: { width: mm(30), fontSize: 11, fontWeight: 500, color: "#1c1917" },
+  contacts: { flexGrow: 1, flexBasis: 0, gap: mm(1), lineHeight: 1.4 },
 });
 
 export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: ProposalSnapshot; logoPath: string }) {
   const money = (amount: string) => `${new Intl.NumberFormat("uk-UA", { minimumFractionDigits: s.minorUnits, maximumFractionDigits: s.minorUnits }).format(Number(amount))} ${s.currency}`;
   const percent = (value: string) => new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 4 }).format(Number(value));
-  const studioContacts = s.studioContactDetails ? [s.studioContactDetails.website, s.studioContactDetails.email, s.studioContactDetails.phone].filter(Boolean).join(" · ") : s.studioContacts;
+  const details = s.studioContactDetails;
+  const digitalContacts = details ? [studioWebsiteDisplay(details.website), details.email].filter(Boolean) : (s.studioContacts?.split(" · ").filter(Boolean).map(studioWebsiteDisplay) ?? []);
+  const physicalContacts = details ? [details.phone, details.businessAddress].filter(Boolean) : [];
   const priceBasis = proposalPriceBasis(s);
-  const title = s.projectTitle.replace(/^\d+[\s_–—-]+/u, "");
+  const discount = s.pricing && Number(s.pricing.discountAmount) > 0 ? s.pricing : null;
+  const discountPercent = discount ? projectDiscountAmounts(discount.listAmount, discount.discountType, discount.discountValue, s.minorUnits).percentage : null;
+  const title = parseProposalProjectName(s.projectTitle).title;
   return <Document title={`Комерційна пропозиція № ${s.projectNumber} · ${title}`} author="SPACE" language="uk-UA">
     <Page size="A4" style={styles.page}>
       <View fixed style={styles.header}>
@@ -58,10 +68,16 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
         </View> : null}
       </View>
       <View wrap={false} style={styles.total}>
-        <Text>Вартість проєкту</Text>
+        {discount ? <View style={styles.priceBreakdown}>
+          <View style={styles.priceContext}><Text style={styles.priceLabel}>Вартість до знижки{s.vatRate !== null ? " (з ПДВ)" : ""}</Text><Text style={styles.priceAmount}>{money(discount.listGross)}</Text></View>
+          <View style={styles.priceContext}><Text style={styles.priceLabel}>Знижка {percent(discountPercent ?? "0")}%</Text><Text style={styles.priceAmount}>{money(discount.discountGross)}</Text></View>
+        </View> : null}
+        <Text style={styles.totalLabel}>Вартість проєкту</Text>
         <Text style={styles.totalValue}>{money(s.gross)}</Text>
-        {priceBasis ? <Text style={styles.basis}>{priceBasis}</Text> : null}
-        {s.vatRate !== null ? <Text style={styles.vat}>У т.ч. ПДВ {percent(s.vatRate)}% — {money(s.vatAmount)}</Text> : null}
+        <View style={styles.calculationContext}>
+          {priceBasis ? <Text>{priceBasis}</Text> : null}
+          {s.vatRate !== null ? <Text>ПДВ {percent(s.vatRate)}% включено · {money(s.vatAmount)}</Text> : null}
+        </View>
       </View>
       {s.rows.length ? <View minPresenceAhead={80}><Text style={styles.section}>Графік оплат</Text><View style={styles.columns}><Text style={styles.stage}>Етап / платіж</Text><Text style={styles.percentage}>Частка</Text><Text style={styles.amount}>Сума до сплати</Text></View></View> : null}
       {s.rows.map((row) => <View key={row.id} wrap={false} style={styles.row}>
@@ -69,7 +85,11 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
         <Text style={styles.percentage}>{percent(row.percentage)}%</Text><Text style={styles.amount}>{money(row.gross)}</Text>
       </View>)}
       {s.intro ? <View wrap={false} style={styles.intro}><Text>{s.intro}</Text></View> : null}
-      <View fixed wrap={false} style={styles.footer}><Text style={styles.contacts}>{studioContacts ? `SPACE · ${studioContacts}` : `SPACE · Проєкт № ${s.projectNumber}`}</Text>{s.studioContactDetails?.businessAddress ? <Text style={styles.contacts}>{s.studioContactDetails.businessAddress}</Text> : null}</View>
+      <View fixed wrap={false} style={styles.footer}>
+        <Text style={styles.footerBrand}>SPACE</Text>
+        {digitalContacts.length ? <View style={styles.contacts}>{digitalContacts.map(value => <Text key={value}>{value}</Text>)}</View> : null}
+        {physicalContacts.length ? <View style={styles.contacts}>{physicalContacts.map(value => <Text key={value}>{value}</Text>)}</View> : null}
+      </View>
     </Page>
   </Document>;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectAreaValue, projectBasisToGross, projectClientPaymentSchedule, projectGrossToBasis, projectMoneyText, projectMoneyUnits, projectPaymentAmounts, projectPaymentTemplates, projectPlanSchema, projectReferenceValue, projectRevenueTaxAmounts, projectScheduleVatAmounts, projectVatAmounts } from "./finance-project-plan";
+import { projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectBasisToGross, projectClientPaymentSchedule, projectGrossToBasis, projectMoneyText, projectMoneyUnits, projectPaymentAmounts, projectPaymentTemplates, projectPlanSchema, projectReferenceValue, projectRevenueTaxAmounts, projectScheduleVatAmounts, projectVatAmounts } from "./finance-project-plan";
 import { projectTermsSchema } from "./finance-projects";
 
 describe("Project value and schedule previews", () => {
@@ -109,5 +109,42 @@ describe("Project value and schedule previews", () => {
     expect(projectTermsSchema.safeParse({...terms,vatRate:"",priceBasis:"net"}).success).toBe(false);
     expect(projectPlanSchema.safeParse({...base,pricingMethod:"area",area:"",rate:"20"}).success).toBe(false);
     expect(projectPlanSchema.safeParse({...base,items:[{...base.items[0],amount:"0"}]}).success).toBe(false);
+  });
+});
+
+
+describe("Project discounts before VAT", () => {
+  it("calculates percentage and fixed discounts with currency rounding", () => {
+    expect(projectDiscountAmounts("10560", "percentage", "10", 2)).toEqual({ discount: "1056.00", agreed: "9504.00", percentage: "10.0000" });
+    expect(projectDiscountAmounts("10560", "fixed", "1056", 2)).toEqual({ discount: "1056.00", agreed: "9504.00", percentage: "10.0000" });
+    expect(projectDiscountAmounts("100.05", "percentage", "10", 2).discount).toBe("10.01");
+    expect(projectDiscountAmounts("10560", "none", "0", 2).agreed).toBe("10560.00");
+    expect(projectDiscountAmounts("3", "fixed", "1", 2).percentage).toBe("33.3333");
+    for (const [type,value] of [["percentage","100"],["fixed","10560"],["fixed","0.001"],["none","1"]] as const) expect(() => projectDiscountAmounts("10560",type,value,2)).toThrow();
+  });
+  it("discounts Net before excluded VAT and Gross before included VAT", () => {
+    const net = projectVatAmounts(projectDiscountAmounts("10560","percentage","10",2).agreed,"23","net",2);
+    const gross = projectVatAmounts(projectDiscountAmounts("12988.80","percentage","10",2).agreed,"23","gross",2);
+    expect(net).toEqual({net:"9504.00",vat:"2185.92",gross:"11689.92"});
+    expect(gross).toEqual(net);
+    expect(projectVatAmounts(projectDiscountAmounts("12988.80","fixed","1298.88",2).agreed,"23","gross",2)).toEqual(net);
+    expect(projectRevenueTaxAmounts(net.net,"6",2)).toEqual({tax:"570.24",afterTax:"8933.76"});
+  });
+  it("allocates every preset and custom schedule from discounted client Gross", () => {
+    for (const basis of ["net","gross"] as const) {
+      const discounted = projectDiscountAmounts(basis === "net" ? "10560" : "12988.80","percentage","10",2);
+      const price = projectVatAmounts(discounted.agreed,"23",basis,2);
+      for (const shares of [...projectPaymentTemplates,[10,15,20,25,30]]) {
+        const schedule = projectClientPaymentSchedule(price.gross,shares.map(String),"23",basis,2);
+        expect(schedule.grossAmounts.reduce((sum,value)=>sum+projectMoneyUnits(value,2),BigInt(0))).toBe(projectMoneyUnits(price.gross,2));
+      }
+    }
+    expect(projectRescalePayments(["333.33","333.33","333.33"],"999.99","999.99",2)).toEqual(["333.33","333.33","333.33"]);
+    expect(projectRescalePayments(["333.33","333.33","333.33"],"999.99","999.98",2)).toEqual(["333.33","333.32","333.33"]);
+    expect(projectRescalePayments(["300","500","200"],"1000","900",2)).toEqual(["270.00","450.00","180.00"]);
+    expect(projectRescalePayments(["300","300"],"1000","900",2)).toEqual(["270.00","270.00"]);
+    // Keep the entire protected 369 Gross, not only its settled 1 Gross.
+    const remaining = projectClientPaymentSchedule("738",["75","25"],"23","net",2);
+    expect(remaining.grossAmounts).toEqual(["553.50","184.50"]);
   });
 });

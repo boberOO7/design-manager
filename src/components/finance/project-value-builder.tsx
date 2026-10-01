@@ -4,7 +4,7 @@ import { DragDropProvider, PointerSensor, type DragEndEvent } from "@dnd-kit/rea
 import { useSortable } from "@dnd-kit/react/sortable";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowDown, ArrowUp, Ellipsis, GripVertical, LockKeyhole, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { getProjectReferenceRate, saveFinanceProject } from "@/app/(app)/finance/project-actions";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animate
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCurrencySelect } from "./currency-select";
 import { formatFinanceAmount, type FinanceCurrency } from "@/lib/finance";
-import { projectAreaValue, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectPaymentDefaultKey, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput } from "@/lib/finance-project-plan";
+import { projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectPaymentDefaultKey, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput, type ProjectDiscountType } from "@/lib/finance-project-plan";
 import { cn } from "@/lib/utils";
 import type { FinanceProjectData } from "@/data/queries/finance";
 
@@ -37,8 +37,8 @@ function RateChips({ label, choices, value, onChange }: {
   </div></div>;
 }
 
-export function FinanceVatControls({ amount, vatRate, priceBasis, digits, money, onRateChange, onBasisChange, labels }: {
-  amount: string; vatRate: string | null; priceBasis: "net" | "gross" | null; digits: number;
+export function FinanceVatControls({ amount, vatRate, priceBasis, digits, money, onRateChange, onBasisChange, labels, hidePreview = false }: {
+  hidePreview?: boolean; amount: string; vatRate: string | null; priceBasis: "net" | "gross" | null; digits: number;
   money: (amount: string) => string; onRateChange: (rate: string | null) => void; onBasisChange: (basis: "net" | "gross") => void;
   labels: { vat: string; rate: string; custom: string; none: string; basis: string; net: string; gross: string; customRate: string; }
 }) {
@@ -59,7 +59,7 @@ export function FinanceVatControls({ amount, vatRate, priceBasis, digits, money,
     {selection !== "none" ? <button type="button" role="switch" aria-label={labels.basis} aria-checked={priceBasis === "gross"} onClick={() => onBasisChange(priceBasis === "gross" ? "net" : "gross")} className="inline-flex min-h-11 items-center gap-2 rounded-full text-left text-sm font-medium text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
       <span aria-hidden="true" className={cn("relative h-6 w-[3.25rem] shrink-0 rounded-full shadow-inner transition-colors duration-200 motion-reduce:transition-none", priceBasis === "gross" ? "bg-[var(--ui-action-primary)]" : "bg-[var(--ui-surface-strong)]")}><span className={cn("absolute left-1 top-1 size-4 rounded-full shadow-[var(--ui-shadow-panel)] transition-[transform,translate,background-color] duration-200 ease-out motion-reduce:transition-none", priceBasis === "gross" ? "translate-x-7 bg-[var(--ui-action-primary-text)]" : "bg-[var(--ui-action-primary)]")}/></span><span>{labels.basis}</span>
     </button> : null}
-    {preview ? <p aria-live="polite" className="text-xs font-medium text-[var(--ui-text-secondary)]">{preview}</p> : null}
+    {preview && !hidePreview ? <p aria-live="polite" className="text-xs font-medium text-[var(--ui-text-secondary)]">{preview}</p> : null}
   </div>;
 }
 
@@ -132,6 +132,9 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const [method, setMethod] = useState<"fixed" | "area">(pricing?.pricing_method === "area" ? "area" : current ? "fixed" : "area");
   const [currency, setCurrency] = useState(current?.currency ?? reportingCurrency);
   const selected = currencies.find((item) => item.code === currency), digits = selected?.minor_units ?? 2;
+  const discountScheduleBase = useRef<{ context: string; pool: string; amounts: string[] } | null>(null);
+  const [discountType, setDiscountType] = useState<ProjectDiscountType>(current?.discount_type === "percentage" || current?.discount_type === "fixed" ? current.discount_type : "none");
+  const [discountValue, setDiscountValue] = useState(String(current?.discount_value ?? "0"));
   const [value, setValue] = useState(String(current?.amount ?? ""));
   const [vatRate, setVatRate] = useState<string | null>(current?.vat_rate == null ? null : String(current.vat_rate));
   const [priceBasis, setPriceBasis] = useState<"net" | "gross" | null>(current?.price_basis === "net" || current?.price_basis === "gross" ? current.price_basis : null);
@@ -172,11 +175,14 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const money = (amount: string) => selected ? formatFinanceAmount(amount, selected, locale) : amount;
   const vatValid = vatRate === null || (/^\d{1,10}(?:[.,]\d{1,4})?$/.test(vatRate) && Number(vatRate.replace(",", ".")) >= 0 && priceBasis !== null);
   const revenueTaxValid = revenueTaxRate === null || /^\d{1,10}(?:[.,]\d{1,4})?$/.test(revenueTaxRate);
-  let total = "", totalNet = "", totalGross = "", protectedValue = "0", collected = "0", scheduled = "0", remainder = "0", overAmount = "0", allocationPercent = "", amounts: string[] = [], basisAmounts: string[] = [], referenceAmount = "", valid = false, error = "", hasRemainder = false;
+  let discountAmount = "", discountPercentage = "", agreedAmount = "", totalVat = "", total = "", totalNet = "", totalGross = "", protectedValue = "0", collected = "0", scheduled = "0", remainder = "0", overAmount = "0", allocationPercent = "", amounts: string[] = [], basisAmounts: string[] = [], referenceAmount = "", valid = false, error = "", hasRemainder = false;
   let poolUnits = BigInt(0), grossPoolUnits = BigInt(0), scheduledGrossUnits = BigInt(0);
   try {
     total = method === "area" ? projectAreaValue(area, rate, digits) : projectMoneyText(projectMoneyUnits(value, digits), digits);
-    const grossParts = projectVatAmounts(total, vatRate, priceBasis, digits);
+    const discounted = projectDiscountAmounts(total, discountType, discountValue, digits);
+    discountAmount = discounted.discount; discountPercentage = decimalText(projectMoneyUnits(discounted.percentage, 4), 4); agreedAmount = discounted.agreed;
+    const grossParts = projectVatAmounts(agreedAmount, vatRate, priceBasis, digits);
+    totalVat = grossParts.vat;
     totalNet = grossParts.net;
     totalGross = grossParts.gross;
     const contractGrossUnits = projectMoneyUnits(totalGross, digits);
@@ -227,18 +233,50 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     if (reference && currency !== "UAH") referenceAmount = projectReferenceValue(total, reference.rate, digits);
   } catch { error = t("builder.invalidPreview"); }
 
-  const payload = { projectId: project.projectId, revision: current?.revision ?? 0, pricingMethod: method, amount: total, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: project.planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.differentDate ? row.expectedDate : row.dueDate })) };
+  const payload = { projectId: project.projectId, revision: current?.revision ?? 0, pricingMethod: method, amount: total, discountType, discountValue, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: project.planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.differentDate ? row.expectedDate : row.dueDate })) };
 
-  function update(index: number, patch: Partial<Row>) { setAddGuidance(false); setRows((currentRows) => currentRows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row)); }
-  function applyTemplate(percentages: readonly number[]) { setAddGuidance(false); setStrategy("redistribute"); setReserve("0"); setRows((old) => percentages.map((percentage, index) => (() => { const fresh = freshRow(index, percentages.length, String(percentage), percentages); const previous = old[index]; return { ...fresh, ...(previous ? { ...previous, name: previous.name !== previous.defaultName ? previous.name : fresh.name, defaultName: fresh.defaultName } : {}), percentage: String(percentage) }; })())); }
-  function selectStrategy(next: string) { setAddGuidance(false); if (strategy === "redistribute" && next === "manual") setRows((old) => old.map((row, index) => ({ ...row, amount: amounts[index] ?? row.amount }))); setStrategy(next); if (next === "keep") setRows((old) => old.map((row) => ({ ...row, amount: (() => { const item = project.planItems.find((entry) => entry.id === row.id); return item ? item.amount : row.amount; })() }))); }
-  function move(index: number, offset: number) { setRows((old) => { const destination = index + offset; if (destination < 0 || destination >= old.length) return old; const copy = [...old]; [copy[index], copy[destination]] = [copy[destination], copy[index]]; return copy; }); }
+  function changeDiscount(type: ProjectDiscountType, value: string) {
+    const nextValue = type === "none" ? "0" : value;
+    if (strategy !== "redistribute" && rows.length) {
+      const context = JSON.stringify([total, vatRate, priceBasis, currency]);
+      if (discountScheduleBase.current?.context !== context) discountScheduleBase.current = null;
+      if (!discountScheduleBase.current && amounts.length === rows.length && grossPoolUnits > BigInt(0)) {
+        discountScheduleBase.current = { context, pool: projectMoneyText(grossPoolUnits, digits), amounts };
+      }
+      try {
+        const base = discountScheduleBase.current;
+        const discounted = projectDiscountAmounts(total, type, nextValue, digits);
+        const nextGross = projectMoneyUnits(projectVatAmounts(discounted.agreed, vatRate, priceBasis, digits).gross, digits);
+        const protectedGross = protectedItems.reduce((sum, item) => sum + projectMoneyUnits(item.amount, digits), BigInt(0));
+        if (base && nextGross >= protectedGross) {
+          const nextPool = projectMoneyText(nextGross - protectedGross, digits);
+          const storedShares = rows.map(row => row.percentage || "0");
+          const balanced = storedShares.reduce((sum, share) => sum + projectMoneyUnits(share, 4), BigInt(0)) === BigInt(1000000);
+          const reserved = projectMoneyText(projectMoneyUnits(base.pool, digits) - base.amounts.reduce((sum, amount) => sum + projectMoneyUnits(amount, digits), BigInt(0)), digits);
+          const existing = balanced ? projectClientPaymentSchedule(base.pool, storedShares, vatRate, priceBasis, digits, reserved).grossAmounts : [];
+          if (existing.length === base.amounts.length && existing.every((amount, index) => amount === base.amounts[index]) && nextPool !== base.pool) {
+            setReserve(reserved); setStrategy("redistribute"); discountScheduleBase.current = null;
+          } else {
+            const scaled = projectRescalePayments(base.amounts, base.pool, nextPool, digits);
+            setRows(old => old.map((row,index) => ({ ...row, amount: scaled[index] }))); setStrategy("manual");
+          }
+        }
+      } catch { /* Partial discount inputs keep the last valid custom schedule. */ }
+    }
+    setDiscountType(type); setDiscountValue(nextValue); setAddGuidance(false);
+  }
+  function update(index: number, patch: Partial<Row>) { discountScheduleBase.current = null; setAddGuidance(false); setRows((currentRows) => currentRows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row)); }
+  function applyTemplate(percentages: readonly number[]) { discountScheduleBase.current = null; setAddGuidance(false); setStrategy("redistribute"); setReserve("0"); setRows((old) => percentages.map((percentage, index) => (() => { const fresh = freshRow(index, percentages.length, String(percentage), percentages); const previous = old[index]; return { ...fresh, ...(previous ? { ...previous, name: previous.name !== previous.defaultName ? previous.name : fresh.name, defaultName: fresh.defaultName } : {}), percentage: String(percentage) }; })())); }
+  function selectStrategy(next: string) { discountScheduleBase.current = null; setAddGuidance(false); if (strategy === "redistribute" && next === "manual") setRows((old) => old.map((row, index) => ({ ...row, amount: amounts[index] ?? row.amount }))); setStrategy(next); if (next === "keep") setRows((old) => old.map((row) => ({ ...row, amount: (() => { const item = project.planItems.find((entry) => entry.id === row.id); return item ? item.amount : row.amount; })() }))); }
+  function move(index: number, offset: number) { discountScheduleBase.current = null; setRows((old) => { const destination = index + offset; if (destination < 0 || destination >= old.length) return old; const copy = [...old]; [copy[index], copy[destination]] = [copy[destination], copy[index]]; return copy; }); }
   function handleDragEnd(event: DragEndEvent) {
+    discountScheduleBase.current = null;
     const source = String(event.operation.source?.id ?? ""), target = String(event.operation.target?.id ?? "");
     if (!source || !target || source === target) return;
     setRows((old) => { const from = old.findIndex((row) => row.key === source), to = old.findIndex((row) => row.key === target); if (from < 0 || to < 0) return old; const copy = [...old], [moved] = copy.splice(from, 1); copy.splice(to, 0, moved); return copy; });
   }
   function addPayment() {
+    discountScheduleBase.current = null;
     let percentage = "", fullyAllocated = grossPoolUnits > BigInt(0) && scheduledGrossUnits >= grossPoolUnits;
     if (strategy === "redistribute") {
       try { const used = rows.reduce((sum, row) => sum + projectMoneyUnits(row.percentage.trim() || "0", 4), BigInt(0)); const available = BigInt(1000000) - used; const basis = grossPoolUnits - (allowUnscheduled ? projectMoneyUnits(reserve, digits) : BigInt(0)); if (available > BigInt(0) && basis * available / BigInt(1000000) > BigInt(0)) percentage = decimalText(available, 4); fullyAllocated = available === BigInt(0); } catch { fullyAllocated = false; }
@@ -254,9 +292,22 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const reference = referenceState.currency === currency ? referenceState.value : null;
   const referencePending = referenceApplicable && referenceState.currency !== currency;
   const referenceFailed = referenceApplicable && referenceState.currency === currency && referenceState.failed;
-  const referenceLine = referenceApplicable ? <div aria-live="polite" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-normal text-[var(--ui-text-secondary)]">{referenceAmount && reference && reporting ? <span>{t("builder.reference", { amount: formatFinanceAmount(referenceAmount, reporting, locale), date: reference.effectiveDate })}</span> : referencePending ? <span>{t("builder.referenceLoading")}</span> : referenceFailed ? <><span>{t("builder.referenceUnavailable", { currency })}</span><button type="button" className="inline-flex min-h-9 items-center gap-1 rounded px-2 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { setReferenceState({ currency: "", failed: false, value: null }); setReferenceAttempt((attempt) => attempt + 1); }}><RefreshCw className="size-3.5" aria-hidden="true"/>{t("builder.referenceRetry")}</button></> : null}</div> : null;
+  const referenceLine = referenceApplicable ? <div aria-live="polite" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-normal text-[var(--ui-text-secondary)]">{referenceAmount && reference && reporting ? <span>{t("builder.reference", { amount: formatFinanceAmount(referenceAmount, reporting, locale), date: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(reference.effectiveDate)), rate: new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(Number(reference.rate)), currency })}</span> : referencePending ? <span>{t("builder.referenceLoading")}</span> : referenceFailed ? <><span>{t("builder.referenceUnavailable", { currency })}</span><button type="button" className="inline-flex min-h-9 items-center gap-1 rounded px-2 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { setReferenceState({ currency: "", failed: false, value: null }); setReferenceAttempt((attempt) => attempt + 1); }}><RefreshCw className="size-3.5" aria-hidden="true"/>{t("builder.referenceRetry")}</button></> : null}</div> : null;
   const currencyField = project.hasDesignHistory ? <FormField label={t("builder.currencyShort")}><Input aria-label={t("project.currency")} value={currency} readOnly className={compactControl}/></FormField> : <FormField label={t("builder.currencyShort")}><FinanceCurrencySelect name="currency" aria-label={t("project.currency")} className={compactControl} size="compact" currencies={currencies} reportingCurrency={reportingCurrency} value={currency} onValueChange={setCurrency}/></FormField>;
-  const vatControls = <FinanceVatControls amount={total} vatRate={vatRate} priceBasis={priceBasis} digits={digits} money={money} onRateChange={(rate) => { setVatRate(rate); if (rate !== null && !priceBasis) setPriceBasis("net"); else if (rate === null) setPriceBasis(null); }} onBasisChange={setPriceBasis} labels={{ vat: t("builder.vat"), rate: t("builder.vatRate"), custom: t("builder.vatOther"), none: t("builder.vatNone"), basis: t("builder.priceBasis"), net: t("builder.netShort"), gross: t("builder.grossShort"), customRate: t("builder.customRate") }}/>;
+  const vatControls = <FinanceVatControls hidePreview amount={agreedAmount} vatRate={vatRate} priceBasis={priceBasis} digits={digits} money={money} onRateChange={(rate) => { setVatRate(rate); if (rate !== null && !priceBasis) setPriceBasis("net"); else if (rate === null) setPriceBasis(null); }} onBasisChange={setPriceBasis} labels={{ vat: t("builder.vat"), rate: t("builder.vatRate"), custom: t("builder.vatOther"), none: t("builder.vatNone"), basis: t("builder.priceBasis"), net: t("builder.netShort"), gross: t("builder.grossShort"), customRate: t("builder.customRate") }}/>;
+  const discountControls = <div className="space-y-2" data-project-discount>
+    <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,15.25rem)_minmax(0,12rem)]"><RateChips label={t("builder.discount")} value={discountType} choices={[{ value: "none", label: t("builder.discountNone") }, { value: "percentage", label: "%" }, { value: "fixed", label: t("builder.discountFixed") }]} onChange={type => { if (type === "none" || type === "percentage" || type === "fixed") changeDiscount(type, discountValue); }}/>
+    {discountType !== "none" ? <FormField label={t(discountType === "percentage" ? "builder.discountPercent" : "builder.discountAmount")} className={cn("min-w-0", discountType === "percentage" && "sm:max-w-28")}><Input aria-label={t(discountType === "percentage" ? "builder.discountPercent" : "builder.discountAmount")} inputMode="decimal" value={discountValue} onChange={event => changeDiscount(discountType, event.target.value)} className={compactControl}/></FormField> : null}</div>
+    {discountType !== "none" && discountAmount ? <p className="text-xs text-[var(--ui-text-secondary)]" aria-live="polite">{discountType === "percentage" ? `−${money(discountAmount)}` : `${discountPercentage}%`}</p> : null}
+  </div>;
+  const priceSummary = agreedAmount && totalGross ? <div data-price-summary className="min-w-0 self-start lg:pt-7">
+    <AnimatedFormContent isOpen={method === "area"}><p className="ui-numeric mb-4 text-xs text-[var(--ui-text-secondary)]">{area || "—"} m² × {rate || "—"} {currency}/m² = {total ? money(total) : "—"}</p></AnimatedFormContent>
+    <dl data-discount-breakdown={discountType !== "none" ? "" : undefined} aria-live="polite" className="space-y-2 text-sm text-[var(--ui-text-secondary)]">
+      {[[t("builder.listPrice"), money(total)], ...(discountType !== "none" ? [[t("builder.discountWithPercent", { percent: discountPercentage }), `−${money(discountAmount)}`], [`${t("builder.agreedPrice")}${vatRate !== null ? ` (${t(priceBasis === "gross" ? "builder.grossShort" : "builder.netShort")})` : ""}`, money(agreedAmount)]] : priceBasis === "gross" ? [[t("builder.netShort"), money(totalNet)]] : []), ...(vatRate !== null ? [[`${priceBasis === "gross" ? t("builder.vatIncluded") : t("builder.vat")} ${vatRate}%`, money(totalVat)]] : [])].map(([label, amount]) => <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4"><dt>{label}</dt><dd className="ui-numeric text-right">{amount}</dd></div>)}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 pt-2 font-semibold text-[var(--ui-text)]"><dt>{t("project.clientTotal")}</dt><dd className="ui-numeric text-right text-lg">{money(totalGross)}</dd></div>
+    </dl>
+    {referenceLine}
+  </div> : null;
   const revenueTaxControls = <RevenueTaxControls net={totalNet} rate={revenueTaxRate} digits={digits} money={money} onRateChange={setRevenueTaxRate} labels={{ title: t("builder.revenueTax"), none: t("builder.revenueTaxNone"), custom: t("builder.vatOther"), customRate: t("builder.revenueTaxCustomRate"), afterTax: t("builder.afterTax") }}/>;
   const zeroMoney = projectMoneyText(BigInt(0), digits);
   const allocationMessage = addGuidance ? "" : allocationPercent ? overAmount !== zeroMoney ? t("builder.allocationOver", { percent: allocationPercent, amount: money(overAmount) }) : remainder !== zeroMoney ? t(allowUnscheduled ? "builder.allocationUnderAllowed" : "builder.allocationUnder", { percent: allocationPercent, amount: money(remainder) }) : t("builder.allocationBalanced", { percent: allocationPercent }) : "";
@@ -267,18 +318,26 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     <input type="hidden" name="intent" value="plan"/>
     <div className="space-y-4 px-4 py-5 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 id="project-value-heading" className="font-semibold text-[var(--ui-text)]">{t("builder.pricing")}</h3><SegmentedControl ariaLabel={t("builder.pricingMethod")} className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-9" value={method} onValueChange={setMethod} items={[{ value: "area", label: t("builder.perAreaShort") }, { value: "fixed", label: t("builder.fixedShort") }]}/></div>
-      <AnimatedFormContent isOpen={method === "area"}><div className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[8rem_10rem_8rem_minmax(16rem,1fr)] lg:items-end"><FormField label={t("builder.areaShort")}><Input aria-label={t("builder.area")} inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} required={method === "area"} className={compactControl}/></FormField><FormField label={t("builder.rateShort")}><Input aria-label={t("builder.rate")} inputMode="decimal" value={rate} onChange={(event) => setRate(event.target.value)} required={method === "area"} className={compactControl}/></FormField>{currencyField}<div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2 text-sm sm:col-span-3 lg:col-span-1"><p className="ui-numeric text-base font-semibold text-[var(--ui-text)]">{area || "—"} m² × {rate || "—"} {currency}/m² = {total ? money(total) : "—"}</p>{referenceLine}</div></div><div className="max-w-[40rem] space-y-3">{vatControls}{revenueTaxControls}</div></div></AnimatedFormContent>
-      <AnimatedFormContent isOpen={method === "fixed"}><div className="space-y-3"><div className="grid gap-3 sm:grid-cols-[12rem_8rem_minmax(16rem,1fr)] sm:items-end"><FormField label={t("project.contract")}><Input aria-label={t("project.contract")} inputMode="decimal" value={value} onChange={(event) => setValue(event.target.value)} required={method === "fixed"} className={compactControl}/></FormField>{currencyField}<div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2 text-sm"><p className="ui-numeric text-base font-semibold text-[var(--ui-text)]">{total ? money(total) : "—"}</p>{referenceLine}</div></div><div className="max-w-[40rem] space-y-3">{vatControls}{revenueTaxControls}</div></div></AnimatedFormContent>
+      <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-8" data-pricing-layout>
+        <div className="min-w-0 space-y-3" data-pricing-controls>
+          <div>
+            <AnimatedFormContent isOpen={method === "area"}><div className="grid gap-3 sm:grid-cols-[8rem_6.5rem_6rem] sm:items-end"><FormField label={t("builder.areaShort")}><Input aria-label={t("builder.area")} inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} required={method === "area"} className={compactControl}/></FormField><FormField label={t("builder.rateShort")}><Input aria-label={t("builder.rate")} inputMode="decimal" value={rate} onChange={(event) => setRate(event.target.value)} required={method === "area"} className={compactControl}/></FormField>{currencyField}</div></AnimatedFormContent>
+            <AnimatedFormContent isOpen={method === "fixed"}><div className="grid gap-3 sm:grid-cols-[15.25rem_6rem] sm:items-end"><FormField label={t("project.contract")}><Input aria-label={t("project.contract")} inputMode="decimal" value={value} onChange={(event) => setValue(event.target.value)} required={method === "fixed"} className={compactControl}/></FormField>{currencyField}</div></AnimatedFormContent>
+          </div>
+          {discountControls}{vatControls}{revenueTaxControls}
+        </div>
+        {priceSummary}
+      </div>
       <AnimatedFormContent isOpen={showAreaMismatch}><div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--ui-radius-control)] bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]"><p>{t("builder.areaChanged", { saved: pricing?.area_snapshot ?? 0, current: project.area ?? 0 })}</p><Button type="button" variant="ghost" className="min-h-11 sm:min-h-9" onClick={() => setArea(String(project.area))}>{t("builder.useCurrentArea")}</Button></div></AnimatedFormContent>
     </div>
     <section className="space-y-3 border-t border-[var(--ui-border)] px-4 py-5 sm:px-6" aria-labelledby="payment-schedule-heading">
       <h3 id="payment-schedule-heading" className="font-semibold text-[var(--ui-text)]">{t("builder.schedule")}</h3>
       {protectedItems.length ? <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2.5 text-sm"><p className="flex items-center gap-2 font-medium text-[var(--ui-text)]"><LockKeyhole aria-hidden="true" className="size-4 shrink-0"/>{t("builder.protectedHelp")}</p><ul className="mt-2 divide-y divide-[var(--ui-border)]">{protectedItems.map((item) => <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2 first:pt-0 last:pb-0"><span className="min-w-0 truncate text-[var(--ui-text-secondary)]">{item.description}</span><span className="ui-numeric font-medium text-[var(--ui-text)]">{money(item.amount)}</span><Input aria-label={t("builder.clientNote")} placeholder={t("builder.clientNote")} value={protectedNotes.find((note) => note.id === item.id)?.clientNote ?? ""} maxLength={300} className="col-span-2 h-9 text-xs" onChange={(event) => setProtectedNotes((notes) => notes.map((note) => note.id === item.id ? { ...note, clientNote: event.target.value } : note))}/></li>)}</ul></div> : null}
       <AnimatedFormContent isOpen={protectedItems.length > 0}><FormField label={t("builder.strategy")} className="max-w-xl"><Select aria-label={t("builder.strategy")} value={strategy} onValueChange={selectStrategy} size="compact"><SelectItem value="redistribute">{t("builder.redistribute")}</SelectItem><SelectItem value="keep">{t("builder.keep")}</SelectItem><SelectItem value="manual">{t("builder.manual")}</SelectItem></Select></FormField></AnimatedFormContent>
-      <div className="flex flex-wrap items-center gap-2" aria-label={t("builder.templates")}>{projectPaymentTemplates.map((percentages) => { const key = percentages.join("/"), isSelected = selectedTemplate === key; return <Button key={key} type="button" variant="outline" aria-pressed={isSelected} className={cn("min-h-11 px-3 sm:min-h-9", isSelected && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => applyTemplate(percentages)}>{percentages.join(" / ")}{percentages.length === 1 ? "%" : ""}</Button>; })}<Button type="button" variant="outline" aria-pressed={selectedTemplate === "custom"} className={cn("min-h-11 px-3 sm:min-h-9", selectedTemplate === "custom" && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => selectStrategy("manual")}>{t("builder.custom")}</Button><Button type="button" variant="ghost" className="min-h-11 px-2 text-[var(--ui-text-secondary)] sm:ml-auto sm:min-h-9" onClick={() => { setRows([]); setStrategy("manual"); setAllowUnscheduled(true); setAddGuidance(false); }}>{t("builder.scheduleLater")}</Button></div>
+      <div className="flex flex-wrap items-center gap-2" aria-label={t("builder.templates")}>{projectPaymentTemplates.map((percentages) => { const key = percentages.join("/"), isSelected = selectedTemplate === key; return <Button key={key} type="button" variant="outline" aria-pressed={isSelected} className={cn("min-h-11 px-3 sm:min-h-9", isSelected && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => applyTemplate(percentages)}>{percentages.join(" / ")}{percentages.length === 1 ? "%" : ""}</Button>; })}<Button type="button" variant="outline" aria-pressed={selectedTemplate === "custom"} className={cn("min-h-11 px-3 sm:min-h-9", selectedTemplate === "custom" && "border-[var(--ui-text)] bg-[var(--ui-text)] text-[var(--ui-surface)] hover:bg-[var(--ui-text)] hover:text-[var(--ui-surface)]")} onClick={() => selectStrategy("manual")}>{t("builder.custom")}</Button><Button type="button" variant="ghost" className="min-h-11 px-2 text-[var(--ui-text-secondary)] sm:ml-auto sm:min-h-9" onClick={() => { discountScheduleBase.current = null; setRows([]); setStrategy("manual"); setAllowUnscheduled(true); setAddGuidance(false); }}>{t("builder.scheduleLater")}</Button></div>
       <div data-template-transition><AnimatedFormContent isOpen><div className="space-y-3">
         <div className={cn("hidden text-xs font-medium text-[var(--ui-text-muted)]", strategy === "redistribute" ? "lg:grid lg:grid-cols-[2.75rem_minmax(10rem,2fr)_6rem_9rem_10.5rem_2.75rem] lg:gap-x-2" : "lg:grid lg:grid-cols-[2.75rem_minmax(10rem,2fr)_9rem_10.5rem_2.75rem] lg:gap-x-2")} aria-hidden="true"><span/><span>{rowCopy.name}</span>{strategy === "redistribute" ? <span>{rowCopy.percentage}</span> : null}<span>{rowCopy.amount}</span><span>{rowCopy.dueDate}</span><span/></div>
-        <DragDropProvider sensors={paymentSensors} onDragEnd={handleDragEnd}><ol className="divide-y divide-[var(--ui-border)] border-y border-[var(--ui-border)]">{rows.map((row, index) => <PaymentRow key={row.key} amount={amounts[index] ?? ""} copy={{ ...rowCopy, drag: t("builder.dragPayment", { name: row.name || index + 1 }) }} index={index} locale={locale} money={money} onMove={move} onRemove={(rowIndex) => { setAddGuidance(false); setRows((old) => old.filter((_, currentIndex) => currentIndex !== rowIndex)); }} onUpdate={update} row={row} rowCount={rows.length} strategy={strategy}/>)}</ol></DragDropProvider>
+        <DragDropProvider sensors={paymentSensors} onDragEnd={handleDragEnd}><ol className="divide-y divide-[var(--ui-border)] border-y border-[var(--ui-border)]">{rows.map((row, index) => <PaymentRow key={row.key} amount={amounts[index] ?? ""} copy={{ ...rowCopy, drag: t("builder.dragPayment", { name: row.name || index + 1 }) }} index={index} locale={locale} money={money} onMove={move} onRemove={(rowIndex) => { discountScheduleBase.current = null; setAddGuidance(false); setRows((old) => old.filter((_, currentIndex) => currentIndex !== rowIndex)); }} onUpdate={update} row={row} rowCount={rows.length} strategy={strategy}/>)}</ol></DragDropProvider>
       </div></AnimatedFormContent></div>
       <div className="flex flex-wrap items-center gap-3"><Button type="button" variant="outline" className="min-h-11 gap-2 sm:min-h-9" onClick={addPayment}><Plus className="size-4"/>{t("project.addPayment")}</Button>{addGuidance ? <p role="status" className="text-sm text-[var(--ui-warning-text)]">{t("builder.fullyAllocated")}</p> : null}</div>
     </section>

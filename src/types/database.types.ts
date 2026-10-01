@@ -2359,6 +2359,9 @@ export type Database = {
           created_at: string
           created_by: string
           currency: string
+          discount_amount: number
+          discount_type: string
+          discount_value: number
           effective_from: string | null
           effective_through: string | null
           gross_amount: number | null
@@ -2380,6 +2383,9 @@ export type Database = {
           created_at?: string
           created_by: string
           currency: string
+          discount_amount?: number
+          discount_type?: string
+          discount_value?: number
           effective_from?: string | null
           effective_through?: string | null
           gross_amount?: number | null
@@ -2401,6 +2407,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           currency?: string
+          discount_amount?: number
+          discount_type?: string
+          discount_value?: number
           effective_from?: string | null
           effective_through?: string | null
           gross_amount?: number | null
@@ -5465,6 +5474,9 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          discount_amount: number | null
+          discount_type: string | null
+          discount_value: number | null
           effective_from: string | null
           effective_through: string | null
           gross_amount: number | null

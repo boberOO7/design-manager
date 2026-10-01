@@ -27,12 +27,14 @@ test.afterAll(async()=>{
  delete from finance_project_proposals where studio_id='${studio}';delete from finance_project_items where studio_id='${studio}';delete from finance_project_plan_revisions where studio_id='${studio}';delete from finance_project_terms where studio_id='${studio}';delete from finance_expected_items where studio_id='${studio}';delete from finance_planning_requests where studio_id='${studio}';delete from finance_accounts where studio_id='${studio}';delete from finance_categories where studio_id='${studio}';delete from finance_settings where studio_id='${studio}';delete from notifications where studio_id='${studio}';delete from project_activity where project_id='${project}';delete from project_task_stage_columns where project_id='${project}';delete from projects where studio_id='${studio}';delete from studio_members where studio_id='${studio}';delete from studios where id='${studio}';commit;`);
  if(actor){const result=await client.auth.admin.deleteUser(actor);if(result.error)throw result.error;}
 });
-test("Project Finance → proposal preview → immutable PDF and later revision",async({page},testInfo)=>{
+test("Project Finance → discount → VAT schedule → immutable proposal PDF",async({page},testInfo)=>{
  test.setTimeout(180000);const f=uk.Finance,b=f.builder,p=f.proposal;
  await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
  await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
  await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:f.project.editAgreement,exact:true}).click();
  const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:b.perAreaShort,exact:true}).click();await dialog.getByLabel(b.rate,{exact:true}).fill('40');
+ await dialog.getByRole('group',{name:b.discount,exact:true}).getByRole('button',{name:'%',exact:true}).click();
+ await dialog.getByLabel(b.discountPercent,{exact:true}).fill('10');
  await dialog.getByRole('group',{name:b.vatRate}).getByRole('button',{name:'23%',exact:true}).click();
  await dialog.getByRole('button',{name:'30 / 50 / 20',exact:true}).click();
  await expect(dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true})).toHaveValue(b.planningStage);
@@ -42,8 +44,16 @@ test("Project Finance → proposal preview → immutable PDF and later revision"
  await dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true}).fill('Індивідуальне планування');
  await dialog.getByRole('button',{name:'50 / 50',exact:true}).click();await expect(dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true})).toHaveValue('Індивідуальне планування');
  await dialog.getByRole('button',{name:'30 / 50 / 20',exact:true}).click();await dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true}).fill(b.planningStage);
+ await expect(dialog.locator('[data-discount-breakdown]')).toContainText(/4\s*000/);
+ await expect(dialog.locator('[data-discount-breakdown]')).toContainText(/4\s*428/);
+ await expect(dialog.locator('[data-plan-row]').nth(0).locator('[data-derived-amount]')).toHaveAttribute('data-derived-amount','1328.40');
+ await dialog.getByRole('switch',{name:b.priceBasis,exact:true}).click();
+ await expect(dialog.locator('[data-plan-row]').nth(0).locator('[data-derived-amount]')).toHaveAttribute('data-derived-amount','1080.00');
+ await dialog.getByRole('switch',{name:b.priceBasis,exact:true}).click();
+ await expect(dialog.locator('[data-plan-row]').nth(0).locator('[data-derived-amount]')).toHaveAttribute('data-derived-amount','1328.40');
+ await page.screenshot({path:testInfo.outputPath('finance-discount.png')});
  await dialog.getByRole('button',{name:f.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
- await page.reload();await page.getByRole('button',{name:f.project.editAgreement,exact:true}).click();
+ await page.reload();await expect(page.locator('[data-discount-summary]')).toContainText(/10%.*400/);await page.getByRole('button',{name:f.project.editAgreement,exact:true}).click();
  await dialog.getByRole('button',{name:'50 / 50',exact:true}).click();await expect(dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true})).toHaveValue(b.advance);
  await dialog.getByRole('button',{name:'30 / 50 / 20',exact:true}).click();await expect(dialog.locator('[data-plan-row]').nth(1).getByLabel(b.paymentName,{exact:true})).toHaveValue(b.visualizationStage);
  await dialog.getByLabel(f.project.reason,{exact:true}).fill('Review template defaults');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
@@ -54,14 +64,23 @@ test("Project Finance → proposal preview → immutable PDF and later revision"
  await expect.poll(()=>note.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThan(initialNoteHeight);
  expect(await note.evaluate(el=>getComputedStyle(el).resize)).toBe('none');
  await note.fill('Площа об’єкта попередня та може бути уточнена після обмірів.');
- await dialog.getByLabel(p.website,{exact:true}).fill('https://space.example');
+ await dialog.getByLabel(p.title,{exact:true}).fill('250 Rivne Dental');
+ await dialog.getByLabel(p.website,{exact:true}).fill('space-design.pro');
  await dialog.getByLabel(p.email,{exact:true}).fill('hello@space.example');
  await dialog.getByLabel(p.phone,{exact:true}).fill('+380 44 000 00 00');
  await dialog.getByLabel(p.businessAddress,{exact:true}).fill('Київ, вул. Городецького, 12');
  await dialog.getByRole('button',{name:p.saveContacts,exact:true}).click();
  await expect(dialog.getByText(p.contactsSaved,{exact:true})).toBeVisible();
+ await expect(dialog.getByLabel(p.website,{exact:true})).toHaveValue('space-design.pro');
+ expect(sql(`select website from studios where id='${studio}'`)).toBe('https://space-design.pro');
  await expect(dialog.locator('[data-proposal-pages] canvas')).toBeVisible({timeout:60000});await expect(dialog.getByRole('button',{name:p.generate,exact:true})).toBeEnabled();
+ await expect(dialog.locator('[data-proposal-pages]')).toContainText('Rivne Dental');
+ await expect(dialog.locator('[data-proposal-pages]')).toContainText('space-design.pro');
+ await expect(dialog.locator('[data-proposal-pages]')).not.toContainText(/https?:\/\/|www\./);
  await expect(dialog.locator('[data-proposal-pages]')).toContainText(/100\s+м²\s*×\s*49,2\s+EUR\s*\/\s*м²/);
+ await expect(dialog.locator('[data-proposal-pages]')).toContainText(/Знижка\s+10\s*%/);
+ await expect(dialog.locator('[data-proposal-pages]')).toContainText(/4\s*428/);
+ await expect(dialog.locator('[data-proposal-pages]')).not.toContainText(/Податок з доходу|Після податку|Netto|P&L/);
  const previewPixels=await dialog.locator('[data-proposal-pages] canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL());
  for(const [label,width,height] of [['desktop',1440,1000],['notebook',1024,768],['wide-short',1440,720],['mobile',390,844]] as const){await page.setViewportSize({width,height});expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await expect.poll(()=>dialog.locator('[data-proposal-pages]').evaluate(el=>el.scrollWidth<=el.clientWidth && el.scrollHeight<=el.clientHeight)).toBe(true);
@@ -77,9 +96,19 @@ test("Project Finance → proposal preview → immutable PDF and later revision"
  const href=await dialog.getByRole('link',{name:p.download,exact:true}).getAttribute('href');expect(href).toBeTruthy();
  const response=await page.request.get(href!);expect(response.headers()['content-type']).toBe('application/pdf');const original=await response.body();expect(original.subarray(0,5).toString()).toBe('%PDF-');
  const download=page.waitForEvent('download');await dialog.getByRole('link',{name:p.download,exact:true}).click();const pdf=await download;expect(pdf.suggestedFilename()).toBe('SPACE-336-r1.pdf');await pdf.saveAs(testInfo.outputPath('SPACE-336-r1.pdf'));
- expect(sql(`select snapshot->>'gross' from finance_project_proposals where project_id='${project}'`)).toBe('4920.00');
- expect(sql(`select snapshot->'rows'->0->>'gross' from finance_project_proposals where project_id='${project}'`)).toBe('1476.00');
+ expect(sql(`select snapshot->>'gross' from finance_project_proposals where project_id='${project}'`)).toBe('4428.00');
+ expect(sql(`select snapshot->'rows'->0->>'gross' from finance_project_proposals where project_id='${project}'`)).toBe('1328.40');
+ expect(sql(`select snapshot->'pricing'->>'listAmount' from finance_project_proposals where project_id='${project}'`)).toBe('4000.00');
+ expect(sql(`select snapshot->'pricing'->>'discountAmount' from finance_project_proposals where project_id='${project}'`)).toBe('400.00');
  await dialog.getByRole('button',{name:p.close,exact:true}).last().click();
+ // Editing a saved discount immediately redistributes only editable rows.
+ await page.getByRole('button',{name:f.project.editAgreement,exact:true}).click();
+ await dialog.getByLabel(b.discountPercent,{exact:true}).fill('20');
+ await expect(dialog.locator('[data-plan-row]').nth(0).locator('[data-derived-amount]')).toHaveAttribute('data-derived-amount','1180.80');
+ await expect(dialog.locator('[data-plan-row]').nth(0).getByLabel(b.paymentName,{exact:true})).toHaveValue(b.planningStage);
+ await dialog.getByLabel(f.project.reason,{exact:true}).fill('Revised agreed discount');
+ await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ expect(await (await page.request.get(href!)).body()).toEqual(original);
  await page.getByRole('button',{name:p.action,exact:true}).click();
  await expect(dialog.getByRole('button',{name:p.revision.replace('{number}','1'),exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog.getByRole('link',{name:p.download,exact:true})).toBeVisible();
@@ -89,7 +118,7 @@ test("Project Finance → proposal preview → immutable PDF and later revision"
  const repeated=await page.request.get(href!);expect(await repeated.body()).toEqual(original);
  await dialog.getByRole('button',{name:p.newRevision,exact:true}).click();
  expect(sql(`select count(*) from finance_project_proposals where project_id='${project}'`)).toBe('1');
- await expect(dialog.getByLabel(p.website,{exact:true})).toHaveValue('https://space.example');
+ await expect(dialog.getByLabel(p.website,{exact:true})).toHaveValue('space-design.pro');
  await expect(dialog.getByLabel(p.email,{exact:true})).toHaveValue('hello@space.example');
  await expect(dialog.getByLabel(p.phone,{exact:true})).toHaveValue('+380 44 000 00 00');
  await expect(dialog.getByLabel(p.businessAddress,{exact:true})).toHaveValue('Київ, вул. Городецького, 12');
@@ -102,6 +131,8 @@ test("Project Finance → proposal preview → immutable PDF and later revision"
  const {writeFileSync}=await import('node:fs');writeFileSync(testInfo.outputPath('SPACE-336-r2.pdf'),await secondPdf.body());
  expect(sql(`select string_agg(snapshot->>'projectNumber',',' order by revision) from finance_project_proposals where project_id='${project}'`)).toBe('336,336');
  expect(sql(`select count(*) from finance_project_proposals where project_id='${project}'`)).toBe('2');
+ expect(sql(`select snapshot->'pricing'->>'discountValue' from finance_project_proposals where project_id='${project}' and revision=2`)).toBe('20');
+ expect(sql(`select snapshot->'pricing'->>'discountValue' from finance_project_proposals where project_id='${project}' and revision=1`)).toBe('10');
  await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await page.getByRole('button',{name:p.action,exact:true}).click();
  await expect(dialog.getByRole('button',{name:p.revision.replace('{number}','2'),exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog.getByRole('link',{name:p.download,exact:true})).toBeVisible();

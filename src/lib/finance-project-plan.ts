@@ -2,9 +2,15 @@ import { z } from "zod";
 import { planningAmount } from "./finance-planning";
 
 const date = z.union([z.iso.date(), z.literal("")]);
+export const projectDiscountFields = {
+  discountType: z.enum(["none", "percentage", "fixed"]).default("none"),
+  discountValue: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform(value => value.replace(",", ".")).default("0"),
+};
+export type ProjectDiscountType = z.infer<typeof projectDiscountFields.discountType>;
 export const projectPlanSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
   pricingMethod: z.enum(["fixed", "area"]), amount: planningAmount,
+  ...projectDiscountFields,
   vatRate: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((rate) => rate.replace(",", ".")).nullable().refine((rate) => rate === null || Number(rate) >= 0),
   priceBasis: z.enum(["net", "gross"]).nullable(),
   revenueTaxRate: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((rate) => rate.replace(",", ".")).nullable().default(null),
@@ -28,6 +34,27 @@ export function projectMoneyUnits(value: string, digits: number): bigint {
 export function projectMoneyText(units: bigint, digits: number): string {
   const sign = units < BigInt(0) ? "-" : "", absolute = units < BigInt(0) ? -units : units, scale = BigInt(10) ** BigInt(digits);
   return `${sign}${absolute / scale}${digits ? `.${String(absolute % scale).padStart(digits, "0")}` : ""}`;
+}
+export function projectDiscountAmounts(list: string, type: ProjectDiscountType, value: string, digits: number) {
+  const listUnits = projectMoneyUnits(list, digits);
+  const entered = projectMoneyUnits(value, type === "percentage" ? 4 : digits);
+  const discount = type === "none" ? BigInt(0) : type === "fixed" ? entered : (listUnits * entered + BigInt(500000)) / BigInt(1000000);
+  if (listUnits <= BigInt(0) || discount >= listUnits || (type === "percentage" && entered >= BigInt(1000000)) || (type === "none" && entered !== BigInt(0))) throw new Error("discount");
+  const percentage = type === "percentage" ? projectMoneyText(entered, 4) : projectMoneyText((discount * BigInt(1000000) + listUnits / BigInt(2)) / listUnits, 4);
+  return { discount: projectMoneyText(discount, digits), agreed: projectMoneyText(listUnits - discount, digits), percentage };
+}
+// Scale custom rows directly in Gross minor units; a zero discount round-trips exactly.
+export function projectRescalePayments(amounts: string[], oldPool: string, newPool: string, digits: number): string[] {
+  const before = projectMoneyUnits(oldPool, digits), after = projectMoneyUnits(newPool, digits);
+  const values = amounts.map(value => projectMoneyUnits(value, digits));
+  if (before <= BigInt(0) || values.some(value => value <= BigInt(0)) || values.reduce((sum,value) => sum+value, BigInt(0)) > before) throw new Error("amount");
+  let cumulative = BigInt(0), assigned = BigInt(0);
+  return values.map(value => {
+    cumulative += value;
+    const rounded = (cumulative * after + before / BigInt(2)) / before;
+    const amount = rounded - assigned; assigned = rounded;
+    return projectMoneyText(amount, digits);
+  });
 }
 export function projectVatAmounts(amount: string, vatRate: string | null, priceBasis: "net" | "gross" | null, digits: number) {
   const entered = projectMoneyUnits(amount, digits);

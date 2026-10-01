@@ -2,6 +2,7 @@ import { z } from "zod";
 import { planningAmount } from "./finance-planning";
 import { instantToDateOnly } from "./calendar";
 import type { Database } from "@/types/database.types";
+import { projectDiscountFields } from "./finance-project-plan";
 
 export function supervisionVisitTerms(history: (Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "id"|"stream"|"mode"|"amount"|"currency"|"effective_from"|"effective_through"|"revision"> & Partial<Pick<Database["public"]["Tables"]["finance_project_terms"]["Row"], "vat_rate"|"price_basis">>)[], startsAt: string) {
   const date = instantToDateOnly(startsAt);
@@ -35,6 +36,7 @@ export const projectTermsSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
   stream: z.enum(["design", "supervision"]), mode: z.enum(["design", "monthly", "per_visit", "custom", "stopped"]),
   amount: z.union([planningAmount, z.literal("")]), currency: z.string().regex(/^[A-Z]{3}$/),
+  ...projectDiscountFields,
   vatRate: z.union([z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/), z.literal("")]).transform((rate) => rate ? rate.replace(",", ".") : null).refine((rate) => rate === null || Number(rate) >= 0),
   priceBasis: z.union([z.enum(["net", "gross"]), z.literal("")]).transform((basis) => basis || null),
   effectiveFrom: z.union([z.iso.date(), z.literal("")]).default(""),

@@ -242,6 +242,10 @@ or notifications containing private data.
   retain the first generated number. Presentation fields may change for a proposal,
   while prices and schedule remain Finance-owned. `finance_project_proposals`
   stores an immutable client-only JSON snapshot and the generated PDF bytes.
+  `designVariant` is presentation-only (`classic`, `measured-space`,
+  `quiet-monument`, `folded-plane`). Missing legacy fields and first drafts use
+  the original `classic` layout. New revisions inherit the latest saved variant;
+  saved revisions reopen their stored design and PDF bytes without regeneration.
   Reusable business contacts live on `studios` (website, email, phone, business
   address); guarded admin saves supply new drafts, and each proposal snapshots
   the actual contact values used.
@@ -327,6 +331,15 @@ or notifications containing private data.
   The original permanently retains visit/month billing identity. Closed unpaid value
   leaves receivables and timed forecasts; the commercial agreement total stays intact
   and its unscheduled remainder still requires a separate explicit agreement amendment.
+- Design terms version a project-level `none` / `percentage` / `fixed` discount.
+  `amount` remains the list price in the entered Net/Gross basis; `discount_amount`
+  is rounded in contract currency before calculating canonical discounted Net/VAT/Gross.
+  Existing revisions default to no discount with unchanged money. Revenue-tax estimates
+  use discounted Net; schedules, receivables and cash use discounted Gross. Discount
+  creates no expense or movement. The builder redistributes editable payments while
+  retaining protected payment and settlement snapshots. New proposal snapshots include
+  list price, discount inputs/amount, agreed basis amount and final Net/VAT/Gross; old
+  proposal snapshots and PDF bytes stay immutable.
 - `finance_project_totals` uses exact database numeric, grouped by stream/currency.
   Design contract totals expose net revenue, VAT, and gross client amount;
   collected net/VAT comes from allocation snapshots while collected, outstanding,
