@@ -13,33 +13,34 @@ All inherit the same administrator-only layout and messages.
 Project details adds an administrator-only `view=finance` tab with its own scoped
 Finance messages; it uses these same expectations, movements, and matching RPCs.
 
-## Foundation and historical boundary
+## Foundation and balance cutover
 
 - One `finance_settings` row defines the studio's reporting currency and cutover
-  date. Historical setup openings represent cash at the **beginning** of that
+  date. The cutover is a balance boundary, independent of historical reporting.
+  Setup openings represent cash at the **beginning** of that
   date; they are neither revenue nor expense and are not transaction records.
 - Setup starts as a draft. Administrators can correct settings and account
   currencies/openings until explicitly finalizing setup. Finalization records
   the actor/date and requires an active account. Admins can reopen while no
-  posted cash movement or realized trip expense exists. Draft cutover dates may be in the future, but finalization requires cutover on
+  posted cash movement or realized trip expense exists. Draft cutover dates may
+  be in the future, but finalization requires cutover on
   or before today's `Europe/Kyiv` business date. A database trigger also protects
   direct finalized inserts/updates; the requested date is never silently changed.
-  If legacy future-finalized state has history, preserve it and wait until cutover
-  before using current-cash reports.
-- After finalization, reporting currency, cutover date, and historical account
-  currencies/openings are locked. Reopening is blocked by posted movements
-  (including dated openings/corrections and transfers) or realized trip expenses. Unpaid payroll,
-  expectations, budgets, forecasts, project terms and other planning records do
-  not block it. The guarded RPC returns settings to draft, keeps account opening
-  amounts and unrelated data, and clears opening FX valuations for re-entry.
-  A non-zero opening must be explicitly cleared before changing the cutover
-  date; zero openings can move with the date. Reporting-currency changes stay
-  locked while opening stock, realized history, budgets, saved forecasts or
-  trip valuations depend on the old currency. Later accounts keep the historical
-  opening column at zero and may record a dated account-opening ledger event. An
-  existing account with zero historical opening and no ledger activity can record
-  that event once. Renaming, archiving, and restoring remain available; restoring
-  does not unlock openings.
+  Legacy future-finalized setups can use the balance-start flow to confirm a
+  current/past boundary without resetting finalized state or changing history.
+- After finalization, reporting and account currencies stay locked. Balance start
+  remains editable through `change_finance_cutover`: administrators must confirm
+  openings for **every** account, including archived accounts, with new dated FX
+  valuations for nonzero foreign openings. The RPC checks setup/account context,
+  serializes under the Finance settings lock, and saves the date/openings atomically.
+  It uses the existing account opening stock and immutable planning-request audit
+  for retries; it never rewrites or deletes movements. Only its private transaction
+  context unlocks opening guards; caller-controlled session settings cannot do so.
+  Ordinary settings edits with existing accounts cannot move cutover without this flow.
+  Setup reopening remains limited to studios without posted movements or realized
+  trip expenses; unpaid expectations and payroll do not block it. Later accounts
+  start with zero setup stock and may record a dated account-opening ledger event.
+  Renaming, archiving and restoring remain available; archival never removes cash.
 - An account represents one independent cash pool/currency pocket. Its
   `account_type` (`bank`, `cash`, `payment_service`, `other`) is UI metadata only;
   existing accounts default to `other`. A card using
@@ -75,16 +76,20 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   rates save nothing and require retry or an explicit manual fallback. Same-currency
   openings use their original amount; zero foreign openings require no assumed rate.
 - Draft valuations may be corrected. Changing the opening amount or account currency clears stale draft
-  valuations. Permitted reporting-currency or cutover changes also clear them. Finalization requires
+  valuations. Permitted reporting-currency changes also clear them; atomic cutover
+  changes replace them with newly confirmed valuations. Finalization requires
   all nonzero foreign openings to be valued, including archived accounts. Context
   checks under the Finance parent lock reject stale submissions.
 - Older finalized setups retain missing valuations until an admin explicitly
   completes them. This exception only fills absent valuation fields; it never
-  unlocks amounts, currencies or cutover. Once completed on a finalized setup,
-  valuation and provenance are immutable, including against direct privileged edits.
+  unlocks amounts, currencies or cutover. Outside an atomic balance-start change,
+  completed finalized opening valuation
+  and provenance are immutable, including against direct privileged edits.
 - Valuation creates no ledger entries, cash activity or expected items. Native
-  account balances retain original opening amounts. Historical consolidated cash
-  sums frozen opening valuations and each movement's own stored reporting value.
+  account balances use confirmed opening amounts. Consolidated cash history from
+  balance start
+  sums its opening valuations and on/after-cutover movements’ stored reporting values;
+  cash before that boundary is unknown rather than inferred from later opening stock.
   Current balances and rolling Forecast still use report-date FX independently.
 
 ## Actual cash and historical valuation
@@ -93,17 +98,25 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   holds its signed account effects. A single guarded RPC creates the whole event.
   Ordinary incoming/outgoing movements and owner distributions have one primary
   entry. Transfers have source and destination entries and an optional fee entry.
-- Recorded balance is historical setup opening plus **all** signed entries,
-  including dated account openings, balance adjustments, reversals, and
-  archived-account history. `finance_account_balances` derives it; there is no
+- Recorded balance is opening stock at the current cutover plus signed entries
+  with `financial_date >= cutover_date`, including dated openings, adjustments,
+  reversals and archived-account history. Lifetime entry count still guards late
+  openings; pre-cutover entries remain immutable historical records.
+  `finance_account_balances` derives it; there is no
   mutable balance cache. `account_opening` and `balance_adjustment` movements
   have `balance` nature, a financial date, immutable signed entries, and no
   operating category or expected-payment availability. `finance_cash_effects`
   retains them for dated cash-balance history; `finance_planning_actuals`
   excludes them from Cash Flow, P&L, budgets, payroll and forecast actuals.
   Both balance and cash-effect views use `security_invoker=true` and preserve RLS.
-- Every new movement requires finalized setup and an actual financial date from
-  cutover through today in `Europe/Kyiv`. New postings reject archived accounts.
+- Actual movements require finalized setup and a date from 1900 through today in
+  `Europe/Kyiv`; income/expense reporting, project attribution and category actuals
+  follow that date even before cutover. Accounts, forecast cash and balance-derived
+  Overview/Dashboard values all use `finance_account_balances`. Overview P&L/flows
+  use the selected reporting period without clipping it to cutover, including in
+  display-currency conversion. Unpaid receivables/payables remain expectations
+  regardless of originating date. Dated stock openings/reconciliations still require
+  a date on/after cutover. New postings reject archived accounts.
   The `(studio_id, account_id, currency)` and studio/reporting-currency references
   also prevent foreign-account links or mismatched snapshot currencies.
 - New ordinary movements select a studio category; its direction/nature determine

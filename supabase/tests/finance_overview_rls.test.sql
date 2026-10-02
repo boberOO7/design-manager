@@ -95,6 +95,6 @@ select public.save_finance_expected_item(pg_temp.fid(2),pg_temp.fid(232),jsonb_b
 select is((public.get_finance_overview(pg_temp.fid(2))->'lowPoint'->>'amount')::numeric,(-300)::numeric,'daily low point exposes pressure hidden by later monthly receipts');
 select is(public.get_finance_overview(pg_temp.fid(2))->'lowPoint'->>'date',(pg_temp.today()+1)::text,'daily low point preserves source date precision');
 select is((public.get_finance_overview(pg_temp.fid(2))->'projection'->-1->>'amount')::numeric,1700::numeric,'later receipts restore closing cash without hiding low point');
-select is(public.get_finance_overview(pg_temp.fid(2))->>'actualFrom',pg_temp.month()::text,'history clipped to cutover');
+select is(public.get_finance_overview(pg_temp.fid(2))->>'actualFrom',(pg_temp.month()-interval '2 months')::date::text,'reporting period is independent of cutover');
 select * from finish();
 rollback;

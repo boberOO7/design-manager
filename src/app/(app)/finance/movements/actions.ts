@@ -39,7 +39,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     }
     const data = await getFinanceData();
     if (!data?.settings?.finalized_at) return { status: "error", message: t("errors.setup") };
-    if (input.date < data.settings.cutover_date || input.date > getKyivDateOnly() || !validateMovementAccounts(input, data.accounts, data.currencies)) return { status: "error", message: t("errors.invalid") };
+    if (input.date > getKyivDateOnly() || !validateMovementAccounts(input, data.accounts, data.currencies)) return { status: "error", message: t("errors.invalid") };
     const account = data.accounts.find((item) => item.id === input.accountId);
     const destination = data.accounts.find((item) => item.id === input.destinationId);
     if (!account) return { status: "error", message: t("errors.invalid") };

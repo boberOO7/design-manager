@@ -6103,6 +6103,10 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      change_finance_cutover: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       claim_equipment_catalog_sync: {
         Args: { p_run_id: string; p_source: string }
         Returns: {

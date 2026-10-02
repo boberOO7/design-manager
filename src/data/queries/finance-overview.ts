@@ -41,8 +41,8 @@ export async function getFinanceDisplayOverview(data: NonNullable<Awaited<Return
   const cashEffects: Array<{ financial_date: string; amount: string }> = [];
   for (let offset = 0; ; offset += 1000) {
     const [actualPage, cashPage] = await Promise.all([
-      client.from("finance_planning_actuals").select("financial_date,amount::text,category_id,direction,nature").eq("studio_id", admin.studio_id).gte("financial_date", data.forecast.cutover).lte("financial_date", data.forecast.asOf).order("financial_date").range(offset, offset + 999),
-      client.from("finance_cash_effects").select("financial_date,reporting_amount::text").eq("studio_id", admin.studio_id).gte("financial_date", data.forecast.cutover).lte("financial_date", data.forecast.asOf).order("financial_date").range(offset, offset + 999),
+      client.from("finance_planning_actuals").select("financial_date,amount::text,category_id,direction,nature").eq("studio_id", admin.studio_id).gte("financial_date", data.actualFrom < data.forecast.from ? data.actualFrom : data.forecast.from).lte("financial_date", data.forecast.asOf).order("financial_date").order("posting_order").range(offset, offset + 999),
+      client.from("finance_cash_effects").select("financial_date,reporting_amount::text").eq("studio_id", admin.studio_id).gte("financial_date", data.forecast.cutover).lte("financial_date", data.forecast.asOf).order("financial_date").order("id").range(offset, offset + 999),
     ]);
     if (actualPage.error || cashPage.error || !actualPage.data || !cashPage.data) throw new Error("Unable to load historical Finance valuations.", { cause: actualPage.error ?? cashPage.error });
     actuals.push(...z.array(z.object({ financial_date: z.iso.date(), amount: z.string(), category_id: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]) })).parse(actualPage.data));

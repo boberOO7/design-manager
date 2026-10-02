@@ -59,7 +59,7 @@ select throws_like($$select pg_temp.post('{"amount":"0"}',110)$$,'%finance_input
 select throws_like($$select pg_temp.post('{"amount":"NaN"}',110)$$,'%finance_input_invalid%','NaN rejected');
 select throws_like($$select pg_temp.post('{"amount":"Infinity"}',110)$$,'%finance_input_invalid%','infinity rejected');
 select throws_like($$select pg_temp.post('{"amount":"1.001"}',110)$$,'%finance_amount_invalid%','currency precision rejected without rounding');
-select throws_like($$select pg_temp.post('{"date":"2026-08-31"}',110)$$,'%finance_input_invalid%','before-cutover posting rejected');
+select lives_ok($$select pg_temp.post('{"date":"2026-08-31"}',119)$$,'before-cutover actual is accepted without changing balances');
 select throws_like($$select pg_temp.post('{"date":"9999-01-01"}',110)$$,'%finance_input_invalid%','future actual rejected');
 select throws_like($$select pg_temp.post(jsonb_build_object('categoryId',(select id from public.finance_categories where studio_id=pg_temp.fid(1) and default_key='owner_distribution')),110)$$,'%finance_category_invalid%','incoming cannot masquerade as owner withdrawal');
 select throws_like($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(23)),110)$$,'%finance_account_unavailable%','foreign source rejected');

@@ -54,6 +54,11 @@ describe("movement action boundary",()=>{
     expect((await saveFinanceMovement({ status:"idle" },form())).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_request_id:id,p_input:expect.objectContaining({ amount:"100",allocationIntent:false,fx:{ rate:"42",source:"manual",effectiveDate:"2026-09-02" } }) }));
   });
+  it("accepts pre-cutover actual dates and keeps their historical FX date",async()=>{
+    expect((await saveFinanceMovement({status:"idle"},form({date:"2026-08-31"}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({p_input:expect.objectContaining({date:"2026-08-31"})}));
+    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","manual","");
+  });
   it("records explicit advance intent without changing the movement kind",async()=>{
     expect((await saveFinanceMovement({ status:"idle" },form({ allocationIntent:"true" }))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_input:expect.objectContaining({ kind:"incoming",allocationIntent:true }) }));

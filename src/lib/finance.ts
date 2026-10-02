@@ -47,6 +47,17 @@ export const financeBalanceEntrySchema = z.object({
   fxMode: z.enum(["nbu", "manual"]).default("manual"), manualRate: z.string().default(""),
 });
 
+export const financeCutoverSchema = z.object({
+  requestId: z.uuid(), date: z.iso.date().refine(date => date >= "1900-01-01"),
+  previousDate: z.iso.date(), reportingCurrency: z.string().regex(/^[A-Z]{3}$/),
+  settingsUpdatedAt: z.iso.datetime({ offset: true }),
+  accounts: z.array(z.object({
+    accountId: z.uuid(), currency: z.string().regex(/^[A-Z]{3}$/), updatedAt: z.iso.datetime({ offset: true }),
+    amount: financeBalanceEntrySchema.shape.amount,
+    fxMode: z.enum(["nbu", "manual"]), manualRate: z.string(),
+  })),
+});
+
 export function financeAmountUnits(value: string, digits: number): bigint {
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
   if (!match || (match[3] ?? "").slice(digits).replaceAll("0", "")) throw new Error("amount");

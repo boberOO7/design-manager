@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { financeAccountSchema, financeAmountUnits, financeBalanceEntrySchema, financeSettingsSchema, openingValuationSchema, type FinanceActionState } from "@/lib/finance";
+import { financeAccountSchema, financeAmountUnits, financeBalanceEntrySchema, financeCutoverSchema, financeSettingsSchema, openingValuationSchema, type FinanceActionState } from "@/lib/finance";
 import { resolveFinanceFx } from "@/lib/finance-fx";
 import { createClient } from "@/lib/supabase/server";
 import { getFinanceData } from "@/data/queries/finance";
@@ -71,6 +71,61 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
         }));
       }
     }
+  } else if (intent === "cutover" && form.get("confirmed") === "on") {
+    let accounts: unknown;
+    try { accounts = JSON.parse(String(form.get("accounts"))); }
+    catch { return { status: "error", message: t("cutover.invalid") }; }
+    const context = z.array(financeCutoverSchema.shape.accounts.element.pick({ accountId: true, currency: true, updatedAt: true })).safeParse(accounts);
+    if (!context.success) return { status: "error", message: t("cutover.invalid") };
+    const parsed = financeCutoverSchema.safeParse({ ...Object.fromEntries(form), accounts: context.data.map(account => ({
+      ...account, amount: form.get(`${account.accountId}.amount`),
+      fxMode: form.get(`${account.accountId}.fxMode`) ?? "manual", manualRate: form.get(`${account.accountId}.manualRate`) ?? "",
+    })) });
+    if (!parsed.success) return { status: "error", message: t("cutover.invalid") };
+    const input = parsed.data;
+    // Recover lost-response retries before checking a now-changed date or fetching FX.
+    const prior = await supabase.from("finance_planning_requests").select("payload,result_id")
+      .eq("studio_id", admin.studio_id).eq("request_id", input.requestId).maybeSingle();
+    if (prior.error) return { status: "error", message: t("errors.save") };
+    if (prior.data) {
+      const payload = prior.data.payload;
+      const recorded = payload && typeof payload === "object" && !Array.isArray(payload)
+        && payload.input && typeof payload.input === "object" && !Array.isArray(payload.input) ? payload.input.submission : null;
+      const submission = financeCutoverSchema.safeParse(recorded);
+      if (!submission.success || JSON.stringify(submission.data) !== JSON.stringify(input))
+        return { status: "error", message: t("cutover.conflict") };
+      revalidatePath("/finance", "layout");
+      revalidatePath("/dashboard");
+      return { status: "success", message: t("saved"), id: prior.data.result_id };
+    }
+    const data = await getFinanceData();
+    if (!data?.settings || data.settings.cutover_date !== input.previousDate
+      || data.settings.base_currency !== input.reportingCurrency || data.settings.updated_at !== input.settingsUpdatedAt
+      || data.accounts.length !== input.accounts.length || new Set(input.accounts.map(account => account.accountId)).size !== input.accounts.length)
+      return { status: "error", message: t("openingFx.changed") };
+    if (data.settings.finalized_at && input.date > getKyivDateOnly())
+      return { status: "error", message: t("errors.futureCutover") };
+    for (const account of input.accounts) {
+      const stored = data.accounts.find(item => item.id === account.accountId);
+      const currency = data.currencies.find(item => item.code === account.currency);
+      if (!stored || stored.currency !== account.currency || stored.updated_at !== account.updatedAt)
+        return { status: "error", message: t("openingFx.changed") };
+      if (!currency || (account.amount.split(".")[1]?.length ?? 0) > currency.minor_units)
+        return { status: "error", message: t("cutover.invalid") };
+    }
+    const openings = [];
+    for (const account of input.accounts) {
+      let fx = null;
+      if (financeAmountUnits(account.amount, 4) !== BigInt(0) && account.currency !== input.reportingCurrency) {
+        try { fx = await resolveFinanceFx(account.currency, input.reportingCurrency, input.date, account.fxMode, account.manualRate); }
+        catch { return { status: "error", message: t("openingFx.unavailable") }; }
+      }
+      openings.push({ ...account, fx });
+    }
+    ({ error, data: id } = await supabase.rpc("change_finance_cutover", {
+      p_studio_id: admin.studio_id, p_request_id: input.requestId,
+      p_input: { ...input, accounts: openings, confirmed: true, submission: input },
+    }));
   } else if (intent === "balance-entry") {
     const parsed = financeBalanceEntrySchema.safeParse(Object.fromEntries(form));
     if (!parsed.success) return { status: "error", message: t("balance.invalid") };
@@ -144,7 +199,7 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
     if (error.message === "finance_opening_cutover_locked") return { status: "error", message: t("openingCutoverLocked") };
     if (error.message === "finance_base_currency_locked") return { status: "error", message: t("baseCurrencyLocked") };
     if (error.message === "finance_cutover_future") return { status: "error", message: t("errors.futureCutover") };
-    if (error.message === "finance_request_conflict") return { status: "error", message: t("errors.accountRequestConflict") };
+    if (error.message === "finance_request_conflict") return { status: "error", message: t(intent === "cutover" ? "cutover.conflict" : "errors.accountRequestConflict") };
     const openingErrors: Record<string, string> = { finance_opening_fx_required: "required", finance_opening_fx_invalid: "invalid", finance_setup_context_changed: "changed", finance_opening_valuation_locked: "locked" };
     const openingError = openingErrors[error.message];
     if (openingError) return { status: "error", message: t(`openingFx.${openingError}`) };
@@ -154,5 +209,6 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
     return { status: "error", message: locked ? t("errors.locked") : error.message === "finance_active_account_required" ? t("errors.activeAccount") : t("errors.save") };
   }
   revalidatePath("/finance", "layout");
+  revalidatePath("/dashboard");
   return { status: "success", message: t("saved"), ...(id ? { id } : {}) };
 }

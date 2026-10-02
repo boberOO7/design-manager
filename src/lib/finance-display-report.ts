@@ -31,7 +31,7 @@ export function projectFinanceDisplayReport(data: FinanceOverview, currency: str
   const openingRate = historicalRates.get(data.forecast.cutover);
   if (openingAmounts.length && !openingRate) throw new Error("Missing historical opening FX");
   const opening = sum(openingAmounts.map(amount => convertFinanceDisplayAmount(amount, openingRate ?? "1", digits)), digits);
-  const history = data.history.map(point => ({ ...point, amount: point.amount === null ? null : sum([opening, ...cashEffects.filter(row => row.financial_date <= point.date).map(historical)], digits) }));
+  const history = data.history.map(point => ({ ...point, amount: point.amount === null ? null : sum([opening, ...cashEffects.filter(row => row.financial_date >= data.forecast.cutover && row.financial_date <= point.date).map(historical)], digits) }));
   const flows = data.flows.map(flow => ({ ...flow, amount: sum(convertedActuals.filter(row => row.financial_date.slice(0, 7) === flow.month.slice(0, 7) && row.nature === flow.nature && row.direction === flow.direction).map(row => row.converted), digits) }));
   const cashBase = current(data.forecast.cashBase);
   const items = data.forecast.items.map(item => ({ ...item, reportingAmount: item.reportingAmount === null ? null : current(item.reportingAmount) }));

@@ -123,3 +123,61 @@ describe("dated account balances", () => {
     }));
   });
 });
+
+
+describe("balance cutover action", () => {
+  const accountId = "62000000-0000-4000-8000-000000000001";
+  const updatedAt = "2026-09-01T00:00:00+00:00";
+  const snapshot = { accountId, currency: "UAH", updatedAt };
+  const input = { intent: "cutover", date: "2026-08-01", previousDate: "2026-09-01", reportingCurrency: "UAH", settingsUpdatedAt: updatedAt,
+    accounts: JSON.stringify([snapshot]), [`${accountId}.amount`]: "120.25", confirmed: "on" };
+  beforeEach(() => {
+    const current = { settings: { base_currency: "UAH", cutover_date: "2026-09-01", finalized_at: "2026-09-02", updated_at: updatedAt },
+      accounts: [{ id: accountId, currency: "UAH", updated_at: updatedAt, archived_at: null }], currencies: [{ code: "UAH", minor_units: 2 }] };
+    mocks.financeData.mockResolvedValue(current);
+  });
+  it("atomically sends the verified studio, confirmed date and exact opening strings", async () => {
+    expect((await saveFinanceFoundation({ status: "idle" }, form(input))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("change_finance_cutover", expect.objectContaining({
+      p_studio_id: "verified-studio", p_request_id: requestId,
+      p_input: expect.objectContaining({ date: "2026-08-01", confirmed: true, accounts: [{ ...snapshot, amount: "120.25", fxMode: "manual", manualRate: "", fx: null }] }),
+    }));
+    expect(mocks.revalidate).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.fx).not.toHaveBeenCalled();
+  });
+  it("requires confirmation, complete unique accounts, precision and current context", async () => {
+    for (const patch of [{ confirmed: "" }, { accounts: "[]" }, { accounts: JSON.stringify([snapshot, snapshot]) },
+      { [`${accountId}.amount`]: "1.001" }, { previousDate: "2026-08-02" }, { date: "2026-09-27" }, { accounts: "invalid" }]) {
+      expect((await saveFinanceFoundation({ status: "idle" }, form({ ...input, ...patch }))).status).toBe("error");
+    }
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.fx).not.toHaveBeenCalled();
+  });
+  it("re-enters foreign opening valuation at the new date, including archived accounts", async () => {
+    const current = await mocks.financeData();
+    current.accounts[0] = { ...current.accounts[0], currency: "USD", archived_at: updatedAt };
+    current.currencies.push({ code: "USD", minor_units: 2 });
+    mocks.financeData.mockResolvedValue(current);
+    const foreign = { ...input, accounts: JSON.stringify([{ ...snapshot, currency: "USD" }]), [`${accountId}.fxMode`]: "nbu" };
+    mocks.fx.mockRejectedValueOnce(new Error("No rate"));
+    expect((await saveFinanceFoundation({ status: "idle" }, form(foreign))).message).toBe("openingFx.unavailable");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.fx.mockResolvedValue({ rate: "40", source: "manual", effectiveDate: "2026-08-01" });
+    expect((await saveFinanceFoundation({ status: "idle" }, form({ ...foreign, [`${accountId}.fxMode`]: "manual", [`${accountId}.manualRate`]: "40" }))).status).toBe("success");
+    expect(mocks.fx).toHaveBeenLastCalledWith("USD", "UAH", "2026-08-01", "manual", "40");
+  });
+  it("reports a concurrent cutover request conflict using cutover copy", async () => {
+    mocks.rpc.mockResolvedValue({ error: { message: "finance_request_conflict" } });
+    expect((await saveFinanceFoundation({ status: "idle" }, form(input))).message).toBe("cutover.conflict");
+    expect(mocks.revalidate).not.toHaveBeenCalled();
+  });
+  it("recovers an identical lost-response retry before stale-context and FX checks", async () => {
+    await saveFinanceFoundation({ status: "idle" }, form(input));
+    const stored = mocks.rpc.mock.calls[0][1].p_input;
+    mocks.context.mockResolvedValue({ data: { payload: { input: JSON.parse(JSON.stringify(stored)) }, result_id: requestId }, error: null });
+    mocks.rpc.mockClear(); mocks.financeData.mockClear();
+    expect((await saveFinanceFoundation({ status: "idle" }, form(input))).status).toBe("success");
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.financeData).not.toHaveBeenCalled();
+    expect((await saveFinanceFoundation({ status: "idle" }, form({ ...input, [`${accountId}.amount`]: "121" }))).message).toBe("cutover.conflict");
+  });
+});

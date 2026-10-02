@@ -44,7 +44,7 @@ function FinanceForm({ children, label, onSaved, onPendingChange, secondary = fa
   </form>;
 }
 
-function SettingsForm({ settings, currencies, today }: { settings: FinanceSettings | null; currencies: FinanceCurrency[]; today: string }) {
+function SettingsForm({ settings, currencies, today, hasAccounts }: { settings: FinanceSettings | null; currencies: FinanceCurrency[]; today: string; hasAccounts: boolean }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const [currency, setCurrency] = useState(settings?.base_currency ?? "UAH");
@@ -53,10 +53,38 @@ function SettingsForm({ settings, currencies, today }: { settings: FinanceSettin
     <input type="hidden" name="intent" value="settings" />
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField label={t("baseCurrency")}><FinanceCurrencySelect currencies={currencies} name="baseCurrency" value={currency} reportingCurrency={currency} onValueChange={setCurrency} /></FormField>
-      <FormField label={t("cutoverDate")}><DatePicker aria-label={t("cutoverDate")} name="cutoverDate" value={cutoverDate} onValueChange={setCutoverDate} locale={locale} required /></FormField>
+      <FormField label={t("cutoverDate")}>{hasAccounts ? <><Input value={formatDateOnly(cutoverDate, locale)} readOnly /><input type="hidden" name="cutoverDate" value={cutoverDate} /></> : <DatePicker aria-label={t("cutoverDate")} name="cutoverDate" value={cutoverDate} onValueChange={setCutoverDate} locale={locale} required />}</FormField>
     </div>
     <p className="text-sm text-[var(--ui-text-muted)]">{t("cutoverHelp")}</p>
   </FinanceForm>;
+}
+
+function CutoverForm({ settings, accounts, today, onSaved, onPendingChange }: { settings: FinanceSettings; accounts: FinanceAccount[]; today: string; onSaved: () => void; onPendingChange: (pending: boolean) => void }) {
+  const t = useTranslations("Finance");
+  const locale = useLocale();
+  const [requestId] = useState(() => crypto.randomUUID());
+  const [date, setDate] = useState(settings.cutover_date);
+  const context = accounts.map(account => ({ accountId: account.id, currency: account.currency, updatedAt: account.updated_at }));
+  return <FinanceForm label={t("cutover.save")} onSaved={onSaved} onPendingChange={onPendingChange}>
+    <input type="hidden" name="intent" value="cutover" /><input type="hidden" name="requestId" value={requestId} />
+    <input type="hidden" name="previousDate" value={settings.cutover_date} /><input type="hidden" name="reportingCurrency" value={settings.base_currency} />
+    <input type="hidden" name="settingsUpdatedAt" value={settings.updated_at} /><input type="hidden" name="accounts" value={JSON.stringify(context)} />
+    <FormField label={t("cutoverDate")}><DatePicker name="date" aria-label={t("cutoverDate")} locale={locale} min="1900-01-01" max={settings.finalized_at ? today : undefined} value={date} onValueChange={setDate} required /></FormField>
+    <p className="text-sm text-[var(--ui-text-secondary)]">{t("cutover.openings", { date: formatDateOnly(date, locale) })}</p>
+    <div key={date} className="space-y-4">
+      {accounts.map(account => <CutoverAccount key={account.id} account={account} base={settings.base_currency} />)}
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="confirmed" required className="mt-1 size-4 shrink-0 accent-[var(--ui-action-primary)]" /><span>{t("cutover.confirm", { date: formatDateOnly(date, locale) })}</span></label>
+    </div>
+  </FinanceForm>;
+}
+
+function CutoverAccount({ account, base }: { account: FinanceAccount; base: string }) {
+  const t = useTranslations("Finance");
+  const [amount, setAmount] = useState("");
+  return <div className="space-y-2 border-t border-[var(--ui-border-subtle)] pt-3">
+    <FormField label={`${account.name} · ${account.currency}${account.archived_at ? ` · ${t("movements.archived")}` : ""}`}><Input name={`${account.id}.amount`} inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required autoComplete="off" /></FormField>
+    {account.currency !== base && amount !== "" && /[1-9]/.test(amount) ? <FinanceFxFields currency={account.currency} base={base} opening namePrefix={`${account.id}.`} /> : null}
+  </div>;
 }
 
 function AccountForm({ account, settings, currencies, today, onSaved, onPendingChange }: { account: FinanceAccount | null; settings: FinanceSettings; currencies: FinanceCurrency[]; today: string; onSaved: () => void; onPendingChange: (pending: boolean) => void }) {
@@ -140,6 +168,7 @@ export function FinanceWorkspace({ settings, accounts, currencies, balances, tod
   const [balancing, setBalancing] = useState<{ id: string; opening: boolean } | null>(null);
   const [openAccountMenu, setOpenAccountMenu] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [changingCutover, setChangingCutover] = useState(false);
   const [dialogPending, setDialogPending] = useState(false);
   const locked = Boolean(settings?.finalized_at);
   const selectedAccount = accounts.find((account) => account.id === editor) ?? null;
@@ -190,7 +219,7 @@ export function FinanceWorkspace({ settings, accounts, currencies, balances, tod
 
   return <div className="w-full min-w-0 space-y-6">
     <PageHeader className="items-start max-sm:flex-col" title={locked ? t("accounts") : t("title")} description={locked ? t("accountsHelp") : t("description")} action={settings ? <Button className="gap-1.5" onClick={() => setEditor("new")}><Plus className="size-4" aria-hidden="true"/>{t("addAccount")}</Button> : null}/>
-    {locked && settings ? <section className={`${panel} w-fit max-w-full space-y-3 px-4 py-3 text-sm`} aria-label={t("settings")}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium text-[var(--ui-text-secondary)]">{t("settings")}</h2><span className="text-xs text-[var(--ui-text-muted)]">{t("finalized")}</span></div><dl className="flex flex-wrap gap-x-6 gap-y-2"><div><dt className="text-xs text-[var(--ui-text-muted)]">{t("cutoverDate")}</dt><dd className="font-medium">{formatDateOnly(settings.cutover_date, locale)}</dd></div><div><dt className="text-xs text-[var(--ui-text-muted)]">{t("baseCurrency")}</dt><dd className="font-medium">{settings.base_currency}</dd></div></dl>{canReopen ? <FinanceForm label={t("reopen")} secondary onSaved={() => router.refresh()}><input type="hidden" name="intent" value="reopen" />{accounts.some(account => Number(account.opening_balance) !== 0 || account.opening_reporting_amount !== null) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("reopenHelp")}</p> : null}</FinanceForm> : <p className="text-xs text-[var(--ui-text-muted)]">{t("reopenUnavailable")}</p>}</section> : <section className={`${panel} space-y-4 p-4 sm:p-5`} aria-labelledby="finance-settings-title"><div className="flex flex-wrap items-center justify-between gap-2"><h2 id="finance-settings-title" className="font-semibold text-[var(--ui-text)]">{t("settings")}</h2><span className="text-sm text-[var(--ui-text-muted)]">{t("draft")}</span></div><div className="max-w-2xl"><SettingsForm key={settings?.updated_at ?? "new"} settings={settings} currencies={currencies} today={today}/></div></section>}
+    {locked && settings ? <section className={`${panel} w-fit max-w-full space-y-3 px-4 py-3 text-sm`} aria-label={t("settings")}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium text-[var(--ui-text-secondary)]">{t("settings")}</h2><Button size="sm" variant="ghost" onClick={() => setChangingCutover(true)}>{t("cutover.change")}</Button></div><dl className="flex flex-wrap gap-x-6 gap-y-2"><div><dt className="text-xs text-[var(--ui-text-muted)]">{t("cutoverDate")}</dt><dd className="font-medium">{formatDateOnly(settings.cutover_date, locale)}</dd></div><div><dt className="text-xs text-[var(--ui-text-muted)]">{t("baseCurrency")}</dt><dd className="font-medium">{settings.base_currency}</dd></div></dl>{canReopen ? <FinanceForm label={t("reopen")} secondary onSaved={() => router.refresh()}><input type="hidden" name="intent" value="reopen" />{accounts.some(account => Number(account.opening_balance) !== 0 || account.opening_reporting_amount !== null) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("reopenHelp")}</p> : null}</FinanceForm> : null}</section> : <section className={`${panel} space-y-4 p-4 sm:p-5`} aria-labelledby="finance-settings-title"><div className="flex flex-wrap items-center justify-between gap-2"><h2 id="finance-settings-title" className="font-semibold text-[var(--ui-text)]">{t("settings")}</h2><div className="flex items-center gap-2"><span className="text-sm text-[var(--ui-text-muted)]">{t("draft")}</span>{settings && accounts.length ? <Button size="sm" variant="ghost" onClick={() => setChangingCutover(true)}>{t("cutover.change")}</Button> : null}</div></div><div className="max-w-2xl"><SettingsForm key={settings?.updated_at ?? "new"} settings={settings} currencies={currencies} today={today} hasAccounts={accounts.length > 0}/></div></section>}
 
     {missingValuations.length ? <p role="status" className={`${panel} p-4 text-sm`}>{t(locked ? "openingFx.legacy" : "openingFx.required")}</p> : null}
     {locked && totals.length ? <section aria-label={t("balance.currencyTotals")} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{totals.map(({ currency, amount }) => <div key={currency.code} className={`${panel} min-w-0 px-4 py-3`}><p className="text-xs font-medium text-[var(--ui-text-muted)]">{currency.code}</p><p className="ui-numeric mt-1 break-words text-lg font-semibold">{formatFinanceAmount(amount, currency, locale, "decimal")}</p></div>)}</section> : null}
@@ -202,6 +231,9 @@ export function FinanceWorkspace({ settings, accounts, currencies, balances, tod
 
     {settings && !locked ? <section className={`${panel} space-y-3 p-4 sm:p-5`} aria-labelledby="finance-finalize-title"><h2 id="finance-finalize-title" className="font-semibold">{t("finalizeTitle")}</h2><p className="text-sm text-[var(--ui-text-secondary)]">{t("finalizeHelp")}</p><Button variant="outline" disabled={!active.length || missingValuations.length > 0} onClick={() => setFinalizing(true)}>{t("reviewFinalize")}</Button></section> : null}
 
+    <Dialog isOpen={changingCutover} closeDisabled={dialogPending} onRequestClose={() => setChangingCutover(false)} title={t("cutover.title")} closeLabel={t("close")}>
+      {settings && changingCutover ? <div className="p-5"><CutoverForm settings={settings} accounts={accounts} today={today} onSaved={() => { setChangingCutover(false); router.refresh(); }} onPendingChange={setDialogPending} /></div> : null}
+    </Dialog>
     <Dialog isOpen={valuing !== null} closeDisabled={dialogPending} onRequestClose={() => setValuing(null)} title={t("openingFx.value")} closeLabel={t("close")}>
       {settings && valuationAccount ? <div className="p-5"><OpeningValuationForm key={`${valuationAccount.id}:${valuationAccount.updated_at}:${settings.base_currency}:${settings.cutover_date}`} account={valuationAccount} settings={settings} onSaved={() => setValuing(null)} onPendingChange={setDialogPending} /></div> : null}
     </Dialog>

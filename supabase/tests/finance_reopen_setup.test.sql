@@ -41,7 +41,7 @@ select throws_like($$select public.save_finance_settings(pg_temp.fid(1),'UAH','2
 select throws_like($$select public.save_finance_settings(pg_temp.fid(1),'EUR',pg_temp.today()-7)$$,'%finance_base_currency_locked%','old FX opening cannot silently move to a new reporting currency');
 select is((select cutover_date from public.finance_settings where studio_id=pg_temp.fid(1)),pg_temp.today()-7,'rejected date edit preserves original effective day');
 select public.save_finance_account(pg_temp.fid(1),'Dollars','USD',0,(select id from public.finance_accounts where name='Dollars'));
-select public.save_finance_settings(pg_temp.fid(1),'UAH','2026-01-01');
+select public.change_finance_cutover(pg_temp.fid(1),pg_temp.fid(150),jsonb_build_object('date','2026-01-01','previousDate',(select cutover_date from public.finance_settings where studio_id=pg_temp.fid(1)),'reportingCurrency','UAH','settingsUpdatedAt',(select updated_at from public.finance_settings where studio_id=pg_temp.fid(1)),'confirmed',true,'accounts',(select jsonb_agg(jsonb_build_object('accountId',id,'currency',currency,'updatedAt',updated_at,'amount','0')) from public.finance_accounts where studio_id=pg_temp.fid(1))));
 select lives_ok($$select public.finalize_finance_setup(pg_temp.fid(1))$$,'earlier start date re-finalizes after opening stock is cleared');
 select is((select cutover_date from public.finance_settings where studio_id=pg_temp.fid(1)),'2026-01-01'::date,'earlier cutover persists');
 select is((select recorded_balance from public.finance_account_balances where name='Dollars'),0::numeric,'cleared opening stays zero after re-finalization');
@@ -99,7 +99,7 @@ select is((select count(*) from public.finance_movements where studio_id=pg_temp
 select ok(public.can_reopen_finance_setup(pg_temp.fid(2)),'unsettled commitment and zero opening do not block');
 select lives_ok($$select public.reopen_finance_setup(pg_temp.fid(2))$$,'planning-only setup reopens');
 select throws_like($$select public.save_finance_settings(pg_temp.fid(2),'EUR',pg_temp.today()-7)$$,'%finance_base_currency_locked%','saved budgets and forecasts keep reporting currency locked');
-select public.save_finance_settings(pg_temp.fid(2),'UAH','2026-01-01');
+select public.change_finance_cutover(pg_temp.fid(2),pg_temp.fid(151),jsonb_build_object('date','2026-01-01','previousDate',(select cutover_date from public.finance_settings where studio_id=pg_temp.fid(2)),'reportingCurrency','UAH','settingsUpdatedAt',(select updated_at from public.finance_settings where studio_id=pg_temp.fid(2)),'confirmed',true,'accounts',(select jsonb_agg(jsonb_build_object('accountId',id,'currency',currency,'updatedAt',updated_at,'amount','0')) from public.finance_accounts where studio_id=pg_temp.fid(2))));
 select lives_ok($$select public.finalize_finance_setup(pg_temp.fid(2))$$,'planning-only setup re-finalizes at earlier date');
 select is((select count(*) from public.finance_expected_items where studio_id=pg_temp.fid(2)),1::bigint,'unsettled expectation survives');
 select is((select count(*) from public.finance_budget_revisions where studio_id=pg_temp.fid(2)),1::bigint,'budget survives');
@@ -119,7 +119,7 @@ select throws_like($$select public.reopen_finance_setup(pg_temp.fid(2))$$,'%fina
 select set_config('request.jwt.claim.sub',pg_temp.fid(13)::text,true);
 select ok(public.can_reopen_finance_setup(pg_temp.fid(3)),'unpaid payroll configuration does not block');
 select lives_ok($$select public.reopen_finance_setup(pg_temp.fid(3))$$,'payroll-only setup reopens');
-select public.save_finance_settings(pg_temp.fid(3),'UAH','2026-01-01');
+select public.change_finance_cutover(pg_temp.fid(3),pg_temp.fid(152),jsonb_build_object('date','2026-01-01','previousDate',(select cutover_date from public.finance_settings where studio_id=pg_temp.fid(3)),'reportingCurrency','UAH','settingsUpdatedAt',(select updated_at from public.finance_settings where studio_id=pg_temp.fid(3)),'confirmed',true,'accounts',(select jsonb_agg(jsonb_build_object('accountId',id,'currency',currency,'updatedAt',updated_at,'amount','0')) from public.finance_accounts where studio_id=pg_temp.fid(3))));
 select lives_ok($$select public.finalize_finance_setup(pg_temp.fid(3))$$,'payroll-only setup re-finalizes');
 select is((select count(*) from public.finance_schedule_terms where studio_id=pg_temp.fid(3)),1::bigint,'payroll configuration survives');
 reset role;

@@ -18,6 +18,12 @@ insert into public.projects(id,studio_id,name,total_area_m2,start_date,created_b
 create function pg_temp.cat(key text,studio integer default 1) returns uuid language sql as $$select id from public.finance_categories where studio_id=pg_temp.fid(studio) and default_key=key$$;
 create function pg_temp.value_opening(rate text default '39',source text default 'nbu',patch jsonb default '{}') returns void language sql as $$
 select public.value_finance_opening(pg_temp.fid(1),pg_temp.fid(21),jsonb_build_object('currency','USD','reportingCurrency','UAH','openingAmount','100','date',(pg_temp.month()-interval '1 month')::date,'fx',jsonb_build_object('rate',rate,'source',source,'effectiveDate',(pg_temp.month()-interval '1 month')::date))||patch)$$;
+create function pg_temp.move_cutover(day date,request integer) returns uuid language sql as $$
+select public.change_finance_cutover(pg_temp.fid(1),pg_temp.fid(request),jsonb_build_object(
+'date',day,'previousDate',s.cutover_date,'settingsUpdatedAt',s.updated_at,'reportingCurrency',s.base_currency,'confirmed',true,
+'accounts',(select jsonb_agg(jsonb_build_object('accountId',id,'currency',currency,'updatedAt',updated_at,'amount',opening_balance::text,
+'fx',jsonb_build_object('rate','39','source','nbu','effectiveDate',day))) from public.finance_accounts where studio_id=s.studio_id)))
+from public.finance_settings s where studio_id=pg_temp.fid(1)$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.fid(10)::text,true);
 select throws_like($$select public.finalize_finance_setup(pg_temp.fid(1))$$,'%finance_opening_fx_required%','draft cannot finalize while nonzero foreign opening has no valuation');
@@ -42,9 +48,10 @@ select is((select opening_fx_rate from public.finance_accounts where id=pg_temp.
 select throws_like($$select pg_temp.value_opening('39','nbu','{"reportingCurrency":"EUR"}')$$,'%finance_opening_fx_invalid%','NBU requires UAH reporting');
 select public.save_finance_settings(pg_temp.fid(1),'UAH',(pg_temp.month()-interval '1 month')::date);
 select pg_temp.value_opening('40','manual');
-select public.save_finance_settings(pg_temp.fid(1),'UAH',pg_temp.month());
-select is((select opening_fx_rate from public.finance_accounts where id=pg_temp.fid(21)),null::numeric,'draft cutover change clears valuation');
-select public.save_finance_settings(pg_temp.fid(1),'UAH',(pg_temp.month()-interval '1 month')::date);
+select throws_like($$select public.save_finance_settings(pg_temp.fid(1),'UAH',pg_temp.month())$$,'%finance_opening_cutover_locked%','draft cutover needs all-account confirmation');
+select pg_temp.move_cutover(pg_temp.month(),501);
+select is((select opening_fx_effective_date from public.finance_accounts where id=pg_temp.fid(21)),pg_temp.month(),'draft cutover change revalues opening atomically');
+select pg_temp.move_cutover((pg_temp.month()-interval '1 month')::date,502);
 select pg_temp.value_opening();
 select public.save_finance_account(pg_temp.fid(1),'Renamed dollars','EUR',100,pg_temp.fid(21));
 select is((select opening_reporting_amount from public.finance_accounts where id=pg_temp.fid(21)),null::numeric,'draft account currency change invalidates valuation');
@@ -62,7 +69,7 @@ select throws_like($$select pg_temp.value_opening('39','manual')$$,'%finance_ope
 select is((select count(*) from public.finance_movements),0::bigint,'opening valuation creates no movement');
 select is((select count(*) from public.finance_movement_entries),0::bigint,'opening valuation creates no ledger entry');
 select is((select count(*) from public.finance_planning_actuals),0::bigint,'opening valuation creates no cash-flow actual');
-select is((public.get_finance_overview(pg_temp.fid(1))->'history'->0->>'amount')::numeric,4900::numeric,'history starts with base and foreign frozen openings');
+select is((public.get_finance_overview(pg_temp.fid(1))->'history'->-1->>'amount')::numeric,4900::numeric,'history starts with base and foreign frozen openings');
 select is((public.get_finance_overview(pg_temp.fid(1))->>'historyIncomplete')::boolean,false,'complete valued openings restore history');
 select public.set_finance_account_archived(pg_temp.fid(1),pg_temp.fid(21),false);
 select public.record_finance_movement(pg_temp.fid(1),pg_temp.fid(500),jsonb_build_object('kind','incoming','date',pg_temp.today(),'amount','10','accountId',pg_temp.fid(21),'categoryId',pg_temp.cat('project_payments'),'fx',jsonb_build_object('rate','40','source','manual','effectiveDate',pg_temp.today())));
@@ -85,7 +92,7 @@ select set_config('request.jwt.claim.sub',pg_temp.fid(12)::text,true);
 select is((public.get_finance_overview(pg_temp.fid(2))->>'historyIncomplete')::boolean,true,'legacy finalized opening stays explicitly incomplete');
 select public.set_finance_account_archived(pg_temp.fid(2),pg_temp.fid(25),true);
 select lives_ok($$select public.value_finance_opening(pg_temp.fid(2),pg_temp.fid(25),jsonb_build_object('currency','USD','reportingCurrency','UAH','openingAmount','5000','date',pg_temp.month(),'fx',jsonb_build_object('rate','39.123456789','source','manual','effectiveDate',pg_temp.month())))$$,'explicit one-time manual completion works for archived legacy account');
-select is((public.get_finance_overview(pg_temp.fid(2))->'history'->0->>'amount')::numeric,195617.28::numeric,'manual historical valuation rounds once to reporting precision');
+select is((public.get_finance_overview(pg_temp.fid(2))->'history'->-1->>'amount')::numeric,195617.28::numeric,'manual historical valuation rounds once to reporting precision');
 select is((select opening_balance from public.finance_accounts where id=pg_temp.fid(25)),5000::numeric,'legacy amount not altered');
 select is((select count(*) from public.finance_movements),0::bigint,'legacy completion has no cash activity');
 select throws_like($$select public.value_finance_opening(pg_temp.fid(2),pg_temp.fid(21),'{}')$$,'%finance_account_unavailable%','foreign account rejected');
