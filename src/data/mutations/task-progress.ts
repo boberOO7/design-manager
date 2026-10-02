@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { authorizeTaskMutation } from "@/data/mutations/task-status";
 import { getProjectTaskById } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
-import { checklistItemCreateSchema, checklistItemUpdateSchema, taskProductionProgressSchema } from "@/lib/validation/task";
+import { checklistItemUpdateSchema, taskChecklistTemplateSchema, taskProductionProgressSchema } from "@/lib/validation/task";
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 
 export type TaskWorkMutationResult =
-  | { success: true; task: ProjectTask; checklistItemId?: string }
+  | { success: true; task: ProjectTask }
   | { success: false; formError: string };
 
 function revalidateProgressConsumers(projectId: string) {
@@ -56,25 +56,22 @@ async function authorizeChecklistEdit(taskId: string) {
   return authorization;
 }
 
-export async function createChecklistItem(taskId: string, input: unknown): Promise<TaskWorkMutationResult> {
-  const parsed = checklistItemCreateSchema.safeParse(input);
-  if (!parsed.success) return { success: false, formError: parsed.error.issues[0]?.message ?? "Enter a valid checklist item." };
+export async function setTaskChecklistTemplate(taskId: string, input: unknown): Promise<TaskWorkMutationResult> {
+  const parsed = taskChecklistTemplateSchema.safeParse(input);
+  if (!parsed.success) return { success: false, formError: "Choose a valid checklist template." };
   const authorization = await authorizeChecklistEdit(taskId);
   if (!authorization.success) return authorization;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("task_checklist_items").insert({
-    task_id: taskId,
-    title: parsed.data.title,
-    weight: parsed.data.weight,
-    position: 0,
-  }).select("id").maybeSingle();
-  if (error || !data) {
-    console.error("Unable to create checklist item", error);
-    return { success: false, formError: "The checklist item could not be added. Please try again." };
+  const { error } = await supabase.rpc("set_task_checklist_template", {
+    p_task_id: taskId,
+    p_template_id: parsed.data.checklist_template_id ?? undefined,
+  });
+  if (error) {
+    console.error("Unable to assign task checklist template", error);
+    return { success: false, formError: error.message || "The checklist template could not be saved. Please try again." };
   }
-  const result = await loadUpdatedTask(taskId, authorization.task.project_id);
-  return result.success ? { ...result, checklistItemId: data.id } : result;
+  return loadUpdatedTask(taskId, authorization.task.project_id);
 }
 
 export async function updateChecklistItem(taskId: string, itemId: string, input: unknown): Promise<TaskWorkMutationResult> {

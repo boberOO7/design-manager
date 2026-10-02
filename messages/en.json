@@ -600,7 +600,7 @@
     "discardChanges": "Discard changes",
     "saveChanges": "Save changes",
     "editTask": "Edit task",
-    "confirmClientReview": "Move this task to Client review? Any remaining checklist items will be completed and production will be set to 100%.",
+    "confirmClientReview": "Move this task to Client review?",
     "status": "Status",
     "completedOn": "Completed",
     "myTasks": "My Tasks",
@@ -1959,7 +1959,7 @@
     "architect": "Architect"
   },
   "Finance": {
-    "proposal": { "design": "Design", "originalDesign": "Original design", "page": "PDF page {number}", "action": "Commercial proposal", "close": "Close", "generate": "Create PDF", "download": "Download PDF", "newRevision": "New revision", "revision": "Revision {number}", "preview": "PDF preview", "title": "Project title", "client": "Client", "contact": "Client phone", "address": "Site address", "intro": "Proposal note (optional)", "notePlaceholder": "For example: the area is preliminary and may be refined after measurements.", "studioContacts": "SPACE contacts", "contactPerson": "Contact person", "website": "Website", "email": "Email", "phone": "Phone", "businessAddress": "Studio address", "contactsHelp": "Save contacts once to reuse them in new proposals. Existing PDFs remain unchanged.", "saveContacts": "Save for studio", "contactsSaved": "Studio contacts saved.", "contactsError": "Unable to save studio contacts.", "contactsInvalid": "Check the contact format.", "help": "Prices and payment rows come from the saved Finance schedule. Edit them in Finance.", "loading": "Preparing preview…", "error": "Unable to prepare the proposal. Try again.", "numberRequired": "Add a leading project number to the project name, e.g. 336 Clinic.", "agreementRequired": "Save a project agreement first.", "changed": "Project data changed. Reload the current data before generating.", "saved": "Saved as an immutable revision.", "noRows": "The payment schedule is empty. This proposal will show the project total.", "refresh": "Reload project data", "history": "Generated proposals", "documentLanguage": "The client document is in Ukrainian."},
+    "proposal": { "stageNotes": "Stage descriptions", "stageNote": "Stage description: {name}", "stageNotePlaceholder": "Short description (optional)", "design": "Design", "originalDesign": "Original design", "page": "PDF page {number}", "action": "Commercial proposal", "close": "Close", "generate": "Create PDF", "download": "Download PDF", "newRevision": "New revision", "revision": "Revision {number}", "preview": "PDF preview", "title": "Project title", "client": "Client", "contact": "Client phone", "address": "Site address", "intro": "Proposal note (optional)", "notePlaceholder": "For example: the area is preliminary and may be refined after measurements.", "studioContacts": "SPACE contacts", "contactPerson": "Contact person", "website": "Website", "email": "Email", "phone": "Phone", "businessAddress": "Studio address", "contactsHelp": "Save contacts once to reuse them in new proposals. Existing PDFs remain unchanged.", "saveContacts": "Save for studio", "contactsSaved": "Studio contacts saved.", "contactsError": "Unable to save studio contacts.", "contactsInvalid": "Check the contact format.", "help": "Prices and payment rows come from the saved Finance schedule. Edit them in Finance.", "loading": "Preparing preview…", "error": "Unable to prepare the proposal. Try again.", "numberRequired": "Add a leading project number to the project name, e.g. 336 Clinic.", "agreementRequired": "Save a project agreement first.", "changed": "Project data changed. Reload the current data before generating.", "saved": "Saved as an immutable revision.", "noRows": "The payment schedule is empty. This proposal will show the project total.", "refresh": "Reload project data", "history": "Generated proposals", "documentLanguage": "The client document is in Ukrainian."},
     "trips": {
       "currency": "Currency",
       "title": "Business trips",
@@ -2391,6 +2391,7 @@
       "recordExpense": "Record expense payment"
     },
     "builder": {
+      "expectedDateFallback": "same as due date",
       "vatIncluded": "VAT included",
       "discount": "Discount",
       "discountNone": "No discount",

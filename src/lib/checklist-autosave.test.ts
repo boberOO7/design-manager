@@ -13,6 +13,7 @@ function task(items: TaskChecklistItem[] = [item("first")]): ProjectTask {
   return {
     assignee: null,
     assignee_id: "323e4567-e89b-12d3-a456-426614174000",
+    checklist_template_id: null,
     checklist_items: items,
     completed_area_m2: null,
     completed_at: null,
@@ -44,6 +45,37 @@ afterEach(() => {
 });
 
 describe("checklist autosave store", () => {
+  it("replaces the cached checklist and cancels old queued edits when template assignment changes", async () => {
+    vi.useFakeTimers();
+    const initial = { ...task(), checklist_template_id: "template-a" };
+    const replacement = { ...task([item("replacement", "New template item")]), checklist_template_id: "template-b" };
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const store = new ChecklistAutosaveStore();
+    store.update(initial, "first", { title: "Old template edit" });
+    store.seed(replacement);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(store.getSnapshot().items).toEqual(replacement.checklist_items);
+    expect(store.getSnapshot().pendingItemIds.size).toBe(0);
+    store.seed({ ...replacement, checklist_template_id: null, checklist_items: [] });
+    expect(store.getSnapshot().items).toEqual([]);
+  });
+
+  it("does not restore an old-template item when a deletion fails after replacement", async () => {
+    const initial = { ...task(), checklist_template_id: "template-a" };
+    const replacement = { ...task([item("replacement")]), checklist_template_id: "template-b" };
+    let finishDelete: ((value: Response) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => new Promise<Response>((resolve) => { finishDelete = resolve; })));
+    const store = new ChecklistAutosaveStore();
+    const deletion = store.remove(initial, "first");
+    store.seed(replacement);
+    finishDelete?.(new Response(JSON.stringify({ formError: "Old item missing" }), { status: 400 }));
+    await deletion;
+    expect(store.getSnapshot().items).toEqual(replacement.checklist_items);
+    expect(store.getSnapshot().error).toBeNull();
+  });
+
   it("updates checkbox completion optimistically and persists it immediately", async () => {
     const currentTask = task();
     const fetchMock = vi.fn().mockResolvedValue(response(task([{ ...currentTask.checklist_items[0], is_completed: true }])));

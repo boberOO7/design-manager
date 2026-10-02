@@ -239,8 +239,76 @@ test("proposal phones and contact person: defaults, overrides and immutable snap
  await dialog.getByRole('button',{name:p.newRevision,exact:true}).click();await expect(contacts).toHaveAttribute('aria-expanded','true');await expect(person).toHaveValue('');await expect(studioPhone).toHaveValue('');
  await page.screenshot({path:testInfo.outputPath('proposal-missing-contact-defaults.png')});
 });
+test("compact Finance schedule and proposal stage descriptions preserve dates and history", async ({page},testInfo) => {
+ const f=uk.Finance, b=f.builder, p=f.project, proposal=f.proposal;
+ sql(`update finance_expected_items set
+ due_date=case description when 'Планування' then date '2026-10-12' when 'Візуалізація' then date '2026-10-26' else date '2026-11-02' end,
+ expected_payment_date=case description when 'Планування' then date '2026-10-19' when 'Візуалізація' then null else date '2026-11-02' end,
+ client_note=case description when 'Планування' then 'Перед початком робіт.' when 'Візуалізація' then 'Після погодження планування.' else null end
+ where studio_id='${studio}' and id in(select id from finance_project_plan_items where project_id='${project}');`);
+ const dates=()=>sql(`select jsonb_agg(jsonb_build_object('id',id,'due',due_date,'expected',expected_payment_date) order by id) from finance_project_plan_items where project_id='${project}'`);
+ const notes=()=>sql(`select jsonb_agg(jsonb_build_object('id',id,'note',client_note) order by id) from finance_project_plan_items where project_id='${project}'`);
+ const datesBefore=dates(),notesBefore=notes();
+ await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
+ await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
+ await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ const dialog=page.getByRole('dialog'),rows=dialog.locator('[data-plan-row]');
+ await expect(rows).toHaveCount(3);await expect(dialog.getByLabel(b.clientNote,{exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:f.planning.differentExpectedDate,exact:true})).toHaveCount(0);
+ await expect(dialog.locator('[data-project-discount] p[aria-live]')).toHaveCount(0);await expect(dialog.locator('[data-price-summary] [data-discount-breakdown]')).toBeVisible();
+ await expect(rows.nth(1).getByRole('combobox',{name:f.planning.expectedDate,exact:true})).toContainText(b.expectedDateFallback);
+ await expect(rows.nth(2).getByRole('combobox',{name:f.planning.expectedDate,exact:true})).toContainText('02.11.2026');
+ for(const [label,count] of [['50 / 50',2],['30 / 50 / 20',3],['25 / 25 / 25 / 25',4]] as const) {
+  await dialog.getByRole('button',{name:label,exact:true}).click();await expect(rows).toHaveCount(count);
+  for(const row of await rows.all()) {
+   const alignment=await row.evaluate(el=>{const controls=el.querySelectorAll('[role="combobox"]');if(controls.length!==2)throw new Error('Missing date controls');const [due,expected]=Array.from(controls,node=>node.getBoundingClientRect());return {dueY:due.y,expectedY:expected.y,dueRight:due.right,expectedX:expected.x,height:el.clientHeight};});
+   expect(alignment.expectedY).toBe(alignment.dueY);expect(alignment.expectedX).toBeGreaterThan(alignment.dueRight);expect(alignment.height).toBeLessThan(60);
+  }
+  await dialog.getByRole('button',{name:b.custom,exact:true}).click();await expect(rows).toHaveCount(count);await expect(rows.first().getByLabel(f.movements.amount,{exact:true})).toBeEditable();
+ }
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('compact-schedule-desktop.png')});
+ await page.setViewportSize({width:390,height:844});expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await rows.first().scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath('compact-schedule-narrow.png')});
+ await dialog.getByRole('button',{name:f.movements.close,exact:true}).click();await page.setViewportSize({width:1440,height:1000});
+ await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ const reason=dialog.getByLabel(p.reason,{exact:true}), height=await reason.evaluate(el=>el.clientHeight);
+ await reason.fill('Перегляд домовленості.\n'.repeat(7));expect(await reason.evaluate(el=>el.clientHeight)).toBeGreaterThan(height);expect(await reason.evaluate(el=>getComputedStyle(el).resize)).toBe('none');await reason.fill('Уточнення формулювання домовленості.');
+ await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);expect(dates()).toBe(datesBefore);expect(notes()).toBe(notesBefore);
+ // An empty expected date keeps its nullable representation and follows an edited due date.
+ await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ const due=rows.nth(1).getByRole('combobox',{name:f.planning.dueDate,exact:true}),expected=rows.nth(1).getByRole('combobox',{name:f.planning.expectedDate,exact:true});
+ await due.click();await page.getByRole('gridcell',{name:'27',exact:true}).click();
+ await expect(expected).toContainText(b.expectedDateFallback);
+ await expected.click();await page.getByRole('gridcell',{name:'23',exact:true}).click();await expect(expected).toContainText('23.10.2026');
+ await expected.click();await page.getByRole('button',{name:'Очистити',exact:true}).click();await expect(expected).toContainText(b.expectedDateFallback);
+ await reason.fill('Уточнення дати другого платежу.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ expect(sql(`select due_date||'|'||coalesce(expected_payment_date::text,'NULL')||'|'||coalesce(expected_payment_date,due_date)::text from finance_project_plan_items where project_id='${project}' and description='Візуалізація'`)).toBe('2026-10-27|NULL|2026-10-27');expect(notes()).toBe(notesBefore);
+ // The hidden protected-row note is preserved with settled payment history.
+ sql(`select set_config('request.jwt.claim.sub','${actor}',false);do $$declare item record;begin
+ select * into item from finance_project_plan_items where project_id='${project}' and description='Планування';
+ perform record_finance_expected_payment('${studio}',gen_random_uuid(),item.id,jsonb_build_object('kind','incoming','date','2026-10-02','amount','100','accountId','${account}','categoryId',item.category_id),100);end $$;`);
+ const protectedBefore=sql(`select to_jsonb(e) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${project}' and has_settlement_history)`);
+ await page.reload();await page.getByRole('button',{name:p.editAgreement,exact:true}).click();await expect(dialog.getByText(b.protectedHelp,{exact:true})).toBeVisible();await expect(dialog.getByLabel(b.clientNote,{exact:true})).toHaveCount(0);
+ await reason.fill('Оновлення редакції зі збереженням оплат.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ expect(sql(`select to_jsonb(e) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${project}' and has_settlement_history)`)).toBe(protectedBefore);expect(notes()).toBe(notesBefore);
+ await page.getByRole('button',{name:proposal.action,exact:true}).click();
+ if(await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).isVisible())await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).click();
+ const stageNotes=dialog.getByRole('button',{name:proposal.stageNotes,exact:true});await expect(stageNotes).toHaveAttribute('aria-expanded','true');
+ const stage=(name:string)=>dialog.getByLabel(proposal.stageNote.replace('{name}',name),{exact:true});
+ await expect(stage('Планування')).toHaveValue('Перед початком робіт.');await expect(stage('Візуалізація')).toHaveValue('Після погодження планування.');
+ await stage('Планування').fill('Погодження функціонального планування.');await stage('Візуалізація').fill('');
+ await expect(dialog.getByRole('button',{name:proposal.generate,exact:true})).toBeEnabled({timeout:60000});await expect(dialog.locator('[data-proposal-pages]')).toContainText('Погодження функціонального планування.');await expect(dialog.locator('[data-proposal-pages]')).not.toContainText('Після погодження планування.');expect(notes()).toBe(notesBefore);
+ await page.screenshot({path:testInfo.outputPath('proposal-stage-descriptions.png')});
+ await dialog.getByRole('button',{name:proposal.generate,exact:true}).click();const download=dialog.getByRole('link',{name:proposal.download,exact:true});await expect(download).toBeVisible({timeout:60000});
+ const href=await download.getAttribute('href');if(!href)throw new Error('Missing proposal PDF');const bytes=await (await page.request.get(href)).body();const id=new URL(href,'http://localhost:3000').searchParams.get('id');
+ const frozen=sql(`select snapshot::text from finance_project_proposals where id='${id}'`);const generated=z.object({rows:z.array(z.object({name:z.string(),note:z.string()}))}).parse(JSON.parse(frozen));expect(generated.rows.find(row=>row.name==='Планування')?.note).toBe('Погодження функціонального планування.');expect(generated.rows.find(row=>row.name==='Візуалізація')?.note).toBe('');
+ await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).click();await expect(stage('Планування')).toHaveValue('Перед початком робіт.');await stage('Планування').fill('Опис для наступної редакції.');await expect(dialog.getByRole('button',{name:proposal.generate,exact:true})).toBeEnabled({timeout:60000});await dialog.getByRole('button',{name:proposal.generate,exact:true}).click();await expect(download).toBeVisible({timeout:60000});
+ expect(await (await page.request.get(href)).body()).toEqual(bytes);expect(sql(`select snapshot::text from finance_project_proposals where id='${id}'`)).toBe(frozen);expect(notes()).toBe(notesBefore);
+ // Empty notes in this isolated fixture produce a collapsed section in a fresh draft.
+ sql(`update finance_expected_items set client_note='' where studio_id='${studio}' and id in(select id from finance_project_plan_items where project_id='${project}');`);
+ await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).click();await expect(stageNotes).toHaveAttribute('aria-expanded','false');await expect(stage('Планування')).not.toBeVisible();await stageNotes.click();await expect(stage('Планування')).toHaveValue('');
+});
 test.afterAll(async()=>{
  sql(`begin;set local session_replication_role=replica;
- delete from finance_project_proposals where studio_id='${studio}';delete from finance_project_items where studio_id='${studio}';delete from finance_project_plan_revisions where studio_id='${studio}';delete from finance_project_terms where studio_id='${studio}';delete from finance_expected_items where studio_id='${studio}';delete from finance_planning_requests where studio_id='${studio}';delete from finance_accounts where studio_id='${studio}';delete from finance_categories where studio_id='${studio}';delete from finance_settings where studio_id='${studio}';delete from notifications where studio_id='${studio}';delete from project_activity where project_id='${project}';delete from project_task_stage_columns where project_id='${project}';delete from crm_leads where studio_id='${studio}';delete from projects where studio_id='${studio}';delete from studio_members where studio_id='${studio}';delete from studios where id='${studio}';commit;`);
+ delete from finance_project_proposals where studio_id='${studio}';delete from finance_allocations where studio_id='${studio}';delete from finance_movement_entries where studio_id='${studio}';delete from finance_movements where studio_id='${studio}';delete from finance_project_items where studio_id='${studio}';delete from finance_project_plan_revisions where studio_id='${studio}';delete from finance_project_terms where studio_id='${studio}';delete from finance_expected_items where studio_id='${studio}';delete from finance_planning_requests where studio_id='${studio}';delete from finance_accounts where studio_id='${studio}';delete from finance_categories where studio_id='${studio}';delete from finance_settings where studio_id='${studio}';delete from notifications where studio_id='${studio}';delete from project_activity where project_id='${project}';delete from project_task_stage_columns where project_id='${project}';delete from crm_leads where studio_id='${studio}';delete from projects where studio_id='${studio}';delete from studio_members where studio_id='${studio}';delete from studios where id='${studio}';commit;`);
  if(actor){const result=await client.auth.admin.deleteUser(actor);if(result.error)throw result.error;}
 });

@@ -60,6 +60,7 @@ export async function createProjectTask(
       completed_area_m2: flattened.completed_area_m2?.[0],
       progress_weight: flattened.progress_weight?.[0],
       checklist_items: flattened.checklist_items?.[0],
+      checklist_template_id: flattened.checklist_template_id?.[0],
     };
     return { formError: "Please correct the highlighted fields.", fieldErrors };
   }
@@ -95,6 +96,7 @@ export async function createProjectTask(
   const progressField = getTaskCreationProgressField(parsed.data.stage);
   const task = {
     project_id: project.id,
+    checklist_template_id: parsed.data.checklist_template_id,
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     priority: parsed.data.priority,

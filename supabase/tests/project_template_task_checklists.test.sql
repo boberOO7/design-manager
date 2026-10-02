@@ -35,6 +35,9 @@ do $test$
       '[]'::jsonb, template_id
     );
     select id into first_task_id from public.tasks where project_id = first_project_id and title = 'First task';
+    if (select checklist_template_id from public.tasks where id=first_task_id) is distinct from checklist_id then
+      raise exception 'Project-template task lost checklist template identity';
+    end if;
     if (select array_agg(title order by position) from public.task_checklist_items where task_id = first_task_id)
       is distinct from array['First item','Second item']::text[] then
       raise exception 'The created task did not receive ordered checklist items';
@@ -72,6 +75,14 @@ do $test$
       is distinct from array['Updated item']::text[] then
       raise exception 'Future projects did not use the edited checklist template';
     end if;
+    -- Archiving a source does not break an existing project-template snapshot.
+    perform public.set_checklist_template_archived(checklist_id,true);
+    second_project_id := public.create_project_from_template(
+      '{"studio_id":"77000000-0000-0000-0000-000000000001","name":"Archived source snapshot","project_type":"private","country_code":"UA","total_area_m2":80,"priority":"normal","start_date":"2026-09-24"}'::jsonb,
+      '[]'::jsonb, template_id
+    );
+    if (select checklist_template_id from public.tasks where project_id=second_project_id and title='Renamed task')
+      is distinct from checklist_id then raise exception 'Archived source lost template identity'; end if;
   end
   $test$;
 rollback;

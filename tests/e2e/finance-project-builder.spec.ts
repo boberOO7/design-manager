@@ -132,7 +132,6 @@ test("value builder preserves protected payments and native-currency area histor
  await page.screenshot({path:testInfo.outputPath('add-at-full-allocation-fullhd-en-light.png')});
  await dialog.locator('[data-plan-row]').last().getByRole('button',{name:b.paymentActions,exact:true}).click();await page.getByRole('menuitem',{name:b.remove,exact:true}).click();
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.dueDate,{exact:true}).click();await page.getByRole('button',{name:'Today',exact:true}).click();
- await dialog.locator('[data-plan-row]').first().getByRole('button',{name:t.planning.differentExpectedDate,exact:true}).click();
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.expectedDate,{exact:true}).click();await page.getByRole('gridcell',{name:'23',exact:true}).click();
  await dialog.getByRole('button',{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
  expect(sql(`select concat(amount,'|',currency) from finance_project_current_terms where project_id='${projectId}' and stream='design'`)).toBe('2460.00|USD');

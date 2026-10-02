@@ -13,7 +13,7 @@ function task(id: string, projectId: string, deadline: string | null, status: My
     due_date: status === "completed" || status === "cancelled" ? null : deadline, deadlines: deadline ? [{ id: `deadline-${id}`, target_status: "completed", due_date: deadline }] : [],
     completed_at: null, completed_area_m2: null, manual_progress_override: false, production_completion: 0,
     progress_weight: 1, created_at: "2026-09-01T00:00:00Z", created_by: "creator",
-    currentStatusEnteredAt: null, checklist_items: [], assignee: null, collaborators: [], creator: null,
+    currentStatusEnteredAt: null, checklist_template_id: null, checklist_items: [], assignee: null, collaborators: [], creator: null,
   };
 }
 

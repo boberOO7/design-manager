@@ -4,12 +4,10 @@ import { describe, expect, it } from "vitest";
 const mutationPath = new URL("./task-status.ts", import.meta.url);
 
 describe("task status mutation contract", () => {
-  it("leaves Client review checklist completion to the atomic database transition while guarding Internal Review and Done", async () => {
+  it("delegates checklist gating to the shared database workflow trigger", async () => {
     const source = await readFile(mutationPath, "utf8");
-
-    expect(source).toContain('parsed.data.status === "internal_review" || parsed.data.status === "completed"');
-    expect(source).not.toContain('parsed.data.status === "review" || parsed.data.status === "completed"');
-    expect(source).toContain("Complete every checklist item before moving this task to Internal Review or Done.");
+    expect(source).not.toContain("task_checklist_items.some");
+    expect(source).toContain('formError: error?.message ||');
   });
 
   it("allows unassigned completion without attribution while retaining the active-member check for assigned work", async () => {

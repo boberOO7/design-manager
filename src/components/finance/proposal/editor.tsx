@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { studioContactDetailsSchema, studioContactDetailsInputSchema, studioWebsiteDisplay, type StudioContactDetails, proposalPresentation, proposalPresentationSchema, proposalSnapshotSchema, type ProposalPresentation, type ProposalSnapshot, proposalDesignVariants, proposalDesignVariantSchema, DEFAULT_PROPOSAL_DESIGN_VARIANT, type ProposalDesignVariant } from "@/lib/finance-proposal";
@@ -131,6 +132,13 @@ export default function ProposalEditor({ projectId, onClose }: { projectId: stri
     setPresentation((old) => old ? { ...old, [field]: value } : old);
     requestId.current = crypto.randomUUID();
   }
+  function editStageNote(id: string, note: string) {
+    setLoading(true); setDesignPreviews({});
+    setPresentation(old => old ? { ...old, stageNotes: source?.rows.map(row => ({ id: row.id,
+      note: row.id === id ? note : old.stageNotes?.find(item => item.id === row.id)?.note ?? row.note,
+    })) } : old);
+    requestId.current = crypto.randomUUID();
+  }
   const previewUrl = selected ? preview : designPreviews[designVariant];
   return <Dialog isOpen onRequestClose={reason => {
     // Dialog captures Escape before the Select can handle it.
@@ -147,6 +155,11 @@ export default function ProposalEditor({ projectId, onClose }: { projectId: stri
           <p className="text-sm font-medium">№ {source.projectNumber} · {t("revision", { number: source.revision })}</p>
           {([['projectTitle','title'],['clientName','client'],['contact','contact'],['address','address']] as const).map(([field, label]) => <FormField key={field} label={t(label)}>{field === 'contact' ? <PhoneInput value={presentation.contact} maxLength={1000} onValueChange={value => edit('contact',phoneDisplay(value))}/> : <Input value={presentation[field]} maxLength={field === 'address' ? 1000 : 500} required={field === 'projectTitle'} onChange={event => edit(field,event.target.value)}/>}</FormField>)}
           <FormField as="div" label={<label htmlFor={noteId}>{t("intro")}</label>}><Textarea id={noteId} className="resize-none overflow-hidden" ref={element=>{if(element){element.style.height="auto";element.style.height=`${element.scrollHeight}px`;}}} onInput={event=>{event.currentTarget.style.height="auto";event.currentTarget.style.height=`${event.currentTarget.scrollHeight}px`;}} placeholder={t("notePlaceholder")} value={presentation.intro} maxLength={1000} rows={3} onChange={(event) => edit("intro", event.target.value)}/></FormField>
+          {source.rows.length ? <AnimatedDisclosure title={t("stageNotes")} defaultOpen={source.rows.some(row => Boolean(row.note))} className="border-t border-[var(--ui-border)] pt-1">
+            <div className="space-y-3 px-1 pb-3 pt-1">{source.rows.map(row => <FormField key={row.id} className="min-w-0" label={<span className="block truncate" title={row.name}>{row.name}</span>}>
+              <Textarea aria-label={t("stageNote", { name: row.name })} value={presentation.stageNotes?.find(item => item.id === row.id)?.note ?? row.note} placeholder={t("stageNotePlaceholder")} rows={1} maxLength={300} className="resize-none overflow-hidden text-xs" ref={element=>{if(element){element.style.height="auto";element.style.height=`${element.scrollHeight}px`;}}} onInput={event=>{event.currentTarget.style.height="auto";event.currentTarget.style.height=`${event.currentTarget.scrollHeight}px`;}} onChange={event => editStageNote(row.id,event.target.value)}/>
+            </FormField>)}</div>
+          </AnimatedDisclosure> : null}
           {contacts ? <section className="border-t border-[var(--ui-border)] pt-3" aria-label={t("studioContacts")}>
             <h3><Button type="button" variant="ghost" className="h-auto min-h-10 w-full justify-between gap-3 whitespace-normal px-1 py-1.5 text-left font-medium" aria-label={t("studioContacts")} aria-describedby={contactsSummary ? `${contactsId}-summary` : undefined} aria-expanded={contactsOpen} aria-controls={contactsId} onClick={() => setContactsOpen(open => !open)}>
               <span className="min-w-0"><span className="block text-sm">{t("studioContacts")}</span>{contactsSummary ? <span id={`${contactsId}-summary`} title={contactsSummary} className="mt-0.5 line-clamp-2 break-words text-xs font-normal text-[var(--ui-text-muted)]">{contactsSummary}</span> : null}</span>

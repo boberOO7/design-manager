@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { toTaskStatusActionState } from "../task-status-mutation";
-import { checklistItemCreateSchema, checklistItemUpdateSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkPriorityPayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
+import { checklistItemCreateSchema, checklistItemUpdateSchema, taskChecklistTemplateSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkPriorityPayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskCreationSchema, taskEditSchema, taskStatusPayloadSchema, taskStatusUpdateSchema } from "./task";
 
 const validTask = {
   title: "  Prepare lighting plan  ",
@@ -205,5 +205,18 @@ describe("bulk task priority validation", () => {
     }
     expect(taskBulkPriorityPayloadSchema.safeParse({ stage: "stage_1", priority: "medium", task_ids: taskIds }).success).toBe(false);
     expect(taskBulkPriorityPayloadSchema.safeParse({ stage: "stage_1", priority: "urgent", task_ids: [taskIds[0], taskIds[0]] }).success).toBe(false);
+  });
+});
+
+
+describe("task checklist template assignment validation", () => {
+  it("accepts one template or no template and rejects import-style payloads", () => {
+    expect(taskChecklistTemplateSchema.safeParse({ checklist_template_id: validTask.assignee_id }).success).toBe(true);
+    expect(taskChecklistTemplateSchema.safeParse({ checklist_template_id: null }).success).toBe(true);
+    expect(taskChecklistTemplateSchema.safeParse({ checklist_template_id: "bad" }).success).toBe(false);
+    expect(taskChecklistTemplateSchema.safeParse({ title: "Imported item", weight: 1 }).success).toBe(false);
+    expect(taskChecklistTemplateSchema.safeParse({ checklist_template_id: null, templates: [] }).success).toBe(false);
+    expect(taskCreationSchema.parse({ ...validTask, checklist_template_id: validTask.assignee_id }).checklist_template_id).toBe(validTask.assignee_id);
+    expect(taskCreationSchema.parse(validTask).checklist_template_id).toBeNull();
   });
 });

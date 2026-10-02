@@ -4810,6 +4810,7 @@ export type Database = {
       tasks: {
         Row: {
           assignee_id: string | null
+          checklist_template_id: string | null
           completed_area_m2: number | null
           completed_at: string | null
           created_at: string
@@ -4831,6 +4832,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          checklist_template_id?: string | null
           completed_area_m2?: number | null
           completed_at?: string | null
           created_at?: string
@@ -4852,6 +4854,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          checklist_template_id?: string | null
           completed_area_m2?: number | null
           completed_at?: string | null
           created_at?: string
@@ -4877,6 +4880,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
             referencedColumns: ["id"]
           },
           {
@@ -6748,6 +6758,10 @@ export type Database = {
           p_reason?: string
           p_stage: string
         }
+        Returns: undefined
+      }
+      set_task_checklist_template: {
+        Args: { p_task_id: string; p_template_id?: string }
         Returns: undefined
       }
       set_vacation_employee_visibility: {

@@ -72,7 +72,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     view === "board" && canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]),
     view === "team" ? getProjectMembers(project.id) : Promise.resolve([]),
     view === "activity" ? getProjectActivity(project.id) : Promise.resolve([]),
-    view === "board" && canManage ? getStudioChecklistTemplates() : Promise.resolve([]),
+    view === "board" && canManage ? getStudioChecklistTemplates({ includeArchived: true }) : Promise.resolve([]),
     view === "board" && canManage ? getStudioProjectTemplates() : Promise.resolve([]),
     getProjectStageConfiguration(project.id),
     getProjectCalendarTime(project.id, project.studio_id),

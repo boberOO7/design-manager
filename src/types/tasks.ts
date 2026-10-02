@@ -42,6 +42,7 @@ export type ProjectTask = Pick<
   | "status"
   | "priority"
   | "assignee_id"
+  | "checklist_template_id"
   | "created_by"
   | "due_date"
   | "completed_at"

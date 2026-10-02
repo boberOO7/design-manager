@@ -1,14 +1,12 @@
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import {
-  createOptimisticChecklistItem,
   removeChecklistItem,
-  replaceOptimisticChecklistItem,
   updateChecklistItemLocally,
 } from "@/lib/checklist-interaction";
 
 export type ChecklistChange = Partial<Pick<TaskChecklistItem, "title" | "weight" | "is_completed" | "is_not_needed">>;
 
-type ChecklistMutationResult = { success: true; task: ProjectTask; checklistItemId?: string };
+type ChecklistMutationResult = { success: true; task: ProjectTask };
 type ChecklistSnapshot = {
   error: string | null;
   items: TaskChecklistItem[];
@@ -49,10 +47,16 @@ export class ChecklistAutosaveStore {
   private pendingItemIds = new Set<string>();
   private error: string | null = null;
   private taskId: string | null = null;
-  private operationId = 0;
+  private templateId: string | null | undefined;
+  private snapshotVersion = 0;
 
-  seed(task: ProjectTask) {
-    if (this.taskId !== task.id) {
+  seed(task: ProjectTask, replace = false) {
+    if (replace || this.taskId !== task.id || this.templateId !== task.checklist_template_id) {
+      for (const update of this.pendingUpdates.values()) {
+        if (update.timer) clearTimeout(update.timer);
+      }
+      this.snapshotVersion += 1;
+      this.templateId = task.checklist_template_id;
       this.taskId = task.id;
       this.items = task.checklist_items;
       this.error = null;
@@ -77,38 +81,6 @@ export class ChecklistAutosaveStore {
   dismissError() {
     this.error = null;
     this.emit();
-  }
-
-  async create(task: ProjectTask, title: string, weight: number) {
-    this.seed(task);
-    const temporaryItemId = `temporary-checklist-${task.id}-${++this.operationId}`;
-    const temporaryItem = createOptimisticChecklistItem({
-      id: temporaryItemId,
-      now: new Date().toISOString(),
-      position: Math.max(-1, ...this.items.map((item) => item.position)) + 1,
-      taskId: task.id,
-      title,
-      weight,
-    });
-    this.items = [...this.items, temporaryItem];
-    this.setPending(temporaryItemId, true);
-    this.error = null;
-    this.emit();
-    try {
-      const result = await requestChecklistMutation(`/api/tasks/${encodeURIComponent(task.id)}/checklist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, weight }),
-      });
-      const persistedItem = result.checklistItemId ? result.task.checklist_items.find((item) => item.id === result.checklistItemId) : undefined;
-      if (persistedItem) this.items = replaceOptimisticChecklistItem(this.items, temporaryItemId, persistedItem);
-    } catch (cause) {
-      this.items = removeChecklistItem(this.items, temporaryItemId);
-      this.error = cause instanceof Error ? cause.message : "The checklist item could not be added.";
-    } finally {
-      this.setPending(temporaryItemId, false);
-      this.emit();
-    }
   }
 
   update(task: ProjectTask, itemId: string, change: ChecklistChange, immediate = false) {
@@ -138,6 +110,7 @@ export class ChecklistAutosaveStore {
 
   async remove(task: ProjectTask, itemId: string) {
     this.seed(task);
+    const snapshotVersion = this.snapshotVersion;
     const index = this.items.findIndex((item) => item.id === itemId);
     const previous = this.items[index];
     if (!previous) return;
@@ -148,6 +121,7 @@ export class ChecklistAutosaveStore {
     try {
       await requestChecklistMutation(`/api/tasks/${encodeURIComponent(task.id)}/checklist/${encodeURIComponent(itemId)}`, { method: "DELETE" });
     } catch (cause) {
+      if (snapshotVersion !== this.snapshotVersion) return;
       if (!this.items.some((item) => item.id === itemId)) {
         const restored = [...this.items];
         restored.splice(index, 0, previous);

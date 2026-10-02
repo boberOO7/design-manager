@@ -57,6 +57,7 @@ export const taskCreationSchema = z.object({
   deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: optionalProgressWeightSchema,
+  checklist_template_id: z.preprocess((value) => value === "" || value === undefined ? null : value, z.uuid("Choose a valid checklist template").nullable()),
   checklist_items: checklistTemplateItemsSchema,
 }).strict();
 
@@ -138,6 +139,10 @@ export const checklistItemCreateSchema = z.object({
   weight: checklistWeightSchema.default(1),
 }).strict();
 
+export const taskChecklistTemplateSchema = z.object({
+  checklist_template_id: z.uuid("Choose a valid checklist template").nullable(),
+}).strict();
+
 export const checklistItemUpdateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   weight: checklistWeightSchema.optional(),
@@ -184,6 +189,7 @@ export function getTaskCreationInput(formData: FormData) {
     stage: getFormString(formData, "stage"),
     deadlines: getFormJson(formData, "deadlines"),
     completed_area_m2: getFormString(formData, "completed_area_m2"),
+    checklist_template_id: getFormString(formData, "checklist_template_id"),
     checklist_items: getFormString(formData, "checklist_items"),
     progress_weight: getFormString(formData, "progress_weight"),
   };

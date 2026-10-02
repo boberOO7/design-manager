@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { cn, formatDate, formatDateOnlyDayMonth, formatNumber } from "@/lib/utils";
 import { getCurrentStatusDuration } from "@/lib/dashboard";
-import { checklistItemCreateSchema, type TaskEditField } from "@/lib/validation/task";
+import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
@@ -42,7 +42,7 @@ function isTaskEditResponse(value: unknown): value is TaskEditResponse {
   return typeof value === "object" && value !== null && "success" in value;
 }
 
-type TaskWorkResponse = { success: true; task: ProjectTask; checklistItemId?: string } | { success?: false; formError?: string };
+type TaskWorkResponse = { success: true; task: ProjectTask } | { success?: false; formError?: string };
 function isTaskWorkResponse(value: unknown): value is TaskWorkResponse {
   return typeof value === "object" && value !== null && "success" in value;
 }
@@ -116,14 +116,11 @@ export function TaskDetailsDrawer({
   const roleLabel = (value: string) => { const roleKey = getCanonicalRoleTranslationKey(value); return roleKey ? roles(roleKey) : value; };
   const locale = useLocale();
   const panelRef = useRef<HTMLDivElement>(null);
-  const checklistTitleRef = useRef<HTMLInputElement>(null);
   const checklistStoreRef = useRef<ReturnType<typeof getChecklistAutosaveStore> | null>(null);
   if (!checklistStoreRef.current) checklistStoreRef.current = getChecklistAutosaveStore(task.id);
   const checklistStore = checklistStoreRef.current;
   checklistStore.seed(task);
   const taskRef = useRef(task);
-  const checklistFormRevisionRef = useRef(0);
-  const lastSubmittedChecklistRevisionRef = useRef(-1);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -132,16 +129,12 @@ export function TaskDetailsDrawer({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<TaskEditField, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [newChecklistTitle, setNewChecklistTitle] = useState("");
-  const [newChecklistWeight, setNewChecklistWeight] = useState("1");
   const [, setChecklistRevision] = useState(0);
   const [manualProgress, setManualProgress] = useState(task.production_completion.toString());
   const [isEditingManualProgress, setIsEditingManualProgress] = useState(false);
   const [values, setValues] = useState(() => makeFormValues(task));
-  const [selectedChecklistTemplateId, setSelectedChecklistTemplateId] = useState("");
   const [isApplyingChecklistTemplate, setIsApplyingChecklistTemplate] = useState(false);
   const statusLabel = (status: ProjectTask["status"]) => statusT(status === "in_progress" ? "inProgress" : status);
-  const selectedChecklistTemplate = templates.find((template) => template.id === selectedChecklistTemplateId);
   const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
   const currentStatusDuration = getCurrentStatusDuration(task.currentStatusEnteredAt ?? null, new Date().toISOString());
   const currentStatusDurationLabel = currentStatusDuration === null ? null : currentStatusDuration.days === 0 && currentStatusDuration.hours === 0 ? t("statusDurationUnderHour") : currentStatusDuration.days === 0 ? t("statusDurationHours", { count: currentStatusDuration.hours }) : t("statusDurationDaysHours", { days: currentStatusDuration.days, hours: currentStatusDuration.hours });
@@ -154,7 +147,7 @@ export function TaskDetailsDrawer({
   const canEditWork = canEditTaskWork({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, status: task.status });
   taskRef.current = task;
   const checklistSnapshot = checklistStore.getSnapshot();
-  const displayedChecklistItems = task.status === "review" ? task.checklist_items : checklistSnapshot.items;
+  const displayedChecklistItems = checklistSnapshot.items;
   const taskProgress = calculateTaskProgress({ ...task, checklist_items: displayedChecklistItems });
   const isDirty = JSON.stringify(values) !== JSON.stringify(makeFormValues(task));
 
@@ -260,15 +253,11 @@ export function TaskDetailsDrawer({
       setFormError(t("updateFailed"));
       return;
     }
-    if (status === "review" && task.status !== "review" && !window.confirm(t("confirmClientReview"))) return;
     setIsSaving(true);
     setFormError(null);
     setSuccessMessage(null);
     const updatedTask = getOptimisticTaskForStatus(task, status);
     onTaskUpdated(updatedTask);
-    if (status === "review") {
-      checklistStore.seed(updatedTask);
-    }
     try {
       const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}/status`, {
         method: "PATCH",
@@ -330,25 +319,6 @@ export function TaskDetailsDrawer({
     if (saved) setIsEditingManualProgress(false);
   }
 
-  async function addChecklistItem() {
-    const revision = checklistFormRevisionRef.current;
-    if (revision === lastSubmittedChecklistRevisionRef.current) return;
-    const parsed = checklistItemCreateSchema.safeParse({ title: newChecklistTitle, weight: newChecklistWeight });
-    if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? checklistT("addFailed"));
-      return;
-    }
-
-    lastSubmittedChecklistRevisionRef.current = revision;
-    setSuccessMessage(null);
-    setNewChecklistTitle("");
-    setNewChecklistWeight("1");
-    checklistFormRevisionRef.current += 1;
-    window.requestAnimationFrame(() => checklistTitleRef.current?.focus());
-
-    await checklistStore.create(taskRef.current, parsed.data.title, parsed.data.weight);
-  }
-
   function updateChecklistItem(itemId: string, change: ChecklistChange, immediate = false) {
     const update = change.title === undefined ? change : { ...change, title: change.title.trim() };
     checklistStore.update(taskRef.current, itemId, update, immediate);
@@ -359,15 +329,29 @@ export function TaskDetailsDrawer({
     await checklistStore.remove(taskRef.current, itemId);
   }
 
-  async function appendChecklistTemplate() {
-    if (!selectedChecklistTemplate || isApplyingChecklistTemplate) return;
+  async function assignChecklistTemplate(templateId: string) {
+    if (isApplyingChecklistTemplate || templateId === (task.checklist_template_id ?? "")) return;
     setIsApplyingChecklistTemplate(true);
+    setFormError(null);
     setSuccessMessage(null);
-    for (const stage of selectedChecklistTemplate.stages) {
-      await checklistStore.create(taskRef.current, stage.title, stage.weight);
+    try {
+      const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}/checklist`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checklist_template_id: templateId || null }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isTaskWorkResponse(result) || !result.success) {
+        throw new Error(checklistT("autosaveFailed"));
+      }
+      taskRef.current = result.task;
+      checklistStore.seed(result.task, true);
+      onTaskUpdated(result.task);
+    } catch {
+      setFormError(checklistT("autosaveFailed"));
+    } finally {
+      setIsApplyingChecklistTemplate(false);
     }
-    setSelectedChecklistTemplateId("");
-    setIsApplyingChecklistTemplate(false);
   }
 
   return (
@@ -467,18 +451,14 @@ export function TaskDetailsDrawer({
               </section>
               <section aria-labelledby="task-edit-checklist" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <div><h3 id="task-edit-checklist" className="text-sm font-semibold text-[var(--ui-text)]">{checklistT("checklist")}</h3><p className="mt-1 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("description")}</p></div>
-                {canEditWork ? <div className="mt-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5">
-                  <FormField className="gap-1 text-xs" label={templatesT("checklistTemplate")}>
-                    <Select value={selectedChecklistTemplateId} disabled={isSaving || isApplyingChecklistTemplate} onValueChange={setSelectedChecklistTemplateId}>
-                      <SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>
-                      {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
-                    </Select>
-                  </FormField>
-                  {selectedChecklistTemplate ? <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs leading-4 text-[var(--ui-text-muted)]">{templatesT("stages", { count: selectedChecklistTemplate.stages.length })} · {templatesT("totalWeight", { weight: selectedChecklistTemplate.stages.reduce((total, stage) => total + stage.weight, 0) })}</p><Button type="button" size="sm" disabled={isSaving || isApplyingChecklistTemplate || selectedChecklistTemplate.stages.length === 0} onClick={() => void appendChecklistTemplate()}><Plus className="size-4" aria-hidden="true" />{checklistT("add")}</Button></div> : null}
-                </div> : null}
+                <FormField className="mt-2 gap-1 text-xs" label={templatesT("checklistTemplate")}>
+                  <Select value={task.checklist_template_id ?? ""} disabled={!canEditWork || isSaving || isApplyingChecklistTemplate || checklistSnapshot.pendingItemIds.size > 0} onValueChange={(templateId) => void assignChecklistTemplate(templateId)}>
+                    <SelectItem value="">{templatesT("noChecklistTemplate")}</SelectItem>
+                    {templates.filter((template) => !template.archivedAt || template.id === task.checklist_template_id).map((template) => <SelectItem key={template.id} value={template.id} disabled={Boolean(template.archivedAt)}>{template.name}</SelectItem>)}
+                  </Select>
+                </FormField>
                 {checklistSnapshot.error ? <p role="alert" className="mt-2 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
-                {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemEditorRow key={item.id} item={item} canEdit={canEditWork} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
-                {canEditWork ? <form onSubmit={(event) => { event.preventDefault(); void addChecklistItem(); }} className="mt-2 grid gap-2 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-2.5 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-end"><label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("newItem")}<input ref={checklistTitleRef} value={newChecklistTitle} maxLength={200} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistTitle(event.target.value); }} className="h-11 min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" /></label><label className="grid gap-1 text-xs font-medium text-[var(--ui-text-secondary)]">{checklistT("weight")}<Input type="number" min="1" max="1000" step="1" inputMode="numeric" value={newChecklistWeight} disabled={isSaving || isApplyingChecklistTemplate} onChange={(event) => { checklistFormRevisionRef.current += 1; setNewChecklistWeight(event.target.value); }} /></label><Button type="submit" size="sm" className="min-h-11 w-full sm:w-auto" disabled={isSaving || isApplyingChecklistTemplate || !newChecklistTitle.trim() || !isValidChecklistWeightInput(newChecklistWeight)}><Plus className="size-4" aria-hidden="true" /> {checklistT("add")}</Button></form> : null}
+                {checklistSnapshot.items.length ? <ul className="mt-2 divide-y divide-[var(--ui-border-subtle)] border-y border-[var(--ui-border-subtle)]">{checklistSnapshot.items.map((item) => <ChecklistItemEditorRow key={item.id} item={item} canEdit={canEditWork && !isApplyingChecklistTemplate} pending={checklistSnapshot.pendingItemIds.has(item.id)} onDelete={deleteChecklistItem} onUpdate={updateChecklistItem} />)}</ul> : <p className="mt-2 flex min-h-9 items-center rounded-lg border border-dashed border-[var(--ui-border-strong)] px-3 py-2 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("empty")}</p>}
               </section>
               </> : null}
             </div>

@@ -41,8 +41,10 @@ export const proposalPresentationSchema = z.object({
   designVariant: proposalDesignVariantSchema.optional(),
   // Presentation override; the generated snapshot freezes it in studioContactDetails.
   studioContactPerson: z.string().trim().max(200).optional(),
+  stageNotes: z.array(z.object({ id: z.uuid(), note: z.string().trim().max(300) }))
+    .refine(notes => new Set(notes.map(note => note.id)).size === notes.length).optional(),
 });
-export const proposalSnapshotSchema = proposalPresentationSchema.omit({ studioContactPerson: true }).extend({
+export const proposalSnapshotSchema = proposalPresentationSchema.omit({ studioContactPerson: true, stageNotes: true }).extend({
   schemaVersion: z.literal(1), projectId: z.uuid(), projectNumber: z.string().regex(/^\d+$/),
   revision: z.number().int().positive(), date: z.iso.date(), area: decimal.nullable(),
   clientRatePerM2: decimal.nullable().optional(),
@@ -66,15 +68,19 @@ export function resolveProposalDesignVariant(snapshot: Pick<ProposalSnapshot, "d
 // Parsing copies the allowlisted client data, never retaining mutable source references.
 export function createProposalSnapshot(source: unknown, presentation: unknown): ProposalSnapshot {
   const snapshot = proposalSnapshotSchema.parse(source);
-  const { studioContactPerson, ...fields } = proposalPresentationSchema.parse(presentation);
+  const { studioContactPerson, stageNotes, ...fields } = proposalPresentationSchema.parse(presentation);
+  const notes = new Map(stageNotes?.map(({ id, note }) => [id, note]));
   return proposalSnapshotSchema.parse({ ...snapshot, ...fields,
+    rows: snapshot.rows.map(row => ({ ...row, note: notes.get(row.id) ?? row.note })),
     ...(studioContactPerson !== undefined && snapshot.studioContactDetails ? {
       studioContactDetails: { ...snapshot.studioContactDetails, contactPerson: studioContactPerson },
     } : {}),
   });
 }
 export function proposalPresentation(source: ProposalSnapshot): ProposalPresentation {
-  return proposalPresentationSchema.parse({ ...source, studioContactPerson: source.studioContactDetails?.contactPerson });
+  return proposalPresentationSchema.parse({ ...source, studioContactPerson: source.studioContactDetails?.contactPerson,
+    stageNotes: source.rows.map(({ id, note }) => ({ id, note })),
+  });
 }
 export function proposalFilename(snapshot: Pick<ProposalSnapshot, "projectNumber" | "revision">) {
   return `SPACE-${snapshot.projectNumber}-r${snapshot.revision}.pdf`;

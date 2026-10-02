@@ -83,10 +83,17 @@ Project aggregation and attribution are described in
   notifications, child items, drawer, or My Tasks entry.
 - Checklist editing is allowed only while the task is To do or In progress.
 - Position is assigned on insertion and not user-reorderable.
-- Moving to Client review atomically completes remaining checklist items and
-  normalizes production. Moving to Internal review or Done requires every
-  checklist item resolved.
-- Studio checklist templates may seed a task's items during creation.
+- The shared database workflow trigger requires every checklist item resolved
+  before entry into Internal review or any later canonical workflow status.
+  The check also applies to bulk moves and reopened tasks. Status transitions
+  never change checklist item completion or not-needed state.
+- `tasks.checklist_template_id` records at most one assigned studio template.
+  Selection applies immediately through `set_task_checklist_template`: changing
+  templates atomically replaces the checklist snapshot; clearing the assignment
+  clears its items. Re-selecting the assigned template preserves item edits.
+- Task creation and project-template copies retain the checklist template ID.
+  Item snapshots remain editable and source-template edits do not rewrite them.
+  Legacy imported/manual checklists retain their items with no inferred template ID.
 - Checklist items start pending. Completed and not-needed items both count as
   resolved in weighted progress and status guards; their stored states stay distinct.
 

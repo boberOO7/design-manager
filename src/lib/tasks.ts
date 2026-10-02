@@ -170,13 +170,6 @@ export function getOptimisticTaskForStatus(
   status: ProjectTask["status"],
 ): ProjectTask {
   if (task.status === status) return task;
-  if (status === "review") {
-    return {
-      ...task,
-      status,
-      checklist_items: task.checklist_items.map((item) => ({ ...item, is_completed: item.is_not_needed ? false : true })),
-    };
-  }
   if (status === "in_progress" && !task.manual_progress_override) {
     return { ...task, status, production_completion: getAutomaticTaskProgress(task.status, status) };
   }
@@ -210,6 +203,7 @@ function areTaskPeopleEqual(
 function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
   return left.id === right.id
     && left.project_id === right.project_id
+    && left.checklist_template_id === right.checklist_template_id
     && left.title === right.title
     && left.description === right.description
     && left.status === right.status

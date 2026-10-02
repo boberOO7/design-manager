@@ -9,7 +9,8 @@ import { renderProposalPdf } from "@/lib/finance-proposal-pdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-const bodySchema = z.object({ intent: z.enum(["preview", "generate"]), requestId: z.uuid(), source: proposalSnapshotSchema, presentation: proposalPresentationSchema });
+const bodySchema = z.object({ intent: z.enum(["preview", "generate"]), requestId: z.uuid(), source: proposalSnapshotSchema, presentation: proposalPresentationSchema })
+  .refine(({ source, presentation }) => !presentation.stageNotes?.some(note => !source.rows.some(row => row.id === note.id)), { path: ["presentation", "stageNotes"], message: "Unknown proposal stage" });
 const failure = (code: string, status = 400) => NextResponse.json({ error: code }, { status, headers: { "Cache-Control": "no-store" } });
 const errorCode = (message: string) => message === "finance_proposal_number_required" ? "numberRequired" : message === "finance_project_agreement_required" ? "agreementRequired" : message === "finance_version_conflict" ? "changed" : "error";
 

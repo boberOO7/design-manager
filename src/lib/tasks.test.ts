@@ -39,6 +39,7 @@ function makeTask(overrides: Partial<ProjectTask> = {}): ProjectTask {
     manual_progress_override: false,
     production_completion: 0,
     progress_weight: 1,
+    checklist_template_id: null,
     checklist_items: [],
     assignee: {
       id: "123e4567-e89b-12d3-a456-426614174002",
@@ -191,20 +192,22 @@ describe("optimistic task Board state", () => {
     expect(rolledBackTasks.find((task) => task.id === "task-2")?.status).toBe("completed");
   });
 
-  it("optimistically completes a checklist for Client review and restores it when the move is rejected", () => {
+  it("keeps checklist state during an optimistic Client review move and rollback", () => {
     const initial = [makeTask({ id: "task-1", status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, is_not_needed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] })];
     const optimistic = setProjectTaskStatus(initial, "task-1", "review");
     expect(groupTasksByBoardColumn(optimistic)["client-review"]).toHaveLength(1);
-    expect(optimistic[0]?.checklist_items[0]?.is_completed).toBe(true);
+    expect(optimistic[0]?.checklist_items).toBe(initial[0].checklist_items);
     expect(optimistic[0]?.production_completion).toBe(0);
     const rolledBack = mergeProjectTask(optimistic, initial[0]);
     expect(groupTasksByBoardColumn(rolledBack)["in-progress"]).toHaveLength(1);
     expect(rolledBack[0].checklist_items[0]?.is_completed).toBe(false);
   });
 
-  it("does not change checklist data for status transitions outside Client review", () => {
+  it("does not change checklist data for any workflow transition", () => {
     const task = makeTask({ status: "in_progress", checklist_items: [{ id: "item", task_id: "task-1", title: "Drawings", is_completed: false, is_not_needed: false, weight: 1, position: 0, created_at: "2026-07-01T00:00:00Z", updated_at: "2026-07-01T00:00:00Z" }] });
-    expect(getOptimisticTaskForStatus(task, "completed").checklist_items[0]?.is_completed).toBe(false);
+    for (const { status } of BOARD_COLUMNS) {
+      expect(getOptimisticTaskForStatus(task, status).checklist_items).toBe(task.checklist_items);
+    }
   });
 
   it("uses the shared workflow rule for optimistic first-pass and rework moves", () => {
