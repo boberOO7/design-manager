@@ -10,7 +10,7 @@ import { ProjectEditModal } from "@/components/projects/project-edit-modal";
 import type { ProjectFormAction } from "@/components/projects/project-form";
 import { ProjectStatusAction } from "@/components/projects/project-status-action";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
-import { calculateProjectProgress, calculateStageProgress, getProjectHealth, getTodayDateOnly, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
+import { getProjectHealth, getTodayDateOnly, type ProjectProgressSummary } from "@/lib/project-progress";
 import { getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
 import { PROJECT_LIST_HEALTH_LABEL_KEYS } from "@/lib/project-list-presentation";
 import { formatDateOnly, formatNumber } from "@/lib/utils";
@@ -38,7 +38,7 @@ export type ProjectContextProject = {
   total_area_m2: number;
 };
 
-export function ProjectContextBand({ archiveAction, backHref = "/projects", calendarTimeSummary, canManage, isArchived, onConfigureStages, project, restoreAction, stageProgressMethods, showProgress = true, stages, tasks, updateAction }: {
+export function ProjectContextBand({ archiveAction, backHref = "/projects", calendarTimeSummary, canManage, isArchived, onConfigureStages, project, restoreAction, summary, showProgress = true, stages, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
   calendarTimeSummary: string;
@@ -48,10 +48,9 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", cale
   onConfigureStages?: () => void;
   project: ProjectContextProject;
   restoreAction: (formData: FormData) => Promise<void>;
-  stageProgressMethods: ProjectStageProgressMethods;
+  summary: ProjectProgressSummary;
   showProgress?: boolean;
   stages?: ConfiguredProjectStage[];
-  tasks: ProjectTaskForProgress[];
   updateAction: ProjectFormAction;
 }) {
   const t = useTranslations("Workspace");
@@ -64,8 +63,7 @@ export function ProjectContextBand({ archiveAction, backHref = "/projects", cale
   const locale = useLocale();
   const { status } = useProjectLifecycle();
   const isPaused = status === "paused";
-  const progress = calculateProjectProgress(tasks, undefined, stageProgressMethods);
-  const stageProgress = calculateStageProgress(tasks, stageProgressMethods);
+  const { progress, stageProgress } = summary;
   const health = getProjectHealth({ projectStatus: status, projectDueDate: project.due_date, progress });
   const healthStyle = getProjectHealthBadgeStyle(health.health);
   const location = [project.city, getCountryName(project.country_code, locale)].filter(Boolean).join(", ");
@@ -125,7 +123,7 @@ function ProjectContextActions({ archiveAction, canManage, isArchived, onConfigu
   </div>;
 }
 
-function ProgressSummary({ progress, projectName, stageProgress, stages }: { progress: ReturnType<typeof calculateProjectProgress>; projectName: string; stageProgress: ReturnType<typeof calculateStageProgress>; stages?: ConfiguredProjectStage[] }) {
+function ProgressSummary({ progress, projectName, stageProgress, stages }: { progress: ProjectProgressSummary["progress"]; projectName: string; stageProgress: ProjectProgressSummary["stageProgress"]; stages?: ConfiguredProjectStage[] }) {
   const t = useTranslations("Projects");
   const stageLabels = useTranslations("TaskStages");
   if (progress.eligibleTaskCount === 0) return <div><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("noTasks")}</p></div>;

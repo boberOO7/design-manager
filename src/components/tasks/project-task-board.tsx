@@ -43,7 +43,7 @@ import { TASK_PRIORITY_VALUES, type ProjectTask, type TaskPriority } from "@/typ
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getAutomaticProjectStatus, getTaskCreationStagesForProject, isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
-import { calculateStageProgress, isProjectProgressStage, type ProjectStageProgressMethods, type StageProgressMethod } from "@/lib/project-progress";
+import { calculateProjectSummary, getTodayDateOnly, isProjectProgressStage, type ProjectProgressSummary, type ProjectStageProgressMethods, type StageProgressMethod } from "@/lib/project-progress";
 import { isTaskStage, TASK_STAGES, type TaskStage } from "@/lib/task-stages";
 import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { StageColumnsDialog } from "@/components/tasks/stage-columns-dialog";
@@ -644,12 +644,13 @@ export function ProjectTaskBoard({
   projectTemplates,
   stageColumns,
   stageProgressMethods,
+  onStageProgressMethodChange,
   schedulePause,
   showProgress = true,
   stages,
   tasks,
   templates,
-  onTasksChange,
+  onSummaryChange,
   onProjectStatusChange,
 }: {
   canCreate: boolean;
@@ -663,12 +664,13 @@ export function ProjectTaskBoard({
   projectTemplates: ProjectTemplate[];
   stageColumns: ProjectStageColumns;
   stageProgressMethods: ProjectStageProgressMethods;
+  onStageProgressMethodChange: (stage: Exclude<TaskStage, "stage_4">, method: StageProgressMethod) => void;
   schedulePause: Record<TaskStage, StageSchedulePause>;
   showProgress?: boolean;
   stages: ConfiguredProjectStage[];
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
-  onTasksChange?: (tasks: ProjectTask[]) => void;
+  onSummaryChange: (summary: ProjectProgressSummary) => void;
   onProjectStatusChange?: (status: ProjectLifecycleStatus) => void;
 }) {
   const t = useTranslations("Tasks");
@@ -696,7 +698,6 @@ export function ProjectTaskBoard({
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
-  const [localStageProgressMethods, setLocalStageProgressMethods] = useState(stageProgressMethods);
   const [localSchedulePause, setLocalSchedulePause] = useState(schedulePause);
   const [savingScheduleStage, setSavingScheduleStage] = useState<TaskStage | null>(null);
   const [settingsStage, setSettingsStage] = useState<TaskStage | null>(null);
@@ -714,7 +715,6 @@ export function ProjectTaskBoard({
   const confirmedStatusesRef = useRef(new Map<string, WritableTaskStatus>());
   const suppressCardOpenRef = useRef(false);
   const suppressSelectionClearRef = useRef(false);
-  const onTasksChangeRef = useRef(onTasksChange);
   const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
   const taskCreationStages = getTaskCreationStagesForProject({ projectStatus });
   const defaultTaskCreationStage = taskCreationStages[0];
@@ -766,12 +766,7 @@ export function ProjectTaskBoard({
   }, [compactCards, compactCardsKey, compactCardsReady]);
 
   useEffect(() => {
-    onTasksChangeRef.current = onTasksChange;
-  }, [onTasksChange]);
-
-  useEffect(() => {
     localTasksRef.current = localTasks;
-    onTasksChangeRef.current?.(localTasks);
   }, [localTasks]);
 
   useEffect(() => {
@@ -867,7 +862,10 @@ export function ProjectTaskBoard({
     ...groups,
     [stage]: groupTasksByBoardColumn(localTasks.filter((task) => task.stage === stage)),
   }), {} as Record<TaskStage, ReturnType<typeof groupTasksByBoardColumn>>), [localTasks]);
-  const stageProgress = useMemo(() => calculateStageProgress(localTasks, localStageProgressMethods), [localTasks, localStageProgressMethods]);
+  const today = getTodayDateOnly();
+  const summary = useMemo(() => calculateProjectSummary(localTasks, today, stageProgressMethods), [localTasks, today, stageProgressMethods]);
+  const { stageProgress } = summary;
+  useEffect(() => { onSummaryChange(summary); }, [summary, onSummaryChange]);
   const activeTask = activeTaskId
     ? localTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -1177,7 +1175,7 @@ export function ProjectTaskBoard({
   }
 
   async function updateStageProgressMethod(stage: Exclude<TaskStage, "stage_4">, method: StageProgressMethod) {
-    if (savingProgressMethodStage || localStageProgressMethods[stage] === method) return;
+    if (savingProgressMethodStage || stageProgressMethods[stage] === method) return;
     setSavingProgressMethodStage(stage);
     setBoardError(null);
     try {
@@ -1188,7 +1186,7 @@ export function ProjectTaskBoard({
       });
       const result: unknown = await response.json().catch(() => null);
       if (!response.ok || !isSuccessfulStageProgressMethodResponse(result)) throw new Error(locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
-      setLocalStageProgressMethods((current) => ({ ...current, [stage]: result.progressMethod }));
+      onStageProgressMethodChange(stage, result.progressMethod);
       setAnnouncement(locale === "uk" ? "Метод прогресу оновлено." : "Progress method updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
@@ -1377,7 +1375,7 @@ export function ProjectTaskBoard({
                   {canCreateInStage ? <button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")} title={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button> : null}
-                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]">{canApplyTemplate ? <button type="button" onClick={() => setTemplateStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{projectTemplatesT("applyStageAction")}</button> : null}{localSchedulePause[stage] ? <><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("schedulePausedSince", { date: formatDateOnly(localSchedulePause[stage].startedOn, locale) })}</p><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, false)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("resumeSchedule")}</button></> : hasStageSchedule ? <><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("pauseSchedule")}</button><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("pauseReasonOptional")}</p>{(["waiting_for_client", "internal_pause", "other"] as const).map((reason) => <button key={reason} type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true, reason)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t(reason === "waiting_for_client" ? "schedulePauseReasonClient" : reason === "internal_pause" ? "schedulePauseReasonInternal" : "schedulePauseReasonOther")}</button>)}</> : null}<button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isProjectProgressStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={localStageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", localStageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns} title={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]">{canApplyTemplate ? <button type="button" onClick={() => setTemplateStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{projectTemplatesT("applyStageAction")}</button> : null}{localSchedulePause[stage] ? <><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("schedulePausedSince", { date: formatDateOnly(localSchedulePause[stage].startedOn, locale) })}</p><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, false)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("resumeSchedule")}</button></> : hasStageSchedule ? <><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("pauseSchedule")}</button><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("pauseReasonOptional")}</p>{(["waiting_for_client", "internal_pause", "other"] as const).map((reason) => <button key={reason} type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true, reason)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t(reason === "waiting_for_client" ? "schedulePauseReasonClient" : reason === "internal_pause" ? "schedulePauseReasonInternal" : "schedulePauseReasonOther")}</button>)}</> : null}<button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isProjectProgressStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={stageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", stageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", stageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}

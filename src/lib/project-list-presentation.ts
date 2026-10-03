@@ -1,4 +1,4 @@
-import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, getProjectHealth, type ProjectHealth, type ProjectProgress, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
+import { calculateProjectSummary, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, getProjectHealth, type ProjectHealth, type ProjectProgress, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paused", "completed"] as const;
 export const PROJECT_LIST_HEALTH_FILTERS = ["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"] as const;
@@ -56,7 +56,7 @@ export function getProjectListFilters(searchParams: Record<string, string | stri
 
 export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
   return projects.map((project) => {
-    const progress = calculateProjectProgress(project.tasks, today, project.stageProgressMethods ?? DEFAULT_PROJECT_STAGE_PROGRESS_METHODS);
+    const { progress } = calculateProjectSummary(project.tasks, today, project.stageProgressMethods ?? DEFAULT_PROJECT_STAGE_PROGRESS_METHODS);
     const health = getProjectHealth({ projectStatus: project.status, projectDueDate: project.due_date, progress, today });
     return { ...project, progress, health: health.health, healthReason: health.reason };
   });

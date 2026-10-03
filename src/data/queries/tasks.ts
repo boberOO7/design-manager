@@ -3,6 +3,7 @@ import "server-only";
 import { getCurrentUserProfile } from "@/data/queries";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { createClient } from "@/lib/supabase/server";
+import { loadAllRows } from "./all-rows";
 import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
 import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
@@ -97,14 +98,15 @@ function normalizeMyTask({ collaborators, ...task }: MyTaskRow): MyTask {
 export async function getProjectTasks(projectId: string): Promise<ProjectTask[]> {
   await refreshProjectTaskSchedules([projectId]);
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data, error } = await loadAllRows((from, to) => supabase
     .from("tasks")
     .select(TASK_SELECT)
     .eq("project_id", projectId)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
+    .order("id").range(from, to)
     .order("position", { referencedTable: "task_checklist_items", ascending: true })
-    .overrideTypes<ProjectTaskRow[], { merge: false }>();
+    .overrideTypes<ProjectTaskRow[], { merge: false }>());
 
   if (error || !data) {
     throw new Error(`Unable to load tasks for project ${projectId}.`, { cause: error });

@@ -8,11 +8,12 @@ import type { Database } from "@/types/database.types";
 import type { MyTask } from "@/types/tasks";
 import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib/task-collaborators";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
-import { calculateProjectProgress, calculateStageProgress, getProjectHealth, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import { calculateProjectProgress, calculateProjectSummary, calculateStageProgress, getProjectHealth, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import { getPresentedProjects } from "@/lib/project-list-presentation";
 import { getEmployeeTasksNeedingAttention, isDashboardTaskProjectEligible, isOpenTask, sortEmployeeTasks } from "@/lib/dashboard";
 import { getDashboard } from "./dashboard";
 import { getProjectTasks } from "./tasks";
-import { getProjectTasksForProgress } from "./project-progress";
+import { getAccessibleProjectsWithTasks, getProjectTasksForProgress } from "./project-progress";
 import { loadDashboardTask } from "@/app/(app)/dashboard/task-actions";
 
 const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
@@ -142,5 +143,47 @@ describe.skipIf(!process.env.TASK_PAYLOAD_TEST_URL)("Task payload equivalence on
     mocks.createClient.mockResolvedValue(clients[2]);
     expect(await loadDashboardTask(task.id, projects[0])).toBeNull();
     expect(await getProjectTasksForProgress(projects[0])).toEqual([]);
+  });
+
+  it("keeps list and detail summaries complete across the portfolio API row cap without per-project queries", async () => {
+    const boundaryProjects: string[] = [randomUUID(), randomUUID()];
+    try {
+      for (const project of boundaryProjects) {
+        sql(`insert into public.projects(id,studio_id,name,status,total_area_m2,start_date,created_by) values (${id(project)},${id(studios[0])},'Portfolio boundary','active',10000,'2026-09-01',${id(accounts[0].id)});
+          insert into public.tasks(project_id,stage,title,status,priority,assignee_id,created_by,completed_area_m2,progress_weight,production_completion)
+          select ${id(project)},'stage_'||(n%4+1),'Boundary task '||n,(array['todo','in_progress','internal_review','review','completed','cancelled'])[n%6+1],'normal',null,${id(accounts[0].id)},n%7+1,n%9+1,case when n%5=0 then 70 else 37 end from generate_series(1,600) n;
+          update public.project_task_stage_columns set progress_method=case stage when 'stage_2' then 'area' when 'stage_3' then 'weighted' else 'equal' end where project_id=${id(project)};`);
+      }
+      sql(`insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values (${id(boundaryProjects[0])},${id(accounts[1].id)},'designer',0,'2026-09-01');`);
+      mocks.createClient.mockResolvedValue(clients[0]);
+      const capped = await clients[0].from("tasks").select("id").in("project_id", boundaryProjects).throwOnError();
+      expect(capped.data).toHaveLength(1000);
+      const list = await measure("portfolio-over-row-cap", getAccessibleProjectsWithTasks);
+      expect(list.result.error).toBeNull();
+      if (!list.result.projects) throw new Error("Portfolio query failed");
+      const presented = getPresentedProjects(list.result.projects, "2026-09-15");
+      const taskRequests = list.requests.filter((request) => request.path === "/rest/v1/tasks");
+      expect(taskRequests.map((request) => request.tasks)).toEqual([1000, 344]);
+      for (const projectId of boundaryProjects) {
+        const project = list.result.projects.find((project) => project.id === projectId);
+        if (!project) throw new Error("Missing boundary project");
+        expect(project.tasks).toHaveLength(600);
+        const compact = await getProjectTasksForProgress(projectId);
+        const board = await getProjectTasks(projectId);
+        const summary = calculateProjectSummary(board, "2026-09-15", project.stageProgressMethods);
+        expect(presented.find((project) => project.id === projectId)?.progress).toEqual(summary.progress);
+        expect(calculateProjectSummary(compact, "2026-09-15", project.stageProgressMethods)).toEqual(summary);
+        expect(new Set(project.tasks.map((task) => task.id))).toEqual(new Set(board.map((task) => task.id)));
+      }
+      mocks.createClient.mockResolvedValue(clients[1]);
+      const employee = await getAccessibleProjectsWithTasks();
+      expect(employee.projects?.some((project) => project.id === boundaryProjects[0])).toBe(true);
+      expect(employee.projects?.some((project) => project.id === boundaryProjects[1])).toBe(false);
+      mocks.createClient.mockResolvedValue(clients[2]);
+      const outsider = await getAccessibleProjectsWithTasks();
+      expect(outsider.projects?.some((project) => boundaryProjects.includes(project.id))).toBe(false);
+    } finally {
+      sql(`delete from public.tasks where project_id in (${boundaryProjects.map(id).join(",")}); delete from public.project_members where project_id in (${boundaryProjects.map(id).join(",")}); delete from public.projects where id in (${boundaryProjects.map(id).join(",")});`);
+    }
   });
 });

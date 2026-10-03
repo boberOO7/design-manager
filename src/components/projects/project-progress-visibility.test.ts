@@ -7,6 +7,7 @@ import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
 import { ProjectLifecycleProvider } from "./project-lifecycle-context";
 import { ProjectContextBand } from "./project-context-band";
+import { calculateProjectSummary } from "@/lib/project-progress";
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -25,10 +26,9 @@ describe("project progress visibility", () => {
         priority: "normal", start_date: "2026-05-01", total_area_m2: 0,
       },
       restoreAction: async () => {},
-      stageProgressMethods: { stage_1: "equal" as const, stage_2: "equal" as const, stage_3: "equal" as const },
-      tasks: [{ id: "task", stage: "stage_1", status: "completed", priority: "medium", due_date: null,
+      summary: calculateProjectSummary([{ id: "task", stage: "stage_1", status: "completed", priority: "medium", due_date: null,
         assignee_id: null, completed_area_m2: null, manual_progress_override: false,
-        production_completion: 100, progress_weight: 1, checklist_items: [] }],
+        production_completion: 100, progress_weight: 1, checklist_items: [] }]),
       updateAction: async (state: Parameters<React.ComponentProps<typeof ProjectContextBand>["updateAction"]>[0]) => state,
     };
     const render = (showProgress: boolean, locale = "en", dueDate: string | null = null) => renderToStaticMarkup(createElement(NextIntlClientProvider, {

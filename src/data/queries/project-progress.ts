@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { loadAllRows } from "./all-rows";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { Database } from "@/types/database.types";
@@ -22,11 +23,18 @@ export const PROJECT_TASK_PROGRESS_SELECT = "id, project_id, stage, status, prio
 export async function getProjectTasksForProgress(projectId: string): Promise<ProjectTaskForProgress[]> {
   await refreshProjectTaskSchedules([projectId]);
   const supabase = await createClient();
-  const { data, error } = await supabase.from("tasks").select(PROJECT_TASK_PROGRESS_SELECT)
-    .eq("project_id", projectId).order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true })
-    .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>();
+  const { data, error } = await getTasksForProgress(supabase, [projectId]);
   if (error || !data) throw new Error("Unable to load project task progress.", { cause: error });
-  return data.map(({ deadlines, ...task }) => ({ ...task, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null }));
+  return data;
+}
+
+async function getTasksForProgress(supabase: Awaited<ReturnType<typeof createClient>>, projectIds: string[]) {
+  const result = await loadAllRows((from, to) => supabase.from("tasks").select(PROJECT_TASK_PROGRESS_SELECT)
+    .in("project_id", projectIds).order("id").range(from, to)
+    .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>());
+  const { data, error } = result;
+  if (error || !data) return { data: null, error };
+  return { data: data.map(({ deadlines, ...task }) => ({ ...task, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null })), error: null };
 }
 
 export type AccessibleProjectWithTasks = ProjectListRow & {
@@ -38,13 +46,14 @@ export type AccessibleProjectWithTasks = ProjectListRow & {
 /** Batched RLS-scoped queries for accessible projects, their tasks, and active participants. */
 export async function getAccessibleProjectsWithTasks(): Promise<{ projects: AccessibleProjectWithTasks[]; error: null } | { projects: null; error: "query_failed" }> {
   const supabase = await createClient();
-  const { data: projects, error: projectsError } = await supabase
+  const { data: projects, error: projectsError } = await loadAllRows((from, to) => supabase
     .from("projects")
     .select("id, name, project_code, client_name, description, status, priority, due_date, archived_at, total_area_m2")
     .is("archived_at", null)
     .neq("status", "archived")
     .order("start_date", { ascending: false })
-    .overrideTypes<ProjectListRow[], { merge: false }>();
+    .order("id").range(from, to)
+    .overrideTypes<ProjectListRow[], { merge: false }>());
   if (projectsError || !projects) {
     console.error("Unable to load accessible projects", projectsError);
     return { projects: null, error: "query_failed" };
@@ -53,22 +62,19 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   const ids = projects.map((project) => project.id);
   await refreshProjectTaskSchedules(ids);
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select(PROJECT_TASK_PROGRESS_SELECT)
-      .in("project_id", ids)
-      .overrideTypes<ProjectTaskWithDeadlines[], { merge: false }>(),
-    supabase
+    getTasksForProgress(supabase, ids),
+    loadAllRows((from, to) => supabase
       .from("project_members")
       .select("project_id, user_id, profile:profiles!project_members_user_id_fkey!inner(id, full_name, avatar_url, is_active)")
       .in("project_id", ids)
       .eq("is_active", true)
       .eq("profile.is_active", true)
-      .overrideTypes<ProjectListMembershipRow[], { merge: false }>(),
-    supabase
+      .order("project_id").order("user_id").range(from, to)
+      .overrideTypes<ProjectListMembershipRow[], { merge: false }>()),
+    loadAllRows((from, to) => supabase
       .from("project_task_stage_columns")
       .select("project_id, stage, progress_method")
-      .in("project_id", ids),
+      .in("project_id", ids).order("project_id").order("stage").range(from, to)),
   ]);
   const { data: tasks, error: tasksError } = tasksResult;
   if (tasksError || !tasks) {
@@ -87,8 +93,9 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   }
   const tasksByProject = new Map<string, ProjectTaskForProgress[]>();
   for (const task of tasks) {
-    const due_date = getActiveTaskDeadline(task)?.due_date ?? null;
-    tasksByProject.set(task.project_id, [...(tasksByProject.get(task.project_id) ?? []), { ...task, due_date }]);
+    const projectTasks = tasksByProject.get(task.project_id) ?? [];
+    projectTasks.push(task);
+    tasksByProject.set(task.project_id, projectTasks);
   }
   const participantsByProject = new Map<string, ProjectListParticipant[]>();
   for (const membership of memberships) {

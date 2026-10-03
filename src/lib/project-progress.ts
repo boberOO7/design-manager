@@ -84,6 +84,7 @@ export type ProjectProgress = {
 };
 
 export type PersonalProgress = Pick<ProjectProgress, "eligibleTaskCount" | "completedTaskCount"> & { progressPercent: number | null };
+export type ProjectProgressSummary = { progress: ProjectProgress; stageProgress: Record<ProjectProgressStage, StageProgress> };
 
 export type ProjectHealthSummary = { health: ProjectHealth; reason: string | null };
 
@@ -215,6 +216,15 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
   today = getTodayDateOnly(),
   stageMethods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
 ): ProjectProgress {
+  return calculateProjectSummary(tasks, today, stageMethods).progress;
+}
+
+/** One task-derived result for task counts, stage progress, and overall progress. */
+export function calculateProjectSummary<T extends ProjectTaskForProgress>(
+  tasks: readonly T[],
+  today = getTodayDateOnly(),
+  stageMethods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
+): ProjectProgressSummary {
   const uniqueTasks = getUniqueProjectTasks(tasks);
   const eligible = uniqueTasks.filter(isProgressEligibleTask);
   const open = eligible.filter(isOpenProjectTask);
@@ -223,7 +233,7 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
   const stageProgress = calculateStageProgress(uniqueTasks, stageMethods);
   const rawProgressPercent = calculateOverallProjectProgress(stageProgress);
 
-  return {
+  const progress: ProjectProgress = {
     eligibleTaskCount: eligible.length,
     completedTaskCount,
     openTaskCount: open.length,
@@ -237,6 +247,7 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
     progressPercent: roundProgressPercent(rawProgressPercent),
     rawProgressPercent,
   };
+  return { progress, stageProgress };
 }
 
 export function calculatePersonalProgress<T extends ProjectTaskForProgress>(tasks: readonly T[], userId: string, _today = getTodayDateOnly()): PersonalProgress {

@@ -103,6 +103,13 @@ Invariants:
 ## List presentation
 
 The server loads the RLS-visible portfolio and calculates progress and health.
+Portfolio inputs and detail task reads use stable pagination within the Data API
+row cap. List, non-board detail views, and the live board use the shared
+`calculateProjectSummary()` result: task counts include all stages except
+cancelled tasks; overall progress weights Stages 1–3 by 20/40/40. The live board
+publishes its computed summary to the project header, and stage progress methods
+are shared workspace state. No project-summary percentage is persisted or cached;
+legacy `project_area_progress` is not a summary input.
 Lifecycle, health, priority, and sort URL parameters filter/order that presented
 collection in the client using the canonical list helpers. Filter changes replace
 the current history entry without reloading the dataset; direct URLs and
