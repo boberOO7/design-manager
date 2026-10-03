@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import type { ReactNode } from "react";
+import { SortableListHeader } from "@/components/shared/sortable-list-header";
 import { LifecycleDot } from "./project-lifecycle-dot";
 import { useSearchParams } from "next/navigation";
 import { ProjectListControls, resetProjectListFilters, updateProjectListFilters } from "./project-list-controls";
@@ -21,7 +22,7 @@ const healthKeys = { on_track: "healthOnTrack", needs_attention: "healthNeedsAtt
 const desktopGridClassName = "grid-cols-[minmax(16rem,3.25fr)_minmax(10.5rem,1.1fr)_minmax(19rem,1.8fr)_minmax(8rem,1.35fr)_minmax(6.5rem,1fr)]";
 const deadlineContentClassName = "justify-self-center text-center";
 
-export function ProjectListWorkspace({ projects }: { projects: readonly ProjectItem[] }) {
+export function ProjectListWorkspace({ action, loadError = false, projects }: { action?: ReactNode; loadError?: boolean; projects: readonly ProjectItem[] }) {
   const t = useTranslations("Projects");
   const params = useSearchParams();
   const filters = getProjectListFilters(Object.fromEntries(
@@ -30,9 +31,9 @@ export function ProjectListWorkspace({ projects }: { projects: readonly ProjectI
   const visibleProjects = filterAndSortProjects(projects, filters);
   const emptyState = getProjectListEmptyState(filters);
   return <>
-    <ProjectListControls filters={filters} />
-    {visibleProjects.length ? <ProjectList filters={filters} projects={visibleProjects} /> : <EmptyState title={t(emptyState.titleKey)} description={t("emptyFilteredDescription")} action={emptyState.canReset ? <Button variant="outline" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : undefined} />}
-    {hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">Showing {visibleProjects.length} of {projects.length} accessible projects.</p> : null}
+    <ProjectListControls action={action} filters={filters} />
+    {loadError ? <EmptyState title={t("loadTitle")} description={t("loadDescription")} className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : projects.length === 0 ? <EmptyState title={t("empty")} description={t("emptyDescription")} /> : visibleProjects.length ? <ProjectList filters={filters} projects={visibleProjects} /> : <EmptyState title={t(emptyState.titleKey)} description={t("emptyFilteredDescription")} action={emptyState.canReset ? <Button variant="outline" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : undefined} />}
+    {!loadError && hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">{t("filteredCount", { visible: visibleProjects.length, total: projects.length })}</p> : null}
   </>;
 }
 
@@ -54,13 +55,9 @@ export function ProjectList({ filters, projects }: { filters: ReturnType<typeof 
 }
 
 function SortableProjectHeader({ className = "", filters, label, sort }: { className?: string; filters: ReturnType<typeof getProjectListFilters>; label: string; sort: Exclude<ReturnType<typeof getProjectListFilters>["sort"], "operational"> }) {
-  const t = useTranslations("Projects");
   const active = filters.sort === sort;
   const next = getNextProjectListSort(filters, sort);
-  const Indicator = active ? filters.direction === "asc" ? ArrowUp : ArrowDown : ArrowUpDown;
-  return <button type="button" aria-pressed={active} aria-description={active ? t(filters.direction === "asc" ? "sortedAscending" : "sortedDescending") : undefined} title={t(next.direction === "asc" ? "sortAscending" : "sortDescending")} onClick={() => updateProjectListFilters(next)} className={`group flex min-h-8 w-fit items-center gap-1.5 rounded-sm py-1 transition-colors duration-200 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${active ? "text-[var(--ui-text)]" : ""} ${className}`}>
-    {label}<Indicator aria-hidden="true" className={`size-3 transition-opacity duration-200 ${active ? "" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"}`} />
-  </button>;
+  return <SortableListHeader active={active} className={className} direction={filters.direction} label={label} nextDirection={next.direction} onClick={() => updateProjectListFilters(next)} />;
 }
 
 function ProjectDesktopRow({ filters, project }: { filters: ReturnType<typeof getProjectListFilters>; project: ProjectItem }) { const paused = project.status === "paused"; return <li><Link href={getProjectHref(project.id, filters)} className={`grid min-h-24 ${desktopGridClassName} items-center gap-x-4 @min-[80rem]:gap-x-7 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]`}><ProjectIdentity project={project} /><ProjectParticipants participants={project.participants} /><div className="min-w-0"><ProjectProgress project={project} compact muted={paused} /></div><div className={`min-w-0 ${deadlineContentClassName}`}><ProjectDeadlines project={project} compact muted={paused} /></div><ProjectSignals centered project={project} /></Link></li>; }

@@ -27,7 +27,7 @@ describe("Projects filter localization", () => {
     expect(PROJECT_LIST_HEALTH_FILTERS).toEqual(["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"]);
     expect(PROJECT_LIST_PRIORITY_FILTERS).toEqual(["all", "urgent", "high", "normal", "low"]);
     expect(PROJECT_LIST_SORTS).toEqual(["operational", "deadline", "name", "health", "progress"]);
-    expect(PROJECT_LIST_DEFAULT_FILTERS).toEqual({ lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" });
+    expect(PROJECT_LIST_DEFAULT_FILTERS).toEqual({ query: "", lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" });
     expect(source).toContain('useTranslations("Projects")');
     expect(source).toContain('useTranslations("Priority")');
     expect(source).toContain('useTranslations("Calendar")');

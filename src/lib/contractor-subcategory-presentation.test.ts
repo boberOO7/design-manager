@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
-import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories } from "@/lib/contractor-subcategory-presentation";
+import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories, sortContractors } from "@/lib/contractor-subcategory-presentation";
 import type { Contractor, ContractorCategory } from "@/data/queries/contractors";
 
 const categories: ContractorCategory[] = [
@@ -24,6 +24,31 @@ describe("contractor subcategory presentation", () => {
     const contractors = [contractor({ id: "category-only" }), contractor({ id: "lighting", subcategory: categories[0].subcategories[0] })];
     expect(filterContractors(contractors, { categoryId: "electrical", subcategoryId: "", query: "" }).map((item) => item.id)).toEqual(["category-only", "lighting"]);
     expect(filterContractors(contractors, { categoryId: "electrical", subcategoryId: "lighting", query: "" }).map((item) => item.id)).toEqual(["lighting"]);
+  });
+
+  it("sorts names and categories naturally in both directions without mutating the directory", () => {
+    const items = [
+      contractor({ id: "ten", name: "Studio 10", category: categories[1] }),
+      contractor({ id: "two", name: "studio 2" }),
+      contractor({ id: "one", name: "Studio 1" }),
+    ];
+    expect(sortContractors(items, { column: "name", direction: "asc" }, "uk").map((item) => item.id)).toEqual(["one", "two", "ten"]);
+    expect(sortContractors(items, { column: "name", direction: "desc" }, "uk").map((item) => item.id)).toEqual(["ten", "two", "one"]);
+    expect(sortContractors(items, { column: "category", direction: "asc" }, "uk").map((item) => item.id)).toEqual(["one", "two", "ten"]);
+    expect(sortContractors(items, { column: "category", direction: "desc" }, "uk").map((item) => item.id)).toEqual(["ten", "one", "two"]);
+    expect(items.map((item) => item.id)).toEqual(["ten", "two", "one"]);
+  });
+
+  it("keeps missing subcategories last and applies sorting to the filtered results", () => {
+    const items = [
+      contractor({ id: "missing", name: "Studio 1" }),
+      contractor({ id: "lighting", name: "Studio 2", subcategory: categories[0].subcategories[0] }),
+      contractor({ id: "voltage", name: "Studio 3", subcategory: categories[0].subcategories[1] }),
+      contractor({ id: "plumbing", name: "Other", category: categories[1] }),
+    ];
+    const filtered = filterContractors(items, { categoryId: "electrical", subcategoryId: "", query: "studio" });
+    expect(sortContractors(filtered, { column: "subcategory", direction: "asc" }, "uk").map((item) => item.id)).toEqual(["lighting", "voltage", "missing"]);
+    expect(sortContractors(filtered, { column: "subcategory", direction: "desc" }, "uk").map((item) => item.id)).toEqual(["voltage", "lighting", "missing"]);
   });
 
   it("renders subcategory as its own neutral table column", async () => {

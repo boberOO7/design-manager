@@ -20,6 +20,7 @@ export function ProjectFormModal({
   title,
   triggerLabel,
   triggerIcon,
+  triggerLeadingIcon,
   triggerSize,
   triggerVariant,
   members = [],
@@ -35,6 +36,7 @@ export function ProjectFormModal({
   title: string;
   triggerLabel: string;
   triggerIcon?: ReactNode;
+  triggerLeadingIcon?: ReactNode;
   triggerSize?: ButtonProps["size"];
   triggerVariant?: ButtonProps["variant"];
   members?: ActiveStudioAssignee[];
@@ -55,7 +57,7 @@ export function ProjectFormModal({
   }
 
   return <>
-    <Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} className={triggerIcon ? "size-9 p-0" : undefined} aria-label={triggerIcon ? triggerLabel : undefined} title={triggerIcon ? triggerLabel : undefined} onClick={() => setIsOpen(true)}>{triggerIcon ?? triggerLabel}</Button>
+    <Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} className={triggerIcon ? "size-9 p-0" : triggerLeadingIcon ? "min-h-11 gap-1.5" : undefined} aria-label={triggerIcon ? triggerLabel : undefined} title={triggerIcon ? triggerLabel : undefined} onClick={() => setIsOpen(true)}>{triggerIcon ?? <>{triggerLeadingIcon}{triggerLabel}</>}</Button>
     <Dialog
       closeDisabled={isPending}
       closeLabel={closeLabel}

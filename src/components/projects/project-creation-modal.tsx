@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { createProject } from "@/app/(app)/projects/new/actions";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
@@ -23,5 +24,6 @@ export function ProjectCreationModal({ defaultStartDate, members, templates }: {
     title={t("newProject")}
     templates={templates}
     triggerLabel={t("newProject")}
+    triggerLeadingIcon={<Plus className="size-4" aria-hidden="true" />}
   />;
 }

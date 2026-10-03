@@ -4,10 +4,11 @@ export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paus
 export const PROJECT_LIST_HEALTH_FILTERS = ["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"] as const;
 export const PROJECT_LIST_PRIORITY_FILTERS = ["all", "urgent", "high", "normal", "low"] as const;
 export const PROJECT_LIST_SORTS = ["operational", "deadline", "name", "health", "progress"] as const;
-export const PROJECT_LIST_FILTER_KEYS = ["lifecycle", "health", "priority", "sort", "direction"] as const;
+export const PROJECT_LIST_FILTER_KEYS = ["query", "lifecycle", "health", "priority", "sort", "direction"] as const;
 const defaultSortDirections = { operational: "asc", deadline: "asc", name: "desc", health: "asc", progress: "desc" } as const;
 
 export type ProjectListFilters = {
+  query: string;
   lifecycle: (typeof PROJECT_LIST_LIFECYCLE_FILTERS)[number];
   health: (typeof PROJECT_LIST_HEALTH_FILTERS)[number];
   priority: (typeof PROJECT_LIST_PRIORITY_FILTERS)[number];
@@ -37,7 +38,7 @@ export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[
   progress: ProjectProgress;
 };
 
-export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" };
+export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { query: "", lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" };
 const healthOrder: Record<ProjectHealth, number> = { overdue: 0, needs_attention: 1, deadline_soon: 2, on_track: 3, completed: 4 };
 const numericPrefixOrder = new Intl.Collator("en", { numeric: true });
 
@@ -52,6 +53,7 @@ function isOneOf<T extends readonly string[]>(value: string | string[] | undefin
 export function getProjectListFilters(searchParams: Record<string, string | string[] | undefined>): ProjectListFilters {
   const sort = isOneOf(searchParams.sort, PROJECT_LIST_SORTS) ? searchParams.sort : PROJECT_LIST_DEFAULT_FILTERS.sort;
   return {
+    query: typeof searchParams.query === "string" ? searchParams.query : "",
     lifecycle: isOneOf(searchParams.lifecycle, PROJECT_LIST_LIFECYCLE_FILTERS) ? searchParams.lifecycle : PROJECT_LIST_DEFAULT_FILTERS.lifecycle,
     health: isOneOf(searchParams.health, PROJECT_LIST_HEALTH_FILTERS) ? searchParams.health : PROJECT_LIST_DEFAULT_FILTERS.health,
     priority: isOneOf(searchParams.priority, PROJECT_LIST_PRIORITY_FILTERS) ? searchParams.priority : PROJECT_LIST_DEFAULT_FILTERS.priority,
@@ -84,8 +86,10 @@ function compareProjectNames(left: string, right: string): number {
 }
 
 export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; health: ProjectHealth; progress: ProjectProgress }>(projects: readonly T[], filters: ProjectListFilters): T[] {
+  const query = filters.query.trim().toLocaleLowerCase();
   const filtered = projects.filter((project) =>
-    (filters.lifecycle === "all" || project.status === filters.lifecycle)
+    (!query || project.name.toLocaleLowerCase().includes(query))
+    && (filters.lifecycle === "all" || project.status === filters.lifecycle)
     && (filters.health === "all" || project.health === filters.health)
     && (filters.priority === "all" || project.priority === filters.priority));
 
@@ -111,7 +115,8 @@ export function filterAndSortProjects<T extends { name: string; priority: string
 }
 
 export function hasActiveProjectListFilters(filters: ProjectListFilters): boolean {
-  return filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle
+  return filters.query !== PROJECT_LIST_DEFAULT_FILTERS.query
+    || filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle
     || filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health
     || filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority
     || filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort
@@ -131,6 +136,7 @@ export function getProjectProgressLabel(progress: ProjectProgress): string {
 
 export function getProjectListHref(filters: ProjectListFilters): string {
   const params = new URLSearchParams();
+  if (filters.query) params.set("query", filters.query);
   if (filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle) params.set("lifecycle", filters.lifecycle);
   if (filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health) params.set("health", filters.health);
   if (filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority) params.set("priority", filters.priority);

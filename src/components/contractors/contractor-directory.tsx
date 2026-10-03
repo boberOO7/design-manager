@@ -9,13 +9,15 @@ import { createContractor, deleteContractor, deleteContractorCategory, renameCon
 import { ContractorCategoryCombobox, ContractorSubcategoryCombobox, getUniqueContractorCategories } from "@/components/contractors/contractor-category-combobox";
 import type { Contractor, ContractorCategory } from "@/data/queries/contractors";
 import { Button } from "@/components/ui/button";
+import { SortableListHeader } from "@/components/shared/sortable-list-header";
+import { listToolbarSearchClassName } from "@/components/shared/list-toolbar-search";
 import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { formatUkrainianPhone } from "@/lib/ukrainian-phone";
-import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories } from "@/lib/contractor-subcategory-presentation";
+import { changeContractorCategoryFilter, filterContractors, getContractorSubcategories, sortContractors, type ContractorDirectorySort } from "@/lib/contractor-subcategory-presentation";
 import { contractorCategoryColorKeys, getContractorCategoryBadgeClassName, getContractorCategoryColorLabel, type ContractorCategoryColorKey } from "@/lib/contractor-category-colors";
 import { useLocale } from "next-intl";
 import type { ContractorFormActionState, ContractorFormField } from "@/lib/validation/contractor";
@@ -41,6 +43,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
+  const [sort, setSort] = useState<ContractorDirectorySort>({ column: "name", direction: "asc" });
   const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [selected, setSelected] = useState<Contractor | null>(null);
   const [deleting, setDeleting] = useState<Contractor | null>(null);
@@ -65,8 +68,14 @@ export function ContractorDirectory({ categories: initialCategories, contractors
   const selectedFilterSubcategories = getContractorSubcategories(categories, categoryId);
   const manageCategoriesLabel = t("categoryManagement.trigger");
   const visible = useMemo(() => {
-    return filterContractors(contractors, { categoryId, subcategoryId, query });
-  }, [categoryId, contractors, query, subcategoryId]);
+    return sortContractors(filterContractors(contractors, { categoryId, subcategoryId, query }), sort, locale);
+  }, [categoryId, contractors, locale, query, sort, subcategoryId]);
+
+  function sortHeader(column: ContractorDirectorySort["column"]) {
+    const active = sort.column === column;
+    const nextDirection = active && sort.direction === "asc" ? "desc" : "asc";
+    return <th scope="col" aria-sort={active ? sort.direction === "asc" ? "ascending" : "descending" : undefined} className="px-4 py-1"><SortableListHeader active={active} direction={sort.direction} label={t(`columns.${column}`)} nextDirection={nextDirection} onClick={() => setSort({ column, direction: nextDirection })} /></th>;
+  }
 
   function changeCategoryFilter(nextCategoryId: string) {
     const next = changeContractorCategoryFilter(categories, nextCategoryId, subcategoryId);
@@ -159,7 +168,7 @@ export function ContractorDirectory({ categories: initialCategories, contractors
     <div className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
       <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] lg:min-w-[46rem] lg:grid-cols-[minmax(16rem,1fr)_12rem_12rem]">
-          <label className="relative block">
+          <label className={listToolbarSearchClassName}>
             <span className="sr-only">{t("searchLabel")}</span>
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
             <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder={t("searchPlaceholder")} type="search" />
@@ -178,8 +187,8 @@ export function ContractorDirectory({ categories: initialCategories, contractors
 
       {visible.length ? <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs font-medium uppercase tracking-wide text-[var(--ui-text-muted)]">
-            <tr><th className="px-4 py-3">{t("columns.name")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.subcategory")}</th><th className="px-4 py-3">{t("columns.phone")}</th><th className="px-4 py-3">{t("columns.link")}</th><th className="px-4 py-3">{t("columns.description")}</th>{canEdit ? <th className="px-4 py-3 text-right"><span className="sr-only">{t("actions")}</span></th> : null}</tr>
+          <thead className="border-b border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-xs font-medium text-[var(--ui-text-muted)] [&_th]:font-medium">
+            <tr>{sortHeader("name")}{sortHeader("category")}{sortHeader("subcategory")}<th scope="col" className="px-4 py-1">{t("columns.phone")}</th><th scope="col" className="px-4 py-1">{t("columns.link")}</th><th scope="col" className="px-4 py-1">{t("columns.description")}</th>{canEdit ? <th scope="col" className="px-4 py-1 text-right"><span className="sr-only">{t("actions")}</span></th> : null}</tr>
           </thead>
           <tbody className="divide-y divide-[var(--ui-border)]">
             {visible.map((contractor) => <tr key={contractor.id} className="group align-middle transition-colors hover:bg-[var(--ui-surface-subtle)]">

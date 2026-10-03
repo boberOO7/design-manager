@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { filterAndSortProjects, getNextProjectListSort, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectListHref, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
+import { filterAndSortProjects, getNextProjectListSort, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectListHref, getProjectProgressLabel, hasActiveProjectListFilters, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
 import type { ProjectTaskForProgress } from "./project-progress";
 
 const today = "2026-07-29";
@@ -11,7 +11,7 @@ function project(overrides: Partial<{ id: string; name: string; priority: string
   const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, total_area_m2: 100, tasks: [] as TestTask[], ...overrides };
   return { ...value, tasks: value.tasks.map(progressTask) };
 }
-const operational: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational", direction: "asc" };
+const operational: ProjectListFilters = { query: "", lifecycle: "all", health: "all", priority: "all", sort: "operational", direction: "asc" };
 
 describe("project list presentation", () => {
   it("orders operational risk first with a stable fallback", () => {
@@ -62,6 +62,23 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, { ...operational, priority: "low" }).map((item) => item.id)).toEqual(["paused"]);
   });
 
+  it("combines project-name search with filters and preserves it through sorting and project URLs", () => {
+    const items = getPresentedProjects([
+      project({ id: "match", name: "306 Дентал & Studio", priority: "high" }),
+      project({ id: "priority", name: "305 Дентал", priority: "low" }),
+      project({ id: "paused", name: "304 Дентал", priority: "high", status: "paused" }),
+      project({ id: "other", name: "303 Office", priority: "high" }),
+    ]);
+    const filters = getProjectListFilters({ query: " ДЕНТАЛ & ", priority: "high" });
+    expect(filterAndSortProjects(items, filters).map((item) => item.id)).toEqual(["match"]);
+    const sorted = getNextProjectListSort(filters, "progress");
+    const href = getProjectListHref(sorted);
+    expect(getProjectListFilters(Object.fromEntries(new URLSearchParams(href.split("?")[1])))).toEqual(sorted);
+    expect(getProjectHref("match", sorted)).toBe(`/projects/match${href.slice("/projects".length)}`);
+    expect(hasActiveProjectListFilters(getProjectListFilters({ query: "Office" }))).toBe(true);
+    expect(getProjectListFilters({ query: ["Office", "Studio"] }).query).toBe("");
+  });
+
   it("defaults to active projects in descending numeric-prefix order after combining filters", () => {
     const items = getPresentedProjects([
       project({ id: "active-z", name: "306 Zeta", priority: "urgent", tasks: [{ id: "z-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
@@ -88,7 +105,7 @@ describe("project list presentation", () => {
 
   it("uses valid URL-backed filter defaults", () => {
     expect(getProjectListFilters({})).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
-    expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline", direction: "asc" });
+    expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ query: "", lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline", direction: "asc" });
     expect(getProjectListFilters({ lifecycle: "all" })).toEqual({ ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "all" });
     expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
   });

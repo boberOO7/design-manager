@@ -32,7 +32,7 @@ export default async function ProjectsPage() {
   ]);
 
   return <div className="space-y-6">
-    <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/projects/templates">Шаблони проєктів</Link></Button><ProjectCreationModal defaultStartDate={getKyivDateOnly()} members={members} templates={templates} /></div> : undefined} />
-    {result.error ? <EmptyState title={t("loadTitle")} description={t("loadDescription")} className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : result.projects.length === 0 ? <EmptyState title={t("empty")} description={t("emptyDescription")} /> : <ProjectListWorkspace projects={getPresentedProjects(result.projects).map(({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }) => ({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }))} />}
+    <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <Button asChild variant="ghost"><Link href="/projects/templates">{t("projectTemplates")}</Link></Button> : undefined} />
+    <ProjectListWorkspace action={membership?.system_role === "admin" ? <ProjectCreationModal defaultStartDate={getKyivDateOnly()} members={members} templates={templates} /> : undefined} loadError={Boolean(result.error)} projects={getPresentedProjects(result.projects ?? []).map(({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }) => ({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }))} />
   </div>;
 }
