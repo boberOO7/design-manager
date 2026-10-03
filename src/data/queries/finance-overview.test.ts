@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/types/database.types";
 import { getFinanceDisplayOverview, getFinanceOverview } from "./finance-overview";
 import { financeOverviewSchema, parseFinanceReportParams } from "@/lib/finance-overview";
@@ -14,7 +14,8 @@ const report = {
   period: "3", actualFrom: "2026-07-01", upcomingThrough: "2026-10-20", historyIncomplete: false, history: [], projection: [], lowPoint: { date: today, amount: "0" }, flows: [], netFlow: "0", accounts: [], receivables: [], receivableTotal: "0", receivablesIncomplete: true, outgoingTotal: "0", outgoingIncomplete: false, categories: [], requiredCurrencies: ["USD"],
 };
 describe("Overview application boundary", () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.admin.mockResolvedValue({ studio_id: "studio" }); mocks.fx.mockResolvedValue({ rate: "40", source: "nbu", effectiveDate: today }); });
+  beforeEach(() => { vi.clearAllMocks(); vi.spyOn(console, "warn").mockImplementation(() => {}); mocks.admin.mockResolvedValue({ studio_id: "studio" }); mocks.fx.mockResolvedValue({ rate: "40", source: "nbu", effectiveDate: today }); });
+  afterEach(() => { vi.restoreAllMocks(); });
   it("denies non-admins before touching the database or rates", async () => {
     mocks.admin.mockResolvedValue(null);
     expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toBeNull();
@@ -60,5 +61,64 @@ describe("Overview application boundary", () => {
       expect(mocks.fx).not.toHaveBeenCalled();
       expect(calls[1]).toEqual({ p_studio_id: "studio", p_horizon: "12", p_scenario: "planned", p_period: "year", p_fx: [{ currency: "USD", rate: "41", source: "manual", effectiveDate: today }] });
     } else expect(mocks.fx).toHaveBeenCalledWith("USD", "UAH", today, "nbu", "");
+  });
+
+  it.each(["initial", "valued"])("retries a gateway reset once during the %s RPC without repeating other work", async (phase) => {
+    const bodies: unknown[] = [];
+    const fetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+      bodies.push(typeof init?.body === "string" ? JSON.parse(init.body) : null);
+      const failed = bodies.length === (phase === "initial" ? 1 : 2);
+      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : report), { status: failed ? 502 : 200 });
+    });
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
+    expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toEqual(report);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(bodies[phase === "initial" ? 0 : 1]).toEqual(bodies[phase === "initial" ? 1 : 2]);
+    expect(mocks.fx).toHaveBeenCalledOnce();
+    expect(console.warn).toHaveBeenCalledWith("Finance Overview RPC failed.", expect.objectContaining({ status: 502, attempt: 1, durationMs: expect.any(Number) }));
+  });
+
+  it("stops after two upstream failures and retains the original error", async () => {
+    const error = { message: "An invalid response was received from the upstream server" };
+    const fetch = vi.fn(async () => new Response(JSON.stringify(error), { status: 502 }));
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
+    await expect(getFinanceOverview(parseFinanceReportParams({}, today))).rejects.toMatchObject({ cause: error });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.fx).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 400, body: { code: "22023", message: "invalid period" } },
+    { status: 403, body: { code: "42501", message: "permission denied" } },
+    { status: 404, body: { code: "PGRST202", message: "function missing" } },
+    { status: 500, body: { code: "42P01", message: "relation missing" } },
+    { status: 503, body: { code: "57014", message: "statement timeout" } },
+    { status: 200, body: {} },
+  ])("does not retry deterministic database/schema/report errors: $status/$body", async ({ status, body }) => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
+    await expect(getFinanceOverview(parseFinanceReportParams({}, today))).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(mocks.fx).not.toHaveBeenCalled();
+  });
+
+  it.each(["ECONNRESET", "UND_ERR_HEADERS_OVERFLOW", "ABORT_ERR"])("only retries a recognized transient fetch failure: %s", async (code) => {
+    const fetch = vi.fn(async () => {
+      if (fetch.mock.calls.length === 1) {
+        const cause = Object.assign(new Error(code), { code });
+        if (code === "ABORT_ERR") throw Object.assign(new Error("aborted"), { name: "AbortError", code });
+        throw new TypeError("fetch failed", { cause });
+      }
+      return new Response(JSON.stringify({ ...report, requiredCurrencies: [] }));
+    });
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
+    const result = getFinanceOverview(parseFinanceReportParams({}, today));
+    if (code === "ECONNRESET") {
+      expect(await result).toMatchObject({ forecast: report.forecast });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } else {
+      await expect(result).rejects.toThrow();
+      expect(fetch).toHaveBeenCalledOnce();
+    }
   });
 });

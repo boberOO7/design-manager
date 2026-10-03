@@ -1,4 +1,5 @@
 import "server-only";
+import { requestFinanceOverview } from "./finance-overview-rpc";
 import { financeOverviewSchema } from "@/lib/finance-overview";
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
@@ -21,11 +22,11 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
   if (error) throw new Error("Unable to load cash planning.", { cause: error });
   if (!settings.data?.finalized_at) return { report: null, overview: null, budget: budget.data ?? [], history: history.data ?? [], snapshots: snapshots.data ?? [], saved: null };
   // First calculate without FX: its complete issue list discovers currencies without a Data API row cap.
-  const raw = await client.rpc("get_finance_overview", { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: [] });
+  const raw = await requestFinanceOverview(client, { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: [] });
   if (raw.error) throw new Error("Unable to calculate forecast.", { cause: raw.error });
   const initial = financeOverviewSchema.parse(raw.data);
   const fx = await resolveForecastAssumptions(initial.forecast, manualFx, initial.requiredCurrencies);
-  const calculated = fx.length ? await client.rpc("get_finance_overview", { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: fx }) : raw;
+  const calculated = fx.length ? await requestFinanceOverview(client, { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: fx }) : raw;
   if (calculated.error) throw new Error("Unable to value forecast.", { cause: calculated.error });
   const compared = saved?.data && saved.data.capture_order !== null ? await client.rpc("compare_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_snapshot_id: saved.data.id }) : null;
   if (compared?.error) throw new Error("Unable to compare forecast snapshot.", { cause: compared.error });

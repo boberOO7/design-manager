@@ -305,6 +305,7 @@
     "attentionEquipment": "{count, plural, one {# overdue equipment maintenance} other {# overdue equipment maintenance items}}",
     "domainTasks": "Tasks",
     "domainFinance": "Finance",
+    "financeUnavailable": "Finance data is currently unavailable. Reload the page to try again.",
     "domainCrm": "CRM",
     "domainAdministration": "Administration",
     "domainOffice": "Office",

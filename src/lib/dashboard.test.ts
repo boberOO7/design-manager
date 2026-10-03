@@ -116,6 +116,29 @@ describe("dashboard calculations", () => {
       { id: "u2", full_name: "B", job_title: "Designer", openTaskCount: 2, todoCount: 0, inProgressCount: 0, reviewCount: 2, urgentCount: 0, overdueCount: 0 },
     ]);
   });
+  it("counts assigned and co-assigned Todo tasks like My Tasks without attributing their area twice", () => {
+    const workload = getTeamWorkload(
+      [{ id: "u1", full_name: "A", job_title: "Designer" }, { id: "u2", full_name: "B", job_title: "Designer" }],
+      [
+        task({ id: "direct", workloadAreaM2: 12 }),
+        task({ id: "u2-direct", assignee_id: "u2", workloadAreaM2: 5 }),
+        ...Array.from({ length: 4 }, (_, index) => task({ id: "collaborated-" + index, workloadAreaM2: 2, collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] })),
+      ],
+      today,
+    );
+    expect(workload.find((member) => member.id === "u2")).toMatchObject({ openTaskCount: 5, todoCount: 5, workloadAreaM2: 5 });
+    expect(workload.find((member) => member.id === "u1")).toMatchObject({ openTaskCount: 5, workloadAreaM2: 20 });
+  });
+  it("uses the same co-assignment rule for each task status and exception bucket", () => {
+    const workload = getTeamWorkload([{ id: "u2", full_name: "B", job_title: "Designer" }], [
+      task({ id: "todo", collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] }),
+      task({ id: "progress", status: "in_progress", collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] }),
+      task({ id: "review", status: "review", collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] }),
+      task({ id: "urgent", priority: "urgent", collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] }),
+      task({ id: "overdue", due_date: "2026-07-20", collaborators: [{ id: "u2", full_name: "B", job_title: "Designer", avatar_url: null }] }),
+    ], today);
+    expect(workload[0]).toMatchObject({ openTaskCount: 5, todoCount: 3, inProgressCount: 1, reviewCount: 1, urgentCount: 1, overdueCount: 1 });
+  });
   it("reconciles each employee workload area with its contributing projects and tasks", () => {
     const workload = getTeamWorkload(
       [{ id: "u1", full_name: "A", job_title: "Designer" }, { id: "u2", full_name: "B", job_title: "Designer" }],

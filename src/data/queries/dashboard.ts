@@ -28,6 +28,17 @@ export type AdminDashboard = { kind: "admin"; profile: { id: string; full_name: 
 export type EmployeeDashboard = { kind: "employee"; productivityVisible: boolean; profile: { id: string; full_name: string }; today: string; metrics: { overdue: number; inProgress: number; inReview: number; completedThisMonth: number; productivity: NonNullable<Awaited<ReturnType<typeof getMyDashboardProductivity>>>; vacationBalance: number | null; nextAbsence: string | null }; myTasks: DashboardTaskSummary[]; myAssignments: import("@/lib/dashboard").DashboardOfficeAssignment[]; needsAttention: DashboardTaskSummary[]; attention: ReturnType<typeof selectEmployeeAttentionSummary>; projects: Array<DashboardProject & { openTaskCount: number; inProgressCount: number; nearestDueDate: string | null; progressPercent: number | null }>; deadlines: DashboardDeadline[] };
 export type DashboardData = AdminDashboard | EmployeeDashboard;
 
+async function loadAllDashboardRows<T>(queryPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
+  const rows: T[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await queryPage(offset, offset + pageSize - 1);
+    if (error || !data) throw new Error("Unable to load Dashboard task data.", { cause: error });
+    rows.push(...data);
+    if (data.length < pageSize) return { data: rows, error: null };
+  }
+}
+
 function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject[], today: string, days = 14, limitCount = 10): DashboardDeadline[] {
   const endDate = new Date(today + "T12:00:00"); endDate.setDate(endDate.getDate() + days);
   const limit = endDate.toISOString().slice(0, 10);
@@ -46,9 +57,11 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const { data: visibleProjects, error: visibleProjectsError } = await projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>();
   if (visibleProjectsError || !visibleProjects) throw new Error("Unable to load Dashboard projects.", { cause: visibleProjectsError });
   await refreshProjectTaskSchedules(visibleProjects.map((project) => project.id));
-  const taskQuery = supabase.from("tasks").select(`${PROJECT_TASK_PROGRESS_SELECT}, productivity_area_m2, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`).eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived");
   const [tasksResult, membersResult] = await Promise.all([
-    taskQuery.overrideTypes<DashboardTaskRow[], { merge: false }>(),
+    loadAllDashboardRows((from, to) => supabase.from("tasks")
+      .select(`${PROJECT_TASK_PROGRESS_SELECT}, productivity_area_m2, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`)
+      .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
+      .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
   ]);
   if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
@@ -58,7 +71,8 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const [stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
     supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
     membership.system_role === "admin"
-      ? supabase.from("task_status_periods").select("task_id, status, entered_at").eq("studio_id", membership.studio_id).is("exited_at", null)
+      ? loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
+        .eq("studio_id", membership.studio_id).is("exited_at", null).order("task_id").range(from, to))
       : Promise.resolve({ data: [], error: null }),
     membership.system_role === "admin"
       ? supabase.from("project_members").select("project_id, user_id").in("project_id", visibleProjects.map((project) => project.id)).eq("is_active", true)
@@ -75,7 +89,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const projects = visibleProjects.map((project) => ({ ...project, stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
   const tasks = tasksResult.data.map(({ collaborators, ...task }) => {
     const deadlines = task.deadlines ?? [];
-    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.filter((row) => row.profile !== null).map((row) => ({ id: row.user_id })) };
+    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.map((row) => ({ id: row.user_id })) };
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {

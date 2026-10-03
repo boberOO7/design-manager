@@ -305,6 +305,7 @@
     "attentionEquipment": "{count, plural, one {# прострочене обслуговування обладнання} few {# прострочені обслуговування обладнання} many {# прострочених обслуговувань обладнання} other {# простроченого обслуговування обладнання}}",
     "domainTasks": "Завдання",
     "domainFinance": "Фінанси",
+    "financeUnavailable": "Фінансові дані зараз недоступні. Оновіть сторінку, щоб спробувати ще раз.",
     "domainCrm": "CRM",
     "domainAdministration": "Адміністрування",
     "domainOffice": "Office",

@@ -29,6 +29,7 @@ export type DashboardFinanceEvent = {
 
 export type DashboardOperations = {
   crm: { activeCount: number; overdueCount: number; upcoming: DashboardCrmFollowUp[] };
+  financeUnavailable: boolean;
   finance: null | { overdueReceivableCount: number; overdueObligationCount: number; upcoming: DashboardFinanceEvent[]; month: ReturnType<typeof financeDashboardMonthSummary> };
   office: { overdueAssignmentCount: number; myAssignments: DashboardOfficeAssignment[]; upcoming: Array<DashboardOfficeAssignment & { deadline: string }> };
   equipment: { overdueCount: number; upcoming: Array<{ id: string; title: string; date: string }> };
@@ -55,7 +56,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     client.from("equipment").select("id,display_name,asset_tag,recurring_maintenance_enabled,next_maintenance_due_date,lifecycle_state").eq("studio_id", admin.studio_id).neq("lifecycle_state", "retired"),
     client.from("submissions").select("id,type,status").eq("studio_id", admin.studio_id).eq("priority", "urgent").overrideTypes<Array<Pick<SubmissionSummary, "id" | "type" | "status">>, { merge: false }>(),
   ]);
-  const queryError = financeSettings.error ?? overdueFollowUps.error ?? upcomingFollowUps.error ?? assignmentsResult.error ?? equipmentResult.error ?? urgentSubmissionsResult.error;
+  const queryError = overdueFollowUps.error ?? upcomingFollowUps.error ?? assignmentsResult.error ?? equipmentResult.error ?? urgentSubmissionsResult.error;
   if (queryError) throw new Error("Unable to load Dashboard operational signals.", { cause: queryError });
 
   const crm = {
@@ -79,54 +80,61 @@ export async function getDashboardOperations(today: string, now = new Date()): P
       id: item.id, title: item.display_name ?? item.asset_tag, date: item.next_maintenance_due_date,
     }] : []),
   };
-  if (!financeSettings.data?.finalized_at) return { crm, finance: null, office, equipment, submissions };
+  try {
+    if (financeSettings.error) throw new Error("Unable to load Dashboard Finance settings.", { cause: financeSettings.error });
+    if (!financeSettings.data?.finalized_at) return { crm, finance: null, financeUnavailable: false, office, equipment, submissions };
 
-  const [incomingOverdue, outgoingOverdue] = await Promise.all([
-    client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "incoming").or(FINANCE_OVERDUE_DB_FILTER),
-    client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
-  ]);
-  if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
-  const [overview, displayCurrency] = await Promise.all([getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" }), getFinanceDisplayCurrency()]);
-  if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
-  const vatActuals = await client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
-    .eq("studio_id", admin.studio_id).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf);
-  if (vatActuals.error) throw new Error("Unable to load project VAT actuals.", { cause: vatActuals.error });
-  const displayOverview = await getFinanceDisplayOverview(overview, displayCurrency);
-  if (!displayOverview) throw new Error("Unable to display Dashboard Finance signals.");
-  const displayUnit = await client.from("finance_currencies").select("minor_units").eq("code", displayCurrency).single();
-  if (displayUnit.error || !displayUnit.data) throw new Error("Unable to load Dashboard display currency.", { cause: displayUnit.error });
-  const vatAdjustments = await Promise.all((vatActuals.data ?? []).map(async row => ({
-    date: row.financial_date ?? "",
-    amount: displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
-      row.vat_reporting_amount,
-      await getFinanceDisplayRate(overview.forecast.currency, displayCurrency, row.financial_date ?? overview.forecast.asOf),
-      displayUnit.data.minor_units,
-    ),
-  })));
-  const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
-  const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", admin.studio_id).in("id", projectIds) : null;
-  if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
-  const projectNames = new Map(projects?.data?.map((project) => [project.id, project.name]));
-  const upcoming = overview.forecast.items
-    .filter((item) => item.date !== null && item.date >= overview.forecast.asOf && item.date <= overview.upcomingThrough && (item.dueDate === null || item.dueDate >= overview.forecast.asOf))
-    .sort((left, right) => (left.date ?? "").localeCompare(right.date ?? "") || left.id.localeCompare(right.id))
-    .map((item) => ({
-      id: item.id,
-      date: item.date ?? overview.forecast.asOf,
-      description: item.description,
-      direction: item.direction,
-      dueDate: item.dueDate,
-      obligationKind: item.obligationKind,
-      projectName: item.projectId ? projectNames.get(item.projectId) ?? null : null,
-    }));
-  return {
-    crm,
-    finance: {
-      overdueReceivableCount: incomingOverdue.count ?? 0,
-      overdueObligationCount: outgoingOverdue.count ?? 0,
-      upcoming,
-      month: financeDashboardMonthSummary({ ...displayOverview, vatAdjustments }),
-    },
-    office, equipment, submissions,
-  };
+    const [incomingOverdue, outgoingOverdue] = await Promise.all([
+      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "incoming").or(FINANCE_OVERDUE_DB_FILTER),
+      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
+    ]);
+    if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
+    const [overview, displayCurrency] = await Promise.all([getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" }), getFinanceDisplayCurrency()]);
+    if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
+    const vatActuals = await client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
+      .eq("studio_id", admin.studio_id).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf);
+    if (vatActuals.error) throw new Error("Unable to load project VAT actuals.", { cause: vatActuals.error });
+    const displayOverview = await getFinanceDisplayOverview(overview, displayCurrency);
+    if (!displayOverview) throw new Error("Unable to display Dashboard Finance signals.");
+    const displayUnit = await client.from("finance_currencies").select("minor_units").eq("code", displayCurrency).single();
+    if (displayUnit.error || !displayUnit.data) throw new Error("Unable to load Dashboard display currency.", { cause: displayUnit.error });
+    const vatAdjustments = await Promise.all((vatActuals.data ?? []).map(async row => ({
+      date: row.financial_date ?? "",
+      amount: displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
+        row.vat_reporting_amount,
+        await getFinanceDisplayRate(overview.forecast.currency, displayCurrency, row.financial_date ?? overview.forecast.asOf),
+        displayUnit.data.minor_units,
+      ),
+    })));
+    const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
+    const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", admin.studio_id).in("id", projectIds) : null;
+    if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
+    const projectNames = new Map(projects?.data?.map((project) => [project.id, project.name]));
+    const upcoming = overview.forecast.items
+      .filter((item) => item.date !== null && item.date >= overview.forecast.asOf && item.date <= overview.upcomingThrough && (item.dueDate === null || item.dueDate >= overview.forecast.asOf))
+      .sort((left, right) => (left.date ?? "").localeCompare(right.date ?? "") || left.id.localeCompare(right.id))
+      .map((item) => ({
+        id: item.id,
+        date: item.date ?? overview.forecast.asOf,
+        description: item.description,
+        direction: item.direction,
+        dueDate: item.dueDate,
+        obligationKind: item.obligationKind,
+        projectName: item.projectId ? projectNames.get(item.projectId) ?? null : null,
+      }));
+    return {
+      crm,
+      financeUnavailable: false,
+      finance: {
+        overdueReceivableCount: incomingOverdue.count ?? 0,
+        overdueObligationCount: outgoingOverdue.count ?? 0,
+        upcoming,
+        month: financeDashboardMonthSummary({ ...displayOverview, vatAdjustments }),
+      },
+      office, equipment, submissions,
+    };
+  } catch (cause) {
+    console.error("Dashboard Finance data is unavailable.", cause);
+    return { crm, finance: null, financeUnavailable: true, office, equipment, submissions };
+  }
 }

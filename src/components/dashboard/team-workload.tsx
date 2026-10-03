@@ -50,7 +50,7 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
   return <ul className="space-y-1">
     {members.map((member) => {
       const isExpanded = expandedMemberId === member.id;
-      const tasks = member.tasks.filter((task) => selectedCategory === "area" ? task.workloadAreaM2 > 0 : isTaskInWorkloadCategory(task, selectedCategory, today)).sort((left, right) => {
+      const tasks = member.tasks.filter((task) => selectedCategory === "area" ? task.assignee_id === member.id && task.workloadAreaM2 > 0 : isTaskInWorkloadCategory(task, selectedCategory, today)).sort((left, right) => {
         const overdue = Number(isOverdue(right, today)) - Number(isOverdue(left, today));
         if (overdue) return overdue;
         const priority = priorityRank(left.priority) - priorityRank(right.priority);

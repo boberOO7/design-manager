@@ -206,8 +206,10 @@ export function getCurrentStatusDuration(enteredAt: string | null, asOf: string)
 
 export function getTeamWorkload(members: DashboardMember[], tasks: DashboardWorkloadTask[], today: string) {
   return members.map((member) => {
-    const assigned = tasks.filter((task) => task.assignee_id === member.id);
+    const directlyAssigned = tasks.filter((task) => task.assignee_id === member.id);
+    const assigned = tasks.filter((task) => task.assignee_id === member.id || task.collaborators.some((collaborator) => collaborator.id === member.id));
     const active = assigned.filter(isOpenTask);
+    const activeDirectlyAssigned = directlyAssigned.filter(isOpenTask);
     const inProgress = active.filter((task) => task.status === "in_progress");
     const recentFocus = inProgress
       .filter((task) => task.currentStatusEnteredAt !== null)
@@ -218,7 +220,7 @@ export function getTeamWorkload(members: DashboardMember[], tasks: DashboardWork
       recentFocus,
       additionalInProgressCount: recentFocus ? inProgress.length - 1 : 0,
       openTaskCount: active.length,
-      workloadAreaM2: active.reduce((total, task) => total + task.workloadAreaM2, 0),
+      workloadAreaM2: activeDirectlyAssigned.reduce((total, task) => total + task.workloadAreaM2, 0),
       todoCount: active.filter((task) => task.status === "todo").length,
       inProgressCount: inProgress.length,
       reviewCount: active.filter((task) => isTaskInReview(task.status)).length,

@@ -83,6 +83,10 @@ export async function AdminDashboardView({ administration, dashboard, operations
       expectedInflow: money(month?.expectedInflow),
       profitAndLoss: money(month?.profitAndLoss),
     })} />
+    {operations?.financeUnavailable ? <OperationalSurface className="flex items-center gap-3 px-4 py-3">
+      <CircleAlert className="size-4 shrink-0 text-[var(--ui-warning-text)]" aria-hidden="true" />
+      <p role="status" className="text-sm text-[var(--ui-text-secondary)]">{t("financeUnavailable")}</p>
+    </OperationalSurface> : null}
     <div className="grid items-start gap-5 xl:grid-cols-12">
       <div className="grid min-w-0 content-start gap-5 xl:col-span-7">
       <DashboardSection className="dashboard-reveal dashboard-reveal-delay-1" title={t("needsAttention")}>
