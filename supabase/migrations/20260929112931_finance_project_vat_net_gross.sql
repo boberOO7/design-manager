@@ -74,7 +74,9 @@ for each row execute function private.set_finance_expected_vat();
 alter table public.finance_allocations
   add column net_amount numeric,
   add column vat_amount numeric;
+alter table public.finance_allocations disable trigger finance_allocations_immutable;
 update public.finance_allocations set net_amount=amount,vat_amount=0;
+alter table public.finance_allocations enable trigger finance_allocations_immutable;
 alter table public.finance_allocations
   alter column net_amount set not null,
   alter column vat_amount set not null,
