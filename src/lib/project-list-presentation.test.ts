@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { filterAndSortProjects, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectListHref, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
+import { filterAndSortProjects, getNextProjectListSort, getPresentedProjects, getProjectHref, getProjectListEmptyState, getProjectListFilters, getProjectListHref, getProjectProgressLabel, PROJECT_LIST_DEFAULT_FILTERS, type ProjectListFilters } from "./project-list-presentation";
 import type { ProjectTaskForProgress } from "./project-progress";
 
 const today = "2026-07-29";
@@ -11,7 +11,7 @@ function project(overrides: Partial<{ id: string; name: string; priority: string
   const value = { id: "project-1", name: "Alpha", priority: "normal", status: "active", due_date: null, total_area_m2: 100, tasks: [] as TestTask[], ...overrides };
   return { ...value, tasks: value.tasks.map(progressTask) };
 }
-const operational: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational" };
+const operational: ProjectListFilters = { lifecycle: "all", health: "all", priority: "all", sort: "operational", direction: "asc" };
 
 describe("project list presentation", () => {
   it("orders operational risk first with a stable fallback", () => {
@@ -26,7 +26,7 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, operational).map((item) => item.id)).toEqual(["late", "risk", "soon", "same-a", "same-b", "track"]);
   });
 
-  it("sorts filtered projects globally by name while keeping paused projects last for operational sorts", () => {
+  it("sorts column values globally without mixing in lifecycle grouping", () => {
     const items = getPresentedProjects([
       project({ id: "active-z", name: "Zeta", due_date: "2026-08-10" }),
       project({ id: "paused-a", name: "Alpha", status: "paused", due_date: "2026-07-01" }),
@@ -35,7 +35,7 @@ describe("project list presentation", () => {
     ], today);
 
     expect(filterAndSortProjects(items, { ...operational, sort: "name" }).map((item) => item.id)).toEqual(["paused-a", "active-a", "active-z", "paused-z"]);
-    expect(filterAndSortProjects(items, { ...operational, sort: "deadline" }).map((item) => item.id)).toEqual(["active-a", "active-z", "paused-a", "paused-z"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "deadline" }).map((item) => item.id)).toEqual(["paused-a", "paused-z", "active-a", "active-z"]);
   });
 
   it("uses the same mixed-script name order regardless of the runtime locale", () => {
@@ -62,17 +62,17 @@ describe("project list presentation", () => {
     expect(filterAndSortProjects(items, { ...operational, priority: "low" }).map((item) => item.id)).toEqual(["paused"]);
   });
 
-  it("defaults to active projects and alphabetizes after combining filters", () => {
+  it("defaults to active projects in descending numeric-prefix order after combining filters", () => {
     const items = getPresentedProjects([
-      project({ id: "active-z", name: "Zeta", priority: "urgent", tasks: [{ id: "z-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
-      project({ id: "planned", name: "Beta", status: "planned", priority: "urgent" }),
-      project({ id: "active-a", name: "Alpha", priority: "urgent", tasks: [{ id: "a-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
-      project({ id: "paused", name: "Delta", status: "paused", priority: "low" }),
+      project({ id: "active-z", name: "306 Zeta", priority: "urgent", tasks: [{ id: "z-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
+      project({ id: "planned", name: "305 Beta", status: "planned", priority: "urgent" }),
+      project({ id: "active-a", name: "10 Alpha", priority: "urgent", tasks: [{ id: "a-task", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
+      project({ id: "paused", name: "0 Delta", status: "paused", priority: "low" }),
     ], today);
 
-    expect(filterAndSortProjects(items, getProjectListFilters({})).map((item) => item.id)).toEqual(["active-a", "active-z"]);
-    expect(filterAndSortProjects(items, getProjectListFilters({ lifecycle: "all" })).map((item) => item.id)).toEqual(["active-a", "planned", "paused", "active-z"]);
-    expect(filterAndSortProjects(items, getProjectListFilters({ health: "needs_attention", priority: "urgent" })).map((item) => item.id)).toEqual(["active-a", "active-z"]);
+    expect(filterAndSortProjects(items, getProjectListFilters({})).map((item) => item.id)).toEqual(["active-z", "active-a"]);
+    expect(filterAndSortProjects(items, getProjectListFilters({ lifecycle: "all" })).map((item) => item.id)).toEqual(["active-z", "planned", "active-a", "paused"]);
+    expect(filterAndSortProjects(items, getProjectListFilters({ health: "needs_attention", priority: "urgent" })).map((item) => item.id)).toEqual(["active-z", "active-a"]);
   });
 
   it("uses truthful no-task and stage-weighted progress labels, and keeps project deep links", () => {
@@ -82,15 +82,58 @@ describe("project list presentation", () => {
     expect(getProjectHref("progress")).toBe("/projects/progress");
     expect(getProjectListHref(PROJECT_LIST_DEFAULT_FILTERS)).toBe("/projects");
     expect(getProjectHref("progress", PROJECT_LIST_DEFAULT_FILTERS)).toBe("/projects/progress");
-    expect(getProjectHref("progress", { ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "completed", sort: "deadline" })).toBe("/projects/progress?lifecycle=completed&sort=deadline");
+    expect(getProjectHref("progress", { ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "completed", sort: "deadline", direction: "asc" })).toBe("/projects/progress?lifecycle=completed&sort=deadline");
     expect(new Set(getPresentedProjects([project({ id: "one" }), project({ id: "two" })], today).map((item) => item.id)).size).toBe(2);
   });
 
   it("uses valid URL-backed filter defaults", () => {
     expect(getProjectListFilters({})).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
-    expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" });
+    expect(getProjectListFilters({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline" })).toEqual({ lifecycle: "active", health: "overdue", priority: "urgent", sort: "deadline", direction: "asc" });
     expect(getProjectListFilters({ lifecycle: "all" })).toEqual({ ...PROJECT_LIST_DEFAULT_FILTERS, lifecycle: "all" });
     expect(getProjectListFilters({ lifecycle: "unknown", sort: ["name", "health"] })).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
+  });
+
+  it("sorts numeric prefixes naturally in both directions, including zero and different digit lengths", () => {
+    const items = getPresentedProjects(["0", "2", "305", "10", "306"].map((prefix) => project({ id: prefix, name: `${prefix} Studio` })));
+    expect(filterAndSortProjects(items, PROJECT_LIST_DEFAULT_FILTERS).map((item) => item.id)).toEqual(["306", "305", "10", "2", "0"]);
+    expect(filterAndSortProjects(items, { ...PROJECT_LIST_DEFAULT_FILTERS, direction: "asc" }).map((item) => item.id)).toEqual(["0", "2", "10", "305", "306"]);
+  });
+
+  it("sorts progress numerically and keeps undated projects last in both deadline directions", () => {
+    const items = getPresentedProjects([
+      project({ id: "undated", name: "306", due_date: null }),
+      project({ id: "far", name: "305", due_date: "2027-01-01", status: "paused" }),
+      project({ id: "near", name: "10", due_date: "2026-08-01" }),
+    ]).map((item, index) => ({ ...item, progress: { ...item.progress, progressPercent: [9, 100, 25.5][index] } }));
+    expect(filterAndSortProjects(items, { ...operational, sort: "progress", direction: "asc" }).map((item) => item.id)).toEqual(["undated", "near", "far"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "progress", direction: "desc" }).map((item) => item.id)).toEqual(["far", "near", "undated"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "deadline", direction: "asc" }).map((item) => item.id)).toEqual(["near", "far", "undated"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "deadline", direction: "desc" }).map((item) => item.id)).toEqual(["far", "near", "undated"]);
+  });
+
+  it("sorts State by canonical health severity without project-priority or lifecycle grouping", () => {
+    const items = getPresentedProjects([
+      project({ id: "track", name: "305", priority: "urgent", status: "paused" }),
+      project({ id: "soon", name: "10", due_date: "2026-08-01" }),
+      project({ id: "late", name: "2", due_date: "2026-07-28" }),
+      project({ id: "attention", name: "306", tasks: [{ id: "urgent", status: "todo", priority: "urgent", due_date: null, assignee_id: null }] }),
+      project({ id: "done", name: "0", status: "completed" }),
+    ], today);
+    expect(filterAndSortProjects(items, { ...operational, sort: "health", direction: "asc" }).map((item) => item.id)).toEqual(["late", "attention", "soon", "track", "done"]);
+    expect(filterAndSortProjects(items, { ...operational, sort: "health", direction: "desc" }).map((item) => item.id)).toEqual(["done", "track", "soon", "attention", "late"]);
+  });
+
+  it("toggles headers and round-trips sort direction through list and project URLs", () => {
+    expect(getNextProjectListSort(PROJECT_LIST_DEFAULT_FILTERS, "name").direction).toBe("asc");
+    expect(getNextProjectListSort(getNextProjectListSort(PROJECT_LIST_DEFAULT_FILTERS, "name"), "name")).toEqual(PROJECT_LIST_DEFAULT_FILTERS);
+    for (const [sort, direction] of [["progress", "desc"], ["deadline", "asc"], ["health", "asc"]] as const) {
+      const filters = getNextProjectListSort({ ...PROJECT_LIST_DEFAULT_FILTERS, priority: "high" }, sort);
+      expect(filters).toMatchObject({ sort, direction, priority: "high" });
+      const reversed = getNextProjectListSort(filters, sort);
+      const href = getProjectListHref(reversed);
+      expect(getProjectListFilters(Object.fromEntries(new URLSearchParams(href.split("?")[1])))).toEqual(reversed);
+      expect(getProjectHref("305", reversed)).toBe(`/projects/305${href.slice("/projects".length)}`);
+    }
   });
 
   it("selects a resettable localized empty state when filters return no projects", () => {

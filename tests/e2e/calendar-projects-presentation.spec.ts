@@ -149,10 +149,10 @@ test("Projects filters and sort preserve URL history and project navigation", as
   await choose(page, page.locator("main"), t.lifecycle, t.lifecycleCompleted);
   await expect(page.getByRole("link", { name: /Alpha active/ })).toHaveCount(0);
   await check("status", []);
-  await choose(page, page.locator("main"), t.sortBy, t.deadline);
-  await check("sort", []);
   await choose(page, page.locator("main"), t.priority, t.allPriorities);
   await expect(page.getByRole("link", { name: /Delta completed/ })).toBeVisible();
+  await page.getByRole("group", { name: t.sortProjects }).getByRole("button", { name: t.deadline, exact: true }).click();
+  await check("sort", []);
   await choose(page, page.locator("main"), t.health, t.healthCompleted);
   await check("combined", []);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
@@ -178,11 +178,35 @@ test("Projects filters and sort preserve URL history and project navigation", as
   await expect(page.getByRole("link", { name: /Alpha active/ })).toBeVisible();
   await check("reset", []);
   await choose(page, page.locator("main"), t.lifecycle, t.allLifecycles);
-  await choose(page, page.locator("main"), t.sortBy, t.deadline);
+  await page.getByRole("group", { name: t.sortProjects }).getByRole("button", { name: t.deadline, exact: true }).click();
   const links = page.locator('main a[href]').filter({ hasText: /Alpha active|Beta paused|Gamma planned/ });
   await expect(links.filter({ visible: true })).toHaveCount(3);
-  await expect.poll(() => links.filter({ visible: true }).allTextContents()).toEqual([expect.stringContaining("Alpha active"), expect.stringContaining("Gamma planned"), expect.stringContaining("Beta paused")]);
-  await check("paused ordering", []);
+  await expect.poll(() => links.filter({ visible: true }).allTextContents()).toEqual([expect.stringContaining("Alpha active"), expect.stringContaining("Beta paused"), expect.stringContaining("Gamma planned")]);
+  await check("deadline ordering", []);
+});
+
+test("Projects keep the desktop shell in the viewport when skipping to overflowing content", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 600 });
+  await login(page);
+  await page.goto("/projects?lifecycle=all&direction=asc");
+  await expect(page.getByRole("link", { name: /Alpha active/ })).toBeVisible();
+  const main = page.locator("#main-content");
+  expect(await main.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeGreaterThan(100);
+
+  // Hash navigation scrolls ancestors too; offscreen absolute labels must stay
+  // within main's scroll range rather than make the document itself scrollable.
+  await page.locator('a[href="#main-content"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(main).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  expect(await main.evaluate((element) => element.getBoundingClientRect().bottom)).toBe(600);
+
+  await main.evaluate((element) => { element.scrollTop = (element.scrollHeight - element.clientHeight) / 2; });
+  expect(await main.evaluate((element) => [0.2, 0.5, 0.8].every((fraction) => {
+    const hit = document.elementFromPoint(window.innerWidth * fraction, window.innerHeight - 5);
+    return hit !== null && element.contains(hit);
+  }))).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test("Projects hard reloads hydrate with deterministic lifecycle lists", async ({ page }) => {
@@ -205,8 +229,8 @@ test("Projects hard reloads hydrate with deterministic lifecycle lists", async (
   const completedLinks = page.locator('main a[href^="/projects/"]').filter({ hasText: /Delta completed|фівфівфів/ }).filter({ visible: true });
   await expect(completedLinks).toHaveCount(2);
   expect(await completedLinks.evaluateAll((links) => links.map((link) => link.getAttribute("href")))).toEqual([
-    `/projects/${projectIds[3]}?lifecycle=completed`,
     `/projects/${projectIds[4]}?lifecycle=completed`,
+    `/projects/${projectIds[3]}?lifecycle=completed`,
   ]);
   expect(runtimeErrors.filter((message) => /hydration|server rendered html|<script>|script tags/i.test(message))).toEqual([]);
 });

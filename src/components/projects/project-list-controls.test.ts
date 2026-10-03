@@ -27,14 +27,14 @@ describe("Projects filter localization", () => {
     expect(PROJECT_LIST_HEALTH_FILTERS).toEqual(["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"]);
     expect(PROJECT_LIST_PRIORITY_FILTERS).toEqual(["all", "urgent", "high", "normal", "low"]);
     expect(PROJECT_LIST_SORTS).toEqual(["operational", "deadline", "name", "health", "progress"]);
-    expect(PROJECT_LIST_DEFAULT_FILTERS).toEqual({ lifecycle: "active", health: "all", priority: "all", sort: "name" });
+    expect(PROJECT_LIST_DEFAULT_FILTERS).toEqual({ lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" });
     expect(source).toContain('useTranslations("Projects")');
     expect(source).toContain('useTranslations("Priority")');
     expect(source).toContain('useTranslations("Calendar")');
     expect(source).toContain("PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option]");
     expect(source).not.toContain('planned: "Planned"');
-    expect(source).toContain('params.set("lifecycle", lifecycle)');
-    expect(source).toContain("lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle");
+    expect(source).toContain("getProjectListHref(filters)");
+    expect(source).not.toContain('label={t("sortBy")}');
   });
 
   it("provides every required Ukrainian option label", () => {

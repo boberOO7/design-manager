@@ -4,12 +4,15 @@ export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paus
 export const PROJECT_LIST_HEALTH_FILTERS = ["all", "overdue", "needs_attention", "deadline_soon", "on_track", "completed"] as const;
 export const PROJECT_LIST_PRIORITY_FILTERS = ["all", "urgent", "high", "normal", "low"] as const;
 export const PROJECT_LIST_SORTS = ["operational", "deadline", "name", "health", "progress"] as const;
+export const PROJECT_LIST_FILTER_KEYS = ["lifecycle", "health", "priority", "sort", "direction"] as const;
+const defaultSortDirections = { operational: "asc", deadline: "asc", name: "desc", health: "asc", progress: "desc" } as const;
 
 export type ProjectListFilters = {
   lifecycle: (typeof PROJECT_LIST_LIFECYCLE_FILTERS)[number];
   health: (typeof PROJECT_LIST_HEALTH_FILTERS)[number];
   priority: (typeof PROJECT_LIST_PRIORITY_FILTERS)[number];
   sort: (typeof PROJECT_LIST_SORTS)[number];
+  direction: "asc" | "desc";
 };
 
 export const PROJECT_LIST_LIFECYCLE_LABEL_KEYS = {
@@ -34,8 +37,9 @@ export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[
   progress: ProjectProgress;
 };
 
-export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { lifecycle: "active", health: "all", priority: "all", sort: "name" };
+export const PROJECT_LIST_DEFAULT_FILTERS: ProjectListFilters = { lifecycle: "active", health: "all", priority: "all", sort: "name", direction: "desc" };
 const healthOrder: Record<ProjectHealth, number> = { overdue: 0, needs_attention: 1, deadline_soon: 2, on_track: 3, completed: 4 };
+const numericPrefixOrder = new Intl.Collator("en", { numeric: true });
 
 function compareStableText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -46,12 +50,18 @@ function isOneOf<T extends readonly string[]>(value: string | string[] | undefin
 }
 
 export function getProjectListFilters(searchParams: Record<string, string | string[] | undefined>): ProjectListFilters {
+  const sort = isOneOf(searchParams.sort, PROJECT_LIST_SORTS) ? searchParams.sort : PROJECT_LIST_DEFAULT_FILTERS.sort;
   return {
     lifecycle: isOneOf(searchParams.lifecycle, PROJECT_LIST_LIFECYCLE_FILTERS) ? searchParams.lifecycle : PROJECT_LIST_DEFAULT_FILTERS.lifecycle,
     health: isOneOf(searchParams.health, PROJECT_LIST_HEALTH_FILTERS) ? searchParams.health : PROJECT_LIST_DEFAULT_FILTERS.health,
     priority: isOneOf(searchParams.priority, PROJECT_LIST_PRIORITY_FILTERS) ? searchParams.priority : PROJECT_LIST_DEFAULT_FILTERS.priority,
-    sort: isOneOf(searchParams.sort, PROJECT_LIST_SORTS) ? searchParams.sort : PROJECT_LIST_DEFAULT_FILTERS.sort,
+    sort,
+    direction: isOneOf(searchParams.direction, ["asc", "desc"] as const) ? searchParams.direction : defaultSortDirections[sort],
   };
+}
+
+export function getNextProjectListSort(filters: ProjectListFilters, sort: ProjectListFilters["sort"]): ProjectListFilters {
+  return { ...filters, sort, direction: filters.sort === sort ? filters.direction === "asc" ? "desc" : "asc" : defaultSortDirections[sort] };
 }
 
 export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
@@ -66,6 +76,13 @@ function compareNullableDate(left: string | null, right: string | null): number 
   return compareStableText(left ?? "9999-12-31", right ?? "9999-12-31");
 }
 
+function compareProjectNames(left: string, right: string): number {
+  const leftPrefix = left.match(/^\s*\d+/)?.[0].trim();
+  const rightPrefix = right.match(/^\s*\d+/)?.[0].trim();
+  return (leftPrefix !== undefined && rightPrefix !== undefined ? numericPrefixOrder.compare(leftPrefix, rightPrefix) : 0)
+    || compareStableText(left, right);
+}
+
 export function filterAndSortProjects<T extends { name: string; priority: string; status: string; due_date: string | null; health: ProjectHealth; progress: ProjectProgress }>(projects: readonly T[], filters: ProjectListFilters): T[] {
   const filtered = projects.filter((project) =>
     (filters.lifecycle === "all" || project.status === filters.lifecycle)
@@ -75,12 +92,17 @@ export function filterAndSortProjects<T extends { name: string; priority: string
   return filtered.map((project, index) => ({ project, index })).sort((left, right) => {
     const first = left.project;
     const second = right.project;
-    if (filters.sort === "name") return compareStableText(first.name, second.name) || left.index - right.index;
+    const direction = filters.direction === "asc" ? 1 : -1;
+    const fallback = compareProjectNames(first.name, second.name) || left.index - right.index;
+    if (filters.sort === "name") return direction * compareProjectNames(first.name, second.name) || left.index - right.index;
+    if (filters.sort === "deadline") {
+      if (first.due_date === null || second.due_date === null) return Number(first.due_date === null) - Number(second.due_date === null) || fallback;
+      return direction * compareNullableDate(first.due_date, second.due_date) || fallback;
+    }
+    if (filters.sort === "health") return direction * (healthOrder[first.health] - healthOrder[second.health]) || fallback;
+    if (filters.sort === "progress") return direction * (first.progress.progressPercent - second.progress.progressPercent) || fallback;
     const pauseGroup = Number(first.status === "paused") - Number(second.status === "paused");
     if (pauseGroup !== 0) return pauseGroup;
-    if (filters.sort === "deadline") return compareNullableDate(first.due_date, second.due_date) || left.index - right.index;
-    if (filters.sort === "health") return healthOrder[first.health] - healthOrder[second.health] || compareStableText(first.name, second.name) || left.index - right.index;
-    if (filters.sort === "progress") return (second.progress.progressPercent ?? -1) - (first.progress.progressPercent ?? -1) || compareStableText(first.name, second.name) || left.index - right.index;
     return healthOrder[first.health] - healthOrder[second.health]
       || compareNullableDate(first.due_date, second.due_date)
       || compareStableText(first.name, second.name)
@@ -92,7 +114,8 @@ export function hasActiveProjectListFilters(filters: ProjectListFilters): boolea
   return filters.lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle
     || filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health
     || filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority
-    || filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort;
+    || filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort
+    || filters.direction !== PROJECT_LIST_DEFAULT_FILTERS.direction;
 }
 
 export function getProjectListEmptyState(filters: ProjectListFilters): { canReset: boolean; titleKey: "emptyFilteredActive" | "emptyFiltered" } {
@@ -112,6 +135,7 @@ export function getProjectListHref(filters: ProjectListFilters): string {
   if (filters.health !== PROJECT_LIST_DEFAULT_FILTERS.health) params.set("health", filters.health);
   if (filters.priority !== PROJECT_LIST_DEFAULT_FILTERS.priority) params.set("priority", filters.priority);
   if (filters.sort !== PROJECT_LIST_DEFAULT_FILTERS.sort) params.set("sort", filters.sort);
+  if (filters.direction !== defaultSortDirections[filters.sort]) params.set("direction", filters.direction);
   return `/projects${params.size ? `?${params}` : ""}`;
 }
 

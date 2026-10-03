@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { LifecycleDot } from "./project-lifecycle-dot";
 import { useSearchParams } from "next/navigation";
-import { ProjectListControls, resetProjectListFilters } from "./project-list-controls";
+import { ProjectListControls, resetProjectListFilters, updateProjectListFilters } from "./project-list-controls";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useLocale, useTranslations } from "next-intl";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
-import { filterAndSortProjects, getProjectListEmptyState, getProjectListFilters, hasActiveProjectListFilters, getProjectHref, getProjectProgressLabel, type PresentedProject } from "@/lib/project-list-presentation";
+import { filterAndSortProjects, getNextProjectListSort, getProjectListEmptyState, getProjectListFilters, hasActiveProjectListFilters, getProjectHref, getProjectProgressLabel, PROJECT_LIST_FILTER_KEYS, type PresentedProject } from "@/lib/project-list-presentation";
 import { formatDateOnly } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AccessibleProjectWithTasks } from "@/data/queries/project-progress";
@@ -24,7 +25,7 @@ export function ProjectListWorkspace({ projects }: { projects: readonly ProjectI
   const t = useTranslations("Projects");
   const params = useSearchParams();
   const filters = getProjectListFilters(Object.fromEntries(
-    ["lifecycle", "health", "priority", "sort"].map((key) => [key, params.getAll(key).length > 1 ? params.getAll(key) : params.get(key) ?? undefined]),
+    PROJECT_LIST_FILTER_KEYS.map((key) => [key, params.getAll(key).length > 1 ? params.getAll(key) : params.get(key) ?? undefined]),
   ));
   const visibleProjects = filterAndSortProjects(projects, filters);
   const emptyState = getProjectListEmptyState(filters);
@@ -37,7 +38,29 @@ export function ProjectListWorkspace({ projects }: { projects: readonly ProjectI
 
 export function ProjectList({ filters, projects }: { filters: ReturnType<typeof getProjectListFilters>; projects: readonly ProjectItem[] }) {
   const t = useTranslations("Projects");
-  return <div className="@container"><div className="hidden @min-[70rem]:block"><div className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]"><div className={`grid ${desktopGridClassName} gap-x-4 @min-[80rem]:gap-x-7 border-b border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-4 py-2 text-left text-xs font-medium text-[var(--ui-text-muted)]`}><span>{t("project")}</span><span>{t("participants")}</span><span>{t("progress")}</span><span className={deadlineContentClassName}>{t("deadline")}</span><span className="text-center">{t("health")}</span></div><ul className="divide-y divide-[var(--ui-border)]">{projects.map((project) => <ProjectDesktopRow filters={filters} key={project.id} project={project} />)}</ul></div></div><ul className="grid gap-3 sm:grid-cols-2 @min-[70rem]:hidden">{projects.map((project) => <ProjectMobileCard filters={filters} key={project.id} project={project} />)}</ul></div>;
+  return <div className="@container">
+    <div className="@min-[70rem]:overflow-hidden @min-[70rem]:rounded-[var(--ui-radius-panel)] @min-[70rem]:border @min-[70rem]:border-[var(--ui-border)] @min-[70rem]:bg-[var(--ui-surface)]">
+      <div role="group" aria-label={t("sortProjects")} className={`mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-left text-xs font-medium text-[var(--ui-text-muted)] @min-[70rem]:mb-0 @min-[70rem]:grid ${desktopGridClassName} @min-[70rem]:gap-x-4 @min-[80rem]:gap-x-7 @min-[70rem]:border-b @min-[70rem]:border-[var(--ui-border)] @min-[70rem]:bg-[var(--ui-surface-muted)] @min-[70rem]:px-4 @min-[70rem]:py-1`}>
+        <SortableProjectHeader filters={filters} label={t("project")} sort="name" />
+        <span className="hidden @min-[70rem]:block">{t("participants")}</span>
+        <SortableProjectHeader filters={filters} label={t("progress")} sort="progress" />
+        <SortableProjectHeader className={deadlineContentClassName} filters={filters} label={t("deadline")} sort="deadline" />
+        <SortableProjectHeader className="justify-self-center" filters={filters} label={t("health")} sort="health" />
+      </div>
+      <ul className="hidden divide-y divide-[var(--ui-border)] @min-[70rem]:block">{projects.map((project) => <ProjectDesktopRow filters={filters} key={project.id} project={project} />)}</ul>
+    </div>
+    <ul className="grid gap-3 sm:grid-cols-2 @min-[70rem]:hidden">{projects.map((project) => <ProjectMobileCard filters={filters} key={project.id} project={project} />)}</ul>
+  </div>;
+}
+
+function SortableProjectHeader({ className = "", filters, label, sort }: { className?: string; filters: ReturnType<typeof getProjectListFilters>; label: string; sort: Exclude<ReturnType<typeof getProjectListFilters>["sort"], "operational"> }) {
+  const t = useTranslations("Projects");
+  const active = filters.sort === sort;
+  const next = getNextProjectListSort(filters, sort);
+  const Indicator = active ? filters.direction === "asc" ? ArrowUp : ArrowDown : ArrowUpDown;
+  return <button type="button" aria-pressed={active} aria-description={active ? t(filters.direction === "asc" ? "sortedAscending" : "sortedDescending") : undefined} title={t(next.direction === "asc" ? "sortAscending" : "sortDescending")} onClick={() => updateProjectListFilters(next)} className={`group flex min-h-8 w-fit items-center gap-1.5 rounded-sm py-1 transition-colors duration-200 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${active ? "text-[var(--ui-text)]" : ""} ${className}`}>
+    {label}<Indicator aria-hidden="true" className={`size-3 transition-opacity duration-200 ${active ? "" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"}`} />
+  </button>;
 }
 
 function ProjectDesktopRow({ filters, project }: { filters: ReturnType<typeof getProjectListFilters>; project: ProjectItem }) { const paused = project.status === "paused"; return <li><Link href={getProjectHref(project.id, filters)} className={`grid min-h-24 ${desktopGridClassName} items-center gap-x-4 @min-[80rem]:gap-x-7 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]`}><ProjectIdentity project={project} /><ProjectParticipants participants={project.participants} /><div className="min-w-0"><ProjectProgress project={project} compact muted={paused} /></div><div className={`min-w-0 ${deadlineContentClassName}`}><ProjectDeadlines project={project} compact muted={paused} /></div><ProjectSignals centered project={project} /></Link></li>; }

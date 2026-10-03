@@ -51,7 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppSidebar crmAttentionCount={crmAttentionCount} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} systemRole={studio.system_role} />
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
         <AppHeader crmAttentionCount={crmAttentionCount} joinedAt={studio.joined_at} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
-        <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="relative flex flex-1 flex-col p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
       </div>
     </div>
     </DomainMessages>

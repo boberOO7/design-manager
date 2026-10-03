@@ -3,11 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
-import { hasActiveProjectListFilters, PROJECT_LIST_DEFAULT_FILTERS, PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, PROJECT_LIST_SORTS, PROJECT_LIST_SORT_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
+import { getProjectListFilters, getProjectListHref, hasActiveProjectListFilters, PROJECT_LIST_FILTER_KEYS, PROJECT_LIST_HEALTH_FILTERS, PROJECT_LIST_HEALTH_LABEL_KEYS, PROJECT_LIST_LIFECYCLE_FILTERS, PROJECT_LIST_LIFECYCLE_LABEL_KEYS, PROJECT_LIST_PRIORITY_FILTERS, PROJECT_LIST_PRIORITY_LABEL_KEYS, type ProjectListFilters } from "@/lib/project-list-presentation";
+
+export function updateProjectListFilters(filters: ProjectListFilters) {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of PROJECT_LIST_FILTER_KEYS) params.delete(key);
+  new URLSearchParams(getProjectListHref(filters).split("?")[1]).forEach((value, key) => params.set(key, value));
+  window.history.replaceState(null, "", `/projects${params.size ? `?${params}` : ""}${window.location.hash}`);
+}
 
 export function resetProjectListFilters() {
   const params = new URLSearchParams(window.location.search);
-  for (const key of ["lifecycle", "health", "priority", "sort"]) params.delete(key);
+  for (const key of PROJECT_LIST_FILTER_KEYS) params.delete(key);
   window.history.replaceState(null, "", `/projects${params.size ? `?${params}` : ""}${window.location.hash}`);
 }
 
@@ -17,18 +24,7 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
   const priority = useTranslations("Priority");
 
   function update(key: keyof ProjectListFilters, value: string) {
-    const params = new URLSearchParams(window.location.search);
-    for (const key of ["lifecycle", "health", "priority", "sort"]) params.delete(key);
-    const lifecycle = key === "lifecycle" ? value : filters.lifecycle;
-    const health = key === "health" ? value : filters.health;
-    const priority = key === "priority" ? value : filters.priority;
-    const sort = key === "sort" ? value : filters.sort;
-    if (lifecycle !== PROJECT_LIST_DEFAULT_FILTERS.lifecycle) params.set("lifecycle", lifecycle);
-    if (health !== PROJECT_LIST_DEFAULT_FILTERS.health) params.set("health", health);
-    if (priority !== PROJECT_LIST_DEFAULT_FILTERS.priority) params.set("priority", priority);
-    if (sort !== PROJECT_LIST_DEFAULT_FILTERS.sort) params.set("sort", sort);
-    const query = params.toString();
-    window.history.replaceState(null, "", `${query ? `/projects?${query}` : "/projects"}${window.location.hash}`);
+    updateProjectListFilters(getProjectListFilters({ ...filters, [key]: value }));
   }
 
   return <div className="flex flex-wrap items-end gap-4 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3">
@@ -37,7 +33,6 @@ export function ProjectListControls({ filters }: { filters: ProjectListFilters }
       <FilterSelect label={t("health")} value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_HEALTH_LABEL_KEYS[option])} onChange={(value) => update("health", value)} />
       <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
     </div></fieldset>
-    <FilterSelect label={t("sortBy")} value={filters.sort} options={PROJECT_LIST_SORTS} getOptionLabel={(option) => t(PROJECT_LIST_SORT_LABEL_KEYS[option])} onChange={(value) => update("sort", value)} />
     {hasActiveProjectListFilters(filters) ? <Button type="button" variant="ghost" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : null}
   </div>;
 }
