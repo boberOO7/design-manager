@@ -55,6 +55,7 @@ export type ProjectTask = Pick<
   schedule?: TaskSchedule | null;
   stage: TaskStage;
   completed_area_m2: TaskRow["completed_area_m2"];
+  stage_position?: TaskRow["stage_position"];
   currentStatusEnteredAt?: string | null;
   checklist_items: TaskChecklistItem[];
   assignee: ProfileSummary | null;

@@ -143,6 +143,27 @@ export const taskChecklistTemplateSchema = z.object({
   checklist_template_id: z.uuid("Choose a valid checklist template").nullable(),
 }).strict();
 
+export const taskStructureSchema = z.object({
+  title: taskEditSchema.shape.title,
+  completed_area_m2: optionalCompletedAreaSchema.transform((value) => value ?? null),
+  checklist_template_id: taskChecklistTemplateSchema.shape.checklist_template_id,
+}).strict();
+
+export const stageTaskEditSchema = z.object({
+  stage: z.enum(TASK_STAGES),
+  updates: z.array(taskStructureSchema.extend({ id: z.uuid(), previous: taskStructureSchema }).strict()),
+  creates: z.array(taskStructureSchema.extend({ client_key: z.uuid(), source_task_id: z.uuid().nullable() }).strict()),
+  delete_ids: z.array(z.uuid()),
+  order: z.array(z.uuid()),
+}).strict().refine(({ updates, delete_ids }) => {
+  const ids = [...updates.map((task) => task.id), ...delete_ids];
+  return new Set(ids).size === ids.length;
+}, "Choose each task only once").refine(({ order, creates }) => {
+  const keys = creates.map((task) => task.client_key);
+  return new Set(keys).size === keys.length && new Set(order).size === order.length
+    && keys.every((key) => order.includes(key));
+}, "Choose every new task exactly once");
+
 export const checklistItemUpdateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   weight: checklistWeightSchema.optional(),

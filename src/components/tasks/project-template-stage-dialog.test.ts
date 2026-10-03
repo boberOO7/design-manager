@@ -16,13 +16,13 @@ describe("project template stage UI", () => {
     expect(source).toContain("localTasksRef.current = nextTasks; setLocalTasks(nextTasks)");
   });
 
-  it("submits explicit source and destination stages and communicates append-only behavior", async () => {
+  it("uses the matching template stage and communicates append-only behavior", async () => {
     const source = await readFile(dialogPath, "utf8");
 
-    expect(source).toContain("template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage, anchor_date: anchorDate");
+    expect(source).toContain("source_stage: destinationStage, destination_stage: destinationStage");
+    expect(source).toContain("getTemplateStageTasks(selectedTemplate, destinationStage)");
+    expect(source).not.toContain('label={t("sourceStage")}');
     expect(source).toContain('t("existingTasksRemain")');
-    expect(source).toContain("getTemplateStageTasks(selectedTemplate, sourceStage)");
-    expect(source).toContain("disabled={taskCount === 0}");
   });
 
   it("loads active studio project templates only for an administrator on the board", async () => {

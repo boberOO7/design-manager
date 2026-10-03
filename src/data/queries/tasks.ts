@@ -9,7 +9,7 @@ import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { MyTask, ProjectTask, TaskSchedule, TaskStatusPeriod } from "@/types/tasks";
 
-const TASK_SELECT = "id, project_id, checklist_template_id, stage, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
+const TASK_SELECT = "id, project_id, checklist_template_id, stage, stage_position, title, description, status, priority, assignee_id, due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
 type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt" | "schedule"> & {
   schedule: Omit<TaskSchedule, "predecessors"> | null;
@@ -102,8 +102,8 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
     .from("tasks")
     .select(TASK_SELECT)
     .eq("project_id", projectId)
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true })
+    .order("stage")
+    .order("stage_position")
     .order("id").range(from, to)
     .order("position", { referencedTable: "task_checklist_items", ascending: true })
     .overrideTypes<ProjectTaskRow[], { merge: false }>());

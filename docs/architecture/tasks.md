@@ -88,7 +88,7 @@ Project aggregation and attribution are described in
   The check also applies to bulk moves and reopened tasks. Status transitions
   never change checklist item completion or not-needed state.
 - `tasks.checklist_template_id` records at most one assigned studio template.
-  Selection applies immediately through `set_task_checklist_template`: changing
+  Drawer selection applies immediately through `set_task_checklist_template`: changing
   templates atomically replaces the checklist snapshot; clearing the assignment
   clears its items. Re-selecting the assigned template preserves item edits.
 - Task creation and project-template copies retain the checklist template ID.
@@ -138,6 +138,15 @@ Project aggregation and attribution are described in
 
 ## Board interaction
 
+- Stage headers expose an admin structural editor for names, areas, checklist
+  templates, additions, duplicates, and deletions. `save_stage_task_structure`
+  commits the batch atomically under existing RLS and checklist/workflow guards.
+  `tasks.stage_position` preserves the displayed order within each project stage;
+  the Board keeps that order when it groups tasks into status columns. New tasks
+  append by default, while the structural editor can place duplicates beside
+  their source. Schedule `sort_order` remains a separate dependency sequence.
+  Duplicates keep description, area, weight, and pending checklist structure;
+  assignment, status, deadlines, schedules, manual progress, and history start fresh.
 - The project Board is the primary task workspace. Details and Team remain
   secondary project views. My Tasks reuses the same task drawer in place; its
   explicit project action deep-links to the task, expands its stage, opens the

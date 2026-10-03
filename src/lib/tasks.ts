@@ -208,6 +208,7 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.description === right.description
     && left.status === right.status
     && left.stage === right.stage
+    && left.stage_position === right.stage_position
     && left.priority === right.priority
     && left.assignee_id === right.assignee_id
     && left.due_date === right.due_date

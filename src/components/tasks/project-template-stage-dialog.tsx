@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
-import { getTemplateStageTasks, isProjectTemplateStage, PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStage } from "@/lib/project-templates";
+import { getTemplateStageTasks, type ProjectTemplate } from "@/lib/project-templates";
 import type { TaskStage } from "@/lib/task-stages";
 import type { ProjectTask } from "@/types/tasks";
 
@@ -33,23 +33,17 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
   const t = useTranslations("ProjectTemplates");
   const locale = useLocale();
   const tasksT = useTranslations("Tasks");
-  const stages = useTranslations("TaskStages");
   const initialTemplate = templates[0] ?? null;
-  const initialSourceStage = PROJECT_TEMPLATE_STAGES.find((stage) => getTemplateStageTasks(initialTemplate, stage).length > 0) ?? "stage_1";
   const [templateId, setTemplateId] = useState(initialTemplate?.id ?? "");
-  const [sourceStage, setSourceStage] = useState<ProjectTemplateStage>(initialSourceStage);
   const [saving, setSaving] = useState(false);
   const [anchorDate, setAnchorDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const selectedTemplate = templates.find((template) => template.id === templateId) ?? null;
-  const selectedTasks = getTemplateStageTasks(selectedTemplate, sourceStage);
+  const selectedTasks = getTemplateStageTasks(selectedTemplate, destinationStage);
   const hasScheduledTasks = selectedTasks.some((task) => task.expectedWorkdays !== null);
 
   function selectTemplate(nextTemplateId: string) {
-    const nextTemplate = templates.find((template) => template.id === nextTemplateId) ?? null;
-    const nextSourceStage = PROJECT_TEMPLATE_STAGES.find((stage) => getTemplateStageTasks(nextTemplate, stage).length > 0) ?? "stage_1";
     setTemplateId(nextTemplateId);
-    setSourceStage(nextSourceStage);
     setError(null);
   }
 
@@ -61,7 +55,7 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/apply-template-stage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template_id: selectedTemplate.id, source_stage: sourceStage, destination_stage: destinationStage, anchor_date: anchorDate }),
+        body: JSON.stringify({ template_id: selectedTemplate.id, source_stage: destinationStage, destination_stage: destinationStage, anchor_date: anchorDate }),
       });
       const result: unknown = await response.json().catch(() => null);
       if (!response.ok || !isSuccessfulResponse(result)) throw new Error(t("applyStageFailed"));
@@ -82,14 +76,6 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
         <FormField label={t("templateLabel")}>
           <Select data-dialog-initial-focus value={templateId} placeholder={t("chooseTemplate")} disabled={saving || templates.length === 0} onValueChange={selectTemplate}>
             {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
-          </Select>
-        </FormField>
-        <FormField label={t("sourceStage")}>
-          <Select value={sourceStage} disabled={saving || !selectedTemplate} onValueChange={(stage) => { if (isProjectTemplateStage(stage)) { setSourceStage(stage); setError(null); } }}>
-            {PROJECT_TEMPLATE_STAGES.map((stage) => {
-              const taskCount = getTemplateStageTasks(selectedTemplate, stage).length;
-              return <SelectItem key={stage} value={stage} disabled={taskCount === 0}>{stages(stage)} · {t("taskCount", { count: taskCount })}</SelectItem>;
-            })}
           </Select>
         </FormField>
         {hasScheduledTasks ? <FormField label={t("stageScheduleStartDate")}><DatePicker value={anchorDate} locale={locale} disabled={saving} onValueChange={setAnchorDate} /></FormField> : null}

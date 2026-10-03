@@ -4973,6 +4973,7 @@ export type Database = {
           progress_weight: number
           project_id: string
           stage: string
+          stage_position: number
           start_date: string | null
           status: string
           title: string
@@ -4995,6 +4996,7 @@ export type Database = {
           progress_weight?: number
           project_id: string
           stage?: string
+          stage_position?: number
           start_date?: string | null
           status?: string
           title: string
@@ -5017,6 +5019,7 @@ export type Database = {
           progress_weight?: number
           project_id?: string
           stage?: string
+          stage_position?: number
           start_date?: string | null
           status?: string
           title?: string
@@ -6986,6 +6989,17 @@ export type Database = {
           p_template_id?: string
         }
         Returns: string
+      }
+      save_stage_task_structure: {
+        Args: {
+          p_creates: Json
+          p_delete_ids: string[]
+          p_order?: string[]
+          p_project_id: string
+          p_stage: string
+          p_updates: Json
+        }
+        Returns: undefined
       }
       save_studio_contact_details: {
         Args: {
