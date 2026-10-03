@@ -42,17 +42,18 @@ export function FinanceOverviewWorkspace({ data: source, displayData, displayCur
   const itemHref = (id: string) => `/finance/expected?item=${id}`;
   const attention = [
     ...overdue.map(i => ({ key: `overdue-${i.id}`, title: i.description || category(i.categoryId, null), note: `${t("overdue")} · ${date(i.dueDate ?? report.asOf)} · ${i.direction === "incoming" ? "+" : "−"}${amount(i.amount, i.currency)}`, href: itemHref(i.id) })),
-    ...(data.historyIncomplete ? [{ key: "history", title: t("openingAttention"), note: ft("accounts"), href: "/finance/accounts" }] : []),
+    ...(data.historyIncomplete && !data.movementValuationIncomplete ? [{ key: "history", title: t("openingAttention"), note: ft("accounts"), href: "/finance/accounts" }] : []),
+    ...(data.movementValuationIncomplete ? [{ key: "movement-valuation", title: ft("movements.valuationUnresolved"), note: ft("movements.title"), href: "/finance/movements" }] : []),
     ...(report.issues.some(i => i.reason === "missing_fx") || data.receivablesIncomplete || report.cashIncomplete || invalidFx ? [{ key: "fx", title: f("issues.missing_fx"), note: f("fxTitle"), href: planningHref }] : []),
     ...report.issues.filter(i => i.reason !== "missing_fx").sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).map((i, index) => ({ key: `issue-${index}`, title: i.label || f("item"), note: `${f(`issues.${i.reason}`)}${i.date ? ` · ${date(i.date)}` : ""}`, href: i.source === "expected" ? itemHref(i.id) : forecastIssueHref(i) })),
   ];
   const currentFlows = data.flows.filter(row => row.month.slice(0, 7) === report.asOf.slice(0, 7));
-  const flowsSafe = currentFlows.every(row => canChartFinanceAmount(row.amount, currency.minor_units));
+  const flowsSafe = currentFlows.every(row => row.amount !== null && canChartFinanceAmount(row.amount, currency.minor_units));
   const flowMax = Math.max(1, ...currentFlows.filter(row => row.nature === "operating").map(row => Math.abs(Number(row.amount))));
   const budgetSignals = data.categories.filter(row => row.budget !== null && row.variance !== null && /[1-9]/.test(row.variance)).slice(0, 3);
   const metrics = [
     { key: "cash" as const, value: amount(report.cashBase), partial: report.cashIncomplete, scope: `${t("today")} · ${date(report.asOf)}`, Icon: Wallet, tone: "", href: "" },
-    { key: "netFlow" as const, value: `${data.netFlow.startsWith("-") ? "−" : /[1-9]/.test(data.netFlow) ? "+" : ""}${amount(data.netFlow.replace(/^-/, ""))}`, partial: false, scope: `${date(data.actualFrom)} – ${date(report.asOf)}`, Icon: Activity, tone: data.netFlow.startsWith("-") ? "text-[var(--ui-danger-text)]" : /[1-9]/.test(data.netFlow) ? "text-[var(--ui-success-text)]" : "", href: "/finance/movements" },
+    { key: "netFlow" as const, value: `${data.netFlow?.startsWith("-") ? "−" : /[1-9]/.test(data.netFlow ?? "") ? "+" : ""}${amount(data.netFlow?.replace(/^-/, "") ?? null)}`, partial: data.netFlow === null, scope: `${date(data.actualFrom)} – ${date(report.asOf)}`, Icon: Activity, tone: data.netFlow?.startsWith("-") ? "text-[var(--ui-danger-text)]" : /[1-9]/.test(data.netFlow ?? "") ? "text-[var(--ui-success-text)]" : "", href: "/finance/movements" },
     { key: "outgoing" as const, value: `${/[1-9]/.test(data.outgoingTotal) ? "−" : ""}${amount(data.outgoingTotal)}`, partial: data.outgoingIncomplete || incomplete, scope: t("next30"), Icon: ArrowDownRight, tone: "text-[var(--ui-danger-text)]", href: "/finance/expected?filter=outgoing&period=30days" },
     { key: "overdue" as const, value: String(overdue.length), partial: false, scope: t("overdueScope", { incoming: overdue.filter(i => i.direction === "incoming").length, outgoing: overdue.filter(i => i.direction === "outgoing").length }), Icon: Clock3, tone: overdue.length ? "text-[var(--ui-warning-text)]" : "", href: "#overview-attention" },
   ];
@@ -82,7 +83,8 @@ export function FinanceOverviewWorkspace({ data: source, displayData, displayCur
       <Panel className="min-w-0 space-y-4 p-4 sm:p-5">
         <div><h2 className="text-lg font-semibold">{t("monthFlows")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${report.asOf}T00:00:00Z`))} · {report.currency} · {ft("movements.natures.operating")}</p></div>
         <div className="space-y-4">{(["incoming", "outgoing"] as const).map(direction => {
-          const value = currentFlows.find(row => row.nature === "operating" && row.direction === direction)?.amount ?? "0";
+          const flow = currentFlows.find(row => row.nature === "operating" && row.direction === direction);
+          const value = flow ? flow.amount : "0";
           return <div key={direction} className="space-y-2"><div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><span>{ft(`planning.${direction === "incoming" ? "income" : "expenses"}`)}</span><span className={`font-semibold tabular-nums ${direction === "incoming" ? "text-[var(--ui-success-text)]" : "text-[var(--ui-danger-text)]"}`}>{amount(value)}</span></div>{flowsSafe ? <div aria-hidden="true" className="h-2 rounded-full bg-[var(--ui-surface-muted)]"><div className={`h-full rounded-full ${direction === "incoming" ? "bg-[var(--ui-success-accent)]" : "bg-[var(--ui-danger-border)]"}`} style={{ width: `${Math.abs(Number(value)) / flowMax * 100}%` }} /></div> : null}</div>;
         })}</div>
         {currentFlows.some(row => row.nature !== "operating") ? <dl className="space-y-2 border-t border-[var(--ui-border)] pt-3">{currentFlows.filter(row => row.nature !== "operating").map(row => <div key={`${row.nature}-${row.direction}`} className="flex flex-wrap justify-between gap-2 text-xs"><dt className="text-[var(--ui-text-secondary)]">{ft(`movements.natures.${row.nature}`)} · {ft(`movements.kinds.${row.direction}`)}</dt><dd className="tabular-nums">{amount(row.amount)}</dd></div>)}</dl> : null}

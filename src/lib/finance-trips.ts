@@ -57,9 +57,9 @@ export function sumTripMoney(values: string[], digits: number) {
 }
 
 // Plan display is a current assumption, never the receipt's historical FX snapshot.
-export function tripPlanSummary(entries: { id: string | null; kind: string | null; reverses_id: string | null; amount: string; currency: string | null }[], values: Record<string, string | null>, digits: number, actual: string) {
+export function tripPlanSummary(entries: { id: string | null; kind: string | null; reverses_id: string | null; amount: string; currency: string | null }[], values: Record<string, string | null>, digits: number, actual: string | null) {
   const plans = entries.filter(e => e.kind === "plan" && !e.reverses_id && !entries.some(r => r.reverses_id === e.id));
   const incomplete = plans.some(e => !e.id || values[e.id] == null);
   const planned = plans.length && !incomplete ? sumTripMoney(plans.map(e => values[e.id ?? ""] ?? "0"), digits) : null;
-  return { has_plan: plans.length > 0, plan_incomplete: incomplete, planned_amount: planned, variance: planned === null ? null : sumTripMoney([actual, `-${planned}`], digits) };
+  return { has_plan: plans.length > 0, plan_incomplete: incomplete, planned_amount: planned, variance: planned === null || actual === null ? null : sumTripMoney([actual, `-${planned}`], digits) };
 }

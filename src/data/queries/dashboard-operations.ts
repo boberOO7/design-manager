@@ -100,7 +100,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     if (displayUnit.error || !displayUnit.data) throw new Error("Unable to load Dashboard display currency.", { cause: displayUnit.error });
     const vatAdjustments = await Promise.all((vatActuals.data ?? []).map(async row => ({
       date: row.financial_date ?? "",
-      amount: displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
+      amount: row.vat_reporting_amount === null || displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
         row.vat_reporting_amount,
         await getFinanceDisplayRate(overview.forecast.currency, displayCurrency, row.financial_date ?? overview.forecast.asOf),
         displayUnit.data.minor_units,

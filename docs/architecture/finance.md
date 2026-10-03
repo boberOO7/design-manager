@@ -134,15 +134,22 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
 - Each entry stores its account currency, reporting currency, exact rate,
   rounded reporting amount, source and effective date. Rates are reporting units
   per **one** account-currency unit, with up to ten decimal places. Matching
-  currencies use explicit identity valuation. Foreign currencies require manual
-  valuation or a dated NBU rate; cross rates are derived through UAH when needed.
-  The server uses NBU's dated range endpoint and `rate_per_unit`, checking the
-  returned currency and `exchangedate` exactly. Missing, ambiguous, or mismatched
-  results fail closed; an administrator must explicitly choose a manual rate.
+  currencies use explicit identity valuation. Manual cash entry and correction
+  attempt the default reporting provider (currently NBU); source adapters share a
+  dated units-per-one contract. Cross rates are derived through UAH when needed.
+  NBU's range response checks `rate_per_unit`, currency and `exchangedate` exactly.
+  A missing quote leaves the reporting amount/rate/source/date all NULL while
+  native cash remains valid. Affected historical/category totals and P&L are
+  unresolved, including display-currency conversions, rather than partial totals.
+  Details expose a small manual fallback through `value_finance_movement`.
+  Completion fills only missing valuation metadata, mirrors technical reversals,
+  and cannot alter cash or replace a resolved valuation. Same-date unresolved
+  cancellation pairs have no reporting effect and remain recoverable in history.
   NBU snapshots are fetched by the app; direct authorized RPC input remains
   administrator-supplied valuation data, not a bank-certified rate.
-- Movement and entry updates/deletes are blocked by both grants and immutable
-  history triggers. `correct_finance_movement` atomically reverses the current
+- Movement updates/deletes and entry cash/identity changes are blocked by grants
+  and history triggers; entry reporting metadata permits only the guarded
+  completion described above. `correct_finance_movement` atomically reverses the current
   record on its original date and posts its replacement on the corrected date,
   preserving historical reporting and balance-cutover semantics. Append-only
   `finance_movement_corrections` links original, reversal and replacement; repeated
@@ -792,8 +799,10 @@ and deliberate plan removal retain dialogs.
   retired expectation; the immutable edit audit connects it to its replacement.
   No posted row is overwritten, and changes remain available in history.
 - `private.finance_valuation` supplies the shared ledger/receipt valuation: exact
-  PostgreSQL arithmetic and currency-catalog rounding, dated NBU for UAH or explicit
-  manual rates. Studio receipts copy ledger FX; personal receipts use the
+  PostgreSQL arithmetic and currency-catalog rounding, dated provider provenance
+  or explicit manual rates. Cash-linked receipts may have unresolved reporting
+  metadata; their net valuation follows ledger completion/correction, and unknown
+  actuals/variance stay NULL. Personal receipts still require valuation and use the
   same historical resolver/rule. Plan reporting uses current assumptions independently. Original
   currencies are never overwritten. Report totals and detail values use decimal text,
   exact integer previews and complete paginated reads, not floating-point valuation.

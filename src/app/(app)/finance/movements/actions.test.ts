@@ -4,10 +4,10 @@ const mocks = vi.hoisted(() => ({ admin:vi.fn(), client:vi.fn(), foundation:vi.f
 vi.mock("@/data/queries/active-studio-admin",()=>({ getActiveStudioAdmin:mocks.admin }));
 vi.mock("@/data/queries/finance",()=>({ getFinanceData:mocks.foundation, getFinanceMovementHistory:vi.fn() }));
 vi.mock("@/lib/supabase/server",()=>({ createClient:mocks.client }));
-vi.mock("@/lib/finance-fx",()=>({ resolveFinanceFx:mocks.fx }));
+vi.mock("@/lib/finance-fx",()=>({ resolveFinanceFx:mocks.fx, defaultFinanceReportingSource:"nbu" }));
 vi.mock("next/cache",()=>({ revalidatePath:mocks.revalidate }));
 vi.mock("next-intl/server",()=>({ getTranslations:async ()=>(key:string)=>key }));
-import { quoteFinanceSchedule, quoteFinanceSettlement, saveFinanceMovement } from "./actions";
+import { quoteFinanceSchedule, quoteFinanceSettlement, saveFinanceMovement, valueFinanceMovement } from "./actions";
 import { getKyivDateOnly } from "@/lib/validation/project";
 const id="63000000-0000-4000-8000-000000000020";
 const input={ requestId:id, kind:"incoming", accountId:id, date:"2026-09-02", amount:"100", categoryId:id, studioId:"spoofed" };
@@ -22,7 +22,7 @@ describe("movement action boundary",()=>{
     mocks.client.mockResolvedValue({ from:(table:string)=>query(table==="finance_expected_balances"?mocks.expected:mocks.prior),rpc:mocks.rpc });
     mocks.rpc.mockResolvedValue({ data:id,error:null });
     mocks.foundation.mockResolvedValue({ settings:{ finalized_at:"2026-09-01",cutover_date:"2026-09-01",base_currency:"UAH" },accounts:[{ id,currency:"USD",archived_at:null }],currencies:[{ code:"USD",minor_units:2 }] });
-    mocks.fx.mockResolvedValue({ rate:"42",source:"manual",effectiveDate:"2026-09-02" });
+    mocks.fx.mockResolvedValue({ rate:"42",source:"nbu",effectiveDate:"2026-09-02" });
   });
   it("quotes historical and future schedule dates without changing Finance data",async()=>{
     mocks.fx.mockImplementation(async(_from:string,_to:string,date:string)=>({rate:"0.9",source:"nbu",effectiveDate:date}));
@@ -52,21 +52,37 @@ describe("movement action boundary",()=>{
   });
   it("derives the studio and forwards exact strings with an FX snapshot",async()=>{
     expect((await saveFinanceMovement({ status:"idle" },form())).status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_request_id:id,p_input:expect.objectContaining({ amount:"100",allocationIntent:false,fx:{ rate:"42",source:"manual",effectiveDate:"2026-09-02" } }) }));
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_request_id:id,p_input:expect.objectContaining({ amount:"100",allocationIntent:false,fx:{ rate:"42",source:"nbu",effectiveDate:"2026-09-02" } }) }));
   });
   it("accepts pre-cutover actual dates and keeps their historical FX date",async()=>{
     expect((await saveFinanceMovement({status:"idle"},form({date:"2026-08-31"}))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({p_input:expect.objectContaining({date:"2026-08-31"})}));
-    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","manual","");
+    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","nbu","");
   });
   it("records explicit advance intent without changing the movement kind",async()=>{
     expect((await saveFinanceMovement({ status:"idle" },form({ allocationIntent:"true" }))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({ p_input:expect.objectContaining({ kind:"incoming",allocationIntent:true }) }));
   });
-  it("never writes when FX lookup fails",async()=>{
+  it("posts exact native cash with unresolved reporting valuation when the provider fails",async()=>{
     mocks.fx.mockRejectedValue(new Error("outage"));
-    expect(await saveFinanceMovement({ status:"idle" },form())).toEqual({ status:"error",message:"errors.fx" });
+    expect(await saveFinanceMovement({ status:"idle" },form())).toEqual({ status:"success",message:"saved" });
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({p_input:expect.objectContaining({amount:"100",fx:null})}));
+  });
+  it("ignores reporting FX configuration from an old manual form",async()=>{
+    await saveFinanceMovement({status:"idle"},form({fxMode:"manual",manualRate:"999"}));
+    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-09-02","nbu","");
+  });
+  it("keeps economic settlement failure separate from optional reporting valuation",async()=>{
+    mocks.fx.mockRejectedValue(new Error("outage"));
+    expect(await saveFinanceMovement({status:"idle"},form({expectedItemId:id,autoAllocate:"true"}))).toEqual({status:"error",message:"errors.fx"});
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("posts a real exchange with independent optional reporting valuations",async()=>{
+    const destination="63000000-0000-4000-8000-000000000021";
+    mocks.foundation.mockResolvedValue({settings:{finalized_at:"2026-09-01",base_currency:"UAH"},accounts:[{id,currency:"USD",archived_at:null},{id:destination,currency:"UAH",archived_at:null}],currencies:[{code:"USD",minor_units:2},{code:"UAH",minor_units:2}]});
+    mocks.fx.mockImplementation(async(currency:string)=>{if(currency==="USD")throw new Error("outage");return {rate:"1",source:"identity",effectiveDate:"2026-09-02"};});
+    expect((await saveFinanceMovement({status:"idle"},form({kind:"transfer",destinationId:destination,receivedAmount:"3900",fee:"1"}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({p_input:expect.objectContaining({amount:"100",receivedAmount:"3900",fee:"1",fx:null,destinationFx:expect.objectContaining({source:"identity"})})}));
   });
   it("uses the atomic posting and settlement RPC for contextual payments",async()=>{
     expect((await saveFinanceMovement({ status:"idle" },form({ expectedItemId:id,allocationAmount:"60" }))).status).toBe("success");
@@ -96,7 +112,7 @@ describe("movement action boundary",()=>{
   });
   it("corrects through one atomic RPC with FX from the corrected historical date",async()=>{
     expect((await saveFinanceMovement({status:"idle"},form({intent:"correct",movementId:id,amount:"75",date:"2026-08-31"}))).status).toBe("success");
-    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","manual","");
+    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","nbu","");
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("correct_finance_movement",expect.objectContaining({p_studio_id:"verified",p_movement_id:id,p_input:expect.objectContaining({amount:"75",date:"2026-08-31"})}));
   });
   it("recovers a correction retry before FX lookup or current account validation",async()=>{
@@ -106,6 +122,12 @@ describe("movement action boundary",()=>{
     expect(mocks.fx).not.toHaveBeenCalled();expect(mocks.foundation).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
     expect((await saveFinanceMovement({status:"idle"},form({...patch,amount:"101"}))).message).toBe("errors.conflict");
     expect((await saveFinanceMovement({status:"idle"},form())).message).toBe("errors.conflict");
+  });
+  it("completes only reporting metadata with the stored operation date and manual provenance",async()=>{
+    mocks.prior.mockResolvedValue({data:{financial_date:"2026-09-02",kind:"incoming",related_movement_id:null},error:null});
+    expect((await valueFinanceMovement({status:"idle"},form({movementId:id,currency:"USD",rate:"40,5",date:"2099-01-01"}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("value_finance_movement",{p_studio_id:"verified",p_movement_id:id,p_currency:"USD",p_fx:{rate:"40.5",source:"manual",effectiveDate:"2026-09-02"}});
+    expect(mocks.fx).not.toHaveBeenCalled();
   });
   it("keeps refunds as ordinary separate postings and preserves reversal guards",async()=>{
     expect((await saveFinanceMovement({status:"idle"},form({kind:"refund",relatedMovementId:id}))).status).toBe("success");

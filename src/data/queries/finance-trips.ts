@@ -33,7 +33,7 @@ export async function getFinanceTrips(projectId?: string, manualFx: ForecastFx =
   }
   if (!trips.length) return [];
   const estimates = await estimateTripPlans(planEntries, trips[0].reporting_currency ?? "UAH", manualFx);
-  return trips.map(trip => ({...trip,...tripPlanSummary(planEntries.filter(e=>e.trip_id===trip.id),estimates.values,estimates.digits,trip.actual_amount ?? "0")}));
+  return trips.map(trip => ({...trip,...tripPlanSummary(planEntries.filter(e=>e.trip_id===trip.id),estimates.values,estimates.digits,trip.actual_amount)}));
 }
 export async function getFinanceTripOptions() {
   const admin = await getActiveStudioAdmin();
@@ -89,7 +89,7 @@ export async function getFinanceTrip(id: string, manualFx: ForecastFx = []) {
   const coverage = await client.from("finance_trip_entry_travelers").select("entry_id,employee_id").eq("studio_id",admin.studio_id).eq("trip_id",id);
   const calendar = trip.data.calendar_event_id ? await client.from("calendar_events").select("project_id").eq("studio_id",admin.studio_id).eq("id",trip.data.calendar_event_id).maybeSingle() : null;
   if (coverage.error || calendar?.error) throw new Error("Unable to load trip context.",{cause:coverage.error ?? calendar?.error});
-  return { trip: {...trip.data,...tripPlanSummary(entries,estimates.values,estimates.digits,trip.data.actual_amount ?? "0")}, estimates, entryPayments, planDates, coverage:coverage.data ?? [], calendar:calendar?.data ?? null, travelers: travelers.data ?? [], entries, balances: balances.data ?? [], payments: candidates };
+  return { trip: {...trip.data,...tripPlanSummary(entries,estimates.values,estimates.digits,trip.data.actual_amount)}, estimates, entryPayments, planDates, coverage:coverage.data ?? [], calendar:calendar?.data ?? null, travelers: travelers.data ?? [], entries, balances: balances.data ?? [], payments: candidates };
 }
 export type FinanceTripData = NonNullable<Awaited<ReturnType<typeof getFinanceTrip>>>;
 export type FinanceTripOptions = NonNullable<Awaited<ReturnType<typeof getFinanceTripOptions>>>;

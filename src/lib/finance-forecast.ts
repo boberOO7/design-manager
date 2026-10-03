@@ -42,9 +42,9 @@ const forecastBaseSchema = z.object({
     currency: z.string(), amount: money.nullable(), date: z.iso.date().nullable(),
   })),
 });
-export const forecastReportSchema = forecastBaseSchema.extend({ comparisons: z.array(comparison.extend({ actual: money, full_period: money })) });
+export const forecastReportSchema = forecastBaseSchema.extend({ comparisons: z.array(comparison.extend({ actual: money.nullable(), full_period: money.nullable() })) });
 export const forecastSnapshotSchema = forecastBaseSchema.extend({ comparisons: z.array(comparison) });
-export const snapshotComparisonSchema = z.array(z.object({ month: z.iso.date(), remaining: money, actual: money }));
+export const snapshotComparisonSchema = z.array(z.object({ month: z.iso.date(), remaining: money, actual: money.nullable() }));
 export type ForecastReport = z.infer<typeof forecastReportSchema>;
 
 export function forecastIssueHref(issue: ForecastReport["issues"][number]) {

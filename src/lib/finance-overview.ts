@@ -7,12 +7,12 @@ const point = z.object({ date: z.iso.date(), amount: money });
 export const overviewPeriodSchema = z.enum(["month", "3", "year"]).catch("3");
 export const financeOverviewSchema = z.object({
   forecast: forecastReportSchema, period: overviewPeriodSchema, actualFrom: z.iso.date(), upcomingThrough: z.iso.date(),
-  historyIncomplete: z.boolean(), history: z.array(point.extend({ amount: money.nullable() })), projection: z.array(point), lowPoint: point,
-  flows: z.array(z.object({ month: z.iso.date(), nature: z.enum(["operating", "financing", "owner_distribution"]), direction: z.enum(["incoming", "outgoing"]), amount: money })),
-  netFlow: money, accounts: z.array(z.object({ id: z.uuid(), name: z.string(), currency: z.string(), native: money, amount: money.nullable() })),
+  historyIncomplete: z.boolean(), movementValuationIncomplete: z.boolean().optional(), history: z.array(point.extend({ amount: money.nullable() })), projection: z.array(point), lowPoint: point,
+  flows: z.array(z.object({ month: z.iso.date(), nature: z.enum(["operating", "financing", "owner_distribution"]), direction: z.enum(["incoming", "outgoing"]), amount: money.nullable() })),
+  netFlow: money.nullable(), accounts: z.array(z.object({ id: z.uuid(), name: z.string(), currency: z.string(), native: money, amount: money.nullable() })),
   receivables: z.array(z.object({ id: z.uuid(), description: z.string(), currency: z.string(), native: money, amount: money.nullable(), dueDate: z.iso.date().nullable(), expectedDate: z.iso.date().nullable() })),
   receivableTotal: money, receivablesIncomplete: z.boolean(), outgoingTotal: money, outgoingIncomplete: z.boolean(),
-  categories: z.array(z.object({ id: z.uuid().nullable(), name: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]), budget: money.nullable(), actual: money, forecast: money, incomplete: z.boolean(), variance: money.nullable() })),
+  categories: z.array(z.object({ id: z.uuid().nullable(), name: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]), budget: money.nullable(), actual: money.nullable(), forecast: money.nullable(), incomplete: z.boolean(), variance: money.nullable() })),
   requiredCurrencies: z.array(z.string()),
 });
 export type FinanceOverview = z.infer<typeof financeOverviewSchema>;
@@ -20,7 +20,7 @@ export type FinanceOverview = z.infer<typeof financeOverviewSchema>;
 export function financeDashboardMonthSummary(data: {
   forecast: Pick<FinanceOverview["forecast"], "asOf" | "currency"> & { items: Array<Pick<FinanceOverview["forecast"]["items"][number], "direction" | "nature" | "date" | "reportingAmount">> };
   flows: FinanceOverview["flows"];
-  vatAdjustments?: Array<{ date: string; amount: string }>;
+  vatAdjustments?: Array<{ date: string; amount: string | null }>;
 }) {
   const month = data.forecast.asOf.slice(0, 7);
   const amounts = [...data.forecast.items.map((item) => item.reportingAmount), ...data.flows.map((flow) => flow.amount), ...(data.vatAdjustments ?? []).map((item) => item.amount)];
@@ -36,10 +36,12 @@ export function financeDashboardMonthSummary(data: {
   const expectedInflow = inflows.some((item) => item.reportingAmount === null) ? null
     : projectMoneyText(inflows.reduce((sum, item) => sum + units(item.reportingAmount ?? "0"), BigInt(0)), digits);
   const vatAdjustments = (data.vatAdjustments ?? []).filter((item) => item.date.slice(0, 7) === month);
-  const profit = data.flows.filter((flow) => flow.month.slice(0, 7) === month && flow.nature === "operating")
-    .reduce((sum, flow) => sum + (flow.direction === "incoming" ? units(flow.amount) : -units(flow.amount)), BigInt(0))
-    - vatAdjustments.reduce((sum, item) => sum + units(item.amount), BigInt(0));
-  return { currency: data.forecast.currency, expectedInflow, profitAndLoss: projectMoneyText(profit, digits) };
+  const flows = data.flows.filter((flow) => flow.month.slice(0, 7) === month && flow.nature === "operating");
+  const incomplete = flows.some(flow => flow.amount === null) || vatAdjustments.some(item => item.amount === null);
+  const profit = incomplete ? null : flows
+    .reduce((sum, flow) => sum + (flow.direction === "incoming" ? units(flow.amount ?? "0") : -units(flow.amount ?? "0")), BigInt(0))
+    - vatAdjustments.reduce((sum, item) => sum + units(item.amount ?? "0"), BigInt(0));
+  return { currency: data.forecast.currency, expectedInflow, profitAndLoss: profit === null ? null : projectMoneyText(profit, digits) };
 }
 
 // Crop canonical daily closing points for display; carry the last balance to the

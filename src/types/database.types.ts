@@ -1805,12 +1805,12 @@ export type Database = {
           amount: number
           currency: string
           entry_role: string
-          fx_effective_date: string
-          fx_rate: number
-          fx_source: string
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
           id: string
           movement_id: string
-          reporting_amount: number
+          reporting_amount: number | null
           reporting_currency: string
           studio_id: string
         }
@@ -1819,12 +1819,12 @@ export type Database = {
           amount: number
           currency: string
           entry_role: string
-          fx_effective_date: string
-          fx_rate: number
-          fx_source: string
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
           id?: string
           movement_id: string
-          reporting_amount: number
+          reporting_amount?: number | null
           reporting_currency: string
           studio_id: string
         }
@@ -1833,12 +1833,12 @@ export type Database = {
           amount?: number
           currency?: string
           entry_role?: string
-          fx_effective_date?: string
-          fx_rate?: number
-          fx_source?: string
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
           id?: string
           movement_id?: string
-          reporting_amount?: number
+          reporting_amount?: number | null
           reporting_currency?: string
           studio_id?: string
         }
@@ -7168,6 +7168,15 @@ export type Database = {
           p_project_id: string
           p_studio_id: string
           p_user_ids: string[]
+        }
+        Returns: undefined
+      }
+      value_finance_movement: {
+        Args: {
+          p_currency: string
+          p_fx: Json
+          p_movement_id: string
+          p_studio_id: string
         }
         Returns: undefined
       }

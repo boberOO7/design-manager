@@ -38,7 +38,7 @@ function crossRate(fromUah: string, toUah: string, reportingCurrency: string) {
   return reportingCurrency === "UAH" ? fromUah : financeRateSchema.parse((Number(fromUah) / Number(toUah)).toFixed(10).replace(/0+$/, "").replace(/\.$/, ""));
 }
 
-export async function resolveFinanceFxDates(currency: string, reportingCurrency: string, dates: string[]) {
+async function resolveNbuFxDates(currency: string, reportingCurrency: string, dates: string[]) {
   const unique = [...new Set(dates)];
   if (currency === reportingCurrency) return new Map(unique.map(date => [date, "1"]));
   const [fromRates, toRates] = await Promise.all([nbuUahRates(currency, unique), nbuUahRates(reportingCurrency, unique)]);
@@ -50,16 +50,19 @@ export async function resolveFinanceFxDates(currency: string, reportingCurrency:
   }));
 }
 
-async function nbuUahRate(currency: string, date: string) {
-  const rate = (await nbuUahRates(currency, [date])).get(date);
-  if (!rate) throw new Error("finance_fx_unavailable");
-  return rate;
+// Reporting providers share the same dated, units-per-one contract. Manual rates
+// and economic settlement rates remain explicit decisions in their own flows.
+const reportingFxProviders = { nbu: resolveNbuFxDates };
+export const defaultFinanceReportingSource: keyof typeof reportingFxProviders = "nbu";
+
+export async function resolveFinanceFxDates(currency: string, reportingCurrency: string, dates: string[], source: keyof typeof reportingFxProviders = defaultFinanceReportingSource) {
+  return reportingFxProviders[source](currency, reportingCurrency, dates);
 }
 
-export async function resolveFinanceFx(currency: string, reportingCurrency: string, date: string, mode: "nbu" | "manual", manualRate: string) {
+export async function resolveFinanceFx(currency: string, reportingCurrency: string, date: string, mode: keyof typeof reportingFxProviders | "manual", manualRate: string) {
   if (currency === reportingCurrency) return { rate: "1", source: "identity", effectiveDate: date };
   if (mode === "manual") return { rate: financeRateSchema.parse(manualRate), source: "manual", effectiveDate: date };
-  const [fromUah, toUah] = await Promise.all([nbuUahRate(currency, date), nbuUahRate(reportingCurrency, date)]);
-  const rate = crossRate(fromUah, toUah, reportingCurrency);
-  return { rate, source: "nbu", effectiveDate: date };
+  const rate = (await resolveFinanceFxDates(currency, reportingCurrency, [date], mode)).get(date);
+  if (!rate) throw new Error("finance_fx_unavailable");
+  return { rate, source: mode, effectiveDate: date };
 }

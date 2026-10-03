@@ -46,6 +46,7 @@ it("distinguishes absent plans, incomplete FX, current estimates and actual vari
   const plan={id:"plan",kind:"plan",reverses_id:null,amount:"1200",currency:"PLN"};
   expect(tripPlanSummary([],{},2,"33038")).toMatchObject({has_plan:false,planned_amount:null,variance:null});
   expect(tripPlanSummary([plan],{plan:null},2,"33038")).toMatchObject({has_plan:true,plan_incomplete:true,variance:null});
+  expect(tripPlanSummary([plan],{plan:"35000"},2,null).variance).toBeNull();
   expect(tripPlanSummary([plan],{plan:"35000"},2,"33038")).toMatchObject({planned_amount:"35000.00",variance:"-1962.00"});
   expect(tripPlanSummary([plan],{plan:"36000"},2,"33038").variance).toBe("-2962.00");
   expect(tripPlanSummary([plan,{...plan,id:"correction",reverses_id:"plan",amount:"-1200"}],{},2,"0").has_plan).toBe(false);

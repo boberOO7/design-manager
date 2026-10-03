@@ -126,7 +126,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
         <p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("incompletePlain")}</p>
         <AnimatedDisclosure className="mt-2" title={t("attentionDetails", { count: attentionCount })}>
           <div className="pb-3 text-sm">
-            {data.overview?.historyIncomplete ? <p className="py-2">{o("historyIncomplete")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : null}
+            {data.overview?.historyIncomplete ? <p className="py-2">{o("historyIncomplete")} <Link href={data.overview.movementValuationIncomplete ? "/finance/movements" : "/finance/accounts"} className="underline">{ft(data.overview.movementValuationIncomplete ? "movements.title" : "accounts")}</Link></p> : null}
             <ul className="divide-y divide-[var(--ui-border)]">{issueGroups.map(group => <li key={group.reason} className="py-1">
               <details>
                 <summary className="cursor-pointer py-2">{t(`issues.${group.reason}`)} · {group.items.length}</summary>

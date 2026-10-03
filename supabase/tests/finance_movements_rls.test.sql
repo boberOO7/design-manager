@@ -67,7 +67,7 @@ select throws_like($$select pg_temp.post(jsonb_build_object('kind','transfer','r
 select is((select count(*) from public.finance_movements where request_id=pg_temp.fid(110)),0::bigint,'failed transfer leaves no partial event');
 select throws_like($$select pg_temp.post(jsonb_build_object('kind','transfer','receivedAmount','5','destinationId',pg_temp.fid(20)),110)$$,'%finance_transfer_invalid%','same account transfer rejected');
 select throws_like($$select pg_temp.post(jsonb_build_object('kind','transfer','receivedAmount','5','destinationId',pg_temp.fid(21)),110)$$,'%finance_transfer_amount_mismatch%','same currency legs must match');
-select throws_like($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(22)),110)$$,'%finance_fx_required%','missing historical FX never falls back');
+select throws_like($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(22),'fx','{}'::jsonb),110)$$,'%finance_fx_required%','incomplete supplied FX never invents a rate');
 select throws_like($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(22),'fx',jsonb_build_object('rate','42','source','nbu','effectiveDate','2026-09-03')),110)$$,'%finance_fx_required%','wrong effective date rejected');
 select lives_ok($$select pg_temp.post(jsonb_build_object('accountId',pg_temp.fid(22),'fx',jsonb_build_object('rate','43','source','nbu','effectiveDate','2026-09-02')),106)$$,'dated NBU snapshot supported');
 select is((select fx_rate from public.finance_movement_entries where movement_id=(select id from public.finance_movements where request_id=pg_temp.fid(105)) and entry_role='primary'),42::numeric,'later FX never changes old rate');

@@ -38,16 +38,16 @@ export async function getFinanceDisplayOverview(data: NonNullable<Awaited<Return
     client.from("finance_accounts").select("currency,opening_balance::text,opening_reporting_amount::text").eq("studio_id", admin.studio_id),
   ]);
   if (unit.error || openings.error || !unit.data) throw new Error("Unable to load display currency context.", { cause: unit.error ?? openings.error });
-  const actuals: Array<{ financial_date: string; amount: string; category_id: string | null; direction: "incoming" | "outgoing"; nature: "operating" | "financing" | "owner_distribution" }> = [];
-  const cashEffects: Array<{ financial_date: string; amount: string }> = [];
+  const actuals: Array<{ financial_date: string; amount: string | null; category_id: string | null; direction: "incoming" | "outgoing"; nature: "operating" | "financing" | "owner_distribution" }> = [];
+  const cashEffects: Array<{ financial_date: string; amount: string | null }> = [];
   for (let offset = 0; ; offset += 1000) {
     const [actualPage, cashPage] = await Promise.all([
       client.from("finance_planning_actuals").select("financial_date,amount::text,category_id,direction,nature").eq("studio_id", admin.studio_id).gte("financial_date", data.actualFrom < data.forecast.from ? data.actualFrom : data.forecast.from).lte("financial_date", data.forecast.asOf).order("financial_date").order("posting_order").range(offset, offset + 999),
       client.from("finance_cash_effects").select("financial_date,reporting_amount::text").eq("studio_id", admin.studio_id).gte("financial_date", data.forecast.cutover).lte("financial_date", data.forecast.asOf).order("financial_date").order("id").range(offset, offset + 999),
     ]);
     if (actualPage.error || cashPage.error || !actualPage.data || !cashPage.data) throw new Error("Unable to load historical Finance valuations.", { cause: actualPage.error ?? cashPage.error });
-    actuals.push(...z.array(z.object({ financial_date: z.iso.date(), amount: z.string(), category_id: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]) })).parse(actualPage.data));
-    cashEffects.push(...z.array(z.object({ financial_date: z.iso.date(), reporting_amount: z.string() })).parse(cashPage.data).map(row => ({ financial_date: row.financial_date, amount: row.reporting_amount })));
+    actuals.push(...z.array(z.object({ financial_date: z.iso.date(), amount: z.string().nullable(), category_id: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]) })).parse(actualPage.data));
+    cashEffects.push(...z.array(z.object({ financial_date: z.iso.date(), reporting_amount: z.string().nullable() })).parse(cashPage.data).map(row => ({ financial_date: row.financial_date, amount: row.reporting_amount })));
     if (actualPage.data.length < 1000 && cashPage.data.length < 1000) break;
   }
   const openingAmounts = (openings.data ?? []).flatMap(account => {

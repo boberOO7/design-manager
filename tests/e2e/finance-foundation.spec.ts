@@ -159,7 +159,7 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
     await dialog.getByLabel(t.amount,{ exact:true }).fill(amount);
     await select(t.category,kind==="incoming"?en.Finance.planning.defaults.project_payments:kind==="outgoing"?en.Finance.planning.defaults.other_expense:en.Finance.planning.defaults.owner_distribution);
     await expect(dialog.getByRole("combobox",{ name:t.nature,exact:true })).toHaveCount(0);
-    await expect(dialog.getByText(t.additionalDetails,{exact:true})).toHaveCount(0);
+    await expect(dialog.locator('input[name="manualRate"]')).toHaveCount(0);
     await dialog.getByLabel(t.description,{ exact:true }).fill(category);
     await dialog.getByRole("button",{ name:t.record,exact:true }).click();
     await expect(dialog).toHaveCount(0);
@@ -175,7 +175,6 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
   await dialog.getByLabel(t.sentAmount,{ exact:true }).fill("100");
   await expect(dialog.getByLabel(t.receivedAmount,{ exact:true })).toHaveCount(0);
   await expect(dialog.locator('input[name="receivedAmount"]')).toHaveValue("100");
-  await dialog.getByText(t.additionalDetails,{exact:true}).click();
   await dialog.locator('input[name="fee"]').fill("2");
   await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);
   const transferRow=page.locator("li").filter({ has:page.getByText(t.kinds.transfer,{ exact:true }) }).first();const transferAmount=transferRow.locator("summary .ui-numeric");expect(await transferAmount.getAttribute("class")).toContain("text-[var(--ui-text)]");await expect(transferAmount).toHaveText(/UAH\s*100\.00/);await expect(transferAmount).not.toContainText("→");await expect(transferAmount).not.toContainText("+");await expect(transferAmount).not.toContainText("-");
@@ -185,10 +184,8 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
   dialog=page.getByRole("dialog");
   await dialog.getByLabel(t.sentAmount,{ exact:true }).fill("10");
   await dialog.getByLabel(t.receivedAmount,{ exact:true }).fill("410");
-  await dialog.getByText(t.additionalDetails,{exact:true}).click();
   await dialog.locator('input[name="fee"]').fill("1");
-  await select(t.valuation.replace("{currency}","USD").replace("{base}","UAH"),t.manual);
-  await dialog.locator('input[name="manualRate"]').fill("42");
+  await expect(dialog.locator('input[name="manualRate"]')).toHaveCount(0);
   await dialog.getByLabel(t.description,{ exact:true }).fill("Exchange cash");
   await page.screenshot({ path:testInfo.outputPath("finance-transfer.png") });
   await dialog.getByRole("button",{ name:t.record,exact:true }).click(); await expect(dialog).toHaveCount(0);

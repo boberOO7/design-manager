@@ -1,11 +1,11 @@
 "use client";
 
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, History, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { loadFinanceMovementHistory, quoteFinanceSettlement, saveFinanceMovement } from "@/app/(app)/finance/movements/actions";
+import { loadFinanceMovementHistory, quoteFinanceSettlement, saveFinanceMovement, valueFinanceMovement } from "@/app/(app)/finance/movements/actions";
 import { fullFinanceSettlementAmount, indicativeFinanceConversion } from "@/lib/finance-fx-preview";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -15,7 +15,6 @@ import { Select, SelectItem } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
 import { formatFinanceAmount } from "@/lib/finance";
-import { FinanceFxFields as FxFields } from "./finance-fx-fields";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCategorySelect } from "./category-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
@@ -56,9 +55,7 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   const [quoted,setQuoted]=useState<{key:string;value:Awaited<ReturnType<typeof quoteFinanceSettlement>>}|null>(null);
   const source = active.find((account) => account.id === accountId);
   const destination = active.find((account) => account.id === destinationId);
-  const base = data.settings?.base_currency ?? "";
   const sameCurrency = source?.currency === destination?.currency;
-  const hasReportingDetails = Boolean(source && source.currency !== base || transfer && destination && destination.currency !== base && !sameCurrency);
   const quoteKey=source&&expected?`${source.currency}:${expected.currency}:${date}`:"";
   useEffect(()=>{
     if (!expected || !source || source.currency===expected.currency || settlementMode!=="nbu") return;
@@ -104,12 +101,8 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
       {credited!==null&&source?<p className="ui-numeric text-sm font-medium text-[var(--ui-text)]">{moneyLabel(amount,source.currency)} → {moneyLabel(credited,expected.currency??"")}</p>:null}
       {settlementMode==="nbu"&&!effectiveRate?<p className="text-xs text-[var(--ui-text-muted)]">{quoteLoaded?t("movements.quoteUnavailable"):t("movements.quoteLoading")}</p>:null}
     </div>:null}
-    {expected&&source?.currency===base?<input type="hidden" name="fxMode" value="nbu"/>:null}
     <FormField label={t("movements.description")}><Textarea name="description" rows={2} maxLength={2000} defaultValue={correction?.description ?? ""}/></FormField>
-    {hasReportingDetails || transfer ? <details className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)]"><summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("movements.additionalDetails")}</summary><div className="space-y-4 border-t border-[var(--ui-border)] p-3">
-      {hasReportingDetails ? <div className="space-y-2"><p className="text-xs font-medium">{t("movements.reportingDetails")}</p><div className="grid gap-3 sm:grid-cols-2">{source ? <FxFields key={source.currency} currency={source.currency} base={base} initialMode={source.currency===originalEntry?.currency&&originalEntry.fx_source==="manual"?"manual":undefined} initialRate={source.currency===originalEntry?.currency?originalEntry.fx_rate:""} /> : null}{transfer && destination && !sameCurrency ? <FxFields key={destination.currency} currency={destination.currency} base={base} destination initialMode={destination.currency===originalDestination?.currency&&originalDestination.fx_source==="manual"?"manual":undefined} initialRate={destination.currency===originalDestination?.currency?originalDestination.fx_rate:""} /> : null}</div></div> : null}
-      {transfer ? <FormField label={t("movements.fee", { currency: source?.currency ?? "" })}><Input name="fee" inputMode="decimal" defaultValue={String(correction?.entries.find((entry)=>entry.entry_role==="fee")?.amount ?? "0").replace(/^-/, "")} required /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.feeHelp")}</span></FormField> : null}
-    </div></details> : null}
+    {transfer ? <FormField label={t("movements.fee", { currency: source?.currency ?? "" })}><Input name="fee" inputMode="decimal" defaultValue={String(correction?.entries.find((entry)=>entry.entry_role==="fee")?.amount ?? "0").replace(/^-/, "")} required /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.feeHelp")}</span></FormField> : null}
     <p className="text-xs text-[var(--ui-text-muted)]">{t("movements.historyHelp")}</p>
   </FinanceActionForm>;
 }
@@ -121,6 +114,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
   const [editor, setEditor] = useState<"incoming" | "transfer" | FinanceMovementWithEntries | null>(props.expected?"incoming":null);
   const [reversing, setReversing] = useState<FinanceMovementWithEntries | null>(null);
   const [correcting, setCorrecting] = useState<FinanceMovementWithEntries | null>(null);
+  const [valuing, setValuing] = useState<{ movement: FinanceMovementWithEntries; currency: string; reportingCurrency: string } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [historyRows, setHistoryRows] = useState<Awaited<ReturnType<typeof loadFinanceMovementHistory>> | null>(null);
   const [pending, setPending] = useState(false);
@@ -150,6 +144,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     <section aria-label={t("movements.history")} className={`${panel} overflow-hidden`}>
       {props.movements.length ? <><div aria-hidden="true" className="hidden min-h-10 grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] items-center gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span>{t("movements.date")}</span><span>{t("movements.ledgerTitle")}</span><span>{t("movements.account")}</span><span>{t("movements.type")}</span><span className="text-right">{t("movements.amount")}</span><span/></div><ul className="divide-y divide-[var(--ui-border)]">{props.movements.map((movement) => {
         const reversed = movement.reversed;
+        const unresolved = movement.entries.some(entry => entry.reporting_amount === null);
         const primary = movement.entries.find((entry) => entry.entry_role === "primary");
         const destination = movement.entries.find((entry) => entry.entry_role === "destination");
         const activeOriginalAccount = active.some((account) => account.id === primary?.account_id);
@@ -163,16 +158,22 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         const amountTone=["transfer","balance"].includes(movement.nature)?"text-[var(--ui-text)]":Number(primary?.amount??0)>0?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]";
         return <li key={movement.id}><details className="group"><summary aria-label={t("movements.detailsNamed",{name:title})} className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] lg:py-2">
           <span className="col-start-1 row-start-2 text-xs text-[var(--ui-text-muted)] lg:col-start-1 lg:row-start-1">{formatDateOnly(movement.financial_date, locale)}<span className="lg:hidden"> · {t(`movements.kinds.${movement.kind}`)}</span></span>
-          <span className="col-start-1 row-start-1 min-w-0 truncate text-sm font-medium text-[var(--ui-text)] lg:col-start-2">{title}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
+          <span className="col-start-1 row-start-1 min-w-0 truncate text-sm font-medium text-[var(--ui-text)] lg:col-start-2">{title}{unresolved ? <span className="ml-2 text-xs font-normal text-[var(--ui-warning-text)]">{t("movements.valuationUnresolved")}</span> : null}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
           <span className="col-start-1 row-start-3 min-w-0 truncate text-xs text-[var(--ui-text-secondary)] lg:col-start-3 lg:row-start-1 lg:text-sm">{accountText}</span>
           <span className="hidden text-xs text-[var(--ui-text-secondary)] lg:col-start-4 lg:block">{t(`movements.kinds.${movement.kind}`)} · {t(`movements.natures.${movement.nature}`)}</span>
           <span className={`ui-numeric col-start-2 row-span-3 row-start-1 whitespace-nowrap text-right text-sm font-semibold lg:col-start-5 lg:row-span-1 ${amountTone}`}>{movement.kind==="transfer"?(sameCurrencyTransfer?absoluteMoney(primary):`${absoluteMoney(primary)} → ${absoluteMoney(destination)}`):displayMoney(primary)}</span>
           <ChevronDown className="col-start-3 row-span-3 row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none lg:col-start-6 lg:row-span-1" aria-hidden="true"/>
         </summary><div className="space-y-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm">
           {title !== category && movement.nature !== "balance" ? <p className="text-[var(--ui-text-secondary)]">{category}</p> : null}
-          <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <p key={entry.id}>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency!==entry.reporting_currency?` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}`:""}</p>)}</div>
-          {!reversed && movement.kind !== "reversal" ? <div className="flex flex-wrap items-start gap-2"><Button onClick={() => setCorrecting(movement)}>{t("movements.correct")}</Button>{["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button variant="ghost" onClick={() => setEditor(movement)}>{t("movements.refund")}</Button> : null}<details className="rounded-[var(--ui-radius-control)]"><summary className="cursor-pointer px-3 py-2 text-sm text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("movements.moreActions")}</summary><Button variant="ghost" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button></details></div> : null}
-          {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button variant="ghost" onClick={() => { setHistoryRows(null); setHistoryId(movement.id); }}>{t("movements.correctionHistory")}</Button> : null}
+          <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"><p>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency !== entry.reporting_currency && entry.reporting_amount !== null && entry.fx_source && entry.fx_effective_date ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>{entry.reporting_amount === null && entry.entry_role !== "fee" && !reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setValuing({ movement, currency: entry.currency, reportingCurrency: entry.reporting_currency })}>{t("movements.valueManually")}</Button> : null}</div>)}</div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {!reversed && movement.kind !== "reversal" ? <>
+              <Button size="sm" className="gap-1.5" onClick={() => setCorrecting(movement)}><Pencil className="size-3.5" aria-hidden="true"/>{t("movements.correct")}</Button>
+              {["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button size="sm" variant="outline" onClick={() => setEditor(movement)}>{t("movements.refund")}</Button> : null}
+            </> : null}
+            {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => { setHistoryRows(null); setHistoryId(movement.id); }}><History className="size-4" aria-hidden="true"/>{t("movements.correctionHistory")}</Button> : null}
+            {!reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button> : null}
+          </div>
         </div></details></li>;
       })}</ul></> : <p className="p-5 text-sm text-[var(--ui-text-muted)]">{t("movements.empty")}</p>}
     </section>
@@ -180,8 +181,15 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     <Dialog isOpen={correcting !== null} closeDisabled={pending} onRequestClose={() => setCorrecting(null)} title={t("movements.correct")} closeLabel={t("movements.close")}>
       {correcting ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={correcting.kind === "transfer"} correction={correcting} onSaved={() => setCorrecting(null)} onPending={setPending}/></div> : null}
     </Dialog>
+    <Dialog isOpen={valuing !== null} closeDisabled={pending} onRequestClose={() => setValuing(null)} title={t("movements.valueManually")} closeLabel={t("movements.close")}>
+      {valuing ? <div className="p-5"><FinanceActionForm action={valueFinanceMovement} label={t("movements.valueManually")} onSaved={() => setValuing(null)} onPending={setPending}>
+        <input type="hidden" name="movementId" value={valuing.movement.id}/><input type="hidden" name="currency" value={valuing.currency}/>
+        <p className="text-sm text-[var(--ui-text-secondary)]">{formatDateOnly(valuing.movement.financial_date, locale)}</p>
+        <FormField label={t("movements.rate", { currency: valuing.currency, base: valuing.reportingCurrency })}><Input name="rate" inputMode="decimal" required autoComplete="off"/></FormField>
+      </FinanceActionForm></div> : null}
+    </Dialog>
     <Dialog isOpen={historyId !== null} onRequestClose={() => setHistoryId(null)} title={t("movements.correctionHistory")} closeLabel={t("movements.close")}>
-      <div className="p-5">{historyRows === null ? <p role="status">{t("movements.historyLoading")}</p> : historyRows.error ? <p role="alert">{t("movements.errors.history")}</p> : <ol className="space-y-3">{historyRows.movements.map((movement) => <li key={movement.id} className="space-y-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3 text-sm"><p className="font-medium">{t(`movements.kinds.${movement.kind}`)} · {formatDateOnly(movement.financial_date, locale)}{movement.kind !== "reversal" ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{t(cancelledHistoryIds.has(movement.id) ? "movements.cancelledVersion" : "movements.currentVersion")}</span> : null}</p>{movement.description ? <p>{movement.description}</p> : null}<p className="text-[var(--ui-text-secondary)]">{financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`))}</p>{movement.entries.map((entry) => <p className="ui-numeric text-xs text-[var(--ui-text-secondary)]" key={entry.id}>{props.accounts.find((account) => account.id === entry.account_id)?.name ?? "—"}: {money(entry.amount,entry.currency)}{entry.currency !== entry.reporting_currency ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)}` : ""}</p>)}</li>)}</ol>}</div>
+      <div className="p-5">{historyRows === null ? <p role="status">{t("movements.historyLoading")}</p> : historyRows.error ? <p role="alert">{t("movements.errors.history")}</p> : <ol className="space-y-3">{historyRows.movements.map((movement) => <li key={movement.id} className="space-y-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3 text-sm"><p className="font-medium">{t(`movements.kinds.${movement.kind}`)} · {formatDateOnly(movement.financial_date, locale)}{movement.kind !== "reversal" ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{t(cancelledHistoryIds.has(movement.id) ? "movements.cancelledVersion" : "movements.currentVersion")}</span> : null}</p>{movement.description ? <p>{movement.description}</p> : null}<p className="text-[var(--ui-text-secondary)]">{financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`))}</p>{movement.entries.map((entry) => <p className="ui-numeric text-xs text-[var(--ui-text-secondary)]" key={entry.id}>{props.accounts.find((account) => account.id === entry.account_id)?.name ?? "—"}: {money(entry.amount,entry.currency)}{entry.currency !== entry.reporting_currency ? entry.reporting_amount === null ? ` · ${t("movements.valuationUnresolved")}` : ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)}` : ""}</p>)}</li>)}</ol>}</div>
     </Dialog>
     <Dialog isOpen={editor !== null} closeDisabled={pending} onRequestClose={() => {setEditor(null);if(props.expected)router.replace(props.returnHref??"/finance/expected");}} title={editor === "transfer" ? t("movements.transfer") : typeof editor === "object" && editor ? t("movements.refund") : t("movements.add")} closeLabel={t("movements.close")}>
       {editor !== null ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={editor === "transfer"} refund={typeof editor === "object" ? editor : undefined} expected={props.expected} onSaved={() => {setEditor(null);if(props.expected)router.push(props.returnHref??"/finance/expected");}} onPending={setPending} /></div> : null}

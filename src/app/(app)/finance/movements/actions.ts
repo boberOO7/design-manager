@@ -6,8 +6,8 @@ import { getTranslations } from "next-intl/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getFinanceData, getFinanceMovementHistory } from "@/data/queries/finance";
 import { createClient } from "@/lib/supabase/server";
-import { resolveFinanceFx } from "@/lib/finance-fx";
-import { correctionInputSchema, movementInputSchema, reversalInputSchema, validateMovementAccounts } from "@/lib/finance-movements";
+import { defaultFinanceReportingSource, resolveFinanceFx } from "@/lib/finance-fx";
+import { correctionInputSchema, financeRateSchema, movementInputSchema, reversalInputSchema, validateMovementAccounts } from "@/lib/finance-movements";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import type { FinanceActionState } from "@/lib/finance";
 
@@ -57,12 +57,15 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
         catch { return { status: "error", message: t("errors.fx") }; }
       }
     }
-    try {
-      fx = await resolveFinanceFx(account.currency, data.settings.base_currency, input.date, input.fxMode, input.manualRate);
-      if (input.kind === "transfer" && destination) destinationFx = account.currency === destination.currency ? fx : await resolveFinanceFx(destination.currency, data.settings.base_currency, input.date, input.destinationFxMode, input.destinationManualRate);
-    } catch {
-      return { status: "error", message: t("errors.fx") };
-    }
+    // Cash is authoritative in account currency; a missing reporting quote must
+    // never prevent posting. Resolve each transfer leg independently.
+    [fx, destinationFx] = await Promise.all([
+      resolveFinanceFx(account.currency, data.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null),
+      input.kind === "transfer" && destination && account.currency !== destination.currency
+        ? resolveFinanceFx(destination.currency, data.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    if (input.kind === "transfer" && destination?.currency === account.currency) destinationFx = fx;
     const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
       category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, settlementFx, submission: input,
@@ -93,6 +96,27 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
 export async function loadFinanceMovementHistory(id: string) {
   try { return { movements: await getFinanceMovementHistory(id), error: false }; }
   catch { return { movements: [], error: true }; }
+}
+
+export async function valueFinanceMovement(_previous: FinanceActionState, form: FormData): Promise<FinanceActionState> {
+  const t = await getTranslations("Finance.movements");
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { status: "error", message: t("errors.forbidden") };
+  const parsed = z.object({ movementId: z.uuid(), currency: z.string().regex(/^[A-Z]{3}$/), rate: financeRateSchema }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { status: "error", message: t("errors.invalid") };
+  const client = await createClient();
+  const { data, error } = await client.from("finance_movements").select("financial_date,kind,related_movement_id")
+    .eq("studio_id", admin.studio_id).eq("id", parsed.data.movementId).maybeSingle();
+  if (error || !data || data.kind === "reversal") return { status: "error", message: t("errors.save") };
+  const result = await client.rpc("value_finance_movement", {
+    p_studio_id: admin.studio_id, p_movement_id: parsed.data.movementId, p_currency: parsed.data.currency,
+    p_fx: { rate: parsed.data.rate, source: "manual", effectiveDate: data.financial_date },
+  });
+  if (result.error) return { status: "error", message: t("errors.save") };
+  revalidatePath("/finance", "layout");
+  revalidatePath("/projects/[projectId]", "page");
+  revalidatePath("/dashboard");
+  return { status: "success", message: t("saved") };
 }
 
 const quoteSchema = z.object({ currency: z.string().regex(/^[A-Z]{3}$/), obligationCurrency: z.string().regex(/^[A-Z]{3}$/), date: z.iso.date() });

@@ -240,6 +240,7 @@ export async function getFinanceProjectRecordedRates(projectId: string, stream: 
       .eq("studio_id", admin.studio_id).eq("entry_role", "primary").in("movement_id", movementIds.slice(start, start + 50));
     if (page.error || !page.data) throw new Error("Unable to load project recorded FX.", { cause: page.error });
     for (const row of page.data) {
+      if (row.fx_rate === null || row.fx_effective_date === null) continue;
       const previous = rates.get(row.currency);
       if (!previous || row.fx_effective_date > previous.date) rates.set(row.currency, { rate: row.fx_rate, date: row.fx_effective_date, base: row.reporting_currency });
     }

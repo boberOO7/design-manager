@@ -17,8 +17,6 @@ export const movementInputSchema = z.object({
   destinationId: z.union([z.uuid(), z.literal("")]).default(""),
   receivedAmount: z.union([decimal.refine((value) => Number(value)>0), z.literal("")]).default(""),
   fee: decimal.default("0"), relatedMovementId: z.union([z.uuid(), z.literal("")]).default(""),
-  fxMode: z.enum(["nbu", "manual"]).default("manual"), manualRate: z.string().default(""),
-  destinationFxMode: z.enum(["nbu", "manual"]).default("manual"), destinationManualRate: z.string().default(""),
 }).superRefine((input, context) => {
   if (["incoming","outgoing","owner_withdrawal"].includes(input.kind) && !input.categoryId) context.addIssue({ code:"custom",message:"category" });
   if (input.expectedItemId && (!["incoming","outgoing","owner_withdrawal"].includes(input.kind) || (!input.allocationAmount&&!input.autoAllocate) || (input.allocationAmount&&input.autoAllocate))) context.addIssue({ code:"custom",message:"settlement" });

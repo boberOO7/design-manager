@@ -68,6 +68,17 @@ describe("Finance display currency", () => {
     expect(afterCutover.history.map(point => point.amount)).toEqual([null, "4.00"]);
     expect(afterCutover.flows[0].amount).toBe("14.00");
     expect(afterCutover.forecast.cashBase).toBe("6.00");
+    const unresolved = projectFinanceDisplayReport(data, "USD", 2, "0.03", new Map([["2026-09-10", "0.025"]]), [
+      { financial_date: "2026-09-10", amount: "400.00" }, { financial_date: "2026-09-20", amount: null },
+    ], [
+      { financial_date: "2026-09-10", amount: "400.00", category_id: categoryId, direction: "incoming", nature: "operating" },
+      { financial_date: "2026-09-20", amount: null, category_id: categoryId, direction: "incoming", nature: "operating" },
+    ], []);
+    expect(unresolved.history.map(point => point.amount)).toEqual(["10.00", null]);
+    expect(unresolved).toMatchObject({netFlow:null,flows:[{amount:null}],categories:[{actual:null,forecast:null,variance:null}]});
+    expect(unresolved.forecast.comparisons[0]).toMatchObject({actual:null,full_period:null});
+    expect(financeDashboardMonthSummary(unresolved).profitAndLoss).toBeNull();
+    expect(financeDashboardMonthSummary({ ...projected, vatAdjustments: [{ date: "2026-09-10", amount: null }] }).profitAndLoss).toBeNull();
     expect(financeDashboardMonthSummary({ ...projected, vatAdjustments: [{ date: "2026-09-10", amount: "2.50" }] }).profitAndLoss).toBe("11.5000");
   });
 });
