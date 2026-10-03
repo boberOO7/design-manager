@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { movementInputSchema, financeRateSchema, validateMovementAccounts } from "./finance-movements";
+import { correctionInputSchema, movementInputSchema, financeRateSchema, validateMovementAccounts } from "./finance-movements";
 import type { FinanceAccount } from "./finance";
 
 const first = "63000000-0000-4000-8000-000000000020";
@@ -34,5 +34,14 @@ describe("actual movement inputs", () => {
   it("rejects zero, nonfinite, negative, and imprecise manual FX", () => {
     expect(financeRateSchema.parse("42,1234567890")).toBe("42.1234567890");
     for (const rate of ["", "0", "-1", "Infinity", "1e2", "1.12345678901", "1000000001"]) expect(financeRateSchema.safeParse(rate).success).toBe(false);
+  });
+  it("validates corrections without enabling negative ordinary cash or automatic rematching", () => {
+    expect(correctionInputSchema.parse({...base,movementId:first}).amount).toBe("12.34");
+    expect(correctionInputSchema.safeParse({...base,movementId:first,amount:"-10"}).success).toBe(false);
+    expect(correctionInputSchema.safeParse({...base,movementId:first,expectedItemId:first,autoAllocate:true}).success).toBe(false);
+    const balance=correctionInputSchema.parse({...base,movementId:first,kind:"balance_adjustment",amount:"-10,25",categoryId:""});
+    expect(balance.amount).toBe("-10.25");
+    expect(validateMovementAccounts(balance,[account(first,"UAH")],[{code:"UAH",minor_units:2}])).toBe(true);
+    expect(correctionInputSchema.safeParse({...base,movementId:first,kind:"reversal"}).success).toBe(false);
   });
 });

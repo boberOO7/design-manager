@@ -142,10 +142,22 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   NBU snapshots are fetched by the app; direct authorized RPC input remains
   administrator-supplied valuation data, not a bank-certified rate.
 - Movement and entry updates/deletes are blocked by both grants and immutable
-  history triggers. Corrections use an explicit, reasoned reversal event followed
-  by a replacement if needed. A reversal copies and negates every original entry,
+  history triggers. `correct_finance_movement` atomically reverses the current
+  record on its original date and posts its replacement on the corrected date,
+  preserving historical reporting and balance-cutover semantics. Append-only
+  `finance_movement_corrections` links original, reversal and replacement; repeated
+  corrections form a chain. Existing reversal guards and settlement releases apply;
+  ordinary replacement payments must be matched again. Linked trip cash appends a
+  replacement trip entry through the existing trip posting/reconciliation rules;
+  incompatible changes roll back and require the trip editor (including per-diem
+  amount/currency changes). A reversal copies and negates every original entry,
   including fees and reporting valuations, and can refer to archived accounts.
   Only one reversal per original is allowed; reversals cannot be reversed.
+- Cash Movement normally pages `finance_current_movements`, excluding technical
+  reversals and reversed originals. Details expose correction chains through
+  `get_finance_movement_history_ids`; the History view also recovers standalone
+  storno records. The UI's “Сторнувати” cancels a mistake on its original date.
+  Real refunds remain separate visible movements on their actual dates.
 - An actual refund is different from correcting a recording mistake. It links to
   an incoming/outgoing original, uses the same account, carries the opposite cash
   direction, and uses the refund date's valuation. Partial refunds are allowed;

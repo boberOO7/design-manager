@@ -1308,6 +1308,13 @@ export type Database = {
             foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
             columns: ["studio_id", "cause_movement_id"]
             isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_cause_movement_id_fkey"
+            columns: ["studio_id", "cause_movement_id"]
+            isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -1358,6 +1365,13 @@ export type Database = {
             columns: ["studio_id", "movement_id"]
             isOneToOne: false
             referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_allocations_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -1672,6 +1686,119 @@ export type Database = {
           },
         ]
       }
+      finance_movement_corrections: {
+        Row: {
+          original_movement_id: string
+          replacement_movement_id: string
+          reversal_movement_id: string
+          studio_id: string
+        }
+        Insert: {
+          original_movement_id: string
+          replacement_movement_id: string
+          reversal_movement_id: string
+          studio_id: string
+        }
+        Update: {
+          original_movement_id?: string
+          replacement_movement_id?: string
+          reversal_movement_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_original_movement_i_fkey"
+            columns: ["studio_id", "original_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_original_movement_i_fkey"
+            columns: ["studio_id", "original_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_original_movement_i_fkey"
+            columns: ["studio_id", "original_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_original_movement_i_fkey"
+            columns: ["studio_id", "original_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_replacement_movemen_fkey"
+            columns: ["studio_id", "replacement_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_replacement_movemen_fkey"
+            columns: ["studio_id", "replacement_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_replacement_movemen_fkey"
+            columns: ["studio_id", "replacement_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_replacement_movemen_fkey"
+            columns: ["studio_id", "replacement_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_reversal_movement_i_fkey"
+            columns: ["studio_id", "reversal_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_reversal_movement_i_fkey"
+            columns: ["studio_id", "reversal_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_reversal_movement_i_fkey"
+            columns: ["studio_id", "reversal_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_corrections_studio_id_reversal_movement_i_fkey"
+            columns: ["studio_id", "reversal_movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       finance_movement_entries: {
         Row: {
           account_id: string
@@ -1763,6 +1890,13 @@ export type Database = {
             columns: ["studio_id", "movement_id"]
             isOneToOne: false
             referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -1864,6 +1998,13 @@ export type Database = {
             columns: ["studio_id", "related_movement_id"]
             isOneToOne: false
             referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -2931,6 +3072,13 @@ export type Database = {
             columns: ["studio_id", "movement_id"]
             isOneToOne: true
             referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
             referencedColumns: ["studio_id", "id"]
           },
           {
@@ -5249,6 +5397,13 @@ export type Database = {
             foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
             columns: ["studio_id", "movement_id"]
             isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movement_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -5309,6 +5464,107 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_settings"
             referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_current_movements: {
+        Row: {
+          category: string | null
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          financial_date: string | null
+          id: string | null
+          kind: string | null
+          nature: string | null
+          posting_order: number | null
+          related_movement_id: string | null
+          request_id: string | null
+          request_payload: Json | null
+          studio_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          financial_date?: string | null
+          id?: string | null
+          kind?: string | null
+          nature?: string | null
+          posting_order?: number | null
+          related_movement_id?: string | null
+          request_id?: string | null
+          request_payload?: Json | null
+          studio_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          financial_date?: string | null
+          id?: string | null
+          kind?: string | null
+          nature?: string | null
+          posting_order?: number | null
+          related_movement_id?: string | null
+          request_id?: string | null
+          request_payload?: Json | null
+          studio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_movements_studio_id_related_movement_id_fkey"
+            columns: ["studio_id", "related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
           },
         ]
       }
@@ -5879,6 +6135,13 @@ export type Database = {
             foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
             columns: ["studio_id", "movement_id"]
             isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_trip_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
             referencedRelation: "finance_movements"
             referencedColumns: ["studio_id", "id"]
           },
@@ -6165,6 +6428,15 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      correct_finance_movement: {
+        Args: {
+          p_input: Json
+          p_movement_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       create_calendar_event_with_invites: {
         Args: {
           p_all_day: boolean
@@ -6361,6 +6633,10 @@ export type Database = {
           nature: string
           studio_id: string
         }[]
+      }
+      get_finance_movement_history_ids: {
+        Args: { p_movement_id: string; p_studio_id: string }
+        Returns: string[]
       }
       get_finance_overview: {
         Args: {

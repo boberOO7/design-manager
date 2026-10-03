@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTranslations } from "next-intl/server";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
-import { getFinanceData } from "@/data/queries/finance";
+import { getFinanceData, getFinanceMovementHistory } from "@/data/queries/finance";
 import { createClient } from "@/lib/supabase/server";
 import { resolveFinanceFx } from "@/lib/finance-fx";
-import { movementInputSchema, reversalInputSchema, validateMovementAccounts } from "@/lib/finance-movements";
+import { correctionInputSchema, movementInputSchema, reversalInputSchema, validateMovementAccounts } from "@/lib/finance-movements";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import type { FinanceActionState } from "@/lib/finance";
 
@@ -21,9 +21,13 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     const parsed = reversalInputSchema.safeParse(Object.fromEntries(form));
     if (!parsed.success || form.get("confirmed") !== "on") return { status: "error", message: t("errors.invalid") };
     const input = parsed.data;
-    ({ error } = await client.rpc("reverse_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_movement_id: input.movementId, p_date: input.date, p_reason: input.reason }));
+    const original = await client.from("finance_movements").select("financial_date").eq("studio_id", admin.studio_id).eq("id", input.movementId).maybeSingle();
+    if (original.error || !original.data) return { status: "error", message: t("errors.save") };
+    ({ error } = await client.rpc("reverse_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_movement_id: input.movementId, p_date: original.data.financial_date, p_reason: input.reason }));
   } else {
-    const parsed = movementInputSchema.safeParse(Object.fromEntries(form));
+    const correcting = form.get("intent") === "correct";
+    const schema = correcting ? correctionInputSchema : movementInputSchema;
+    const parsed = schema.safeParse(Object.fromEntries(form));
     if (!parsed.success) return { status: "error", message: t("errors.invalid") };
     const input = parsed.data;
     // Resolve an ambiguous network retry before fetching FX or checking newly archived accounts.
@@ -31,8 +35,9 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     if (prior.error) return { status: "error", message: t("errors.save") };
     if (prior.data) {
       const payload = prior.data.request_payload;
-      const submission = payload && typeof payload === "object" && !Array.isArray(payload) ? movementInputSchema.safeParse(payload.submission) : null;
-      if (!submission?.success || JSON.stringify(submission.data) !== JSON.stringify(input)) return { status: "error", message: t("errors.conflict") };
+      const submission = payload && typeof payload === "object" && !Array.isArray(payload) ? schema.safeParse(payload.submission) : null;
+      const priorCorrection = payload && typeof payload === "object" && !Array.isArray(payload) && payload.submission && typeof payload.submission === "object" && !Array.isArray(payload.submission) && "movementId" in payload.submission;
+      if (Boolean(priorCorrection) !== correcting || !submission?.success || JSON.stringify(submission.data) !== JSON.stringify(input)) return { status: "error", message: t("errors.conflict") };
       revalidatePath("/finance", "layout");
       revalidatePath("/projects/[projectId]", "page");
       return { status: "success", message: t("saved") };
@@ -64,21 +69,30 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
       ...(input.kind === "refund" ? { relatedMovementId: input.relatedMovementId } : {}),
     };
-    ({ error } = input.expectedItemId
+    ({ error } = "movementId" in input && typeof input.movementId === "string"
+      ? await client.rpc("correct_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_movement_id: input.movementId, p_input: payload })
+      : input.expectedItemId
       ? await client.rpc("record_finance_expected_payment",{ p_studio_id:admin.studio_id,p_request_id:input.requestId,p_item_id:input.expectedItemId,p_input:payload,...(input.autoAllocate?{}:{p_allocation_amount:Number(input.allocationAmount)}) })
       : await client.rpc("record_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input:payload }));
   }
   if (error) {
     const message = error.message === "finance_request_conflict" ? "errors.conflict"
       : error.message === "finance_already_reversed" ? "errors.reversed"
-      : error.message === "finance_reverse_refunds_first" ? "errors.refundsFirst"
+      : error.message === "finance_reverse_refunds_first" ? form.get("intent") === "correct" ? "errors.correctionRefunds" : "errors.refundsFirst"
       : error.message === "finance_refund_exceeds_original" ? "errors.refundAmount"
+      : ["finance_trip_edit_unavailable", "finance_trip_payment_invalid", "finance_trip_closed", "finance_trip_traveler_invalid"].includes(error.message) ? "errors.tripCorrection"
+      : error.message === "finance_opening_unavailable" ? "errors.opening"
       : error.message === "finance_account_unavailable" ? "errors.archived" : "errors.save";
     return { status: "error", message: t(message) };
   }
   revalidatePath("/finance", "layout");
   revalidatePath("/projects/[projectId]", "page");
   return { status: "success", message: t("saved") };
+}
+
+export async function loadFinanceMovementHistory(id: string) {
+  try { return { movements: await getFinanceMovementHistory(id), error: false }; }
+  catch { return { movements: [], error: true }; }
 }
 
 const quoteSchema = z.object({ currency: z.string().regex(/^[A-Z]{3}$/), obligationCurrency: z.string().regex(/^[A-Z]{3}$/), date: z.iso.date() });

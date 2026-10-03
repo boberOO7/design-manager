@@ -159,7 +159,7 @@ test("actual movements, transfers, historical FX, refunds and reversal", async (
     await dialog.getByLabel(t.amount,{ exact:true }).fill(amount);
     await select(t.category,kind==="incoming"?en.Finance.planning.defaults.project_payments:kind==="outgoing"?en.Finance.planning.defaults.other_expense:en.Finance.planning.defaults.owner_distribution);
     await expect(dialog.getByRole("combobox",{ name:t.nature,exact:true })).toHaveCount(0);
-    await dialog.getByText(t.additionalDetails,{exact:true}).click();
+    await expect(dialog.getByText(t.additionalDetails,{exact:true})).toHaveCount(0);
     await dialog.getByLabel(t.description,{ exact:true }).fill(category);
     await dialog.getByRole("button",{ name:t.record,exact:true }).click();
     await expect(dialog).toHaveCount(0);
@@ -303,14 +303,14 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await expect(estimate.getByText(p.agreementOptions.tentative,{ exact:true })).toBeVisible();await estimate.locator("summary").click();await expect(estimate.getByText(new RegExp(`${p.agreementOptions.tentative}.*${p.states.estimated}`))).toBeVisible();
   expect(sql(`select concat(is_established,'|',outstanding_amount) from public.finance_expected_balances where studio_id=${studioLiteral} and description='Early estimate'`)).toBe("f|0");
   await page.goto("/finance/movements");await page.getByRole("button",{ name:t.movements.add,exact:true }).click();
-  dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("10");await dialog.getByText(t.movements.additionalDetails,{exact:true}).click();
+  dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("10");
   await dialog.getByRole("combobox",{ name:t.movements.category,exact:true }).click();await page.getByRole("option",{ name:"Design consultation",exact:true }).click();
   await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Walk-in receipt");await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
-  await page.getByRole("button",{ name:t.movements.add,exact:true }).click();dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("100");await dialog.getByText(t.movements.additionalDetails,{exact:true}).click();
+  await page.getByRole("button",{ name:t.movements.add,exact:true }).click();dialog=page.getByRole("dialog");await dialog.getByLabel(t.movements.amount,{ exact:true }).fill("100");
   await dialog.getByRole("combobox",{ name:t.movements.category,exact:true }).click();await page.getByRole("option",{ name:"Design consultation",exact:true }).click();
-  await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Client advance");await dialog.locator('input[name="allocationIntent"]').check();await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
+  await dialog.getByLabel(t.movements.description,{ exact:true }).fill("Client receipt");await expect(dialog.locator('input[type="checkbox"][name="allocationIntent"]')).toHaveCount(0);await dialog.getByRole("button",{ name:t.movements.record,exact:true }).click();await expect(dialog).toHaveCount(0);
   await page.goto("/finance/expected");await item.locator("summary").click();await item.getByRole("button",{ name:p.match,exact:true }).click();dialog=page.getByRole("dialog");
-  await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await expect(page.getByRole("option",{ name:/Walk-in receipt/ })).toBeVisible();await page.getByRole("option",{ name:/Client advance/ }).click();
+  await dialog.getByRole("combobox",{ name:p.payment,exact:true }).click();await expect(page.getByRole("option",{ name:/Walk-in receipt/ })).toBeVisible();await page.getByRole("option",{ name:/Client receipt/ }).click();
   await dialog.getByRole("button",{ name:p.match,exact:true }).click();await expect(dialog).toHaveCount(0);
   const completedCurrent=page.locator('details[data-completed-month="2026-09"]');
   await expect(completedCurrent).not.toHaveAttribute("open","");
@@ -320,7 +320,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   expect(sql(`select sum(unapplied_amount) from public.finance_payment_availability where studio_id=${studioLiteral}`)).toBe("50");
   expect(sql(`select sum(unapplied_amount) from public.finance_actionable_unapplied where studio_id=${studioLiteral}`)).toBe("40");
   await expect(page.getByRole("heading",{ name:p.unapplied,exact:true })).toBeVisible();
-  await expect(page.getByText(/Client advance/)).toBeVisible();await expect(page.getByText(/Walk-in receipt/)).toHaveCount(0);
+  await expect(page.getByText(/Client receipt/)).toBeVisible();await expect(page.getByText(/Walk-in receipt/)).toHaveCount(0);
   await item.locator("summary").click();await item.getByRole("button",{ name:t.edit,exact:true }).click();dialog=page.getByRole("dialog");
   await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-01");await expect(dialog.locator('select[name="expectedDate"]')).toHaveValue("2026-09-30");
   await dialog.getByRole("button",{ name:t.movements.close,exact:true }).click();

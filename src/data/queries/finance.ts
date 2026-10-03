@@ -49,25 +49,50 @@ export async function getFinanceCategories() {
   return { ready: Boolean(settings.data), categories: (categories.data??[]).map((category)=>({...category,project_expense_enabled:scopeById.get(category.id)??false})) };
 }
 
-export async function getFinanceMovements(page: number) {
+const movementSelection = "*, entries:finance_movement_entries!finance_movement_entries_studio_id_movement_id_fkey(id,studio_id,movement_id,account_id,amount::text,currency,entry_role,reporting_currency,reporting_amount::text,fx_rate::text,fx_source,fx_effective_date)";
+
+export async function getFinanceMovements(page: number, history = false) {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const { data, error, count } = await client.from("finance_movements")
-    .select("*, entries:finance_movement_entries!finance_movement_entries_studio_id_movement_id_fkey(id,studio_id,movement_id,account_id,amount,currency,entry_role,reporting_currency,reporting_amount::text,fx_rate::text,fx_source,fx_effective_date)", { count: "exact" })
+  // Page effective IDs first so technical records cannot consume pages or inflate counts.
+  const current = history ? null : await client.from("finance_current_movements").select("id", { count: "exact" })
     .eq("studio_id", admin.studio_id).order("financial_date", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false })
     .range((page-1)*50, page*50-1);
+  if (current?.error) throw new Error("Unable to load current Finance movements.", { cause: current.error });
+  const ids = current?.data?.flatMap((row) => row.id ? [row.id] : []) ?? [];
+  if (!history && !ids.length) return { movements: [], total: current?.count ?? 0 };
+  let query = client.from("finance_movements").select(movementSelection, { count: "exact" })
+    .eq("studio_id", admin.studio_id).order("financial_date", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false });
+  query = history ? query.range((page-1)*50, page*50-1) : query.in("id", ids);
+  const { data, error, count } = await query;
   if (error) throw new Error("Unable to load Finance movements.", { cause: error });
   // Query reverse links explicitly: PostgREST cannot embed this composite self-reference.
   const movements = data ?? [];
-  const reversals = movements.length ? await client.from("finance_movements")
+  const [reversals, corrections] = await Promise.all([movements.length ? client.from("finance_movements")
     .select("related_movement_id").eq("studio_id", admin.studio_id).eq("kind", "reversal")
-    .in("related_movement_id", movements.map((movement) => movement.id)) : null;
-  if (reversals?.error) throw new Error("Unable to load Finance reversals.", { cause: reversals.error });
+    .in("related_movement_id", movements.map((movement) => movement.id)) : null,
+    movements.length ? client.from("finance_movement_corrections").select("original_movement_id,replacement_movement_id")
+      .eq("studio_id", admin.studio_id).in("replacement_movement_id", movements.map((movement) => movement.id)) : null]);
+  if (reversals?.error || corrections?.error) throw new Error("Unable to load Finance history.", { cause: reversals?.error ?? corrections?.error });
   const reversedIds = new Set(reversals?.data?.map((movement) => movement.related_movement_id));
-  return { movements: movements.map((movement) => ({ ...movement, reversed: reversedIds.has(movement.id) })), total: count ?? 0 };
+  const predecessors = new Map(corrections?.data?.map((link) => [link.replacement_movement_id, link.original_movement_id]));
+  return { movements: movements.map((movement) => ({ ...movement, reversed: reversedIds.has(movement.id), supersedesId: predecessors.get(movement.id) ?? null })), total: history ? count ?? 0 : current?.count ?? 0 };
 }
 export type FinanceMovementWithEntries = NonNullable<Awaited<ReturnType<typeof getFinanceMovements>>>["movements"][number];
+
+export async function getFinanceMovementHistory(id: string) {
+  const admin = await getActiveStudioAdmin();
+  if (!admin || !z.uuid().safeParse(id).success) return [];
+  const client = await createClient();
+  const ids = await client.rpc("get_finance_movement_history_ids", { p_studio_id: admin.studio_id, p_movement_id: id });
+  if (ids.error) throw new Error("Unable to load Finance correction history.", { cause: ids.error });
+  if (!ids.data?.length) return [];
+  const rows = await client.from("finance_movements").select(movementSelection).eq("studio_id", admin.studio_id)
+    .in("id", ids.data).order("posting_order").order("created_at").order("id");
+  if (rows.error) throw new Error("Unable to load Finance correction history.", { cause: rows.error });
+  return rows.data ?? [];
+}
 
 export async function getFinanceExpectedItem(id:string) {
   const admin=await getActiveStudioAdmin();

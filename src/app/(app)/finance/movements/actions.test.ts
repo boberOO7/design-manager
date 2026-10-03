@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { movementInputSchema } from "@/lib/finance-movements";
+import { correctionInputSchema, movementInputSchema } from "@/lib/finance-movements";
 const mocks = vi.hoisted(() => ({ admin:vi.fn(), client:vi.fn(), foundation:vi.fn(), rpc:vi.fn(), prior:vi.fn(), expected:vi.fn(), fx:vi.fn(), revalidate:vi.fn() }));
 vi.mock("@/data/queries/active-studio-admin",()=>({ getActiveStudioAdmin:mocks.admin }));
-vi.mock("@/data/queries/finance",()=>({ getFinanceData:mocks.foundation }));
+vi.mock("@/data/queries/finance",()=>({ getFinanceData:mocks.foundation, getFinanceMovementHistory:vi.fn() }));
 vi.mock("@/lib/supabase/server",()=>({ createClient:mocks.client }));
 vi.mock("@/lib/finance-fx",()=>({ resolveFinanceFx:mocks.fx }));
 vi.mock("next/cache",()=>({ revalidatePath:mocks.revalidate }));
@@ -89,8 +89,28 @@ describe("movement action boundary",()=>{
   it("requires explicit reversal confirmation and never fetches a new rate",async()=>{
     const patch={ intent:"reverse",movementId:id,reason:"Duplicate" };
     expect((await saveFinanceMovement({ status:"idle" },form(patch))).status).toBe("error");
+    mocks.prior.mockResolvedValue({data:{financial_date:"2026-09-01"},error:null});
     expect((await saveFinanceMovement({ status:"idle" },form({ ...patch,confirmed:"on" }))).status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("reverse_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_movement_id:id }));
+    expect(mocks.rpc).toHaveBeenCalledWith("reverse_finance_movement",expect.objectContaining({ p_studio_id:"verified",p_movement_id:id,p_date:"2026-09-01" }));
     expect(mocks.fx).not.toHaveBeenCalled();
+  });
+  it("corrects through one atomic RPC with FX from the corrected historical date",async()=>{
+    expect((await saveFinanceMovement({status:"idle"},form({intent:"correct",movementId:id,amount:"75",date:"2026-08-31"}))).status).toBe("success");
+    expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","manual","");
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("correct_finance_movement",expect.objectContaining({p_studio_id:"verified",p_movement_id:id,p_input:expect.objectContaining({amount:"75",date:"2026-08-31"})}));
+  });
+  it("recovers a correction retry before FX lookup or current account validation",async()=>{
+    const patch={intent:"correct",movementId:id};
+    mocks.prior.mockResolvedValue({data:{request_payload:{submission:correctionInputSchema.parse({...input,...patch})}},error:null});
+    expect((await saveFinanceMovement({status:"idle"},form(patch))).status).toBe("success");
+    expect(mocks.fx).not.toHaveBeenCalled();expect(mocks.foundation).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
+    expect((await saveFinanceMovement({status:"idle"},form({...patch,amount:"101"}))).message).toBe("errors.conflict");
+    expect((await saveFinanceMovement({status:"idle"},form())).message).toBe("errors.conflict");
+  });
+  it("keeps refunds as ordinary separate postings and preserves reversal guards",async()=>{
+    expect((await saveFinanceMovement({status:"idle"},form({kind:"refund",relatedMovementId:id}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_movement",expect.objectContaining({p_input:expect.objectContaining({kind:"refund",relatedMovementId:id})}));
+    mocks.rpc.mockResolvedValue({error:{message:"finance_reverse_refunds_first"}});
+    expect((await saveFinanceMovement({status:"idle"},form({intent:"correct",movementId:id}))).message).toBe("errors.correctionRefunds");
   });
 });

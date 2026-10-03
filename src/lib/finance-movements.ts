@@ -33,9 +33,21 @@ export const movementInputSchema = z.object({
   }
 });
 export type MovementInput = z.infer<typeof movementInputSchema>;
+export const correctionInputSchema = z.object({
+  ...movementInputSchema.shape,
+  movementId: z.uuid(),
+  kind: z.enum([...movementKinds, "account_opening", "balance_adjustment"]),
+  amount: z.string().trim().regex(/^-?\d{1,10}(?:[.,]\d{1,4})?$/).transform((value) => value.replace(",", ".")).refine((value) => Number(value) !== 0),
+}).superRefine((input, context) => {
+  if (["account_opening", "balance_adjustment"].includes(input.kind)) {
+    if (input.destinationId || input.receivedAmount || Number(input.fee) !== 0 || input.relatedMovementId || input.expectedItemId || input.allocationAmount || input.autoAllocate) context.addIssue({ code: "custom", message: "balance" });
+  } else if (!movementInputSchema.safeParse(input).success || input.expectedItemId || input.allocationAmount || input.autoAllocate) {
+    context.addIssue({ code: "custom", message: "movement" });
+  }
+});
 export const reversalInputSchema = z.object({ requestId: z.uuid(), movementId: z.uuid(), date: z.iso.date(), reason: z.string().trim().min(1).max(2000) });
 
-export function validateMovementAccounts(input: MovementInput, accounts: FinanceAccount[], currencies: FinanceCurrency[]) {
+export function validateMovementAccounts(input: MovementInput | z.infer<typeof correctionInputSchema>, accounts: FinanceAccount[], currencies: FinanceCurrency[]) {
   function validAmount(accountId: string, amount: string) {
     const account = accounts.find((item) => item.id === accountId && !item.archived_at);
     const currency = currencies.find((item) => item.code === account?.currency);
