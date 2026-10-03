@@ -1,6 +1,7 @@
 "use client";
 
 import { CakeSlice, MapPin, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/ui/dialog";
@@ -44,7 +45,7 @@ export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditPro
       <UserAvatar className="ring-4 ring-[var(--ui-surface)] transition-opacity hover:opacity-85" decorative imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />
     </button> : <UserAvatar className="ring-4 ring-[var(--ui-surface)]" imageUrl={avatarUrl} name={fullName} size="directoryPortrait" />}
     <div className="flex min-w-0 w-full flex-1 flex-col pt-4">
-      <h3 className="truncate text-lg font-semibold leading-6 text-[var(--ui-text)]">{fullName}</h3>
+      <h3 className="truncate text-lg font-semibold leading-6 text-[var(--ui-text)]"><Link href={`/team/${userId}`} className="rounded-sm transition-colors hover:text-[var(--ui-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{fullName}</Link></h3>
       {jobTitle ? <p className="mt-1 truncate text-sm leading-5 text-[var(--ui-text-secondary)]">{jobTitle}</p> : <p className="mt-1 text-sm leading-5 text-[var(--ui-text-subtle)]">{t("jobTitleUnavailable")}</p>}
       {location ? <p className="mt-3 flex min-w-0 items-center justify-center gap-1.5 text-sm leading-5 text-[var(--ui-text-muted)]"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}
       {birthDate ? <p className="mt-2 flex items-center justify-center gap-1.5 text-xs leading-5 text-[var(--ui-text-muted)]"><span className="sr-only">{t("birthday")}: </span><CakeSlice aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span>{birthdayLabel}</span></p> : null}

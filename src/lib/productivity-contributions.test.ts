@@ -66,6 +66,7 @@ describe("Leaderboard contribution selector", () => {
     ["month", 17.625],
     ["quarter", 25.375],
     ["year", 35.625],
+    [{ from: "2026-03", through: "2026-06" }, 25.375],
   ] as const)("reconciles %s project and record totals with the displayed ranking", (period: LeaderboardPeriod, expectedArea: number) => {
     const active = ledger.filter((attribution) => attribution.voided_at === null);
     const inPeriod = filterProductivityAttributionsForPeriod(active, period, now);

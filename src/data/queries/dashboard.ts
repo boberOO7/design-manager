@@ -5,6 +5,7 @@ import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-sched
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import { getCurrentUserProfile, getMyDashboardProductivity } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
 import { getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, selectAdminTaskMetrics, selectEmployeeTaskMetrics, selectEmployeeAttentionSummary, sortEmployeeTasks, getEmployeeTasksNeedingAttention, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
 import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods } from "@/lib/project-progress";
@@ -18,7 +19,6 @@ import type { DashboardTaskSummary, DashboardWorkloadTask } from "@/types/tasks"
 
 type DashboardTaskRow = Omit<DashboardTaskSummary, "collaborators"> & {
   collaborators: Array<{ user_id: string; profile: { id: string } | null }>;
-  productivity_area_m2: number | null;
 };
 type DashboardProjectRow = DashboardProject & { total_area_m2: number | null; include_in_productivity: boolean };
 
@@ -59,7 +59,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   await refreshProjectTaskSchedules(visibleProjects.map((project) => project.id));
   const [tasksResult, membersResult] = await Promise.all([
     loadAllDashboardRows((from, to) => supabase.from("tasks")
-      .select(`${PROJECT_TASK_PROGRESS_SELECT}, productivity_area_m2, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`)
+      .select(`${PROJECT_TASK_PROGRESS_SELECT}, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`)
       .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
       .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
@@ -93,10 +93,24 @@ export async function getDashboard(): Promise<DashboardData | null> {
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {
+    const snapshots = new Map<string, number | null>();
+    const snapshotIds = tasks.filter((task) => task.stage === "stage_2" && isOpenTask(task)).map((task) => task.id);
+    if (snapshotIds.length) {
+      // Column grants keep accounting snapshots out of caller-context task reads.
+      // This branch has already verified the active profile and admin membership.
+      const admin = createAdminClient();
+      for (let index = 0; index < snapshotIds.length; index += 100) {
+        const result = await admin.from("tasks")
+          .select("id, productivity_area_m2, project:projects!tasks_project_id_fkey!inner(studio_id)")
+          .eq("project.studio_id", membership.studio_id).in("id", snapshotIds.slice(index, index + 100));
+        if (result.error || !result.data) throw new Error("Unable to load admin workload accounting.", { cause: result.error });
+        for (const task of result.data) snapshots.set(task.id, task.productivity_area_m2);
+      }
+    }
     const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
     const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
     const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks, visibleProjects, activeAssignments);
+    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments);
     const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
       const period = currentPeriodByTask.get(task.id);
       return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };

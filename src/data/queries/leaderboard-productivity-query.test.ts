@@ -2,10 +2,11 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const queryPath = new URL("./index.ts", import.meta.url);
+const attributionPath = new URL("./productivity-attributions.ts", import.meta.url);
 
 describe("leaderboard productivity query", () => {
   it("filters live productivity inclusion without requiring a foreign-key relationship from immutable attribution history", async () => {
-    const source = await readFile(queryPath, "utf8");
+    const source = (await readFile(queryPath, "utf8")) + (await readFile(attributionPath, "utf8"));
 
     expect(source).toContain('admin.from("projects").select("id, include_in_productivity")');
     expect(source).toContain('supabase.from("projects").select("id, name")');
@@ -20,8 +21,8 @@ describe("leaderboard productivity query", () => {
     expect(source).toContain("selectLeaderboardAttributions(attributions, excludedProjectIds)");
     expect(source).toContain('.eq("studio_id", studioId).in("id", projectIds.slice(index, index + 100))');
     expect(source).toContain('.is("voided_at", null)');
-    expect(source).toContain('.gte("completed_at", bounds.start)');
-    expect(source).toContain('.lt("completed_at", bounds.end)');
+    expect(source).toContain('.gte("completed_at", options.bounds.start)');
+    expect(source).toContain('.lt("completed_at", options.bounds.end)');
     expect(source).toContain("const referenceTime = new Date();");
     expect(source).toContain("getLeaderboardForPeriod(membership.studio_id, period, 0, referenceTime, true)");
     expect(source).toContain("getLeaderboardForPeriod(membership.studio_id, period, -1, referenceTime)");
@@ -30,12 +31,13 @@ describe("leaderboard productivity query", () => {
   });
 
   it("keeps server-side failure details available for diagnostics", async () => {
-    const source = await readFile(queryPath, "utf8");
-    expect(source).toContain('console.error("Unable to load productivity.", cause)');
+    const source = (await readFile(queryPath, "utf8")) + (await readFile(attributionPath, "utf8"));
+    expect(source).toContain('console.error("Unable to load productivity.", membersError)');
   });
 
   it("does not load leaderboard data for employees when studio visibility is disabled", async () => {
-    const source = await readFile(queryPath, "utf8");
+    const source = (await readFile(queryPath, "utf8")) + (await readFile(attributionPath, "utf8"));
     expect(source).toContain("canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees })");
+    expect(source).toContain("access.membership.system_role !== \"admin\"");
   });
 });

@@ -38,8 +38,10 @@ server guard before changing a write.
 | Task status, production progress, checklist | Any eligible studio project task | Own assigned eligible task |
 | Collaborative task visibility | Yes | Included where query/policy permits; collaboration does not grant assignee mutation rights |
 | Dashboard | Studio metrics, attention, workload, own tasks | Personal tasks, projects, deadlines |
-| Leaderboard | Always | Only when studio setting enables it |
+| Leaderboard / credited m² | Active studio admins only | No access; the legacy employee-visibility setting does not grant access |
 | Team directory | Active and former members | Active directory |
+| Employee profile task activity | Any studio member's profile | Own completed-task calendar and current work only; colleague profiles contain identity and permitted shared projects |
+| Internal employee notes | Read and add within studio, including former employees | No access, including notes about self |
 | Invite/edit/remove/restore studio members | Yes | No; self-service profile fields use separate constrained paths |
 | Contractors | Create and edit; delete and manage categories | Create and edit; no deletion/category administration |
 | Time-off request | Own request | Own request |
@@ -71,6 +73,18 @@ server guard before changing a write.
 - Private time-off notes never enter coworker availability or notification
   content. Review notes are stored in an administrator-only RLS surface and
   never enter employee-accessible request rows, availability, or notifications.
+- Credited m² and its history are admin-only at the canonical server query and
+  attribution/stage-budget RLS boundaries, including active-profile checks.
+  Task column grants exclude the private productivity snapshot; a verified
+  admin server path reads it only for Dashboard accounting. Profile task activity uses completion dates
+  and current assignment/collaboration under viewer project RLS, without area
+  fields. It never enters colleague profile payloads. Heatmap time-off context
+  contains approved dates only, without private request/review details.
+- `employee_profile_notes` is append-only and admin-only at RLS and server
+  boundaries. Review month is independent of creation time; multiple entries per
+  employee/month are allowed. Restrictive membership/author foreign keys preserve
+  history after deactivation. Notes and their counts never enter colleague profile
+  payloads, activity, or notifications.
 - Privileged `security definer` functions must use an empty `search_path`, verify
   the actor internally, and have `PUBLIC`/`anon` execution revoked. Private
   helpers are not browser APIs.

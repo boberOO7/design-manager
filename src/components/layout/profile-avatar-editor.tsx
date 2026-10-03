@@ -1,9 +1,9 @@
 "use client";
 
-import { Camera, LoaderCircle } from "lucide-react";
+import { Settings2, LoaderCircle } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { Button } from "@/components/ui/button";
 import type { SystemRole } from "@/types";
 
 const ProfileEditorDialog = lazy(() => import("@/components/layout/profile-editor-dialog").then((module) => ({ default: module.ProfileEditorDialog })));
@@ -22,7 +22,7 @@ export type ProfileAvatarEditorProps = {
   userId: string;
 };
 
-export function ProfileAvatarEditor(props: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ mode = "settings", ...props }: ProfileAvatarEditorProps & { mode?: "settings" | "callback" }) {
   const t = useTranslations("Account");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [requested, setRequested] = useState(false);
@@ -33,6 +33,7 @@ export function ProfileAvatarEditor(props: ProfileAvatarEditorProps) {
   useEffect(() => setCurrentAvatarUrl(props.avatarUrl), [props.avatarUrl]);
 
   useEffect(() => {
+    if (mode !== "callback") return;
     const url = new URL(window.location.href);
     const result = url.searchParams.get("googleCalendar");
     if (!result) return;
@@ -44,17 +45,14 @@ export function ProfileAvatarEditor(props: ProfileAvatarEditorProps) {
       setIsOpen(true);
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, []);
+  }, [mode]);
 
   function closeDialog() {
     setIsOpen(false);
   }
 
   return <span className="relative inline-flex shrink-0">
-    <button ref={triggerRef} type="button" onClick={() => { setRequested(true); setIsOpen((open) => !open); }} className="group relative inline-flex shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2" aria-expanded={isOpen} aria-haspopup="dialog" aria-label={t("editProfilePhoto")}>
-      <UserAvatar imageUrl={currentAvatarUrl} name={props.fullName} size="header" decorative />
-      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"><Camera className="size-4" aria-hidden="true" /></span>
-    </button>
+    {mode === "settings" ? <Button ref={triggerRef} type="button" variant="outline" onClick={() => { setRequested(true); setIsOpen((open) => !open); }} aria-expanded={isOpen} aria-haspopup="dialog" className="gap-2"><Settings2 className="size-4" aria-hidden="true" />{t("profileSettings")}</Button> : null}
     <Suspense fallback={isOpen ? <ProfileEditorLoading onClose={closeDialog} /> : null}>
       {requested ? <ProfileEditorDialog {...props} avatarUrl={currentAvatarUrl} isOpen={isOpen} googleCalendarResult={googleCalendarResult} onClose={closeDialog} onAvatarChanged={setCurrentAvatarUrl} returnFocusRef={triggerRef} /> : null}
     </Suspense>
@@ -73,5 +71,5 @@ function ProfileEditorLoading({ onClose }: { onClose: () => void }) {
     document.addEventListener("keydown", cancelOpen);
     return () => document.removeEventListener("keydown", cancelOpen);
   }, [onClose]);
-  return <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white" role="status"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" /><span className="sr-only">{t("loading")}</span></span>;
+  return <span className="pointer-events-none absolute inset-y-0 -right-7 flex items-center text-[var(--ui-text-muted)]" role="status"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" /><span className="sr-only">{t("loading")}</span></span>;
 }

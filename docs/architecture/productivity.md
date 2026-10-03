@@ -68,12 +68,16 @@ rows without `voided_at`.
 
 ## Leaderboard
 
-- Periods are month, quarter, and year, bounded in `Europe/Kyiv`.
+- Periods are month, quarter, year, or an inclusive custom month range, bounded
+  in `Europe/Kyiv` with an exclusive first-of-next-month end. Custom ranges use
+  the same aggregation and compare with the immediately preceding equal number
+  of calendar months. URL state uses `period=custom&from=YYYY-MM&through=YYYY-MM`.
 - Active rows are grouped by snapped contributor and ordered by credited area,
   completed task count, name, then stable ID. Equal totals share rank.
 - Active eligible professional members may appear with zero totals.
-- Administrators always have access. Employee access follows
-  `studios.leaderboard_visible_to_employees`.
+- Credited m², the Leaderboard, and attribution rows are admin-only. The legacy
+  `studios.leaderboard_visible_to_employees` setting no longer grants access.
+  Employees do not load or display personal dashboard credited-area metrics.
 - `projects.include_in_productivity` controls credited leaderboard area in all
   periods. When disabled, its attributions contribute 0 m² while qualifying
   task events still count. Toggling it does not rewrite ledger area or budgets.

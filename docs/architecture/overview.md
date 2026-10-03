@@ -135,15 +135,24 @@ and keep the entire namespace available to optional and role-specific UI.
 
 ## Profile/account client delivery
 
-The shared header keeps the avatar trigger, current avatar URL, and OAuth-return
-listener in `profile-avatar-editor.tsx`. The listener must remain eager to consume
-`googleCalendar` callback results and open the account UI without another click.
-The editor, crop/upload controls, city/date controls, and Google connection UI
-load through `profile-editor-dialog.tsx` on first opening. A cancellable spinner
-occupies the existing avatar bounds while loading. The editor stays mounted after
-that first load to preserve its existing close/reset and account-state behavior;
-the shared Dialog returns focus to the persistent trigger. Profile RPCs, Storage
-operations, and Google endpoints retain their existing authorization boundaries.
+The header identity links to `/team/[userId]`; Team member names link to the same
+profile route. Own profiles expose Settings through `profile-avatar-editor.tsx`.
+Its separate header callback mode remains eager to consume `googleCalendar`
+results and open settings without another click. The existing editor, crop/upload,
+city/date controls, and Google connection UI lazy-load through
+`profile-editor-dialog.tsx` on first opening and remain mounted thereafter.
+Profile RPCs, Storage, and Google endpoints retain their authorization boundaries.
+
+`employee-profile.ts` returns identity and viewer-RLS shared project context to
+colleagues. Self/admin requests also load current work and the completed-task
+calendar from `tasks.completed_at`; current assignment/collaboration determines
+participation, so this is not immutable completion-owner history. Unknown dates,
+pre-employment and future periods are excluded. Approved time-off dates and
+studio days off provide neutral calendar context without private HR details.
+Only admins load credited m² and employment summaries. Profiles and the
+admin-only Leaderboard share guarded `productivity-attributions.ts` and
+admin-only attribution RLS. Internal notes use a separate guarded admin query
+and RLS table; they never enter the ordinary profile payload.
 
 ## Read next
 

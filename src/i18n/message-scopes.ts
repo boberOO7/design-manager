@@ -20,6 +20,7 @@ export const messageScopes = {
   assignments: ["OfficeAssignments"],
   submissions: ["Submissions"],
   team: ["Team", "Roles"],
+  profile: ["EmployeeProfile"],
   administration: ["Administration", "Availability", "Calendar", "TimeOff", "Templates"],
   leaderboard: ["Leaderboard", "Administration"],
   contractors: ["Contractors"],

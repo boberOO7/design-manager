@@ -5,7 +5,7 @@ description: Review a StudioFlow diff for meaningful behavior, regression, data 
 
 # StudioFlow Review
 
-When invoked on the main thread, delegate the review to the `studioflow_reviewer` agent (GPT-6 Sol High), including for DB, Finance, RLS, historical-integrity, and other high-risk changes. Give it the original request, diff scope, and relevant validation results. Do not paste large repository context. If already running as `studioflow_reviewer`, perform the review directly without further delegation.
+When invoked on the main thread, delegate the review to the `studioflow_reviewer` agent (GPT-6.1 Sol Extra High; Ultra allowed for particularly high-risk Finance/DB/cross-domain work), including for DB, Finance, RLS, historical-integrity, and other high-risk changes. Give it the original request, diff scope, and relevant validation results. Do not paste large repository context. If already running as `studioflow_reviewer`, perform the review directly without further delegation.
 
 Independently inspect the actual resulting diff, including untracked files when relevant, and enough surrounding implementation to assess the requested behavior. Use the original request and `AGENTS.md` as the review contract. Follow its context routing; read relevant migrations or tests when data, permissions, or historical behavior is affected. Do not load unrelated skills, architecture references, or Graphify by default.
 

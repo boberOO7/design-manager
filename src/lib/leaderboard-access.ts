@@ -1,9 +1,10 @@
 export type LeaderboardAccessContext = {
   systemRole: string | null;
-  leaderboardVisibleToEmployees: boolean;
+  /** Retained for existing call sites; leaderboard access is now admin-only. */
+  leaderboardVisibleToEmployees?: boolean;
 };
 
-/** Admins always retain leaderboard access; employees follow the studio setting. */
-export function canAccessLeaderboard({ systemRole, leaderboardVisibleToEmployees }: LeaderboardAccessContext): boolean {
-  return systemRole === "admin" || leaderboardVisibleToEmployees;
+/** Credited productivity metrics are available only to active studio admins. */
+export function canAccessLeaderboard({ systemRole }: LeaderboardAccessContext): boolean {
+  return systemRole === "admin";
 }

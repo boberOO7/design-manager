@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getLeaderboardTotals, getProjectAttributionMode, hasQualifyingProductivity, isEligibleProjectFallbackContributor, projectProductivityLeaderboard } from "./productivity";
+import { canCompleteAttributedTask, filterProductivityAttributionsForPeriod, getKyivMonthBounds, getKyivPeriodBounds, getKyivPeriodLabel, getKyivPeriodRangeLabel, getLeaderboardMonthRange, getLeaderboardTotals, getProjectAttributionMode, hasQualifyingProductivity, isEligibleProjectFallbackContributor, parseLeaderboardMonthRange, projectProductivityLeaderboard, resolveLeaderboardPeriod } from "./productivity";
 import { getLeaderboardBonusPercent, getLeaderboardEntryBonusPercent } from "./leaderboard-bonus-rules";
 
 describe("monthly productivity projection", () => {
@@ -42,6 +42,33 @@ describe("monthly productivity projection", () => {
     expect(getKyivPeriodLabel("quarter", "en", now)).toBe("Q1 2026");
     expect(getKyivPeriodLabel("quarter", "en", now, -1)).toBe("Q4 2025");
     expect(getKyivPeriodLabel("year", "en", now, -1)).toBe("2025");
+  });
+
+  it("uses selected month ranges and the immediately preceding equal-length range", () => {
+    const period = { from: "2026-03", through: "2026-08" } as const;
+    expect(getKyivPeriodBounds(period)).toEqual({ start: "2026-02-28T22:00:00.000Z", end: "2026-08-31T21:00:00.000Z" });
+    expect(getKyivPeriodBounds(period, new Date("2026-10-01T00:00:00.000Z"), -1)).toEqual({ start: "2025-08-31T21:00:00.000Z", end: "2026-02-28T22:00:00.000Z" });
+    expect(getKyivPeriodRangeLabel(period, "en")).toBe("Mar 1, 2026 – Aug 31, 2026");
+  });
+
+  it("supports cross-year and one-month ranges and derives first custom ranges from the selected context", () => {
+    expect(getKyivPeriodBounds({ from: "2025-11", through: "2026-02" }, new Date("2026-05-15T12:00:00.000Z"), -1)).toEqual({
+      start: "2025-06-30T21:00:00.000Z",
+      end: "2025-10-31T22:00:00.000Z",
+    });
+    expect(getKyivPeriodBounds({ from: "2026-03", through: "2026-03" })).toEqual(getKyivPeriodBounds("month", new Date("2026-03-15T12:00:00.000Z")));
+    const now = new Date("2026-05-15T12:00:00.000Z");
+    expect(getLeaderboardMonthRange("month", now)).toEqual({ from: "2026-05", through: "2026-05" });
+    expect(getLeaderboardMonthRange("quarter", now)).toEqual({ from: "2026-04", through: "2026-06" });
+    expect(getLeaderboardMonthRange("year", now)).toEqual({ from: "2026-01", through: "2026-12" });
+  });
+
+  it("restores a custom month range from URL parameters and falls back for invalid ranges", () => {
+    const storedParams = { period: "custom", from: "2025-11", through: "2026-02" };
+    expect(resolveLeaderboardPeriod(storedParams, new Date("2030-07-01T12:00:00.000Z"))).toEqual({ from: "2025-11", through: "2026-02" });
+    expect(parseLeaderboardMonthRange("2026-2", "2026-04")).toBeNull();
+    expect(parseLeaderboardMonthRange("2026-05", "2026-04")).toBeNull();
+    expect(resolveLeaderboardPeriod({ period: "custom", from: "2026-05-01", through: "2026-05-31" }, new Date("2026-05-15T12:00:00.000Z"))).toEqual({ from: "2026-05", through: "2026-05" });
   });
 
   it("credits task area to its completion assignee and project fallback to each contributor", () => {
@@ -141,6 +168,26 @@ describe("monthly productivity projection", () => {
 
     expect(projectProductivityLeaderboard(previous)).toMatchObject([
       { user_id: "a", completed_area_m2: 80, completed_tasks: 2 },
+    ]);
+  });
+
+  it("ranks custom-range contributions on both exact boundaries and compares the preceding equal-duration range", () => {
+    const period = { from: "2026-03", through: "2026-08" } as const;
+    const attributions = [
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 10, source_type: "task" as const, completed_at: "2026-02-28T21:59:59.999Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 20, source_type: "task" as const, completed_at: "2026-02-28T22:00:00.000Z" },
+      { contributor_id: "a", contributor_name: "Ari", contributor_job_title: "Architect", credited_area_m2: 30, source_type: "task" as const, completed_at: "2026-08-31T20:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 40, source_type: "task" as const, completed_at: "2026-08-31T21:00:00.000Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 50, source_type: "task" as const, completed_at: "2025-08-31T20:59:59.999Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 60, source_type: "task" as const, completed_at: "2025-08-31T21:00:00.000Z" },
+      { contributor_id: "b", contributor_name: "Bea", contributor_job_title: "Designer", credited_area_m2: 70, source_type: "task" as const, completed_at: "2026-02-28T21:59:59.999Z" },
+    ];
+    const current = filterProductivityAttributionsForPeriod(attributions, period);
+    const previous = filterProductivityAttributionsForPeriod(attributions, period, new Date("2026-10-01T00:00:00.000Z"), -1);
+    expect(projectProductivityLeaderboard(current)).toMatchObject([{ user_id: "a", completed_area_m2: 50, completed_tasks: 2 }]);
+    expect(projectProductivityLeaderboard(previous)).toMatchObject([
+      { user_id: "b", completed_area_m2: 130, completed_tasks: 2 },
+      { user_id: "a", completed_area_m2: 10, completed_tasks: 1 },
     ]);
   });
 

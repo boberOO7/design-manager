@@ -439,6 +439,60 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+.leaderboard-month-slider {
+  height: 2rem;
+  margin: 0;
+  appearance: none;
+  pointer-events: none;
+  background: transparent;
+}
+
+.leaderboard-month-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: transparent;
+}
+
+.leaderboard-month-slider::-moz-range-track {
+  height: 2px;
+  background: transparent;
+}
+
+.leaderboard-month-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 22px;
+  margin-top: -10px;
+  appearance: none;
+  pointer-events: auto;
+  cursor: ew-resize;
+  border: 2px solid var(--ui-surface);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-action-primary);
+}
+
+.leaderboard-month-slider::-moz-range-thumb {
+  width: 12px;
+  height: 18px;
+  pointer-events: auto;
+  cursor: ew-resize;
+  border: 2px solid var(--ui-surface);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-action-primary);
+}
+
+.leaderboard-month-slider:focus-visible {
+  outline: none;
+}
+
+.leaderboard-month-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.leaderboard-month-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
 @keyframes checklist-picker-in {
   from { opacity: 0; translate: 0 2px; }
   to { opacity: 1; translate: 0 0; }

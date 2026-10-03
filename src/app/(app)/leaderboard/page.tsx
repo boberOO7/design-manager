@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/shared/page-header";
 import { getCurrentUserProfile, getLeaderboardOverviewData } from "@/data/queries";
-import { getKyivPeriodLabel, getKyivPeriodRangeLabel, getLeaderboardTotals, hasQualifyingProductivity, isLeaderboardPeriod, type LeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
+import { getKyivPeriodLabel, getKyivPeriodRangeLabel, getLeaderboardMonthRange, getLeaderboardTotals, hasQualifyingProductivity, parseLeaderboardMonthRange, resolveLeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
 import { getLeaderboardEntryBonusPercent, hasLeaderboardBonuses, type LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -18,9 +18,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("productivity") };
 }
 
-export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  const requestedPeriod = (await searchParams).period;
-  const period: LeaderboardPeriod = isLeaderboardPeriod(requestedPeriod) ? requestedPeriod : "month";
+export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ period?: string | string[]; from?: string | string[]; through?: string | string[] }> }) {
+  const params = await searchParams;
+  const referenceTime = new Date();
+  const period = resolveLeaderboardPeriod(params, referenceTime);
+  const periodMode = typeof period === "string" ? period : "custom";
+  const initialRange = parseLeaderboardMonthRange(params.from, params.through) ?? getLeaderboardMonthRange(period, referenceTime);
   const [t, roles, stages, locale, profile, membership] = await Promise.all([
     getTranslations("Leaderboard"),
     getTranslations("Roles"),
@@ -67,9 +70,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const currentLeader = overview.current.find(hasQualifyingProductivity) ?? null;
   const previousLeader = overview.previous.find(hasQualifyingProductivity) ?? null;
   const totals = getLeaderboardTotals(overview.current);
-  const periodLabel = getKyivPeriodLabel(period, locale);
-  const previousPeriodLabel = getKyivPeriodLabel(period, locale, undefined, -1);
-  const periodRange = getKyivPeriodRangeLabel(period, locale);
+  const periodLabel = getKyivPeriodLabel(period, locale, referenceTime);
+  const previousPeriodLabel = getKyivPeriodLabel(period, locale, referenceTime, -1);
+  const periodRange = getKyivPeriodRangeLabel(period, locale, referenceTime);
   const monthlyBonusesApply = period === "month" && hasLeaderboardBonuses(overview.bonusConfig) && overview.current.some(hasQualifyingProductivity);
   const formatBonusRules = overview.bonusConfig.rules.map((rule) => t("bonusRule", { place: rule.place, bonus: rule.bonusPercent })).join(" · ");
   const rankedEntries = overview.current.map((entry) => ({
@@ -80,18 +83,18 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
-      <PageHeader className="flex-col items-start sm:flex-row sm:items-center" title={t("productivity")} description={t("description", { period: t(period) })} descriptionClassName="min-h-10" action={<div className="flex items-center gap-1"><LeaderboardPeriodSwitcher period={period} labels={{ month: t("month"), quarter: t("quarter"), year: t("year") }} />{membership.system_role === "admin" ? <LeaderboardBonusMenu studioId={membership.studio_id} bonusConfig={overview.bonusConfig} leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees} /> : null}</div>} />
+      <PageHeader className="flex-col items-start sm:flex-row sm:items-center [&>div:last-child]:max-w-full" title={t("productivity")} description={t("description", { period: periodMode === "custom" ? periodLabel : t(periodMode) })} descriptionClassName="min-h-10" action={<div className="flex flex-wrap items-start gap-1 sm:justify-end"><LeaderboardPeriodSwitcher period={period} initialRange={initialRange} locale={locale} />{membership.system_role === "admin" ? <LeaderboardBonusMenu studioId={membership.studio_id} bonusConfig={overview.bonusConfig} leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees} /> : null}</div>} />
       <section className="grid overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)] md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)]">
         <div className="p-5 sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ui-text-muted)]">{t("currentLeader", { period: t(period) })}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ui-text-muted)]">{periodMode === "custom" ? t("customLeader") : t("currentLeader", { period: t(periodMode) })}</p>
           <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{periodRange}</p>
-          {currentLeader ? <><div className="mt-3 flex items-start justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><UserAvatar imageUrl={currentLeader.avatar_url} name={currentLeader.full_name} size="lg" /><div className="min-w-0"><h2 className="truncate text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{currentLeader.full_name}</h2><p className="mt-1 truncate text-sm text-[var(--ui-text-secondary)]">{currentLeader.job_title}</p></div></div>{monthlyBonusesApply ? <BonusBadge config={overview.bonusConfig} entry={currentLeader} t={t} /> : null}</div><div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ui-text-secondary)]"><span><strong className="ui-numeric font-semibold text-[var(--ui-text)]">{formatArea(currentLeader.completed_area_m2, locale)}</strong> {t("completed")}</span><span>{t("tasks", { count: currentLeader.completed_tasks })}</span>{overview.current.filter((entry) => entry.rank === 1).length > 1 ? <span>{t("sharedLead")}</span> : null}</div></> : <div className="mt-3"><h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("noLeader")}</h2><p className="mt-1 text-sm leading-6 text-[var(--ui-text-secondary)]">{t("noLeaderDescription", { period: t(period) })}</p></div>}
+          {currentLeader ? <><div className="mt-3 flex items-start justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><UserAvatar imageUrl={currentLeader.avatar_url} name={currentLeader.full_name} size="lg" /><div className="min-w-0"><h2 className="truncate text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{currentLeader.full_name}</h2><p className="mt-1 truncate text-sm text-[var(--ui-text-secondary)]">{currentLeader.job_title}</p></div></div>{monthlyBonusesApply ? <BonusBadge config={overview.bonusConfig} entry={currentLeader} t={t} /> : null}</div><div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ui-text-secondary)]"><span><strong className="ui-numeric font-semibold text-[var(--ui-text)]">{formatArea(currentLeader.completed_area_m2, locale)}</strong> {t("completed")}</span><span>{t("tasks", { count: currentLeader.completed_tasks })}</span>{overview.current.filter((entry) => entry.rank === 1).length > 1 ? <span>{t("sharedLead")}</span> : null}</div></> : <div className="mt-3"><h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("noLeader")}</h2><p className="mt-1 text-sm leading-6 text-[var(--ui-text-secondary)]">{periodMode === "custom" ? t("noPrevious", { period: periodLabel }) : t("noLeaderDescription", { period: t(periodMode) })}</p></div>}
         </div>
         <div className="border-t border-[var(--ui-border)] bg-[var(--ui-surface-muted)] p-5 md:border-l md:border-t-0 sm:p-6"><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ui-text-muted)]">{t("previousPeriod", { period: previousPeriodLabel })}</p>{previousLeader ? <div className="mt-3"><p className="truncate font-semibold text-[var(--ui-text)]">{previousLeader.full_name}</p><p className="mt-1 truncate text-sm text-[var(--ui-text-secondary)]">{previousLeader.job_title}</p><p className="mt-4 text-sm text-[var(--ui-text-secondary)]"><span className="ui-numeric font-semibold text-[var(--ui-text)]">{formatArea(previousLeader.completed_area_m2, locale)}</span> {t("completed")}</p>{overview.previous.filter((entry) => entry.rank === 1).length > 1 ? <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("sharedPreviousLead")}</p> : null}</div> : <p className="mt-3 text-sm leading-6 text-[var(--ui-text-secondary)]">{t("noPrevious", { period: previousPeriodLabel })}</p>}</div>
       </section>
       <section aria-labelledby="period-ranking-heading" className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]">
         <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] px-5 py-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="period-ranking-heading" className="font-semibold text-[var(--ui-text)]">{t("ranking", { period: periodLabel })}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{overview.current.length ? t("contributorsSummary", { count: overview.current.length, area: formatArea(totals.completed_area_m2, locale) }) : t("noCompleted")}</p></div>{monthlyBonusesApply && overview.current.length ? <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("bonusRanks", { rules: formatBonusRules })}</p> : null}</div>
-        {overview.current.length === 0 ? <div className="px-5 py-10 text-center"><p className="font-medium text-[var(--ui-text)]">{t("noCompletedPeriod", { period: t(period) })}</p><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("noCompletedPeriodDescription")}</p></div> : <LeaderboardRanking key={period} entries={rankedEntries} contributions={overview.contributions} locale={locale} monthlyBonusesApply={monthlyBonusesApply} stageLabels={stageLabels} />}
+        {overview.current.length === 0 ? <div className="px-5 py-10 text-center"><p className="font-medium text-[var(--ui-text)]">{periodMode === "custom" ? t("noPrevious", { period: periodLabel }) : t("noCompletedPeriod", { period: t(periodMode) })}</p><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("noCompletedPeriodDescription")}</p></div> : <LeaderboardRanking key={periodMode === "custom" ? `${initialRange.from}:${initialRange.through}` : periodMode} entries={rankedEntries} contributions={overview.contributions} locale={locale} monthlyBonusesApply={monthlyBonusesApply} stageLabels={stageLabels} />}
       </section>
     </div>
   );

@@ -113,7 +113,9 @@ export type ProductivityLeaderboardMember = Pick<
   "user_id" | "full_name" | "job_title" | "avatar_url"
 >;
 
-export type LeaderboardPeriod = "month" | "quarter" | "year";
+export type LeaderboardPeriodMode = "month" | "quarter" | "year" | "custom";
+export type LeaderboardMonthRange = { from: string; through: string };
+export type LeaderboardPeriod = Exclude<LeaderboardPeriodMode, "custom"> | LeaderboardMonthRange;
 
 export type ProjectAttributionMode = "project_fallback" | "task_level";
 
@@ -145,61 +147,74 @@ function kyivParts(now: Date) {
   return { year: Number(parts.find((part) => part.type === "year")?.value), month: Number(parts.find((part) => part.type === "month")?.value) };
 }
 
-export function getKyivMonthBounds(now = new Date(), monthOffset = 0): { start: string; end: string } {
-  const { year, month } = kyivParts(now);
-  const startDate = new Date(Date.UTC(year, month - 1 + monthOffset, 1));
-  const nextDate = new Date(Date.UTC(year, month + monthOffset, 1));
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = startDate.getUTCMonth() + 1;
-  const nextYear = nextDate.getUTCFullYear();
-  const nextMonth = nextDate.getUTCMonth() + 1;
-  const wall = (targetYear: number, targetMonth: number) => `${targetYear}-${String(targetMonth).padStart(2, "0")}-01T00:00`;
-  return { start: zonedWallTimeToIso(wall(startYear, startMonth)), end: zonedWallTimeToIso(wall(nextYear, nextMonth)) };
+export function parseLeaderboardMonthRange(from: unknown, through: unknown): LeaderboardMonthRange | null {
+  const monthPattern = /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/;
+  return typeof from === "string" && typeof through === "string" && monthPattern.test(from) && monthPattern.test(through) && from <= through
+    ? { from, through }
+    : null;
 }
 
-export function isLeaderboardPeriod(value: string | undefined): value is LeaderboardPeriod {
+export function isLeaderboardPeriod(value: unknown): value is Exclude<LeaderboardPeriodMode, "custom"> {
   return value === "month" || value === "quarter" || value === "year";
 }
 
-export function getKyivPeriodBounds(period: LeaderboardPeriod, now = new Date(), periodOffset = 0): { start: string; end: string } {
-  if (period === "month") return getKyivMonthBounds(now, periodOffset);
+export function resolveLeaderboardPeriod(params: { period?: string | string[]; from?: string | string[]; through?: string | string[] }, now = new Date()): LeaderboardPeriod {
+  if (params.period === "custom") return parseLeaderboardMonthRange(params.from, params.through) ?? getLeaderboardMonthRange("month", now);
+  return isLeaderboardPeriod(params.period) ? params.period : "month";
+}
 
-  const { year, month } = kyivParts(now);
-  const startDate = period === "quarter"
-    ? new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3 + periodOffset * 3, 1))
-    : new Date(Date.UTC(year + periodOffset, 0, 1));
-  const endDate = period === "quarter"
-    ? new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 3, 1))
-    : new Date(Date.UTC(startDate.getUTCFullYear() + 1, 0, 1));
-  const wall = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01T00:00`;
-  return { start: zonedWallTimeToIso(wall(startDate)), end: zonedWallTimeToIso(wall(endDate)) };
+function periodMonthDates(period: LeaderboardPeriod, now: Date, periodOffset = 0): { start: Date; end: Date } {
+  let start: Date;
+  let monthCount: number;
+  if (typeof period === "string") {
+    const { year, month } = kyivParts(now);
+    monthCount = period === "month" ? 1 : period === "quarter" ? 3 : 12;
+    start = new Date(Date.UTC(year, Math.floor((month - 1) / monthCount) * monthCount, 1));
+  } else {
+    start = new Date(`${period.from}-01T00:00:00.000Z`);
+    const [endYear, endMonth] = period.through.split("-").map(Number);
+    monthCount = (endYear - start.getUTCFullYear()) * 12 + endMonth - start.getUTCMonth();
+  }
+  start.setUTCMonth(start.getUTCMonth() + periodOffset * monthCount);
+  const end = new Date(start);
+  end.setUTCMonth(end.getUTCMonth() + monthCount);
+  return { start, end };
+}
+
+export function getLeaderboardMonthRange(period: LeaderboardPeriod, now = new Date(), periodOffset = 0): LeaderboardMonthRange {
+  const { start, end } = periodMonthDates(period, now, periodOffset);
+  end.setUTCMonth(end.getUTCMonth() - 1);
+  return { from: start.toISOString().slice(0, 7), through: end.toISOString().slice(0, 7) };
+}
+
+export function getKyivMonthBounds(now = new Date(), monthOffset = 0): { start: string; end: string } {
+  return getKyivPeriodBounds("month", now, monthOffset);
+}
+
+export function getKyivPeriodBounds(period: LeaderboardPeriod, now = new Date(), periodOffset = 0): { start: string; end: string } {
+  const { start, end } = periodMonthDates(period, now, periodOffset);
+  const wall = (date: Date) => `${date.toISOString().slice(0, 10)}T00:00`;
+  return { start: zonedWallTimeToIso(wall(start)), end: zonedWallTimeToIso(wall(end)) };
 }
 
 export function getKyivPeriodLabel(period: LeaderboardPeriod, locale: string, now = new Date(), periodOffset = 0): string {
-  const { year, month } = kyivParts(now);
+  const { start, end } = periodMonthDates(period, now, periodOffset);
   if (period === "month") {
-    const date = new Date(Date.UTC(year, month - 1 + periodOffset, 1));
-    return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+    return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(start);
   }
   if (period === "quarter") {
-    const date = new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3 + periodOffset * 3, 1));
-    return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+    return `Q${Math.floor(start.getUTCMonth() / 3) + 1} ${start.getUTCFullYear()}`;
   }
-  return String(year + periodOffset);
+  if (period === "year") return String(start.getUTCFullYear());
+  end.setUTCMonth(end.getUTCMonth() - 1);
+  const formatter = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+  const label = (date: Date) => `${formatter.format(date).replace(/\.$/u, "")} ${date.getUTCFullYear()}`;
+  return `${label(start)} – ${label(end)}`;
 }
 
 export function getKyivPeriodRangeLabel(period: LeaderboardPeriod, locale: string, now = new Date()): string {
-  const { year, month } = kyivParts(now);
-  const start = period === "month"
-    ? new Date(Date.UTC(year, month - 1, 1))
-    : period === "quarter"
-      ? new Date(Date.UTC(year, Math.floor((month - 1) / 3) * 3, 1))
-      : new Date(Date.UTC(year, 0, 1));
-  const end = period === "month"
-    ? new Date(Date.UTC(year, month, 0))
-    : period === "quarter"
-      ? new Date(Date.UTC(year, start.getUTCMonth() + 3, 0))
-      : new Date(Date.UTC(year, 11, 31));
+  const { start, end } = periodMonthDates(period, now);
+  end.setUTCDate(0);
   const formatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   return `${formatter.format(start)} – ${formatter.format(end)}`;
 }

@@ -28,6 +28,8 @@ async function login(page: Page, index = 0, locale = "en") {
   await page.locator('input[type="password"]').fill(accounts[index].password);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/dashboard/);
+  await page.getByRole("link", { name: (locale === "uk" ? uk : en).Account.viewProfile, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/team/${accounts[index].id}`));
 }
 
 async function scripts(page: Page) {
@@ -65,10 +67,13 @@ test("production shell delivery and first profile interaction", async ({ page },
   const measurements = [];
   for (const route of ["/dashboard", "/projects", "/office/equipment", "/calendar"]) {
     await page.goto(route);
-    const trigger = page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true });
-    await expect(trigger).toBeVisible();
-    const beforeBox = await trigger.boundingBox();
+    const identity = page.getByRole("link", { name: en.Account.viewProfile, exact: true });
+    await expect(identity).toBeVisible();
     const initial = await scripts(page);
+    await identity.click();
+    await expect(page).toHaveURL(new RegExp(`/team/${accounts[0].id}`));
+    const trigger = page.getByRole("button", { name: en.Account.profileSettings, exact: true });
+    const beforeBox = await trigger.boundingBox();
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: en.Account.profileEditor, exact: true });
     await expect(dialog.locator('[name="profile-city"]')).toBeVisible();
@@ -93,7 +98,7 @@ for (const [locale, messages, account] of [["en", en, 0], ["uk", uk, 1]] as cons
   test(`profile fields, city/date controls and keyboard on ${locale}`, async ({ page }) => {
     if (locale === "uk") await page.setViewportSize({ width: 390, height: 844 });
     await login(page, account, locale);
-    const trigger = page.getByRole("button", { name: messages.Account.editProfilePhoto, exact: true });
+    const trigger = page.getByRole("button", { name: messages.Account.profileSettings, exact: true });
     await trigger.focus(); await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: messages.Account.profileEditor, exact: true });
     const city = dialog.locator('[name="profile-city"]');
@@ -154,7 +159,7 @@ test("slow profile code is cancellable without shifting the header or reopening 
   });
   try {
     await login(page);
-    const trigger = page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true });
+    const trigger = page.getByRole("button", { name: en.Account.profileSettings, exact: true });
     const box = await trigger.boundingBox();
     expect(requested).toBe(0);
     await trigger.click();
@@ -184,7 +189,7 @@ test("slow profile code is cancellable without shifting the header or reopening 
 test("avatar validation, crop, upload, reopen and removal use local Storage", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
-  const trigger = page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true });
+  const trigger = page.getByRole("button", { name: en.Account.profileSettings, exact: true });
   await trigger.click();
   const editor = page.getByRole("dialog", { name: en.Account.profileEditor, exact: true });
   const input = editor.locator('input[type="file"]');
@@ -209,11 +214,11 @@ test("avatar validation, crop, upload, reopen and removal use local Storage", as
   await expect(zoom).toBeEnabled();
   await crop.getByRole("button", { name: en.Account.usePhoto, exact: true }).click();
   await expect(editor.getByRole("button", { name: en.Account.removePhoto, exact: true })).toBeVisible();
-  await expect(trigger.locator("img")).toHaveAttribute("src", /\.avatar\.png|\.avatar\.jpg/);
+  await expect(page.getByRole("link", { name: en.Account.viewProfile, exact: true }).locator("img")).toHaveAttribute("src", /\.avatar\.png|\.avatar\.jpg/);
   const { data: objects, error } = await service.storage.from("avatars").list(accounts[0].id);
   expect(error).toBeNull();
   expect(objects?.map((object) => object.name).sort()).toEqual([expect.stringMatching(/\.avatar\.jpg$/), expect.stringMatching(/\.avatar\.jpg\.original$/)]);
-  const imageUrl = await trigger.locator("img").getAttribute("src");
+  const imageUrl = await page.getByRole("link", { name: en.Account.viewProfile, exact: true }).locator("img").getAttribute("src");
   if (!imageUrl) throw new Error("Uploaded avatar missing");
   const dimensions = await page.evaluate(async (url) => {
     const image = new Image(); image.src = url; await image.decode(); return [image.naturalWidth, image.naturalHeight];
@@ -223,7 +228,7 @@ test("avatar validation, crop, upload, reopen and removal use local Storage", as
   await expect(trigger).toBeFocused();
   await trigger.click();
   await editor.getByRole("button", { name: en.Account.removePhoto, exact: true }).click();
-  await expect(trigger.locator("img")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: en.Account.viewProfile, exact: true }).locator("img")).toHaveCount(0);
   await expect(editor.getByRole("button", { name: en.Account.removePhoto, exact: true })).toHaveCount(0);
   const remaining = await service.storage.from("avatars").list(accounts[0].id);
   expect(remaining.error).toBeNull(); expect(remaining.data).toEqual([]);
@@ -267,7 +272,8 @@ test("OAuth return, reconnect, sync and nested disconnect preserve account state
   await page.keyboard.press("Escape");
   connected = true; reconnect = true;
   const previousReads = statusReads;
-  await page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true }).click();
+  await page.getByRole("link", { name: en.Account.viewProfile, exact: true }).click();
+  await page.getByRole("button", { name: en.Account.profileSettings, exact: true }).click();
   await expect(editor.getByRole("link", { name: en.Account.reconnectGoogleCalendar, exact: true })).toHaveAttribute("href", "/api/integrations/google-calendar/connect");
   expect(statusReads).toBeGreaterThan(previousReads);
   const callback = await page.request.get("/api/integrations/google-calendar/callback?state=invalid", { maxRedirects: 0 });

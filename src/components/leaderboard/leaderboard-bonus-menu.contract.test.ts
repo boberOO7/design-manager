@@ -4,14 +4,12 @@ import { describe, expect, it } from "vitest";
 const menuPath = new URL("./leaderboard-bonus-menu.tsx", import.meta.url);
 
 describe("leaderboard admin action menu", () => {
-  it("keeps bonus configuration and adds a localized employee visibility toggle", async () => {
+  it("keeps bonus configuration without exposing a leaderboard visibility toggle", async () => {
     const source = await readFile(menuPath, "utf8");
 
     expect(source).toContain('t("configureBonuses")');
-    expect(source).toContain('rpc("set_leaderboard_employee_visibility"');
-    expect(source).toContain('leaderboardVisibleToEmployees ? t("hideFromEmployees") : t("showToEmployees")');
-    expect(source).toContain("EyeOff");
-    expect(source).toContain("Eye");
+    expect(source).not.toContain('rpc("set_leaderboard_employee_visibility"');
+    expect(source).not.toContain("toggleEmployeeVisibility");
     expect(source).toContain("router.refresh()");
   });
 });

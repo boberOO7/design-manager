@@ -6,8 +6,8 @@ describe("leaderboard access", () => {
     expect(canAccessLeaderboard({ systemRole: "admin", leaderboardVisibleToEmployees: false })).toBe(true);
   });
 
-  it("allows employees only when the studio visibility setting is enabled", () => {
+  it("keeps leaderboard access administrator-only regardless of the legacy visibility setting", () => {
     expect(canAccessLeaderboard({ systemRole: "employee", leaderboardVisibleToEmployees: false })).toBe(false);
-    expect(canAccessLeaderboard({ systemRole: "employee", leaderboardVisibleToEmployees: true })).toBe(true);
+    expect(canAccessLeaderboard({ systemRole: "employee", leaderboardVisibleToEmployees: true })).toBe(false);
   });
 });

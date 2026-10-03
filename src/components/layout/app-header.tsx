@@ -1,4 +1,6 @@
 import { Bell } from "lucide-react";
+import Link from "next/link";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
@@ -43,7 +45,15 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
     <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <MobileNavigation crmAttentionCount={crmAttentionCount} leaderboardVisibleToEmployees={leaderboardVisibleToEmployees} systemRole={systemRole} />
+        <Link href={`/team/${profile.id}`} aria-label={t("viewProfile")} className="flex min-w-0 items-center gap-3 rounded-[var(--ui-radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2">
+          <UserAvatar imageUrl={profile.avatar_url} name={profile.full_name} size="header" decorative />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{profile.full_name}</p>
+            <p className="truncate text-xs text-[var(--ui-text-muted)]">{roleKey ? roles(roleKey) : profile.job_title}</p>
+          </div>
+        </Link>
         <ProfileAvatarEditor
+          mode="callback"
           avatarUrl={profile.avatar_url}
           birthDate={profile.birth_date}
           city={profile.city}
@@ -56,10 +66,6 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
           systemRole={systemRole}
           userId={profile.id}
         />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{profile.full_name}</p>
-          <p className="truncate text-xs text-[var(--ui-text-muted)]">{roleKey ? roles(roleKey) : profile.job_title}</p>
-        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <LanguageSelector />

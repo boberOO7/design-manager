@@ -25,7 +25,7 @@ Use this map instead of duplicating their fields here.
 
 | Domain | Primary tables |
 | --- | --- |
-| Tenant and identity | `studios`, `profiles`, `studio_members` |
+| Tenant and identity | `studios`, `profiles`, `studio_members`, admin-only `employee_profile_notes` |
 | Projects | `projects`, `project_members`, `project_task_stage_columns`, `project_templates`, `project_template_tasks`, `project_activity`, legacy `project_area_progress` |
 | Tasks | `tasks`, `task_status_periods`, `task_collaborators`, `task_deadlines`, `task_schedules`, `task_schedule_dependencies`, `task_checklist_items`, `checklist_templates`, `checklist_template_items` |
 | Productivity | `productivity_attributions`, `project_stage_productivity_budgets`, `leaderboard_bonus_rules` |

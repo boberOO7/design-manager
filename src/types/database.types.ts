@@ -817,6 +817,65 @@ export type Database = {
           },
         ]
       }
+      employee_profile_notes: {
+        Row: {
+          author_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          note: string
+          review_month: string
+          studio_id: string
+        }
+        Insert: {
+          author_id?: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          note: string
+          review_month: string
+          studio_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          note?: string
+          review_month?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_profile_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profile_notes_studio_id_author_id_fkey"
+            columns: ["studio_id", "author_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "employee_profile_notes_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "employee_profile_notes_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment: {
         Row: {
           asset_tag: string

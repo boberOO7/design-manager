@@ -7,7 +7,7 @@ import {
   getProjectById,
 } from "@/data/mock";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getCanonicalProductivityAttributions } from "@/data/queries/productivity-attributions";
 import { cache } from "react";
 import type {
   DashboardMetrics,
@@ -22,7 +22,7 @@ import { getStudioLeaderboardBonusConfig } from "@/data/queries/leaderboard-bonu
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import type { LeaderboardBonusConfig } from "@/lib/leaderboard-bonus-rules";
 import { PROFESSIONAL_ROLES } from "@/lib/validation/employee-invitation";
-import { getKyivPeriodBounds, projectProductivityContributions, projectProductivityLeaderboard, selectLeaderboardAttributions, selectPersonalDashboardProductivity, type LeaderboardPeriod, type ProductivityContributionAttribution, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember, type ProductivityProjectContribution } from "@/lib/productivity";
+import { getKyivPeriodBounds, projectProductivityContributions, projectProductivityLeaderboard, selectPersonalDashboardProductivity, type LeaderboardPeriod, type ProductivityLeaderboardEntry, type ProductivityLeaderboardMember, type ProductivityProjectContribution } from "@/lib/productivity";
 
 export type DataMode = "mock" | "supabase";
 
@@ -193,58 +193,17 @@ type LeaderboardPeriodData = {
 async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeriod, periodOffset: number, referenceTime: Date, includeContributions = false): Promise<LeaderboardPeriodData> {
   const bounds = getKyivPeriodBounds(period, referenceTime, periodOffset);
   const supabase = await createClient();
-  const [{ data: members, error: membersError }, { data: firstAttributions, count, error: attributionError }] = await Promise.all([
-    supabase
-      .from("studio_members")
+  const [{ data: members, error: membersError }, selected] = await Promise.all([
+    supabase.from("studio_members")
       .select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url)")
-      .eq("studio_id", studioId)
-      .eq("is_active", true)
-      .eq("profile.is_active", true)
+      .eq("studio_id", studioId).eq("is_active", true).eq("profile.is_active", true)
       .in("profile.job_title", PROFESSIONAL_ROLES)
       .overrideTypes<Array<{ profile: { id: string; full_name: string; job_title: string; avatar_url: string | null } }>, { merge: false }>(),
-    supabase.from("productivity_attributions")
-      .select("id, project_id, task_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at", { count: "exact" })
-      .eq("studio_id", studioId)
-      .is("voided_at", null)
-      .gte("completed_at", bounds.start)
-      .lt("completed_at", bounds.end)
-      .order("completed_at", { ascending: false }).order("id", { ascending: false }).range(0, 999)
-      .overrideTypes<ProductivityContributionAttribution[], { merge: false }>(),
+    getCanonicalProductivityAttributions(studioId, { bounds }),
   ]);
-  if (membersError || !members || attributionError || !firstAttributions || count == null) {
-    const cause = membersError ?? attributionError;
-    console.error("Unable to load productivity.", cause);
-    throw new Error("Unable to load productivity.", { cause });
-  }
-  const attributions = [...firstAttributions];
-  while (attributions.length < count) {
-    const { data, error } = await supabase.from("productivity_attributions")
-      .select("id, project_id, task_id, contributor_id, contributor_name, contributor_job_title, credited_area_m2, source_type, task_stage, completed_at")
-      .eq("studio_id", studioId).is("voided_at", null).gte("completed_at", bounds.start).lt("completed_at", bounds.end)
-      .order("completed_at", { ascending: false }).order("id", { ascending: false }).range(attributions.length, attributions.length + 999)
-      .overrideTypes<ProductivityContributionAttribution[], { merge: false }>();
-    if (error || !data?.length) {
-      const cause = error ?? new Error("An attribution page was empty before the selected period was fully loaded.");
-      console.error("Unable to load productivity.", cause);
-      throw new Error("Unable to load productivity.", { cause });
-    }
-    attributions.push(...data);
-  }
-
-  // Project flags are studio-wide accounting inputs; project names still follow the viewer's RLS.
-  const projectIds = [...new Set(attributions.map((attribution) => attribution.project_id))];
-  const excludedProjectIds = new Set<string>();
-  if (projectIds.length) {
-    const admin = createAdminClient();
-    for (let index = 0; index < projectIds.length; index += 100) {
-      const { data, error } = await admin.from("projects").select("id, include_in_productivity").eq("studio_id", studioId).in("id", projectIds.slice(index, index + 100));
-      if (error || !data) {
-        const cause = error;
-        console.error("Unable to load productivity.", cause);
-        throw new Error("Unable to load productivity.", { cause });
-      }
-      for (const project of data) if (!project.include_in_productivity) excludedProjectIds.add(project.id);
-    }
+  if (membersError || !members) {
+    console.error("Unable to load productivity.", membersError);
+    throw new Error("Unable to load productivity.", { cause: membersError });
   }
   const eligibleMembers: ProductivityLeaderboardMember[] = members.map(({ profile }) => ({
     user_id: profile.id,
@@ -252,7 +211,6 @@ async function getLeaderboardForPeriod(studioId: string, period: LeaderboardPeri
     job_title: profile.job_title,
     avatar_url: profile.avatar_url,
   }));
-  const selected = selectLeaderboardAttributions(attributions, excludedProjectIds);
   const entries = projectProductivityLeaderboard(selected, eligibleMembers);
   if (!includeContributions) return { entries, contributions: {} };
 
@@ -298,8 +256,9 @@ export async function getLeaderboardOverviewData(period: LeaderboardPeriod = "mo
 export async function getMyDashboardProductivity() {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
   if (!profile?.is_active || !membership || membership.authenticatedUserId !== profile.id) return null;
+  if (membership.system_role !== "admin") return { areaM2: 0 };
   const entries = (await getLeaderboardForPeriod(membership.studio_id, "month", 0, new Date())).entries;
-  return selectPersonalDashboardProductivity(entries, profile.id, canAccessLeaderboard({ systemRole: membership.system_role, leaderboardVisibleToEmployees: membership.leaderboardVisibleToEmployees }));
+  return selectPersonalDashboardProductivity(entries, profile.id, true);
 }
 
 export async function getLeaderboardData(): Promise<ProductivityLeaderboardEntry[]> {
