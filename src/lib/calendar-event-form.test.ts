@@ -143,7 +143,7 @@ describe("Calendar event form time semantics", () => {
 describe("Calendar event and time-off payload validation", () => {
   it("accepts every supported event enum value", () => {
     for (const eventType of CALENDAR_EVENT_TYPES) {
-      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
+      const values = eventType === "site_visit" ? { ...baseValues, eventType, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", participantIds: ["123e4567-e89b-12d3-a456-426614174002"] } : eventType === "interview" ? { ...baseValues, eventType, allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002" } : eventType === "business_trip" ? { ...baseValues, eventType, projectId: "123e4567-e89b-12d3-a456-426614174001" } : eventType === "meeting" || eventType === "presentation" ? { ...baseValues, eventType, allDay: false } : { ...baseValues, eventType };
       expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType }).success).toBe(true);
     }
   });
@@ -159,8 +159,16 @@ describe("Calendar event and time-off payload validation", () => {
     expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
   });
 
+  it("accepts multiple site-visit participants and requires at least one", () => {
+    const values = { ...baseValues, eventType: "site_visit" as const, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", participantIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174003"] };
+    const payload = toCalendarEventMutationPayload(values);
+    expect(calendarEventSchema.parse(payload).participantIds).toEqual(values.participantIds);
+    expect(payload.assigneeId).toBeNull();
+    expect(calendarEventSchema.safeParse({ ...payload, participantIds: [] }).success).toBe(false);
+  });
+
   it("rejects site visits that cross a Kyiv calendar day", () => {
-    const values = { ...baseValues, eventType: "site_visit" as const, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", startDate: "2026-08-29", endDate: "2026-08-30" };
+    const values = { ...baseValues, eventType: "site_visit" as const, allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", participantIds: ["123e4567-e89b-12d3-a456-426614174002"], startDate: "2026-08-29", endDate: "2026-08-30" };
     expect(calendarEventSchema.safeParse({ ...toCalendarEventMutationPayload(values), eventType: "site_visit" }).success).toBe(false);
   });
 
@@ -185,7 +193,7 @@ describe("Calendar event and time-off payload validation", () => {
 
   it("defaults a meeting mode only for meetings and presentations", () => {
     expect(calendarEventSchema.parse({ ...toCalendarEventMutationPayload({ ...baseValues, eventType: "meeting", allDay: false }), meetingMode: undefined }).meetingMode).toBe("offline");
-    expect(calendarEventSchema.parse(toCalendarEventMutationPayload({ ...baseValues, eventType: "site_visit", allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", assigneeId: "123e4567-e89b-12d3-a456-426614174002", meetingMode: "online" })).meetingMode).toBeNull();
+    expect(calendarEventSchema.parse(toCalendarEventMutationPayload({ ...baseValues, eventType: "site_visit", allDay: false, projectId: "123e4567-e89b-12d3-a456-426614174001", participantIds: ["123e4567-e89b-12d3-a456-426614174002"], meetingMode: "online" })).meetingMode).toBeNull();
   });
 
   it("submits Presentation as presentation", () => {

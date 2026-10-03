@@ -188,9 +188,9 @@ export type CalendarEventRelevance = {
  */
 export function isCalendarEventRelevantToUser(event: CalendarEventRelevance, userId: string): boolean {
   switch (event.eventType) {
-    case "site_visit":
     case "interview":
       return event.assigneeId === userId;
+    case "site_visit":
     case "business_trip":
       return event.participantIds.includes(userId);
     case "meeting":

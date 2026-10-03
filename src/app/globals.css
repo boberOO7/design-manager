@@ -444,6 +444,48 @@ body,
   to { opacity: 1; translate: 0 0; }
 }
 
+@keyframes people-picker-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.people-picker-popover[data-state="open"] {
+  animation: checklist-picker-in 180ms ease-out;
+}
+
+.people-picker-popover[data-state="closed"] {
+  animation: people-picker-out 160ms ease-in;
+}
+
+.people-picker-chip {
+  animation: checklist-picker-in 160ms ease-out;
+}
+
+/* These controls show keyboard focus on their existing field or row border. */
+[data-people-picker] button:focus-visible,
+.people-picker-popover input:focus-visible {
+  outline: none;
+}
+
+/* Keep other drawers and shared field defaults unchanged. */
+.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[role="switch"], button[data-calendar-field]):not(:disabled):hover {
+  border-color: var(--ui-text-muted);
+}
+
+.calendar-event-form :is(button[role="combobox"], button[data-calendar-field]):not(:disabled):is(:hover, [data-state="open"]) {
+  background-color: var(--ui-surface);
+}
+
+.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[role="switch"], button[data-calendar-field]):is(:focus, :focus-visible, [data-state="open"]) {
+  border-color: var(--ui-focus);
+  box-shadow: none;
+  outline: none;
+}
+
+.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[data-calendar-field])[aria-invalid="true"] {
+  border-color: var(--ui-danger-border);
+}
+
 @keyframes notification-toast-in {
   from { opacity: 0; transform: translateY(0.5rem); }
   to { opacity: 1; transform: translateY(0); }

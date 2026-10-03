@@ -22,7 +22,8 @@ describe("automatic Google Calendar reconciliation", () => {
     expect(isCalendarEventRelevantToUser({ ...base, eventType: "meeting" }, "organizer")).toBe(true);
     expect(isCalendarEventRelevantToUser({ ...base, eventType: "business_trip" }, "participant")).toBe(true);
     expect(isCalendarEventRelevantToUser({ ...base, eventType: "business_trip" }, "organizer")).toBe(false);
-    expect(isCalendarEventRelevantToUser({ ...base, eventType: "site_visit", assigneeId: "assignee" }, "assignee")).toBe(true);
+    expect(isCalendarEventRelevantToUser({ ...base, eventType: "site_visit" }, "participant")).toBe(true);
+    expect(isCalendarEventRelevantToUser({ ...base, eventType: "site_visit" }, "organizer")).toBe(false);
     expect(isCalendarEventRelevantToUser({ ...base, eventType: "interview", assigneeId: "assignee" }, "invitee")).toBe(false);
     expect(isCalendarEventRelevantToUser({ ...base, eventType: "work_makeup" }, "organizer")).toBe(true);
   });

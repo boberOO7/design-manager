@@ -71,6 +71,11 @@ Invariants:
 - Archived projects cannot receive events.
 - Event creation with invitations is atomic. Specialized participant/assignee
   updates use guarded database operations.
+- Site visits and business trips use `calendar_event_participants` for active
+  project members, without RSVP. Administrators select multiple people; employees
+  retain self-only assignment. Site-visit additions notify each new participant;
+  relevance and Google projection use the participant set. Legacy visit assignees
+  are backfilled into that relation; interviews keep their single assignee.
 - A general event may include its organizer as an invitee; other event types
   retain their organizer-specific role and invitation restrictions.
 - Recurrence preserves a root series and occurrence identity; update/cancel

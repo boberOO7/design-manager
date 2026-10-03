@@ -82,7 +82,7 @@ export function createCalendarEventFormValues(
     startTime: start.time,
     endTime: end.time,
     attendeeIds: item?.invitees.map((person) => person.id) ?? [],
-    participantIds: item?.participants.map((person) => person.id) ?? [],
+    participantIds: item?.eventType === "site_visit" && !item.participants.length && item.assigneeId ? [item.assigneeId] : item?.participants.map((person) => person.id) ?? [],
     location: item?.location ?? "",
     meetingUrl: item?.meetingUrl ?? "",
     meetingMode: item?.meetingMode ?? "offline",
@@ -116,7 +116,7 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues, 
     description: values.description,
     recurrenceRule: values.recurrenceRule ? { ...values.recurrenceRule, ...(!values.allDay ? { timeZone } : {}) } : null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
-    assigneeId: values.assigneeId || null,
+    assigneeId: values.eventType === "site_visit" ? null : values.assigneeId || null,
   };
 }
 

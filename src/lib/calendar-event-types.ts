@@ -48,7 +48,7 @@ export const CALENDAR_EVENT_DETAIL_CONFIG: Record<CalendarEventType, CalendarEve
   general: { sections: ["project", "invitations", "location", "meetingUrl", "recurrence"], invitationLabel: "invitees" },
   meeting: { sections: ["project", "organizer", "invitations", "meetingMode", "location", "meetingUrl"], invitationLabel: "participants", organizerLabel: "organizer" },
   interview: { sections: ["assignee", "meetingUrl"], assigneeLabel: "interviewer" },
-  site_visit: { sections: ["project", "assignee", "location"], assigneeLabel: "executor" },
+  site_visit: { sections: ["project", "participants", "location"] },
   business_trip: { sections: ["project", "destination", "participants"] },
   presentation: { sections: ["project", "organizer", "invitations", "meetingMode", "location", "meetingUrl"], invitationLabel: "participants", organizerLabel: "presenter" },
   internal_review: { sections: ["project", "invitations", "location", "meetingUrl", "recurrence"], invitationLabel: "invitees" },

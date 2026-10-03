@@ -9,8 +9,7 @@ describe("calendar event semantic types", () => {
   });
 
   it("maps detail sections to the fields persisted by each event form", () => {
-    expect(CALENDAR_EVENT_DETAIL_CONFIG.site_visit.sections).toEqual(["project", "assignee", "location"]);
-    expect(CALENDAR_EVENT_DETAIL_CONFIG.site_visit.assigneeLabel).toBe("executor");
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.site_visit.sections).toEqual(["project", "participants", "location"]);
     expect(CALENDAR_EVENT_DETAIL_CONFIG.site_visit.sections).not.toContain("invitations");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.business_trip.sections).toContain("participants");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.interview.sections).toEqual(["assignee", "meetingUrl"]);

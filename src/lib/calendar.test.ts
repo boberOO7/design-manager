@@ -410,11 +410,12 @@ describe("Calendar relevance semantics", () => {
   const executor = { id: "u2", full_name: "Executor", job_title: "Architect", avatar_url: null, projectIds: [] };
   const invitee = { ...executor, inviteId: "invite-1", status: "pending" as const };
 
-  it("distinguishes a site-visit creator from its executor", () => {
-    const siteVisit = calendarEvent({ eventType: "site_visit", organizer: { ...executor, id: "u1", full_name: "Creator" }, assigneeId: "u2", assignee: executor, personIds: ["u1", "u2"] });
+  it("distinguishes a site-visit creator from all selected participants", () => {
+    const siteVisit = calendarEvent({ eventType: "site_visit", organizer: { ...executor, id: "u1", full_name: "Creator" }, participants: [executor, { ...executor, id: "u3" }], personIds: ["u1", "u2", "u3"] });
 
     expect(isCalendarItemRelevantToUser(siteVisit, "u1")).toBe(false);
     expect(isCalendarItemRelevantToUser(siteVisit, "u2")).toBe(true);
+    expect(isCalendarItemRelevantToUser(siteVisit, "u3")).toBe(true);
     expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u1")).toEqual([]);
     expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u2")).toEqual([siteVisit]);
   });

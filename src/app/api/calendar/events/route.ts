@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 
   let value = parsed.data.eventType === "site_visit"
-    ? { ...parsed.data, assigneeId: activeMembership.system_role === "admin" ? parsed.data.assigneeId : activeMembership.authenticatedUserId }
+    ? { ...parsed.data, attendeeIds: [], assigneeId: null, meetingUrl: null, recurrenceRule: null, participantIds: activeMembership.system_role === "admin" ? parsed.data.participantIds : [activeMembership.authenticatedUserId] }
     : parsed.data.eventType === "interview"
       ? { ...parsed.data, projectId: null, allDay: false, attendeeIds: [], participantIds: [], location: null, recurrenceRule: null, compensatesTimeOffRequestId: null, meetingMode: null }
     : parsed.data.eventType === "business_trip"

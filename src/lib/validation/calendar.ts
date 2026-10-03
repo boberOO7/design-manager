@@ -44,7 +44,7 @@ export const calendarEventSchema = z.object({
   }
   if (value.eventType === "site_visit") {
     if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the site visit." });
-    if (!value.assigneeId) context.addIssue({ code: "custom", path: ["assigneeId"], message: "Choose a responsible assignee for the site visit." });
+    if (!value.participantIds.length) context.addIssue({ code: "custom", path: ["participantIds"], message: "Choose at least one site visit participant." });
     if (value.allDay) context.addIssue({ code: "custom", path: ["allDay"], message: "Site visits must have a start and end time." });
     if (value.recurrenceRule) context.addIssue({ code: "custom", path: ["recurrenceRule"], message: "Site visits cannot repeat." });
     if (instantToDateOnly(value.startsAt) !== instantToDateOnly(value.endsAt)) context.addIssue({ code: "custom", path: ["endsAt"], message: "Site visits must start and end on the same local calendar day." });
@@ -126,8 +126,8 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
   if (error?.code === "22P02" || message.includes("event_type")) {
     return { formError: "Choose a supported event type.", fieldErrors: { eventType: "Unsupported event type." } };
   }
-  if (message.includes("Business trip participant") || message.includes("Business trips require at least one participant")) {
-    return { formError: "Choose at least one active project member for the business trip.", fieldErrors: { participantIds: "Choose active project members who are going on the trip." } };
+  if (message.includes("Business trip participant") || message.includes("Business trips require at least one participant") || message.includes("Calendar event participant") || message.includes("Calendar events require at least one participant")) {
+    return { formError: "Choose at least one active project member.", fieldErrors: { participantIds: "Choose active project members." } };
   }
   if (message.includes("Interview interviewer") || message.includes("Interviews require one interviewer")) {
     return { formError: "Choose an active studio administrator to conduct the interview.", fieldErrors: { assigneeId: "Choose an active studio administrator." } };
