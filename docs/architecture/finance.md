@@ -11,8 +11,47 @@ owns classification; `/finance/schedules` owns compensation and recurring rules;
 operational routes remain in primary Finance navigation; Accounts and Categories
 remain deep-linkable configuration routes available through the Finance manage menu.
 All inherit the same administrator-only layout and messages.
-Project details adds an administrator-only `view=finance` tab with its own scoped
-Finance messages; it uses these same expectations, movements, and matching RPCs.
+Project details adds an administrator-only `view=finance` tab with Payments,
+Expenses and Result workspaces (`financeTab`); legacy `stream` links remain valid.
+Income streams are a selector inside Payments. Contractual payments are grouped
+by `finance_project_orders`, with one order-management flow for price, schedule,
+proposal revisions and commercial confirmation.
+
+## Project commercial orders
+
+- Orders are stable studio/Project identities; design terms remain immutable,
+  order-scoped revisions. Supervision, other income, expenses, trips, labor and
+  profitability remain Project-level. Existing agreement history belongs to the
+  default order; omitted order IDs in legacy commercial calls resolve only there.
+- Drafts store a validated, versioned plan payload with stable draft row keys.
+  They create no terms, expected items, forecast income or recognition sources.
+  Explicit confirmation materializes canonical terms/payments atomically using
+  the existing pricing/VAT/discount engine. Proposal generation is not acceptance.
+  Discarded drafts retain their proposal/history records; confirmed orders cannot
+  be deleted or returned to draft.
+- Terms, payment links and proposals carry immutable order ownership. Guarded
+  RPCs, composite tenant/Project references and admin RLS enforce that scope.
+  Existing schedule/currency/history locks apply within each order.
+- Project contractual totals sum confirmed orders within native-currency buckets.
+  The compact summary displays gross value, matched settlements, remaining value
+  after settlements and non-cash closures, and the next expected payment. It does
+  not count project cash attribution or recognized revenue as paid. All converted
+  summary measures use one dated display-FX basis; unavailable rates fall back to
+  native subtotals. Stored settlement/reporting FX is never restated.
+- Recording from a payment automatically allocates forward only inside its order.
+  Excess stays unapplied. The existing explicit, same-currency receipt matching
+  flow can choose a payment in another order; it does not duplicate cash attribution.
+- Recognition sources and caps resolve ownership from terms/payment IDs, including
+  historical reversals. Project profitability aggregates native remaining revenue
+  per order while retaining historical recognized FX and incomplete-data signals.
+- Proposal revisions are order-scoped. Version 2 snapshots identify the order and
+  source revision; version 1 snapshots and their stored PDF bytes remain readable
+  unchanged. Draft proposals use draft rows; confirmation creates fresh expected
+  item IDs without rewriting saved proposal snapshots.
+
+Result defaults to the available lifetime recognition history and identifies
+missing historical coverage separately from incomplete costs. Studio-wide receipt
+candidates appear only in explicitly opened matching/attribution flows.
 
 ## Foundation and balance cutover
 
@@ -242,6 +281,17 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
   Request UUID/payload auditing makes retries idempotent and conflicting reuse fail.
   `record_finance_expected_payment` composes the existing cash RPC with allocation in
   one transaction; a failed match rolls back the cash posting too.
+- Project recording uses `record_finance_project_payment` for one real movement and
+  an editable, selected-forward allocation batch. It checks the full compatible
+  schedule snapshot under the studio lock and conserves native principal with
+  cumulative currency rounding. `finance_project_payment_context` retains validated
+  project context through correction chains; it does not attribute reporting cash.
+- `finance_settlement_adjustments` is immutable non-cash remainder closure history.
+  Guarded closure requires an incoming project payment with effective cash
+  settlement and an explicit reason; reversal appends its correction. Remaining balances subtract active closures;
+  `settled_amount`, collected cash/VAT and recognition exclude them. Refunds release
+  cash allocations only; fixed closures remain until explicitly reversed. Agreement
+  details disclose `closed_amount`; cancelling a closed item requires reversal first.
 - A cash-entry trigger reconciles settlement when a refund or original reversal posts.
   Refunds consume unapplied availability first, then release the newest allocations
   until matching fits the remaining money. Releases link to the causing cash event.
@@ -293,12 +343,12 @@ or notifications containing private data.
   future planned payments separately. Unscheduled contract value is an actionable
   exception, not dated forecast cash. The next project payment uses expected date
   before due date and is selected independently of list pagination and filters.
-  Stream navigation keeps design value separate from supervision, contractor
+  The Payments selector keeps order payments separate from supervision, contractor
   bonuses and other income; compact rows disclose settlement actions and history.
 
 - `finance_project_terms` retains immutable, numbered design/supervision revisions
   with the actor and a required agreement/amendment note. Current terms are the
-  latest revision, not a copied CRM budget. Saves use the existing studio lock,
+  latest revision per design order (or Project-level supervision), not a copied CRM budget. Saves use the existing studio lock,
   request audit/idempotency, and optimistic revision checks.
 - Project terms also snapshot optional VAT rate and net/gross input basis. Their
   stored net, VAT and gross amounts use the agreement currency's minor units;
@@ -359,7 +409,7 @@ or notifications containing private data.
   cancellation preserves the original amount, terms, payment and allocation history.
   With retained settlement, explicit confirmation atomically releases its matches,
   cancels the original and re-matches that exact amount to a fully paid replacement
-  in the same project/stream/currency. Releases and the original-to-replacement audit
+  in the same Project/order/stream/currency. Releases and the original-to-replacement audit
   are append-only; neither path changes cash. Cancelled items cannot be reopened.
   The original permanently retains visit/month billing identity. Closed unpaid value
   leaves receivables and timed forecasts; the commercial agreement total stays intact

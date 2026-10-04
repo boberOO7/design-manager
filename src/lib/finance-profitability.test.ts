@@ -153,4 +153,54 @@ describe("project amounts", () => {
     expect(result.received.period).toBeNull();
     expect(result.received.lifetime).toBeNull();
   });
+
+  it("aggregates confirmed orders and excludes drafts from the agreed project value", () => {
+    const base = profitabilityInput();
+    const contracts = [
+      { ...base.reporting.contracts[0], order_id: entry2, order_status: "confirmed" as const },
+      { ...base.reporting.contracts[0], id: project2, order_id: project2, order_status: "confirmed" as const, net_amount: "100.00", gross_amount: "120.00" },
+      { ...base.reporting.contracts[0], id: categoryId, order_id: categoryId, order_status: "draft" as const, net_amount: "500.00", gross_amount: "600.00" },
+    ];
+    const rows = managementDisplayEntries([
+      recognition({ source_kind: "project_terms", order_id: entry2, amount: "150.00", reporting_amount: "150.00" }),
+      recognition({ id: entry3, source_kind: "expected", order_id: project2, source_snapshot: { stream: "design" }, amount: "20.00", reporting_amount: "20.00" }),
+    ], "USD", 2, new Map());
+    expect(buildProjectProfitability({ ...base, entries: rows, projectRows: managementAmountRows(rows), reporting: { ...base.reporting, contracts } })[0])
+      .toMatchObject({ agreed: { net: "300.00", gross: "360.00", complete: true }, lifetime: { revenue: "170.00" }, finalMargin: "90.00" });
+  });
+
+  it("subtracts recognized native revenue by order before converting its remainder", () => {
+    const base = profitabilityInput();
+    const contracts = [
+      { ...base.reporting.contracts[0], order_id: entry2, currency: "USD", net_amount: "100.00", gross_amount: "100.00" },
+      { ...base.reporting.contracts[0], id: project2, order_id: project2, currency: "EUR", net_amount: "200.00", gross_amount: "200.00" },
+    ];
+    const rows = managementDisplayEntries([
+      recognition({ source_kind: "project_terms", order_id: entry2, amount: "50.00", reporting_currency: "UAH", reporting_amount: "100.00", fx_rate: "2" }),
+      recognition({ id: entry3, source_kind: "expected", order_id: project2, source_snapshot: { stream: "design" }, currency: "EUR", amount: "100.00", reporting_currency: "UAH", reporting_amount: "200.00", fx_rate: "2" }),
+      recognition({ id: categoryId, classification: "direct_cost", currency: "UAH", amount: "50.00", reporting_currency: "UAH", reporting_amount: "50.00" }),
+    ], "UAH", 2, new Map());
+    const input = { ...base, entries: rows, projectRows: managementAmountRows(rows), currency: "UAH", referenceRates: new Map([["USD", "3"], ["EUR", "5"]]),
+      reporting: { ...base.reporting, contracts, estimates: [estimate({ currency: "UAH", reporting_currency: "UAH", remaining_direct: "0", remaining_labor: "0" })] } };
+    expect(buildProjectProfitability(input)[0]).toMatchObject({ agreed: { net: "1300.00", complete: true }, lifetime: { revenue: "300.00" }, finalMargin: "94.74" });
+    expect(buildProjectProfitability({ ...input, referenceRates: new Map([["USD", "3"]]) })[0])
+      .toMatchObject({ agreed: { net: null }, finalMargin: null });
+  });
+
+  it("retains order ownership through native economic adjustments without borrowing another order's allowance", () => {
+    const base = profitabilityInput();
+    const contracts = [
+      { ...base.reporting.contracts[0], order_id: entry2, net_amount: "100.00" },
+      { ...base.reporting.contracts[0], id: project2, order_id: project2, net_amount: "200.00" },
+    ];
+    const rows = managementDisplayEntries([
+      recognition({ source_kind: "project_terms", order_id: entry2, amount: "110.00", reporting_amount: "110.00" }),
+      recognition({ id: entry3, kind: "adjustment", related_entry_id: entry2, source_kind: "project_terms", order_id: entry2, amount: "-20.00", reporting_amount: "-20.00" }),
+    ], "USD", 2, new Map());
+    const input = { ...base, entries: rows, projectRows: managementAmountRows(rows), reporting: { ...base.reporting, contracts } };
+    expect(buildProjectProfitability(input)[0].finalMargin).toBe("90.00");
+    expect(buildProjectProfitability({ ...input, entries: rows.slice(0, 1), projectRows: managementAmountRows(rows.slice(0, 1)) })[0].finalMargin).toBeNull();
+    expect(buildProjectProfitability({ ...input, entries: rows.map(row => ({ ...row, order_id: null })) })[0])
+      .toMatchObject({ agreed: { complete: false }, finalMargin: null });
+  });
 });

@@ -20,7 +20,7 @@ export const projectCancellationSchema = z.object({
 
 export const projectStreams = ["design", "supervision", "contractor_bonus", "other", "expenses"] as const;
 export const projectContextSchema = z.object({
-  projectId: z.uuid(), stream: z.enum(projectStreams),
+  projectId: z.uuid(), orderId: z.union([z.uuid(), z.literal("")]).optional(), stream: z.enum(projectStreams),
   source: z.enum(["manual", "visit"]).default("manual"),
   contractorId: z.union([z.uuid(), z.literal("")]).default(""),
   visitId: z.union([z.uuid(), z.literal("")]).default(""),
@@ -33,7 +33,7 @@ export const projectContextSchema = z.object({
   .refine((v) => v.stream !== "expenses" || v.source === "manual");
 
 export const projectTermsSchema = z.object({
-  requestId: z.uuid(), projectId: z.uuid(), revision: z.coerce.number().int().min(0),
+  requestId: z.uuid(), projectId: z.uuid(), orderId: z.uuid().optional(), revision: z.coerce.number().int().min(0),
   stream: z.enum(["design", "supervision"]), mode: z.enum(["design", "monthly", "per_visit", "custom", "stopped"]),
   amount: z.union([planningAmount, z.literal("")]), currency: z.string().regex(/^[A-Z]{3}$/),
   ...projectDiscountFields,
@@ -55,6 +55,7 @@ export const supervisionMonthsSchema = z.object({
   (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 
 export function financeProjectError(message: string) {
+  if (message === "finance_settlement_adjustment_reverse_required") return "reverseClosureRequired";
   if (message === "finance_project_expense_invalid" || message === "finance_project_direction_required") return "expenseInvalid";
   if (message === "finance_project_plan_remainder") return "planRemainder";
   if (message === "finance_project_cancellation_required") return "cancellationRequired";

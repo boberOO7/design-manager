@@ -19,8 +19,9 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Panel } from "@/components/ui/panel";
 import { Select, SelectItem } from "@/components/ui/select";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
-import { financeAmountUnits, formatFinanceAmount } from "@/lib/finance";
-import { managementCoverageIssues, recognitionSourceHref, summarizeManagementEntries, type RecognitionEntry, type RecognitionSource } from "@/lib/finance-management";
+import { getEligibleRecognitionSources, RecognitionForm } from "./recognition-form";
+import { formatFinanceAmount } from "@/lib/finance";
+import { managementCoverageIssues, recognitionSourceHref, summarizeManagementEntries, type RecognitionEntry } from "@/lib/finance-management";
 import type { FinanceManagementData } from "@/data/queries/finance-management";
 import { formatDateOnly } from "@/lib/utils";
 
@@ -45,28 +46,11 @@ function monthStarts(from: string, to: string) {
   return months;
 }
 
-function amountDateInSource(source: RecognitionSource | undefined, today: string) {
-  if (source?.periodStart && today < source.periodStart) return source.periodStart;
-  if (source?.periodEnd && today > source.periodEnd) return source.periodEnd;
-  return today;
-}
-
 export function ManagementReportsWorkspace({ data }: { data: FinanceManagementData }) {
   const t = useTranslations("Finance.management"), locale = useLocale(), router = useRouter();
   const recognitionStart = data.settings?.recognition_start_month ?? null;
   const startMonth = `${data.today.slice(0, 7)}-01`;
   const earliestEntryDate = recognitionStart ?? startMonth;
-  const eligibleSources = useMemo(() => data.sources.filter(source => (!recognitionStart || recognitionStart <= data.today) && financeAmountUnits(source.remaining, 4) > BigInt(0)
-    && (!source.periodEnd || source.periodEnd >= earliestEntryDate)
-    && (!source.periodStart || source.periodStart <= data.today)), [data.sources, data.today, earliestEntryDate, recognitionStart]);
-  const [selectedSourceId, setSelectedSourceId] = useState(eligibleSources[0]?.sourceId ?? "");
-  const source = eligibleSources.find(item => item.sourceId === selectedSourceId);
-  const [sourceAmount, setSourceAmount] = useState(source?.remaining ?? "");
-  const [periodStart, setPeriodStart] = useState(source?.periodStart && source.periodStart > earliestEntryDate ? source.periodStart : earliestEntryDate);
-  const [periodEnd, setPeriodEnd] = useState(source?.periodEnd && source.periodEnd < data.today ? source.periodEnd : data.today);
-  const [recognizedOn, setRecognizedOn] = useState(amountDateInSource(source, data.today));
-  const [sourceDescription, setSourceDescription] = useState(source?.label ?? "");
-  const [projectForSource, setProjectForSource] = useState(source?.projectId ?? "");
   const [historyClassification, setHistoryClassification] = useState<(typeof classifications)[number] | null>(null);
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [coverageMonth, setCoverageMonth] = useState(earliestEntryDate.slice(0, 7));
@@ -110,17 +94,6 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
   }
   if (projectId) csvParams.set("project", projectId);
   const onSaved = () => router.refresh();
-  const updateSource = (id: string) => {
-    const next = eligibleSources.find(item => item.sourceId === id);
-    setSelectedSourceId(id);
-    setSourceAmount(next?.remaining ?? "");
-    setPeriodStart(next?.periodStart && next.periodStart > earliestEntryDate ? next.periodStart : earliestEntryDate);
-    setPeriodEnd(next?.periodEnd && next.periodEnd < data.today ? next.periodEnd : data.today);
-    setRecognizedOn(amountDateInSource(next, data.today));
-    setSourceDescription(next?.label ?? "");
-    setProjectForSource(next?.projectId ?? "");
-  };
-  const sourceNeedsProject = source?.classification === "direct_cost" && !source.projectId;
   const rowsById = new Map(historyRows.map(entry => [entry.id, entry]));
   const reversedIds = new Set(data.history.filter(entry => entry.kind === "reversal" && entry.related_entry_id).map(entry => entry.related_entry_id));
 
@@ -200,26 +173,7 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
 
     <Panel className={`${panel} space-y-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-semibold">{t("sourcesTitle")}</h2><p className="text-xs text-[var(--ui-text-secondary)]">{date(data.filters.from)} – {date(data.filters.to)}{selectedProject ? ` · ${selectedProject.name}` : ""}</p></div>
-      {!recognitionStart ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("activationRequired")}</p> : !eligibleSources.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noSources")}</p> : <AnimatedDisclosure title={t("newRecognition")} className="w-full">
-        <FinanceActionForm action={saveFinanceManagement} label={t("confirmRecognition")} onSaved={onSaved} className="space-y-4" disabled={!source || (sourceNeedsProject && !projectForSource)}>
-          <input type="hidden" name="intent" value="recognition"/>
-          <input type="hidden" name="sourceKind" value={source?.kind ?? ""}/><input type="hidden" name="sourceId" value={source?.sourceId ?? ""}/><input type="hidden" name="classification" value={source?.classification ?? "revenue"}/>
-          <input type="hidden" name="projectId" value={source?.projectId ?? projectForSource}/>
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <FormField label={t("source")} className="sm:col-span-2 xl:col-span-2"><Select value={selectedSourceId} onValueChange={updateSource}>{eligibleSources.map(item => <SelectItem key={`${item.kind}-${item.sourceId}`} value={item.sourceId}>{item.label} · {t(`sourceKind.${item.kind}`)}</SelectItem>)}</Select></FormField>
-            <FormField label={t("netAmount", { currency: source?.currency ?? "" })} className={field}><Input name="amount" inputMode="decimal" value={sourceAmount} onChange={event => setSourceAmount(event.target.value)} required autoComplete="off"/><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("recognitionBasisHelp")}</span></FormField>
-            <div className="flex items-end text-xs text-[var(--ui-text-secondary)]">{source ? t("sourceValue", { gross: source.gross, remaining: source.remaining, currency: source.currency }) : null}</div>
-            {sourceNeedsProject ? <FormField label={t("assignProject")} className="sm:col-span-2"><Select value={projectForSource} onValueChange={setProjectForSource} required><SelectItem value="">{t("selectProject")}</SelectItem>{data.projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select></FormField> : null}
-            <FormField label={t("economicDate")} className={field}><DatePicker name="date" value={recognizedOn} onValueChange={setRecognizedOn} min={periodStart < recognitionStart ? recognitionStart : periodStart} max={periodEnd > data.today ? data.today : periodEnd} locale={locale} required/></FormField>
-            <FormField label={t("periodStart")} className={field}><DatePicker name="periodStart" value={periodStart} onValueChange={setPeriodStart} min={recognitionStart ?? startMonth} max={data.today} locale={locale} required/></FormField>
-            <FormField label={t("periodEnd")} className={field}><DatePicker name="periodEnd" value={periodEnd} onValueChange={setPeriodEnd} min={periodStart < recognitionStart ? recognitionStart : periodStart} max={data.today} locale={locale} required/></FormField>
-            <FormField label={t("descriptionLabel")} className="sm:col-span-2 xl:col-span-2"><Input name="description" value={sourceDescription} onChange={event => setSourceDescription(event.target.value)} maxLength={2000} required/></FormField>
-          {source && source.currency !== data.settings?.base_currency ? <div className="sm:col-span-2 xl:col-span-2"><FinanceFxFields currency={source.currency} base={data.settings?.base_currency ?? "UAH"}/><p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("fxSourceHelp")}</p></div> : <input type="hidden" name="fxMode" value="nbu"/>}
-            <FormField label={t("reason")} className="sm:col-span-2 xl:col-span-4"><Textarea name="reason" rows={2} maxLength={2000} required/></FormField>
-          </div>
-          {source ? <div className="rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] p-3 text-sm text-[var(--ui-text-secondary)]"><p>{t("confirmation", { amount: sourceAmount || "0", currency: source.currency, date: date(recognizedOn), from: date(periodStart), to: date(periodEnd) })}</p>{(source.projectId || projectForSource) ? <p className="mt-1">{t("projectConfirmed", { project: data.projects.find(project => project.id === (source.projectId ?? projectForSource))?.name ?? "" })}</p> : null}<p className="mt-1">{t("confirmationReason")}</p></div> : null}
-        </FinanceActionForm>
-      </AnimatedDisclosure>}
+      {!recognitionStart ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("activationRequired")}</p> : !getEligibleRecognitionSources(data).length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noSources")}</p> : <AnimatedDisclosure title={t("newRecognition")} className="w-full"><RecognitionForm data={data} onSaved={onSaved}/></AnimatedDisclosure>}
     </Panel>
 
     {recognitionStart && recognitionStart <= data.today ? <div id="labor"><ManagementLaborSection data={data.labor} projects={data.projects} currencies={data.currencies} baseCurrency={data.settings?.base_currency ?? "UAH"} from={periodEffectiveFrom} to={data.filters.to} today={data.today}/></div> : null}

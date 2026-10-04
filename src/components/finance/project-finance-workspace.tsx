@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { ArrowUpRight, ChevronDown, History } from "lucide-react";
-import { useState } from "react";
+import { ArrowUpRight, History, Info } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
+import { projectAgreementRemaining, type projectContractSummary, type ProjectFinanceTab } from "@/lib/finance-project-view";
 import { useLocale, useTranslations } from "next-intl";
 import { saveFinanceProject } from "@/app/(app)/finance/project-actions";
 import { Button } from "@/components/ui/button";
@@ -12,21 +14,22 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCurrencySelect } from "./currency-select";
-import { FinanceVatControls, ProjectValueBuilder } from "./project-value-builder";
+import { FinanceVatControls } from "./project-value-builder";
 import { FinanceExpectedWorkspace } from "./expected-workspace";
 import { formatFinanceAmount, formatFinanceDecimal } from "@/lib/finance";
-import { projectDiscountAmounts, projectRevenueTaxAmounts } from "@/lib/finance-project-plan";
 import { projectStreams } from "@/lib/finance-projects";
 import { formatDateOnly } from "@/lib/utils";
 import type { FinancePlanningData, FinanceProjectData, getFinanceData } from "@/data/queries/finance";
 import type { FinanceDisplayCurrency } from "@/lib/finance-display-currency";
+import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
 import { DisplayCurrencySelect } from "./display-currency-select";
+import { ProjectOrdersManager } from "./project-orders-manager";
 
-type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinancePlanningData & {
-  displayCurrency: FinanceDisplayCurrency; conversions: Record<string, { gross: string | null; net: string | null }>;
+type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & {
+  planning: FinancePlanningData | null; tab: ProjectFinanceTab; itemId?: string; children?: ReactNode; cashData?: FinanceProjectCash | null;
+  displayCurrency: FinanceDisplayCurrency; summary: ReturnType<typeof projectContractSummary>;
   project: FinanceProjectData; stream: typeof projectStreams[number]; today: string; page: number; creditPage: number; filter: string;
 };
-const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5";
 
 function TermsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => void; onPending: (v: boolean) => void }) {
@@ -65,77 +68,50 @@ function MonthsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => 
 }
 
 export function ProjectFinanceWorkspace(props: Props) {
-  const [proposalOpen, setProposalOpen] = useState(false);
+  const router = useRouter();
   const t = useTranslations("Finance"), locale = useLocale();
-  const [editor, setEditor] = useState<"design" | "supervision" | "months" | null>(null), [historyOpen,setHistoryOpen]=useState(false), [pending, setPending] = useState(false);
-  const terms = props.project.terms.find((v) => v.stream === props.stream);
-  const pricing = props.project.planRevisions.find(v=>v.terms_id===terms?.id);
-  const order = pricing?.item_order??[];
-  const items = props.stream==="design" ? [...props.items].sort((a,b)=>{const ai=order.indexOf(a.id??""),bi=order.indexOf(b.id??"");return (ai<0?-1:ai)-(bi<0?-1:bi);}) : props.items;
+  const [manager, setManager] = useState<string | null>(null);
+  const [editor, setEditor] = useState<"supervision" | "months" | null>(null), [historyOpen, setHistoryOpen] = useState(false), [pending, setPending] = useState(false);
+  const supervision = props.project.terms.find(item => item.stream === "supervision");
+  const confirmed = props.project.orders.filter(order => order.status === "confirmed");
+  const draftCount = props.project.orders.filter(order => order.status === "draft").length;
+  const totals = props.project.totals.filter(total => total.stream === "design");
+  const approximate = totals.some(total => total.currency !== props.displayCurrency);
   const money = (amount: string | number | null, code: string | null) => {
-    const currency = props.currencies.find((v) => v.code === code);
-    return currency ? formatFinanceAmount(amount ?? 0, currency, locale) : "—";
+    const currency = props.currencies.find(item => item.code === code);
+    return currency && amount !== null ? formatFinanceAmount(amount, currency, locale) : "—";
   };
-  const rateMoney=(amount:number|null,code:string|null)=>amount===null?"—":`${formatFinanceDecimal(amount,locale,{maximumFractionDigits:4})} ${code??""}`;
-  const discountSummary = (term: FinanceProjectData["terms"][number]) => {
-    if (!((term.discount_amount ?? 0) > 0) || term.amount === null) return null;
-    const digits = props.currencies.find(item => item.code === term.currency)?.minor_units ?? 2;
-    const type = term.discount_type === "percentage" || term.discount_type === "fixed" ? term.discount_type : "none";
-    const percent = projectDiscountAmounts(String(term.amount), type, String(term.discount_value), digits).percentage;
-    return `${t("builder.discountWithPercent", { percent: formatFinanceDecimal(Number(percent), locale, { maximumFractionDigits: 4 }) })} · −${money(term.discount_amount, term.currency)}`;
-  };
-  const revenueTaxEstimate = (rate: number | null, net: number | null, code: string | null) => {
-    const currency = props.currencies.find((item) => item.code === code);
-    if (rate === null || net === null || !currency) return null;
-    const amounts = projectRevenueTaxAmounts(String(net), String(rate), currency.minor_units);
-    return t("project.revenueTaxEstimate", { rate: formatFinanceDecimal(rate, locale, { maximumFractionDigits: 4 }), tax: money(amounts.tax, code), afterTax: money(amounts.afterTax, code) });
-  };
-  const revenueTaxCurrency = props.currencies.find((item) => item.code === terms?.currency);
-  const revenueTaxAmounts = props.stream === "design" && terms?.revenue_tax_rate !== null && terms?.revenue_tax_rate !== undefined && terms.net_amount !== null && revenueTaxCurrency
-    ? projectRevenueTaxAmounts(String(terms.net_amount), String(terms.revenue_tax_rate), revenueTaxCurrency.minor_units) : null;
   if (!props.settings?.finalized_at) return <section className={panel}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></section>;
-  return <div className="w-full space-y-4" data-project-finance>
-    <nav aria-label={t("project.streamNavigation")} className="grid grid-cols-2 gap-1 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] p-1.5 text-sm sm:flex sm:flex-wrap">{projectStreams.map((stream) => <Link key={stream} href={`/projects/${props.project.projectId}?view=finance&stream=${stream}`} aria-current={stream === props.stream ? "page" : undefined} className={`flex min-h-11 items-center justify-center rounded-[var(--ui-radius-control)] border border-transparent px-3 py-2 text-center text-[var(--ui-text-secondary)] transition-colors duration-[220ms] hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none aria-[current=page]:border-[var(--ui-border-strong)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--ui-text)] ${stream === "expenses" ? "col-span-2 border-t border-[var(--ui-border)] sm:ml-auto sm:border-t-0 sm:border-l" : ""}`}>{t(`project.streams.${stream}`)}</Link>)}</nav>
-    {props.stream !== "expenses" && (props.stream === "design" || props.stream === "supervision" || props.project.totals.some((v) => v.stream === props.stream)) ? <section className={`${panel} space-y-3`} aria-label={t("project.summary")}>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{t("project.summary")}</h2><div className="flex flex-wrap items-center gap-2"><DisplayCurrencySelect value={props.displayCurrency} />
-        {props.stream === "design" ? <Button variant="outline" onClick={() => setProposalOpen(true)}>{t("proposal.action")}</Button> : null}
-        {props.stream === "design" || props.stream === "supervision" ? <Button variant={props.stream==="design"?"default":"outline"} onClick={() => setEditor(props.stream === "design" ? "design" : "supervision")}>{t(props.stream === "design" ? "project.editAgreement" : "project.editSupervision")}</Button> : null}
-        {props.project.termHistory.some((term)=>term.stream===props.stream) ? <Button size="sm" variant="outline" className="size-10 p-0" aria-label={t("project.history")} title={t("project.history")} onClick={()=>setHistoryOpen(true)}><History aria-hidden="true" className="size-4"/></Button> : null}
-        {props.stream === "supervision" && props.project.termHistory.some((term)=>term.mode==="monthly") ? <Button variant="outline" onClick={() => setEditor("months")}>{t("project.generate")}</Button> : null}
-      </div></div>
-      {props.stream === "design" && pricing?.pricing_method==="area" ? <div className="text-sm text-[var(--ui-text-secondary)]"><p>{t("builder.areaSummary",{area:pricing.area_snapshot??0,rate:rateMoney(pricing.rate_per_m2,terms?.currency??null)})}</p>{props.project.area!==null&&Number(pricing.area_snapshot)!==props.project.area?<p className="mt-1 text-[var(--ui-warning-text)]">{t("builder.areaChanged",{saved:pricing.area_snapshot??0,current:props.project.area})}</p>:null}</div> : null}
-      {props.stream === "design" && terms && discountSummary(terms) ? <p className="text-sm text-[var(--ui-text-secondary)]" data-discount-summary>{discountSummary(terms)}</p> : null}
-      {props.stream === "design" && !terms ? <p className="text-sm text-[var(--ui-text-muted)]">{t("project.noAgreement")}</p> : null}
-      {props.stream === "supervision" && terms ? <><p className="text-sm">{t(`project.modes.${terms.mode}`)}{terms.amount ? ` · ${money(terms.amount, terms.currency)}` : ""} · {terms.effective_from ? formatDateOnly(terms.effective_from, locale) : ""} — {terms.effective_through ? formatDateOnly(terms.effective_through, locale) : t("project.openEnded")}</p>{terms.vat_rate !== null && terms.amount !== null ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("project.vatBreakdown", { net: money(terms.net_amount, terms.currency), vat: money(terms.vat_amount, terms.currency), gross: money(terms.gross_amount, terms.currency) })}</p> : null}</> : null}
-      {props.project.totals.filter((v) => v.stream === props.stream).map((v) => {
-        const contractGross = v.contract_gross_amount ?? v.contract_amount;
-        const contractNet = v.contract_net_amount ?? v.contract_amount;
-        const contractVat = v.contract_vat_amount ?? "0";
-        const hasVatTreatment = terms?.vat_rate !== null && terms?.vat_rate !== undefined;
-        return <div key={v.currency} className="space-y-4">
-        <dl className={`grid gap-5 sm:grid-cols-3 ${contractGross !== null ? "xl:grid-cols-[1.3fr_1fr_1fr_1fr]" : ""}`}>
-          {contractGross !== null ? <div className="sm:col-span-3 xl:col-span-1"><dt className="text-sm text-[var(--ui-text-secondary)]">{props.stream === "design" || hasVatTreatment ? t("project.clientTotal") : t("project.contract")}</dt><dd className="ui-numeric mt-1 break-words text-3xl font-semibold tracking-tight">{money(contractGross, v.currency)}</dd>{props.conversions[v.currency ?? ""]?.gross ? <dd className="ui-numeric mt-1 text-xs text-[var(--ui-text-muted)]">≈ {money(props.conversions[v.currency ?? ""].gross, props.displayCurrency)}</dd> : null}</div> : null}
-          {([["collected", v.collected_amount], ["outstanding", v.outstanding_amount], ["planned", v.planned_amount]] as const).map(([key, value]) => <div key={key} className="flex items-baseline justify-between gap-3 sm:block"><dt className="text-sm text-[var(--ui-text-secondary)]">{props.stream !== "design" && hasVatTreatment && (key === "collected" || key === "outstanding") ? t(`project.${key}Gross`) : t(`project.${key}`)}</dt><dd className={`ui-numeric mt-1 break-words text-lg font-semibold sm:text-2xl ${key === "collected" ? "text-[var(--ui-success-text)]" : key === "outstanding" && Number(value) > 0 ? "text-[var(--ui-warning-text)]" : ""}`}>{money(value, v.currency)}</dd></div>)}
-        </dl>
-        {contractGross !== null && (hasVatTreatment || revenueTaxAmounts) ? <dl className="flex flex-wrap gap-x-8 gap-y-3 border-t border-[var(--ui-border-subtle)] pt-3">
-          <div className="min-w-[7rem]"><dt className="text-xs text-[var(--ui-text-muted)]">{t("builder.netShort")}</dt><dd className="ui-numeric mt-0.5 text-sm font-medium text-[var(--ui-text)]">{money(contractNet, v.currency)}</dd>{props.conversions[v.currency ?? ""]?.net ? <dd className="ui-numeric mt-0.5 text-xs text-[var(--ui-text-muted)]">≈ {money(props.conversions[v.currency ?? ""].net, props.displayCurrency)}</dd> : null}</div>
-          {hasVatTreatment ? <div className="min-w-[7rem]"><dt className="text-xs text-[var(--ui-text-muted)]">{t("project.vatMetric", { rate: formatFinanceDecimal(terms?.vat_rate ?? 0, locale, { maximumFractionDigits: 4 }) })}</dt><dd className="ui-numeric mt-0.5 text-sm font-medium text-[var(--ui-text)]">{money(contractVat, v.currency)}</dd></div> : null}
-          {revenueTaxAmounts ? <><div className="min-w-[7rem]"><dt className="text-xs text-[var(--ui-text-muted)]">{t("project.revenueTaxMetric", { rate: formatFinanceDecimal(terms?.revenue_tax_rate ?? 0, locale, { maximumFractionDigits: 4 }) })}</dt><dd className="ui-numeric mt-0.5 text-sm font-medium text-[var(--ui-text)]">{money(revenueTaxAmounts.tax, v.currency)}</dd></div><div className="min-w-[7rem]"><dt className="text-xs text-[var(--ui-text-muted)]">{t("builder.afterTax")}</dt><dd className="ui-numeric mt-0.5 text-sm font-medium text-[var(--ui-text)]">{money(revenueTaxAmounts.afterTax, v.currency)}</dd></div></> : null}
-        </dl> : null}
-        {Number(v.scheduled_vat_amount ?? 0) > 0 || Number(v.collected_vat_amount ?? 0) > 0 ? <details className="group/calculation text-xs text-[var(--ui-text-secondary)]"><summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("project.calculationDetails")}<ChevronDown aria-hidden="true" className="size-3.5 transition-transform duration-[220ms] group-open/calculation:rotate-180 motion-reduce:transition-none"/></summary><p className="pb-1">{t("project.historicalVatBreakdown", { scheduledNet: money(v.scheduled_net_amount, v.currency), scheduledVat: money(v.scheduled_vat_amount, v.currency), collectedNet: money(v.collected_net_amount, v.currency), collectedVat: money(v.collected_vat_amount, v.currency) })}</p></details> : null}
-        {contractGross !== null && Number(contractGross) > 0 ? <div className="space-y-2">
-          <progress aria-label={t("project.collectionProgress")} max={Number(contractGross)} value={Math.min(Number(v.collected_amount), Number(contractGross))} className="block h-1.5 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-[var(--ui-surface-muted)] [&::-webkit-progress-value]:bg-[var(--ui-success-text)] [&::-moz-progress-bar]:bg-[var(--ui-success-text)]"/>
-          <p className="text-xs text-[var(--ui-text-muted)]">{t("project.valueScope")}</p>
-        </div> : null}
-        {Number(v.unscheduled_amount) > 0 ? <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ui-border)] pt-3 text-sm"><p className="text-[var(--ui-warning-text)]">{t("project.unscheduledAction", { amount: money(v.unscheduled_amount, v.currency) })}</p><button type="button" onClick={()=>setEditor("design")} className="inline-flex min-h-11 items-center gap-2 rounded px-2 font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("project.schedulePayment")}<ArrowUpRight aria-hidden="true" className="size-4"/></button></div> : null}
-      </div>})}
-      {props.stream === "design" && props.project.nextPayment ? <Link href={`/finance/expected?item=${props.project.nextPayment.id}`} className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-t border-[var(--ui-border)] pt-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="text-[var(--ui-text-secondary)]">{t("project.nextPayment")} · {formatDateOnly(props.project.nextPayment.expected_payment_date ?? props.project.nextPayment.due_date ?? "", locale)}<span className="ml-2 font-medium text-[var(--ui-text)]">{props.project.nextPayment.description}</span></span><span className="ui-numeric inline-flex items-center gap-2 font-semibold">{money(props.project.nextPayment.remaining_amount, props.project.nextPayment.currency)}<ArrowUpRight aria-hidden="true" className="size-4"/></span></Link> : null}
-    </section> : null}
-    <div id="project-payments"><FinanceExpectedWorkspace {...props} items={items} project={{ ...props.project, stream: props.stream, today: props.today }}/></div>
-    <Dialog isOpen={historyOpen} onRequestClose={()=>setHistoryOpen(false)} title={t("project.history")} closeLabel={t("movements.close")} className="sm:max-w-[34rem]"><div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5"><ul className="mt-4 space-y-3">{props.project.termHistory.filter((v) => v.stream === props.stream).map((v) => <li key={v.id}><p className="font-medium">{t(`project.streams.${v.stream}`)} · {t("project.revision", { version: v.revision })} · {v.amount ? money(v.amount, v.currency) : t(`project.modes.${v.mode}`)}{v.price_basis ? ` · ${t(v.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>{discountSummary(v) ? <p className="text-xs text-[var(--ui-text-secondary)]">{discountSummary(v)}</p> : null}{v.vat_rate !== null ? <p className="text-xs text-[var(--ui-text-secondary)]">{v.amount === null ? `${t("builder.vat")} ${v.vat_rate}%` : t("project.vatBreakdown", { net: money(v.net_amount, v.currency), vat: money(v.vat_amount, v.currency), gross: money(v.gross_amount, v.currency) })}</p> : null}{v.revenue_tax_rate !== null ? <p className="text-xs text-[var(--ui-text-secondary)]">{revenueTaxEstimate(v.revenue_tax_rate, v.net_amount, v.currency)}</p> : null}<p className="text-xs text-[var(--ui-text-muted)]">{formatDateOnly(v.created_at.slice(0, 10), locale)}{v.effective_from ? ` · ${formatDateOnly(v.effective_from, locale)}` : ""}</p>{props.project.planRevisions.filter(p=>p.terms_id===v.id&&p.pricing_method==="area").map(p=><p key={p.terms_id} className="text-xs text-[var(--ui-text-secondary)]">{t("builder.areaSummary",{area:p.area_snapshot??0,rate:rateMoney(p.rate_per_m2,v.currency)})}</p>)}<p className="mt-1 whitespace-pre-wrap">{v.reason}</p></li>)}</ul></div></Dialog>
-    {proposalOpen ? <ProposalEditor projectId={props.project.projectId} onClose={() => setProposalOpen(false)}/> : null}
-    <Dialog className={editor==="design"?"sm:!max-w-[70rem]":undefined} isOpen={editor !== null} onRequestClose={() => setEditor(null)} closeDisabled={pending} title={t(editor === "months" ? "project.generate" : editor === "supervision" ? "project.editSupervision" : "project.editAgreement")} closeLabel={t("movements.close")}>
-      <div className={`min-h-0 overflow-y-auto overscroll-contain ${editor==="design"?"":"p-4 sm:p-6"}`}>{editor === "design" ? <ProjectValueBuilder project={props.project} currencies={props.currencies} reportingCurrency={props.settings?.base_currency??"UAH"} onSaved={()=>setEditor(null)} onPending={setPending}/> : editor === "months" ? <MonthsForm data={props} onSaved={() => setEditor(null)} onPending={setPending}/> : editor ? <TermsForm data={props} onSaved={() => setEditor(null)} onPending={setPending}/> : null}</div>
-    </Dialog>
+  const href = (tab: ProjectFinanceTab, stream = "design") => `/projects/${props.project.projectId}?view=finance&financeTab=${tab}${tab === "payments" ? `&stream=${stream}` : ""}`;
+  const next = props.project.nextPayment;
+  const incomeSelector = <div className="mr-auto w-full min-w-0 sm:w-auto"><Select aria-label={t("orders.category")} size="compact" value={props.stream} onValueChange={stream => router.push(href("payments", stream), { scroll: false })}>{projectStreams.filter(stream => stream !== "expenses").map(stream => <SelectItem key={stream} value={stream}>{t(stream === "design" ? "orders.contractual" : `project.streams.${stream}`)}</SelectItem>)}</Select></div>;
+  return <div className="w-full min-w-0 space-y-4" data-project-finance>
+    <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4" aria-label={t("orders.scope")}>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="mr-auto text-xs font-medium text-[var(--ui-text-secondary)]">{t("orders.scope")}</h2>
+        <DisplayCurrencySelect value={props.displayCurrency}/>
+        <Button variant="ghost" size="sm" className="min-h-9" onClick={() => setManager("")}>{t("orders.manage", { count: confirmed.length })}</Button>
+        {draftCount ? <span className="text-xs text-[var(--ui-text-muted)]">{t("orders.draftCount", { count: draftCount })}</span> : null}
+      </div>
+      <div className="grid gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1.25fr)]">
+        {props.summary || !totals.length ? <dl className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-[1.25fr_1fr_1fr]">
+          {([['value', props.summary?.gross], ['paid', props.summary?.paid], ['remaining', props.summary?.remaining]] as const).map(([key,value]) => <div key={key} className={key === "value" ? "col-span-2 sm:col-span-1" : ""}><dt className="text-xs text-[var(--ui-text-secondary)]">{t(`orders.${key}`)}</dt><dd className={`ui-numeric mt-1 break-words font-semibold ${key === "value" ? "text-2xl sm:text-[1.75rem]" : "text-xl"}`}>{value ? `${approximate ? "≈ " : ""}${money(value, props.displayCurrency)}` : "—"}</dd></div>)}
+        </dl> : <div className="min-w-0 space-y-2"><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.missingRate")}</p>{totals.map(total => <dl key={total.currency} className="grid grid-cols-3 gap-3">{([['value',total.contract_gross_amount ?? total.contract_amount],['paid',total.collected_amount],['remaining',projectAgreementRemaining(total.contract_gross_amount ?? total.contract_amount,total.collected_amount,props.currencies.find(unit=>unit.code===total.currency)?.minor_units??2,total.closed_amount)]] as const).map(([key,value])=><div key={key}><dt className="text-xs text-[var(--ui-text-secondary)]">{t(`orders.${key}`)}</dt><dd className="ui-numeric mt-1 break-words text-sm font-semibold">{money(value,total.currency)}</dd></div>)}</dl>)}</div>}
+        <div className="min-w-0 border-t border-[var(--ui-border-subtle)] pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          {next ? <Link href={`${href("payments")}&item=${next.id}#expected-${next.id}`} className="group block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="block text-xs text-[var(--ui-text-secondary)]">{t("orders.next")}</span><span className="ui-numeric mt-1 flex items-baseline gap-2 text-lg font-semibold">{money(next.remaining_amount,next.currency)}<ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0"/></span><span className="mt-1 block break-words text-xs text-[var(--ui-text-secondary)]">{formatDateOnly(next.expected_payment_date ?? next.due_date ?? "",locale)} · {next.order_name} · {next.description}</span></Link> : <><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.next")}</p><p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("orders.noNext")}</p></>}
+        </div>
+      </div>
+      {approximate && props.summary ? <p className="mt-3 flex items-start gap-1.5 text-xs text-[var(--ui-text-muted)]"><Info aria-hidden="true" className="mt-0.5 size-3 shrink-0"/>{t("orders.valuation",{date:formatDateOnly(props.today,locale)})}</p> : null}
+    </section>
+    <nav aria-label={t("projectWorkspace.navigation")} className="flex gap-1 border-b border-[var(--ui-border)]">
+      {(["payments", "expenses", "result"] as const).map(tab => <Link key={tab} href={href(tab, props.stream === "expenses" ? "design" : props.stream)} scroll={false} aria-current={tab === props.tab ? "page" : undefined} className="flex min-h-11 flex-1 items-center justify-center border-b-2 border-transparent px-4 py-2 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors duration-200 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] aria-[current=page]:border-[var(--ui-text)] aria-[current=page]:text-[var(--ui-text)] motion-reduce:transition-none sm:flex-none">{t(`projectWorkspace.tabs.${tab}`)}</Link>)}
+    </nav>
+    {props.tab === "payments" && props.stream === "supervision" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-3 text-sm"><p>{supervision ? `${t(`project.modes.${supervision.mode}`)}${supervision.amount ? ` · ${money(supervision.amount, supervision.currency)}` : ""}` : t("project.editSupervision")}</p><div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={() => setEditor("supervision")}>{t("project.editSupervision")}</Button>{props.project.termHistory.some(term => term.mode === "monthly") ? <Button size="sm" variant="ghost" onClick={() => setEditor("months")}>{t("project.generate")}</Button> : null}{supervision ? <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}><History aria-hidden="true" className="mr-2 size-4"/>{t("project.history")}</Button> : null}</div></div> : null}
+    {props.tab === "payments" && props.stream !== "design" ? <AnimatedDisclosure title={t("projectWorkspace.categoryDetails")}><div className="space-y-3 pb-2 text-sm text-[var(--ui-text-secondary)]">{supervision && props.stream === "supervision" ? <><p>{t(`project.modes.${supervision.mode}`)} · {supervision.effective_from ? formatDateOnly(supervision.effective_from,locale) : "—"} — {supervision.effective_through ? formatDateOnly(supervision.effective_through,locale) : t("project.openEnded")}</p>{supervision.vat_rate !== null && supervision.amount !== null ? <p className="text-xs">{t("project.vatBreakdown", { net: money(supervision.net_amount,supervision.currency),vat:money(supervision.vat_amount,supervision.currency),gross:money(supervision.gross_amount,supervision.currency) })}</p> : null}</> : null}{props.project.totals.filter(total => total.stream === props.stream).map(total => <dl key={total.currency} className="flex flex-wrap gap-x-8 gap-y-3">{([["collected", total.collected_amount], ["outstanding", total.outstanding_amount], ["planned", total.planned_amount]] as const).map(([label,value])=><div key={label}><dt className="text-xs">{t(`project.${label}`)}</dt><dd className="ui-numeric mt-1 font-medium">{money(value,total.currency)}</dd></div>)}</dl>)}</div></AnimatedDisclosure> : null}
+    {props.planning ? <div id="project-payments"><FinanceExpectedWorkspace {...props} {...props.planning} project={{...props.project,stream:props.stream,today:props.today}} toolbar={props.tab === "payments" ? incomeSelector : undefined} onManageOrder={id => setManager(id ?? "")}/></div> : null}
+    {props.children}
+    {manager !== null ? <ProjectOrdersManager key={manager} initialOrderId={manager || undefined} project={props.project} currencies={props.currencies} reportingCurrency={props.settings.base_currency} onClose={() => setManager(null)}/> : null}
+    <Dialog isOpen={historyOpen} onRequestClose={()=>setHistoryOpen(false)} title={t("project.history")} closeLabel={t("movements.close")}><ul className="min-h-0 space-y-3 overflow-y-auto p-5">{props.project.termHistory.filter(term=>term.stream==="supervision").map(term=><li key={term.id}><p className="text-sm font-medium">{t("project.revision",{version:term.revision})} · {term.amount !== null ? money(term.amount,term.currency) : t(`project.modes.${term.mode}`)}{term.price_basis ? ` · ${t(term.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>{term.vat_rate !== null ? <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{term.amount === null ? `${t("builder.vat")} ${term.vat_rate}%` : t("project.vatBreakdown",{net:money(term.net_amount,term.currency),vat:money(term.vat_amount,term.currency),gross:money(term.gross_amount,term.currency)})}</p> : null}<p className="mt-1 text-xs text-[var(--ui-text-muted)]">{formatDateOnly(term.created_at.slice(0,10),locale)}{term.effective_from ? ` · ${formatDateOnly(term.effective_from,locale)}` : ""}</p><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ui-text-secondary)]">{term.reason}</p></li>)}</ul></Dialog>
+    <Dialog isOpen={editor !== null} onRequestClose={()=>setEditor(null)} closeDisabled={pending} title={t(editor === "months" ? "project.generate" : "project.editSupervision")} closeLabel={t("movements.close")}><div className="min-h-0 overflow-y-auto p-4 sm:p-6">{editor === "months" ? <MonthsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : editor ? <TermsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : null}</div></Dialog>
   </div>;
 }

@@ -23,6 +23,7 @@ function clearFoundation() {
     delete from public.finance_project_items where studio_id=${studioLiteral};
     delete from public.finance_project_plan_revisions where studio_id=${studioLiteral};
     delete from public.finance_project_terms where studio_id=${studioLiteral};
+    delete from public.finance_project_orders where studio_id=${studioLiteral};
     delete from public.finance_allocations where studio_id=${studioLiteral};
     delete from public.finance_expected_items where studio_id=${studioLiteral};
     delete from public.finance_planning_requests where studio_id=${studioLiteral};
@@ -148,6 +149,7 @@ test("large Project Finance aggregates retain every decimal through the Data API
   for(const [locale,messages,exact] of [["en",en,"999,999,999,999.0003"],["uk",uk,"999 999 999 999,0003"]] as const){
     await page.context().addCookies([{name:"studioflow-locale",value:locale,url:"http://127.0.0.1:3100"}]);
     await page.goto(`/projects/${projectId}?view=finance&stream=other`);
-    await expect(page.getByRole("region",{name:messages.Finance.project.summary,exact:true})).toContainText(exact);
+    await page.getByRole("button", { name: messages.Finance.projectWorkspace.categoryDetails, exact: true }).click();
+    await expect(page.getByRole("region",{name:messages.Finance.projectWorkspace.categoryTotals,exact:true})).toContainText(exact);
   }
 });

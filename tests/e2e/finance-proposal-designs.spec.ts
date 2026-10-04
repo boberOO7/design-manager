@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import uk from "../../messages/uk.json";
@@ -13,6 +13,29 @@ const client=createClient<Database>(local.EQUIPMENT_TEST_SUPABASE_URL,local.EQUI
 const studio=randomUUID(),project=randomUUID(),account=randomUUID(),email=`proposal-${randomUUID()}@example.test`,password=`Proposal-${randomUUID()}`;
 let actor="";
 const sql=(statement:string)=>execFileSync("docker",["exec","-i","supabase_db_design-manager","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-At"],{input:statement,encoding:"utf8"}).trim();
+async function login(page:Page) {
+ await page.goto('/login');await page.waitForLoadState('networkidle',{timeout:15_000});await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
+ await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
+}
+async function openDefaultOrder(page:Page) {
+ const orders=uk.Finance.orders;
+ await page.getByRole('button',{name:new RegExp(`^${orders.title} ·`)}).click();
+ const list=page.getByRole('dialog',{name:orders.title,exact:true});
+ await list.getByRole('button',{name:new RegExp(`^${orders.defaultName}`)}).click();
+ const manager=page.getByRole('dialog',{name:orders.defaultName,exact:true});await expect(manager).toBeVisible();return manager;
+}
+async function openProposal(page:Page) {
+ let manager=page.getByRole('dialog',{name:uk.Finance.orders.defaultName,exact:true});
+ if(await manager.count()===0)manager=await openDefaultOrder(page);
+ await manager.getByRole('button',{name:uk.Finance.proposal.action,exact:true}).click();
+ return page.getByRole('dialog');
+}
+async function openAgreementEditor(page:Page) {
+ let manager=page.getByRole('dialog',{name:uk.Finance.orders.defaultName,exact:true});
+ if(await manager.count()===0)manager=await openDefaultOrder(page);
+ await manager.getByRole('button',{name:uk.Finance.project.editAgreement,exact:true}).click();
+ return page.getByRole('dialog');
+}
 test.beforeAll(async()=>{
  await client.from("studios").insert({id:studio,name:"Proposal design browser test"}).throwOnError();
  const created=await client.auth.admin.createUser({email,password,email_confirm:true});if(created.error)throw created.error;actor=created.data.user.id;
@@ -30,8 +53,7 @@ test.beforeAll(async()=>{
 test("shared phone input: Contractor and Commercial Proposal sanity", async ({page},testInfo) => {
  const p=uk.Finance.proposal;
  sql(`update studios set website='https://space-design.pro',email='hello@space.example',phone='0679876543',business_address='Київ',contact_person='Ірина SPACE' where id='${studio}';`);
- await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
- await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
+ await login(page);
  await page.context().grantPermissions(['clipboard-read','clipboard-write']);
  async function checkPhoneInput(input: Locator) {
   await expect(input).toHaveAttribute('placeholder','+380 (XX) XXX-XX-XX');
@@ -63,7 +85,7 @@ test("shared phone input: Contractor and Commercial Proposal sanity", async ({pa
  const contractorAppearance=await contractorPhone.evaluate(el=>({height:el.clientHeight,radius:getComputedStyle(el).borderRadius,fontSize:getComputedStyle(el).fontSize}));
  await page.screenshot({path:testInfo.outputPath('contractor-shared-phone.png')});
  await contractorDialog.getByRole('button',{name:c.cancel,exact:true}).click();
- await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:p.action,exact:true}).click();
+ await page.goto(`/projects/${project}?view=finance`);await openProposal(page);
  const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:p.studioContacts,exact:true}).click();
  const clientPhone=dialog.getByLabel(p.contact,{exact:true}), studioPhone=dialog.getByLabel(p.phone,{exact:true}), person=dialog.getByLabel(p.contactPerson,{exact:true});
  const save=dialog.getByRole('button',{name:p.saveContacts,exact:true});
@@ -85,9 +107,8 @@ test("shared phone input: Contractor and Commercial Proposal sanity", async ({pa
 test("proposal editor shell: saved and missing contacts, compact select and keyboard", async ({page},testInfo) => {
  const p=uk.Finance.proposal;
  sql(`update studios set website='https://space-design.pro',email='hello@space.example',phone='+380 44 000 00 00',business_address='Київ, вул. Городецького, 12' where id='${studio}';`);
- await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
- await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
- await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:p.action,exact:true}).click();
+ await login(page);
+ await page.goto(`/projects/${project}?view=finance`);await openProposal(page);
  const dialog=page.getByRole('dialog'), contacts=dialog.getByRole('button',{name:p.studioContacts,exact:true}), selector=dialog.getByRole('combobox',{name:p.design,exact:true});
  await expect(contacts).toHaveAttribute('aria-expanded','false');await expect(dialog.getByLabel(p.website,{exact:true})).not.toBeVisible();
  await expect(contacts).toContainText('+38 (044) 000-00-00 · hello@space.example');await expect(dialog.getByText(p.contactsHelp,{exact:true})).toHaveCount(0);
@@ -113,22 +134,21 @@ test("proposal editor shell: saved and missing contacts, compact select and keyb
  await selector.press('Home');await selector.press('Enter');await expect(selector.getByTitle(p.originalDesign,{exact:true})).toBeVisible();await expect(selector).toBeFocused();
  expect(await selector.evaluate(el=>{const s=getComputedStyle(el);return s.outlineStyle==='none'&&s.boxShadow!=='none'&&parseFloat(s.borderRadius)>0&&el.getBoundingClientRect().width<240;})).toBe(true);
  await selector.press('ArrowDown');await selector.press('Escape');await expect(dialog).toBeVisible();await expect(dialog.getByRole('listbox')).toHaveCount(0);
- await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await page.getByRole('button',{name:p.action,exact:true}).click();
+ await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await openProposal(page);
  await expect(contacts).toHaveAttribute('aria-expanded','false');await expect(contacts).toContainText('studio@space.example');
  await dialog.getByRole('button',{name:p.close,exact:true}).last().click();
  sql(`update studios set website=null,email=null,phone=null,business_address=null,contact_person=null where id='${studio}';`);
- await page.getByRole('button',{name:p.action,exact:true}).click();await expect(contacts).toHaveAttribute('aria-expanded','true');await expect(dialog.getByLabel(p.website,{exact:true})).toBeVisible();await expect(dialog.getByLabel(p.email,{exact:false})).toHaveValue('');
+ await openProposal(page);await expect(contacts).toHaveAttribute('aria-expanded','true');await expect(dialog.getByLabel(p.website,{exact:true})).toBeVisible();await expect(dialog.getByLabel(p.email,{exact:false})).toHaveValue('');
  await expect(dialog.getByRole('button',{name:p.saveContacts,exact:true})).toBeDisabled();await page.screenshot({path:testInfo.outputPath('proposal-contacts-missing.png')});
  await page.setViewportSize({width:390,height:844});expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('proposal-shell-mobile.png')});
 });
 test("live proposal designs → PDF parity → immutable revisions", async ({page}, testInfo) => {
  const p=uk.Finance.proposal, endpoint=`/api/projects/${project}/proposals`;
- await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
- await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
+ await login(page);
  await page.goto(`/projects/${project}?view=finance`);
  const previewRequests: string[]=[];
  page.on('request', request => { if(request.method()==='POST' && request.url().includes(endpoint)) { const body=z.object({intent:z.string(),presentation:z.object({designVariant:z.string()})}).parse(request.postDataJSON());if(body.intent==='preview') previewRequests.push(body.presentation.designVariant); } });
- await page.getByRole('button',{name:p.action,exact:true}).click();
+ await openProposal(page);
  const dialog=page.getByRole('dialog'), selector=dialog.getByRole('combobox',{name:p.design,exact:true});
  const labels: Record<string,string>={classic:p.originalDesign,'measured-space':'Measured Space','quiet-monument':'Quiet Monument','folded-plane':'Folded Plane'};
  const chooseDesign=async(value:string)=>{await selector.click();await dialog.getByRole('option',{name:labels[value],exact:true}).click();};
@@ -173,7 +193,7 @@ test("live proposal designs → PDF parity → immutable revisions", async ({pag
   writeFileSync(testInfo.outputPath(`${variant}-saved.pdf`),bytes);saved.push({href,bytes,variant});
   expect(sql(`select snapshot->>'designVariant' from finance_project_proposals where project_id='${project}' and revision=${index+1}`)).toBe(variant);
   for(const previous of saved)expect(await (await page.request.get(previous.href)).body()).toEqual(previous.bytes);
-  await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await page.getByRole('button',{name:p.action,exact:true}).click();
+  await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await openProposal(page);
   await expect(selector.getByTitle(labels[variant],{exact:true})).toBeVisible();await expect(selector).toBeDisabled();await expect.poll(pixels).toEqual(before);
  }
  expect(sql(`select string_agg(snapshot->>'designVariant',',' order by revision) from finance_project_proposals where project_id='${project}'`)).toBe('quiet-monument,measured-space,folded-plane');
@@ -184,9 +204,8 @@ test("proposal phones and contact person: defaults, overrides and immutable snap
  const p=uk.Finance.proposal;
  sql(`update studios set website='https://space-design.pro',email='hello@space.example',phone='0679876543',business_address='Київ, вул. Городецького, 12',contact_person='Ірина SPACE' where id='${studio}';
  insert into crm_leads(studio_id,client_name,first_contact_date,status,project_id,phone,email,company) values('${studio}','Олена Коваль','2026-09-01','won','${project}','0671234567','client@example.test','Client company');`);
- await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
- await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
- await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:p.action,exact:true}).click();
+ await login(page);
+ await page.goto(`/projects/${project}?view=finance`);await openProposal(page);
  const dialog=page.getByRole('dialog'), contacts=dialog.getByRole('button',{name:p.studioContacts,exact:true}), selector=dialog.getByRole('combobox',{name:p.design,exact:true});
  const clientPhone=dialog.getByLabel(p.contact,{exact:true}), studioPhone=dialog.getByLabel(p.phone,{exact:true}), person=dialog.getByLabel(p.contactPerson,{exact:true});
  const pages=dialog.locator('[data-proposal-pages]'), generate=dialog.getByRole('button',{name:p.generate,exact:true});
@@ -207,7 +226,7 @@ test("proposal phones and contact person: defaults, overrides and immutable snap
  expect(sql(`select contact_person||' · '||phone from studios where id='${studio}'`)).toBe('Марія SPACE · +38 (067) 987-65-43');
  expect(sql(`select phone||' · '||email||' · '||company from crm_leads where project_id='${project}'`)).toBe('0671234567 · client@example.test · Client company');
  await contacts.click();await expect(person).not.toBeVisible();await expect(contacts).toContainText('Марія SPACE');
- await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await page.getByRole('button',{name:p.action,exact:true}).click();
+ await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await openProposal(page);
  if(await dialog.getByRole('button',{name:p.newRevision,exact:true}).isVisible())await dialog.getByRole('button',{name:p.newRevision,exact:true}).click();
  await expect(contacts).toHaveAttribute('aria-expanded','false');await contacts.click();await expect(person).toHaveValue('Марія SPACE');
  const note=dialog.getByLabel(p.intro,{exact:true}), originalHeight=await note.evaluate(el=>el.clientHeight);
@@ -226,7 +245,7 @@ test("proposal phones and contact person: defaults, overrides and immutable snap
  const frozen=sql(`select snapshot::text from finance_project_proposals where project_id='${project}' order by revision desc limit 1`);
  expect(JSON.parse(frozen).studioContactDetails.contactPerson).toBe('Оксана SPACE');expect(JSON.parse(frozen).contact).toBe('+38 (067) 123-45-67');
  expect(sql(`select contact_person from studios where id='${studio}'`)).toBe('Марія SPACE');
- await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await page.getByRole('button',{name:p.action,exact:true}).click();await expect(pages).toContainText('Оксана SPACE');
+ await dialog.getByRole('button',{name:p.close,exact:true}).last().click();await openProposal(page);await expect(pages).toContainText('Оксана SPACE');
  await dialog.getByRole('button',{name:p.newRevision,exact:true}).click();await expect(contacts).toHaveAttribute('aria-expanded','false');await contacts.click();await expect(person).toHaveValue('Марія SPACE');
  await person.fill('Наталія SPACE');await studioPhone.fill('+44 (20) 1234-5678');await studioPhone.press('Tab');await expect(studioPhone).toHaveValue('+44 (20) 1234-5678');
  await dialog.getByRole('button',{name:p.saveContacts,exact:true}).click();await expect(dialog.getByText(p.contactsSaved,{exact:true})).toBeVisible();expect(sql(`select contact_person||' · '||phone from studios where id='${studio}'`)).toBe('Наталія SPACE · +44 (20) 1234-5678');
@@ -249,9 +268,8 @@ test("compact Finance schedule and proposal stage descriptions preserve dates an
  const dates=()=>sql(`select jsonb_agg(jsonb_build_object('id',id,'due',due_date,'expected',expected_payment_date) order by id) from finance_project_plan_items where project_id='${project}'`);
  const notes=()=>sql(`select jsonb_agg(jsonb_build_object('id',id,'note',client_note) order by id) from finance_project_plan_items where project_id='${project}'`);
  const datesBefore=dates(),notesBefore=notes();
- await page.goto('/login');await page.locator('input[type="email"]').fill(email);await page.locator('input[type="password"]').fill(password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
- await page.context().addCookies([{name:'studioflow-locale',value:'uk',url:new URL(page.url()).origin}]);
- await page.goto(`/projects/${project}?view=finance`);await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await login(page);
+ await page.goto(`/projects/${project}?view=finance`);await openAgreementEditor(page);
  const dialog=page.getByRole('dialog'),rows=dialog.locator('[data-plan-row]');
  await expect(rows).toHaveCount(3);await expect(dialog.getByLabel(b.clientNote,{exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:f.planning.differentExpectedDate,exact:true})).toHaveCount(0);
  await expect(dialog.locator('[data-project-discount] p[aria-live]')).toHaveCount(0);await expect(dialog.locator('[data-price-summary] [data-discount-breakdown]')).toBeVisible();
@@ -269,28 +287,28 @@ test("compact Finance schedule and proposal stage descriptions preserve dates an
  await page.setViewportSize({width:390,height:844});expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await rows.first().scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath('compact-schedule-narrow.png')});
  await dialog.getByRole('button',{name:f.movements.close,exact:true}).click();await page.setViewportSize({width:1440,height:1000});
- await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await openAgreementEditor(page);
  const reason=dialog.getByLabel(p.reason,{exact:true}), height=await reason.evaluate(el=>el.clientHeight);
  await reason.fill('Перегляд домовленості.\n'.repeat(7));expect(await reason.evaluate(el=>el.clientHeight)).toBeGreaterThan(height);expect(await reason.evaluate(el=>getComputedStyle(el).resize)).toBe('none');await reason.fill('Уточнення формулювання домовленості.');
- await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);expect(dates()).toBe(datesBefore);expect(notes()).toBe(notesBefore);
+ await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(page.getByRole('dialog',{name:uk.Finance.orders.defaultName,exact:true})).toBeVisible();expect(dates()).toBe(datesBefore);expect(notes()).toBe(notesBefore);
  // An empty expected date keeps its nullable representation and follows an edited due date.
- await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await openAgreementEditor(page);
  const due=rows.nth(1).getByRole('combobox',{name:f.planning.dueDate,exact:true}),expected=rows.nth(1).getByRole('combobox',{name:f.planning.expectedDate,exact:true});
  await due.click();await page.getByRole('gridcell',{name:'27',exact:true}).click();
  await expect(expected).toContainText(b.expectedDateFallback);
  await expected.click();await page.getByRole('gridcell',{name:'23',exact:true}).click();await expect(expected).toContainText('23.10.2026');
  await expected.click();await page.getByRole('button',{name:'Очистити',exact:true}).click();await expect(expected).toContainText(b.expectedDateFallback);
- await reason.fill('Уточнення дати другого платежу.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await reason.fill('Уточнення дати другого платежу.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(page.getByRole('dialog',{name:uk.Finance.orders.defaultName,exact:true})).toBeVisible();
  expect(sql(`select due_date||'|'||coalesce(expected_payment_date::text,'NULL')||'|'||coalesce(expected_payment_date,due_date)::text from finance_project_plan_items where project_id='${project}' and description='Візуалізація'`)).toBe('2026-10-27|NULL|2026-10-27');expect(notes()).toBe(notesBefore);
  // The hidden protected-row note is preserved with settled payment history.
  sql(`select set_config('request.jwt.claim.sub','${actor}',false);do $$declare item record;begin
  select * into item from finance_project_plan_items where project_id='${project}' and description='Планування';
  perform record_finance_expected_payment('${studio}',gen_random_uuid(),item.id,jsonb_build_object('kind','incoming','date','2026-10-02','amount','100','accountId','${account}','categoryId',item.category_id),100);end $$;`);
  const protectedBefore=sql(`select to_jsonb(e) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${project}' and has_settlement_history)`);
- await page.reload();await page.getByRole('button',{name:p.editAgreement,exact:true}).click();await expect(dialog.getByText(b.protectedHelp,{exact:true})).toBeVisible();await expect(dialog.getByLabel(b.clientNote,{exact:true})).toHaveCount(0);
- await reason.fill('Оновлення редакції зі збереженням оплат.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await page.reload();await openAgreementEditor(page);await expect(dialog.getByText(b.protectedHelp,{exact:true})).toBeVisible();await expect(dialog.getByLabel(b.clientNote,{exact:true})).toHaveCount(0);
+ await reason.fill('Оновлення редакції зі збереженням оплат.');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(page.getByRole('dialog',{name:uk.Finance.orders.defaultName,exact:true})).toBeVisible();
  expect(sql(`select to_jsonb(e) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${project}' and has_settlement_history)`)).toBe(protectedBefore);expect(notes()).toBe(notesBefore);
- await page.getByRole('button',{name:proposal.action,exact:true}).click();
+ await openProposal(page);
  if(await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).isVisible())await dialog.getByRole('button',{name:proposal.newRevision,exact:true}).click();
  const stageNotes=dialog.getByRole('button',{name:proposal.stageNotes,exact:true});await expect(stageNotes).toHaveAttribute('aria-expanded','true');
  const stage=(name:string)=>dialog.getByLabel(proposal.stageNote.replace('{name}',name),{exact:true});
@@ -309,6 +327,6 @@ test("compact Finance schedule and proposal stage descriptions preserve dates an
 });
 test.afterAll(async()=>{
  sql(`begin;set local session_replication_role=replica;
- delete from finance_project_proposals where studio_id='${studio}';delete from finance_allocations where studio_id='${studio}';delete from finance_movement_entries where studio_id='${studio}';delete from finance_movements where studio_id='${studio}';delete from finance_project_items where studio_id='${studio}';delete from finance_project_plan_revisions where studio_id='${studio}';delete from finance_project_terms where studio_id='${studio}';delete from finance_expected_items where studio_id='${studio}';delete from finance_planning_requests where studio_id='${studio}';delete from finance_accounts where studio_id='${studio}';delete from finance_categories where studio_id='${studio}';delete from finance_settings where studio_id='${studio}';delete from notifications where studio_id='${studio}';delete from project_activity where project_id='${project}';delete from project_task_stage_columns where project_id='${project}';delete from crm_leads where studio_id='${studio}';delete from projects where studio_id='${studio}';delete from studio_members where studio_id='${studio}';delete from studios where id='${studio}';commit;`);
+ delete from finance_project_proposals where studio_id='${studio}';delete from finance_allocations where studio_id='${studio}';delete from finance_movement_entries where studio_id='${studio}';delete from finance_movements where studio_id='${studio}';delete from finance_project_items where studio_id='${studio}';delete from finance_project_plan_revisions where studio_id='${studio}';delete from finance_project_terms where studio_id='${studio}';delete from finance_expected_items where studio_id='${studio}';delete from finance_project_orders where studio_id='${studio}';delete from finance_planning_requests where studio_id='${studio}';delete from finance_accounts where studio_id='${studio}';delete from finance_categories where studio_id='${studio}';delete from finance_settings where studio_id='${studio}';delete from notifications where studio_id='${studio}';delete from project_activity where project_id='${project}';delete from project_task_stage_columns where project_id='${project}';delete from crm_leads where studio_id='${studio}';delete from projects where studio_id='${studio}';delete from studio_members where studio_id='${studio}';delete from studios where id='${studio}';commit;`);
  if(actor){const result=await client.auth.admin.deleteUser(actor);if(result.error)throw result.error;}
 });

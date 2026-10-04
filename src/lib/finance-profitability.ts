@@ -22,6 +22,8 @@ export const projectCashEventSchema = z.object({ movement_id: z.uuid(), project_
   reporting_currency: z.string(), source_reporting_amount: money.nullable(), source_amount: money, fx_rate: money.nullable(), fx_source: z.string().nullable(),
   fx_effective_date: z.iso.date().nullable(), revision: z.number().int(), reason: z.string() });
 export const projectContractSchema = z.object({ id: z.uuid(), project_id: z.uuid(), stream: z.string(), mode: z.string(), currency: z.string(),
+  order_id: z.uuid().nullable().optional(), order_name: z.string().nullable().optional(),
+  order_status: z.enum(["draft", "confirmed", "discarded"]).nullable().optional(),
   net_amount: money.nullable(), gross_amount: money.nullable(), effective_from: z.iso.date().nullable() });
 export const projectMatchedSchema = z.object({ projectId: z.uuid(), stream: z.string(), currency: z.string(), amount: money });
 export const projectReportingSchema = z.object({ receipts: z.array(projectCashReceiptSchema), events: z.array(projectCashEventSchema),
@@ -121,7 +123,7 @@ export function buildProjectProfitability(input: {
       const selected = cash.filter(row => row.financial_date >= from && row.financial_date <= to);
       return selected.some(row => row.display_amount === null) ? null : add(selected.map(row => row.display_amount ?? "0"), digits);
     };
-    const contracts = input.reporting.contracts.filter(row => row.project_id === project.id);
+    const contracts = input.reporting.contracts.filter(row => row.project_id === project.id && (!row.order_status || row.order_status === "confirmed"));
     const finite = contracts.filter(row => row.mode === "design");
     const agreedValue = (key: "net_amount" | "gross_amount") => {
       if (!finite.length) return null;
@@ -139,21 +141,31 @@ export function buildProjectProfitability(input: {
     const budgetVariance = { direct: estimateDisplay.direct_budget === null ? null : subtract(estimateDisplay.direct_budget, lifetime.directCost, digits),
       labor: estimateDisplay.labor_budget === null ? null : subtract(estimateDisplay.labor_budget, lifetime.labor, digits) };
     const agreedNet = agreedValue("net_amount");
-    const completeRevenue = contracts.length === 1 && finite.length === 1;
+    const designRevenue = entries.filter(row => row.project_id === project.id && row.classification === "revenue"
+      && (row.source_kind === "project_terms" || row.source_snapshot.stream === "design"));
+    // Older singleton report payloads did not expose order ownership. They remain
+    // unambiguous only when there is exactly one contractual source.
+    const belongsTo = (row: DisplayEntry, contract: typeof finite[number]) => contract.order_id
+      ? row.order_id === contract.order_id || (!row.order_id && row.terms_id === contract.id)
+      : finite.length === 1 && !row.order_id;
+    const completeRevenue = finite.length > 0 && contracts.length === finite.length
+      && designRevenue.every(row => finite.some(contract => belongsTo(row, contract)));
     const coverageGaps = input.start && input.to >= input.start ? managementCoverageIssues(input.coverage, input.from < input.start ? input.start : input.from, input.to, project.id).length : 0;
     const pendingTripCount = (input.pendingTrips ?? []).filter(trip => trip.projectId === project.id && trip.date <= input.today).length;
     const historyIncomplete = !input.start || !project.startsOn || project.startsOn < input.start || input.from < input.start;
     const laborIncomplete = laborSourceIssues(input.labor.sources, input.start ?? input.today, input.today).length > 0 || input.labor.missingPeriods.length > 0;
     // Preserve recognized revenue's historical valuation. Only unperformed agreed
     // native services use the explicitly dated contract reference assumption.
-    const design = finite[0];
-    const recognizedDesign = design ? entries.filter(row => row.project_id === project.id && row.classification === "revenue"
-      && (row.source_kind === "project_terms" || row.source_snapshot.stream === "design")) : [];
-    const remainingNative = design?.net_amount !== null && design?.net_amount !== undefined && recognizedDesign.every(row => row.currency === design.currency)
-      ? subtract(design.net_amount, add(recognizedDesign.map(row => row.amount), 4), 4) : null;
-    const referenceRate = design?.currency === input.currency ? "1" : design ? input.referenceRates.get(design.currency) : undefined;
-    const remainingRevenue = remainingNative !== null && referenceRate && financeAmountUnits(remainingNative, 4) >= BigInt(0)
-      ? convertFinanceDisplayAmount(remainingNative, referenceRate, digits) : null;
+    const remainingValues = finite.map(design => {
+      const recognizedDesign = designRevenue.filter(row => belongsTo(row, design));
+      const remainingNative = design.net_amount !== null && recognizedDesign.every(row => row.currency === design.currency)
+        ? subtract(design.net_amount, add(recognizedDesign.map(row => row.amount), 4), 4) : null;
+      const referenceRate = design.currency === input.currency ? "1" : input.referenceRates.get(design.currency);
+      return remainingNative !== null && referenceRate && financeAmountUnits(remainingNative, 4) >= BigInt(0)
+        ? convertFinanceDisplayAmount(remainingNative, referenceRate, digits) : null;
+    });
+    const remainingRevenue = completeRevenue && remainingValues.every(value => value !== null)
+      ? add(remainingValues.filter((value): value is string => value !== null), digits) : null;
     const targetRevenue = remainingRevenue === null ? null : add([lifetime.revenue, remainingRevenue], digits);
     const finalResult = completeRevenue && targetRevenue !== null && !estimateStale && estimateDisplay.remaining_direct !== null && estimateDisplay.remaining_labor !== null
       && lifetime.missingFx === 0 && pendingTripCount === 0 && !historyIncomplete && !laborIncomplete && coverageGaps === 0

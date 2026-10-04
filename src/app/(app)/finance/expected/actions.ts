@@ -4,9 +4,36 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { allocationInputSchema,categoryInputSchema,expectedInputSchema,releaseInputSchema } from "@/lib/finance-planning";
+import { allocationInputSchema,categoryInputSchema,expectedInputSchema,releaseInputSchema, type FinanceExpected } from "@/lib/finance-planning";
 import type { FinanceActionState } from "@/lib/finance";
 import { projectContextSchema,financeProjectError } from "@/lib/finance-projects";
+
+// Load an explicitly selected receipt independently of the paginated work list.
+export async function getProjectCashMatchOptions(projectId: string, movementId: string) {
+  if (!z.uuid().safeParse(projectId).success || !z.uuid().safeParse(movementId).success) return null;
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return null;
+  const client = await createClient();
+  const { data: payment, error } = await client.from("finance_payment_availability").select("*")
+    .eq("studio_id", admin.studio_id).eq("id", movementId).eq("direction", "incoming").gt("unapplied_amount", 0).maybeSingle();
+  if (error) throw new Error("Unable to load payment availability.");
+  if (!payment?.currency || !payment.nature) return null;
+  const { data: categories, error: categoryError } = await client.from("finance_categories").select("id")
+    .eq("studio_id", admin.studio_id).eq("nature", payment.nature);
+  if (categoryError) throw new Error("Unable to load payment categories.");
+  const items: FinanceExpected[] = [];
+  if (categories.length) for (let offset = 0; ; offset += 1000) {
+    const page = await client.from("finance_project_expected_balances").select("*")
+      .eq("studio_id", admin.studio_id).eq("project_id", projectId).eq("direction", "incoming")
+      .eq("currency", payment.currency).in("category_id", categories.map(category => category.id))
+      .neq("commitment", "cancelled").gt("remaining_amount", 0)
+      .order("expected_payment_date", { nullsFirst: false }).order("id").range(offset, offset + 999);
+    if (page.error) throw new Error("Unable to load project payment options.");
+    items.push(...page.data);
+    if (page.data.length < 1000) break;
+  }
+  return { payment, items };
+}
 
 export async function removeFinanceCategory(_state:FinanceActionState,form:FormData):Promise<FinanceActionState> {
   const t=await getTranslations("Finance.planning");

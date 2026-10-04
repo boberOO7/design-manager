@@ -7,6 +7,8 @@ import { ArrowDown, ArrowUp, Ellipsis, GripVertical, LockKeyhole, Plus, RefreshC
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { getProjectReferenceRate, saveFinanceProject } from "@/app/(app)/finance/project-actions";
+import { saveFinanceProjectOrder } from "@/app/(app)/finance/project-orders/actions";
+import { parseProjectOrderDraft } from "@/lib/finance-project-orders";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -124,28 +126,30 @@ function PaymentRow({ amount, copy, index, locale, money, onMove, onRemove, onUp
   </li>;
 }
 
-export function ProjectValueBuilder({ project, currencies, reportingCurrency, onSaved, onPending }: {
-  project: FinanceProjectData; currencies: FinanceCurrency[]; reportingCurrency: string;
+export function ProjectValueBuilder({ project, order, currencies, reportingCurrency, onSaved, onPending }: {
+  project: FinanceProjectData; order: FinanceProjectData["orders"][number]; currencies: FinanceCurrency[]; reportingCurrency: string;
   onSaved: () => void; onPending: (pending: boolean) => void;
 }) {
   const t = useTranslations("Finance"), locale = useLocale();
-  const current = project.terms.find((item) => item.stream === "design");
+  const current = project.terms.find((item) => item.stream === "design" && item.order_id === order.id);
+  const draft = order.status === "draft" ? parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) : null;
+  const planItems = project.planItems.filter(item => item.order_id === order.id);
   const pricing = project.planRevisions.find((item) => item.terms_id === current?.id);
-  const protectedItems = project.planItems.filter((item) => item.has_settlement_history);
-  const [method, setMethod] = useState<"fixed" | "area">(pricing?.pricing_method === "area" ? "area" : current ? "fixed" : "area");
-  const [currency, setCurrency] = useState(current?.currency ?? reportingCurrency);
+  const protectedItems = planItems.filter((item) => item.has_settlement_history);
+  const [method, setMethod] = useState<"fixed" | "area">(draft?.pricingMethod ?? (pricing?.pricing_method === "area" ? "area" : current ? "fixed" : "area"));
+  const [currency, setCurrency] = useState(draft?.currency ?? current?.currency ?? reportingCurrency);
   const selected = currencies.find((item) => item.code === currency), digits = selected?.minor_units ?? 2;
   const discountScheduleBase = useRef<{ context: string; pool: string; amounts: string[] } | null>(null);
-  const [discountType, setDiscountType] = useState<ProjectDiscountType>(current?.discount_type === "percentage" || current?.discount_type === "fixed" ? current.discount_type : "none");
-  const [discountValue, setDiscountValue] = useState(String(current?.discount_value ?? "0"));
-  const [value, setValue] = useState(String(current?.amount ?? ""));
-  const [vatRate, setVatRate] = useState<string | null>(current?.vat_rate == null ? null : String(current.vat_rate));
-  const [priceBasis, setPriceBasis] = useState<"net" | "gross" | null>(current?.price_basis === "net" || current?.price_basis === "gross" ? current.price_basis : null);
-  const [revenueTaxRate, setRevenueTaxRate] = useState<string | null>(current?.revenue_tax_rate == null ? null : String(current.revenue_tax_rate));
-  const [area, setArea] = useState(String(pricing?.area_snapshot ?? project.area ?? ""));
-  const [rate, setRate] = useState(String(pricing?.rate_per_m2 ?? ""));
-  const [strategy, setStrategy] = useState(current ? "manual" : "redistribute");
-  const [allowUnscheduled, setAllowUnscheduled] = useState(Number(project.totals.find((item) => item.stream === "design")?.unscheduled_amount ?? 0) > 0);
+  const [discountType, setDiscountType] = useState<ProjectDiscountType>(draft?.discountType ?? (current?.discount_type === "percentage" || current?.discount_type === "fixed" ? current.discount_type : "none"));
+  const [discountValue, setDiscountValue] = useState(String(draft?.discountValue ?? current?.discount_value ?? "0"));
+  const [value, setValue] = useState(String(draft?.amount ?? current?.amount ?? ""));
+  const [vatRate, setVatRate] = useState<string | null>(draft ? draft.vatRate : current?.vat_rate == null ? null : String(current.vat_rate));
+  const [priceBasis, setPriceBasis] = useState<"net" | "gross" | null>(draft ? draft.priceBasis : current?.price_basis === "net" || current?.price_basis === "gross" ? current.price_basis : null);
+  const [revenueTaxRate, setRevenueTaxRate] = useState<string | null>(draft ? draft.revenueTaxRate : current?.revenue_tax_rate == null ? null : String(current.revenue_tax_rate));
+  const [area, setArea] = useState(String(draft?.area ?? pricing?.area_snapshot ?? project.area ?? ""));
+  const [rate, setRate] = useState(String(draft?.rate ?? pricing?.rate_per_m2 ?? ""));
+  const [strategy, setStrategy] = useState(current || draft ? "manual" : "redistribute");
+  const [allowUnscheduled, setAllowUnscheduled] = useState(draft?.allowUnscheduled ?? (Number(project.orderTotals.find(item => item.order_id === order.id)?.unscheduled_amount ?? 0) > 0));
   const [reserve, setReserve] = useState("0");
   const [addGuidance, setAddGuidance] = useState(false);
 
@@ -158,7 +162,14 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     return { key: crypto.randomUUID(), id: "", name, defaultName: name, clientNote: "", amount: "", percentage, dueDate: "", expectedDate: "" };
   }
 
-  const [rows, setRows] = useState<Row[]>(() => current ? project.planItems.filter((item) => !item.has_settlement_history).sort((left, right) => {
+  const [rows, setRows] = useState<Row[]>(() => draft ? (() => {
+    const agreed = projectDiscountAmounts(draft.amount, draft.discountType, draft.discountValue, digits).agreed;
+    const gross = projectVatAmounts(agreed, draft.vatRate, draft.priceBasis, digits).gross;
+    const scheduledBasis = draft.items.reduce((sum, item) => sum + projectMoneyUnits(item.amount, digits), BigInt(0));
+    const target = draft.priceBasis === "net" && scheduledBasis === projectMoneyUnits(projectGrossToBasis(gross, draft.vatRate, draft.priceBasis, digits), digits) ? gross : undefined;
+    const schedule = draft.items.length ? projectScheduleVatAmounts(draft.items.map(item => item.amount), draft.vatRate, draft.priceBasis, digits, target) : [];
+    return draft.items.map((item,index) => ({ key: item.draftKey ?? crypto.randomUUID(), id: "", name: item.name, defaultName: defaultName(item.name,index), clientNote: item.clientNote, amount: schedule[index].gross, percentage: item.percentage, dueDate: item.dueDate, expectedDate: item.expectedDate }));
+  })() : current ? planItems.filter((item) => !item.has_settlement_history).sort((left, right) => {
     const order = pricing?.item_order ?? [];
     const leftIndex = order.indexOf(left.id ?? ""), rightIndex = order.indexOf(right.id ?? "");
     return (leftIndex < 0 ? order.length : leftIndex) - (rightIndex < 0 ? order.length : rightIndex) || (left.due_date ?? "9999").localeCompare(right.due_date ?? "9999");
@@ -199,7 +210,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     const grossPool = projectMoneyText(grossPoolUnits, digits);
     poolUnits = projectMoneyUnits(projectGrossToBasis(grossPool, vatRate, priceBasis, digits), digits);
     protectedValue = projectMoneyText(protectedUnits, digits);
-    collected = projectMoneyText(project.planItems.reduce((sum, item) => sum + projectMoneyUnits(item.settled_amount, digits), BigInt(0)), digits);
+    collected = projectMoneyText(planItems.reduce((sum, item) => sum + projectMoneyUnits(item.settled_amount, digits), BigInt(0)), digits);
     let percentagesBalanced = true;
     const reserved = strategy === "redistribute" && allowUnscheduled ? projectMoneyUnits(reserve, digits) : BigInt(0);
     if (poolUnits >= BigInt(0)) {
@@ -211,7 +222,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
       } else {
         const grossAmounts = rows.map((row) => projectMoneyText(projectMoneyUnits(row.amount, digits), digits));
         basisAmounts = grossAmounts.map((amount, index) => {
-          const previous = project.planItems.find((item) => item.id === rows[index]?.id);
+          const previous = planItems.find((item) => item.id === rows[index]?.id);
           return previous && projectMoneyUnits(previous.amount, digits) === projectMoneyUnits(amount, digits) ? basisAmount(previous, priceBasis, vatRate, digits) : projectGrossToBasis(amount, vatRate, priceBasis, digits);
         });
         const scheduledBasisUnits = basisAmounts.reduce((sum, amount) => sum + projectMoneyUnits(amount, digits), BigInt(0));
@@ -236,7 +247,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
     if (reference && currency !== "UAH") referenceAmount = projectReferenceValue(total, reference.rate, digits);
   } catch { error = t("builder.invalidPreview"); }
 
-  const payload = { projectId: project.projectId, revision: current?.revision ?? 0, pricingMethod: method, amount: total, discountType, discountValue, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: project.planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.expectedDate })) };
+  const payload = { projectId: project.projectId, orderId: order.id, revision: current?.revision ?? 0, pricingMethod: method, amount: total, discountType, discountValue, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, draftKey: row.key, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.expectedDate })) };
 
   function changeDiscount(type: ProjectDiscountType, value: string) {
     const nextValue = type === "none" ? "0" : value;
@@ -270,7 +281,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   }
   function update(index: number, patch: Partial<Row>) { discountScheduleBase.current = null; setAddGuidance(false); setRows((currentRows) => currentRows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row)); }
   function applyTemplate(percentages: readonly number[]) { discountScheduleBase.current = null; setAddGuidance(false); setStrategy("redistribute"); setReserve("0"); setRows((old) => percentages.map((percentage, index) => (() => { const fresh = freshRow(index, percentages.length, String(percentage), percentages); const previous = old[index]; return { ...fresh, ...(previous ? { ...previous, name: previous.name !== previous.defaultName ? previous.name : fresh.name, defaultName: fresh.defaultName } : {}), percentage: String(percentage) }; })())); }
-  function selectStrategy(next: string) { discountScheduleBase.current = null; setAddGuidance(false); if (strategy === "redistribute" && next === "manual") setRows((old) => old.map((row, index) => ({ ...row, amount: amounts[index] ?? row.amount }))); setStrategy(next); if (next === "keep") setRows((old) => old.map((row) => ({ ...row, amount: (() => { const item = project.planItems.find((entry) => entry.id === row.id); return item ? item.amount : row.amount; })() }))); }
+  function selectStrategy(next: string) { discountScheduleBase.current = null; setAddGuidance(false); if (strategy === "redistribute" && next === "manual") setRows((old) => old.map((row, index) => ({ ...row, amount: amounts[index] ?? row.amount }))); setStrategy(next); if (next === "keep") setRows((old) => old.map((row) => ({ ...row, amount: (() => { const item = planItems.find((entry) => entry.id === row.id); return item ? item.amount : row.amount; })() }))); }
   function move(index: number, offset: number) { discountScheduleBase.current = null; setRows((old) => { const destination = index + offset; if (destination < 0 || destination >= old.length) return old; const copy = [...old]; [copy[index], copy[destination]] = [copy[destination], copy[index]]; return copy; }); }
   function handleDragEnd(event: DragEndEvent) {
     discountScheduleBase.current = null;
@@ -296,7 +307,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const referencePending = referenceApplicable && referenceState.currency !== currency;
   const referenceFailed = referenceApplicable && referenceState.currency === currency && referenceState.failed;
   const referenceLine = referenceApplicable ? <div aria-live="polite" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-normal text-[var(--ui-text-secondary)]">{referenceAmount && reference && reporting ? <span>{t("builder.reference", { amount: formatFinanceAmount(referenceAmount, reporting, locale), date: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(reference.effectiveDate)), rate: new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(Number(reference.rate)), currency })}</span> : referencePending ? <span>{t("builder.referenceLoading")}</span> : referenceFailed ? <><span>{t("builder.referenceUnavailable", { currency })}</span><button type="button" className="inline-flex min-h-9 items-center gap-1 rounded px-2 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { setReferenceState({ currency: "", failed: false, value: null }); setReferenceAttempt((attempt) => attempt + 1); }}><RefreshCw className="size-3.5" aria-hidden="true"/>{t("builder.referenceRetry")}</button></> : null}</div> : null;
-  const currencyField = project.hasDesignHistory ? <FormField label={t("builder.currencyShort")}><Input aria-label={t("project.currency")} value={currency} readOnly className={compactControl}/></FormField> : <FormField label={t("builder.currencyShort")}><FinanceCurrencySelect name="currency" aria-label={t("project.currency")} className={compactControl} size="compact" currencies={currencies} reportingCurrency={reportingCurrency} value={currency} onValueChange={setCurrency}/></FormField>;
+  const currencyField = order.status === "confirmed" && project.orderTotals.some(total => total.order_id === order.id && total.has_payment_history) ? <FormField label={t("builder.currencyShort")}><Input aria-label={t("project.currency")} value={currency} readOnly className={compactControl}/></FormField> : <FormField label={t("builder.currencyShort")}><FinanceCurrencySelect name="currency" aria-label={t("project.currency")} className={compactControl} size="compact" currencies={currencies} reportingCurrency={reportingCurrency} value={currency} onValueChange={setCurrency}/></FormField>;
   const vatControls = <FinanceVatControls hidePreview amount={agreedAmount} vatRate={vatRate} priceBasis={priceBasis} digits={digits} money={money} onRateChange={(rate) => { setVatRate(rate); if (rate !== null && !priceBasis) setPriceBasis("net"); else if (rate === null) setPriceBasis(null); }} onBasisChange={setPriceBasis} labels={{ vat: t("builder.vat"), rate: t("builder.vatRate"), custom: t("builder.vatOther"), none: t("builder.vatNone"), basis: t("builder.priceBasis"), net: t("builder.netShort"), gross: t("builder.grossShort"), customRate: t("builder.customRate") }}/>;
   const discountControls = <div className="space-y-2" data-project-discount>
     <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,15.25rem)_minmax(0,12rem)]"><RateChips label={t("builder.discount")} value={discountType} choices={[{ value: "none", label: t("builder.discountNone") }, { value: "percentage", label: "%" }, { value: "fixed", label: t("builder.discountFixed") }]} onChange={type => { if (type === "none" || type === "percentage" || type === "fixed") changeDiscount(type, discountValue); }}/>
@@ -316,7 +327,7 @@ export function ProjectValueBuilder({ project, currencies, reportingCurrency, on
   const allocationTone = overAmount !== zeroMoney ? "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]" : remainder !== zeroMoney ? "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]" : "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]";
   const rowCopy: RowCopy = { actions: t("builder.paymentActions"), amount: t("movements.amount"), expectedPlaceholder: t("builder.expectedDateFallback"), drag: "", dueDate: t("planning.dueDate"), expectedDate: t("planning.expectedDate"), moveDown: t("builder.moveDown"), moveUp: t("builder.moveUp"), name: t("builder.paymentName"), percentage: t("builder.percentage"), remove: t("builder.remove") };
 
-  return <FinanceActionForm action={async (state, form) => { form.set("plan", JSON.stringify({ ...payload, reason: current ? form.get("reason") : t("builder.initialReason") })); return saveFinanceProject(state, form); }} label={t(current ? "builder.saveRevision" : "planning.save")} cancelLabel={t("planning.cancel")} onCancel={onSaved} disabled={!valid} onSaved={onSaved} onPending={onPending} className="min-w-0" fieldsetClassName="min-w-0" actionsClassName="sticky bottom-0 z-20 flex justify-end gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-6">
+  return <FinanceActionForm action={async (state, form) => { form.set("plan", JSON.stringify({ ...payload, reason: current ? form.get("reason") : t("builder.initialReason") })); if (order.status === "draft") { form.set("intent", "saveDraft"); form.set("projectId", project.projectId); form.set("orderId", order.id); form.set("version", String(order.version)); return saveFinanceProjectOrder(state, form); } return saveFinanceProject(state, form); }} label={t(order.status === "draft" ? "orders.saveDraft" : current ? "builder.saveRevision" : "planning.save")} cancelLabel={t("planning.cancel")} onCancel={onSaved} disabled={!valid} onSaved={onSaved} onPending={onPending} className="min-w-0" fieldsetClassName="min-w-0" actionsClassName="sticky bottom-0 z-20 flex justify-end gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-6">
     <input type="hidden" name="intent" value="plan"/>
     <div className="space-y-4 px-4 py-5 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 id="project-value-heading" className="font-semibold text-[var(--ui-text)]">{t("builder.pricing")}</h3><SegmentedControl ariaLabel={t("builder.pricingMethod")} className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-9" value={method} onValueChange={setMethod} items={[{ value: "area", label: t("builder.perAreaShort") }, { value: "fixed", label: t("builder.fixedShort") }]}/></div>

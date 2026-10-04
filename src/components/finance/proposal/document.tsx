@@ -56,6 +56,7 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
       <Text fixed style={{ position: "absolute", top: mm(32), left: mm(124), width: mm(19), fontSize: 9, textAlign: "right", color: "#57534e" }} render={({ pageNumber }) => pageNumber > 1 ? "Частка" : ""}/>
       <Text fixed style={{ position: "absolute", top: mm(32), right: mm(18), width: mm(48), fontSize: 9, textAlign: "right", color: "#57534e" }} render={({ pageNumber }) => pageNumber > 1 ? "Сума до сплати" : ""}/>
       <Text style={styles.title}>{title}</Text>
+      {s.schemaVersion === 2 ? <Text style={{ fontSize: 12, marginBottom: mm(5), color: "#57534e" }}>{s.order.name}</Text> : null}
       <View wrap={false} style={styles.context}>
         {s.clientName || s.contact ? <View style={styles.contextColumn}>
           <Text style={styles.label}>Клієнт</Text>
@@ -73,7 +74,7 @@ export function ProposalDocument({ snapshot: s, logoPath }: { snapshot: Proposal
           <View style={styles.priceContext}><Text style={styles.priceLabel}>Вартість до знижки{s.vatRate !== null ? " (з ПДВ)" : ""}</Text><Text style={styles.priceAmount}>{money(discount.listGross)}</Text></View>
           <View style={styles.priceContext}><Text style={styles.priceLabel}>Знижка {percent(discountPercent ?? "0")}%</Text><Text style={styles.priceAmount}>{money(discount.discountGross)}</Text></View>
         </View> : null}
-        <Text style={styles.totalLabel}>Вартість проєкту</Text>
+        <Text style={styles.totalLabel}>{s.schemaVersion === 2 ? "Вартість замовлення" : "Вартість проєкту"}</Text>
         <Text style={styles.totalValue}>{money(s.gross)}</Text>
         <View style={styles.calculationContext}>
           {priceBasis ? <Text>{priceBasis}</Text> : null}

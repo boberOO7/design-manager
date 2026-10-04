@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { createProposalSnapshot, parseProjectNumber, parseProposalProjectName, proposalPresentation, proposalPriceBasis, proposalSnapshotSchema, studioContactDetailsSchema, studioContactDetailsInputSchema, studioWebsiteDisplay, proposalDesignVariants, resolveProposalDesignVariant } from "./finance-proposal";
+import { createProposalSnapshot, parseProjectNumber, parseProposalProjectName, proposalFilename, proposalPresentation, proposalPriceBasis, proposalSnapshotSchema, studioContactDetailsSchema, studioContactDetailsInputSchema, studioWebsiteDisplay, proposalDesignVariants, resolveProposalDesignVariant } from "./finance-proposal";
 import { projectClientPaymentSchedule, projectDiscountAmounts, projectPaymentDefaultKey, projectVatAmounts } from "./finance-project-plan";
 import { renderProposalPdf } from "./finance-proposal-pdf";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -13,6 +13,23 @@ function source(percentages = [30,50,20], basis: "net" | "gross" | null = "net")
   return { schemaVersion: 1, projectId: randomUUID(), projectNumber: "336", revision: 1, date: "2026-09-30", projectTitle: "336 Стоматологічна клініка", clientName: "Олена Коваль", contact: "olena@example.test · +380 44 123 45 67", address: "Київ, вул. Архітектора Городецького, 12, приміщення 4", intro: "Площа об’єкта попередня та може бути уточнена після обмірів.", studioContactDetails: {website:"https://space.example",email:"hello@space.example",phone:"+380 44 000 00 00",businessAddress:"Київ, вул. Городецького, 12"}, studioContacts: "space.example · hello@space.example · +380 44 000 00 00", area: "100", clientRatePerM2: basis === "net" ? "49.2" : "40", currency: "EUR", minorUnits: 2, gross: price.gross, vatRate, vatAmount: price.vat, rows: percentages.map((percentage,i)=>({ id: randomUUID(), name: percentages.length===3 ? names[i] : `Етап ${i+1} · ${names[i%3]}`, percentage: String(percentage), gross: amounts[i], note: "Оплата перед початком відповідного етапу." })) };
 }
 describe("Commercial Proposal V1",()=>{
+  it("preserves legacy filenames and freezes independent order/source identity in V2", () => {
+    const legacy = proposalSnapshotSchema.parse(source());
+    expect(proposalFilename(legacy)).toBe("SPACE-336-r1.pdf");
+    const order = { id: randomUUID(), name: "Фасад", status: "draft" };
+    const draft = { ...legacy, schemaVersion: 2, order, sourceRevision: 4 };
+    const snapshot = createProposalSnapshot(draft, proposalPresentation(legacy));
+    expect(snapshot.schemaVersion).toBe(2);
+    expect(proposalFilename(snapshot)).toBe(`SPACE-336-${order.id}-r1.pdf`);
+    expect(snapshot).toMatchObject({ order: { name: "Фасад", status: "draft" }, sourceRevision: 4 });
+    order.name = "Changed scope";
+    expect(snapshot).toMatchObject({ order: { name: "Фасад" } });
+    expect(snapshot.gross).toBe(legacy.gross);
+    expect(snapshot.rows).toEqual(legacy.rows);
+    expect(proposalSnapshotSchema.safeParse({ ...draft, sourceRevision: 0 }).success).toBe(false);
+    expect(proposalSnapshotSchema.safeParse({ ...draft, order: { ...order, status: "discarded" } }).success).toBe(false);
+    expect(proposalSnapshotSchema.safeParse({ ...draft, order: undefined }).success).toBe(false);
+  });
   it("preserves each chosen design in its own snapshot and maps legacy documents to the original layout", () => {
     const data = source();
     const legacy = createProposalSnapshot(data, data);

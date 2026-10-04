@@ -44,8 +44,8 @@ export const proposalPresentationSchema = z.object({
   stageNotes: z.array(z.object({ id: z.uuid(), note: z.string().trim().max(300) }))
     .refine(notes => new Set(notes.map(note => note.id)).size === notes.length).optional(),
 });
-export const proposalSnapshotSchema = proposalPresentationSchema.omit({ studioContactPerson: true, stageNotes: true }).extend({
-  schemaVersion: z.literal(1), projectId: z.uuid(), projectNumber: z.string().regex(/^\d+$/),
+const proposalSnapshotFields = proposalPresentationSchema.omit({ studioContactPerson: true, stageNotes: true }).extend({
+  projectId: z.uuid(), projectNumber: z.string().regex(/^\d+$/),
   revision: z.number().int().positive(), date: z.iso.date(), area: decimal.nullable(),
   clientRatePerM2: decimal.nullable().optional(),
   studioContactDetails: studioContactDetailsSchema.optional(),
@@ -58,6 +58,15 @@ export const proposalSnapshotSchema = proposalPresentationSchema.omit({ studioCo
   }).optional(),
   rows: z.array(z.object({ id: z.uuid(), name: z.string(), percentage: decimal, gross: decimal, note: z.string().max(300) })),
 });
+// V1 is retained exactly for historical downloads; new proposals freeze their commercial owner.
+export const proposalSnapshotSchema = z.discriminatedUnion("schemaVersion", [
+  proposalSnapshotFields.extend({ schemaVersion: z.literal(1) }),
+  proposalSnapshotFields.extend({
+    schemaVersion: z.literal(2),
+    order: z.object({ id: z.uuid(), name: z.string().trim().min(1).max(200), status: z.enum(["draft", "confirmed"]) }),
+    sourceRevision: z.number().int().positive(),
+  }),
+]);
 export type ProposalSnapshot = z.infer<typeof proposalSnapshotSchema>;
 export type ProposalPresentation = z.infer<typeof proposalPresentationSchema>;
 
@@ -82,8 +91,8 @@ export function proposalPresentation(source: ProposalSnapshot): ProposalPresenta
     stageNotes: source.rows.map(({ id, note }) => ({ id, note })),
   });
 }
-export function proposalFilename(snapshot: Pick<ProposalSnapshot, "projectNumber" | "revision">) {
-  return `SPACE-${snapshot.projectNumber}-r${snapshot.revision}.pdf`;
+export function proposalFilename(snapshot: Pick<ProposalSnapshot, "projectNumber" | "revision"> & { order?: { id: string } }) {
+  return `SPACE-${snapshot.projectNumber}${snapshot.order ? `-${snapshot.order.id}` : ""}-r${snapshot.revision}.pdf`;
 }
 
 export function proposalPriceBasis(s: Pick<ProposalSnapshot, "area" | "clientRatePerM2" | "gross" | "currency" | "minorUnits" | "pricing">): string | null {

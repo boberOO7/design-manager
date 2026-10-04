@@ -124,6 +124,7 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
         {folded ? <Svg style={layouts.foldedPlane} viewBox="0 0 174 50"><Path d="M0 0H145L174 50H0Z" fill="#e7eae2"/><Path d="M143 10L159 38H127ZM135 24L159 38" fill="none" stroke="#737d6b" strokeWidth={.28}/></Svg> : null}
         {!quiet ? <Text style={styles.kicker}>КОМЕРЦІЙНА ПРОПОЗИЦІЯ</Text> : null}
         <Text style={[styles.title, measured ? layouts.measuredTitle : {}, quiet ? layouts.quietTitle : {}, folded ? layouts.foldedTitle : {}]}>{title}</Text>
+        {s.schemaVersion === 2 ? <Text style={[styles.detail, { marginTop: mm(3) }, quiet ? { textAlign: "center" } : {}]}>{s.order.name}</Text> : null}
       </View>
       <View wrap={false} style={[styles.context, measured ? layouts.measuredContext : {}, quiet ? layouts.quietContext : {}]}>
         {measured ? <View style={layouts.measuredProjectRail}><Text style={styles.railNumber}>01</Text><Text>Проєкт</Text></View> : null}
@@ -140,7 +141,7 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
       </View>
       <Section variant={variant} number="02" label="Вартість">
         <View wrap={false} style={[measured ? layouts.measuredCost : {}, quiet ? layouts.quietCost : {}, folded ? layouts.foldedCost : {}]}>
-          <Text style={[styles.totalLabel, quiet ? layouts.quietLabel : {}]}>{quiet ? "ВАРТІСТЬ ПРОЄКТУ" : "Вартість проєкту"}</Text>
+          <Text style={[styles.totalLabel, quiet ? layouts.quietLabel : {}]}>{s.schemaVersion === 2 ? quiet ? "ВАРТІСТЬ ЗАМОВЛЕННЯ" : "Вартість замовлення" : quiet ? "ВАРТІСТЬ ПРОЄКТУ" : "Вартість проєкту"}</Text>
           <View style={[styles.price, quiet ? layouts.quietPrice : {}]}><Text style={[styles.total, measured ? layouts.measuredPrice : {}, quiet ? layouts.quietTotal : {}, folded ? layouts.foldedTotal : {}]}>{moneyNumber(s.gross)}</Text><Text style={[styles.currency, quiet ? layouts.quietCurrency : {}]}>{s.currency}</Text></View>
           {basis ? <Text style={styles.basis}>{basis}</Text> : null}
         </View>

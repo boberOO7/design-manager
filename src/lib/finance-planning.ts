@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Database } from "@/types/database.types";
 
 export type FinanceCategory = Database["public"]["Tables"]["finance_categories"]["Row"];
-export type FinanceExpected = Database["public"]["Views"]["finance_expected_balances"]["Row"];
+export type FinanceExpected = Database["public"]["Views"]["finance_expected_balances"]["Row"] & Partial<Pick<Database["public"]["Views"]["finance_project_expected_balances"]["Row"], "order_id" | "order_name">>;
 export function projectPaymentPresentation(description: string | null, projectName: string, paymentType: string, fallbackTitle: string) {
   return { title: description?.trim() || fallbackTitle, context: `${projectName} · ${paymentType}` };
 }

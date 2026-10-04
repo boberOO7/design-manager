@@ -7,6 +7,7 @@ const decimal = z.string().regex(/^-?\d+(?:\.\d+)?$/);
 const optionalId = z.union([z.uuid(), z.literal("")]).default("");
 export const recognitionSourceSchema = z.object({
   kind: z.enum(["project_terms", "expected", "movement"]), sourceId: z.uuid(), label: z.string(), projectId: z.uuid().nullable(),
+  orderId: z.uuid().nullable().optional(), orderName: z.string().nullable().optional(),
   classification: managementClassificationSchema, currency: z.string(), amount: decimal, gross: decimal, remaining: decimal,
   periodStart: z.iso.date().nullable(), periodEnd: z.iso.date().nullable(), version: z.number().int(),
 });
@@ -14,6 +15,7 @@ export type RecognitionSource = z.infer<typeof recognitionSourceSchema>;
 export const recognitionEntrySchema = z.object({
   id: z.uuid(), kind: z.enum(["recognition", "reversal", "adjustment"]), classification: managementClassificationSchema,
   source_kind: z.string(), terms_id: z.uuid().nullable(), expected_item_id: z.uuid().nullable(), movement_id: z.uuid().nullable(),
+  order_id: z.uuid().nullable().optional(),
   trip_entry_id: z.uuid().nullable().default(null), obligation_id: z.uuid().nullable().default(null), employee_id: z.uuid().nullable().default(null), project_id: z.uuid().nullable(), category_id: z.uuid(), source_snapshot: z.record(z.string(), z.unknown()),
   period_start: z.iso.date(), period_end: z.iso.date(), recognized_on: z.iso.date(), description: z.string(),
   currency: z.string(), amount: decimal, vat_amount: decimal, gross_amount: decimal, reporting_currency: z.string(),

@@ -23,6 +23,7 @@ function clearFoundation() {
     delete from public.finance_project_items where studio_id=${studioLiteral};
     delete from public.finance_project_plan_revisions where studio_id=${studioLiteral};
     delete from public.finance_project_terms where studio_id=${studioLiteral};
+    delete from public.finance_project_orders where studio_id=${studioLiteral};
     delete from public.finance_allocations where studio_id=${studioLiteral};
     delete from public.finance_expected_items where studio_id=${studioLiteral};
     delete from public.finance_planning_requests where studio_id=${studioLiteral};
@@ -75,28 +76,31 @@ test("Project Finance rendered audit", async ({page}, testInfo) => {
  for(const [label,width,height] of [["fullhd",1920,1080],["2k",2560,1440],["mobile",390,844]] as const) {
   await page.setViewportSize({width,height});
   for(const language of ["en","uk"] as const) for(const theme of ["light","dark"] as const) {
-   await page.context().addCookies([{name:"studioflow-locale",value:language,url:"http://127.0.0.1:3100"}]);
+   await page.context().addCookies([{name:"studioflow-locale",value:language,url:new URL(page.url()).origin}]);
    await page.emulateMedia({colorScheme:theme,reducedMotion:"reduce"});
    await page.goto(`/projects/${projectId}?view=finance`);
-   await expect(page.getByRole('button',{name:(language==='en'?en:uk).Finance.project.editAgreement,exact:true})).toBeVisible();
-   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
    const messages=(language==='en'?en:uk).Finance;
-   const summary=page.getByRole('region',{name:messages.project.summary,exact:true});
-   await expect(summary).toContainText(messages.project.nextPayment);
+   await expect(page.getByRole('button',{name:messages.orders.manage.replace('{count}','1'),exact:true})).toBeVisible();
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+   const summary=page.getByRole('region',{name:messages.orders.scope,exact:true});
+   await expect(summary).toContainText(messages.orders.next);
    await expect(summary).toContainText('After concept');
    await expect(page.getByRole('heading',{name:'Final payment',exact:true})).toBeVisible();
    const partial=page.locator('article').filter({has:page.getByRole('heading',{name:'Advance',exact:true})});
-   await expect(partial.locator('summary')).toContainText(language==='en'?'remaining':'залишок');
+   await expect(partial).toContainText(language==='en'?'remaining':'залишок');
    if(width>=1920) expect((await page.locator('[data-project-finance]').boundingBox())?.width).toBeGreaterThan(1700);
    await page.screenshot({path:testInfo.outputPath(`project-${label}-${language}-${theme}.png`),fullPage:true});
-   await partial.locator('summary').focus();await page.keyboard.press('Enter');
-   await expect(partial.getByRole('link',{name:messages.planning.recordPayment,exact:true})).toBeVisible();
+   await partial.getByRole("button", { name: messages.projectWorkspace.actionsFor.replace("{name}", "Advance"), exact: true }).focus();await page.keyboard.press("Enter");
+   await page.getByRole("button", { name: messages.projectWorkspace.history, exact: true }).click();
+   await expect(page.getByRole("dialog")).toContainText("Advance");
    await page.screenshot({path:testInfo.outputPath(`details-${label}-${language}-${theme}.png`),fullPage:true});
+   await page.keyboard.press("Escape");
    for(const stream of ['supervision','contractor_bonus','other'] as const) {
-    await page.getByRole('navigation',{name:messages.project.streamNavigation,exact:true}).getByRole('link',{name:messages.project.streams[stream],exact:true}).click();
-    await expect(page.getByRole('navigation',{name:messages.project.streamNavigation,exact:true}).getByRole('link',{name:messages.project.streams[stream],exact:true})).toHaveAttribute('aria-current','page');
-    await expect(page.getByRole('heading',{name:messages.project.streams[stream],exact:true})).toBeVisible();
-    await expect(page.getByRole('button',{name:messages.project.addPayment,exact:true})).toBeVisible();
+    await page.getByRole('combobox', { name: messages.orders.category, exact: true }).click();
+    await page.getByRole('option', { name: messages.project.streams[stream], exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`stream=${stream}`));
+    await expect(page.getByRole('combobox', { name: messages.orders.category, exact: true })).toContainText(messages.project.streams[stream]);
+    await expect(page.getByRole('button',{name:width < 640 ? messages.projectWorkspace.add : messages.project.addPayment,exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`${stream}-${label}-${language}-${theme}.png`),fullPage:true});
    }

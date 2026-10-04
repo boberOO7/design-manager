@@ -23,6 +23,7 @@ function clearFoundation() {
     delete from public.finance_project_items where studio_id=${studioLiteral};
     delete from public.finance_project_plan_revisions where studio_id=${studioLiteral};
     delete from public.finance_project_terms where studio_id=${studioLiteral};
+    delete from public.finance_project_orders where studio_id=${studioLiteral};
     delete from public.finance_allocations where studio_id=${studioLiteral};
     delete from public.finance_expected_items where studio_id=${studioLiteral};
     delete from public.finance_planning_requests where studio_id=${studioLiteral};
@@ -68,8 +69,22 @@ test("value builder preserves protected payments and native-currency area histor
  await page.goto('/login');await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
  await page.setViewportSize({width:1920,height:1080});
  const href=`/projects/${projectId}?view=finance`;
- await page.goto(href);await expect(page.getByText(t.planning.secondaryFilters,{exact:true})).toHaveCount(0);await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await page.goto(href);await expect(page.getByText(t.planning.secondaryFilters,{exact:true})).toHaveCount(0);
  const dialog=page.getByRole('dialog');
+ const orderName=t.orders.defaultName;
+ async function openOrderDetails(copy=t) {
+  await page.getByRole('region',{name:copy.orders.scope,exact:true}).getByRole('button',{name:copy.orders.manage.replace('{count}','1'),exact:true}).click();
+  await dialog.getByRole('button').filter({has:page.getByText(orderName,{exact:true})}).click();
+ }
+ async function openBuilder(copy=t) {await openOrderDetails(copy);await dialog.getByRole('button',{name:copy.project.editAgreement,exact:true}).click();}
+ async function closeOrderDetails(copy=t) {
+  await expect(dialog.getByRole('button',{name:copy.project.editAgreement,exact:true})).toBeVisible();
+  await dialog.getByRole('button',{name:copy.movements.close,exact:true}).click();await expect(dialog).toHaveCount(0);
+ }
+ await page.getByRole('region',{name:t.orders.scope,exact:true}).getByRole('button',{name:t.orders.manage.replace('{count}','0'),exact:true}).click();
+ await dialog.getByRole('button',{name:t.orders.add,exact:true}).click();await dialog.getByLabel(t.orders.name,{exact:true}).fill(orderName);
+ await dialog.getByRole('button',{name:t.orders.create,exact:true}).click();await expect(dialog.getByText(t.orders.draftHelp,{exact:true})).toBeVisible();
+ await dialog.getByRole('button',{name:p.editAgreement,exact:true}).click();
  await expect(dialog.getByRole('button',{name:b.perAreaShort,exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog.getByRole('combobox',{name:b.strategy,exact:true})).toHaveCount(0);
  await expect(dialog.getByLabel(p.reason,{exact:true})).toHaveCount(0);
@@ -112,11 +127,11 @@ test("value builder preserves protected payments and native-currency area histor
  await dialog.getByRole('button',{name:'30 / 50 / 20',exact:true}).click();
  await dialog.locator('[data-plan-row]').nth(0).getByLabel(b.percentage,{exact:true}).fill('40');
  await expect(dialog.getByText(b.allocationOver.replace('{percent}','110').replace('{amount}','USD 246.00'),{exact:true})).toBeVisible();
- await expect(dialog.getByRole('button',{name:t.planning.save,exact:true})).toBeDisabled();
+ await expect(dialog.getByRole('button',{name:t.orders.saveDraft,exact:true})).toBeDisabled();
  await page.screenshot({path:testInfo.outputPath('over-allocation-fullhd-en-light.png')});
  await dialog.locator('[data-plan-row]').nth(0).getByLabel(b.percentage,{exact:true}).fill('20');
  await expect(dialog.getByText(b.allocationUnder.replace('{percent}','90').replace('{amount}','USD 246.00'),{exact:true})).toBeVisible();
- await expect(dialog.getByRole('button',{name:t.planning.save,exact:true})).toBeDisabled();
+ await expect(dialog.getByRole('button',{name:t.orders.saveDraft,exact:true})).toBeDisabled();
  await page.screenshot({path:testInfo.outputPath('under-allocation-fullhd-en-light.png')});
  await dialog.getByRole('button',{name:p.addPayment,exact:true}).click();
  await expect(dialog.locator('[data-plan-row]').last().getByLabel(b.percentage,{exact:true})).toHaveValue('10');
@@ -124,7 +139,7 @@ test("value builder preserves protected payments and native-currency area histor
  await dialog.getByRole('checkbox',{name:b.allowUnscheduled,exact:true}).check();await dialog.getByLabel(p.unscheduled,{exact:true}).fill('246');
  await dialog.locator('[data-plan-row]').nth(0).getByLabel(b.percentage,{exact:true}).fill('30');
  await expect(dialog.getByText(b.allocationUnderAllowed.replace('{percent}','90').replace('{amount}','USD 246.00'),{exact:true})).toBeVisible();
- await expect(dialog.getByRole('button',{name:t.planning.save,exact:true})).toBeEnabled();
+ await expect(dialog.getByRole('button',{name:t.orders.saveDraft,exact:true})).toBeEnabled();
  await dialog.getByRole('checkbox',{name:b.allowUnscheduled,exact:true}).uncheck();
  await dialog.getByRole('button',{name:p.addPayment,exact:true}).click();
  await expect(dialog.locator('[data-plan-row]').last().getByLabel(b.percentage,{exact:true})).toHaveValue('');
@@ -133,54 +148,59 @@ test("value builder preserves protected payments and native-currency area histor
  await dialog.locator('[data-plan-row]').last().getByRole('button',{name:b.paymentActions,exact:true}).click();await page.getByRole('menuitem',{name:b.remove,exact:true}).click();
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.dueDate,{exact:true}).click();await page.getByRole('button',{name:'Today',exact:true}).click();
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.expectedDate,{exact:true}).click();await page.getByRole('gridcell',{name:'23',exact:true}).click();
- await dialog.getByRole('button',{name:t.planning.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByRole('button',{name:t.orders.saveDraft,exact:true}).click();
+ await expect(dialog.getByRole('checkbox',{name:t.orders.confirmCheck,exact:true})).toBeVisible();
+ expect(sql(`select count(*) from finance_project_terms where project_id='${projectId}'`)).toBe('0');
+ expect(sql(`select count(*) from finance_project_items where project_id='${projectId}'`)).toBe('0');
+ await dialog.getByRole('checkbox',{name:t.orders.confirmCheck,exact:true}).check();await dialog.getByRole('button',{name:t.orders.confirm,exact:true}).click();
+ await expect(dialog.getByText(t.orders.status.confirmed,{exact:true})).toBeVisible();await closeOrderDetails();
  expect(sql(`select concat(amount,'|',currency) from finance_project_current_terms where project_id='${projectId}' and stream='design'`)).toBe('2460.00|USD');
  expect(sql(`select concat(area_snapshot,'|',rate_per_m2) from finance_project_plan_revisions where project_id='${projectId}'`)).toBe('123|20');
  const initialItems=sql(`select jsonb_agg(id order by id) from finance_project_plan_items where project_id='${projectId}'`);
  sql(`update projects set total_area_m2=150 where id='${projectId}';`);
- await page.reload();await expect(page.getByText(b.areaChanged.replace('{saved}','123').replace('{current}','150'),{exact:true})).toBeVisible();
- await page.getByRole('button',{name:p.editAgreement,exact:true}).click();await expect(dialog.getByLabel(b.area,{exact:true})).toHaveValue('123');await expect(dialog.getByText('123 m² × 20 USD/m² = USD 2,460.00',{exact:true})).toBeVisible();
+ await page.reload();await openOrderDetails();await expect(dialog.getByText(b.areaChanged.replace('{saved}','123').replace('{current}','150'),{exact:true})).toBeVisible();
+ await dialog.getByRole('button',{name:p.editAgreement,exact:true}).click();await expect(dialog.getByLabel(b.area,{exact:true})).toHaveValue('123');await expect(dialog.getByText('123 m² × 20 USD/m² = USD 2,460.00',{exact:true})).toBeVisible();
  await dialog.getByRole('button',{name:b.useCurrentArea,exact:true}).click();await expect(dialog.getByText('150 m² × 20 USD/m² = USD 3,000.00',{exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:t.movements.close,exact:true}).click();
+ await dialog.getByRole('button',{name:t.movements.close,exact:true}).click();await closeOrderDetails();
  expect(sql(`select jsonb_agg(id order by id) from finance_project_plan_items where project_id='${projectId}'`)).toBe(initialItems);
  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false);do $$declare item record; begin
  for item in select * from finance_project_plan_items where project_id='${projectId}' and amount in (738,1230) loop
  perform record_finance_expected_payment('${studioId}',gen_random_uuid(),item.id,jsonb_build_object('kind','incoming','date','2026-09-20','amount',case when item.amount=738 then '738' else '100' end,'accountId','${dollar}','categoryId',item.category_id,'fx',jsonb_build_object('rate','40','source','manual','effectiveDate','2026-09-20')),case when item.amount=738 then 738 else 100 end);
  end loop;end $$;`);
  const protectedBefore=sql(`select jsonb_agg(to_jsonb(e) order by e.id) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${projectId}' and has_settlement_history)`);
- await page.reload();await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await page.reload();await openBuilder();
  await expect(dialog.getByText(b.protectedHelp,{exact:true})).toBeVisible();await expect(dialog.locator('[data-plan-row]')).toHaveCount(1);
  await dialog.getByRole('button',{name:'50 / 50',exact:true}).click();
  await expect(dialog.locator('[data-plan-row]')).toHaveCount(2);
  await expect(dialog.locator('[data-plan-row]').first().getByLabel(t.movements.amount,{exact:true})).toHaveAttribute('data-derived-amount','246.00');
  await dialog.locator('[data-plan-row]').nth(1).getByLabel(b.paymentName,{exact:true}).fill('Fourth payment');
- await dialog.getByLabel(p.reason,{exact:true}).fill('Fourth payment without changing collected history');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByLabel(p.reason,{exact:true}).fill('Fourth payment without changing collected history');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await closeOrderDetails();
  expect(sql(`select count(*) from finance_project_plan_items where project_id='${projectId}'`)).toBe('4');
  expect(sql(`select jsonb_agg(to_jsonb(e) order by e.id) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${projectId}' and has_settlement_history)`)).toBe(protectedBefore);
- await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await openBuilder();
  await dialog.getByRole('button',{name:b.fixedShort,exact:true}).click();
  await dialog.getByLabel(p.contract,{exact:true}).fill('2560');
  await dialog.getByRole('combobox',{name:b.strategy,exact:true}).click();await page.getByRole('option',{name:b.keep,exact:true}).click();
  await expect(dialog.locator('[data-plan-row]').first().getByLabel(t.movements.amount,{exact:true})).toHaveAttribute('readonly','');
  await dialog.getByRole('button',{name:p.addPayment,exact:true}).click();await dialog.locator('[data-plan-row]').last().getByLabel(t.movements.amount,{exact:true}).fill('100');
  await dialog.locator('[data-plan-row]').last().getByLabel(b.paymentName,{exact:true}).fill('Extra payment');
- await dialog.getByLabel(p.reason,{exact:true}).fill('Additional scope, preserve unpaid amounts');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByLabel(p.reason,{exact:true}).fill('Additional scope, preserve unpaid amounts');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await closeOrderDetails();
  expect(sql(`select concat(trim_scale(contract_amount),'|',trim_scale(scheduled_amount),'|',trim_scale(collected_amount)) from finance_project_totals where project_id='${projectId}' and stream='design'`)).toBe('2560|2560|838');
  expect(sql(`select count(*) from finance_movements where studio_id='${studioId}'`)).toBe('2');
 
- await page.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await openBuilder();
  await expect(dialog.getByRole('button',{name:b.custom,exact:true})).toHaveAttribute('aria-pressed','true');
  await dialog.locator('[data-plan-row]').nth(0).getByLabel(t.movements.amount,{exact:true}).fill('200');
  await dialog.locator('[data-plan-row]').nth(1).getByLabel(t.movements.amount,{exact:true}).fill('292');
  await dialog.locator('[data-plan-row]').nth(0).getByRole('button',{name:b.paymentActions,exact:true}).click();await page.getByRole('menuitem',{name:b.moveDown,exact:true}).click();
- await dialog.getByLabel(p.reason,{exact:true}).fill('Manual amounts and reviewed order');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByLabel(p.reason,{exact:true}).fill('Manual amounts and reviewed order');await dialog.getByRole('button',{name:b.saveRevision,exact:true}).click();await closeOrderDetails();
  expect(sql(`select e.description from finance_project_plan_revisions p join finance_project_current_terms t on t.id=p.terms_id join finance_expected_items e on e.id=p.item_order[1] where p.project_id='${projectId}'`)).toBe('Fourth payment');
  expect(sql(`select jsonb_agg(to_jsonb(e) order by e.id) from finance_expected_items e where id in(select id from finance_project_plan_items where project_id='${projectId}' and has_settlement_history)`)).toBe(protectedBefore);
  // Render the populated builder in both locales/themes at all required widths.
  for(const [label,width,height] of [['fullhd',1920,1080],['2k',2560,1440],['mobile',390,844]] as const) for(const language of ['en','uk'] as const) for(const theme of ['light','dark'] as const) {
   const messages=(language==='en'?en:uk).Finance;
   await page.setViewportSize({width,height});await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.context().addCookies([{name:'studioflow-locale',value:language,url:'http://127.0.0.1:3100'}]);await page.goto(href);
-  await page.getByRole('button',{name:messages.project.editAgreement,exact:true}).click();await expect(dialog.getByText(messages.builder.protectedHelp,{exact:true})).toBeVisible();
+  await openBuilder(messages);await expect(dialog.getByText(messages.builder.protectedHelp,{exact:true})).toBeVisible();
   expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   if(label==='mobile'&&language==='en'&&theme==='light') {
    await page.emulateMedia({colorScheme:theme,reducedMotion:'no-preference'});
@@ -200,6 +220,6 @@ test("value builder preserves protected payments and native-currency area histor
   await dialog.getByLabel(messages.builder.rate,{exact:true}).fill('20');
   await page.screenshot({path:testInfo.outputPath(`area-${label}-${language}-${theme}.png`)});
   await dialog.getByLabel(messages.project.reason,{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath(`review-${label}-${language}-${theme}.png`)});
-  await dialog.getByRole('button',{name:messages.movements.close,exact:true}).click();
+  await dialog.getByRole('button',{name:messages.movements.close,exact:true}).click();await closeOrderDetails(messages);
  }
 });
