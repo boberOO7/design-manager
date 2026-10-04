@@ -6,7 +6,7 @@ vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: moc
 vi.mock("@/data/queries/productivity-attributions", () => ({ getCanonicalProductivityAttributions: mocks.attributions }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 
-import { getStatistics } from "@/data/queries/statistics";
+import { getStatistics, readStatisticsPages } from "@/data/queries/statistics";
 
 describe("Statistics query access boundary", () => {
   afterEach(() => vi.clearAllMocks());
@@ -19,5 +19,24 @@ describe("Statistics query access boundary", () => {
     expect(mocks.admin).toHaveBeenCalledOnce();
     expect(mocks.client).not.toHaveBeenCalled();
     expect(mocks.attributions).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when verified membership resolution fails", async () => {
+    mocks.admin.mockRejectedValue(new Error("Authentication unavailable"));
+    await expect(getStatistics("all")).rejects.toThrow("Authentication unavailable");
+    expect(mocks.client).not.toHaveBeenCalled();
+  });
+
+  it("loads all source rows beyond the API cap, including an exact multiple", async () => {
+    const all = Array.from({ length: 2000 }, (_, id) => ({ id }));
+    const page = vi.fn(async (offset: number) => ({ data: all.slice(offset, offset + 1000), error: null }));
+    expect(await readStatisticsPages(page)).toEqual(all);
+    expect(page.mock.calls.map(([offset]) => offset)).toEqual([0, 1000, 2000]);
+  });
+
+  it("does not return a plausible partial aggregate when a later page fails", async () => {
+    await expect(readStatisticsPages(async offset => offset === 0
+      ? { data: Array.from({ length: 1000 }, (_, id) => id), error: null }
+      : { data: null, error: new Error("Failed page") })).rejects.toThrow("Unable to load Statistics");
   });
 });

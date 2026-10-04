@@ -26,8 +26,10 @@ export function recurrenceDates(startDate: string, rangeStart: string, rangeEnd:
   const maxEnd = normalized.endsOn && normalized.endsOn < rangeEnd ? normalized.endsOn : rangeEnd;
   while (date <= maxEnd && seen < (normalized.occurrenceCount ?? Number.MAX_SAFE_INTEGER)) {
     const day = parseDateOnly(date).getDay();
-    const weeks = Math.floor((parseDateOnly(date).getTime() - parseDateOnly(startDate).getTime()) / 604800000);
-    const eligible = normalized.frequency === "daily" ? Math.floor((parseDateOnly(date).getTime() - parseDateOnly(startDate).getTime()) / 86400000) % normalized.interval === 0
+    // Calendar-date intervals must not lose a day at a host DST transition.
+    const days = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000;
+    const weeks = Math.floor(days / 7);
+    const eligible = normalized.frequency === "daily" ? days % normalized.interval === 0
       : normalized.frequency === "weekly" ? weeks % normalized.interval === 0 && (normalized.weekdays.length ? normalized.weekdays.includes(day) : day === parseDateOnly(startDate).getDay())
         : normalized.frequency === "monthly" ? monthsBetween(startDate, date) % normalized.interval === 0 && parseDateOnly(date).getDate() === parseDateOnly(startDate).getDate()
           : parseDateOnly(date).getMonth() === parseDateOnly(startDate).getMonth() && parseDateOnly(date).getDate() === parseDateOnly(startDate).getDate() && (parseDateOnly(date).getFullYear() - parseDateOnly(startDate).getFullYear()) % normalized.interval === 0;

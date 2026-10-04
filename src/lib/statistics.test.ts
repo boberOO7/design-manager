@@ -36,6 +36,31 @@ const payItem = (component: string, amount: string, currency = "UAH", managed_ac
 });
 
 describe("Statistics metric definitions", () => {
+  it("keeps 100 physical m² separate from 200 legitimate discipline credits and deduplicates repeated source IDs", () => {
+    const designer = attribution();
+    const architect = attribution({ id: "credit-2", task_id: "task-2", contributor_id: "architect", credited_area_m2: 100 });
+    const task = { id: "task-1", project_id: "project-1", completed_at: "2025-03-12" };
+    const report = buildStatistics(emptySources({ projects: [project(), project()],
+      tasks: [task, task, { ...task, id: "task-2" }], attributions: [designer, architect, designer],
+    }), "all", "2025-04-30");
+    expect(report.totals).toMatchObject({ physicalArea: 100, creditedArea: 200, completedProjects: 1, completedTasks: 2, contributors: 2 });
+  });
+
+  it("preserves canonical snapshot credits after deletion and on unfinished projects", () => {
+    const report = buildStatistics(emptySources({ projects: [project({ status: "active", completed_at: null })],
+      attributions: [attribution({ task_id: null }), attribution({ id: "deleted-project-credit", project_id: "deleted", task_id: null })],
+    }), "all", "2025-04-30");
+    expect(report.totals.creditedArea).toBe(200);
+    expect(report.totals.physicalArea).toBeNull();
+  });
+
+  it("rejects administrative zero-day activation contradicted by earlier work, retaining genuine same-day completion", () => {
+    const subject = project();
+    const events = [activity(subject.id, "planned", "active", "2025-03-12T10:00:00Z"), activity(subject.id, "active", "completed", "2025-03-12T12:00:00Z")];
+    expect(recordedProjectDuration(subject, events, "2025-04-01", [{ id: "task", project_id: subject.id, completed_at: "2025-02-10" }])).toBeNull();
+    expect(recordedProjectDuration(subject, events, "2025-04-01", [{ id: "task", project_id: subject.id, completed_at: "2025-03-12" }])?.days).toBe(0);
+  });
+
   it("counts completed physical project area once, including archived production projects, and excludes non-production projects", () => {
     const report = buildStatistics(emptySources({ projects: [
       project({ id: "done", total_area_m2: 80 }),

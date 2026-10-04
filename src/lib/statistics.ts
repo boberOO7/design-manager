@@ -19,6 +19,11 @@ export type StatisticsPayCoverage = Pick<Views["finance_schedule_history"]["Row"
 
 export const statisticsPeriods = ["3", "6", "12", "year", "all"] as const;
 export type StatisticsPeriod = typeof statisticsPeriods[number];
+export const statisticsSections = ["overview", "leads", "team", "calendar"] as const;
+export type StatisticsSection = typeof statisticsSections[number];
+export function parseStatisticsSection(value: string | string[] | undefined): StatisticsSection {
+  return statisticsSections.find(section => section === value) ?? "overview";
+}
 export type StatisticsSources = {
   projects: StatisticsProject[];
   tasks: StatisticsTask[];
@@ -51,17 +56,31 @@ export function statisticsRange(period: StatisticsPeriod, today: string, availab
  * reopened completion is not mistaken for initial activation. Completion-date
  * corrections remain authoritative; contradictory chronology is excluded.
  */
-export function recordedProjectDuration(project: StatisticsProject, activities: StatisticsActivity[], today: string) {
-  if (!project.completed_at || project.completed_at > today) return null;
-  const transitions = activities.filter(activity => activity.project_id === project.id).flatMap(activity => {
+function projectTransitions(projectId: string, activities: StatisticsActivity[]) {
+  return activities.filter(activity => activity.project_id === projectId).flatMap(activity => {
     const changes = activity.changes;
     if (!changes || typeof changes !== "object" || Array.isArray(changes)) return [];
     const status = changes.status;
     if (!status || typeof status !== "object" || Array.isArray(status) || typeof status.from !== "string" || typeof status.to !== "string") return [];
     return [{ from: status.from, to: status.to, timestamp: activity.created_at, date: getKyivDateOnly(new Date(activity.created_at)) }];
   }).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
+export function recordedProjectStart(projectId: string, activities: StatisticsActivity[], through: string, tasks: StatisticsTask[] = []) {
+  const start = projectTransitions(projectId, activities)[0];
+  if (start?.from !== "planned" || start.to !== "active" || start.date > through) return null;
+  return tasks.some(task => task.project_id === projectId && task.completed_at && task.completed_at < start.date) ? null : start;
+}
+
+export function recordedProjectDuration(project: StatisticsProject, activities: StatisticsActivity[], today: string, tasks: StatisticsTask[] = []) {
+  if (!project.completed_at || project.completed_at > today) return null;
+  const transitions = projectTransitions(project.id, activities);
   const start = transitions[0];
   if (start?.from !== "planned" || start.to !== "active" || start.date > project.completed_at) return null;
+  // Imported work can have an administrative activation/completion on one day.
+  // Earlier authoritative task completions contradict that activation as an
+  // actual project start. Do not discard genuine same-day work by a threshold.
+  if (tasks.some(task => task.project_id === project.id && task.completed_at && task.completed_at < start.date)) return null;
   if (!transitions.some(event => event.to === "completed" && event.date >= start.date)) return null;
   return { id: project.id, name: project.name, started: start.date, completed: project.completed_at,
     days: Math.round((Date.parse(project.completed_at) - Date.parse(start.date)) / DAY) };
@@ -103,21 +122,25 @@ export function recordedPayrollCost(obligation: StatisticsPayroll, unknownCosts:
   return { currency, units, incomplete, estimated };
 }
 
-export function buildStatistics(sources: StatisticsSources, period: StatisticsPeriod, today: string) {
+export function buildStatistics(sources: StatisticsSources, period: StatisticsPeriod, today: string, sharedFrom?: string) {
   const projects = new Map(sources.projects.map(project => [project.id, project]));
-  const production = sources.projects.filter(project => project.include_in_productivity);
+  const production = [...projects.values()].filter(project => project.include_in_productivity);
   const completed = production.filter(project => (project.status === "completed" || project.status === "archived") && project.completed_at && project.completed_at <= today);
-  const tasks = sources.tasks.filter(task => projects.get(task.project_id)?.include_in_productivity && task.completed_at && task.completed_at <= today);
+  const tasks = [...new Map(sources.tasks.map(task => [task.id, task])).values()].filter(task => projects.get(task.project_id)?.include_in_productivity && task.completed_at && task.completed_at <= today);
   const taskDates = new Map(tasks.map(task => [task.id, task.completed_at]));
+  const retainedTasks = new Map(sources.tasks.map(task => [task.id, task]));
   let excludedCredits = 0;
-  const attributions = sources.attributions.filter(row => {
-    if (!projects.get(row.project_id)?.include_in_productivity) return false;
+  const attributions = [...new Map(sources.attributions.map(row => [row.id, row])).values()].filter(row => {
+    if (projects.get(row.project_id)?.include_in_productivity === false) return false;
     const date = getKyivDateOnly(new Date(row.completed_at));
     if (date > today) return false;
     // Legacy stage backfill sometimes used task.created_at when completed_at
     // was absent. Such rows are not evidence for a dated production trend.
-    const reliable = row.source_type === "task" ? row.task_id !== null && taskDates.get(row.task_id) === date
-      : projects.get(row.project_id)?.completed_at === date;
+    // Deleted tasks/projects retain canonical non-voided snapshot credit. For
+    // retained tasks, reject legacy fallback dates contradicted by the source.
+    const retainedTask = row.task_id ? retainedTasks.get(row.task_id) : undefined;
+    const reliable = row.source_type === "task" ? !retainedTask || taskDates.get(retainedTask.id) === date
+      : !projects.has(row.project_id) || projects.get(row.project_id)?.completed_at === date;
     if (!reliable) excludedCredits += 1;
     return reliable;
   });
@@ -127,7 +150,7 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
   const closedPayroll = sources.payroll.filter(row => row.period_end < monthOf(today));
   const payrollFrom = first(closedPayroll.map(row => row.period_start));
   const availableFrom = first([completionFrom, creditFrom, taskFrom, payrollFrom].filter(date => date !== null));
-  const range = statisticsRange(period, today, availableFrom);
+  const range = sharedFrom ? { from: sharedFrom, through: today } : statisticsRange(period, today, availableFrom);
   const months: Array<{ month: string; completedProjects: number | null; physicalArea: number | null; creditedArea: number | null; completedTasks: number | null; durationMedian: number | null }> = [];
   for (let cursor = range.from; cursor <= today;) {
     const has = (coverage: string | null) => coverage !== null && cursor >= monthOf(coverage);
@@ -155,7 +178,7 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
     if (bucket) bucket.completedTasks = (bucket.completedTasks ?? 0) + 1;
   }
   const durations = selectedProjects.flatMap(project => {
-    const duration = recordedProjectDuration(project, sources.activities, today);
+    const duration = recordedProjectDuration(project, sources.activities, today, sources.tasks);
     return duration ? [duration] : [];
   }).sort((a, b) => a.days - b.days || a.id.localeCompare(b.id));
   for (const month of months) month.durationMedian = median(durations.filter(project => monthOf(project.completed) === month.month).map(project => project.days));

@@ -46,8 +46,8 @@ test.beforeAll(async () => {
     insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at)
     values (${id(projectId)},${id(admin.id)},'designer',0,current_date),(${id(projectId)},${id(employee.id)},'designer',0,current_date);
     insert into public.tasks(id,project_id,title,stage,status,priority,assignee_id,created_by,completed_area_m2)
-    values (${id(taskIds[0])},${id(projectId)},'Statistics credit A','stage_2','todo','normal',${id(admin.id)},${id(admin.id)},20),
-      (${id(taskIds[1])},${id(projectId)},'Statistics credit B','stage_2','todo','normal',${id(employee.id)},${id(admin.id)},20);
+    values (${id(taskIds[0])},${id(projectId)},'Statistics credit A','stage_2','todo','normal',${id(admin.id)},${id(admin.id)},100),
+      (${id(taskIds[1])},${id(projectId)},'Statistics credit B','stage_2','todo','normal',${id(employee.id)},${id(admin.id)},100);
     select set_config('request.jwt.claim.sub',${id(admin.id)},false);
     update public.projects set status='active' where id=${id(projectId)};
     update public.project_activity set created_at=(current_date-45)::timestamp
@@ -58,13 +58,26 @@ test.beforeAll(async () => {
     update public.tasks set completed_at=current_date-10 where project_id=${id(projectId)};
     update public.projects set status='completed' where id=${id(projectId)};
     update public.projects set completed_at=current_date-10 where id=${id(projectId)};
+    insert into public.crm_leads(studio_id,client_name,first_contact_date,status,source,internal_notes)
+    values (${id(studioId)},'Statistics cohort lead',current_date-20,'contacted','referral','STATISTICS_PRIVATE_CRM');
+    insert into public.time_off_requests(studio_id,user_id,request_type,start_date,end_date,all_day,status,private_note)
+    values (${id(studioId)},${id(admin.id)},'sick_leave',current_date-3,current_date-2,true,'approved','STATISTICS_PRIVATE_HR');
+    insert into public.calendar_events(studio_id,project_id,title,event_type,starts_at,ends_at,all_day,organizer_id,created_by,meeting_mode)
+    values (${id(studioId)},${id(projectId)},'Statistics meeting','meeting',(current_date-5)+time '10:00',(current_date-5)+time '11:00',false,${id(admin.id)},${id(admin.id)},'offline');
+    insert into public.calendar_events(studio_id,title,event_type,starts_at,ends_at,all_day,organizer_id,created_by,recurrence_rule)
+    values (${id(studioId)},'Statistics recurring makeup','work_makeup',(current_date-5)+time '12:00',(current_date-5)+time '13:00',false,${id(admin.id)},${id(admin.id)},'{"frequency":"daily","interval":1,"weekdays":[],"endsOn":null,"occurrenceCount":3}'::jsonb);
+
+
   `);
   expect(sql(`select status||'|'||completed_at||'|'||total_area_m2 from public.projects where id=${id(projectId)}`)).toMatch(/^completed\|\d{4}-\d{2}-\d{2}\|100$/);
-  expect(sql(`select sum(credited_area_m2) from public.productivity_attributions where project_id=${id(projectId)} and voided_at is null`)).toBe("40");
+  expect(sql(`select sum(credited_area_m2) from public.productivity_attributions where project_id=${id(projectId)} and voided_at is null`)).toBe("200");
 });
 
 test.afterAll(async () => {
-  sql(`delete from public.project_members where project_id=${id(projectId)};
+  sql(`delete from public.calendar_events where studio_id=${id(studioId)};
+    delete from public.crm_leads where studio_id=${id(studioId)};
+    delete from public.time_off_requests where studio_id=${id(studioId)};
+    delete from public.project_members where project_id=${id(projectId)};
     delete from public.tasks where project_id=${id(projectId)};
     delete from public.projects where id=${id(projectId)};
     delete from public.studios where id=${id(studioId)};`);
@@ -84,12 +97,12 @@ test("admin can open Statistics, change periods, and render at common widths", a
   for (const id of ["stats-production", "stats-credits", "stats-economics", "stats-duration"]) await expect(page.locator(`#${id}`)).toBeVisible();
   await expect(page.getByText(/Current month is partial/).first()).toBeVisible();
   await expect(page.locator("#stats-production")).toContainText("100");
-  await expect(page.locator("#stats-credits")).toContainText("40");
+  await expect(page.locator("#stats-credits")).toContainText("200");
 
   const creditChart = page.locator("#stats-credits").getByRole("group").first();
   const point = creditChart.locator('[role="button"][data-point]').first();
   await point.focus();
-  await expect(page.locator("#stats-credits div[aria-hidden='true']").filter({ hasText: /40/ })).toBeVisible();
+  await expect(page.locator("#stats-credits div[aria-hidden='true']").filter({ hasText: /200/ })).toBeVisible();
   await point.tap();
 
   for (const [period, label] of [["3", "3 months"], ["6", "6 months"], ["12", "12 months"], ["year", "This year"], ["all", "All history"]] as const) {
@@ -100,9 +113,29 @@ test("admin can open Statistics, change periods, and render at common widths", a
       const selected = page.locator('#stats-credits [role="button"][tabindex="0"]').last();
       await expect(selected).toBeVisible();
       await selected.focus();
-      await expect(page.locator("#stats-credits div[aria-hidden='true']").filter({ hasText: /40/ })).toBeVisible();
+      await expect(page.locator("#stats-credits div[aria-hidden='true']").filter({ hasText: /200/ })).toBeVisible();
     }
   }
+
+  await expect(page.getByTestId("duration-highlight")).toHaveCount(2);
+  const info = page.getByRole("button", { name: "How calculated: Delivered project area", exact: true });
+  await info.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Delivered project area", exact: true })).toContainText("not a historical area snapshot");
+  await page.keyboard.press("Escape");
+  await expect(info).toBeFocused();
+  for (const [section, label] of [["leads", "Leads"], ["team", "Team"], ["calendar", "Calendar"], ["overview", "Overview"]] as const) {
+    await page.getByRole("navigation", { name: "Statistics sections" }).getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`period=all&section=${section}`));
+    await expect(page.locator(section === "overview" ? "#stats-production" : `#stats-${section}`)).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("STATISTICS_PRIVATE");
+    if (section === "team") await expect(page.locator("#stats-team tbody tr").filter({ hasText: "Statistics admin" })).toContainText("3");
+  }
+  await page.getByRole("navigation", { name: "Statistics sections" }).getByRole("link", { name: "Leads", exact: true }).click();
+  await expect(page.locator("#stats-leads")).toBeVisible();
+  await page.getByRole("link", { name: "This year", exact: true }).click();
+  await expect(page).toHaveURL(/period=year&section=leads/);
+  await expect(page.locator("#stats-leads")).toContainText("0 won / 1 valid leads");
 
   for (const width of [1440, 1024, 390]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
@@ -110,6 +143,13 @@ test("admin can open Statistics, change periods, and render at common widths", a
     await expect(page.getByRole("heading", { name: "Statistics", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `${renderDir}/statistics-${width}.png`, fullPage: true });
+    for (const section of ["leads", "team", "calendar"]) {
+      await page.goto(`/statistics?period=year&section=${section}`);
+      await expect(page.locator(`#stats-${section}`)).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: `${renderDir}/statistics-${section}-${width}.png`, fullPage: true });
+    }
+
   }
   await testInfo.attach("statistics-render-directory", { body: renderDir, contentType: "text/plain" });
 });
@@ -123,13 +163,21 @@ test("employee cannot navigate to or read private Statistics data", async ({ pag
   const employee = createClient<Database>(settings.EQUIPMENT_TEST_SUPABASE_URL, settings.EQUIPMENT_TEST_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const signedIn = await employee.auth.signInWithPassword({ email: accounts[1].email, password: accounts[1].password });
   if (signedIn.error) throw signedIn.error;
-  const [attributions, payroll, projectTerms] = await Promise.all([
+  for (const section of ["leads", "team", "calendar"]) {
+    await page.goto(`/statistics?section=${section}&period=all`);
+    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  }
+  const [attributions, payroll, projectTerms, leads, privateTimeOff] = await Promise.all([
     employee.from("productivity_attributions").select("id"),
     employee.from("finance_obligations").select("id"),
     employee.from("finance_project_terms").select("id"),
+    employee.from("crm_leads").select("id"),
+    employee.from("time_off_requests").select("id,private_note").eq("user_id", accounts[0].id),
   ]);
   expect(attributions.error || attributions.data.length === 0).toBeTruthy();
   expect(payroll.error || payroll.data.length === 0).toBeTruthy();
   expect(projectTerms.error || projectTerms.data.length === 0).toBeTruthy();
+  expect(leads.error || leads.data.length === 0).toBeTruthy();
+  expect(privateTimeOff.error || privateTimeOff.data.length === 0).toBeTruthy();
   await employee.auth.signOut();
 });
