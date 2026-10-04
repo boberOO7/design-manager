@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive } from "./navigation";
 
 describe("application navigation", () => {
+  it("exposes Statistics only to administrators", () => {
+    expect(getNavigationItems("admin").some(item => item.href === "/statistics")).toBe(true);
+    expect(getNavigationItems("employee").some(item => item.href === "/statistics")).toBe(false);
+    expect(getNavigationItems(null).some(item => item.href === "/statistics")).toBe(false);
+  });
   it("hides administration, archive, and CRM from employees", () => {
     const items = getNavigationItems("employee");
     expect(items.some((item) => item.href === "/admin")).toBe(false);

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Archive,
+  ChartNoAxesCombined,
   CalendarDays,
   CheckSquare,
   ContactRound,
@@ -26,6 +27,7 @@ export const navigationItems = [
   { href: "/leaderboard", label: "Leaderboard", messageKey: "leaderboard", adminOnly: false },
   { href: "/crm", label: "CRM", messageKey: "crm", adminOnly: true },
   { href: "/finance", label: "Finance", messageKey: "finance", adminOnly: true },
+  { href: "/statistics", label: "Statistics", messageKey: "statistics", adminOnly: true },
   { href: "/archive", label: "Archive", messageKey: "archive", adminOnly: true },
   { href: "/admin", label: "Administration", messageKey: "administration", adminOnly: true },
 ] as const;
@@ -43,6 +45,7 @@ export const navigationIcons: Record<NavigationItem["href"], LucideIcon> = {
   "/leaderboard": Trophy,
   "/crm": Handshake,
   "/finance": Wallet,
+  "/statistics": ChartNoAxesCombined,
   "/archive": Archive,
   "/admin": ShieldCheck,
 };

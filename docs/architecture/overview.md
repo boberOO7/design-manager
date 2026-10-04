@@ -47,6 +47,7 @@ forms, local interaction, or optimistic state.
 | Calendar | `/calendar`, `/api/calendar/*`, `/api/integrations/google-calendar/*` | `src/data/queries/calendar.ts`, `src/lib/calendar*.ts`, `src/lib/google-calendar/` | [calendar](calendar.md) |
 | Studio operations | `/team`, `/contractors`, `/office/*`, `/admin` | Domain queries/actions plus notification header and APIs | [studio operations](studio-operations.md) |
 | Finance | `/finance`, `/finance/movements`, `/finance/expected`, `/finance/categories`, `/finance/trips`, project `view=finance` | `src/data/queries/finance.ts`, Finance Server Actions, `src/lib/finance-fx.ts`, `src/lib/finance-planning.ts`, `src/lib/finance-projects.ts` | [finance](finance.md) |
+| Statistics | `/statistics` (admin only) | `src/data/queries/statistics.ts`, `src/lib/statistics.ts`; recorded project, production and payroll aggregates | [statistics](statistics.md) |
 | Database and authorization | All domains | Migrations, generated types, RLS contract tests | [database](database.md), [permissions](permissions.md) |
 
 ## Source-of-truth hierarchy
