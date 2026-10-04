@@ -7,7 +7,7 @@ import { buildStatistics, type StatisticsPeriod } from "@/lib/statistics";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { buildCrmStatistics } from "@/lib/statistics-crm";
 import { buildAttendanceStatistics } from "@/lib/statistics-attendance";
-import { buildCalendarStatistics } from "@/lib/statistics-calendar";
+import { buildCalendarStatistics, calendarStatisticsAssignments } from "@/lib/statistics-calendar";
 
 /** Page each independent source, with stable ordering, past PostgREST's 1,000
  * row cap. No per-project/person queries and no Finance occurrence writes.
@@ -27,7 +27,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   if (!admin) return null;
   const client = await createClient();
   const studio = admin.studio_id;
-  const [projects, tasks, activities, attributions, payroll, unknownCosts, payCoverage, leads, timeOff, events, members] = await Promise.all([
+  const [projects, tasks, activities, attributions, payroll, unknownCosts, payCoverage, leads, timeOff, events, members, leadHistory, invites, participants] = await Promise.all([
     readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,completed_at,include_in_productivity,total_area_m2")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("tasks").select("id,project_id,completed_at,project:projects!inner(studio_id)").eq("project.studio_id", studio)
@@ -45,10 +45,16 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("time_off_requests").select("id,user_id,request_type,start_date,end_date,start_time,end_time,all_day,status")
       .eq("studio_id", studio).eq("status", "approved").order("id").range(offset, offset + 999)),
-    readStatisticsPages(offset => client.from("calendar_events").select("id,event_type,starts_at,ends_at,all_day,project_id,organizer_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id")
+    readStatisticsPages(offset => client.from("calendar_events").select("id,event_type,starts_at,ends_at,all_day,project_id,organizer_id,assignee_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("studio_members").select("user_id,is_active,profile:profiles!studio_members_user_id_fkey(id,full_name,is_active)")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
+    readStatisticsPages(offset => client.from("crm_lead_history").select("id,lead_id,event_type,actor_id,previous_status,new_status,created_at")
+      .eq("studio_id", studio).order("created_at").order("id").range(offset, offset + 999)),
+    readStatisticsPages(offset => client.from("calendar_event_invites").select("event_id,user_id,status,event:calendar_events!inner(studio_id)")
+      .eq("event.studio_id", studio).order("id").range(offset, offset + 999)),
+    readStatisticsPages(offset => client.from("calendar_event_participants").select("event_id,user_id,event:calendar_events!inner(studio_id)")
+      .eq("event.studio_id", studio).order("event_id").order("user_id").range(offset, offset + 999)),
   ]);
   // Only report aggregates and the admin attendance row identities are returned.
   // Individual salaries, HR explanations and CRM contact details are not payloads.
@@ -61,11 +67,11 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
     overview = buildStatistics(sources, period, today, `${firstDate.slice(0, 7)}-01`);
   }
   const range = { from: overview.from, through: overview.through };
+  const people = members.map(row => ({ id: row.user_id, name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active }));
   return { ...overview,
-    leads: buildCrmStatistics(leads, activities, range, today, tasks),
-    attendance: buildAttendanceStatistics(timeOff, events, members.map(row => ({ id: row.user_id,
-      name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active })), range, now),
-    calendar: buildCalendarStatistics(events, projects, range, now),
+    leads: buildCrmStatistics(leads, activities, range, today, tasks, leadHistory),
+    attendance: buildAttendanceStatistics(timeOff, events, people, range, now),
+    calendar: buildCalendarStatistics(events, projects, range, now, { members: people, assignments: calendarStatisticsAssignments(events, invites, participants) }),
   };
 }
 

@@ -61,6 +61,38 @@ describe("Statistics metric definitions", () => {
     expect(recordedProjectDuration(subject, events, "2025-04-01", [{ id: "task", project_id: subject.id, completed_at: "2025-03-12" }])?.days).toBe(0);
   });
 
+  it("uses a reliable activation and corrected completion date without requiring a completion audit row", () => {
+    const subject = project({ completed_at: "2025-03-20" });
+    const validStart = [activity(subject.id, "planned", "active", "2025-03-01T10:00:00Z")];
+    expect(recordedProjectDuration(subject, validStart, "2025-04-01")).toMatchObject({ started: "2025-03-01", completed: "2025-03-20", days: 19 });
+    expect(recordedProjectDuration(project({ completed_at: "2025-02-28" }), validStart, "2025-04-01")).toBeNull();
+    expect(recordedProjectDuration(project({ completed_at: "not-a-date" }), validStart, "2025-04-01")).toBeNull();
+    expect(recordedProjectDuration(project({ completed_at: null }), validStart, "2025-04-01")).toBeNull();
+    expect(recordedProjectDuration(subject, [], "2025-04-01")).toBeNull();
+    expect(recordedProjectDuration(subject, [activity(subject.id, "planned", "active", "invalid")], "2025-04-01")).toBeNull();
+  });
+
+  it("measures active and paused project age as of today independently of selected period", () => {
+    const projects = [
+      project({ id: "active", status: "active", completed_at: null }),
+      project({ id: "paused", status: "paused", completed_at: null }),
+      project({ id: "planned", status: "planned", completed_at: null }),
+      project({ id: "completed", status: "completed", completed_at: "2025-03-15" }),
+      project({ id: "archived", status: "active", archived_at: "2025-03-10", completed_at: null }),
+      project({ id: "unreliable", status: "active", completed_at: null }),
+    ];
+    const activities = [
+      activity("active", "planned", "active", "2025-01-01T10:00:00Z"),
+      activity("paused", "planned", "active", "2025-02-01T10:00:00Z"),
+      activity("unreliable", "paused", "active", "2025-01-01T10:00:00Z"),
+    ];
+    const narrow = buildStatistics(emptySources({ projects, activities }), "3", "2025-04-30");
+    const wide = buildStatistics(emptySources({ projects, activities }), "all", "2025-04-30");
+    expect(narrow.ongoing).toEqual(wide.ongoing);
+    expect(narrow.ongoing.map(({ id, days }) => [id, days])).toEqual([["active", 119], ["paused", 88]]);
+    expect(narrow.coverage.ongoingProjects).toBe(3);
+  });
+
   it("counts completed physical project area once, including archived production projects, and excludes non-production projects", () => {
     const report = buildStatistics(emptySources({ projects: [
       project({ id: "done", total_area_m2: 80 }),

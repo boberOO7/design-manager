@@ -1,6 +1,8 @@
 import type { Database } from "@/types/database.types";
 import { addCalendarDays, APPLICATION_TIME_ZONE, instantToDateOnly, zonedWallTimeToIso } from "./calendar";
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "./calendar-recurrence";
+import type { AttendanceMember } from "./statistics-attendance";
+import { getCalendarEventDetailConfig } from "./calendar-event-types";
 
 export type StatisticsCalendarEvent = Pick<Database["public"]["Tables"]["calendar_events"]["Row"],
   "id" | "event_type" | "starts_at" | "ends_at" | "all_day" | "project_id" | "organizer_id" | "cancelled_at" |
@@ -18,6 +20,28 @@ const midnight = (date: string) => Date.parse(zonedWallTimeToIso(`${date}T00:00`
 const rangeBounds = (range: StatisticsCalendarRange) => ({ start: midnight(range.from), end: midnight(addCalendarDays(range.through, 1)) });
 const emptyMetrics = (): StatisticsCalendarMetrics => ({ count: 0, timedCount: 0, hours: 0, averageHours: null, allDayCount: 0, allDayDays: 0, unknownDurationCount: 0 });
 const occurrenceKey = (seriesId: string, start: string) => `${seriesId}:${Date.parse(start)}`;
+
+/** Calendar visibility includes the creator on every type. Scheduled involvement
+ * instead follows each type's explicit roles: e.g. a trip's participants, not
+ * the administrator who entered it; an interview's assigned interviewer.
+ */
+export function calendarStatisticsAssignments(
+  events: Array<Pick<Database["public"]["Tables"]["calendar_events"]["Row"], "id" | "event_type" | "organizer_id" | "assignee_id">>,
+  invites: Array<Pick<Database["public"]["Tables"]["calendar_event_invites"]["Row"], "event_id" | "user_id" | "status">>,
+  participants: Array<Pick<Database["public"]["Tables"]["calendar_event_participants"]["Row"], "event_id" | "user_id">>,
+) {
+  const roles = new Map(events.map(event => [event.id, getCalendarEventDetailConfig(event.event_type).sections]));
+  return [
+    ...events.flatMap(event => [
+      ...(roles.get(event.id)?.includes("organizer") ? [event.organizer_id] : []),
+      ...(roles.get(event.id)?.includes("assignee") && event.assignee_id ? [event.assignee_id] : []),
+    ].map(personId => ({ eventId: event.id, personId }))),
+    ...invites.flatMap(invite => invite.status !== "declined" && roles.get(invite.event_id)?.includes("invitations")
+      ? [{ eventId: invite.event_id, personId: invite.user_id }] : []),
+    ...participants.flatMap(participant => roles.get(participant.event_id)?.includes("participants")
+      ? [{ eventId: participant.event_id, personId: participant.user_id }] : []),
+  ];
+}
 
 function overlaps(event: StatisticsCalendarEvent, start: number, end: number) {
   const from = Date.parse(event.starts_at), through = Date.parse(event.ends_at);
@@ -79,12 +103,21 @@ function calendarDays(start: number, end: number) {
   return daysBetween(instantToDateOnly(new Date(start).toISOString()), addCalendarDays(instantToDateOnly(new Date(end - 1).toISOString()), 1));
 }
 
-export function buildCalendarStatistics(events: StatisticsCalendarEvent[], projects: Array<{ id: string; name: string }>, range: StatisticsCalendarRange, now: string) {
+export function buildCalendarStatistics(events: StatisticsCalendarEvent[], projects: Array<{ id: string; name: string }>, range: StatisticsCalendarRange, now: string,
+  people: { members: AttendanceMember[]; assignments: Array<{ eventId: string; personId: string }> } = { members: [], assignments: [] }) {
   const bounds = rangeBounds(range), nowMs = Date.parse(now);
   const categories = STATISTICS_CALENDAR_TYPES.map(eventType => ({ eventType, ...emptyMetrics() }));
   const byType = new Map<string, StatisticsCalendarMetrics>(categories.map(category => [category.eventType, category]));
   const projectNames = new Map(projects.map(project => [project.id, project.name]));
   const perProject = new Map<string, { id: string; name: string | null } & StatisticsCalendarMetrics>();
+  const memberById = new Map(people.members.map(member => [member.id, member]));
+  const peopleByEvent = new Map<string, Set<string>>();
+  for (const { eventId, personId } of people.assignments) {
+    const ids = peopleByEvent.get(eventId) ?? new Set<string>();
+    ids.add(personId);
+    peopleByEvent.set(eventId, ids);
+  }
+  const perPerson = new Map<string, AttendanceMember & StatisticsCalendarMetrics>();
   const totals = emptyMetrics(), projectLinked = emptyMetrics(), unlinked = emptyMetrics();
   const months: Array<{ month: string; count: number; hours: number; timedCount: number; allDayDays: number }> = [];
   for (let month = `${range.from.slice(0, 7)}-01`; month <= range.through;) {
@@ -93,7 +126,7 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
     month = new Date(Date.UTC(year, number, 1)).toISOString().slice(0, 10);
   }
   const monthByDate = new Map(months.map(month => [month.month.slice(0, 7), month]));
-  let ongoingCount = 0, plannedCount = 0, unknownTimingCount = 0;
+  let ongoingCount = 0, plannedCount = 0, unknownTimingCount = 0, unassignedCount = 0;
   const accumulate = (metrics: StatisticsCalendarMetrics, event: StatisticsCalendarEvent, clippedStart: number, clippedEnd: number, valid: boolean) => {
     metrics.count++;
     if (!valid) { metrics.unknownDurationCount++; return; }
@@ -116,6 +149,15 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
       perProject.set(event.project_id, project);
     }
     for (const metrics of [totals, category, event.project_id ? projectLinked : unlinked, ...(project ? [project] : [])]) accumulate(metrics, event, clippedStart, clippedEnd, valid);
+    // Generated recurrences retain their template ID; real overrides carry their
+    // own ID and their own assignments, never a union with the template's people.
+    const assigned = peopleByEvent.get(event.id);
+    if (!assigned?.size) unassignedCount++;
+    for (const id of assigned ?? []) {
+      const person = perPerson.get(id) ?? { id, name: memberById.get(id)?.name ?? "", active: memberById.get(id)?.active ?? false, ...emptyMetrics() };
+      accumulate(person, event, clippedStart, clippedEnd, valid);
+      perPerson.set(id, person);
+    }
     const countMonth = monthByDate.get(instantToDateOnly(new Date(clippedStart).toISOString()).slice(0, 7));
     if (countMonth) countMonth.count++;
     if (!valid) continue;
@@ -129,9 +171,10 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
     }
   }
   return { totals, categories, months, projectLinked, unlinked,
+    people: [...perPerson.values()].sort((a, b) => b.hours - a.hours || b.count - a.count || a.name.localeCompare(b.name)),
     projects: [...perProject.values()].sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)),
     projectAverages: { projectCount: perProject.size, count: perProject.size ? projectLinked.count / perProject.size : null, hours: perProject.size && projectLinked.timedCount ? projectLinked.hours / perProject.size : null },
-    ongoingCount, plannedCount, unknownTimingCount };
+    ongoingCount, plannedCount, unknownTimingCount, unassignedCount };
 }
 
 export type StatisticsCalendarReport = ReturnType<typeof buildCalendarStatistics>;

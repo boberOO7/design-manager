@@ -59,11 +59,11 @@ export function statisticsRange(period: StatisticsPeriod, today: string, availab
 function projectTransitions(projectId: string, activities: StatisticsActivity[]) {
   return activities.filter(activity => activity.project_id === projectId).flatMap(activity => {
     const changes = activity.changes;
-    if (!changes || typeof changes !== "object" || Array.isArray(changes)) return [];
+    if (!changes || typeof changes !== "object" || Array.isArray(changes) || !Number.isFinite(Date.parse(activity.created_at))) return [];
     const status = changes.status;
     if (!status || typeof status !== "object" || Array.isArray(status) || typeof status.from !== "string" || typeof status.to !== "string") return [];
     return [{ from: status.from, to: status.to, timestamp: activity.created_at, date: getKyivDateOnly(new Date(activity.created_at)) }];
-  }).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  }).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
 }
 
 export function recordedProjectStart(projectId: string, activities: StatisticsActivity[], through: string, tasks: StatisticsTask[] = []) {
@@ -73,17 +73,20 @@ export function recordedProjectStart(projectId: string, activities: StatisticsAc
 }
 
 export function recordedProjectDuration(project: StatisticsProject, activities: StatisticsActivity[], today: string, tasks: StatisticsTask[] = []) {
-  if (!project.completed_at || project.completed_at > today) return null;
-  const transitions = projectTransitions(project.id, activities);
-  const start = transitions[0];
-  if (start?.from !== "planned" || start.to !== "active" || start.date > project.completed_at) return null;
-  // Imported work can have an administrative activation/completion on one day.
-  // Earlier authoritative task completions contradict that activation as an
-  // actual project start. Do not discard genuine same-day work by a threshold.
-  if (tasks.some(task => task.project_id === project.id && task.completed_at && task.completed_at < start.date)) return null;
-  if (!transitions.some(event => event.to === "completed" && event.date >= start.date)) return null;
+  if (!["completed", "archived"].includes(project.status) || !project.completed_at || project.completed_at > today || !Number.isFinite(Date.parse(project.completed_at))) return null;
+  const start = recordedProjectStart(project.id, activities, project.completed_at, tasks);
+  if (!start) return null;
+  // completed_at is the authoritative, admin-correctable completion date. A
+  // second audit record is not required to prove an already recorded completion.
   return { id: project.id, name: project.name, started: start.date, completed: project.completed_at,
     days: Math.round((Date.parse(project.completed_at) - Date.parse(start.date)) / DAY) };
+}
+
+export function recordedProjectAge(project: StatisticsProject, activities: StatisticsActivity[], today: string, tasks: StatisticsTask[] = []) {
+  if (!["active", "paused"].includes(project.status) || project.archived_at || project.completed_at) return null;
+  const start = recordedProjectStart(project.id, activities, today, tasks);
+  return start ? { id: project.id, name: project.name, status: project.status, started: start.date,
+    days: Math.round((Date.parse(today) - Date.parse(start.date)) / DAY) } : null;
 }
 
 export function median(values: number[]) {
@@ -181,6 +184,11 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
     const duration = recordedProjectDuration(project, sources.activities, today, sources.tasks);
     return duration ? [duration] : [];
   }).sort((a, b) => a.days - b.days || a.id.localeCompare(b.id));
+  const ongoingProjects = production.filter(project => ["active", "paused"].includes(project.status) && !project.archived_at && !project.completed_at);
+  const ongoing = ongoingProjects.flatMap(project => {
+    const age = recordedProjectAge(project, sources.activities, today, sources.tasks);
+    return age ? [age] : [];
+  }).sort((a, b) => b.days - a.days || a.id.localeCompare(b.id));
   for (const month of months) month.durationMedian = median(durations.filter(project => monthOf(project.completed) === month.month).map(project => project.days));
 
   const payMonths = new Map<string, { month: string; currency: string; units: bigint; obligations: number; incomplete: boolean; estimated: boolean; schedules: Set<string> }>();
@@ -218,14 +226,15 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
   });
   const total = (key: "completedProjects" | "physicalArea" | "creditedArea" | "completedTasks") => months.some(month => month[key] !== null)
     ? months.reduce((sum, month) => sum + (month[key] ?? 0), 0) : null;
-  return { period, today, ...range, months, payroll, durations,
+  return { period, today, ...range, months, payroll, durations, ongoing,
     totals: { completedProjects: total("completedProjects"), physicalArea: total("physicalArea"), creditedArea: total("creditedArea"), completedTasks: total("completedTasks"),
       contributors: creditFrom && creditFrom <= today && creditFrom <= range.through ? contributors.size : null,
       activeProjects: production.filter(project => project.status === "active" && !project.archived_at).length,
+      medianAge: median(ongoing.map(project => project.days)),
       medianDays: median(durations.map(project => project.days)), meanDays: durations.length ? durations.reduce((sum, project) => sum + project.days, 0) / durations.length : null },
     coverage: { completionFrom, creditFrom, taskFrom, payrollFrom, excludedCredits,
       missingCompletionDates: production.filter(project => project.status === "completed" && !project.completed_at).length,
-      durationProjects: durations.length, selectedProjects: selectedProjects.length } };
+      durationProjects: durations.length, selectedProjects: selectedProjects.length, ongoingProjects: ongoingProjects.length } };
 }
 
 export type StatisticsReport = ReturnType<typeof buildStatistics>;

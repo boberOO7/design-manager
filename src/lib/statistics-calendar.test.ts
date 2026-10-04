@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCalendarStatistics, materializeStatisticsEvents, type StatisticsCalendarEvent } from "./statistics-calendar";
+import { buildCalendarStatistics, calendarStatisticsAssignments, materializeStatisticsEvents, type StatisticsCalendarEvent } from "./statistics-calendar";
 
 const range = { from: "2026-09-01", through: "2026-09-30" };
 const now = "2026-10-01T12:00:00Z";
@@ -57,6 +57,61 @@ describe("calendar statistics occurrences", () => {
     expect(buildCalendarStatistics([event({ project_id: "unknown-hours", ends_at: "2026-09-01T09:00:00Z" })], [], range, now).projectAverages.hours).toBeNull();
     const recurring = buildCalendarStatistics([event({ all_day: true, ends_at: "2026-09-01T09:00:00Z", recurrence_rule: daily })], [], range, now);
     expect(recurring.totals).toMatchObject({ count: 3, allDayDays: 0, unknownDurationCount: 3 });
+  });
+
+  it("assigns each canonical occurrence once, inherits template people, and uses only override assignments", () => {
+    const template = event({ recurrence_rule: daily });
+    const moved = event({ id: "override", series_id: "event", occurrence_start: "2026-09-02T09:00:00Z",
+      starts_at: "2026-09-02T10:00:00Z", ends_at: "2026-09-02T12:00:00Z" });
+    const cancelled = event({ id: "cancelled-override", series_id: "event", occurrence_start: "2026-09-03T09:00:00Z",
+      starts_at: "2026-09-03T09:00:00Z", ends_at: "2026-09-03T10:00:00Z", cancelled_at: "2026-09-01T12:00:00Z" });
+    const report = buildCalendarStatistics([template, moved, cancelled], [], range, now, {
+      members: [{ id: "template-person", name: "Template", active: true }, { id: "override-person", name: "Override", active: true }],
+      assignments: [
+        { eventId: "event", personId: "template-person" }, { eventId: "event", personId: "template-person" },
+        { eventId: "override", personId: "override-person" },
+      ],
+    });
+    expect(report.totals).toMatchObject({ count: 2, hours: 3 });
+    expect(report.people.map(person => [person.id, person.count, person.hours])).toEqual([
+      ["override-person", 1, 2], ["template-person", 1, 1],
+    ]);
+  });
+
+  it("counts scheduled roles, pending invitations, and organizer invitations once per person", () => {
+    const roleEvents = [
+      { id: "meeting", event_type: "meeting" as const, organizer_id: "organizer", assignee_id: null },
+      { id: "trip", event_type: "business_trip" as const, organizer_id: "creator-only", assignee_id: null },
+    ];
+    const assignments = calendarStatisticsAssignments(roleEvents, [
+      { event_id: "meeting", user_id: "organizer", status: "accepted" as const },
+      { event_id: "meeting", user_id: "pending-person", status: "pending" as const },
+      { event_id: "meeting", user_id: "declined-person", status: "declined" as const },
+    ], []);
+    expect(assignments).toContainEqual({ eventId: "meeting", personId: "pending-person" });
+    expect(assignments).not.toContainEqual({ eventId: "trip", personId: "creator-only" });
+
+    const report = buildCalendarStatistics([
+      event({ id: "meeting", event_type: "meeting", organizer_id: "organizer" }),
+      event({ id: "trip", event_type: "business_trip", organizer_id: "creator-only" }),
+    ], [], range, now, { members: [
+      { id: "organizer", name: "Organizer", active: true },
+      { id: "pending-person", name: "Pending", active: true },
+      { id: "creator-only", name: "Creator", active: true },
+    ], assignments });
+    expect(report.people.map(person => [person.id, person.count])).toEqual([["organizer", 1], ["pending-person", 1]]);
+    expect(report.unassignedCount).toBe(1);
+    expect(report.totals).toMatchObject({ count: 2, hours: 2 });
+  });
+
+  it("keeps all-day duration in calendar days and assigns no fabricated hours", () => {
+    const report = buildCalendarStatistics([
+      event({ id: "all-day", all_day: true, event_type: "business_trip", starts_at: "2026-08-31T21:00:00Z", ends_at: "2026-09-02T21:00:00Z" }),
+    ], [], range, now, { members: [{ id: "person", name: "Person", active: true }], assignments: [
+      { eventId: "all-day", personId: "person" },
+    ] });
+    expect(report.totals).toMatchObject({ count: 1, hours: 0, allDayCount: 1, allDayDays: 2, unknownDurationCount: 0 });
+    expect(report.people[0]).toMatchObject({ count: 1, hours: 0, allDayDays: 2, unknownDurationCount: 0 });
   });
 
   it("separates future and ongoing events and exports make-up solely for attendance", () => {

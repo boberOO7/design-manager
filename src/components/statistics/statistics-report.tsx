@@ -7,7 +7,7 @@ import { statisticsPeriods, statisticsSections, type StatisticsSection } from "@
 import type { StatisticsPageReport } from "@/data/queries/statistics";
 import { StatisticsInfo } from "./statistics-info";
 import { LeadsStatistics, TeamStatistics, CalendarStatistics } from "./statistics-sections";
-import { canChartFinanceAmount, formatFinanceDecimal } from "@/lib/finance";
+import { formatFinanceDecimal } from "@/lib/finance";
 
 const panel = "min-w-0 overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)]";
 
@@ -23,7 +23,6 @@ export async function StatisticsReportView({ report, section }: { report: Statis
     month: month.month, value: month[key], display: month[key] === null ? t("unavailable") : formatter(month[key]), detail: month.month === currentMonth ? t("partialMonth") : undefined,
   }));
   const fastest = report.durations[0], longest = report.durations.at(-1);
-  const currencies = [...new Set(report.payroll.map(row => row.currency))];
   const hasRatio = report.payroll.some(row => row.costPerCreditedM2 !== null);
 
   return <div className="w-full min-w-0 space-y-5" data-testid="statistics-report">
@@ -34,7 +33,6 @@ export async function StatisticsReportView({ report, section }: { report: Statis
       </nav>} />
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-[var(--ui-text-muted)]">
       <div className="flex items-center gap-3"><CalendarDays className="size-4 shrink-0" aria-hidden="true" /><div><p className="text-sm font-medium tabular-nums text-[var(--ui-text)]">{date(report.from)} — {date(report.through)}</p><p className="mt-0.5">{t("partialMonth")}</p></div></div>
-      <Link href="/projects" className="inline-flex items-center gap-1.5 rounded-[var(--ui-radius-control)] py-1 hover:text-[var(--ui-text)]">{t("activeNow", { count: report.totals.activeProjects })}<ArrowUpRight className="size-3.5" aria-hidden="true" /></Link>
     </div>
 
     <nav aria-label={t("sections")} className="grid w-full grid-cols-4 gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:flex sm:w-fit">
@@ -46,7 +44,7 @@ export async function StatisticsReportView({ report, section }: { report: Statis
         <div className="border-b border-[var(--ui-border)] px-5 py-4"><h2 id="stats-production-title" className="flex items-center justify-between text-base font-semibold text-[var(--ui-text)]">{t("productionTitle")}<StatisticsInfo label={t("physicalArea")}><p>{t("physicalDefinition")}</p><p>{t("projectHistoryNote")}</p><p>{coverage(report.coverage.completionFrom)}</p></StatisticsInfo></h2></div>
         <div className="grid grid-cols-2 divide-x divide-[var(--ui-border)] border-b border-[var(--ui-border)] [&>div>p:first-child]:min-h-10 sm:[&>div>p:first-child]:min-h-5">
           <Headline label={t("completedProjects")} value={number(report.totals.completedProjects)} />
-          <Headline label={t("physicalArea")} value={number(report.totals.physicalArea, 1)} unit={t("squareMetres")} />
+          <Headline label={t("physicalArea")} value={number(report.totals.physicalArea, 1)} unit={t("squareMetres")} hint={t("countedOnce")} />
         </div>
         <div className="space-y-4 p-5">
           <StatisticsChart title={t("physicalArea")} unit={t("squareMetres")} points={points("physicalArea", area)} color="var(--ui-success-accent)" />
@@ -57,7 +55,7 @@ export async function StatisticsReportView({ report, section }: { report: Statis
 
       <section id="stats-credits" aria-labelledby="stats-credits-title" className={panel}>
         <div className="px-5 pt-4"><h2 id="stats-credits-title" className="flex items-center justify-between text-base font-semibold text-[var(--ui-text)]">{t("creditsTitle")}<StatisticsInfo label={t("creditedArea")}><p>{t("creditsDefinition")}</p><p>{t("creditHistoryNote")}</p><p>{coverage(report.coverage.creditFrom)}</p><p>{t("taskContextNote")}</p></StatisticsInfo></h2></div>
-        <Headline label={t("creditedArea")} value={number(report.totals.creditedArea, 1)} unit={t("squareMetres")} />
+        <Headline label={t("creditedArea")} value={number(report.totals.creditedArea, 1)} unit={t("squareMetres")} hint={t("creditedNote")} />
         <div className="px-5 pb-5">
           <StatisticsChart title={t("creditedByMonth")} unit={t("squareMetres")} points={points("creditedArea", area)} kind="line" color="var(--ui-info-text)" />
           <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-[var(--ui-border)] pt-4 text-xs">
@@ -69,37 +67,14 @@ export async function StatisticsReportView({ report, section }: { report: Statis
       </section>
     </div>
 
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <section id="stats-economics" aria-labelledby="stats-economics-title" className={panel}>
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 py-4"><div><h2 id="stats-economics-title" className="flex items-center gap-2 text-base font-semibold text-[var(--ui-text)]">{t("economicsTitle")}<StatisticsInfo label={t("economicsTitle")}><p>{t("payrollDefinition")}</p><p>{t("closedMonthsOnly")}</p><p>{coverage(report.coverage.payrollFrom)}</p></StatisticsInfo></h2></div><Link href="/finance/schedules" className="inline-flex shrink-0 items-center gap-1 py-1 text-xs text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)]">{t("finance")}<ArrowUpRight className="size-3.5" aria-hidden="true" /></Link></div>
-        <div className="space-y-4 p-5">
-          {currencies.length ? currencies.map(currency => <div key={currency} className="space-y-3">
-            <StatisticsChart title={t("knownPayrollCost")} unit={currency} points={report.months.map(month => {
-              const row = report.payroll.find(row => row.month === month.month && row.currency === currency);
-              return { month: month.month, value: row && canChartFinanceAmount(row.knownCost, 4) ? Number(row.knownCost) : null,
-                display: row ? money(row.knownCost, currency) : t("unavailable"),
-                detail: row ? [row.incomplete ? t("incompleteCost") : t("recordedObligations", { count: row.obligations }), row.estimated ? t("estimatedCost") : ""].filter(Boolean).join(" · ") : undefined };
-            })} />
-            {report.payroll.some(row => row.currency === currency && row.incomplete) ? <p className="text-xs leading-5 text-[var(--ui-text-secondary)]">{t("partialPayroll", { count: report.payroll.filter(row => row.currency === currency && row.incomplete).length, total: report.payroll.filter(row => row.currency === currency).length })}</p> : null}
-            {report.payroll.some(row => row.currency === currency && row.estimated) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("estimatedCost")}</p> : null}
-          </div>) : <p className="py-2 text-sm leading-6 text-[var(--ui-text-muted)]">{t("noPayrollHistory")}</p>}
-          {currencies.length ? <StatisticsChart title={t("creditedSameMonths")} unit={t("squareMetres")} points={report.months.map(month => {
-            const value = report.payroll.some(row => row.month === month.month) ? month.creditedArea : null;
-            return { month: month.month, value, display: value === null ? t("unavailable") : area(value) };
-          })} kind="line" color="var(--ui-info-text)" compact /> : null}
-          {hasRatio ? <div className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-4">
-            <h3 className="flex items-center justify-between text-sm font-medium text-[var(--ui-text)]">{t("ratioTitle")}<StatisticsInfo label={t("ratioTitle")}><p>{t("ratioDefinition")}</p></StatisticsInfo></h3>
-            <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ui-text-secondary)]">{report.payroll.filter(row => row.costPerCreditedM2 !== null).map(row => <li key={`${row.month}:${row.currency}`}><span className="text-xs text-[var(--ui-text-muted)]">{date(row.month)}</span> <strong className="font-semibold tabular-nums">{number(row.costPerCreditedM2, 2)} {row.currency}/{t("squareMetres")}</strong>{row.estimated ? <span className="ml-1 text-xs">· {t("estimatedCost")}</span> : null}</li>)}</ul>
-          </div> : <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("ratioUnavailable")}</p>}
-        </div>
-      </section>
-
       <section id="stats-duration" aria-labelledby="stats-duration-title" className={panel}>
         <div className="px-5 pt-4"><h2 id="stats-duration-title" className="flex items-center justify-between text-base font-semibold text-[var(--ui-text)]">{t("durationTitle")}<StatisticsInfo label={t("durationTitle")}><p>{t("durationDefinition")}</p><p>{t("durationLimit")}</p></StatisticsInfo></h2></div>
+        <div className="grid divide-y divide-[var(--ui-border)] lg:grid-cols-2 lg:divide-x lg:divide-y-0"><div><p className="px-5 pt-3 text-xs font-medium text-[var(--ui-text-secondary)]">{t("completedInPeriod")}</p>
         <Headline label={t("medianDuration")} value={number(report.totals.medianDays, 1)} unit={t("days")} hint={t("durationCoverage", { count: report.coverage.durationProjects, total: report.coverage.selectedProjects })} />
+        {report.coverage.durationProjects < report.coverage.selectedProjects ? <p className="px-5 pb-4 text-xs text-[var(--ui-warning-text)]">{t("durationExcluded", { count: report.coverage.selectedProjects - report.coverage.durationProjects })}</p> : null}
         <div className="px-5 pb-5">
           {report.durations.length ? <>
-            <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">{[{ project: fastest, label: t("fastest") }, { project: longest, label: t("longest") }].map(({ project, label }, index) => project ? <div key={label} data-testid="duration-highlight" className={`min-w-0 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3 ${index === 0 ? "bg-[var(--ui-surface-subtle)]" : "bg-[var(--ui-surface)]"}`}><p className="text-xs leading-5 text-[var(--ui-text-muted)]">{label}</p><p className="my-2 text-2xl font-semibold tabular-nums text-[var(--ui-text)]">{number(project.days)} <span className="text-xs font-normal">{t("days")}</span></p><Link href={`/projects/${project.id}`} className="inline-flex max-w-full items-center gap-1 text-xs font-medium text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)]"><span className="truncate">{project.name}</span><ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" /></Link></div> : null)}</div>
+            <div className="mb-5 grid gap-2 sm:grid-cols-2">{[{ project: fastest, label: t("fastest") }, { project: longest, label: t("longest") }].map(({ project, label }, index) => project ? <div key={label} data-testid="duration-highlight" className={`min-w-0 rounded-[var(--ui-radius-control)] border-l-2 border-[var(--ui-border-strong)] p-4 ${index === 0 ? "bg-[var(--ui-surface-subtle)]" : "bg-[var(--ui-surface-muted)]"}`}><p className="text-xs leading-5 text-[var(--ui-text-muted)]">{label}</p><p className="my-2 text-3xl font-semibold tabular-nums text-[var(--ui-text)]">{number(project.days)} <span className="text-xs font-normal">{t("days")}</span></p><Link href={`/projects/${project.id}`} className="inline-flex max-w-full items-center gap-1 text-xs font-medium text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)]"><span className="truncate">{project.name}</span><ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" /></Link></div> : null)}</div>
             <div className="mb-3 flex justify-between text-xs text-[var(--ui-text-muted)]"><span>{t("durationDistribution")}</span><span className="tabular-nums">0 — {longest?.days} {t("days")}</span></div>
             <ol className="max-h-56 space-y-2 overflow-auto" aria-label={t("durationDistribution")}>{report.durations.map(project => <li key={project.id}><Link href={`/projects/${project.id}`} className="group grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-3 rounded py-1 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]" title={t("durationProjectDetail", { start: date(project.started), end: date(project.completed), days: project.days })}><span className="min-w-0"><span className="block truncate text-xs text-[var(--ui-text-secondary)] group-hover:text-[var(--ui-text)]">{project.name}</span><span aria-hidden="true" className="mt-1.5 block h-1.5 overflow-hidden rounded bg-[var(--ui-surface-muted)]"><span className="block h-full rounded bg-[var(--ui-text-secondary)]" style={{ width: `${Math.max(1, project.days / Math.max(1, longest?.days ?? 1) * 100)}%` }} /></span></span><span className="text-right text-xs tabular-nums text-[var(--ui-text)]">{number(project.days)} {t("days")}</span></Link></li>)}</ol>
             <p className="mt-3 text-xs text-[var(--ui-text-muted)]">{t("meanDuration", { days: number(report.totals.meanDays, 1) })}</p>
@@ -107,10 +82,21 @@ export async function StatisticsReportView({ report, section }: { report: Statis
 
           </> : <p className="text-sm leading-6 text-[var(--ui-text-muted)]">{t("noDurationHistory")}</p>}
         </div>
+        </div><div id="stats-ongoing" className="min-w-0">
+          <p className="px-5 pt-3 text-xs font-medium text-[var(--ui-text-secondary)]">{t("ongoingAsOf", { date: date(report.today) })}</p>
+          <Headline label={t("medianAge")} value={number(report.totals.medianAge, 1)} unit={t("days")} hint={t("ongoingCoverage", { count: report.ongoing.length, total: report.coverage.ongoingProjects })} />
+          <div className="px-5 pb-5"><h3 className="mb-3 flex items-center justify-between gap-2 text-sm font-medium text-[var(--ui-text)]">{t("longestRunning")}<StatisticsInfo label={t("medianAge")}><p>{t("ongoingDefinition")}</p></StatisticsInfo></h3>
+            {report.ongoing.length ? <ol className="max-h-80 space-y-3 overflow-auto">{report.ongoing.map(project => <li key={project.id}><Link href={`/projects/${project.id}`} className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded py-1 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><span className="min-w-0"><span className="block truncate text-xs text-[var(--ui-text-secondary)] group-hover:text-[var(--ui-text)]">{project.name}</span><span className="mt-0.5 block text-[10px] text-[var(--ui-text-muted)]">{date(project.started)}{project.status === "paused" ? ` · ${t("pausedProject")}` : ""}</span><span aria-hidden="true" className="mt-1.5 block h-1.5 rounded bg-[var(--ui-surface-muted)]"><span className="block h-full rounded bg-[var(--ui-text-secondary)]" style={{ width: `${project.days / Math.max(1, report.ongoing[0].days) * 100}%` }} /></span></span><span className="text-sm font-medium tabular-nums text-[var(--ui-text)]">{number(project.days)} <span className="text-xs font-normal">{t("days")}</span></span></Link></li>)}</ol> : <p className="text-sm text-[var(--ui-text-muted)]">{t("noOngoingHistory")}</p>}
+          </div>
+        </div></div>
       </section>
-    </div>
+
+    <section id="stats-economics" aria-labelledby="stats-economics-title" className={panel}>
+      <div className="flex items-start justify-between gap-4 px-5 py-3"><div><h2 id="stats-economics-title" className="flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]">{t("economicsTitle")}<StatisticsInfo label={t("economicsTitle")}><p>{t("payrollDefinition")}</p><p>{t("payrollHistoryNote")}</p><p>{t("ratioDefinition")}</p><p>{coverage(report.coverage.payrollFrom)}</p></StatisticsInfo></h2><p className="text-xs text-[var(--ui-text-muted)]">{t("closedMonthsOnly")}</p></div><Link href="/finance/schedules" className="inline-flex shrink-0 items-center gap-1 py-1 text-xs text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)]">{t("finance")}<ArrowUpRight className="size-3.5" aria-hidden="true" /></Link></div>
+      {report.payroll.length ? <div className="max-h-72 overflow-auto border-t border-[var(--ui-border)]" role="region" aria-label={t("economicsTitle")} tabIndex={0}><table className="w-full text-left text-xs [&_th]:px-5 [&_th]:py-3 [&_td]:px-5 [&_td]:py-3"><thead className="sticky top-0 bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr><th scope="col">{t("month")}</th><th scope="col">{t("knownPayrollCost")}</th>{hasRatio ? <th scope="col">{t("ratioShort")}</th> : null}</tr></thead><tbody>{report.payroll.map(row => <tr key={`${row.month}:${row.currency}`} className="border-t border-[var(--ui-border)] text-[var(--ui-text-secondary)]"><th scope="row" className="whitespace-nowrap font-normal">{date(row.month)}</th><td><span className="whitespace-nowrap font-medium tabular-nums text-[var(--ui-text)]">{money(row.knownCost, row.currency)}</span>{row.incomplete ? <span className="mt-1 block text-[var(--ui-warning-text)]">{t("incompleteCostShort")}</span> : null}{row.estimated ? <span className="mt-1 block text-[var(--ui-text-muted)]">{t("estimatedCost")}</span> : null}</td>{hasRatio ? <td className="tabular-nums">{row.costPerCreditedM2 === null ? "—" : `${number(row.costPerCreditedM2, 2)} ${row.currency}/${t("squareMetres")}`}</td> : null}</tr>)}</tbody></table></div> : <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noPayrollHistory")}</p>}
+    </section>
     </>}
-    <details className="text-xs text-[var(--ui-text-muted)]"><summary className="w-fit cursor-pointer rounded py-2 font-medium focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{t("definitions")}</summary><div className="mt-2 grid gap-3 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-5 leading-6 md:grid-cols-2"><p>{t("projectHistoryNote")}</p><p>{t("creditHistoryNote")}</p><p>{t("payrollHistoryNote")}</p><p>{t("omittedNote")}</p><p>{t("recordCoverageNote")}</p><p>{t("crmMethodology")}</p><p>{t("attendanceMethodology")}</p><p>{t("calendarMethodology")}</p></div></details>
+    <details className="border-t border-[var(--ui-border)] pt-2 text-xs text-[var(--ui-text-muted)]"><summary className="w-fit cursor-pointer rounded py-2 font-medium transition-colors duration-[180ms] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{t("definitions")}</summary><dl className="mt-2 divide-y divide-[var(--ui-border)] rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] px-4 leading-5">{["history", section].map(key => <div key={key} className="grid gap-1 py-3 sm:grid-cols-[10rem_1fr]"><dt className="font-medium text-[var(--ui-text-secondary)]">{t(`method_${key}_label`)}</dt><dd>{t(`method_${key}`)}</dd></div>)}</dl></details>
   </div>;
 }
 
