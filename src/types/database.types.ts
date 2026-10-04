@@ -1700,6 +1700,110 @@ export type Database = {
           },
         ]
       }
+      finance_forecast_scenario_revisions: {
+        Row: {
+          assumptions: Json
+          base_snapshot_id: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          reason: string
+          revision: number
+          scenario_id: string
+          studio_id: string
+        }
+        Insert: {
+          assumptions: Json
+          base_snapshot_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          reason: string
+          revision: number
+          scenario_id: string
+          studio_id: string
+        }
+        Update: {
+          assumptions?: Json
+          base_snapshot_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          reason?: string
+          revision?: number
+          scenario_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_forecast_scenario_revis_studio_id_base_snapshot_id_fkey"
+            columns: ["studio_id", "base_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "finance_forecast_snapshots"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_studio_id_scenario_id_fkey"
+            columns: ["studio_id", "scenario_id"]
+            isOneToOne: false
+            referencedRelation: "finance_forecast_scenarios"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_forecast_scenarios: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_forecast_scenarios_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenarios_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_forecast_snapshots: {
         Row: {
           capture_order: number | null
@@ -1708,6 +1812,7 @@ export type Database = {
           forecast: Json
           id: string
           name: string
+          native_inputs: Json | null
           studio_id: string
         }
         Insert: {
@@ -1717,6 +1822,7 @@ export type Database = {
           forecast: Json
           id?: string
           name: string
+          native_inputs?: Json | null
           studio_id: string
         }
         Update: {
@@ -1726,6 +1832,7 @@ export type Database = {
           forecast?: Json
           id?: string
           name?: string
+          native_inputs?: Json | null
           studio_id?: string
         }
         Relationships: [
@@ -1738,6 +1845,114 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_forecast_snapshots_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_labor_allocation_items: {
+        Row: {
+          amount: number
+          id: string
+          project_id: string
+          revision_id: string
+          studio_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          project_id: string
+          revision_id: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          project_id?: string
+          revision_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_allocation_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_items_studio_id_revision_id_fkey"
+            columns: ["studio_id", "revision_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_allocation_revisions"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_labor_allocation_revisions: {
+        Row: {
+          created_at: string
+          created_by: string
+          entry_id: string
+          id: string
+          method: string
+          reason: string
+          revision: number
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          entry_id: string
+          id?: string
+          method?: string
+          reason: string
+          revision: number
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          entry_id?: string
+          id?: string
+          method?: string
+          reason?: string
+          revision?: number
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_studio_id_entry_id_fkey"
+            columns: ["studio_id", "entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_cost_pools"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_studio_id_entry_id_fkey"
+            columns: ["studio_id", "entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognition_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_studio_id_entry_id_fkey"
+            columns: ["studio_id", "entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognized_actuals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -2337,6 +2552,200 @@ export type Database = {
           },
         ]
       }
+      finance_project_cash_items: {
+        Row: {
+          amount: number
+          project_id: string
+          revision_id: string
+          studio_id: string
+        }
+        Insert: {
+          amount: number
+          project_id: string
+          revision_id: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number
+          project_id?: string
+          revision_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cash_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_items_studio_id_revision_id_fkey"
+            columns: ["studio_id", "revision_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_cash_revisions"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_project_cash_revisions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          movement_id: string
+          reason: string
+          revision: number
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          movement_id: string
+          reason: string
+          revision: number
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          movement_id?: string
+          reason?: string
+          revision?: number
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cash_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_revisions_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_revisions_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_revisions_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_revisions_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_project_cost_estimates: {
+        Row: {
+          as_of: string
+          created_at: string
+          created_by: string
+          currency: string
+          direct_budget: number | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          id: string
+          labor_budget: number | null
+          project_id: string
+          reason: string
+          remaining_direct: number | null
+          remaining_labor: number | null
+          reporting_currency: string
+          revision: number
+          source_digest: string | null
+          studio_id: string
+        }
+        Insert: {
+          as_of: string
+          created_at?: string
+          created_by: string
+          currency: string
+          direct_budget?: number | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          id?: string
+          labor_budget?: number | null
+          project_id: string
+          reason: string
+          remaining_direct?: number | null
+          remaining_labor?: number | null
+          reporting_currency: string
+          revision: number
+          source_digest?: string | null
+          studio_id: string
+        }
+        Update: {
+          as_of?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          direct_budget?: number | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          id?: string
+          labor_budget?: number | null
+          project_id?: string
+          reason?: string
+          remaining_direct?: number | null
+          remaining_labor?: number | null
+          reporting_currency?: string
+          revision?: number
+          source_digest?: string | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cost_estimate_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+        ]
+      }
       finance_project_items: {
         Row: {
           context_label: string
@@ -2553,6 +2962,63 @@ export type Database = {
           },
         ]
       }
+      finance_project_refund_items: {
+        Row: {
+          amount: number
+          movement_id: string
+          project_id: string
+          studio_id: string
+        }
+        Insert: {
+          amount: number
+          movement_id: string
+          project_id: string
+          studio_id: string
+        }
+        Update: {
+          amount?: number
+          movement_id?: string
+          project_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_refund_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_refund_items_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_refund_items_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_refund_items_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_project_refund_items_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       finance_project_terms: {
         Row: {
           amount: number | null
@@ -2657,6 +3123,315 @@ export type Database = {
           },
         ]
       }
+      finance_recognition_entries: {
+        Row: {
+          amount: number
+          category_id: string
+          classification: string
+          created_at: string
+          created_by: string
+          currency: string
+          description: string
+          employee_id: string | null
+          expected_item_id: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          gross_amount: number
+          id: string
+          kind: string
+          movement_id: string | null
+          obligation_id: string | null
+          period_end: string
+          period_start: string
+          project_id: string | null
+          reason: string
+          recognized_on: string
+          related_entry_id: string | null
+          reporting_amount: number | null
+          reporting_currency: string
+          source_kind: string
+          source_snapshot: Json
+          studio_id: string
+          terms_id: string | null
+          trip_effect_movement_id: string | null
+          trip_entry_id: string | null
+          vat_amount: number
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          classification: string
+          created_at?: string
+          created_by: string
+          currency: string
+          description: string
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount: number
+          id?: string
+          kind?: string
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end: string
+          period_start: string
+          project_id?: string | null
+          reason: string
+          recognized_on: string
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency: string
+          source_kind: string
+          source_snapshot: Json
+          studio_id: string
+          terms_id?: string | null
+          trip_effect_movement_id?: string | null
+          trip_entry_id?: string | null
+          vat_amount: number
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          classification?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount?: number
+          id?: string
+          kind?: string
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end?: string
+          period_start?: string
+          project_id?: string | null
+          reason?: string
+          recognized_on?: string
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency?: string
+          source_kind?: string
+          source_snapshot?: Json
+          studio_id?: string
+          terms_id?: string | null
+          trip_effect_movement_id?: string | null
+          trip_entry_id?: string | null
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_recognition_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_reporting_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_cost_pools"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognition_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognized_actuals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_current_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_entry_id_fkey"
+            columns: ["studio_id", "trip_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_entry_id_fkey"
+            columns: ["studio_id", "trip_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       finance_recurring_groups: {
         Row: {
           id: string
@@ -2679,6 +3454,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "finance_recurring_groups_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_report_coverage: {
+        Row: {
+          created_at: string
+          created_by: string
+          direct_costs_reviewed: boolean
+          id: string
+          labor_reviewed: boolean
+          month: string
+          overhead_reviewed: boolean
+          project_id: string | null
+          reason: string
+          revenue_reviewed: boolean
+          reviewed_through: string
+          revision: number
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          direct_costs_reviewed: boolean
+          id?: string
+          labor_reviewed: boolean
+          month: string
+          overhead_reviewed: boolean
+          project_id?: string | null
+          reason: string
+          revenue_reviewed: boolean
+          reviewed_through: string
+          revision: number
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          direct_costs_reviewed?: boolean
+          id?: string
+          labor_reviewed?: boolean
+          month?: string
+          overhead_reviewed?: boolean
+          project_id?: string | null
+          reason?: string
+          revenue_reviewed?: boolean
+          reviewed_through?: string
+          revision?: number
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_report_coverage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_report_coverage_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_report_coverage_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -2863,6 +3708,7 @@ export type Database = {
           cutover_date: string
           finalized_at: string | null
           finalized_by: string | null
+          recognition_start_month: string | null
           studio_id: string
           updated_at: string
         }
@@ -2873,6 +3719,7 @@ export type Database = {
           cutover_date: string
           finalized_at?: string | null
           finalized_by?: string | null
+          recognition_start_month?: string | null
           studio_id: string
           updated_at?: string
         }
@@ -2883,6 +3730,7 @@ export type Database = {
           cutover_date?: string
           finalized_at?: string | null
           finalized_by?: string | null
+          recognition_start_month?: string | null
           studio_id?: string
           updated_at?: string
         }
@@ -5529,6 +6377,44 @@ export type Database = {
           },
         ]
       }
+      finance_current_labor_allocations: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          created_by: string | null
+          entry_id: string | null
+          id: string | null
+          method: string | null
+          project_id: string | null
+          reason: string | null
+          revision: number | null
+          revision_id: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_allocation_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_items_studio_id_revision_id_fkey"
+            columns: ["studio_id", "revision_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_allocation_revisions"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_labor_allocation_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_current_movements: {
         Row: {
           category: string | null
@@ -5630,6 +6516,115 @@ export type Database = {
           },
         ]
       }
+      finance_current_report_coverage: {
+        Row: {
+          changed_since_review: boolean | null
+          created_at: string | null
+          created_by: string | null
+          direct_costs_reviewed: boolean | null
+          id: string | null
+          labor_reviewed: boolean | null
+          month: string | null
+          overhead_reviewed: boolean | null
+          project_id: string | null
+          reason: string | null
+          revenue_reviewed: boolean | null
+          reviewed_through: string | null
+          revision: number | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_report_coverage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_report_coverage_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_report_coverage_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_current_scenarios: {
+        Row: {
+          assumptions: Json | null
+          base_snapshot_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          name: string | null
+          reason: string | null
+          revision: number | null
+          scenario_id: string | null
+          studio_id: string | null
+        }
+        Insert: {
+          assumptions?: Json | null
+          base_snapshot_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          name?: string | null
+          reason?: string | null
+          revision?: number | null
+          scenario_id?: string | null
+          studio_id?: string | null
+        }
+        Update: {
+          assumptions?: Json | null
+          base_snapshot_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          name?: string | null
+          reason?: string | null
+          revision?: number | null
+          scenario_id?: string | null
+          studio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_forecast_scenario_revis_studio_id_base_snapshot_id_fkey"
+            columns: ["studio_id", "base_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "finance_forecast_snapshots"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_forecast_scenario_revisions_studio_id_scenario_id_fkey"
+            columns: ["studio_id", "scenario_id"]
+            isOneToOne: false
+            referencedRelation: "finance_forecast_scenarios"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       finance_expected_balances: {
         Row: {
           amount: number | null
@@ -5686,6 +6681,279 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_settings"
             referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_labor_cost_pools: {
+        Row: {
+          allocated_amount: number | null
+          allocation_revision: number | null
+          amount: number | null
+          available_native_amount: number | null
+          available_reporting_amount: number | null
+          category_id: string | null
+          classification: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          employee_id: string | null
+          expected_item_id: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          gross_amount: number | null
+          id: string | null
+          kind: string | null
+          movement_id: string | null
+          obligation_id: string | null
+          period_end: string | null
+          period_start: string | null
+          project_id: string | null
+          reason: string | null
+          recognized_on: string | null
+          related_entry_id: string | null
+          reporting_amount: number | null
+          reporting_currency: string | null
+          source_kind: string | null
+          source_snapshot: Json | null
+          studio_id: string | null
+          terms_id: string | null
+          vat_amount: number | null
+        }
+        Insert: {
+          allocated_amount?: never
+          allocation_revision?: never
+          amount?: number | null
+          available_native_amount?: never
+          available_reporting_amount?: never
+          category_id?: string | null
+          classification?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount?: number | null
+          id?: string | null
+          kind?: string | null
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          project_id?: string | null
+          reason?: string | null
+          recognized_on?: string | null
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency?: string | null
+          source_kind?: string | null
+          source_snapshot?: Json | null
+          studio_id?: string | null
+          terms_id?: string | null
+          vat_amount?: number | null
+        }
+        Update: {
+          allocated_amount?: never
+          allocation_revision?: never
+          amount?: number | null
+          available_native_amount?: never
+          available_reporting_amount?: never
+          category_id?: string | null
+          classification?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount?: number | null
+          id?: string | null
+          kind?: string | null
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          project_id?: string | null
+          reason?: string | null
+          recognized_on?: string | null
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency?: string | null
+          source_kind?: string | null
+          source_snapshot?: Json | null
+          studio_id?: string | null
+          terms_id?: string | null
+          vat_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_recognition_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_reporting_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_cost_pools"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognition_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognized_actuals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_current_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
           },
         ]
       }
@@ -5798,6 +7066,174 @@ export type Database = {
           studio_id: string | null
         }
         Relationships: []
+      }
+      finance_project_cash_events: {
+        Row: {
+          amount: number | null
+          currency: string | null
+          financial_date: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          movement_id: string | null
+          project_id: string | null
+          reason: string | null
+          reporting_currency: string | null
+          revision: number | null
+          source_amount: number | null
+          source_reporting_amount: number | null
+          studio_id: string | null
+        }
+        Relationships: []
+      }
+      finance_project_cash_net: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          movement_id: string | null
+          net_amount: number | null
+          project_id: string | null
+          reason: string | null
+          revision: number | null
+          revision_id: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cash_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_items_studio_id_revision_id_fkey"
+            columns: ["studio_id", "revision_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_cash_revisions"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_project_cash_raw: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          movement_id: string | null
+          project_id: string | null
+          reason: string | null
+          revision: number | null
+          revision_id: string | null
+          studio_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cash_items_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_project_cash_items_studio_id_revision_id_fkey"
+            columns: ["studio_id", "revision_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_cash_revisions"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      finance_project_current_cost_estimates: {
+        Row: {
+          as_of: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          direct_budget: number | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          id: string | null
+          labor_budget: number | null
+          project_id: string | null
+          reason: string | null
+          remaining_direct: number | null
+          remaining_labor: number | null
+          reporting_currency: string | null
+          revision: number | null
+          source_digest: string | null
+          studio_id: string | null
+        }
+        Insert: {
+          as_of?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          direct_budget?: number | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          id?: string | null
+          labor_budget?: number | null
+          project_id?: string | null
+          reason?: string | null
+          remaining_direct?: number | null
+          remaining_labor?: number | null
+          reporting_currency?: string | null
+          revision?: number | null
+          source_digest?: string | null
+          studio_id?: string | null
+        }
+        Update: {
+          as_of?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          direct_budget?: number | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          id?: string | null
+          labor_budget?: number | null
+          project_id?: string | null
+          reason?: string | null
+          remaining_direct?: number | null
+          remaining_labor?: number | null
+          reporting_currency?: string | null
+          revision?: number | null
+          source_digest?: string | null
+          studio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_project_cost_estimate_studio_id_reporting_currency_fkey"
+            columns: ["studio_id", "reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id", "base_currency"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_project_cost_estimates_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+        ]
       }
       finance_project_current_terms: {
         Row: {
@@ -6047,6 +7483,315 @@ export type Database = {
           vat_reporting_amount: number | null
         }
         Relationships: []
+      }
+      finance_recognized_actuals: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          classification: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          employee_id: string | null
+          expected_item_id: string | null
+          fx_effective_date: string | null
+          fx_rate: number | null
+          fx_source: string | null
+          gross_amount: number | null
+          id: string | null
+          kind: string | null
+          movement_id: string | null
+          obligation_id: string | null
+          period_end: string | null
+          period_start: string | null
+          project_id: string | null
+          reason: string | null
+          recognized_on: string | null
+          related_entry_id: string | null
+          reporting_amount: number | null
+          reporting_currency: string | null
+          source_kind: string | null
+          source_snapshot: Json | null
+          studio_id: string | null
+          terms_id: string | null
+          trip_effect_movement_id: string | null
+          trip_entry_id: string | null
+          vat_amount: number | null
+        }
+        Insert: {
+          amount?: number | null
+          category_id?: string | null
+          classification?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount?: number | null
+          id?: string | null
+          kind?: string | null
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          project_id?: string | null
+          reason?: string | null
+          recognized_on?: string | null
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency?: string | null
+          source_kind?: string | null
+          source_snapshot?: Json | null
+          studio_id?: string | null
+          terms_id?: string | null
+          trip_effect_movement_id?: string | null
+          trip_entry_id?: string | null
+          vat_amount?: number | null
+        }
+        Update: {
+          amount?: number | null
+          category_id?: string | null
+          classification?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          employee_id?: string | null
+          expected_item_id?: string | null
+          fx_effective_date?: string | null
+          fx_rate?: number | null
+          fx_source?: string | null
+          gross_amount?: number | null
+          id?: string | null
+          kind?: string | null
+          movement_id?: string | null
+          obligation_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          project_id?: string | null
+          reason?: string | null
+          recognized_on?: string | null
+          related_entry_id?: string | null
+          reporting_amount?: number | null
+          reporting_currency?: string | null
+          source_kind?: string | null
+          source_snapshot?: Json | null
+          studio_id?: string | null
+          terms_id?: string | null
+          trip_effect_movement_id?: string | null
+          trip_entry_id?: string | null
+          vat_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_recognition_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_reporting_currency_fkey"
+            columns: ["reporting_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_category_id_fkey"
+            columns: ["studio_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_expected_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_calendar"
+            referencedColumns: ["studio_id", "expected_item_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_expected_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_expected_item_id_fkey"
+            columns: ["studio_id", "expected_item_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_plan_items"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_cost_pools"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognition_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_related_entry_id_fkey"
+            columns: ["studio_id", "related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_recognized_actuals"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_current_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_terms_id_project_id_fkey"
+            columns: ["studio_id", "terms_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_terms"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_effect_movement_fkey"
+            columns: ["studio_id", "trip_effect_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_entry_id_fkey"
+            columns: ["studio_id", "trip_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entries"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_recognition_entries_studio_id_trip_entry_id_fkey"
+            columns: ["studio_id", "trip_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_trip_entry_values"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
       }
       finance_schedule_history: {
         Row: {
@@ -6337,6 +8082,19 @@ export type Database = {
       }
     }
     Functions: {
+      activate_finance_recognition: {
+        Args: { p_month: string; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      adjust_finance_recognition: {
+        Args: {
+          p_entry_id: string
+          p_input: Json
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       allocate_finance_payment: {
         Args: {
           p_amount: number
@@ -6488,6 +8246,15 @@ export type Database = {
       }
       complete_finance_payroll_cost: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      confirm_finance_trip_recognition: {
+        Args: {
+          p_entry_id: string
+          p_reason: string
+          p_request_id: string
+          p_studio_id: string
+        }
         Returns: string
       }
       correct_finance_movement: {
@@ -6696,6 +8463,22 @@ export type Database = {
           studio_id: string
         }[]
       }
+      get_finance_forecast_capture_preview: {
+        Args: { p_fx?: Json; p_scenario?: string; p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_labor_reporting: {
+        Args: { p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_labor_sources: {
+        Args: { p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_management_reporting: {
+        Args: { p_studio_id: string }
+        Returns: Json
+      }
       get_finance_movement_history_ids: {
         Args: { p_movement_id: string; p_studio_id: string }
         Returns: string[]
@@ -6724,8 +8507,24 @@ export type Database = {
           term_id: string
         }[]
       }
+      get_finance_project_reporting: {
+        Args: { p_studio_id: string }
+        Returns: Json
+      }
       get_finance_proposal_source: {
         Args: { p_project_id: string; p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_recognition_sources: {
+        Args: { p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_scenario_workspace: {
+        Args: { p_base_id?: string; p_horizon?: string; p_studio_id: string }
+        Returns: Json
+      }
+      get_finance_trip_recognition_sources: {
+        Args: { p_studio_id: string }
         Returns: Json
       }
       get_personal_task_ids: {
@@ -6807,6 +8606,10 @@ export type Database = {
           remaining: number
         }[]
       }
+      reconcile_finance_labor_cost: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       record_equipment_history_event: {
         Args: {
           p_completed_on: string
@@ -6834,7 +8637,15 @@ export type Database = {
         }
         Returns: string
       }
+      record_finance_labor_cost: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       record_finance_movement: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      record_finance_recognition: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
@@ -6959,6 +8770,15 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      save_finance_forecast_scenario: {
+        Args: {
+          p_input?: Json
+          p_request_id: string
+          p_scenario_id?: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       save_finance_forecast_snapshot: {
         Args: {
           p_fx: Json
@@ -6966,6 +8786,33 @@ export type Database = {
           p_name: string
           p_request_id: string
           p_scenario: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_labor_allocation: {
+        Args: {
+          p_entry_id: string
+          p_input: Json
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_project_cash_split: {
+        Args: {
+          p_input: Json
+          p_movement_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
+      save_finance_project_cost_estimate: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
           p_studio_id: string
         }
         Returns: string
@@ -7010,6 +8857,10 @@ export type Database = {
         Returns: string
       }
       save_finance_recurring_schedule: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      save_finance_report_coverage: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
@@ -7255,6 +9106,10 @@ export type Database = {
       }
       value_finance_opening: {
         Args: { p_account_id: string; p_input: Json; p_studio_id: string }
+        Returns: undefined
+      }
+      value_finance_recognition: {
+        Args: { p_entry_id: string; p_fx: Json; p_studio_id: string }
         Returns: undefined
       }
     }

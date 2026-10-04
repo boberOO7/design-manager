@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { z } from "zod";
 import { loadFinanceMovementHistory, quoteFinanceSettlement, saveFinanceMovement, valueFinanceMovement } from "@/app/(app)/finance/movements/actions";
 import { fullFinanceSettlementAmount, indicativeFinanceConversion } from "@/lib/finance-fx-preview";
 import { Button } from "@/components/ui/button";
@@ -14,18 +15,31 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
-import { formatFinanceAmount } from "@/lib/finance";
+import { financeAmountText, financeAmountUnits, formatFinanceAmount } from "@/lib/finance";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCategorySelect } from "./category-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
 import { financeCategoryLabel, financeMovementCategoryLabel } from "@/lib/finance-planning";
 import type { getFinanceData, FinanceMovementWithEntries } from "@/data/queries/finance";
+import type { FinanceSourceMovement } from "@/data/queries/finance-source-movement";
+import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
+import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
+import { projectCashSplitItemsSchema } from "@/lib/finance-profitability";
 
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 
 
-export function EntryForm({ data, today, transfer, refund, correction, expected, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; onSaved: () => void; onPending: (pending: boolean) => void }) {
+type SplitRow = { projectId: string; amount: string };
+const storedSplits = (payload: unknown, key: "projectReceiptSplits" | "projectRefundSplits"): SplitRow[] => {
+  const record = z.record(z.string(), z.unknown()).safeParse(payload);
+  if (!record.success) return [];
+  const parsed = projectCashSplitItemsSchema.safeParse(record.data[key]);
+  return parsed.success ? parsed.data.map(item => ({ ...item })) : [];
+};
+const splitJson = (rows: SplitRow[]) => JSON.stringify(rows.filter(row => row.projectId && row.amount.trim()).map(row => ({ projectId: row.projectId, amount: row.amount.trim().replace(",", ".") })));
+
+export function EntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const active = data.accounts.filter((account) => !account.archived_at);
@@ -48,6 +62,11 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   const [destinationId, setDestinationId] = useState(originalDestination?.account_id ?? active.find((account) => account.id !== accountId)?.id ?? "");
   const [date, setDate] = useState(correction?.financial_date ?? today);
   const [amount, setAmount] = useState(originalEntry ? (balanceCorrection ? String(originalEntry.amount) : String(originalEntry.amount).replace(/^-/, "")) : expected && active[0]?.currency===expected.currency?expected.remaining_amount?.toString()??"":"");
+  const sourceReceipt = projectCash?.receipts.find(item => item.id === (refund?.id ?? (refundCorrection ? correction?.related_movement_id : correction?.kind === "incoming" ? correction.id : undefined)));
+  const previousRefundSplits = storedSplits(originalPayload, "projectRefundSplits");
+  const [receiptSplitsEnabled, setReceiptSplitsEnabled] = useState(false);
+  const [receiptRows, setReceiptRows] = useState<SplitRow[]>(() => correction?.kind === "incoming" ? projectCash?.receipts.find(item => item.id === correction.id)?.items.map(item => ({ projectId: item.projectId, amount: item.amount })) ?? [] : []);
+  const [refundRows, setRefundRows] = useState<SplitRow[]>(() => previousRefundSplits);
   const [amountEdited,setAmountEdited]=useState(false);
   const [received, setReceived] = useState(originalDestination ? String(originalDestination.amount) : "");
   const [settlementMode,setSettlementMode]=useState<"nbu"|"manual">("nbu");
@@ -79,14 +98,42 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   const credited=converted&&expected?Number(converted)>Number(expected.remaining_amount??0)?String(expected.remaining_amount??0):converted:null;
   const refundCategory=refund?financeMovementCategoryLabel(refund.category_id,refund.category,data.categories,(key)=>t(`planning.defaults.${key}`)):"";
   const moneyLabel=(value:string|number,code:string)=>{const currency=data.currencies.find((item)=>item.code===code);return currency?formatFinanceAmount(value,currency,locale):`${value} ${code}`;};
+  const digits = data.currencies.find(currency => currency.code === source?.currency)?.minor_units ?? 2;
+  const units = (value: string) => { try { return financeAmountUnits(value.trim().replace(",", "."), digits); } catch { return null; } };
+  const rowAmounts = (rows: SplitRow[]) => rows.map(row => ({ ...row, units: row.amount.trim() ? units(row.amount) : null }));
+  const totalUnits = (rows: SplitRow[]) => rowAmounts(rows).reduce((sum, row) => sum + (row.units ?? BigInt(0)), BigInt(0));
+  const existingReceiptTotal = sourceReceipt?.items.reduce((sum, item) => sum + (units(item.amount) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
+  const currentAmountUnits = units(amount);
+  const receiptCurrencyChanged = Boolean(correction?.kind === "incoming" && source?.currency !== originalEntry?.currency);
+  const receiptRequiresExplicit = Boolean(correction?.kind === "incoming" && sourceReceipt?.items.length && (receiptCurrencyChanged || (currentAmountUnits !== null && currentAmountUnits < existingReceiptTotal)));
+  const receiptFieldActive = receiptSplitsEnabled || receiptRequiresExplicit;
+  const receiptCheckedRows = rowAmounts(receiptRows);
+  const receiptRowsValid = receiptCheckedRows.every(row => row.projectId && row.units !== null && row.units > BigInt(0))
+    && new Set(receiptRows.map(row => row.projectId).filter(Boolean)).size === receiptRows.filter(row => row.projectId).length
+    && (currentAmountUnits === null || totalUnits(receiptRows) <= currentAmountUnits);
+  const receiptSplitsValid = !receiptFieldActive || (receiptRowsValid && (receiptRows.length === 0 || receiptRows.every(row => row.projectId && row.amount.trim())));
+  const refundAvailable = new Map((sourceReceipt?.items ?? []).map(item => [item.projectId, units(item.amount) ?? BigInt(0)]));
+  for (const row of previousRefundSplits) refundAvailable.set(row.projectId, (refundAvailable.get(row.projectId) ?? BigInt(0)) + (units(row.amount) ?? BigInt(0)));
+  const refundCheckedRows = rowAmounts(refundRows);
+  const refundTotal = totalUnits(refundRows);
+  const refundIsAttributed = Boolean(sourceReceipt?.items.length || previousRefundSplits.length);
+  const previousRefundPrincipal = refundCorrection && originalEntry ? (units(String(originalEntry.amount).replace(/^-/, "")) ?? BigInt(0)) : BigInt(0);
+  const previousRefundTotal = totalUnits(previousRefundSplits);
+  const refundUnattributedCapacity = (units(sourceReceipt?.unattributed ?? "0") ?? BigInt(0)) + previousRefundPrincipal - previousRefundTotal;
+  const refundRowsValid = refundCheckedRows.every(row => row.projectId && row.units !== null && row.units > BigInt(0) && row.units <= (refundAvailable.get(row.projectId) ?? BigInt(-1)))
+    && new Set(refundRows.map(row => row.projectId).filter(Boolean)).size === refundRows.filter(row => row.projectId).length
+    && currentAmountUnits !== null && refundTotal <= currentAmountUnits
+    && currentAmountUnits - refundTotal <= refundUnattributedCapacity;
+  const refundSplitsValid = !refundIsAttributed || refundRowsValid;
+  const formNature = correction?.nature === "financing" ? "financing" : data.categories.find(category => category.id === categoryId)?.nature === "financing" ? "financing" : "operating";
   const accounts = (exclude?: string) => active.filter((account) => account.id !== exclude).map((account) => <SelectItem key={account.id} value={account.id}>{account.name} · {account.currency}</SelectItem>);
-  return <FinanceActionForm action={saveFinanceMovement} onSaved={onSaved} onPending={onPending} label={t(correction ? "movements.saveCorrection" : "movements.record")}>
-    {correction ? <><input type="hidden" name="intent" value="correct"/><input type="hidden" name="movementId" value={correction.id}/>{originalAllocationIntent ? <input type="hidden" name="allocationIntent" value="true"/> : null}<p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.correctionHelp")}</p>{refundCorrection ? <input type="hidden" name="relatedMovementId" value={correction.related_movement_id ?? ""}/> : null}</> : null}
+  return <FinanceActionForm action={saveFinanceMovement} onSaved={onSaved} onPending={onPending} disabled={!receiptSplitsValid || !refundSplitsValid} label={t(correction ? "movements.saveCorrection" : "movements.record")}>
+    {correction ? <><input type="hidden" name="intent" value="correct"/><input type="hidden" name="movementId" value={correction.id}/><input type="hidden" name="nature" value={formNature}/>{originalAllocationIntent ? <input type="hidden" name="allocationIntent" value="true"/> : null}<p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.correctionHelp")}</p>{refundCorrection ? <input type="hidden" name="relatedMovementId" value={correction.related_movement_id ?? ""}/> : null}</> : <input type="hidden" name="nature" value={formNature}/>}
     {transfer || refund || expected || correction ? <input type="hidden" name="kind" value={kind} /> : <FormField label={t("movements.type")}><Select name="kind" aria-label={t("movements.type")} value={kind} onValueChange={(value)=>{setKind(value);setCategoryId("");}}>{["incoming","outgoing","owner_withdrawal"].map((value) => <SelectItem key={value} value={value}>{t(`movements.kinds.${value}`)}</SelectItem>)}</Select></FormField>}
     {expected?<div className="space-y-0.5"><input type="hidden" name="expectedItemId" value={expected.id??""}/><input type="hidden" name="autoAllocate" value="true"/><p className="text-sm font-semibold">{expectedLabel}</p><p className="ui-numeric text-sm text-[var(--ui-text-secondary)]">{t("planning.remaining")}: <span className="font-medium text-[var(--ui-text)]">{settlementCurrency?formatFinanceAmount(expected.remaining_amount??0,settlementCurrency,locale):`${expected.remaining_amount??0} ${expected.currency??""}`}</span></p></div>:null}
     {refund ? <><input type="hidden" name="relatedMovementId" value={refund.id} /><p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.refundHelp", { category: refundCategory })}</p></> : null}
     <div className={expected?"grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)]":"grid gap-4 sm:grid-cols-2"}>
-      <FormField label={transfer ? t("movements.fromAccount") : t("movements.account")}>{refund || refundCorrection ? <><Input value={source ? `${source.name} · ${source.currency}` : t("movements.errors.archived")} readOnly /><input type="hidden" name="accountId" value={accountId} /></> : <Select name="accountId" aria-label={transfer ? t("movements.fromAccount") : t("movements.account")} value={accountId} onValueChange={(value)=>{setAccountId(value);if(expected){setAmountEdited(false);setSettlementMode("nbu");setSettlementRate("");setAmount(active.find((entry)=>entry.id===value)?.currency===expected.currency?String(expected.remaining_amount??""):"");}}} required>{accounts()}</Select>}</FormField>
+      <FormField label={transfer ? t("movements.fromAccount") : t("movements.account")}>{refund || refundCorrection ? <><Input value={source ? `${source.name} · ${source.currency}` : t("movements.errors.archived")} readOnly /><input type="hidden" name="accountId" value={accountId} /></> : <Select name="accountId" aria-label={transfer ? t("movements.fromAccount") : t("movements.account")} value={accountId} onValueChange={(value)=>{setAccountId(value);const next=active.find((entry)=>entry.id===value);if(correction?.kind==="incoming"&&next?.currency!==originalEntry?.currency)setReceiptRows(rows=>rows.map(row=>({...row,amount:""})));if(expected){setAmountEdited(false);setSettlementMode("nbu");setSettlementRate("");setAmount(next?.currency===expected.currency?String(expected.remaining_amount??""):"");}}} required>{accounts()}</Select>}</FormField>
       <FormField label={transfer ? t("movements.sentAmount") : expected ? expected.direction==="incoming" ? t("movements.actualAmount",{currency:source?.currency??""}) : `${t("movements.sentAmount")} (${source?.currency??""})` : t("movements.amount")}><Input className={expected?"max-w-48":undefined} name="amount" inputMode="decimal" value={amount} onChange={(event) => {setAmount(event.target.value);if(expected)setAmountEdited(true);}} required autoComplete="off" /></FormField>
       {transfer ? <FormField label={t("movements.toAccount")}><Select name="destinationId" aria-label={t("movements.toAccount")} value={destinationId} onValueChange={setDestinationId} required>{accounts(accountId)}</Select></FormField> : null}
       {transfer ? sameCurrency ? <input type="hidden" name="receivedAmount" value={amount}/> : <FormField label={t("movements.receivedAmount")}><Input name="receivedAmount" inputMode="decimal" value={received} onChange={(event) => setReceived(event.target.value)} required autoComplete="off" /></FormField> : null}
@@ -94,6 +141,36 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
       {expected&&expectedCategory&&!expectedCategory.archived_at?<input type="hidden" name="categoryId" value={expectedCategory.id}/>:!transfer&&!refund&&!refundCorrection&&!balanceCorrection?<FinanceCategorySelect categories={allowedCategories} direction={kind==="incoming"?"incoming":"outgoing"} owner={kind==="owner_withdrawal"} value={categoryId} onValueChange={setCategoryId}/>:null}
     </div>
     {kind === "owner_withdrawal" ? <p className="text-sm text-[var(--ui-text-muted)]">{t("movements.ownerHelp")}</p> : null}
+    {!transfer&&!refund&&!refundCorrection&&!expected&&!balanceCorrection&&kind==="incoming"&&formNature==="operating" ? <AnimatedDisclosure title={t("movements.projectCash.receiptTitle")}>
+      <div className="space-y-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3">
+        {receiptRequiresExplicit ? <p role="status" className="text-sm text-[var(--ui-warning-text)]">{t("movements.projectCash.receiptRequired")}</p> : correction&&sourceReceipt?.items.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.projectCash.receiptPreserved",{amount:financeAmountText(existingReceiptTotal,digits),currency:source?.currency??""})}</p> : null}
+        <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={receiptFieldActive} onChange={event=>setReceiptSplitsEnabled(event.target.checked)} className="mt-1 size-4" />{t("movements.projectCash.confirmReceipt")}</label>
+        <p className="text-xs text-[var(--ui-text-muted)]">{t("movements.projectCash.receiptHelp")}</p>
+        {receiptFieldActive ? <>
+          <input type="hidden" name="projectReceiptSplits" value={splitJson(receiptRows)} />
+          {receiptRows.map((row,index)=><div key={`${index}:${row.projectId}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_auto]">
+            <Select aria-label={t("movements.projectCash.project")} value={row.projectId} onValueChange={value=>setReceiptRows(rows=>rows.map((item,i)=>i===index?{...item,projectId:value}:item))}><SelectItem value="">{t("movements.projectCash.chooseProject")}</SelectItem>{(projectCash?.projects??[]).map(project=><SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>
+            <Input aria-label={t("movements.projectCash.amount",{currency:source?.currency??""})} inputMode="decimal" value={row.amount} onChange={event=>setReceiptRows(rows=>rows.map((item,i)=>i===index?{...item,amount:event.target.value}:item))} />
+            <Button type="button" size="sm" variant="ghost" onClick={()=>setReceiptRows(rows=>rows.filter((_,i)=>i!==index))}>{t("movements.projectCash.remove")}</Button>
+          </div>)}
+          <Button type="button" size="sm" variant="outline" onClick={()=>setReceiptRows(rows=>[...rows,{projectId:"",amount:""}])}>{t("movements.projectCash.addProject")}</Button>
+          {!receiptRowsValid ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("movements.projectCash.invalidReceipt")}</p> : null}
+        </> : null}
+      </div>
+    </AnimatedDisclosure> : null}
+    {refundIsAttributed ? <div className="space-y-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3">
+      <p className="text-sm font-medium">{t("movements.projectCash.refundTitle")}</p><p className="text-xs text-[var(--ui-text-muted)]">{t("movements.projectCash.refundHelp")}</p>
+      <input type="hidden" name="projectRefundSplits" value={splitJson(refundRows)} />
+      {refundRows.map((row,index)=>{const cap=refundAvailable.get(row.projectId);return <div key={`${index}:${row.projectId}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_auto]">
+        <Select aria-label={t("movements.projectCash.project")} value={row.projectId} onValueChange={value=>setRefundRows(rows=>rows.map((item,i)=>i===index?{...item,projectId:value}:item))}><SelectItem value="">{t("movements.projectCash.chooseProject")}</SelectItem>{(sourceReceipt?.items??[]).map(item=>{const project=projectCash?.projects.find(p=>p.id===item.projectId);return <SelectItem key={item.projectId} value={item.projectId}>{project?.name??item.projectId} · {t("movements.projectCash.available",{amount:financeAmountText(refundAvailable.get(item.projectId)??BigInt(0),digits),currency:source?.currency??""})}</SelectItem>})}{previousRefundSplits.filter(item=>!sourceReceipt?.items.some(current=>current.projectId===item.projectId)).map(item=>{const project=projectCash?.projects.find(p=>p.id===item.projectId);return <SelectItem key={item.projectId} value={item.projectId}>{project?.name??item.projectId}</SelectItem>})}</Select>
+        <Input aria-label={t("movements.projectCash.amount",{currency:source?.currency??""})} inputMode="decimal" value={row.amount} onChange={event=>setRefundRows(rows=>rows.map((item,i)=>i===index?{...item,amount:event.target.value}:item))} />
+        <Button type="button" size="sm" variant="ghost" onClick={()=>setRefundRows(rows=>rows.filter((_,i)=>i!==index))}>{t("movements.projectCash.remove")}</Button>
+        {cap!==undefined?<p className="text-xs text-[var(--ui-text-muted)]">{t("movements.projectCash.remainingForProject",{amount:financeAmountText(cap,digits),currency:source?.currency??""})}</p>:null}
+      </div>})}
+      <Button type="button" size="sm" variant="outline" onClick={()=>setRefundRows(rows=>[...rows,{projectId:"",amount:""}])}>{t("movements.projectCash.addProject")}</Button>
+      {currentAmountUnits!==null?<p className="ui-numeric text-xs text-[var(--ui-text-secondary)]">{t("movements.projectCash.unattributed",{amount:financeAmountText(currentAmountUnits>refundTotal?currentAmountUnits-refundTotal:BigInt(0),digits),currency:source?.currency??""})}</p>:null}
+      {!refundRowsValid?<p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("movements.projectCash.invalidRefund")}</p>:null}
+    </div>:null}
     {expected&&source?.currency!==expected.currency?<div className="space-y-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3">
       <div className="flex flex-wrap items-end gap-2"><span className="pb-2 text-xs font-medium text-[var(--ui-text-secondary)]">{t("movements.settlementSourceLabel")}:</span><Select name="settlementFxMode" aria-label={t("movements.settlementRateLabel")} size="compact" width="content" value={settlementMode} onValueChange={(value)=>{setSettlementMode(value==="manual"?"manual":"nbu");if(!amountEdited)setAmount("");}}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select>
       {settlementMode==="manual"?<FormField label={t("movements.settlementRate",{currency:source?.currency??"",obligation:expected.currency??""})}><Input className="max-w-44" name="settlementManualRate" inputMode="decimal" value={settlementRate} onChange={(event)=>setSettlementRate(event.target.value)} required/></FormField>:null}</div>
@@ -107,7 +184,7 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   </FinanceActionForm>;
 }
 
-export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; history?:boolean; expected?:FinanceExpected|null; returnHref?:string }) {
+export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; history?:boolean; expected?:FinanceExpected|null; returnHref?:string; sourceMovement?: FinanceSourceMovement | null; movementLinkUnavailable?: boolean; projectCash?: FinanceProjectCash | null }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const router=useRouter();
@@ -115,15 +192,15 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
   const [reversing, setReversing] = useState<FinanceMovementWithEntries | null>(null);
   const [correcting, setCorrecting] = useState<FinanceMovementWithEntries | null>(null);
   const [valuing, setValuing] = useState<{ movement: FinanceMovementWithEntries; currency: string; reportingCurrency: string } | null>(null);
-  const [historyId, setHistoryId] = useState<string | null>(null);
-  const [historyRows, setHistoryRows] = useState<Awaited<ReturnType<typeof loadFinanceMovementHistory>> | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(props.sourceMovement?.id ?? null);
+  const [historyRows, setHistoryRows] = useState<Awaited<ReturnType<typeof loadFinanceMovementHistory>> | null>(props.sourceMovement ? { movements: props.sourceMovement.movements, error: false } : null);
   const [pending, setPending] = useState(false);
   useEffect(() => {
-    if (!historyId) return;
+    if (!historyId || historyId === props.sourceMovement?.id) return;
     let current = true;
     loadFinanceMovementHistory(historyId).then((rows) => { if (current) setHistoryRows(rows); }).catch(() => { if (current) setHistoryRows({ movements: [], error: true }); });
     return () => { current = false; };
-  }, [historyId]);
+  }, [historyId, props.sourceMovement?.id]);
   const ready = Boolean(props.settings?.finalized_at);
   const active = props.accounts.filter((account) => !account.archived_at);
   const cancelledHistoryIds = new Set(historyRows?.movements.filter((movement) => movement.kind === "reversal").map((movement) => movement.related_movement_id));
@@ -131,9 +208,15 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     const currency = props.currencies.find((item) => item.code === code);
     return currency ? formatFinanceAmount(amount, currency, locale) : `${amount} ${code}`;
   };
+  const openHistory = (id: string) => {
+    if (props.sourceMovement?.id === id) setHistoryRows({ movements: props.sourceMovement.movements, error: false });
+    else setHistoryRows(null);
+    setHistoryId(id);
+  };
   return <div className="w-full min-w-0 space-y-6">
     <PageHeader title={t("movements.title")} description={t("movements.descriptionText")} />
     <div className="flex items-center justify-between gap-3 text-sm"><span className="font-medium">{t(props.history ? "movements.history" : "movements.currentMovements")}</span><Link className="text-[var(--ui-text-secondary)] underline" href={props.history ? "/finance/movements" : "/finance/movements?history=1"}>{t(props.history ? "movements.currentMovements" : "movements.correctionHistory")}</Link></div>
+    {props.movementLinkUnavailable ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3 text-sm text-[var(--ui-text-secondary)]">{t("movements.sourceUnavailable")}</p> : null}
     {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></p> : <>
       <section aria-label={t("movements.recordedBalance")} className={panel}>
         <h2 className="px-5 py-3 text-sm font-semibold">{t("movements.recordedBalance")}</h2>
@@ -171,7 +254,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
               <Button size="sm" className="gap-1.5" onClick={() => setCorrecting(movement)}><Pencil className="size-3.5" aria-hidden="true"/>{t("movements.correct")}</Button>
               {["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button size="sm" variant="outline" onClick={() => setEditor(movement)}>{t("movements.refund")}</Button> : null}
             </> : null}
-            {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => { setHistoryRows(null); setHistoryId(movement.id); }}><History className="size-4" aria-hidden="true"/>{t("movements.correctionHistory")}</Button> : null}
+            {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => openHistory(movement.id)}><History className="size-4" aria-hidden="true"/>{t("movements.correctionHistory")}</Button> : null}
             {!reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button> : null}
           </div>
         </div></details></li>;
@@ -179,7 +262,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     </section>
     <nav aria-label={t("movements.pages")} className="flex justify-between text-sm">{props.page>1 ? <Link href={`/finance/movements?page=${props.page-1}${props.history ? "&history=1" : ""}`} className="underline">{t("movements.previous")}</Link> : <span />}{props.page*50<props.total ? <Link href={`/finance/movements?page=${props.page+1}${props.history ? "&history=1" : ""}`} className="underline">{t("movements.next")}</Link> : null}</nav>
     <Dialog isOpen={correcting !== null} closeDisabled={pending} onRequestClose={() => setCorrecting(null)} title={t("movements.correct")} closeLabel={t("movements.close")}>
-      {correcting ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={correcting.kind === "transfer"} correction={correcting} onSaved={() => setCorrecting(null)} onPending={setPending}/></div> : null}
+      {correcting ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={correcting.kind === "transfer"} correction={correcting} projectCash={props.projectCash} onSaved={() => setCorrecting(null)} onPending={setPending}/></div> : null}
     </Dialog>
     <Dialog isOpen={valuing !== null} closeDisabled={pending} onRequestClose={() => setValuing(null)} title={t("movements.valueManually")} closeLabel={t("movements.close")}>
       {valuing ? <div className="p-5"><FinanceActionForm action={valueFinanceMovement} label={t("movements.valueManually")} onSaved={() => setValuing(null)} onPending={setPending}>
@@ -188,11 +271,23 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         <FormField label={t("movements.rate", { currency: valuing.currency, base: valuing.reportingCurrency })}><Input name="rate" inputMode="decimal" required autoComplete="off"/></FormField>
       </FinanceActionForm></div> : null}
     </Dialog>
-    <Dialog isOpen={historyId !== null} onRequestClose={() => setHistoryId(null)} title={t("movements.correctionHistory")} closeLabel={t("movements.close")}>
-      <div className="p-5">{historyRows === null ? <p role="status">{t("movements.historyLoading")}</p> : historyRows.error ? <p role="alert">{t("movements.errors.history")}</p> : <ol className="space-y-3">{historyRows.movements.map((movement) => <li key={movement.id} className="space-y-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3 text-sm"><p className="font-medium">{t(`movements.kinds.${movement.kind}`)} · {formatDateOnly(movement.financial_date, locale)}{movement.kind !== "reversal" ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{t(cancelledHistoryIds.has(movement.id) ? "movements.cancelledVersion" : "movements.currentVersion")}</span> : null}</p>{movement.description ? <p>{movement.description}</p> : null}<p className="text-[var(--ui-text-secondary)]">{financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`))}</p>{movement.entries.map((entry) => <p className="ui-numeric text-xs text-[var(--ui-text-secondary)]" key={entry.id}>{props.accounts.find((account) => account.id === entry.account_id)?.name ?? "—"}: {money(entry.amount,entry.currency)}{entry.currency !== entry.reporting_currency ? entry.reporting_amount === null ? ` · ${t("movements.valuationUnresolved")}` : ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)}` : ""}</p>)}</li>)}</ol>}</div>
+    <Dialog isOpen={historyId !== null} onRequestClose={() => setHistoryId(null)} title={t("movements.history")} closeLabel={t("movements.close")}>
+      <div className="space-y-4 p-5">
+        {historyRows === null ? <p role="status">{t("movements.historyLoading")}</p> : historyRows.error ? <p role="alert">{t("movements.errors.history")}</p> : <ol className="space-y-3">{historyRows.movements.map((movement) => <li key={movement.id} className="space-y-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] p-3 text-sm"><p className="font-medium">{t(`movements.kinds.${movement.kind}`)} · {formatDateOnly(movement.financial_date, locale)}{movement.kind !== "reversal" ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{t(cancelledHistoryIds.has(movement.id) ? "movements.cancelledVersion" : "movements.currentVersion")}</span> : null}</p>{movement.description ? <p>{movement.description}</p> : null}<p className="text-[var(--ui-text-secondary)]">{financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`))}</p>{movement.entries.map((entry) => <p className="ui-numeric text-xs text-[var(--ui-text-secondary)]" key={entry.id}>{props.accounts.find((account) => account.id === entry.account_id)?.name ?? "—"}: {money(entry.amount,entry.currency)}{entry.currency !== entry.reporting_currency ? entry.reporting_amount === null ? ` · ${t("movements.valuationUnresolved")}` : ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)}` : ""}{entry.fx_rate && entry.fx_effective_date ? ` · ${t(`movements.sources.${entry.fx_source ?? "manual"}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>)}</li>)}</ol>}
+        {historyRows && !historyRows.error && historyId === props.sourceMovement?.id ? <section className="space-y-2 border-t border-[var(--ui-border)] pt-3" aria-label={t("movements.matchingTitle")}>
+          <h3 className="text-sm font-semibold">{t("movements.matchingTitle")}</h3>
+          {!props.sourceMovement.matches.length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("movements.noMatches")}</p> : <ul className="space-y-2">{props.sourceMovement.matches.map(match => <li key={match.id} className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] p-3 text-sm">
+            {match.source ? <Link href={`/finance/expected?item=${match.expected_item_id}`} className="font-medium underline underline-offset-2">{match.source.description ?? t("movements.matchedSourceUnavailable")}</Link> : <p className="font-medium">{t("movements.matchedSourceUnavailable")}</p>}
+            {match.projectName ? <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{match.projectName}</p> : null}
+            <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t("movements.matchAmounts", { amount: money(match.amount, match.obligation_currency), paid: money(match.payment_amount, match.payment_currency), date: match.settlement_effective_date ? formatDateOnly(match.settlement_effective_date, locale) : "—" })}{match.released_allocation_id ? ` · ${t("movements.matchReleased")}` : ""}</p>
+            {match.settlement_rate ? <p className="text-xs text-[var(--ui-text-muted)]">{t("movements.matchRate", { rate: match.settlement_rate, currency: match.payment_currency, obligation: match.obligation_currency, source: t(`movements.sources.${match.settlement_source ?? "manual"}`), date: match.settlement_effective_date ? formatDateOnly(match.settlement_effective_date, locale) : "—" })}</p> : null}
+            {match.reason ? <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{match.reason}</p> : null}
+          </li>)}</ul>}
+        </section> : null}
+      </div>
     </Dialog>
     <Dialog isOpen={editor !== null} closeDisabled={pending} onRequestClose={() => {setEditor(null);if(props.expected)router.replace(props.returnHref??"/finance/expected");}} title={editor === "transfer" ? t("movements.transfer") : typeof editor === "object" && editor ? t("movements.refund") : t("movements.add")} closeLabel={t("movements.close")}>
-      {editor !== null ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={editor === "transfer"} refund={typeof editor === "object" ? editor : undefined} expected={props.expected} onSaved={() => {setEditor(null);if(props.expected)router.push(props.returnHref??"/finance/expected");}} onPending={setPending} /></div> : null}
+      {editor !== null ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={editor === "transfer"} refund={typeof editor === "object" ? editor : undefined} expected={props.expected} projectCash={props.projectCash} onSaved={() => {setEditor(null);if(props.expected)router.push(props.returnHref??"/finance/expected");}} onPending={setPending} /></div> : null}
     </Dialog>
     <Dialog isOpen={reversing !== null} closeDisabled={pending} onRequestClose={() => setReversing(null)} title={t("movements.reverse")} closeLabel={t("movements.close")}>
       {reversing ? <div className="p-5"><FinanceActionForm action={saveFinanceMovement} label={t("movements.confirmReverse")} onSaved={() => setReversing(null)} onPending={setPending}>

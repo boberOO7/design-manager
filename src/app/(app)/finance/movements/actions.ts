@@ -69,6 +69,8 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
       category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, settlementFx, submission: input,
+      ...(input.projectReceiptSplits !== undefined ? { projectReceiptSplits: input.projectReceiptSplits } : {}),
+      ...(input.projectRefundSplits !== undefined ? { projectRefundSplits: input.projectRefundSplits } : {}),
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
       ...(input.kind === "refund" ? { relatedMovementId: input.relatedMovementId } : {}),
     };
@@ -83,6 +85,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       : error.message === "finance_already_reversed" ? "errors.reversed"
       : error.message === "finance_reverse_refunds_first" ? form.get("intent") === "correct" ? "errors.correctionRefunds" : "errors.refundsFirst"
       : error.message === "finance_refund_exceeds_original" ? "errors.refundAmount"
+      : ["finance_cash_source_invalid", "finance_cash_overallocated", "finance_cash_refund_overallocated", "finance_cash_refund_attribution_required", "finance_cash_correction_attribution_required"].includes(error.message) ? "errors.projectCashSplit"
       : ["finance_trip_edit_unavailable", "finance_trip_payment_invalid", "finance_trip_closed", "finance_trip_traveler_invalid"].includes(error.message) ? "errors.tripCorrection"
       : error.message === "finance_opening_unavailable" ? "errors.opening"
       : error.message === "finance_account_unavailable" ? "errors.archived" : "errors.save";

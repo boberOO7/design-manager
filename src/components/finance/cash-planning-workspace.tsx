@@ -26,7 +26,7 @@ import { Panel } from "@/components/ui/panel";
 import { budgetYearTotal } from "@/lib/finance-forecast";
 import { FinanceActionForm } from "./finance-action-form";
 
-type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & FinanceForecastData & { year: number; invalidFx: boolean; displayOverview: FinanceOverview | null; displayCurrency: FinanceDisplayCurrency };
+type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & Omit<FinanceForecastData, "overview"> & { overview: FinanceOverview | null; year: number; invalidFx: boolean; displayOverview: FinanceOverview | null; displayCurrency: FinanceDisplayCurrency };
 const tableClass = "w-full text-left text-sm [&_th]:whitespace-nowrap [&_th]:p-3 [&_th]:font-medium [&_td]:p-3 [&_tr]:border-b [&_tr]:border-[var(--ui-border)]";
 const detailTableClass = `${tableClass} [&_thead]:bg-[var(--ui-surface-muted)] [&_thead]:text-xs [&_thead]:text-[var(--ui-text-secondary)] [&_tbody_tr:last-child]:border-0 [&_td]:tabular-nums`;
 const disclosureClass = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 sm:px-4 [&>button]:min-h-14 [&>button]:text-[var(--ui-text)]";
@@ -63,7 +63,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
   const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
-  const mode = params.get("mode") === "budget" ? "budget" : params.get("mode") === "history" || (!params.has("mode") && params.has("snapshot")) ? "history" : "forecast";
+  const mode = params.get("mode") === "scenarios" ? "scenarios" : params.get("mode") === "budget" ? "budget" : params.get("mode") === "history" || (!params.has("mode") && params.has("snapshot")) ? "history" : "forecast";
   const [pending, startTransition] = useTransition();
   const [categoryId, setCategoryId] = useState(() => data.categories.find(c => !c.archived_at && data.budget.some(b => b.category_id === c.id))?.id ?? data.categories.find(c => !c.archived_at)?.id ?? "");
   const [snapshotSurface, setSnapshotSurface] = useState<"popover" | "dialog" | null>(null);
@@ -102,7 +102,7 @@ export function FinanceCashPlanningWorkspace(data: Props) {
     {data.invalidFx ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("invalidManualFx")}</p> : null}
     {!report ? <p className="text-sm">{ft("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{ft("accounts")}</Link></p> : <>
       <nav aria-label={t("modesLabel")} className="flex flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:w-fit">
-        {(["forecast", "budget", "history"] as const).map(value => <Link key={value} href={href("mode", value)} scroll={false} aria-current={mode === value ? "page" : undefined} className="flex min-h-11 items-center rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] sm:min-h-9">{t(`modes.${value}`)}</Link>)}
+        {(["forecast", "scenarios", "budget", "history"] as const).map(value => <Link key={value} href={href("mode", value)} scroll={false} aria-current={mode === value ? "page" : undefined} className="flex min-h-11 items-center rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] sm:min-h-9">{t(`modes.${value}`)}</Link>)}
       </nav>
       <div hidden={mode !== "forecast"} className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">

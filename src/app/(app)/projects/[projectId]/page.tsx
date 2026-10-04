@@ -49,7 +49,7 @@ function getProjectViewHref(projectId: string, view: ProjectView, filters: Proje
   return `/projects/${projectId}${params.size ? `?${params}` : ""}`;
 }
 
-type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter", string | string[]>>;
+type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
   const [{ projectId }, query, t, locale] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale()]);

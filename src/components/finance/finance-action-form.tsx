@@ -11,10 +11,10 @@ export function FinanceActionForm({ children,action,onSaved,onPending,onResult,l
   formRef?:Ref<HTMLFormElement>; hideActions?:boolean; showMessage?:boolean;
 }) {
   const t=useTranslations("Finance");
-  const [requestId]=useState(()=>crypto.randomUUID());
+  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [state,submit,pending]=useActionState(async(previous:FinanceActionState,form:FormData):Promise<FinanceActionState>=>{
     onPending?.(true);
-    try { const result=await action(previous,form); onResult?.(result); if(result.status==="success") onSaved(result); return result; }
+    try { const result=await action(previous,form); onResult?.(result); if(result.status==="success") { setRequestId(crypto.randomUUID());onSaved(result); } return result; }
     catch { const result:FinanceActionState={ status:"error",message:t("movements.errors.save") }; onResult?.(result); return result; }
     finally { onPending?.(false); }
   },{ status:"idle" });

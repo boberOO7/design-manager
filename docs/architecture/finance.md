@@ -1,12 +1,13 @@
 # Finance
 
-Finance is a separate, studio-scoped management/cash-planning domain. V1 access
+Finance is a separate, studio-scoped management/cash-planning domain. Access
 is administrator-only. Project lifecycle, CRM budgets, equipment/service costs,
 Calendar salary reminders, and Leaderboard bonuses do not create Finance data.
 `/finance` owns the management Overview; `/finance/accounts` owns setup/accounts; `/finance/movements` owns actual cash and recorded
 balances; `/finance/expected` owns expectations and matching; `/finance/categories`
 owns classification; `/finance/schedules` owns compensation and recurring rules;
-`/finance/planning` owns cash budgets, rolling forecasts and saved expectations. The
+`/finance/planning` owns cash budgets, rolling forecasts and saved scenarios;
+`/finance/reports` owns economic Management P&L and project profitability. The
 operational routes remain in primary Finance navigation; Accounts and Categories
 remain deep-linkable configuration routes available through the Finance manage menu.
 All inherit the same administrator-only layout and messages.
@@ -112,10 +113,10 @@ Finance messages; it uses these same expectations, movements, and matching RPCs.
 - Actual movements require finalized setup and a date from 1900 through today in
   `Europe/Kyiv`; income/expense reporting, project attribution and category actuals
   follow that date even before cutover. Accounts, forecast cash and balance-derived
-  Overview/Dashboard values all use `finance_account_balances`. Overview P&L/flows
+  Overview/Dashboard values all use `finance_account_balances`. Overview operating cash result/flows
   use the selected reporting period without clipping it to cutover, including in
-  display-currency conversion. Unpaid receivables/payables remain expectations
-  regardless of originating date. Dated stock openings/reconciliations still require
+  display-currency conversion. For cash planning, unpaid receivables/payables remain expectations
+  regardless of originating date; economic recognition is confirmed separately. Dated stock openings/reconciliations still require
   a date on/after cutover. New postings reject archived accounts.
   The `(studio_id, account_id, currency)` and studio/reporting-currency references
   also prevent foreign-account links or mismatched snapshot currencies.
@@ -377,7 +378,7 @@ or notifications containing private data.
   collected net/VAT comes from allocation snapshots while collected, outstanding,
   planned and unscheduled cash values remain gross. Cash Flow, balances and
   forecasts stay gross. `finance_project_vat_actuals` is a separate caller-context
-  VAT adjustment for dashboard P&L, so project VAT is excluded from revenue and
+  VAT adjustment for the dashboard operating cash result, so project VAT is excluded from revenue and
   never inserted as an expense or tax payable.
   Collected is effective allocated money (net of releases), not all cash on a
   receipt that happens to partly settle the project. Excess remains a global
@@ -537,7 +538,8 @@ or notifications containing private data.
 ## Cash Budget and rolling Forecast
 
 `/finance/planning` is the admin-only operational planning view. It is separate
-from the Finance Overview; no P&L, accrual, sales-pipeline forecasting,
+from the Finance Overview. Cash budgets retain their cash basis; the separate
+recognition book below supplies Management P&L. No sales-pipeline inference,
 recurrence generation job or tax engine is implied.
 
 - Local Forecast, Budget and Forecast history modes share this route; Forecast is
@@ -824,6 +826,111 @@ and deliberate plan removal retain dialogs.
 Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
 `src/app/(app)/finance/trips/`, `src/components/finance/trips-workspace.tsx`,
 `supabase/tests/finance_trips_rls.test.sql`, `tests/e2e/finance-trips.spec.ts`.
+
+## Economic recognition and project profitability
+
+- `finance_settings.recognition_start_month` is explicitly activated by an admin
+  for the current/future month, independently of cash cutover and openings.
+  Activation never backfills services, payroll allocations or old trip expenses.
+  Older project lifetime results disclose incomplete economic history. Backfill
+  requires a separate source/period/amount/FX preview and explicit authorization.
+- `finance_recognition_entries` is an append-only economic book. Guarded RPCs
+  confirm completed project services, supervision/contractor income and incurred
+  direct/studio expenses from typed tenant-safe source references and snapshots.
+  Economic date/service period determine the report; schedules, draft expectations,
+  task completion, cash payment and settlement do not recognize results. Existing
+  net/VAT/gross source semantics remain intact. Operating result is recognized
+  revenue minus direct cost, confirmed labor and studio operating expense.
+  Financing, draws, contributions, transfer principal and openings are excluded.
+- A source retains ownership after recognition: changing its consumed financial
+  terms or pairing the same standalone cash cost with a second expense source is
+  guarded. Partial service recognition and known labor component deltas are
+  allowed. Technical corrections append exact inverses and replacements; economic
+  cancellation appends a dated contra at cumulative proportional original valuation,
+  including exact VAT/reporting residuals and deferred FX family mirrors.
+  `finance_recognized_actuals` excludes technical reversals and their parents.
+- Recognition freezes native amounts, reporting amount and dated FX provenance.
+  Missing FX remains unresolved; explicit valuation fills only absent fields,
+  including exact family refund residuals. Later settlement/cash FX is separate.
+  Display currency uses historical valuation dates and never changes native facts
+  or silently rerates past economic results at today's rate.
+- `finance_report_coverage` records reviewed month/project coverage,
+  including explicit absence of costs. Later economic facts or project labor
+  attribution changes invalidate the affected reviewed classification until a
+  new coverage revision; stored history remains intact. Coverage, missing sources/FX, unknown
+  payroll components and incomplete history remain visible; no records is not a
+  confirmed zero. Reports use one stable `get_finance_management_reporting` read
+  boundary, shared exact-decimal models, filters/currency/version for UI and CSV.
+  Changed sources reject stale CSV with 409 rather than exporting a different report.
+- Labor confirmation snapshots Payroll's known service-period cost: net payout
+  plus fixed deductions and employer cost; gross basis plus employer cost without
+  adding deductions twice. Salary bonuses remain distinct from contractor income.
+  Unknown/estimated components are disclosed; later confirmed components add only
+  their remaining delta. Consumed terms stay protected even if an earned flag is
+  cleared. Reconciliation cancels/replaces economic facts and allocations atomically.
+- `finance_labor_allocation_revisions/items` hold manual management attribution
+  of confirmed labor in studio reporting currency, with source, revision, author
+  and reason. Exact database caps serialize under the Finance lock. Latest amounts
+  affect project cost without adding studio expense; unallocated cost remains in
+  studio P&L. All revisions, including cleared/cancelled sources, stay inspectable.
+  Allocations describe estimates, never measured hours or task/area-based shares.
+- Existing admin-posted trip `expense` is the sole economic source. Studio cash
+  payment, personal expense reimbursement, advance, balance return and settlement
+  do not create second costs. New actuals after activation capture automatically;
+  eligible existing expenses need explicit confirmation. Refunds/corrections use
+  source-owned signed effects and original cost FX; Calendar still owns trip
+  dates/participants. Trip balance expectations cannot become generic P&L sources.
+- `finance_project_cash_revisions/items` explicitly attribute incoming operating
+  receipts/advances to projects, separately from settlement. Input shares are
+  remaining native principal; stored raw shares preserve active refund parts.
+  `finance_project_refund_items` records project-specific returned parts. Caps,
+  currency precision, corrections and reversals are atomic; matching alone does
+  not change attribution. Received gross cash, matched payments, agreed net/gross
+  terms and recognized income are separate metrics. Historical attribution is
+  inspectable, including fully refunded receipts and empty revisions.
+- `finance_project_cost_estimates` appends four nullable native amounts: direct
+  and labor budgets, remaining direct and labor estimates, date, reason and frozen
+  FX. Explicit zero is distinct from unknown. `source_digest` captures the reviewed
+  economic cost/allocation boundary; changed costs or an estimate dated before
+  existing costs require explicit reconfirmation. Legacy null digests remain
+  unverified. Final margin requires finite agreed revenue, complete history/coverage,
+  known remaining costs and valuations; monthly supervision is not a finite price.
+  Recognized revenue retains historical FX; only remaining agreed services use an
+  explicitly dated reference assumption. Overhead is never distributed implicitly.
+- Project period/lifetime results use the same recognition book and labor amounts.
+  Trip cost is a subset of direct cost. A bridge exposes studio overhead and
+  unallocated labor between summed project results and studio P&L. Every new table
+  and report RPC is admin-only through canonical membership, RLS/grants and explicit
+  tenant checks. Writes retain request UUIDs and the existing serialization boundary.
+
+## Frozen-base Forecast scenarios
+
+- Existing snapshots optionally store `native_inputs` version 2: native balances,
+  remaining expected amounts/versions/occurrence IDs, FX, categories, budget refs,
+  actuals, issues and as-of. Legacy snapshots stay readable for history; their
+  missing native inputs are never reconstructed. Explicit snapshot capture alone
+  maintains real recurring coverage. Opening/evaluating scenario mode is read-only.
+- `finance_forecast_scenarios` and immutable `finance_forecast_scenario_revisions`
+  persist names, frozen base IDs, explicit assumptions, reasons and actors. Supported
+  assumptions delay a specific income, change a future expense, add once/monthly
+  costs, potential-order payment schedules and flat currency rates. Names imply no
+  coefficients or probabilities. Assumptions do not edit agreements, Payroll,
+  expected items, ledger or real recurring occurrences. CRM inclusion is deferred.
+- `private.project_finance_forecast_inputs` is the shared base/scenario projector.
+  It retains remaining amounts after partial settlement, source identities,
+  recurring deduplication, stale/undated diagnostics and cash-budget comparison.
+  Scenario recurrence exists only in captured JSON. Six/twelve month views cover
+  the current partial month plus five/eleven; daily closing minimum and first
+  deficit include starting cash. Missing native monetary FX makes these risk
+  metrics unresolved (`riskIncomplete`, null minimum/deficit and no daily series);
+  UI/CSV never describe unvalued sums as zero. Date-only sources imply no intraday ordering.
+- Base data updates leave saved scenarios unchanged. New capture and explicit
+  rebase show added/changed/missing sources and cash/FX differences; invalid source
+  assumptions require repair before confirmation. Comparison uses one base/as-of.
+  Shared display currency is dated at that frozen as-of; missing display FX leaves
+  totals unresolved. Server CSV uses the same report/version/filters and denies
+  employee access or stale exports. Guarded RPCs validate all native money,
+  categories, dates, tenant references and request/revision conflicts atomically.
 
 ## Canonical sources
 

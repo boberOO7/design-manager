@@ -1,3 +1,5 @@
+import { getFinanceManagement } from "@/data/queries/finance-management";
+import { ProjectProfitabilitySection } from "./project-profitability-section";
 import { notFound } from "next/navigation";
 import { getFinanceData, getFinancePlanning, getFinanceProject, getFinanceProjectRecordedRates } from "@/data/queries/finance";
 import { getKyivDateOnly } from "@/lib/validation/project";
@@ -8,7 +10,7 @@ import { getFinanceDisplayCurrency } from "@/data/queries/finance-display-curren
 import { getFinanceDisplayRate } from "@/data/queries/finance-overview";
 import { convertFinanceDisplayAmount } from "@/lib/finance-display-report";
 
-export async function ProjectFinanceSection({ projectId, query }: { projectId: string; query: Partial<Record<"stream" | "page" | "credits" | "filter", string | string[]>> }) {
+export async function ProjectFinanceSection({ projectId, query }: { projectId: string; query: Partial<Record<"stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo", string | string[]>> }) {
   const pageNumber = (value: string | string[] | undefined) => typeof value === "string" && /^\d+$/.test(value) ? Math.max(1, Math.min(100_000, Number(value))) : 1;
   const page = pageNumber(query.page), creditPage = pageNumber(query.credits);
   const stream = projectStreams.find((v) => v === query.stream) ?? "design";
@@ -40,5 +42,6 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
       };
     } catch { conversions[total.currency] = { gross: null, net: null }; }
   }));
-  return <><ProjectFinanceWorkspace {...foundation} {...planning} displayCurrency={displayCurrency} conversions={conversions} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>{stream === "expenses" && currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}</>;
+  const management = await getFinanceManagement({ report: "projects", project: projectId, from:query.profitFrom, to:query.profitTo });
+  return <>{management ? <div className="mb-6"><ProjectProfitabilitySection key={management.version} data={management} projectId={projectId} embedded stream={stream}/></div> : null}<ProjectFinanceWorkspace {...foundation} {...planning} displayCurrency={displayCurrency} conversions={conversions} project={project} stream={stream} today={getKyivDateOnly()} page={page} creditPage={creditPage} filter={filter}/>{stream === "expenses" && currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}</>;
 }
