@@ -3,6 +3,7 @@ import { addCalendarDays, APPLICATION_TIME_ZONE, instantToDateOnly, zonedWallTim
 import { occurrenceBounds, parseRecurrenceRule, recurrenceDates } from "./calendar-recurrence";
 import type { AttendanceMember } from "./statistics-attendance";
 import { getCalendarEventDetailConfig } from "./calendar-event-types";
+import { CALENDAR_EVENT_TYPES } from "@/types/calendar";
 
 export type StatisticsCalendarEvent = Pick<Database["public"]["Tables"]["calendar_events"]["Row"],
   "id" | "event_type" | "starts_at" | "ends_at" | "all_day" | "project_id" | "organizer_id" | "cancelled_at" |
@@ -10,7 +11,7 @@ export type StatisticsCalendarEvent = Pick<Database["public"]["Tables"]["calenda
 export type StatisticsCalendarOccurrence = StatisticsCalendarEvent & { occurrenceId: string };
 export type StatisticsCalendarRange = { from: string; through: string };
 
-export const STATISTICS_CALENDAR_TYPES = ["general", "meeting", "presentation", "interview", "site_visit", "business_trip", "internal_review"] as const;
+export const STATISTICS_CALENDAR_TYPES = CALENDAR_EVENT_TYPES.filter(type => type !== "work_makeup");
 export type StatisticsCalendarMetrics = { count: number; timedCount: number; hours: number; averageHours: number | null; allDayCount: number; allDayDays: number; unknownDurationCount: number };
 
 const HOUR = 3_600_000;
@@ -119,9 +120,9 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
   }
   const perPerson = new Map<string, AttendanceMember & StatisticsCalendarMetrics>();
   const totals = emptyMetrics(), projectLinked = emptyMetrics(), unlinked = emptyMetrics();
-  const months: Array<{ month: string; count: number; hours: number; timedCount: number; allDayDays: number }> = [];
+  const months: Array<{ month: string; count: number; hours: number; timedCount: number; allDayDays: number; types: Array<{ eventType: typeof STATISTICS_CALENDAR_TYPES[number]; count: number }> }> = [];
   for (let month = `${range.from.slice(0, 7)}-01`; month <= range.through;) {
-    months.push({ month, count: 0, hours: 0, timedCount: 0, allDayDays: 0 });
+    months.push({ month, count: 0, hours: 0, timedCount: 0, allDayDays: 0, types: STATISTICS_CALENDAR_TYPES.map(eventType => ({ eventType, count: 0 })) });
     const [year, number] = month.split("-").map(Number);
     month = new Date(Date.UTC(year, number, 1)).toISOString().slice(0, 10);
   }
@@ -159,7 +160,11 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
       perPerson.set(id, person);
     }
     const countMonth = monthByDate.get(instantToDateOnly(new Date(clippedStart).toISOString()).slice(0, 7));
-    if (countMonth) countMonth.count++;
+    if (countMonth) {
+      countMonth.count++;
+      const type = countMonth.types.find(type => type.eventType === event.event_type);
+      if (type) type.count++;
+    }
     if (!valid) continue;
     for (let index = 0; index < months.length; index++) {
       const month = months[index];

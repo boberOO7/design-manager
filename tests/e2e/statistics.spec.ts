@@ -135,7 +135,9 @@ test("admin can open Statistics, change periods, and render at common widths", a
   await navLink.click();
   await expect(page).toHaveURL(/\/statistics(?:\?.*)?$/);
   await expect(page.getByRole("heading", { name: "Statistics", exact: true })).toBeVisible();
-  for (const id of ["stats-production", "stats-credits", "stats-economics", "stats-duration"]) await expect(page.locator(`#${id}`)).toBeVisible();
+  for (const id of ["stats-production", "stats-credits", "stats-duration"]) await expect(page.locator(`#${id}`)).toBeVisible();
+  await expect(page.locator("#stats-economics")).toHaveCount(0);
+  await expect(page.getByText("View monthly data", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Current month is partial/).first()).toBeVisible();
   await expect(page.locator("#stats-production")).toContainText("100");
   await expect(page.locator("#stats-credits")).toContainText("200");
@@ -190,6 +192,19 @@ test("admin can open Statistics, change periods, and render at common widths", a
   const siteVisitBar = page.locator('#stats-calendar [data-event-type="site_visit"]');
   await expect(siteVisitBar).toHaveAttribute("style", new RegExp(getCalendarEventTypeConfig("site_visit").color.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   await expect(siteVisitBar.locator("xpath=../..")).toContainText("1");
+  await expect(siteVisitBar.locator("xpath=../..").locator("svg")).toHaveClass(/lucide-map-pin/);
+  await expect(page.getByText("Internal reviews", { exact: true })).toHaveCount(0);
+  await expect(page.locator("#stats-calendar-months details")).toHaveCount(0);
+  const stackedChart = page.locator("#stats-calendar-months").getByRole("group").first();
+  for (const type of ["meeting", "site_visit"] as const) await expect(stackedChart.locator(`[data-segment="${type}"]`)).toHaveAttribute("fill", getCalendarEventTypeConfig(type).color);
+  const populatedMonth = stackedChart.getByRole("button").filter({ hasText: "2" });
+  await populatedMonth.hover();
+  const stackedTooltip = page.locator("#stats-calendar-months div[aria-hidden='true']");
+  await expect(stackedTooltip).toContainText("Total: 2");
+  await expect(stackedTooltip).toContainText("Meetings");
+  await expect(stackedTooltip).toContainText("Site visits");
+  await populatedMonth.focus();
+  await expect(populatedMonth).toHaveAttribute("aria-label", /Meetings: 1.*Site visits: 1/);
   const adminPeopleRow = page.locator("#stats-calendar-people tbody tr").filter({ hasText: "Statistics admin" });
   const employeePeopleRow = page.locator("#stats-calendar-people tbody tr").filter({ hasText: "Statistics employee" });
   await expect(adminPeopleRow.locator("td").nth(0)).toHaveText("2");
@@ -211,8 +226,6 @@ test("admin can open Statistics, change periods, and render at common widths", a
     }
     await page.locator("#stats-duration").scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${renderDir}/statistics-overview-duration-${width}.png` });
-    await page.locator("#stats-economics").scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `${renderDir}/statistics-overview-finance-${width}.png` });
     for (const section of ["leads", "team", "calendar"]) {
       await page.goto(`/statistics?period=year&section=${section}`);
       await expect(page.locator(`#stats-${section}`)).toBeVisible();

@@ -2,13 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { ProductivityContributionAttribution } from "@/lib/productivity";
 import {
   buildStatistics,
-  recordedPayrollCost,
   recordedProjectDuration,
   type StatisticsActivity,
-  type StatisticsPayroll,
   type StatisticsProject,
   type StatisticsSources,
-  type StatisticsUnknownCost,
 } from "@/lib/statistics";
 
 const project = (overrides: Partial<StatisticsProject> = {}): StatisticsProject => ({
@@ -24,17 +21,8 @@ const attribution = (overrides: Partial<ProductivityContributionAttribution> = {
   completed_at: "2025-03-12T10:00:00.000Z", ...overrides,
 });
 const emptySources = (overrides: Partial<StatisticsSources> = {}): StatisticsSources => ({
-  projects: [], tasks: [], activities: [], attributions: [], payroll: [], unknownCosts: [], payCoverage: [], ...overrides,
+  projects: [], tasks: [], activities: [], attributions: [], ...overrides,
 });
-const payroll = (id: string, items: StatisticsPayroll["items"], overrides: Partial<StatisticsPayroll> = {}): StatisticsPayroll => ({
-  id, schedule_id: "schedule-1", period_start: "2025-02-01", period_end: "2025-02-28",
-  terms: { currency: "UAH", employee_deductions: 2_000, employer_cost: 1_000, employer_cost_status: "fixed" }, items, ...overrides,
-});
-const payItem = (component: string, amount: string, currency = "UAH", managed_active = true, commitment = "agreed") => ({
-  component, managed_active,
-  expected: { amount, currency, certainty: "fixed", commitment },
-});
-
 describe("Statistics metric definitions", () => {
   it("keeps 100 physical m² separate from 200 legitimate discipline credits and deduplicates repeated source IDs", () => {
     const designer = attribution();
@@ -169,135 +157,4 @@ describe("Statistics metric definitions", () => {
     ], "2025-04-01")?.days).toBe(11);
   });
 
-  it("builds payroll cost from persisted service-period components without adding salary terms or inactive rows", () => {
-    const result = recordedPayrollCost(payroll("feb", [
-      payItem("payout", "10000"), payItem("payout", "5000", "UAH", false),
-      payItem("deductions", "2000"), payItem("employer_cost", "1000"),
-    ]), []);
-    expect(result).toEqual({ currency: "UAH", units: BigInt(130_000_000), incomplete: false, estimated: false });
-  });
-
-  it("retains active deductions and employer cost when payout is canceled, but ignores fully canceled obligations", () => {
-    const partial = recordedPayrollCost(payroll("canceled-payout", [
-      payItem("payout", "10000", "UAH", true, "cancelled"),
-      payItem("deductions", "2000"),
-      payItem("employer_cost", "1000"),
-    ]), []);
-    expect(partial).toEqual({ currency: "UAH", units: BigInt(30_000_000), incomplete: true, estimated: false });
-
-    const canceled = recordedPayrollCost(payroll("all-canceled", [
-      payItem("payout", "10000", "UAH", true, "cancelled"),
-      payItem("deductions", "2000", "UAH", true, "cancelled"),
-      payItem("employer_cost", "1000", "UAH", true, "cancelled"),
-    ]), []);
-    expect(canceled).toBeNull();
-  });
-
-  it("distinguishes explicit zero components from unknown costs", () => {
-    const explicitZero = payroll("zero", [payItem("payout", "10000")], {
-      terms: { currency: "UAH", employee_deductions: 0, employer_cost: 0, employer_cost_status: "fixed" },
-    });
-    expect(recordedPayrollCost(explicitZero, [])?.incomplete).toBe(false);
-    expect(recordedPayrollCost(payroll("unknown", [payItem("payout", "10000")], {
-      terms: { currency: "UAH", employee_deductions: null, employer_cost: null, employer_cost_status: "unknown" },
-    }), [{ obligation_id: "unknown", component: "deductions", status: "unknown", amount: null }])?.incomplete).toBe(true);
-  });
-
-  it("does not treat a completed positive cost revision without its linked item as zero", () => {
-    const result = recordedPayrollCost(payroll("missing-item", [payItem("payout", "10000")], {
-      terms: { currency: "UAH", employee_deductions: null, employer_cost: null, employer_cost_status: "unknown" },
-    }), [{ obligation_id: "missing-item", component: "deductions", status: "fixed", amount: "2500" },
-      { obligation_id: "missing-item", component: "employer_cost", status: "unknown", amount: null }]);
-    expect(result?.units).toBe(BigInt(100_000_000));
-    expect(result?.incomplete).toBe(true);
-  });
-
-  it("accepts a latest fixed zero revision when its prior positive employer-cost item is canceled", () => {
-    const result = recordedPayrollCost(payroll("revised-zero", [
-      payItem("payout", "10000"), payItem("employer_cost", "2500", "UAH", true, "cancelled"),
-    ], { terms: { currency: "UAH", employee_deductions: 0, employer_cost: null, employer_cost_status: "unknown" } }), [
-      { obligation_id: "revised-zero", component: "employer_cost", status: "fixed", amount: "0" },
-    ]);
-    expect(result).toEqual({ currency: "UAH", units: BigInt(100_000_000), incomplete: false, estimated: false });
-  });
-
-  it("accepts a fixed zero revision without an expected item and marks estimated revisions", () => {
-    const fixedZero = recordedPayrollCost(payroll("zero-revision", [payItem("payout", "10000")], {
-      terms: { currency: "UAH", employee_deductions: null, employer_cost: null, employer_cost_status: "unknown" },
-    }), [{ obligation_id: "zero-revision", component: "deductions", status: "fixed", amount: "0" },
-      { obligation_id: "zero-revision", component: "employer_cost", status: "fixed", amount: "0" }]);
-    expect(fixedZero?.incomplete).toBe(false);
-
-    const estimated = recordedPayrollCost(payroll("estimated", [payItem("payout", "10000"),
-      { ...payItem("deductions", "0"), expected: { ...payItem("deductions", "0").expected, certainty: "fixed" } },
-      { ...payItem("employer_cost", "1200"), expected: { ...payItem("employer_cost", "1200").expected, certainty: "estimated" } }], {
-      terms: { currency: "UAH", employee_deductions: 0, employer_cost: 1200, employer_cost_status: "estimated" },
-    }), [{ obligation_id: "estimated", component: "employer_cost", status: "estimated", amount: "1200" }]);
-    expect(estimated?.estimated).toBe(true);
-    expect(estimated?.incomplete).toBe(false);
-  });
-
-  it("keeps payroll months and currencies separate, and excludes current/future service periods", () => {
-    const obligation = (id: string, period_start: string, period_end: string, currency: string) => payroll(id,
-      [payItem("payout", "10000", currency), payItem("deductions", "0", currency), payItem("employer_cost", "0", currency)],
-      { period_start, period_end, terms: { currency, employee_deductions: 0, employer_cost: 0, employer_cost_status: "fixed" } });
-    const report = buildStatistics(emptySources({
-      projects: [project({ completed_at: "2025-01-15" }), project({ id: "p2", completed_at: "2025-02-15" })],
-      tasks: [{ id: "task-jan", project_id: "project-1", completed_at: "2025-01-15" }, { id: "task-feb", project_id: "p2", completed_at: "2025-02-15" }],
-      attributions: [attribution({ task_id: "task-jan", completed_at: "2025-01-15T10:00:00.000Z" }),
-        attribution({ id: "c2", task_id: "task-feb", project_id: "p2", completed_at: "2025-02-15T10:00:00.000Z" })],
-      payroll: [obligation("jan", "2025-01-01", "2025-01-31", "UAH"), obligation("feb-eur", "2025-02-01", "2025-02-28", "EUR"),
-        obligation("current", "2025-03-01", "2025-03-31", "UAH"), obligation("future", "2025-04-01", "2025-04-30", "UAH")],
-      payCoverage: [
-        { schedule_id: "schedule-1", effective_from: "2025-01-01", valid_through: null },
-      ],
-    }), "all", "2025-03-15");
-    expect(report.payroll.map(row => [row.month, row.currency])).toEqual([["2025-01-01", "UAH"], ["2025-02-01", "EUR"]]);
-    expect(report.payroll[0]?.costPerCreditedM2).toBe(100);
-    expect(report.payroll[1]?.costPerCreditedM2).toBe(100); // EUR service-period cost / 100 credited m²
-  });
-
-  it("withholds the cost-per-m² ratio when an effective payroll schedule has no generated obligation", () => {
-    const report = buildStatistics(emptySources({
-      projects: [project({ completed_at: "2025-01-15" }), project({ id: "p2", completed_at: "2025-02-15" })],
-      tasks: [{ id: "task-jan", project_id: "project-1", completed_at: "2025-01-15" }, { id: "task-feb", project_id: "p2", completed_at: "2025-02-15" }],
-      attributions: [attribution({ task_id: "task-jan", completed_at: "2025-01-15T10:00:00.000Z" }),
-        attribution({ id: "c2", task_id: "task-feb", project_id: "p2", completed_at: "2025-02-15T10:00:00.000Z" })],
-      payroll: [payroll("feb", [payItem("payout", "10000"), payItem("deductions", "0"), payItem("employer_cost", "0")], {
-        period_start: "2025-02-01", period_end: "2025-02-28", terms: { currency: "UAH", employee_deductions: 0, employer_cost: 0, employer_cost_status: "fixed" },
-      })],
-      payCoverage: [{ schedule_id: "schedule-1", effective_from: "2025-01-01", valid_through: null },
-        { schedule_id: "missing-schedule", effective_from: "2025-01-01", valid_through: null }],
-    }), "all", "2025-03-15");
-    expect(report.payroll.find(row => row.month === "2025-02-01")?.incomplete).toBe(true);
-    expect(report.payroll.find(row => row.month === "2025-02-01")?.costPerCreditedM2).toBeNull();
-  });
-
-  it("keeps complete same-month payroll schedules complete across currencies but withholds the mixed-currency ratio", () => {
-    const report = buildStatistics(emptySources({
-      projects: [project({ completed_at: "2025-01-15" }), project({ id: "p2", completed_at: "2025-02-15" })],
-      tasks: [{ id: "task-jan", project_id: "project-1", completed_at: "2025-01-15" },
-        { id: "task-feb", project_id: "p2", completed_at: "2025-02-15" }],
-      attributions: [attribution({ task_id: "task-jan", completed_at: "2025-01-15T10:00:00.000Z" }),
-        attribution({ id: "c2", task_id: "task-feb", project_id: "p2", completed_at: "2025-02-15T10:00:00.000Z" })],
-      payroll: [
-        payroll("feb-uah", [payItem("payout", "10000"), payItem("deductions", "0"), payItem("employer_cost", "0")], {
-          period_start: "2025-02-01", period_end: "2025-02-28", schedule_id: "uah-schedule",
-          terms: { currency: "UAH", employee_deductions: 0, employer_cost: 0, employer_cost_status: "fixed" },
-        }),
-        payroll("feb-eur", [payItem("payout", "8000", "EUR"), payItem("deductions", "0", "EUR"), payItem("employer_cost", "0", "EUR")], {
-          period_start: "2025-02-01", period_end: "2025-02-28", schedule_id: "eur-schedule",
-          terms: { currency: "EUR", employee_deductions: 0, employer_cost: 0, employer_cost_status: "fixed" },
-        }),
-      ],
-      payCoverage: [
-        { schedule_id: "uah-schedule", effective_from: "2025-01-01", valid_through: null },
-        { schedule_id: "eur-schedule", effective_from: "2025-01-01", valid_through: null },
-      ],
-    }), "all", "2025-03-15");
-    const february = report.payroll.filter(row => row.month === "2025-02-01");
-    expect(february.map(row => [row.currency, row.incomplete, row.costPerCreditedM2])).toEqual([
-      ["EUR", false, null], ["UAH", false, null],
-    ]);
-  });
 });

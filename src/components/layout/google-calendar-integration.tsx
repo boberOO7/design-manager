@@ -151,11 +151,11 @@ export function GoogleCalendarIntegration({ active, oauthResult }: { active: boo
   }
 
   return (
-    <section aria-labelledby="google-calendar-heading" className={`border-t border-[var(--ui-border-subtle)] pt-5 ${(isLoading && !status) || status?.connected ? "min-h-[9.5rem]" : ""}`}>
+    <section aria-labelledby="google-calendar-heading" className={(isLoading && !status) || status?.connected ? "min-h-[9.5rem]" : undefined}>
       <div className="flex items-start gap-3">
         <CalendarSync aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-muted)]" />
         <div className="min-w-0 flex-1">
-          <h3 id="google-calendar-heading" className="font-medium text-[var(--ui-text)]">{t("googleCalendar")}</h3>
+          <h4 id="google-calendar-heading" className="text-sm font-medium text-[var(--ui-text)]">{t("googleCalendar")}</h4>
           {isLoading && !status ? <GoogleCalendarStatusSkeleton label={t("googleCalendarLoading")} /> : null}
           {status?.connected ? (
             <div className="mt-2 min-w-0 space-y-1 text-sm">

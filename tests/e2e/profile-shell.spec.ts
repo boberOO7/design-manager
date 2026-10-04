@@ -22,7 +22,7 @@ const moduleMarkers = {
 };
 
 async function login(page: Page, index = 0, locale = "en") {
-  await page.context().addCookies([{ name: "studioflow-locale", value: locale, url: "http://127.0.0.1:3100" }]);
+  await page.context().addCookies([{ name: "studioflow-locale", value: locale, url: String(test.info().project.use.baseURL ?? "http://127.0.0.1:3100") }]);
   await page.goto("/login");
   await page.locator('input[type="email"]').fill(accounts[index].email);
   await page.locator('input[type="password"]').fill(accounts[index].password);
@@ -47,7 +47,7 @@ test.beforeAll(async () => {
     if (user.error) throw user.error;
     account.id = user.data.user.id;
     const role = account.role === "admin" ? "admin" : "employee";
-    await service.from("profiles").upsert({ id: account.id, email: account.email, full_name: `Profile ${role}`, system_role: role, is_active: true, birth_date: "1990-02-03", country_code: "UA", city: "Kyiv" }).throwOnError();
+    await service.from("profiles").upsert({ id: account.id, email: account.email, full_name: `Profile ${role}`, system_role: role, is_active: true, job_title: "Architect", birth_date: "1990-02-03", country_code: "UA", city: "Kyiv" }).throwOnError();
     await service.from("studio_members").insert({ studio_id: studioId, user_id: account.id, system_role: role, is_active: true, joined_at: "2024-01-01" }).throwOnError();
   }
 });
@@ -101,6 +101,11 @@ for (const [locale, messages, account] of [["en", en, 0], ["uk", uk, 1]] as cons
     const trigger = page.getByRole("button", { name: messages.Account.profileSettings, exact: true });
     await trigger.focus(); await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: messages.Account.profileEditor, exact: true });
+    await expect(dialog.locator('input[type="file"]')).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: messages.Account.removePhoto, exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole("heading", { name: messages.Account.profileDetails, exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: messages.Account.notificationSettings, exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: messages.Account.integrations, exact: true })).toBeAttached();
     const city = dialog.locator('[name="profile-city"]');
     await expect(city).toHaveValue("Kyiv");
     await city.fill("Unsaved city");
@@ -121,7 +126,8 @@ for (const [locale, messages, account] of [["en", en, 0], ["uk", uk, 1]] as cons
       await page.getByRole("button", { name: "Today", exact: true }).click();
     } else {
       await expect(dialog.getByRole("combobox", { name: messages.Account.startDate, exact: true })).toHaveCount(0);
-      await expect(dialog.getByText(messages.Account.startDateManagedByAdmin)).toBeVisible();
+      await expect(dialog.getByText(messages.Account.startDate, { exact: true })).toHaveCount(0);
+      await expect(dialog.getByText(messages.Account.startDateManagedByAdmin)).toHaveCount(0);
     }
     const birthdayText = await birthday.textContent();
     const popups = dialog.getByRole("checkbox", { name: messages.Account.notificationPopups, exact: true });
@@ -142,6 +148,9 @@ for (const [locale, messages, account] of [["en", en, 0], ["uk", uk, 1]] as cons
     await expect(save).toBeDisabled();
     const box = await dialog.boundingBox();
     expect(box?.width).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+    await expect.poll(async () => { const bounds = await dialog.boundingBox(); return Math.round((bounds?.x ?? 0) + (bounds?.width ?? 0)); }).toBe(page.viewportSize()?.width);
+    await expect.poll(() => dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("drawer.png"), animations: "disabled" });
     await page.keyboard.press("Escape");
     await expect(trigger).toBeFocused();
   });
@@ -186,12 +195,52 @@ test("slow profile code is cancellable without shifting the header or reopening 
   } finally { release(); }
 });
 
+test("admin editing an employee uses the guarded member drawer and persists work start", async ({ page }) => {
+  await login(page);
+  await page.goto(`/team/${accounts[1].id}`);
+  await expect(page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true })).toHaveCount(0);
+  const trigger = page.getByRole("button", { name: en.Account.profileSettings, exact: true });
+  await trigger.click();
+  const drawer = page.getByRole("dialog", { name: en.Team.editTeamMember, exact: true });
+  const city = drawer.locator('[name="city"]');
+  const originalCity = await city.inputValue();
+  const start = drawer.getByRole("combobox", { name: en.Team.joinDate, exact: true });
+  await expect(start).toBeVisible();
+  const originalStart = await drawer.locator('select[name="joinedAt"]').inputValue();
+  await expect(drawer.getByRole("checkbox")).toHaveCount(0);
+  await expect(drawer.getByRole("link", { name: en.Account.connectGoogleCalendar, exact: true })).toHaveCount(0);
+  await city.fill("Unsaved employee city");
+  await drawer.getByRole("button", { name: en.Team.cancel, exact: true }).click();
+  await expect(trigger).toBeFocused();
+  await expect(drawer).toHaveCount(0);
+  await trigger.click();
+  await expect(city).toHaveValue(originalCity);
+  await start.click();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  const savedStart = await drawer.locator('select[name="joinedAt"]').inputValue();
+  expect(savedStart).not.toBe(originalStart);
+  await drawer.getByRole("button", { name: en.Team.save, exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await trigger.click();
+  await expect(drawer.locator('select[name="joinedAt"]')).toHaveValue(savedStart);
+  const { data, error } = await service.from("studio_members").select("joined_at").eq("studio_id", studioId).eq("user_id", accounts[1].id).single();
+  expect(error).toBeNull();
+  expect(data?.joined_at).toBe(savedStart);
+  await page.keyboard.press("Escape");
+
+  await page.context().clearCookies();
+  await login(page, 1);
+  await page.goto(`/team/${accounts[0].id}`);
+  await expect(page.getByRole("button", { name: en.Account.profileSettings, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true })).toHaveCount(0);
+});
+
 test("avatar validation, crop, upload, reopen and removal use local Storage", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
-  const trigger = page.getByRole("button", { name: en.Account.profileSettings, exact: true });
-  await trigger.click();
-  const editor = page.getByRole("dialog", { name: en.Account.profileEditor, exact: true });
+  const trigger = page.getByRole("button", { name: en.Account.editProfilePhoto, exact: true });
+  await trigger.focus(); await page.keyboard.press("Enter");
+  const editor = page.getByRole("dialog", { name: en.Account.profilePhoto, exact: true });
   const input = editor.locator('input[type="file"]');
   await input.setInputFiles({ name: "invalid.txt", mimeType: "text/plain", buffer: Buffer.from("not an image") });
   await expect(editor.getByRole("alert")).toHaveText(en.Account.unsupported_type);
@@ -214,6 +263,7 @@ test("avatar validation, crop, upload, reopen and removal use local Storage", as
   await expect(zoom).toBeEnabled();
   await crop.getByRole("button", { name: en.Account.usePhoto, exact: true }).click();
   await expect(editor.getByRole("button", { name: en.Account.removePhoto, exact: true })).toBeVisible();
+  await expect(trigger.locator("img")).toHaveAttribute("src", /\.avatar\.jpg/);
   await expect(page.getByRole("link", { name: en.Account.viewProfile, exact: true }).locator("img")).toHaveAttribute("src", /\.avatar\.png|\.avatar\.jpg/);
   const { data: objects, error } = await service.storage.from("avatars").list(accounts[0].id);
   expect(error).toBeNull();
@@ -227,9 +277,19 @@ test("avatar validation, crop, upload, reopen and removal use local Storage", as
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await trigger.click();
+  await editor.getByRole("button", { name: en.Account.changePhoto, exact: true }).click();
+  await input.setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: Buffer.from(image, "base64") });
+  await expect(zoom).toBeEnabled();
+  await crop.getByRole("button", { name: en.Account.usePhoto, exact: true }).click();
+  await expect(trigger.locator("img")).not.toHaveAttribute("src", imageUrl);
+  const replaced = await service.storage.from("avatars").list(accounts[0].id);
+  expect(replaced.error).toBeNull();
+  expect(replaced.data).toHaveLength(2);
+  expect(replaced.data?.some((object) => objects?.some((old) => old.name === object.name))).toBe(false);
   await editor.getByRole("button", { name: en.Account.removePhoto, exact: true }).click();
   await expect(page.getByRole("link", { name: en.Account.viewProfile, exact: true }).locator("img")).toHaveCount(0);
   await expect(editor.getByRole("button", { name: en.Account.removePhoto, exact: true })).toHaveCount(0);
+  await expect(trigger.locator("img")).toHaveCount(0);
   const remaining = await service.storage.from("avatars").list(accounts[0].id);
   expect(remaining.error).toBeNull(); expect(remaining.data).toEqual([]);
 });

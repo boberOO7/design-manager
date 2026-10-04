@@ -1,22 +1,11 @@
 import type { Database } from "@/types/database.types";
 import type { ProductivityContributionAttribution } from "@/lib/productivity";
-import { financeAmountText, financeAmountUnits } from "@/lib/finance";
 import { getKyivDateOnly } from "@/lib/validation/project";
 
 type Tables = Database["public"]["Tables"];
-type Views = Database["public"]["Views"];
 export type StatisticsProject = Pick<Tables["projects"]["Row"], "id" | "name" | "status" | "archived_at" | "completed_at" | "include_in_productivity" | "total_area_m2">;
 export type StatisticsTask = Pick<Tables["tasks"]["Row"], "id" | "project_id" | "completed_at">;
 export type StatisticsActivity = Pick<Tables["project_activity"]["Row"], "project_id" | "changes" | "created_at">;
-export type StatisticsPayroll = Pick<Tables["finance_obligations"]["Row"], "id" | "schedule_id" | "period_start" | "period_end"> & {
-  terms: Pick<Tables["finance_schedule_terms"]["Row"], "currency" | "employee_deductions" | "employer_cost" | "employer_cost_status"> | null;
-  items: Array<Pick<Tables["finance_obligation_items"]["Row"], "component" | "managed_active"> & {
-    expected: Omit<Pick<Tables["finance_expected_items"]["Row"], "amount" | "currency" | "certainty" | "commitment">, "amount"> & { amount: string } | null;
-  }>;
-};
-export type StatisticsUnknownCost = Pick<Views["finance_payroll_unknown_costs"]["Row"], "obligation_id" | "component" | "status"> & { amount: string | null };
-export type StatisticsPayCoverage = Pick<Views["finance_schedule_history"]["Row"], "schedule_id" | "effective_from" | "valid_through">;
-
 export const statisticsPeriods = ["3", "6", "12", "year", "all"] as const;
 export type StatisticsPeriod = typeof statisticsPeriods[number];
 export const statisticsSections = ["overview", "leads", "team", "calendar"] as const;
@@ -29,9 +18,6 @@ export type StatisticsSources = {
   tasks: StatisticsTask[];
   activities: StatisticsActivity[];
   attributions: ProductivityContributionAttribution[];
-  payroll: StatisticsPayroll[];
-  unknownCosts: StatisticsUnknownCost[];
-  payCoverage: StatisticsPayCoverage[];
 };
 
 const DAY = 86_400_000;
@@ -96,35 +82,6 @@ export function median(values: number[]) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-/** Cost comes exclusively from persisted service-period component items. The
- * linked historical terms only distinguish explicit zero from missing/unknown.
- * Never add a gross salary term to its deductions, or use today's pay terms.
- */
-export function recordedPayrollCost(obligation: StatisticsPayroll, unknownCosts: StatisticsUnknownCost[]) {
-  const payout = obligation.items.find(item => item.managed_active && item.component === "payout")?.expected;
-  if (!obligation.terms || !obligation.items.some(item => item.managed_active && item.expected && item.expected.commitment !== "cancelled")) return null;
-  const currency = obligation.terms.currency;
-  let units = BigInt(0), incomplete = !payout || payout.commitment === "cancelled", estimated = false;
-  for (const component of ["payout", "deductions", "employer_cost"] as const) {
-    const item = obligation.items.find(item => item.managed_active && item.component === component)?.expected;
-    const unknown = unknownCosts.find(cost => cost.obligation_id === obligation.id && cost.component === component);
-    if (item && item.commitment !== "cancelled" && item.currency === currency) {
-      units += financeAmountUnits(item.amount, 4);
-      estimated ||= item.certainty === "estimated";
-      incomplete ||= unknown?.status === "unknown";
-      continue;
-    }
-    const explicitZero = component === "deductions" ? obligation.terms.employee_deductions === 0
-      : component === "employer_cost" && obligation.terms.employer_cost === 0 && obligation.terms.employer_cost_status !== "unknown";
-    // Completed zero-valued unknown costs have no positive expected-item row.
-    const completedZero = (!item || item.commitment === "cancelled") && unknown?.status !== "unknown" && unknown?.amount != null && financeAmountUnits(unknown.amount, 4) === BigInt(0);
-    if (!explicitZero && !completedZero) incomplete = true;
-    estimated ||= unknown?.status === "estimated";
-    if (component === "employer_cost") estimated ||= obligation.terms.employer_cost_status === "estimated";
-  }
-  return { currency, units, incomplete, estimated };
-}
-
 export function buildStatistics(sources: StatisticsSources, period: StatisticsPeriod, today: string, sharedFrom?: string) {
   const projects = new Map(sources.projects.map(project => [project.id, project]));
   const production = [...projects.values()].filter(project => project.include_in_productivity);
@@ -150,9 +107,7 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
   const completionFrom = first(completed.flatMap(project => project.completed_at ? [project.completed_at] : []));
   const creditFrom = first(attributions.map(row => getKyivDateOnly(new Date(row.completed_at))));
   const taskFrom = first(tasks.flatMap(task => task.completed_at ? [task.completed_at] : []));
-  const closedPayroll = sources.payroll.filter(row => row.period_end < monthOf(today));
-  const payrollFrom = first(closedPayroll.map(row => row.period_start));
-  const availableFrom = first([completionFrom, creditFrom, taskFrom, payrollFrom].filter(date => date !== null));
+  const availableFrom = first([completionFrom, creditFrom, taskFrom].filter(date => date !== null));
   const range = sharedFrom ? { from: sharedFrom, through: today } : statisticsRange(period, today, availableFrom);
   const months: Array<{ month: string; completedProjects: number | null; physicalArea: number | null; creditedArea: number | null; completedTasks: number | null; durationMedian: number | null }> = [];
   for (let cursor = range.from; cursor <= today;) {
@@ -191,48 +146,15 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
   }).sort((a, b) => b.days - a.days || a.id.localeCompare(b.id));
   for (const month of months) month.durationMedian = median(durations.filter(project => monthOf(project.completed) === month.month).map(project => project.days));
 
-  const payMonths = new Map<string, { month: string; currency: string; units: bigint; obligations: number; incomplete: boolean; estimated: boolean; schedules: Set<string> }>();
-  for (const obligation of closedPayroll) {
-    if (!byMonth.has(monthOf(obligation.period_start))) continue;
-    const cost = recordedPayrollCost(obligation, sources.unknownCosts);
-    if (!cost) continue;
-    const key = `${monthOf(obligation.period_start)}:${cost.currency}`;
-    const bucket = payMonths.get(key) ?? { month: monthOf(obligation.period_start), currency: cost.currency, units: BigInt(0), obligations: 0, incomplete: false, estimated: false, schedules: new Set<string>() };
-    bucket.units += cost.units;
-    bucket.obligations += 1;
-    bucket.incomplete ||= cost.incomplete;
-    bucket.estimated ||= cost.estimated;
-    if (obligation.schedule_id) bucket.schedules.add(obligation.schedule_id);
-    payMonths.set(key, bucket);
-  }
-  // A missing generated salary obligation cannot silently disappear from the
-  // ratio's numerator. Terms are used as effective-dated coverage, never cost.
-  for (const bucket of payMonths.values()) {
-    const dueSchedules = new Set(sources.payCoverage.filter(term => term.effective_from && term.effective_from <= bucket.month
-      && (!term.valid_through || term.valid_through >= bucket.month)).flatMap(term => term.schedule_id ? [term.schedule_id] : []));
-    const recordedSchedules = new Set([...payMonths.values()].filter(row => row.month === bucket.month).flatMap(row => [...row.schedules]));
-    bucket.incomplete ||= [...dueSchedules].some(schedule => !recordedSchedules.has(schedule));
-  }
-  const payroll = [...payMonths.values()].sort((a, b) => a.month.localeCompare(b.month) || a.currency.localeCompare(b.currency)).map(bucket => {
-    const currenciesInMonth = new Set([...payMonths.values()].filter(row => row.month === bucket.month).map(row => row.currency));
-    const credited = byMonth.get(bucket.month)?.creditedArea ?? null;
-    // This is a ratio of recorded evidence, not proof of full real-world
-    // production capture. An observed first record is not a capture boundary.
-    const aligned = credited !== null && credited > 0;
-    const ratio = !bucket.incomplete && currenciesInMonth.size === 1 && aligned
-      ? Number(financeAmountText(bucket.units, 4)) / credited : null;
-    return { month: bucket.month, currency: bucket.currency, knownCost: financeAmountText(bucket.units, 4),
-      obligations: bucket.obligations, incomplete: bucket.incomplete, estimated: bucket.estimated, creditedArea: credited, costPerCreditedM2: ratio };
-  });
   const total = (key: "completedProjects" | "physicalArea" | "creditedArea" | "completedTasks") => months.some(month => month[key] !== null)
     ? months.reduce((sum, month) => sum + (month[key] ?? 0), 0) : null;
-  return { period, today, ...range, months, payroll, durations, ongoing,
+  return { period, today, ...range, months, durations, ongoing,
     totals: { completedProjects: total("completedProjects"), physicalArea: total("physicalArea"), creditedArea: total("creditedArea"), completedTasks: total("completedTasks"),
       contributors: creditFrom && creditFrom <= today && creditFrom <= range.through ? contributors.size : null,
       activeProjects: production.filter(project => project.status === "active" && !project.archived_at).length,
       medianAge: median(ongoing.map(project => project.days)),
       medianDays: median(durations.map(project => project.days)), meanDays: durations.length ? durations.reduce((sum, project) => sum + project.days, 0) / durations.length : null },
-    coverage: { completionFrom, creditFrom, taskFrom, payrollFrom, excludedCredits,
+    coverage: { completionFrom, creditFrom, taskFrom, excludedCredits,
       missingCompletionDates: production.filter(project => project.status === "completed" && !project.completed_at).length,
       durationProjects: durations.length, selectedProjects: selectedProjects.length, ongoingProjects: ongoingProjects.length } };
 }

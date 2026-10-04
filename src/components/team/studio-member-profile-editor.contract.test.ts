@@ -5,9 +5,9 @@ const editorPath = new URL("./studio-member-profile-editor.tsx", import.meta.url
 const controlsPath = new URL("./studio-member-lifecycle-controls.tsx", import.meta.url);
 
 describe("studio member profile editor", () => {
-  it("uses the existing dialog, select, action-state, and route-refresh patterns", async () => {
+  it("uses the existing drawer, select, action-state, and route-refresh patterns", async () => {
     const source = await readFile(editorPath, "utf8");
-    expect(source).toContain('import { Dialog } from "@/components/ui/dialog"');
+    expect(source).toContain('import { Drawer } from "@/components/ui/drawer"');
     expect(source).toContain('import { Select, SelectItem } from "@/components/ui/select"');
     expect(source).toContain('import { DatePicker } from "@/components/ui/date-picker"');
     expect(source).toContain('import { Input } from "@/components/ui/form-field"');
@@ -25,13 +25,13 @@ describe("studio member profile editor", () => {
     const source = await readFile(controlsPath, "utf8");
     expect(source).toContain('t("editProfile")');
     expect(source).toContain("setProfileDialogOpen(true)");
-    expect(source).toContain("canEditProfile && profileDialogOpen");
+    expect(source).toContain("canEditProfile && profileEditorMounted");
     expect(source).toContain("removeFromStudio");
   });
 
-  it("keeps country and city as plain fields in the existing two-column form grid", async () => {
+  it("keeps country and city as plain fields in the compact form", async () => {
     const source = await readFile(editorPath, "utf8");
-    expect(source).toContain('className="grid gap-4 sm:grid-cols-2"');
+    expect(source).toContain('className="grid gap-4"');
     expect(source).toContain('name="countryCode"');
     expect(source).toContain('name="city"');
     expect(source).toContain("<CityCombobox");

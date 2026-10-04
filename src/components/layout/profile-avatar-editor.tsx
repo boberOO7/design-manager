@@ -28,9 +28,6 @@ export function ProfileAvatarEditor({ mode = "settings", ...props }: ProfileAvat
   const [requested, setRequested] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [googleCalendarResult, setGoogleCalendarResult] = useState<string | null>(null);
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(props.avatarUrl);
-
-  useEffect(() => setCurrentAvatarUrl(props.avatarUrl), [props.avatarUrl]);
 
   useEffect(() => {
     if (mode !== "callback") return;
@@ -52,14 +49,14 @@ export function ProfileAvatarEditor({ mode = "settings", ...props }: ProfileAvat
   }
 
   return <span className="relative inline-flex shrink-0">
-    {mode === "settings" ? <Button ref={triggerRef} type="button" variant="outline" onClick={() => { setRequested(true); setIsOpen((open) => !open); }} aria-expanded={isOpen} aria-haspopup="dialog" className="gap-2"><Settings2 className="size-4" aria-hidden="true" />{t("profileSettings")}</Button> : null}
+    {mode === "settings" ? <Button ref={triggerRef} type="button" variant="ghost" onClick={() => { setRequested(true); setIsOpen(true); }} aria-expanded={isOpen} aria-haspopup="dialog" className="gap-2 px-2 font-medium text-[var(--ui-text-muted)]"><Settings2 className="size-4" aria-hidden="true" />{t("profileSettings")}</Button> : null}
     <Suspense fallback={isOpen ? <ProfileEditorLoading onClose={closeDialog} /> : null}>
-      {requested ? <ProfileEditorDialog {...props} avatarUrl={currentAvatarUrl} isOpen={isOpen} googleCalendarResult={googleCalendarResult} onClose={closeDialog} onAvatarChanged={setCurrentAvatarUrl} returnFocusRef={triggerRef} /> : null}
+      {requested ? <ProfileEditorDialog {...props} isOpen={isOpen} googleCalendarResult={googleCalendarResult} onClose={closeDialog} onExited={() => setRequested(false)} returnFocusRef={triggerRef} /> : null}
     </Suspense>
   </span>;
 }
 
-function ProfileEditorLoading({ onClose }: { onClose: () => void }) {
+export function ProfileEditorLoading({ onClose }: { onClose: () => void }) {
   const t = useTranslations("Common");
   useEffect(() => {
     function cancelOpen(event: KeyboardEvent) {

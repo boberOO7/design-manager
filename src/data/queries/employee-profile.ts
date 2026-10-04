@@ -16,7 +16,7 @@ export async function getEmployeeProfile(userId: string) {
   const isOwn = membership.authenticatedUserId === userId;
   const supabase = await createClient();
   const { data: person, error } = await supabase.from("studio_members")
-    .select("joined_at, is_active, system_role, profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, country_code, city, city_geonames_id)")
+    .select("joined_at, is_active, system_role, profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, birth_date, country_code, city, city_geonames_id)")
     .eq("studio_id", membership.studio_id).eq("user_id", userId).maybeSingle();
   if (error) throw new Error("Unable to load employee profile.", { cause: error });
   if (!person || (!isAdmin && !person.is_active)) return null;

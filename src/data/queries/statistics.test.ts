@@ -27,6 +27,18 @@ describe("Statistics query access boundary", () => {
     expect(mocks.client).not.toHaveBeenCalled();
   });
 
+  it("loads production Statistics without querying Finance sources", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([]);
+    const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: [], error: null }) };
+    const from = vi.fn((_table: string) => query);
+    mocks.client.mockResolvedValue({ from });
+    const report = await getStatistics("all", "2026-10-04", "2026-10-04T12:00:00Z");
+    expect(from.mock.calls.some(([table]) => table.startsWith("finance_"))).toBe(false);
+    expect(report).not.toHaveProperty("payroll");
+    expect(report?.from).toBe("2026-10-01");
+  });
+
   it("loads all source rows beyond the API cap, including an exact multiple", async () => {
     const all = Array.from({ length: 2000 }, (_, id) => ({ id }));
     const page = vi.fn(async (offset: number) => ({ data: all.slice(offset, offset + 1000), error: null }));

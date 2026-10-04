@@ -581,6 +581,31 @@ body,
   }
 }
 
+/* Reserve the final layout and the initial aperture before hydration/tab paint.
+   GSAP owns the reveal after the scoped timeline has been assembled. */
+:root[data-motion="on"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal],
+:root[data-motion="system"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal] {
+  clip-path: inset(0% 0% 100% 0%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion="system"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal] { clip-path: none; }
+}
+
+@supports (interpolate-size: allow-keywords) {
+  details[data-statistics-projects] { interpolate-size: allow-keywords; }
+  details[data-statistics-projects]::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 200ms ease-out, content-visibility 200ms allow-discrete;
+  }
+  details[data-statistics-projects][open]::details-content { block-size: auto; }
+  :root[data-motion="off"] details[data-statistics-projects]::details-content { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    :root[data-motion="system"] details[data-statistics-projects]::details-content { transition: none; }
+  }
+}
+
 @supports (interpolate-size: allow-keywords) {
   details[data-finance-motion] { interpolate-size: allow-keywords; }
   details[data-finance-motion]::details-content {

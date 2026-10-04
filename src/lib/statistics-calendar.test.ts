@@ -46,7 +46,29 @@ describe("calendar statistics occurrences", () => {
       event({ id: "two-months", starts_at: "2026-09-30T20:00:00Z", ends_at: "2026-10-01T02:00:00Z" })];
     const report = buildCalendarStatistics(rows, [], { from: "2026-09-01", through: "2026-10-01" }, "2026-10-02T12:00:00Z");
     expect(report.totals.hours).toBe(10);
-    expect(report.months).toEqual([{ month: "2026-09-01", count: 2, hours: 5, timedCount: 2, allDayDays: 0 }, { month: "2026-10-01", count: 0, hours: 5, timedCount: 1, allDayDays: 0 }]);
+    expect(report.months).toMatchObject([{ month: "2026-09-01", count: 2, hours: 5, timedCount: 2, allDayDays: 0 }, { month: "2026-10-01", count: 0, hours: 5, timedCount: 1, allDayDays: 0 }]);
+    expect(report.months.map(month => month.types.find(type => type.eventType === "meeting")?.count)).toEqual([2, 0]);
+  });
+
+  it("splits each monthly count by canonical event type without changing elapsed totals or participation", () => {
+    const report = buildCalendarStatistics([
+      event({ recurrence_rule: daily }),
+      event({ id: "cancelled", cancelled_at: now }),
+      event({ id: "trip", event_type: "business_trip", all_day: true, starts_at: "2026-09-02T21:00:00Z", ends_at: "2026-09-04T21:00:00Z" }),
+      event({ id: "legacy", event_type: "internal_review" }),
+      event({ id: "makeup", event_type: "work_makeup" }),
+      event({ id: "unknown", event_type: "presentation", ends_at: "" }),
+      event({ id: "planned", event_type: "site_visit", starts_at: "2026-10-02T09:00:00Z", ends_at: "2026-10-02T10:00:00Z" }),
+    ], [], { from: "2026-09-01", through: "2026-10-31" }, now, { members: [], assignments: [
+      { eventId: "event", personId: "person" }, { eventId: "event", personId: "person" },
+    ] });
+    expect(report.totals.count).toBe(5);
+    expect(report.people[0].count).toBe(3);
+    expect(report.months[0].types.filter(type => type.count > 0)).toEqual([
+      { eventType: "meeting", count: 3 }, { eventType: "business_trip", count: 1 }, { eventType: "internal_review", count: 1 },
+    ]);
+    expect(report.months[1].types.every(type => type.count === 0)).toBe(true);
+    for (const month of report.months) expect(month.types.reduce((sum, type) => sum + type.count, 0)).toBe(month.count);
   });
 
   it("keeps invalid durations unknown and does not assert missing-end events have elapsed", () => {

@@ -5,6 +5,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ProfileAvatarEditor } from "@/components/layout/profile-avatar-editor";
+import { ProfilePhotoEditor } from "@/components/layout/profile-photo-editor";
+import { StudioMemberProfileSettings } from "@/components/team/studio-member-profile-settings";
 import { EmployeeProfileNotes } from "@/components/team/employee-profile-notes";
 import { EmployeeProfileHeatmap } from "@/components/team/employee-profile-heatmap";
 import { EmployeeProfilePreviewLink } from "@/components/team/employee-profile-preview-link";
@@ -39,6 +41,8 @@ export default async function EmployeeProfilePage({ params, searchParams }: {
   const showNotes = isAdmin && query.view === "notes";
   const profile = person.profile;
   const ownProfile = isOwn ? await getCurrentUserProfile() : null;
+  const profileSettings = ownProfile ? <ProfileAvatarEditor avatarUrl={ownProfile.avatar_url} birthDate={ownProfile.birth_date} city={ownProfile.city} cityGeoNamesId={ownProfile.city_geonames_id} countryCode={ownProfile.country_code} fullName={ownProfile.full_name} joinedAt={person.joined_at} notificationPopupsEnabled={ownProfile.notification_popups_enabled} notificationSoundEnabled={ownProfile.notification_sound_enabled} systemRole={person.system_role === "admin" ? "admin" : "employee"} userId={userId} />
+    : isAdmin && !isOwn && person.is_active ? <StudioMemberProfileSettings birthDate={profile.birth_date} city={profile.city} cityGeoNamesId={profile.city_geonames_id} countryCode={profile.country_code} fullName={profile.full_name} jobTitle={profile.job_title} joinedAt={person.joined_at} systemRole={person.system_role === "admin" ? "admin" : "employee"} userId={userId} /> : null;
   const appLocale = isAppLocale(locale) ? locale : defaultLocale;
   const city = await getLocalizedCityName({ city: profile.city, geonamesId: profile.city_geonames_id, locale: appLocale });
   const location = [city, isCountryCode(profile.country_code) ? getCountryName(profile.country_code, appLocale) : null].filter(Boolean).join(", ");
@@ -92,13 +96,12 @@ export default async function EmployeeProfilePage({ params, searchParams }: {
   return <div className="@container mx-auto w-full max-w-[70rem] space-y-7 pb-8 sm:space-y-8">
     <div className="flex min-h-10 items-center justify-between gap-4">
       <Link href="/team" className={`inline-flex min-h-9 items-center gap-2 rounded-sm text-sm text-[var(--ui-text-muted)] transition-colors duration-200 hover:text-[var(--ui-text)] ${focusClass}`}><ArrowLeft className="size-4" aria-hidden="true" />{team("title")}</Link>
-      {ownProfile ? <ProfileAvatarEditor avatarUrl={ownProfile.avatar_url} birthDate={ownProfile.birth_date} city={ownProfile.city} cityGeoNamesId={ownProfile.city_geonames_id} countryCode={ownProfile.country_code} fullName={ownProfile.full_name} joinedAt={person.joined_at} notificationPopupsEnabled={ownProfile.notification_popups_enabled} notificationSoundEnabled={ownProfile.notification_sound_enabled} systemRole={person.system_role === "admin" ? "admin" : "employee"} userId={userId} /> : null}
     </div>
 
     <section className="grid items-center gap-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-7" aria-labelledby="employee-name">
-      <UserAvatar imageUrl={profile.avatar_url} name={profile.full_name} size="directoryPortrait" decorative className="size-28 rounded-[1.25rem] text-4xl sm:size-40 sm:rounded-[1.5rem] sm:text-5xl" />
+      {ownProfile ? <ProfilePhotoEditor avatarUrl={ownProfile.avatar_url} fullName={ownProfile.full_name} userId={userId} /> : <UserAvatar imageUrl={profile.avatar_url} name={profile.full_name} size="directoryPortrait" decorative className="size-28 rounded-[1.25rem] text-4xl sm:size-40 sm:rounded-[1.5rem] sm:text-5xl" />}
       <div className="min-w-0">
-        <h1 id="employee-name" className="break-words text-[1.875rem] leading-tight font-semibold tracking-tight text-[var(--ui-text)] sm:text-[2.125rem]">{profile.full_name}</h1>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2"><h1 id="employee-name" className="min-w-0 flex-[1_1_14rem] break-words text-[1.875rem] leading-tight font-semibold tracking-tight text-[var(--ui-text)] sm:text-[2.125rem]">{profile.full_name}</h1>{profileSettings}</div>
         {profile.job_title ? <p className="mt-2 text-lg text-[var(--ui-text-secondary)]">{jobTitleKey ? roles(jobTitleKey) : profile.job_title}</p> : null}
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--ui-text-muted)]">
           {location ? <p className="flex items-center gap-1.5"><MapPin className="size-3.5 shrink-0" aria-hidden="true" />{location}</p> : null}
