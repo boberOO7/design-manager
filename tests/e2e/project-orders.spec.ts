@@ -36,9 +36,9 @@ function teardown() {
     delete from public.finance_accounts where studio_id=${studio};
     delete from public.finance_categories where studio_id=${studio};
     delete from public.finance_settings where studio_id=${studio};
-    delete from public.project_members where project_id=${project};
-    delete from public.project_task_stage_columns where project_id=${project};
-    delete from public.project_activity where project_id=${project};
+    delete from public.project_members where project_id in (select id from public.projects where studio_id=${studio});
+    delete from public.project_task_stage_columns where project_id in (select id from public.projects where studio_id=${studio});
+    delete from public.project_activity where project_id in (select id from public.projects where studio_id=${studio});
     delete from public.notifications where studio_id=${studio};
     delete from public.projects where studio_id=${studio};
     delete from public.studio_members where studio_id=${studio};
@@ -98,6 +98,8 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   const projectHref = `/projects/${projectId}?view=finance`;
   await page.goto(projectHref);
   const summary = page.getByRole("region", { name: orders.scope, exact: true });
+  await summary.getByRole("combobox", { name: f.displayCurrency, exact: true }).click();
+  await page.getByRole("option", { name: "EUR", exact: true }).click();
   await expect(summary).toContainText(/6[\s\u00a0]?000/);
   await expect(page.locator("[data-order-group]")).toHaveCount(1);
   await expect(page.locator("[data-project-payment]")).toHaveCount(3);
@@ -118,11 +120,46 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   await dialog.getByRole("button", { name: f.project.editAgreement, exact: true }).click();
   dialog = page.getByRole("dialog");
   await expect(dialog).toHaveCount(1);
+  await expect(dialog.getByRole("combobox", { name: f.project.currency, exact: true })).toContainText("USD");
   await dialog.getByRole("button", { name: builder.fixedShort, exact: true }).click();
   await dialog.getByLabel(f.project.contract, { exact: true }).fill("3500");
   await dialog.getByRole("button", { name: "50 / 50", exact: true }).click();
+  const discountChoices = dialog.getByRole("group", { name: builder.discount, exact: true });
+  await discountChoices.getByRole("button", { name: builder.discountFixed, exact: true }).click();
+  const discountAmount = dialog.getByRole("textbox", { name: builder.discountAmount, exact: true });
+  await expect(discountAmount).toHaveValue("");
+  await expect(discountAmount).toHaveAttribute("placeholder", "0");
+  await discountAmount.fill("100");
+  await expect(dialog.locator("[data-price-summary]")).toContainText("3 400,00 USD");
+  await discountAmount.clear();
+  await expect(dialog.locator("[data-price-summary]")).toContainText("3 500,00 USD");
+  await expect(dialog.getByRole("button", { name: orders.saveDraft, exact: true })).toBeEnabled();
+  await discountChoices.getByRole("button", { name: builder.discountNone, exact: true }).click();
+  // Empty custom rates calculate as zero, and entering a preset value keeps the custom field open.
+  for (const [groupName, fieldName, preset, none] of [
+    [builder.vatRate, builder.customRate, "20", builder.vatNone],
+    [builder.revenueTax, builder.revenueTaxCustomRate, "6", builder.revenueTaxNone],
+  ] as const) {
+    const choices = dialog.getByRole("group", { name: groupName, exact: true });
+    await choices.getByRole("button", { name: builder.vatOther, exact: true }).click();
+    const customRate = dialog.getByRole("textbox", { name: fieldName, exact: true });
+    await expect(customRate).toHaveValue("");
+    await expect(dialog.locator("[data-price-summary]")).toContainText("3 500,00 USD");
+    await expect(dialog).not.toContainText(builder.invalidPreview);
+    await customRate.fill(`letters${preset}x`);
+    await expect(customRate).toHaveValue(preset);
+    await customRate.fill("1,5abc");
+    await expect(customRate).toHaveValue("1,5");
+    await expect(customRate).toBeVisible();
+    await customRate.clear();
+    await expect(dialog.locator("[data-price-summary]")).toContainText("3 500,00 USD");
+    await expect(dialog.getByRole("button", { name: orders.saveDraft, exact: true })).toBeEnabled();
+    await choices.getByRole("button", { name: none, exact: true }).click();
+  }
   await dialog.locator("[data-plan-row]").nth(0).getByLabel(builder.paymentName, { exact: true }).fill("Аванс фасаду");
   await dialog.locator("[data-plan-row]").nth(1).getByLabel(builder.paymentName, { exact: true }).fill("Фінальний платіж фасаду");
+  await dialog.locator("[data-plan-row]").nth(0).getByLabel(f.planning.expectedDate, { exact: true }).click();
+  await page.getByRole("button", { name: "Сьогодні", exact: true }).click();
   await dialog.getByRole("button", { name: orders.saveDraft, exact: true }).click();
   await expect(dialog.getByRole("button", { name: orders.confirm, exact: true })).toBeVisible();
   await dialog.screenshot({ path: testInfo.outputPath("order-manager-draft-desktop.png") });
@@ -182,12 +219,14 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   const first = page.locator("[data-project-payment]").filter({ has: page.getByRole("heading", { name: "Аванс інтер’єру", exact: true }) });
   await first.getByRole("button", { name: f.planning.recordPayment, exact: true }).click();
   dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText(orders.allocationHelp);
-  await dialog.getByLabel(f.movements.actualAmount.replace("{currency}", "EUR"), { exact: true }).fill("6500");
+  await expect(dialog.getByLabel(f.settlement.received, { exact: true })).toBeFocused();
+  await expect(dialog.getByRole("button", { name: f.settlement.changeAllocation, exact: true })).toHaveCount(0);
+  await dialog.getByLabel(f.settlement.received, { exact: true }).fill("6500");
+  await dialog.getByRole("button", { name: f.settlement.addNote, exact: true }).click();
   await dialog.getByLabel(f.movements.description, { exact: true }).fill("Оплата інтер’єру з надлишком");
   // The preview shows only this order's automatic candidates.
-  await expect(dialog.getByText("Етап 2 інтер’єру", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("Фінальний платіж інтер’єру", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("status")).toContainText("Етап 2 інтер’єру");
+  await expect(dialog.getByRole("status")).toContainText("Фінальний платіж інтер’єру");
   await expect(dialog.getByText("Аванс фасаду", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: f.movements.record, exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -236,8 +275,14 @@ test("orders own proposals and schedules, and automatic receipts stay within the
     await expect(largeGroup).toContainText(/9[\s\u00a0]?876[\s\u00a0]?543[\s\u00a0]?210/);
     await expect(largeGroup.getByRole("button", { name: orders.configure, exact: true })).toBeVisible();
     await expect(summary).toContainText(/9[\s\u00a0]?876[\s\u00a0]?552[\s\u00a0]?710/);
+    await expect(summary.getByRole("link", { name: /Аванс фасаду/ })).toBeVisible();
+    expect(await summary.locator("dd").evaluateAll(values => values.every(value => value.scrollWidth <= value.clientWidth))).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.locator("[data-project-finance]").screenshot({ path: testInfo.outputPath(`orders-${label}.png`) });
+    const financeRoot = page.locator("[data-project-finance]");
+    const captureHeight = await financeRoot.evaluate(element => Math.ceil(element.scrollHeight + element.getBoundingClientRect().top + 24));
+    await page.setViewportSize({ width, height: Math.max(height, captureHeight) });
+    await financeRoot.screenshot({ path: testInfo.outputPath(`orders-${label}.png`) });
+    await page.setViewportSize({ width, height });
   }
   await groups.nth(1).getByRole("button", { name: orders.details, exact: true }).click();
   dialog = page.getByRole("dialog");
@@ -284,5 +329,107 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   await expect(largeGroup.locator("[data-selected]")).toHaveCount(1);
   await expect(selectedPayment.getByRole("heading", { name: scheduleNames[54], exact: true })).toBeVisible();
   await expect(page.locator("[data-project-payment]")).toHaveCount(51);
+  expect(pageErrors).toEqual([]);
+});
+
+test("compact order surfaces preserve inline rename keyboard and blur focus", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const f = uk.Finance, orders = f.orders;
+  const polishId = randomUUID(), polishProject = `'${polishId}'`;
+  const originalName = orders.defaultName;
+  sql(`select set_config('request.jwt.claim.sub','${admin.id}',false);
+    insert into public.projects(id,studio_id,name,total_area_m2,start_date,created_by,status,country_code)
+      values(${polishProject},${studio},'337 Перевірка інтерфейсу замовлень',120,(now() at time zone 'Europe/Kyiv')::date,'${admin.id}','active','UA');
+    select public.save_finance_project_plan(${studio},gen_random_uuid(),${polishProject},jsonb_build_object(
+      'revision',0,'pricingMethod','fixed','amount','6000','currency','EUR','vatRate',null,'priceBasis',null,'reason','Signed agreement',
+      'known','[]'::jsonb,'items',jsonb_build_array(
+        jsonb_build_object('id','','name','Аванс','amount','1800','dueDate',(now() at time zone 'Europe/Kyiv')::date),
+        jsonb_build_object('id','','name','Етап 2','amount','3000'),jsonb_build_object('id','','name','Етап 3','amount','1200'))));
+    do $$declare facade uuid; begin
+      facade:=public.save_finance_project_order(${studio},gen_random_uuid(),${polishProject},jsonb_build_object(
+        'intent','create','name','Фасад','plan',jsonb_build_object('revision',0,'pricingMethod','fixed','amount','3500','currency','EUR',
+          'vatRate',null,'priceBasis',null,'reason','Facade agreement','known','[]'::jsonb,'items',jsonb_build_array(
+            jsonb_build_object('draftKey',gen_random_uuid(),'name','Аванс фасаду','amount','1750'),
+            jsonb_build_object('draftKey',gen_random_uuid(),'name','Фінальний платіж','amount','1750')))));
+      perform public.save_finance_project_order(${studio},gen_random_uuid(),${polishProject},jsonb_build_object('intent','confirm','orderId',facade,'version',1));
+      perform public.save_finance_project_order(${studio},gen_random_uuid(),${polishProject},'{"intent":"create","name":"Ландшафт"}');
+    end $$;`);
+  const history = () => sql(`select jsonb_build_object(
+    'terms',(select jsonb_agg(to_jsonb(t) order by t.id) from public.finance_project_terms t where project_id=${polishProject}),
+    'plans',(select jsonb_agg(to_jsonb(p) order by p.terms_id) from public.finance_project_plan_revisions p where project_id=${polishProject}),
+    'items',(select jsonb_agg(to_jsonb(e) order by e.id) from public.finance_expected_items e join public.finance_project_items i on i.expected_item_id=e.id where i.project_id=${polishProject}))`);
+  const originalHistory = history();
+  const version = () => sql(`select version from public.finance_project_orders where project_id=${polishProject} and is_default`);
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto("/login");
+  await page.waitForLoadState("networkidle");
+  await page.locator('input[type="email"]').fill(admin.email);
+  await page.locator('input[type="password"]').fill(admin.password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: new URL(page.url()).origin }]);
+  await page.goto(`/projects/${polishId}?view=finance`);
+  await page.getByRole("combobox", { name: f.displayCurrency, exact: true }).click();
+  await page.getByRole("option", { name: "EUR", exact: true }).click();
+  const summary = page.getByRole("region", { name: orders.scope, exact: true });
+  await expect(summary).toContainText(/9[\s\u00a0]?500/);
+
+  for (const [label, width, height] of [["desktop", 1440, 1000], ["mobile", 390, 844]] as const) {
+    await page.setViewportSize({ width, height });
+    await expect(summary.getByText(orders.scope, { exact: true })).toHaveCount(0);
+    await expect(summary.getByRole("link", { name: /Аванс/ })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await summary.getByText(orders.value, { exact: true }).click();
+    await summary.screenshot({ path: testInfo.outputPath(`summary-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
+    const manage = summary.getByRole("button", { name: orders.manage.replace("{count}", "2"), exact: true });
+    await manage.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.locator("header").getByRole("button", { name: orders.add, exact: true })).toBeVisible();
+    await expect(dialog.getByText(orders.status.draft, { exact: false })).toBeVisible();
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await dialog.screenshot({ path: testInfo.outputPath(`orders-list-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
+    const row = dialog.getByRole("button").filter({ has: page.getByText(originalName, { exact: true }) });
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await expect(dialog.getByRole("heading", { name: originalName, exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: orders.rename, exact: true })).toHaveCount(0);
+    const edit = dialog.getByRole("button", { name: orders.editName, exact: true });
+    const input = dialog.getByRole("textbox", { name: orders.name, exact: true });
+    await edit.focus();
+    await page.keyboard.press("Enter");
+    await expect(input).toBeFocused();
+    await input.fill("Основне замовлення · уточнена назва");
+    await input.press("Enter");
+    await expect(dialog.getByRole("heading", { name: "Основне замовлення · уточнена назва", exact: true })).toBeVisible();
+    await expect(edit).toBeFocused();
+    const savedVersion = version();
+    await edit.press("Enter");
+    await input.fill("Скасована назва");
+    await input.press("Escape");
+    await expect(dialog).toHaveCount(1);
+    await expect(input).toHaveCount(0);
+    await expect(edit).toBeFocused();
+    expect(version()).toBe(savedVersion);
+    await edit.press("Enter");
+    await input.fill(originalName);
+    await input.press("Tab");
+    await expect(dialog.getByRole("heading", { name: originalName, exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: f.movements.close, exact: true })).toBeFocused();
+    await edit.click();
+    await input.fill(" ");
+    await input.press("Tab");
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(edit).toBeFocused();
+    await expect(dialog.getByRole("heading", { name: originalName, exact: true })).toBeVisible();
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await dialog.getByText(orders.status.confirmed, { exact: true }).click();
+    await dialog.screenshot({ path: testInfo.outputPath(`order-detail-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(manage).toBeFocused();
+  }
+  expect(history()).toBe(originalHistory);
   expect(pageErrors).toEqual([]);
 });

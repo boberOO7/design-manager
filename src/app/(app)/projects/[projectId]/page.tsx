@@ -3,6 +3,7 @@ import { ProjectFinanceSection } from "@/components/finance/project-finance-sect
 import { DomainMessages } from "@/i18n/domain-messages";
 import { notFound } from "next/navigation";
 import { ProjectContextBand } from "@/components/projects/project-context-band";
+import { ProjectActualStartDateForm } from "@/components/projects/project-actual-start-date-form";
 import { ProjectCompletionDateForm } from "@/components/projects/project-completion-date-form";
 import { ProjectActivitySection } from "@/components/projects/project-activity-section";
 import { ProjectLifecycleProvider } from "@/components/projects/project-lifecycle-context";
@@ -29,7 +30,7 @@ import { calculateProjectSummary } from "@/lib/project-progress";
 import type { ProjectFormAction } from "@/components/projects/project-form";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
-import { archiveProject, restoreProject, updateProject, updateProjectCompletionDate } from "./actions";
+import { archiveProject, restoreProject, updateProject, updateProjectCompletionDate, updateProjectActualStartDate } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("ProjectWorkspace");
@@ -86,15 +87,16 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const archiveAction = archiveProject.bind(null, project.id);
   const restoreAction = restoreProject.bind(null, project.id);
   const updateAction = updateProject.bind(null, project.id);
+  const actualStartDateAction = updateProjectActualStartDate.bind(null, project.id);
   const completionDateAction = updateProjectCompletionDate.bind(null, project.id);
   const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
   if (canManage) navItems.push({ id: "finance", label: t("finance") });
   const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
-  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} showProgress={stageConfiguration.showProgress} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} schedulePause={stageConfiguration.schedulePause} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} summary={calculateProjectSummary(contextTasks, undefined, stageConfiguration.progressMethods)} showProgress={stageConfiguration.showProgress} stages={stageConfiguration.stages} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails calendarTimeSummary={calendarTimeSummary} canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
+  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} showProgress={stageConfiguration.showProgress} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} schedulePause={stageConfiguration.schedulePause} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} summary={calculateProjectSummary(contextTasks, undefined, stageConfiguration.progressMethods)} showProgress={stageConfiguration.showProgress} stages={stageConfiguration.stages} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails actualStartDateAction={actualStartDateAction} calendarTimeSummary={calendarTimeSummary} canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
 }
 
-async function ProjectDetails({ calendarTimeSummary, canManage, completionDateAction, locale, project }: { calendarTimeSummary: string; canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
+async function ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }: { actualStartDateAction: ProjectFormAction; calendarTimeSummary: string; canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
   const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
   const typeLabel = getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes);
   const items = [
@@ -103,9 +105,24 @@ async function ProjectDetails({ calendarTimeSummary, canManage, completionDateAc
     { label: form("country"), value: getCountryName(project.country_code, locale) },
     { label: form("city"), value: project.city },
     { label: form("totalArea"), value: `${formatNumber(project.total_area_m2, locale)} m²` },
-    { label: t("plannedStartDate"), value: formatDate(project.start_date, locale) },
-    { label: form("dueDate"), value: project.due_date ? formatDate(project.due_date, locale) : null },
     { label: t("siteVisits"), value: calendarTimeSummary },
   ];
-  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]"><h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectDetails")}</h2><dl className="mt-4 grid gap-5 text-sm md:grid-cols-2">{items.map((item) => <div key={item.label}><dt className="text-[var(--ui-text-muted)]">{item.label}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{item.value ?? t("notAvailable")}</dd></div>)}{project.status === "completed" && canManage ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd><ProjectCompletionDateForm action={completionDateAction} completedAt={project.completed_at ?? ""} locale={locale} /></dd></div> : project.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.completed_at, locale)}</dd></div> : null}{project.archived_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("archiveDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.archived_at, locale)}</dd></div> : null}{project.description ? <div className="md:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("description")}</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ui-text-secondary)]">{project.description}</dd></div> : null}</dl></section>;
+  return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]">
+    <h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectDetails")}</h2>
+    <dl className="mt-4 grid gap-5 text-sm md:grid-cols-2">
+      {items.map((item) => <div key={item.label}><dt className="text-[var(--ui-text-muted)]">{item.label}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{item.value ?? t("notAvailable")}</dd></div>)}
+      {project.archived_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("archiveDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.archived_at, locale)}</dd></div> : null}
+    </dl>
+    <div className="mt-5 grid gap-5 border-t border-[var(--ui-border)] pt-5 md:grid-cols-2">
+      <div><h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("planDates")}</h3><dl className="mt-3 space-y-4 text-sm">
+        <div><dt className="text-[var(--ui-text-muted)]">{t("plannedStartDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{project.start_date ? formatDate(project.start_date, locale) : t("notAvailable")}</dd></div>
+        <div><dt className="text-[var(--ui-text-muted)]">{form("dueDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{project.due_date ? formatDate(project.due_date, locale) : t("notAvailable")}</dd></div>
+      </dl></div>
+      <div><h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("factDates")}</h3><dl className="mt-3 space-y-4 text-sm">
+        <div><dt className="text-[var(--ui-text-muted)]">{t("actualStartDate")}</dt><dd>{canManage ? <ProjectActualStartDateForm action={actualStartDateAction} startedAt={project.started_at} locale={locale} /> : <p className="mt-1 font-medium text-[var(--ui-text)]">{project.started_at ? formatDate(project.started_at, locale) : t("notAvailable")}</p>}</dd></div>
+        <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd>{project.status === "completed" && canManage ? <ProjectCompletionDateForm action={completionDateAction} completedAt={project.completed_at ?? ""} locale={locale} /> : <p className="mt-1 font-medium text-[var(--ui-text)]">{project.completed_at ? formatDate(project.completed_at, locale) : t("notAvailable")}</p>}</dd></div>
+      </dl></div>
+    </div>
+    {project.description ? <dl className="mt-5 text-sm"><dt className="text-[var(--ui-text-muted)]">{t("description")}</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ui-text-secondary)]">{project.description}</dd></dl> : null}
+  </section>;
 }

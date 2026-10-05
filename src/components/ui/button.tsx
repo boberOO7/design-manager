@@ -16,6 +16,7 @@ const buttonVariants = cva(
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-8 px-3",
+        compact: "h-11 gap-2 px-3 font-medium transition-colors duration-200 motion-reduce:transition-none sm:h-9",
         lg: "h-11 px-5",
       },
     },

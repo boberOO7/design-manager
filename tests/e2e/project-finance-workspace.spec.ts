@@ -136,6 +136,8 @@ test("Project Finance workspaces preserve payment, cash, expense and result beha
   const projectHref = `/projects/${projectId}?view=finance`;
   await page.goto(projectHref);
   await expect(page.locator("[data-project-finance]")).toBeVisible();
+  await page.getByRole("combobox", { name: f.displayCurrency, exact: true }).click();
+  await page.getByRole("option", { name: "UAH", exact: true }).click();
   await expect(page.getByRole("region", { name: f.orders.scope, exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: f.orders.scope, exact: true })).toContainText(/300[\s\u00a0]?000/);
   await expect(page.getByRole("region", { name: f.orders.scope, exact: true })).toContainText(/70[\s\u00a0]?000/);
@@ -185,7 +187,7 @@ test("Project Finance workspaces preserve payment, cash, expense and result beha
   let dialog = page.getByRole("dialog");
   await dialog.getByRole("combobox", { name: f.movements.account, exact: true }).click();
   await page.getByRole("option", { name: "Operating UAH · UAH", exact: true }).click();
-  const recordAmount = dialog.getByLabel(f.movements.actualAmount.replace("{currency}", "UAH"), { exact: true });
+  const recordAmount = dialog.getByLabel(f.settlement.received, { exact: true });
   await recordAmount.fill("5000");
   await dialog.getByRole("button", { name: f.movements.record, exact: true }).click();
   await expect(dialog).toHaveCount(0);

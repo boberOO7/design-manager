@@ -28,7 +28,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   const client = await createClient();
   const studio = admin.studio_id;
   const [projects, tasks, activities, attributions, leads, timeOff, events, members, leadHistory, invites, participants] = await Promise.all([
-    readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,completed_at,include_in_productivity,total_area_m2")
+    readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,started_at,completed_at,include_in_productivity,total_area_m2")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("tasks").select("id,project_id,completed_at,project:projects!inner(studio_id)").eq("project.studio_id", studio)
       .eq("status", "completed").order("id").range(offset, offset + 999)),

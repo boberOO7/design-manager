@@ -3,7 +3,7 @@ import { ArrowUpRight, CalendarDays } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatisticsChart } from "@/components/statistics/statistics-chart";
-import { statisticsPeriods, statisticsSections, type StatisticsSection } from "@/lib/statistics";
+import { median, statisticsPeriods, statisticsSections, type StatisticsSection } from "@/lib/statistics";
 import type { StatisticsPageReport } from "@/data/queries/statistics";
 import { StatisticsCardHeader, StatisticsMetric as Headline, statisticsPanel as panel } from "./statistics-card";
 import { LeadsStatistics, TeamStatistics, CalendarStatistics } from "./statistics-sections";
@@ -79,12 +79,7 @@ export async function StatisticsReportView({ report, section }: { report: Statis
 
           </> : <p className="text-sm leading-6 text-[var(--ui-text-muted)]">{t("noDurationHistory")}</p>}
         </div>
-        </div><div id="stats-ongoing" className="min-w-0">
-          <Headline className="p-5" context={t("ongoingAsOf", { date: date(report.today) })} label={t("medianAge")} value={number(report.totals.medianAge, 1)} unit={t("days")} hint={t("ongoingCoverageShort", { count: report.ongoing.length, total: report.coverage.ongoingProjects })} info={<><p>{t("ongoingDefinition")}</p><p>{t("ongoingCoverage", { count: report.ongoing.length, total: report.coverage.ongoingProjects })}</p>{report.ongoing.length < report.coverage.ongoingProjects ? <p>{t("ongoingHistoryGap", { count: report.coverage.ongoingProjects - report.ongoing.length })}</p> : null}</>} />
-          <div className="px-5 pb-5"><h3 className="mb-3 text-sm font-medium text-[var(--ui-text)]">{t("longestRunning")}</h3>
-            {report.ongoing.length ? <OngoingProjects projects={report.ongoing} /> : <p className="text-sm leading-6 text-[var(--ui-text-muted)]">{t("noOngoingHistory")}</p>}
-          </div>
-        </div></div>
+        </div><OngoingProjects projects={report.ongoing} today={report.today} totalCount={report.coverage.ongoingProjects} pausedCount={report.coverage.pausedOngoingProjects} medianAge={report.totals.medianAge} activeMedianAge={median(report.ongoing.filter(project => project.status !== "paused").map(project => project.days))} /></div>
       </section>
 
     </>}

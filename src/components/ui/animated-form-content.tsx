@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 // actual layout height, including inside a height-constrained dialog.
 // Clip without a nested scroll container: focusing fields must scroll only the dialog.
 // StudioFlow keeps functional transitions in system mode; global Motion off disables them.
-export function AnimatedFormContent({ children, isOpen, id, labelledBy }: { children: ReactNode; isOpen: boolean; id?: string; labelledBy?: string }) {
+export function AnimatedFormContent({ children, isOpen, id, labelledBy, className }: { children: ReactNode; isOpen: boolean; id?: string; labelledBy?: string; className?: string }) {
   const content = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
   useLayoutEffect(() => {
@@ -19,7 +19,7 @@ export function AnimatedFormContent({ children, isOpen, id, labelledBy }: { chil
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  return <div id={id} role={id ? "region" : undefined} aria-labelledby={labelledBy} aria-hidden={!isOpen} inert={!isOpen} style={{ height: isOpen ? height : 0 }} className={cn("shrink-0 overflow-clip transition-[height,opacity,visibility] duration-[220ms] ease-out motion-reduce:transition-none", isOpen ? "opacity-100" : "invisible opacity-0")}><div ref={content} className="flow-root">{children}</div></div>;
+  return <div id={id} role={id ? "region" : undefined} aria-labelledby={labelledBy} aria-hidden={!isOpen} inert={!isOpen} style={{ height: isOpen ? height : 0 }} className={cn("shrink-0 overflow-clip transition-[height,opacity,visibility] duration-[220ms] ease-out motion-reduce:transition-none", isOpen ? "opacity-100" : "invisible opacity-0", className)}><div ref={content} className="flow-root">{children}</div></div>;
 }
 
 // Retain form values while closed; invalid fields reopen before receiving focus.

@@ -34,7 +34,7 @@ export type ProjectContextProject = {
   description: string | null;
   due_date: string | null;
   priority: string;
-  start_date: string;
+  start_date: string | null;
   total_area_m2: number;
 };
 
@@ -114,7 +114,7 @@ function ProjectContextActions({ archiveAction, canManage, isArchived, onConfigu
   if (!canManage) return null;
   return <div className={styles.actions}>
     {isArchived ? <ProjectStatusAction action={restoreAction} label={t("restore")} pendingLabel={t("restoring")} /> : <>
-      {status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, site_address: project.site_address ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date, due_date: project.due_date ?? undefined }} /> : null}
+      {status !== "completed" && isProjectPriority(project.priority) ? <ProjectEditModal action={updateAction} projectName={project.name} defaultValues={{ name: project.name, project_type: project.project_type ?? undefined, project_type_custom: project.project_type_custom ?? undefined, country_code: project.country_code, city: project.city ?? undefined, city_geonames_id: project.city_geonames_id ?? undefined, site_address: project.site_address ?? undefined, client_name: project.client_name ?? undefined, description: project.description ?? undefined, total_area_m2: project.total_area_m2, priority: project.priority, start_date: project.start_date ?? undefined, due_date: project.due_date ?? undefined }} /> : null}
       <ProjectLifecycleControls projectId={project.id}>
         {onConfigureStages ? <PopoverPrimitive.Close asChild><button type="button" onClick={onConfigureStages} className={styles.menuAction}><SlidersHorizontal aria-hidden="true" className="size-4" />{stages("configure")}</button></PopoverPrimitive.Close> : null}
         <div className={styles.archiveAction}><ProjectStatusAction action={archiveAction} confirmMessage={t("archiveConfirm", { name: project.name })} label={t("archive")} menuItem pendingLabel={t("archiving")} /></div>
@@ -152,7 +152,7 @@ function ProgressSummary({ progress, projectName, stageProgress, stages }: { pro
   </div>;
 }
 
-function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, projectDueDate, siteVisitsLabel, startDate }: { area: number; calendarTimeSummary: string; locale: string; priority: string; paused: boolean; projectDueDate: string | null; siteVisitsLabel: string; startDate: string }) {
+function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, projectDueDate, siteVisitsLabel, startDate }: { area: number; calendarTimeSummary: string; locale: string; priority: string; paused: boolean; projectDueDate: string | null; siteVisitsLabel: string; startDate: string | null }) {
   const t = useTranslations("Workspace");
   const projects = useTranslations("Projects");
   const workspace = useTranslations("ProjectWorkspace");
@@ -160,7 +160,7 @@ function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, 
   const common = useTranslations("Common");
   const projectDeadlineNeedsAttention = !paused && Boolean(projectDueDate && projectDueDate <= getTodayDateOnly());
   return <dl className={styles.dates}>
-    <div><dt><CalendarDays aria-hidden="true" />{t("startDate")}</dt><dd>{formatDateOnly(startDate, locale)}</dd></div>
+    <div><dt><CalendarDays aria-hidden="true" />{workspace("plannedStartDate")}</dt><dd>{startDate ? formatDateOnly(startDate, locale) : common("notAvailable")}</dd></div>
     <div><dt><CalendarClock aria-hidden="true" />{t("projectDeadline")}</dt><dd className={projectDeadlineNeedsAttention ? "text-[var(--ui-danger-text)]" : undefined}>{projectDueDate ? formatDateOnly(projectDueDate, locale) : t("noDeadline")}</dd></div>
     <div><dt><Ruler aria-hidden="true" />{t("totalArea")}</dt><dd className="ui-numeric">{workspace("areaValue", { area: formatNumber(area, locale) })}</dd></div>
     <div><dt><Flag aria-hidden="true" />{projects("priority")}</dt><dd className={priority === "urgent" ? "text-[var(--ui-urgent-text)]" : priority === "high" ? "text-[var(--ui-warning-text)]" : undefined}>{isProjectPriority(priority) ? priorities(priority) : common("notAvailable")}</dd></div>

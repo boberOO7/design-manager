@@ -10,7 +10,6 @@ import { instantToDateOnly } from "@/lib/calendar";
 import { supervisionVisitTerms } from "@/lib/finance-projects";
 import { saveFinanceSchedule } from "@/app/(app)/finance/schedules/actions";
 import { getProjectCashMatchOptions, saveFinancePlanning } from "@/app/(app)/finance/expected/actions";
-import { quoteFinanceSchedule, type quoteFinanceSettlement } from "@/app/(app)/finance/movements/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -18,6 +17,7 @@ import { FormField,Input,Textarea } from "@/components/ui/form-field";
 import { Select,SelectItem } from "@/components/ui/select";
 import { FinanceActionForm } from "./finance-action-form";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
+import { orderPaymentStateClass } from "./order-payment-progress";
 import { ProjectPaymentRow } from "./project-payment-row";
 import { ProjectCashWorkspace } from "./project-cash-workspace";
 import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
@@ -28,8 +28,8 @@ import { FinanceCategorySelect } from "./category-select";
 import { FinanceCurrencySelect } from "./currency-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
 import { financeCategoryLabel,financeMovementCategoryLabel,projectPaymentPresentation } from "@/lib/finance-planning";
-import { formatFinanceAmount,formatFinanceDecimal } from "@/lib/finance";
-import { indicativeFinanceConversion } from "@/lib/finance-fx-preview";
+import { financeAmountText,financeAmountUnits,formatFinanceAmount,formatFinanceDecimal } from "@/lib/finance";
+import { formatProjectFinanceMoney, projectOrderPaymentProgress, type ProjectFinanceDisplay } from "@/lib/finance-project-view";
 import { projectVatAmounts } from "@/lib/finance-project-plan";
 import { formatDateOnly } from "@/lib/utils";
 import type { FinancePlanningPeriod,getFinanceData,FinancePlanningData,FinanceProjectData } from "@/data/queries/finance";
@@ -41,12 +41,14 @@ const projectActionClass="border border-transparent transition-colors duration-1
 const projectDestructiveActionClass="border border-transparent text-[var(--ui-danger-text)] transition-colors duration-150 hover:border-[var(--ui-border-subtle)] hover:bg-[var(--ui-danger-surface)] active:bg-[var(--ui-danger-surface)]";
 type ProjectContext=FinanceProjectData&{ stream:typeof projectStreams[number];today:string };
 
-function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data:Foundation; item?:FinanceExpected; project?:ProjectContext; obligation?:string; onSaved:()=>void; onPending:(value:boolean)=>void }) {
+function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,onSaved,onPending }: { data:Foundation; hasAllocationHistory?:boolean; item?:FinanceExpected; project?:ProjectContext; obligation?:string; onSaved:()=>void; onPending:(value:boolean)=>void }) {
   const t=useTranslations("Finance"),locale=useLocale();
   const isExpense=project?.stream==="expenses";
   const [direction,setDirection]=useState(item?.direction??(isExpense?"outgoing":"incoming"));
   const confirmedOrders = project?.orders.filter(order => order.status === "confirmed") ?? [];
   const [orderId, setOrderId] = useState(item?.order_id ?? (confirmedOrders.length === 1 ? confirmedOrders[0].id : ""));
+  const confirmedOrder = item && project?.stream === "design" && item.direction === "incoming" ? confirmedOrders.find(order => order.id === item.order_id) : undefined;
+  const allocationProtected = hasAllocationHistory || Number(item?.settled_amount ?? 0) > 0;
   const terms=project?.terms.find((term)=>term.stream===project.stream && (project.stream !== "design" || term.order_id === orderId));
   const defaultCategory=project&&!isExpense?data.categories.find((category)=>!category.archived_at&&category.default_key===({ design:"project_payments",supervision:"supervision",contractor_bonus:"contractor_bonus",other:"other_income",expenses:"" }[project.stream])):null;
   const [currency,setCurrency]=useState(item?.currency??terms?.currency??data.settings?.base_currency??"UAH");
@@ -77,6 +79,24 @@ function ExpectedForm({ data,item,project,obligation,onSaved,onPending }: { data
   const expectedPriceBasis=rawExpectedPriceBasis==="net"||rawExpectedPriceBasis==="gross"?rawExpectedPriceBasis:null;
   let vatPreview="";
   if(expectedVatRate!==null&&effectiveAmount){try{const currencyInfo=data.currencies.find((entry)=>entry.code===effectiveCurrency);if(!currencyInfo)throw new Error("currency");const composition=projectVatAmounts(effectiveAmount||"0",expectedVatRate,contractDefault?(expectedPriceBasis??"net"):"gross",currencyInfo.minor_units);const unchangedSnapshot=item&&String(item.amount??"")===effectiveAmount;vatPreview=`${t("builder.net")} ${formatFinanceAmount(unchangedSnapshot?item.net_amount??composition.net:composition.net,currencyInfo,locale)} · ${t("builder.vat")} ${formatFinanceAmount(unchangedSnapshot?item.vat_amount??composition.vat:composition.vat,currencyInfo,locale)} · ${t("builder.gross")} ${formatFinanceAmount(composition.gross,currencyInfo,locale)}`;}catch{vatPreview="";}}
+  if (confirmedOrder && project && item) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} fieldsetClassName="min-w-0 space-y-3" submitClassName="min-h-11">
+    <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value={item.id ?? ""}/><input type="hidden" name="version" value={item.version ?? 0}/>
+    <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value={project.stream}/><input type="hidden" name="orderId" value={confirmedOrder.id}/><input type="hidden" name="direction" value={item.direction ?? "incoming"}/>
+    <input type="hidden" name="commitment" value={item.commitment ?? "agreed"}/><input type="hidden" name="certainty" value={item.certainty ?? "fixed"}/><input type="hidden" name="established" value={String(item.commitment === "agreed" && item.certainty === "fixed" ? true : item.is_established ?? false)}/>
+    <div className="space-y-1"><p className="break-words text-base font-semibold">{confirmedOrder.name}</p><p className="text-xs text-[var(--ui-text-muted)]">{t("orders.order")}</p></div>
+    <FormField label={t("builder.paymentName")}><Input name="description" aria-label={t("builder.paymentName")} defaultValue={item.description ?? ""} maxLength={2000} data-dialog-initial-focus/></FormField>
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+      <FormField label={t("movements.amount")}><Input name="amount" readOnly={allocationProtected} value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" required/></FormField>
+      <FormField label={t("planning.currency")}>{allocationProtected ? <Input name="currency" aria-label={t("planning.currency")} value={currency} readOnly/> : <FinanceCurrencySelect aria-label={t("planning.currency")} name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency ?? ""} value={currency} onValueChange={setCurrency}/>}</FormField>
+    </div>
+    {vatPreview ? <p className="text-xs text-[var(--ui-text-secondary)]">{vatPreview}</p> : null}
+    {allocationProtected ? <input type="hidden" name="dueDate" value={due}/> : null}
+    <div className="grid gap-3 sm:grid-cols-2">
+      <FormField label={t("planning.dueDate")}><DatePicker disabled={allocationProtected} name="dueDate" aria-label={t("planning.dueDate")} value={due} onValueChange={setDue} locale={locale}/></FormField>
+      <FormField label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
+    </div>
+    <FinanceCategorySelect categories={data.categories} direction={direction} value={category} onValueChange={setCategory} currentId={item.category_id} showActions={false} disabled={allocationProtected}/>
+  </FinanceActionForm>;
   if(isExpense&&project) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} disabled={project?.stream === "design" && !orderId}>
     <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value={item?.id??""}/><input type="hidden" name="version" value={item?.version??0}/>
     <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value="expenses"/><input type="hidden" name="direction" value="outgoing"/>
@@ -149,7 +169,7 @@ function PayrollCostForm({ cost,onSaved,onPending }: { cost:FinancePlanningData[
   </FinanceActionForm>;
 }
 
-export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ page:number;creditPage:number;filter:string;period?:FinancePlanningPeriod;today?:string;project?:ProjectContext;itemId?:string;toolbar?:ReactNode;onManageOrder?:(orderId?:string)=>void;cashData?:FinanceProjectCash|null;attention?:"overdue";status?:"overdue"|"cancelled" }) {
+export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ page:number;creditPage:number;filter:string;period?:FinancePlanningPeriod;today?:string;project?:ProjectContext;itemId?:string;toolbar?:ReactNode;toolbarActions?:ReactNode;toolbarDetails?:ReactNode;onManageOrder?:(orderId?:string)=>void;cashData?:FinanceProjectCash|null;display?:ProjectFinanceDisplay;attention?:"overdue";status?:"overdue"|"cancelled" }) {
   const t=useTranslations("Finance"),locale=useLocale();
   const router=useRouter();
   const [editing,setEditing]=useState<FinanceExpected|"new"|null>(null);
@@ -157,9 +177,9 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
   const [savedCost,setSavedCost]=useState<FinancePlanningData["payrollCosts"][number]|null>(null);
   const [cancelling,setCancelling]=useState<FinanceExpected|null>(null);
   const [matching,setMatching]=useState<FinanceExpected|null>(null);
+  const editingConfirmedOrder = editing && editing !== "new" && editing.direction === "incoming" && props.project?.stream === "design" ? props.project.orders.find(order => order.id === editing.order_id && order.status === "confirmed") : undefined;
   const [recording,setRecording]=useState<FinanceExpected|null>(null);
-  const [equivalentCurrency,setEquivalentCurrency]=useState("");
-  const [equivalentQuotes,setEquivalentQuotes]=useState<Record<string,Awaited<ReturnType<typeof quoteFinanceSettlement>>>>({});
+  const isProjectSettlement = Boolean(props.project && recording?.direction === "incoming" && props.categories.find(category => category.id === recording.category_id)?.nature === "operating");
   const [paymentId,setPaymentId]=useState("");
   const [releasing,setReleasing]=useState<string|null>(null);
   const [historyItemId, setHistoryItemId] = useState<string | null>(null);
@@ -192,24 +212,11 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     if (props.project) row?.focus({ preventScroll: true });
   }, [props.itemId, props.project?.projectId]);
   const money=(amount:string|number|null,code:string|null)=>{const currency=props.currencies.find((item)=>item.code===code);return currency?formatFinanceAmount(amount??0,currency,locale):`${amount??0} ${code??""}`;};
+  const displayMoney=(amount:string|number|null,code:string|null)=>props.project?formatProjectFinanceMoney(amount,props.currencies.find(unit=>unit.code===code),props.display,locale):money(amount,code);
   const categoryLabel=(id:string|null)=>financeCategoryLabel(props.categories.find((item)=>item.id===id),"",(key)=>t(`planning.defaults.${key}`));
   const paymentLabel=(payment:FinancePlanningData["payments"][number])=>payment.description||financeMovementCategoryLabel(payment.category_id,payment.category,props.categories,(key)=>t(`planning.defaults.${key}`));
   const date=(value:string|null)=>value?formatDateOnly(value,locale):"—";
   const period=props.period??"all",today=props.project?.today??props.today??new Date().toISOString().slice(0,10),currentMonth=today.slice(0,7);
-  const equivalentChoices=props.project&&props.project.stream!=="expenses"?[...new Set(props.accounts.filter((account)=>!account.archived_at).map((account)=>account.currency))].filter((code)=>props.items.some((item)=>item.currency&&item.currency!==code)):[];
-  const selectedEquivalent=equivalentChoices.includes(equivalentCurrency)?equivalentCurrency:"";
-  useEffect(()=>{
-    if (!props.project || !selectedEquivalent) return;
-    const rows=props.items.filter((item)=>item.id&&item.currency&&item.currency!==selectedEquivalent);
-    let current=true;
-    quoteFinanceSchedule(rows.map((item)=>({currency:item.currency??"",obligationCurrency:selectedEquivalent,date:item.expected_payment_date??item.due_date??today}))).then((quotes)=>{
-      if (!current) return;
-      const next:Record<string,Awaited<ReturnType<typeof quoteFinanceSettlement>>>={};
-      rows.forEach((item,index)=>{if(item.id)next[`${item.id}:${selectedEquivalent}:${item.expected_payment_date??item.due_date??today}`]=quotes[index]??null;});
-      setEquivalentQuotes(next);
-    }).catch(()=>{if(current){const next:Record<string,null>={};rows.forEach((item)=>{if(item.id)next[`${item.id}:${selectedEquivalent}:${item.expected_payment_date??item.due_date??today}`]=null;});setEquivalentQuotes(next);}});
-    return ()=>{current=false;};
-  },[props.project,props.items,selectedEquivalent,today]);
   const href=(page=props.page,credits=props.creditPage,filter=props.filter,nextPeriod=period,nextAttention: "overdue"|null|undefined=props.attention,nextStatus: "overdue"|"cancelled"|null|undefined=props.status)=>{if(props.project)return `/projects/${props.project.projectId}?view=finance&financeTab=${props.project.stream === "expenses" ? "expenses" : "payments"}&stream=${props.project.stream}&page=${page}&credits=${credits}&filter=${filter}`;const params=new URLSearchParams({page:String(page),credits:String(credits),filter,period:nextPeriod});if(nextStatus)params.set("status",nextStatus);else if(nextAttention)params.set("attention",nextAttention);return `/finance/expected?${params}`;};
   const matchingNature=props.categories.find((category)=>category.id===matching?.category_id)?.nature;
   const availablePayments = cashCandidate && !props.payments.some(payment => payment.id === cashCandidate.id) ? [...props.payments, cashCandidate] : props.payments;
@@ -256,19 +263,24 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     const state=item.commitment==="cancelled"?t("planning.agreementOptions.cancelled"):!active && Number(item.adjustment_amount ?? 0) > 0 ? t("settlement.closed") :item.payment_state==="partial"?t("planning.states.partial"):active&&item.due_state==="overdue"?t("planning.states.overdue"):item.payment_state==="settled"?t("planning.states.settled"):item.commitment==="tentative"?t("planning.agreementOptions.tentative"):item.certainty==="estimated"?t("planning.estimatedAmount"):item.due_state==="due"?t("planning.states.due"):!rowDate?t("planning.states.unscheduled"):t("planning.states.unpaid");
     const settled=item.payment_state==="settled";
     const stateClass=active&&item.due_state==="overdue"?"bg-[var(--ui-danger-surface)] font-semibold text-[var(--ui-danger-text)]":item.payment_state==="partial"?"bg-[var(--ui-warning-surface)] font-medium text-[var(--ui-warning-text)]":item.payment_state==="settled"||item.commitment==="cancelled"?"bg-[var(--ui-surface-muted)] text-[var(--ui-text-muted)]":"bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
-    const equivalentQuote=item.id?equivalentQuotes[`${item.id}:${selectedEquivalent}:${item.expected_payment_date??item.due_date??today}`]:undefined;
-    const equivalentTarget=props.currencies.find((currency)=>currency.code===selectedEquivalent);
-    const equivalentSource=props.currencies.find((currency)=>currency.code===item.currency);
-    const equivalentAmount=equivalentQuote&&equivalentTarget&&equivalentSource?indicativeFinanceConversion(item.amount??0,equivalentQuote.rate,equivalentSource.minor_units,equivalentTarget.minor_units):null;
     const amountClass=settled&&props.project?"text-[var(--ui-text-secondary)]":(item.direction==="incoming"?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]")+(settled?" opacity-70":"");
     const TypeIcon=obligation?.obligation.kind==="payroll"?Banknote:project?BriefcaseBusiness:obligation?.obligation.kind==="recurring"||link?.source==="monthly"?RefreshCw:item.direction==="incoming"?ArrowDownLeft:ArrowUpRight;
     const typeIconClass=obligation?.obligation.kind==="payroll"||project||obligation?.obligation.kind==="recurring"||link?.source==="monthly"?"bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]":item.direction==="incoming"?"bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]":"bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]";
     if (props.project) {
+      const closed = !active && item.commitment !== "cancelled" && Number(item.adjustment_amount ?? 0) > 0;
+      const receivedByCurrency = new Map<string, bigint>();
+      for (const entry of history) {
+        const digits = props.currencies.find(currency => currency.code === entry.payment_currency)?.minor_units ?? 2;
+        receivedByCurrency.set(entry.payment_currency, (receivedByCurrency.get(entry.payment_currency) ?? BigInt(0)) + financeAmountUnits(String(entry.payment_amount), digits));
+      }
+      const received = [...receivedByCurrency].filter(([, amount]) => amount > BigInt(0)).map(([currency, amount]) => money(financeAmountText(amount, props.currencies.find(unit => unit.code === currency)?.minor_units ?? 2), currency)).join(" · ");
+      const progress = [received ? t(item.direction === "incoming" ? "projectWorkspace.receivedCompact" : "projectWorkspace.paidCompact", { amount: received }) : null, closed ? t("projectWorkspace.closedDifferenceCompact", { amount: money(item.adjustment_amount, item.currency) }) : null].filter(Boolean).join(" · ");
+      const paymentStatusClass = item.commitment === "cancelled" || closed ? "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]" : settled ? "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]" : active && (item.payment_state === "partial" || item.due_state === "overdue") ? "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
       const note = props.project.planItems.find(planItem => planItem.id === item.id)?.client_note;
       return <ProjectPaymentRow key={item.id} id={item.id ?? ""} title={title} date={rowDate ? (item.expected_payment_date ? t("planning.timingExpected", { date: shortDate(rowDate) }) : t("planning.timingDue", { date: shortDate(rowDate) })) : t("planning.timingMissing")}
-        amount={`${item.certainty === "estimated" ? "≈ " : ""}${money(item.amount, item.currency)}`} status={state} statusClass={stateClass}
-        progress={item.payment_state === "partial" || Number(item.adjustment_amount ?? 0) > 0 ? t("planning.settlementProgress", { paid: money(item.settled_amount, item.currency), remaining: money(item.remaining_amount, item.currency) }) : undefined}
-        equivalent={selectedEquivalent && item.currency !== selectedEquivalent ? equivalentAmount && equivalentTarget ? `≈ ${formatFinanceAmount(equivalentAmount, equivalentTarget, locale)} · ${equivalentQuote?.effectiveDate === today ? t("planning.equivalentToday") : t("planning.equivalentDated", { date: date(equivalentQuote?.effectiveDate ?? today) })}` : equivalentQuote === null ? t("planning.equivalentUnavailable") : t("planning.equivalentLoading") : undefined}
+        amount={`${item.certainty === "estimated" && (!props.display || item.currency === props.display.currency.code) ? "≈ " : ""}${displayMoney(item.amount, item.currency)}`} status={closed ? t("projectWorkspace.closedShort") : state} statusClass={paymentStatusClass}
+        progress={progress} completed={closed ? "closed" : settled && item.commitment !== "cancelled" ? "paid" : undefined}
+        nativeAmount={props.display && item.currency !== props.display.currency.code ? `${money(item.amount, item.currency)}${item.currency && !props.display.rates[item.currency] ? ` · ${t("planning.equivalentUnavailable")}` : ""}` : undefined}
         open={props.itemId === item.id} hasDetails={Boolean(props.project.stream === "expenses" || note || (link?.context_label && link.context_label !== title) || (item.expected_payment_date && item.due_date && item.expected_payment_date !== item.due_date))} expense={props.project.stream === "expenses"}
         onRecord={active ? () => setRecording(item) : undefined}
         onEdit={!tripLink ? () => setEditing(item) : undefined}
@@ -281,7 +293,6 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
         {note ? <p className="whitespace-pre-wrap">{note}</p> : null}
         {link?.context_label && link.context_label !== title ? <p>{link.context_label}</p> : null}
         {item.expected_payment_date && item.due_date && item.expected_payment_date !== item.due_date ? <p>{t("planning.dueDate")}: {date(item.due_date)} · {t("planning.expectedDate")}: {date(item.expected_payment_date)}</p> : null}
-        {history.length ? <button type="button" className="min-h-11 font-medium underline underline-offset-4" onClick={() => setHistoryItemId(item.id)}>{t("projectWorkspace.history")} · {history.length}</button> : null}
       </ProjectPaymentRow>;
     }
     return <article key={item.id} id={`expected-${item.id}`} data-direction={item.direction}>
@@ -289,7 +300,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
         <span className={`col-start-1 row-start-2 pl-11 text-xs md:col-start-1 md:row-start-1 md:pl-0 ${active&&item.due_state==="overdue"?"font-medium text-[var(--ui-danger-text)]":props.project&&!settled?"text-[var(--ui-text-secondary)]":"text-[var(--ui-text-muted)]"}`}>{rowDate?(item.expected_payment_date?t("planning.timingExpected",{date:shortDate(rowDate)}):t("planning.timingDue",{date:shortDate(rowDate)})):t("planning.timingMissing")}</span>
         <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2.5 md:col-start-2"><span className={`flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] ${typeIconClass}`}><TypeIcon aria-hidden="true" className="size-[1.125rem]"/></span><div className="min-w-0"><h3 className={`break-words text-sm font-semibold leading-snug ${props.project?"text-[var(--ui-text)]":settled?"text-[var(--ui-text-secondary)]":"text-[var(--ui-text)]"}`}>{title}</h3>{subtitle?<p className={props.project&&!settled?"mt-0.5 break-words text-xs text-[var(--ui-text-secondary)]":"mt-0.5 break-words text-xs text-[var(--ui-text-muted)]"}>{subtitle}</p>:null}</div></div>
         <span className={`col-start-1 row-start-3 ml-11 inline-flex w-fit items-center gap-1 rounded-md px-2 py-0.5 text-[11px] leading-5 md:col-start-3 md:row-start-1 md:ml-0 ${stateClass}`}>{props.project&&settled?<CircleCheck aria-hidden="true" className="size-3.5 text-[var(--ui-success-text)]"/>:null}{state}</span>
-        <strong className={`ui-numeric ${props.project?"col-start-1 row-start-4 ml-11 text-left md:ml-0 md:text-right":"col-start-2 row-span-3 row-start-1 text-right"} whitespace-nowrap text-base font-bold md:col-start-4 md:row-start-1 md:row-span-1 md:text-lg ${amountClass}`}>{item.certainty==="estimated"?"≈ ":""}{props.project ? "" : item.direction==="incoming"?"+":"−"}{money(item.amount,item.currency)}{props.project&&selectedEquivalent&&item.currency!==selectedEquivalent?<span className="mt-0.5 block max-w-64 whitespace-normal text-xs font-normal text-[var(--ui-text-muted)]">{equivalentAmount&&equivalentTarget?`≈ ${formatFinanceAmount(equivalentAmount,equivalentTarget,locale)} · ${equivalentQuote?.effectiveDate===today?t("planning.equivalentToday"):t("planning.equivalentDated",{date:formatDateOnly(equivalentQuote?.effectiveDate??today,locale)})}`:equivalentQuote===null?t("planning.equivalentUnavailable"):t("planning.equivalentLoading")}</span>:null}{props.project&&item.payment_state==="partial"?<span className="mt-1 block max-w-48 whitespace-normal text-xs font-normal text-[var(--ui-text-secondary)]">{t("planning.settlementProgress",{paid:money(item.settled_amount,item.currency),remaining:money(item.remaining_amount,item.currency)})}</span>:null}</strong>
+        <strong className={`ui-numeric ${props.project?"col-start-1 row-start-4 ml-11 text-left md:ml-0 md:text-right":"col-start-2 row-span-3 row-start-1 text-right"} whitespace-nowrap text-base font-bold md:col-start-4 md:row-start-1 md:row-span-1 md:text-lg ${amountClass}`}>{item.certainty==="estimated"?"≈ ":""}{props.project ? "" : item.direction==="incoming"?"+":"−"}{money(item.amount,item.currency)}{props.project&&item.payment_state==="partial"?<span className="mt-1 block max-w-48 whitespace-normal text-xs font-normal text-[var(--ui-text-secondary)]">{t("planning.settlementProgress",{paid:money(item.settled_amount,item.currency),remaining:money(item.remaining_amount,item.currency)})}</span>:null}</strong>
         <ChevronDown className={`${props.project?"col-start-2 row-span-4":"col-start-3 row-span-3"} row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-[220ms] group-open:rotate-180 motion-reduce:transition-none md:col-start-5 md:row-span-1`} aria-hidden="true"/>
       </summary><div className={"grid border-t border-[var(--ui-border-subtle)] bg-[var(--ui-surface-muted)] px-3 text-sm md:px-4 "+(props.project?"gap-2 py-3":"gap-4 pb-4 pt-3 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,17rem)]")}>
         <div className="min-w-0">
@@ -345,9 +356,10 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     return <div className="space-y-6">{confirmed.map(order => {
       const rows = props.items.filter(item => props.links.find(link => link.expected_item_id === item.id)?.order_id === order.id);
       const total = props.project?.orderTotals.find(total => total.order_id === order.id);
+      const progress = projectOrderPaymentProgress(total, props.currencies.find(currency => currency.code === total?.currency)?.minor_units ?? 2);
       if (!rows.length && Number(total?.payment_count) > 0) return null;
       return <section key={order.id} data-order-group={order.id} aria-label={order.name} className="space-y-2">
-        <div className="flex items-start justify-between gap-3 px-1"><div className="min-w-0"><h3 className="break-words text-sm font-semibold">{order.is_default && order.name !== t("orders.defaultName") ? <span className="font-normal text-[var(--ui-text-secondary)]">{t("orders.defaultBadge")} · </span> : null}{order.name}</h3><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{money(total?.contract_gross_amount ?? null,total?.currency ?? null)} · {t("orders.payments",{count:total?.payment_count ?? 0})}</p></div><Button variant="ghost" size="sm" onClick={()=>props.onManageOrder?.(order.id)}>{t("orders.details")}</Button></div>
+        <div className="flex items-start justify-between gap-3 px-1"><div className="min-w-0 flex-1"><h3 className="break-words text-sm font-semibold">{order.is_default && order.name !== t("orders.defaultName") ? <span className="font-normal text-[var(--ui-text-secondary)]">{t("orders.defaultBadge")} · </span> : null}{order.name}<span className={`ml-2 text-xs font-medium ${orderPaymentStateClass(progress.state)}`}>{t(`orders.paymentStates.${progress.state}`)}</span></h3><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{displayMoney(total?.contract_gross_amount ?? null,total?.currency ?? null)}{props.display && total?.currency !== props.display.currency.code ? <span className="ml-2 text-[var(--ui-text-muted)]">{money(total?.contract_gross_amount ?? null,total?.currency ?? null)}</span> : null} · {t("orders.payments",{count:total?.payment_count ?? 0})}</p></div><Button variant="ghost" size="sm" onClick={()=>props.onManageOrder?.(order.id)}>{t("orders.details")}</Button></div>
         {rows.length ? <div className="space-y-1.5">{rows.map(renderItem)}</div> : <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-[var(--ui-text-secondary)]"><p>{t("orders.noSchedule")}</p><Button variant="ghost" size="sm" onClick={()=>props.onManageOrder?.(order.id)}>{t("orders.configure")}</Button></div>}
       </section>;
     })}{!confirmed.length ? <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.allDrafts")}</p> : null}</div>;
@@ -356,12 +368,17 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
   const secondaryFilters=["all","overdue","cancelled"] as const;
   const secondaryHref=(filter:typeof secondaryFilters[number])=>filter==="all"?href(1,props.creditPage,props.filter,period,null,null):filter==="overdue"?href(1,props.creditPage,props.filter,period,null,"overdue"):href(1,props.creditPage,props.filter,period,null,"cancelled");
   return <div className={`w-full min-w-0 ${props.project ? "space-y-3" : "space-y-6"}`}>
-    {props.project?<div className="flex flex-wrap items-center gap-2">{props.toolbar ?? <h2 className="mr-auto text-base font-semibold sm:text-lg">{t(`project.streams.${props.project.stream}`)}</h2>}
-      {props.cashData ? <ProjectCashWorkspace data={props.cashData} currencies={props.currencies} projectId={props.project.projectId} onMatch={setCashToMatch}/> : null}
-      <div className="flex items-center gap-2">
-      {equivalentChoices.length ? <Popover.Root><Popover.Trigger asChild><Button size="sm" variant="ghost" className="size-11 p-0"><span className="sr-only">{t("projectWorkspace.listOptions")}</span><MoreHorizontal aria-hidden="true" className="size-4"/></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={4} collisionPadding={8} className="z-[80] rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3 shadow-[var(--ui-shadow-popover)]"><FormField label={t("planning.equivalent")}><Select aria-label={t("planning.equivalent")} value={selectedEquivalent} onValueChange={value => { setEquivalentCurrency(value); setEquivalentQuotes({}); }}><SelectItem value="">{t("planning.equivalentOff")}</SelectItem>{equivalentChoices.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</Select></FormField></Popover.Content></Popover.Portal></Popover.Root> : null}
-      {props.settings?.finalized_at && (props.project.stream !== "design" || props.project.orders.some(order=>order.status==="confirmed")) ? <Button className="min-h-11 gap-2" onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden="true"/><span className="sm:hidden">{t("projectWorkspace.add")}</span><span className="hidden sm:inline">{t(props.project.stream === "expenses" ? "project.addExpense" : "project.addPayment")}</span></Button> : null}
-    </div></div>:<header className="flex flex-wrap items-end justify-between gap-4"><div className="min-w-0"><h1 className="text-3xl font-semibold tracking-tight text-[var(--ui-text)] sm:text-4xl">{t("planning.title")}</h1><p className="mt-1 max-w-3xl text-sm text-[var(--ui-text-muted)]">{t("planning.description")}</p></div>{props.settings?.finalized_at?<Button className="min-h-11 gap-2" onClick={()=>setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t("planning.create")}</Button>:null}</header>}
+    {props.project ? <div className={props.toolbar ? "grid min-w-0 items-center gap-x-4 gap-y-1 lg:grid-cols-[auto_minmax(0,1fr)]" : "flex flex-wrap items-center gap-2"} data-project-payments-toolbar={props.toolbar ? "" : undefined}>
+      {props.toolbar ?? <h2 className="mr-auto text-base font-semibold sm:text-lg">{t(`project.streams.${props.project.stream}`)}</h2>}
+      <div className={props.toolbar ? "flex h-14 min-w-0 items-center overflow-x-auto p-1" : "contents"}>
+        <div className={props.toolbar ? "ml-auto flex w-max shrink-0 items-center gap-1.5 sm:gap-2" : "contents"}>
+          {props.toolbarActions}
+          {props.settings?.finalized_at && props.project.stream !== "design" ? <Button size={props.toolbar ? "compact" : "default"} className={props.toolbar ? "gap-2" : "min-h-11 gap-2"} onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t(props.project.stream === "expenses" ? "project.addExpense" : props.project.stream === "contractor_bonus" ? "project.addContractorBonus" : props.project.stream === "other" ? "project.addOtherIncome" : "project.addPayment")}</Button> : null}
+          {props.cashData ? <ProjectCashWorkspace compact={Boolean(props.toolbar)} data={props.cashData} currencies={props.currencies} projectId={props.project.projectId} display={props.display} onMatch={setCashToMatch}/> : null}
+        </div>
+      </div>
+    </div>:<header className="flex flex-wrap items-end justify-between gap-4"><div className="min-w-0"><h1 className="text-3xl font-semibold tracking-tight text-[var(--ui-text)] sm:text-4xl">{t("planning.title")}</h1><p className="mt-1 max-w-3xl text-sm text-[var(--ui-text-muted)]">{t("planning.description")}</p></div>{props.settings?.finalized_at?<Button className="min-h-11 gap-2" onClick={()=>setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t("planning.create")}</Button>:null}</header>}
+    {props.toolbarDetails}
     {!props.settings?.finalized_at?<p className={`${panel} p-5 text-sm`}>{t("movements.setupRequired")} <Link href="/finance/accounts" className="underline">{t("movements.setupLink")}</Link></p>:null}
     {!props.project?<div className="flex flex-wrap items-end justify-between gap-3"><div className="space-y-1"><span className="pl-2 text-[11px] font-medium text-[var(--ui-text-muted)]">{t("planning.periodFilters.label")}</span><nav aria-label={t("planning.periodFilters.label")} className="flex flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">{(["month","30days","3months","6months","all"] as const).map((value)=><Link key={value} href={href(1,props.creditPage,props.filter,value)} aria-current={period===value?"page":undefined} className="flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors duration-200 hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] active:bg-[var(--ui-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] aria-[current=page]:shadow-[var(--ui-shadow-panel)] sm:min-h-9">{t(`planning.periodFilters.${value}`)}</Link>)}</nav></div>
     <div className="flex flex-wrap items-end gap-2"><div className="space-y-1"><span className="pl-2 text-[11px] font-medium text-[var(--ui-text-muted)]">{t("planning.direction")}</span><nav aria-label={t("planning.direction")} className="flex flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">{(["all","incoming","outgoing"] as const).map((filter)=><Link key={filter} href={href(1,props.creditPage,filter)} aria-current={props.filter===filter?"page":undefined} className="flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors duration-200 hover:bg-[var(--ui-surface)] hover:text-[var(--ui-text)] active:bg-[var(--ui-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] aria-[current=page]:shadow-[var(--ui-shadow-panel)] sm:min-h-9">{filter==="incoming"?t("planning.income"):filter==="outgoing"?t("planning.expenses"):t("planning.filtersList.all")}</Link>)}</nav></div><Popover.Root><Popover.Trigger asChild><button type="button" aria-haspopup="menu" className="flex min-h-11 items-center rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] transition-colors duration-200 hover:bg-[var(--ui-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] sm:min-h-11">{t("planning.secondaryFilters")}{secondaryActive?` · ${t(`planning.filtersList.${props.status}`)}`:""}<ChevronDown aria-hidden="true" className="ml-2 size-4 shrink-0"/></button></Popover.Trigger><Popover.Portal><Popover.Content role="menu" align="end" sideOffset={4} collisionPadding={8} className="z-[80] min-w-44 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]">{secondaryFilters.map((filter)=><Popover.Close asChild key={filter}><Link role="menuitem" href={secondaryHref(filter)} aria-current={filter===props.status?"page":undefined} className="flex min-h-11 items-center rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-sm text-[var(--ui-text-secondary)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] active:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--ui-text)] sm:min-h-9">{t(`planning.filtersList.${filter}`)}</Link></Popover.Close>)}</Popover.Content></Popover.Portal></Popover.Root></div></div>:null}
@@ -375,15 +392,16 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     <Dialog isOpen={Boolean(historyItem)} onRequestClose={() => setHistoryItemId(null)} title={t("planning.history")} closeLabel={t("movements.close")} className="sm:max-w-[40rem]">
       {historyItem ? <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
         <h3 className="font-semibold">{titleFor(historyItem)}</h3>
-        <p className="ui-numeric mt-1 text-sm text-[var(--ui-text-secondary)]">{t("planning.settlementProgress", { paid: money(historyItem.settled_amount, historyItem.currency), remaining: money(historyItem.remaining_amount, historyItem.currency) })}</p>
-        {Number(historyItem.adjustment_amount ?? 0) > 0 ? <p className="ui-numeric mt-1 text-sm text-[var(--ui-text-secondary)]">{t("settlement.closedAmount")}: {money(historyItem.adjustment_amount, historyItem.currency)}</p> : null}
+        <p className="ui-numeric mt-1 text-sm text-[var(--ui-text-secondary)]">{t("planning.settlementProgress", { paid: displayMoney(historyItem.settled_amount, historyItem.currency), remaining: displayMoney(historyItem.remaining_amount, historyItem.currency) })}</p>
+        {Number(historyItem.adjustment_amount ?? 0) > 0 ? <p className="ui-numeric mt-1 text-sm text-[var(--ui-text-secondary)]">{t("settlement.closedAmount")}: {displayMoney(historyItem.adjustment_amount, historyItem.currency)}</p> : null}
         <ol className="mt-4 divide-y divide-[var(--ui-border)]">{props.history.filter(entry => entry.expected_item_id === historyItem.id).map(entry => {
           const released = props.history.filter(release => release.released_allocation_id === entry.id).reduce((sum, release) => sum + release.amount, 0);
           const canRelease = entry.amount > 0 && entry.amount + released > 0 && !props.tripLinks.some(link => link.expected_item_id === historyItem.id && link.cash);
           return <li key={entry.id} className="py-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><div><p className="font-medium">{entry.amount < 0 ? t(entry.cause_movement_id ? "planning.cashRelease" : "planning.manualRelease") : t("planning.matched")}</p><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{date(entry.movement.financial_date)}</p></div><strong className="ui-numeric">{money(entry.amount, historyItem.currency)}</strong></div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><div><p className="font-medium">{entry.amount < 0 ? t(entry.cause_movement_id ? "planning.cashRelease" : "planning.manualRelease") : t("planning.matched")}</p><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{date(entry.movement.financial_date)}</p></div><strong className="ui-numeric">{displayMoney(entry.amount, historyItem.currency)}</strong></div>
             <AnimatedDisclosure title={t("projectWorkspace.settlementDetails")}>
               <div className="space-y-2 pb-2 text-xs text-[var(--ui-text-secondary)]">
+                {props.display && historyItem.currency !== props.display.currency.code ? <p>{money(entry.amount, historyItem.currency)}</p> : null}
                 {entry.cash ? <p>{t(historyItem.direction === "incoming" ? "planning.actualReceived" : "planning.actualPaid")}: {money(String(entry.cash.amount).replace(/^-/, ""), entry.cash.currency)}</p> : null}
                 {entry.cash ? <p>{t("settlement.nativeAllocated")}: {money(entry.payment_amount, entry.payment_currency)}</p> : null}
                 {entry.cash && entry.cash.currency !== historyItem.currency ? <p>{t("movements.settlementRateCompact", { currency: entry.cash.currency, obligation: historyItem.currency ?? "", rate: formatFinanceDecimal(entry.settlement_rate, locale, { maximumFractionDigits: 10 }), source: t(entry.settlement_source === "nbu" ? "movements.nbuShort" : "movements.manualShort"), date: date(entry.settlement_effective_date) })}</p> : null}
@@ -394,7 +412,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
           </li>;
         })}</ol>
         {props.adjustments.some(entry => entry.expected_item_id === historyItem.id) ? <ol className="mt-2 divide-y divide-[var(--ui-border)] border-t border-[var(--ui-border)]">{props.adjustments.filter(entry => entry.expected_item_id === historyItem.id).map(entry => <li key={entry.id} className="space-y-2 py-3 text-sm">
-          <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="font-medium">{t(entry.amount > 0 ? "settlement.closureEvent" : "settlement.closureReversed")}</p><strong className="ui-numeric">{money(entry.amount, entry.currency)}</strong></div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="font-medium">{t(entry.amount > 0 ? "settlement.closureEvent" : "settlement.closureReversed")}</p><strong className="ui-numeric">{displayMoney(entry.amount, entry.currency)}</strong></div>
           <p className="text-xs text-[var(--ui-text-secondary)]">{date(entry.financial_date)} · {t("settlement.noCash")}</p>
           <p className="text-xs text-[var(--ui-text-secondary)]">{entry.amount > 0 ? t(`settlement.reasons.${entry.reason}`) : entry.reason}{entry.explanation ? ` · ${entry.explanation}` : ""}</p>
           {entry.amount > 0 && !props.adjustments.some(reversal => reversal.reversed_adjustment_id === entry.id) ? <Button size="sm" variant="ghost" className="min-h-11" onClick={() => { setHistoryItemId(null); setReversingClosure(entry.id); }}>{t("settlement.reverseClosure")}</Button> : null}
@@ -420,10 +438,10 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
     <Dialog isOpen={costEditing!==null} closeDisabled={pending} onRequestClose={()=>setCostEditing(null)} title={t("schedules.completeCost")} closeLabel={t("movements.close")}>
       {costEditing?<div className="p-5"><PayrollCostForm cost={costEditing} onSaved={()=>{setSavedCost(costEditing);setCostEditing(null);}} onPending={setPending}/></div>:null}
     </Dialog>
-    <Dialog isOpen={editing!==null} className={props.project?.stream==="expenses"?"sm:max-w-[36rem]":undefined} closeDisabled={pending} onRequestClose={()=>setEditing(null)} title={t(editing==="new"&&props.project?.stream==="expenses"?"project.addExpense":editing==="new"?"planning.create":"planning.edit")} closeLabel={t("movements.close")}>
-      {editing?<div className={`min-h-0 overflow-y-auto overscroll-contain p-4 ${props.project?.stream==="expenses"?"sm:p-5":"sm:p-6"}`}><ExpectedForm obligation={editing!=="new"?props.obligations.find((entry)=>entry.expected_item_id===editing?.id)?.component:undefined} data={props} project={props.project} item={editing==="new"?undefined:editing} onSaved={()=>{const created=editing==="new";setEditing(null);if(created&&props.itemId&&!props.project)router.push("/finance/expected");}} onPending={setPending}/></div>:null}
+    <Dialog isOpen={editing!==null} className={editingConfirmedOrder ? "h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[34rem] [&>header]:items-center" : props.project?.stream==="expenses"?"sm:max-w-[36rem]":undefined} closeDisabled={pending} onRequestClose={()=>setEditing(null)} title={t(editingConfirmedOrder ? "planning.editOrderPayment" : editing==="new"&&props.project?.stream==="expenses"?"project.addExpense":editing==="new"?"planning.create":"planning.edit")} closeLabel={t("movements.close")}>
+      {editing?<div className={`min-h-0 overflow-y-auto overscroll-contain p-4 ${editingConfirmedOrder || props.project?.stream==="expenses"?"sm:p-5":"sm:p-6"}`}><ExpectedForm hasAllocationHistory={editing !== "new" && props.history.some(entry => entry.expected_item_id === editing.id)} obligation={editing!=="new"?props.obligations.find((entry)=>entry.expected_item_id===editing?.id)?.component:undefined} data={props} project={props.project} item={editing==="new"?undefined:editing} onSaved={()=>{const created=editing==="new";setEditing(null);if(created&&props.itemId&&!props.project)router.push("/finance/expected");}} onPending={setPending}/></div>:null}
     </Dialog>
-    <Dialog isOpen={recording!==null} className="sm:max-w-[42rem]" closeDisabled={pending} onRequestClose={()=>setRecording(null)} title={t(props.project?.stream==="expenses"?"project.recordExpense":"planning.recordPayment")} closeLabel={t("movements.close")}>
+    <Dialog isOpen={recording!==null} className={isProjectSettlement ? "h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[34rem]" : "sm:max-w-[42rem]"} closeDisabled={pending} onRequestClose={()=>setRecording(null)} title={t(props.project?.stream==="expenses"?"project.recordExpense":"planning.recordPayment")} closeLabel={t("movements.close")}>
       {recording?<div className="min-h-0 overflow-y-auto p-4 sm:p-5">{props.project && recording.direction === "incoming" && props.categories.find(category => category.id === recording.category_id)?.nature === "operating" ? <ProjectSettlementForm data={props} projectId={props.project.projectId} today={today} expected={recording} onSaved={() => { setRecording(null); router.refresh(); }} onPending={setPending}/> : <EntryForm data={props} today={today} transfer={false} expected={recording} onSaved={()=>{setRecording(null);router.refresh();}} onPending={setPending}/>}</div>:null}
     </Dialog>
     <Dialog isOpen={closingRemainder !== null} closeDisabled={pending} onRequestClose={() => setClosingRemainderId(null)} title={t("settlement.closeRemainder")} closeLabel={t("movements.close")}>

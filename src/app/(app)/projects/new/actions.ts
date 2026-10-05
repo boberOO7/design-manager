@@ -66,7 +66,7 @@ async function createProjectRecord(
       description: project.description || null,
       total_area_m2: project.total_area_m2,
       priority: project.priority,
-      start_date: project.start_date,
+      start_date: project.start_date || null,
       due_date: project.due_date || null,
       ...(sourceLeadId ? { source_lead_id: sourceLeadId } : {}),
     },

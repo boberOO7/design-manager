@@ -12,6 +12,7 @@ import { ProjectFinanceWorkspace } from "./project-finance-workspace";
 import { getFinanceDisplayCurrency } from "@/data/queries/finance-display-currency";
 import { getFinanceDisplayRate } from "@/data/queries/finance-overview";
 import { projectContractSummary } from "@/lib/finance-project-view";
+import { parseProjectOrderDraft } from "@/lib/finance-project-orders";
 
 export async function ProjectFinanceSection({ projectId, query }: { projectId: string; query: Partial<Record<"stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>> }) {
   const pageNumber = (value: string | string[] | undefined) => typeof value === "string" && /^\d+$/.test(value) ? Math.max(1, Math.min(100_000, Number(value))) : 1;
@@ -28,7 +29,15 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
   const displayUnit = foundation.currencies.find(v => v.code === displayCurrency);
   const contractual = project.totals.filter(total => total.stream === "design");
   const displayRates: Record<string, string | null> = {};
-  await Promise.all([...new Set(contractual.flatMap(total => total.currency ? [total.currency] : []))].map(async code => {
+  const nativeCurrencies = new Set([
+    ...project.totals.map(total => total.currency),
+    ...project.terms.map(term => term.currency),
+    ...project.orders.map(order => parseProjectOrderDraft(order.draft_plan, projectId, order.id)?.currency),
+    ...foundation.accounts.map(account => account.currency),
+    ...(planning?.items.map(item => item.currency) ?? []),
+    foundation.settings?.base_currency,
+  ].filter((code): code is string => Boolean(code)));
+  await Promise.all([...nativeCurrencies].map(async code => {
     try { displayRates[code] = code === displayCurrency ? "1" : await getFinanceDisplayRate(code, displayCurrency, today); }
     catch { displayRates[code] = null; }
   }));
@@ -43,9 +52,10 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
     tab === "result" ? getFinanceManagement({ report: "projects", project: projectId, from, to: period === "custom" ? query.profitTo : today }) : null,
     tab === "payments" ? getFinanceProjectCash(projectId) : null,
   ]);
-  return <ProjectFinanceWorkspace {...foundation} planning={planning} displayCurrency={displayCurrency} summary={summary} project={project} stream={stream} tab={tab} today={today} page={page} creditPage={creditPage} filter={filter} itemId={itemId}
+  const display = displayUnit ? { currency: displayUnit, rates: displayRates } : undefined;
+  return <ProjectFinanceWorkspace {...foundation} planning={planning} displayCurrency={displayCurrency} display={display} summary={summary} project={project} stream={stream} tab={tab} today={today} page={page} creditPage={creditPage} filter={filter} itemId={itemId}
     cashData={cash}>
     {management ? <ProjectResultWorkspace key={management.version} data={management} projectId={projectId} period={period}/> : null}
-    {tab === "expenses" && currency ? <ProjectTripsSection projectId={projectId} currency={currency}/> : null}
+    {tab === "expenses" && currency ? <ProjectTripsSection projectId={projectId} currency={currency} display={display}/> : null}
   </ProjectFinanceWorkspace>;
 }

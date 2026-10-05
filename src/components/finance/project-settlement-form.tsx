@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { getProjectSettlementOptions, saveProjectSettlement, saveRemainderAdjustment } from "@/app/(app)/finance/project-payments/actions";
 import { quoteFinanceSettlement } from "@/app/(app)/finance/movements/actions";
 import { actualFinanceSettlementRate, previewFinanceAllocationSplit, proposeFinanceAllocations } from "@/lib/finance-fx-preview";
-import { financeAmountUnits, formatFinanceAmount, formatFinanceDecimal } from "@/lib/finance";
+import { financeAmountText, financeAmountUnits, formatFinanceAmount, formatFinanceDecimal } from "@/lib/finance";
 import { remainderReasons, type ProjectSettlementOptions } from "@/lib/finance-project-settlement";
 import type { FinanceExpected } from "@/lib/finance-planning";
 import type { getFinanceData } from "@/data/queries/finance";
@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
+import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
+import { Check, Minus, Plus } from "lucide-react";
 
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 
@@ -22,6 +24,9 @@ export function ProjectSettlementForm({ data, expected, projectId, today, onSave
   data: Foundation; expected: FinanceExpected; projectId: string; today: string; onSaved: () => void; onPending: (pending: boolean) => void;
 }) {
   const t = useTranslations("Finance"), locale = useLocale();
+  const noteId = useId(), noteField = useRef<HTMLTextAreaElement>(null);
+  const [fxOpen, setFxOpen] = useState(false), [allocationOpen, setAllocationOpen] = useState(false), [noteOpen, setNoteOpen] = useState(false);
+  useEffect(() => { if (noteOpen) noteField.current?.focus({ preventScroll: true }); }, [noteOpen]);
   const accounts = data.accounts.filter(account => !account.archived_at);
   const expectedCategory = data.categories.find(category => category.id === expected.category_id);
   const [categoryId, setCategoryId] = useState(expectedCategory && !expectedCategory.archived_at ? expectedCategory.id : "");
@@ -68,36 +73,57 @@ export function ProjectSettlementForm({ data, expected, projectId, today, onSave
   const show = candidates.map((row, index) => ({ row, index })).filter(({ row, index }) => index === 0 || Number(values[index]) > 0 || extraIds.includes(row.id));
   const available = candidates.filter(row => !show.some(visible => visible.row.id === row.id));
   const money = (value: string, currency = obligation) => currency ? formatFinanceAmount(value, currency, locale) : value;
+  const orderName = expected.order_name ?? options?.orderName;
+  const remaining = candidates[0]?.remaining ?? String(expected.remaining_amount ?? "0");
+  const hasExcess = Boolean(preview && obligation && financeAmountUnits(preview.converted, obligation.minor_units) > financeAmountUnits(remaining, obligation.minor_units));
+  const selectedRemaining = preview && obligation ? financeAmountText(financeAmountUnits(remaining, obligation.minor_units) - financeAmountUnits(preview.allocations[0]?.amount ?? "0", obligation.minor_units), obligation.minor_units) : remaining;
+  const distributed = candidates.flatMap((row, index) => index > 0 && preview && Number(preview.allocations[index]?.amount) > 0 ? [{ row, amount: preview.allocations[index].amount }] : []);
+  const equivalentMoney = (value: string) => `${cross ? "≈ " : ""}${money(value)}`;
   const allocations = candidates.map((row, index) => ({ itemId: row.id, amount: preview?.allocations[index]?.amount ?? "0" }));
-  return <FinanceActionForm action={saveProjectSettlement} onSaved={onSaved} onPending={onPending} onResult={result => { setStaleResult(result.id === "stalePreview"); if (result.id === "stalePreview") setStale(true); }} showMessage={!staleResult || stale} disabled={!preview || loading || loadError || stale} label={t("movements.record")}>
+  return <FinanceActionForm action={saveProjectSettlement} onSaved={onSaved} onPending={onPending} onResult={result => { setStaleResult(result.id === "stalePreview"); if (result.id === "stalePreview") setStale(true); }} showMessage={!staleResult || stale} disabled={!preview || loading || loadError || stale} label={t("movements.record")} fieldsetClassName="min-w-0 space-y-3" submitClassName="min-h-11">
     <input type="hidden" name="projectId" value={projectId}/><input type="hidden" name="expectedItemId" value={expected.id ?? ""}/>
     <input type="hidden" name="kind" value="incoming"/><input type="hidden" name="nature" value="operating"/>
     {expectedCategory && !expectedCategory.archived_at ? <input type="hidden" name="categoryId" value={categoryId}/> : <FinanceCategorySelect categories={data.categories.filter(category => category.nature === "operating")} direction="incoming" value={categoryId} onValueChange={setCategoryId}/>}
     <input type="hidden" name="allocations" value={JSON.stringify(allocations)}/><input type="hidden" name="snapshot" value={JSON.stringify(options?.snapshot ?? null)}/>
     <input type="hidden" name="settlementFx" value={JSON.stringify({ rate, source: !cross ? "identity" : mode, effectiveDate: date })}/>
-    <p className="text-sm font-semibold">{expected.description}</p>
-    {options?.orderName ? <div className="space-y-1 text-xs text-[var(--ui-text-secondary)]"><p>{t("orders.order")}: {options.orderName}</p><p>{t("orders.allocationHelp")}</p></div> : null}
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
-      <FormField label={t("movements.account")}><Select name="accountId" aria-label={t("movements.account")} value={accountId} onValueChange={value => { setAccountId(value); setMode("nbu"); setManual(""); setAmount(accounts.find(row => row.id === value)?.currency === expected.currency ? String(expected.remaining_amount ?? "") : ""); }} required>{accounts.map(row => <SelectItem key={row.id} value={row.id}>{row.name} · {row.currency}</SelectItem>)}</Select></FormField>
-      <FormField label={t("movements.actualAmount", { currency: account?.currency ?? "" })}><Input name="amount" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required/></FormField>
-      <FormField label={t("movements.date")}><DatePicker name="date" aria-label={t("movements.date")} value={date} onValueChange={setDate} min="1900-01-01" max={today} locale={locale} required/></FormField>
+    <div className="space-y-1">
+      <p className="break-words text-sm font-semibold">{expected.description}{orderName ? <span className="font-normal text-[var(--ui-text-secondary)]"> · {orderName}</span> : null}</p>
+      <p className="ui-numeric text-sm text-[var(--ui-text-secondary)]">{t("planning.remaining")} {money(remaining)}</p>
     </div>
-    {cross ? <div className="space-y-3 border-t border-[var(--ui-border-subtle)] pt-3">
-      <FormField label={t("movements.settlementSourceLabel")}><Select aria-label={t("movements.settlementSourceLabel")} value={mode} onValueChange={value => setMode(value === "manual" ? "manual" : "nbu")}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("settlement.actualRate")}</SelectItem></Select></FormField>
-      {mode === "manual" ? <div className="grid gap-3 sm:grid-cols-2"><FormField label={t("settlement.manualInput")}><Select aria-label={t("settlement.manualInput")} value={manualKind} onValueChange={value => { setManualKind(value === "equivalent" ? "equivalent" : "rate"); setManual(""); }}><SelectItem value="rate">{t("settlement.rateOption")}</SelectItem><SelectItem value="equivalent">{t("settlement.equivalentOption", { currency: expected.currency ?? "" })}</SelectItem></Select></FormField><FormField label={t(manualKind === "rate" ? "movements.settlementRate" : "settlement.equivalent", { currency: account?.currency ?? "", obligation: expected.currency ?? "" })}><Input inputMode="decimal" value={manual} onChange={event => setManual(event.target.value)} required/></FormField></div> : !quoted ? <p role="status" className="text-xs text-[var(--ui-text-secondary)]">{t(quote?.key === quoteKey ? "settlement.quoteUnavailable" : "settlement.quoteLoading")}</p> : null}
-      {/^[0-9]+(?:\.[0-9]+)?$/.test(rate) ? <p className="ui-numeric text-xs text-[var(--ui-text-secondary)]">1 {account?.currency} = {formatFinanceDecimal(rate, locale, { maximumFractionDigits: 10 })} {expected.currency} · {date}</p> : null}
-    </div> : null}
-    <section aria-label={t("settlement.preview")} className="space-y-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-sm font-semibold">{t("settlement.preview")}</h3>{preview ? <span className="ui-numeric text-xs text-[var(--ui-text-secondary)]">{t("settlement.convertedTotal", { amount: money(preview.converted) })}</span> : null}</div>
-      {loading ? <p role="status" className="text-sm">{t("settlement.loading")}</p> : loadError ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("settlement.errors.load")}</p> : null}
-      {!loading && !loadError ? show.map(({ row, index }) => <div key={row.id} className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]"><div className="min-w-0"><p className="break-words text-sm font-medium">{row.title}</p><p className="mt-0.5 text-xs text-[var(--ui-text-secondary)]">{t("planning.remaining")}: {money(row.remaining)}</p></div><FormField label={<span className="sr-only">{t("settlement.applyTo", { name: row.title, currency: options?.currency ?? "" })}</span>} className="min-w-0 [&>span]:hidden"><Input aria-label={t("settlement.applyTo", { name: row.title, currency: options?.currency ?? "" })} className="ui-numeric" inputMode="decimal" value={values[index]} onChange={event => { setExtraIds(ids => ids.includes(row.id) ? ids : [...ids, row.id]); setEdited({ key: editKey, amounts: values.map((value, i) => i === index ? event.target.value : value) }); }}/></FormField></div>) : null}
-      {available.length && preview ? <Select aria-label={t("settlement.addPayment")} value="" onValueChange={value => setExtraIds(ids => [...ids, value])}><SelectItem value="">{t("settlement.addPayment")}</SelectItem>{available.map(row => <SelectItem key={row.id} value={row.id}>{row.title} · {money(row.remaining)}</SelectItem>)}</Select> : null}
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+      <FormField label={t("movements.account")}><Select name="accountId" aria-label={t("movements.account")} value={accountId} onValueChange={value => { setAccountId(value); setMode("nbu"); setManual(""); setFxOpen(false); setAmount(accounts.find(row => row.id === value)?.currency === expected.currency ? String(expected.remaining_amount ?? "") : ""); }} required>{accounts.map(row => <SelectItem key={row.id} value={row.id}>{row.name} · {row.currency}</SelectItem>)}</Select></FormField>
+      <FormField label={t("settlement.received")}><Input name="amount" aria-label={t("settlement.received")} data-dialog-initial-focus autoFocus inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required/></FormField>
+    </div>
+    <FormField label={t("movements.date")} className="w-48 max-w-full"><DatePicker name="date" aria-label={t("movements.date")} value={date} onValueChange={setDate} min="1900-01-01" max={today} locale={locale} required/></FormField>
+    <div data-settlement-preview aria-busy={loading} className="min-h-12 sm:min-h-6">
+      {loadError ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("settlement.errors.load")}</p> : null}
+      {preview && !loading && !loadError ? <p role="status" className="ui-numeric text-sm leading-relaxed text-[var(--ui-text-secondary)]">
+        {equivalentMoney(preview.converted)} · {Number(selectedRemaining) > 0 ? t("settlement.willRemain", { amount: money(selectedRemaining) }) : distributed.length ? t("settlement.willCloseNamed", { name: candidates[0]?.title ?? expected.description ?? "" }) : <>{t("settlement.willSettle")} <Check aria-hidden="true" className="inline size-3.5 text-[var(--ui-success-text)]"/></>}
+        {distributed.map(({ row, amount }) => <span key={row.id}> + {t("settlement.willApply", { amount: equivalentMoney(amount), name: row.title })}</span>)}
+        {Number(preview.advance) > 0 ? <span> · {t("settlement.willLeaveUnallocated", { amount: money(preview.advance, native) })}</span> : null}
+      </p> : null}
+      {cross && mode === "nbu" && !quoted && amount && quote?.key === quoteKey ? <p role="status" className="text-xs text-[var(--ui-text-secondary)]">{t("settlement.quoteUnavailable")}</p> : null}
       {error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t(`settlement.errors.${error}`)}</p> : null}
-      {preview ? <p className="ui-numeric border-t border-[var(--ui-border)] pt-3 text-sm"><span className="text-[var(--ui-text-secondary)]">{t("settlement.advance")}:</span> <strong>{money(preview.advance, native)}</strong></p> : <p className="text-xs text-[var(--ui-text-secondary)]">{t("settlement.enterAmount")}</p>}
-      <p className="text-xs text-[var(--ui-text-muted)]">{t("settlement.advanceHelp")}</p>
-      {stale || loadError ? <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => { setRefresh(value => value + 1); setStale(false); }}>{t("settlement.refresh")}</Button> : null}
-    </section>
-    <FormField label={t("movements.description")}><Textarea name="description" rows={2} maxLength={2000}/></FormField>
+    </div>
+    {stale || loadError ? <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => { setRefresh(value => value + 1); setStale(false); }}>{t("settlement.refresh")}</Button> : null}
+    {cross ? <AnimatedDisclosure title={t("settlement.changeFx")} open={fxOpen} onOpenChange={setFxOpen}>
+      <div className="space-y-3 pb-2">
+        <FormField label={t("movements.settlementSourceLabel")}><Select aria-label={t("movements.settlementSourceLabel")} value={mode} onValueChange={value => setMode(value === "manual" ? "manual" : "nbu")}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("settlement.actualRate")}</SelectItem></Select></FormField>
+        {mode === "manual" ? <div className="grid gap-3 sm:grid-cols-2"><FormField label={t("settlement.manualInput")}><Select aria-label={t("settlement.manualInput")} value={manualKind} onValueChange={value => { setManualKind(value === "equivalent" ? "equivalent" : "rate"); setManual(""); }}><SelectItem value="rate">{t("settlement.rateOption")}</SelectItem><SelectItem value="equivalent">{t("settlement.equivalentOption", { currency: expected.currency ?? "" })}</SelectItem></Select></FormField><FormField label={t(manualKind === "rate" ? "movements.settlementRate" : "settlement.equivalent", { currency: account?.currency ?? "", obligation: expected.currency ?? "" })}><Input aria-label={t(manualKind === "rate" ? "movements.settlementRate" : "settlement.equivalent", { currency: account?.currency ?? "", obligation: expected.currency ?? "" })} inputMode="decimal" value={manual} onChange={event => setManual(event.target.value)} required/></FormField></div> : null}
+        {/^[0-9]+(?:\.[0-9]+)?$/.test(rate) ? <p className="ui-numeric text-xs text-[var(--ui-text-muted)]">1 {account?.currency} = {formatFinanceDecimal(rate, locale, { maximumFractionDigits: 10 })} {expected.currency} · {date}</p> : null}
+      </div>
+    </AnimatedDisclosure> : null}
+    {hasExcess || edited?.key === editKey || allocationOpen ? <AnimatedDisclosure title={t("settlement.changeAllocation")} open={allocationOpen} onOpenChange={setAllocationOpen}>
+      <section aria-label={t("settlement.preview")} className="space-y-3 pb-2">
+        {!loading && !loadError ? show.map(({ row, index }) => <div key={row.id} className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]"><div className="min-w-0"><p className="break-words text-sm font-medium">{row.title}</p><p className="mt-0.5 text-xs text-[var(--ui-text-secondary)]">{t("planning.remaining")}: {money(row.remaining)}</p></div><FormField label={<span className="sr-only">{t("settlement.applyTo", { name: row.title, currency: options?.currency ?? "" })}</span>} className="min-w-0 [&>span]:hidden"><Input aria-label={t("settlement.applyTo", { name: row.title, currency: options?.currency ?? "" })} className="ui-numeric" inputMode="decimal" value={values[index]} onChange={event => { setExtraIds(ids => ids.includes(row.id) ? ids : [...ids, row.id]); setEdited({ key: editKey, amounts: values.map((value, i) => i === index ? event.target.value : value) }); }}/></FormField></div>) : null}
+        {available.length && preview ? <Select aria-label={t("settlement.addPayment")} value="" onValueChange={value => setExtraIds(ids => [...ids, value])}><SelectItem value="">{t("settlement.addPayment")}</SelectItem>{available.map(row => <SelectItem key={row.id} value={row.id}>{row.title} · {money(row.remaining)}</SelectItem>)}</Select> : null}
+        <p className="text-xs text-[var(--ui-text-muted)]">{t("settlement.unallocatedHelp")}</p>
+      </section>
+    </AnimatedDisclosure> : null}
+    <div>
+      <Button type="button" variant="ghost" size="sm" id={`${noteId}-trigger`} aria-expanded={noteOpen} aria-controls={noteId} className="min-h-11 gap-2 px-0 font-medium" onClick={() => setNoteOpen(value => !value)}>{noteOpen ? <Minus aria-hidden="true" className="size-4"/> : <Plus aria-hidden="true" className="size-4"/>}{t("settlement.addNote")}</Button>
+      <AnimatedFormContent id={noteId} labelledBy={`${noteId}-trigger`} isOpen={noteOpen}><FormField label={t("movements.description")}><Textarea ref={noteField} name="description" rows={2} maxLength={2000}/></FormField></AnimatedFormContent>
+    </div>
   </FinanceActionForm>;
 }
 

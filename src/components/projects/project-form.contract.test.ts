@@ -79,7 +79,7 @@ describe("compact project creation contract", () => {
 
   it("exposes only the authoritative completion date for completed-project corrections", async () => {
     const [completionForm, page, editAction] = await Promise.all([readFile(completionDateFormPath, "utf8"), readFile(projectPagePath, "utf8"), readFile(editActionPath, "utf8")]);
-    const correctionAction = editAction.slice(editAction.indexOf("export async function updateProjectCompletionDate"), editAction.indexOf("export async function archiveProject"));
+    const correctionAction = editAction.slice(editAction.indexOf("export async function updateProjectCompletionDate"), editAction.indexOf("export async function updateProjectActualStartDate"));
 
     expect(page).toContain('project.status === "completed" && canManage');
     expect(page).toContain("<ProjectCompletionDateForm");

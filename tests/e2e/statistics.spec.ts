@@ -64,6 +64,9 @@ test.beforeAll(async () => {
       (${id(taskIds[1])},${id(projectId)},'Statistics credit B','stage_2','todo','normal',${id(employee.id)},${id(admin.id)},100);
     select set_config('request.jwt.claim.sub',${id(admin.id)},false);
     update public.projects set status='active' where id in (${id(projectId)},${id(auditlessCompletedProjectId)},${id(ongoingProjectId)});
+    update public.projects set started_at=current_date-45 where id=${id(projectId)};
+    update public.projects set started_at=current_date-35 where id=${id(auditlessCompletedProjectId)};
+    update public.projects set started_at=current_date-12 where id=${id(ongoingProjectId)};
     update public.project_activity set created_at=(current_date-45)::timestamp
       where project_id=${id(projectId)} and entity_type='project' and action_type='project_lifecycle_changed'
         and changes->'status'->>'from'='planned' and changes->'status'->>'to'='active';

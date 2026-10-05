@@ -38,7 +38,7 @@ function formatChange(change: ActivityChangeDetails, locale: string, { statusT, 
     if (change.field === "assignee_id") return value === null ? tasksT("unassigned") : typeof value === "string" ? memberName(value) : t("unknownMember");
     if (change.field === "status" && typeof value === "string") return statusT(value === "in_progress" ? "inProgress" : value);
     if (change.field === "priority" && typeof value === "string") return priorityT(value);
-    if ((change.field === "due_date" || change.field === "completed_at") && typeof value === "string") return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+    if ((change.field === "due_date" || change.field === "completed_at" || change.field === "started_at") && typeof value === "string") return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T00:00:00`));
     if (value === null) return t("noDate");
     if (typeof value === "boolean") return value ? t("active") : t("inactive");
     if (typeof value === "string" && isUuid(value)) return memberName(value);

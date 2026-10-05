@@ -116,7 +116,8 @@ test("project settlement previews, records cross-currency allocations, and close
   await expect(dialog).toContainText("First contract stage");
   await dialog.getByRole("combobox", { name: f.movements.account, exact: true }).click();
   await page.getByRole("option", { name: "B Operating EUR · EUR", exact: true }).click();
-  await dialog.getByLabel(f.movements.actualAmount.replace("{currency}", "EUR"), { exact: true }).fill("1100");
+  await dialog.getByLabel(settlement.received, { exact: true }).fill("1100");
+  await dialog.getByRole("button", { name: settlement.changeFx, exact: true }).click();
   await dialog.getByRole("combobox", { name: f.movements.settlementSourceLabel, exact: true }).click();
   await page.getByRole("option", { name: settlement.actualRate, exact: true }).click();
   await dialog.getByRole("combobox", { name: settlement.manualInput, exact: true }).click();
@@ -126,14 +127,14 @@ test("project settlement previews, records cross-currency allocations, and close
   await dialog.getByRole("combobox", { name: settlement.manualInput, exact: true }).click();
   await page.getByRole("option", { name: settlement.rateOption, exact: true }).click();
   await dialog.getByLabel(f.movements.settlementRate.replace("{currency}", "EUR").replace("{obligation}", "USD"), { exact: true }).fill("1.16");
+  await dialog.getByRole("button", { name: settlement.changeAllocation, exact: true }).click();
   const firstAllocation = dialog.getByLabel(settlement.applyTo.replace("{name}", "First contract stage").replace("{currency}", "USD"), { exact: true });
   const secondAllocation = dialog.getByLabel(settlement.applyTo.replace("{name}", "Second contract stage").replace("{currency}", "USD"), { exact: true });
   await expect(firstAllocation).toHaveValue("830.00");
   await expect(secondAllocation).toHaveValue("446.00");
   await secondAllocation.fill("330");
-  const preview = dialog.getByRole("region", { name: settlement.preview, exact: true });
-  await expect(preview).toContainText(settlement.advance);
-  await expect(preview).toContainText(/100[,.]00\s*EUR/);
+  const consequence = dialog.getByRole("status");
+  await expect(consequence).toContainText(/100[,.]00\s*EUR/);
   await dialog.screenshot({ path: testInfo.outputPath("settlement-preview-desktop.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -178,7 +179,7 @@ test("project settlement previews, records cross-currency allocations, and close
   dialog = page.getByRole("dialog");
   await dialog.getByRole("combobox", { name: f.movements.account, exact: true }).click();
   await page.getByRole("option", { name: "A Operating USD · USD", exact: true }).click();
-  await dialog.getByLabel(f.movements.actualAmount.replace("{currency}", "USD"), { exact: true }).fill("669.98");
+  await dialog.getByLabel(settlement.received, { exact: true }).fill("669.98");
   await dialog.getByRole("button", { name: f.movements.record, exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(sql(`select e.amount::text||' '||e.currency from public.finance_movement_entries e where e.studio_id=${studio} and e.account_id='${usdId}' and e.entry_role='primary' order by e.amount desc limit 1`)).toMatch(/^669\.98(?:0+)? USD$/);

@@ -998,7 +998,10 @@
     "inactive": "Inactive",
     "assignee": "Assignee",
     "dueDate": "Due date",
-    "assignedArea": "Assigned area"
+    "assignedArea": "Assigned area",
+    "actualStartDate": "Actual start date",
+    "planDates": "Plan",
+    "factDates": "Fact"
   },
   "Checklists": {
     "checklist": "Checklist",
@@ -2252,7 +2255,9 @@
       "dateInvalid": "Choose a valid date.",
       "dueDateBeforeStart": "The due date cannot be earlier than the start date.",
       "completionDateFuture": "The completion date cannot be in the future.",
-      "stageAssigneesInvalid": "Choose valid stage assignees."
+      "stageAssigneesInvalid": "Choose valid stage assignees.",
+      "actualStartDateFuture": "The actual start date cannot be in the future.",
+      "completionBeforeActualStart": "Completion cannot be before the actual start."
     },
     "errors": {
       "createPermission": "Only active studio administrators can create projects.",
@@ -2262,7 +2267,8 @@
       "unavailable": "The project was not found or is not available.",
       "statusManaged": "Project status is managed through lifecycle actions.",
       "updateFailed": "The project could not be updated. Please try again.",
-      "completionDateFailed": "The project completion date could not be updated. Please try again."
+      "completionDateFailed": "The project completion date could not be updated. Please try again.",
+      "actualStartDateFailed": "The project actual start date could not be updated. Please try again."
     }
   },
   "ProjectTypes": {
@@ -2415,6 +2421,16 @@
   },
   "Finance": {
     "settlement": {
+      "received": "Received",
+      "changeFx": "Change currency calculation",
+      "changeAllocation": "Change allocation",
+      "addNote": "Add a note",
+      "willRemain": "{amount} will remain",
+      "willSettle": "payment will be settled",
+      "willCloseNamed": "closes “{name}”",
+      "willApply": "{amount} goes to “{name}”",
+      "willLeaveUnallocated": "{amount} remains unallocated",
+      "unallocatedHelp": "Reduce allocation amounts to leave part of the receipt unallocated.",
       "convertedTotal": "Equivalent: {amount}",
       "preview": "Payment allocation",
       "actualRate": "Actual rate / equivalent",
@@ -2463,6 +2479,14 @@
       }
     },
     "projectWorkspace": {
+      "historyNamed": "Payment history for {name}",
+      "paidOf": "{paid} of {total}",
+      "receivedCompact": "Received: {amount}",
+      "paidCompact": "Paid: {amount}",
+      "closedDifferenceCompact": "Remainder closed: {amount}",
+      "closureProgress": "paid {paid} · difference {difference}",
+      "closedShort": "Closed",
+      "undated": "No date",
       "nativeAdvance": "Unallocated advance in the receipt currency",
       "noCompatiblePayments": "There are no compatible unpaid payments in this project.",
       "matchLoadError": "Unable to load payments. Close this dialog and try again.",
@@ -3505,6 +3529,8 @@
       "schedulePayment": "Plan a payment",
       "nextPayment": "Next payment",
       "addPayment": "Add payment",
+      "addContractorBonus": "Add bonus",
+      "addOtherIncome": "Add income",
       "addExpense": "Add expense",
       "recordExpense": "Record expense payment"
     },
@@ -3605,6 +3631,7 @@
       "empty": "No expected payments in this view.",
       "dueDate": "Pay by",
       "expectedDate": "Expected payment",
+      "editOrderPayment": "Edit payment",
       "differentExpectedDate": "Use a different expected payment date",
       "agreementState": "Payment state",
       "agreementOptions": {
@@ -4187,8 +4214,16 @@
       "completeCosts": "Complete payroll costs in Expected payments"
     },
     "orders": {
+      "paymentStates": {
+        "paid": "Paid",
+        "closed": "Closed",
+        "partial": "Partially paid",
+        "unpaid": "Unpaid"
+      },
+      "progressNamed": "Payment progress for {name}",
       "title": "Orders",
       "manage": "Orders · {count}",
+      "count": "{count, plural, one {# order} other {# orders}}",
       "draftCount": "{count} drafts",
       "add": "Add order",
       "name": "Order name",
@@ -4206,6 +4241,7 @@
       "discardHelp": "The draft and its saved proposals remain in history.",
       "discardCheck": "Discard this unconfirmed order.",
       "rename": "Save name",
+      "editName": "Edit order name",
       "status": {
         "draft": "Draft",
         "confirmed": "Confirmed",
@@ -4216,9 +4252,12 @@
       "noSchedule": "No payment schedule",
       "configure": "Set up schedule",
       "payments": "{count} payments",
+      "paymentCount": "{count, plural, one {# payment} other {# payments}}",
       "allDrafts": "No confirmed orders yet. Manage orders to confirm an agreement.",
+      "paymentCountCompact": "{count, plural, one {# payment} other {# payments}}",
+      "pricePerArea": "{price} / m²",
       "scope": "Confirmed project orders",
-      "value": "Order value",
+      "value": "Value",
       "paid": "Paid",
       "remaining": "Remaining",
       "next": "Next payment",
@@ -4392,20 +4431,20 @@
     "ratioUnavailable": "Cost per credited m² is unavailable when payroll components, obligation coverage or aligned production history are incomplete.",
     "closedMonthsOnly": "Closed service months only; currencies remain separate",
     "durationTitle": "Project duration",
-    "durationDefinition": "First recorded activation to the official completion date, in calendar days, including pauses.",
+    "durationDefinition": "Actual start to actual completion, in calendar days, including pauses.",
     "medianDuration": "Median elapsed duration",
     "days": "days",
-    "durationCoverageShort": "{count} / {total} completed with usable history",
+    "durationCoverageShort": "{count} / {total} completed with actual dates",
     "ongoingCoverageShort": "{count} / {total} ongoing with a reliable start",
-    "durationCoverage": "{count} of {total} completed projects have usable lifecycle history",
+    "durationCoverage": "{count} of {total} completed projects have reliable actual dates",
     "durationDistribution": "Duration by project",
-    "durationProjectDetail": "Recorded start {start} · completed {end} · {days} days",
+    "durationProjectDetail": "Actual start {start} · completed {end} · {days} days",
     "meanDuration": "Mean: {days} calendar days",
     "fastest": "Shortest",
     "longest": "Longest",
     "durationDays": "{count} days",
-    "noDurationHistory": "No completed projects with a usable recorded activation in this period.",
-    "durationLimit": "Planned dates are not actual starts. Missing activation, completion before activation, or task completion before activation exclude a project. Genuine same-day completions remain zero days. The log alone cannot prove full pre-import history.",
+    "noDurationHistory": "No completed projects with reliable actual start and completion dates in this period.",
+    "durationLimit": "Duration uses only actual start and completion dates. Missing or inconsistent dates exclude a project. Same-day completions remain zero days. Admins can correct historical dates in Project Details.",
     "definitions": "Methodology and limits",
     "projectHistoryNote": "Projects currently completed, including archived completions, are grouped by their official completion date. Reopening clears that date; this is not a count of every historical completion cycle. Non-production projects are excluded.",
     "creditHistoryNote": "Non-voided ledger records retain contributor and completion-date snapshots, including deleted work. Current project exclusions apply. Stage 1/3 area is rebalanced; Stage 2 snapshots task area. Retained tasks with contradictory or missing completion dates are excluded from dated output. No normalization weights are applied.",
@@ -4495,8 +4534,9 @@
     "medianAge": "Median current age",
     "ongoingCoverage": "{count} of {total} ongoing projects have a reliable start",
     "longestRunning": "Longest-running projects",
+    "includePausedProjects": "Include paused projects",
     "pausedProject": "Paused",
-    "ongoingDefinition": "Calendar days from reliable recorded activation to today, including pauses. Active and paused production projects only, regardless of the selected period. Missing or contradictory starts are excluded; this is current age, not completion time.",
+    "ongoingDefinition": "Paused projects can be excluded from the list and median. Calendar days from actual start to today, including pauses. Active and paused production projects only, regardless of the selected period. Missing or contradictory starts are excluded; this is current age, not completion time.",
     "noOngoingHistory": "No ongoing projects with a reliable recorded start.",
     "ratioShort": "Per credited m²",
     "incompleteCostShort": "Incomplete amount",
@@ -4530,7 +4570,7 @@
     "method_team": "Approved calendar days and hours stay separate. Make-up is scheduled time, not verified work or a vacation balance.",
     "method_calendar_label": "Events and people",
     "method_calendar": "An event counts once for the studio and once for each involved person. All-day spans are not work hours; scheduled events do not prove attendance.",
-    "durationExcluded": "{count} excluded: missing or inconsistent start history",
+    "durationExcluded": "{count} excluded: missing or inconsistent actual start",
     "unassignedEvents": "{count} events have no recorded participation roles.",
     "noCalendarPeople": "No recorded participants for elapsed events."
   }

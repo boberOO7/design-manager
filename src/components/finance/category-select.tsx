@@ -34,8 +34,8 @@ export function FinanceCategoryEditor({ category,direction="incoming",owner=fals
   </FinanceActionForm>;
 }
 
-export function FinanceCategorySelect({ categories,direction,owner=false,operatingOnly=false,projectExpenseOnly=false,value,onValueChange,currentId }: {
-  categories:FinanceCategory[]; direction:string; owner?:boolean; operatingOnly?:boolean; projectExpenseOnly?:boolean; value:string; onValueChange:(value:string)=>void; currentId?:string|null;
+export function FinanceCategorySelect({ categories,direction,owner=false,operatingOnly=false,projectExpenseOnly=false,value,onValueChange,currentId,showActions=true,disabled=false }: {
+  categories:FinanceCategory[]; direction:string; owner?:boolean; operatingOnly?:boolean; projectExpenseOnly?:boolean; value:string; onValueChange:(value:string)=>void; currentId?:string|null; showActions?:boolean; disabled?:boolean;
 }) {
   const t=useTranslations("Finance");
   const router=useRouter();
@@ -43,10 +43,11 @@ export function FinanceCategorySelect({ categories,direction,owner=false,operati
   const [pending,setPending]=useState(false);
   const options=categoriesForDirection(categories,direction,owner,currentId).filter((category)=>(!operatingOnly||category.nature==="operating")&&(!projectExpenseOnly||category.project_expense_enabled||category.id===currentId));
   return <div className="space-y-1">
-    <FormField label={t("movements.category")}><Select name="categoryId" aria-label={t("movements.category")} value={value} onValueChange={onValueChange} required searchPlaceholder={t("planning.searchCategories")} searchEmptyMessage={t("planning.noCategories")}>
+    {disabled ? <input type="hidden" name="categoryId" value={value}/> : null}
+    <FormField label={t("movements.category")}><Select disabled={disabled} name="categoryId" aria-label={t("movements.category")} value={value} onValueChange={onValueChange} required searchPlaceholder={t("planning.searchCategories")} searchEmptyMessage={t("planning.noCategories")}>
       {options.map((category)=><SelectItem key={category.id} value={category.id}>{financeCategoryLabel(category,category.name,(key)=>t(`planning.defaults.${key}`))}</SelectItem>)}
     </Select></FormField>
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><Button type="button" variant="ghost" className="gap-1.5" onClick={()=>setCreating(true)}><Plus className="size-4" aria-hidden="true"/>{t("planning.newCategory")}</Button><Link href="/finance/categories" className="flex min-h-10 items-center text-sm font-medium text-[var(--ui-text-secondary)] underline decoration-[var(--ui-border-strong)] underline-offset-4 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("planning.manageCategories")}</Link></div>
+    {showActions ? <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><Button type="button" variant="ghost" className="gap-1.5" onClick={()=>setCreating(true)}><Plus className="size-4" aria-hidden="true"/>{t("planning.newCategory")}</Button><Link href="/finance/categories" className="flex min-h-10 items-center text-sm font-medium text-[var(--ui-text-secondary)] underline decoration-[var(--ui-border-strong)] underline-offset-4 hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("planning.manageCategories")}</Link></div> : null}
     <Dialog isOpen={creating} closeDisabled={pending} onRequestClose={()=>setCreating(false)} title={t("planning.newCategory")} closeLabel={t("movements.close")}>
       {creating?<div className="p-5"><FinanceCategoryEditor direction={direction} owner={owner} operatingOnly={operatingOnly} onPending={setPending} onSaved={(id)=>{if(id)onValueChange(id);setCreating(false);router.refresh();}}/></div>:null}
     </Dialog>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
-import { createEditProjectSchema, createProjectCompletionDateSchema, createProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, getProjectValidationFailure, PROJECT_TYPE_KEYS } from "./project";
+import { createEditProjectSchema, createProjectCompletionDateSchema, createProjectActualStartDateSchema, createProjectSchema, getKyivDateOnly, getProjectFormInput, getProjectTypeDisplayName, getProjectValidationFailure, PROJECT_TYPE_KEYS } from "./project";
 
 const projectSchema = createProjectSchema(en.ProjectForm.validation);
 const editProjectSchema = createEditProjectSchema(en.ProjectForm.validation);
@@ -114,4 +114,20 @@ describe("project form metadata", () => {
     expect(projectCompletionDateSchema.safeParse({ completed_at: "2025-02-30" }).success).toBe(false);
     expect(projectCompletionDateSchema.safeParse({ completed_at: "9999-01-01" }).success).toBe(false);
   });
+  it("allows planned start to remain unset without constraining the deadline", () => {
+    expect(projectSchema.safeParse({ ...project, start_date: "", due_date: "2025-01-01" }).success).toBe(true);
+    expect(projectSchema.safeParse({ ...project, start_date: null }).success).toBe(true);
+  });
+
+  it("validates historical actual starts and both directions of actual date ordering", () => {
+    const start = createProjectActualStartDateSchema(en.ProjectForm.validation, "2025-02-14");
+    expect(start.safeParse({ started_at: "2020-01-01" }).success).toBe(true);
+    expect(start.safeParse({ started_at: "2025-02-14" }).success).toBe(true);
+    for (const started_at of ["2025-02-15", "2025-02-30", "9999-01-01"]) expect(start.safeParse({ started_at }).success).toBe(false);
+    expect(start.safeParse({ started_at: "" }).success).toBe(true);
+    const completion = createProjectCompletionDateSchema(en.ProjectForm.validation, "2025-02-14");
+    expect(completion.safeParse({ completed_at: "2025-02-13" }).success).toBe(false);
+    expect(completion.safeParse({ completed_at: "2025-02-14" }).success).toBe(true);
+  });
+
 });

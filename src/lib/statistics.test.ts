@@ -3,13 +3,14 @@ import type { ProductivityContributionAttribution } from "@/lib/productivity";
 import {
   buildStatistics,
   recordedProjectDuration,
+  recordedProjectAge,
   type StatisticsActivity,
   type StatisticsProject,
   type StatisticsSources,
 } from "@/lib/statistics";
 
 const project = (overrides: Partial<StatisticsProject> = {}): StatisticsProject => ({
-  id: "project-1", name: "Project", status: "completed", archived_at: null, completed_at: "2025-03-12",
+  id: "project-1", name: "Project", status: "completed", archived_at: null, started_at: "2025-03-01", completed_at: "2025-03-12",
   include_in_productivity: true, total_area_m2: 100, ...overrides,
 });
 const activity = (id: string, from: string, to: string, created_at: string): StatisticsActivity => ({
@@ -42,32 +43,39 @@ describe("Statistics metric definitions", () => {
     expect(report.totals.physicalArea).toBeNull();
   });
 
-  it("rejects administrative zero-day activation contradicted by earlier work, retaining genuine same-day completion", () => {
-    const subject = project();
-    const events = [activity(subject.id, "planned", "active", "2025-03-12T10:00:00Z"), activity(subject.id, "active", "completed", "2025-03-12T12:00:00Z")];
-    expect(recordedProjectDuration(subject, events, "2025-04-01", [{ id: "task", project_id: subject.id, completed_at: "2025-02-10" }])).toBeNull();
-    expect(recordedProjectDuration(subject, events, "2025-04-01", [{ id: "task", project_id: subject.id, completed_at: "2025-03-12" }])?.days).toBe(0);
+  it("uses authoritative actual dates without needing audit events or estimating missing starts", () => {
+    expect(recordedProjectDuration(project({ completed_at: "2025-03-20" }), "2025-04-01")).toMatchObject({ started: "2025-03-01", completed: "2025-03-20", days: 19 });
+    expect(recordedProjectDuration(project({ started_at: "2025-03-12" }), "2025-04-01")?.days).toBe(0);
+    for (const overrides of [{ started_at: null }, { started_at: "2025-03-13" }, { started_at: "2025-02-30" }, { completed_at: "not-a-date" }, { completed_at: null }, { completed_at: "2025-05-01" }]) {
+      expect(recordedProjectDuration(project(overrides), "2025-04-01")).toBeNull();
+    }
   });
 
-  it("uses a reliable activation and corrected completion date without requiring a completion audit row", () => {
-    const subject = project({ completed_at: "2025-03-20" });
-    const validStart = [activity(subject.id, "planned", "active", "2025-03-01T10:00:00Z")];
-    expect(recordedProjectDuration(subject, validStart, "2025-04-01")).toMatchObject({ started: "2025-03-01", completed: "2025-03-20", days: 19 });
-    expect(recordedProjectDuration(project({ completed_at: "2025-02-28" }), validStart, "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(project({ completed_at: "not-a-date" }), validStart, "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(project({ completed_at: null }), validStart, "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(subject, [], "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(subject, [activity(subject.id, "planned", "active", "invalid")], "2025-04-01")).toBeNull();
+  it("includes and recalculates a legacy project only after its actual start is corrected", () => {
+    const sources = emptySources({ projects: [project({ started_at: null })], activities: [activity("project-1", "planned", "active", "2025-03-01T10:00:00Z")] });
+    const missing = buildStatistics(sources, "all", "2025-04-30");
+    expect(missing.durations).toEqual([]);
+    expect(missing.coverage).toMatchObject({ durationProjects: 0, selectedProjects: 1 });
+    sources.projects[0].started_at = "2024-12-01";
+    expect(buildStatistics(sources, "all", "2025-04-30").totals.medianDays).toBe(101);
+    sources.projects[0].started_at = "2025-03-01";
+    expect(buildStatistics(sources, "all", "2025-04-30").totals.medianDays).toBe(11);
+  });
+
+  it("excludes ongoing projects with missing or future actual starts", () => {
+    expect(recordedProjectAge(project({ status: "active", completed_at: null, started_at: null }), "2025-04-01")).toBeNull();
+    expect(recordedProjectAge(project({ status: "paused", completed_at: null, started_at: "2025-04-02" }), "2025-04-01")).toBeNull();
   });
 
   it("measures active and paused project age as of today independently of selected period", () => {
     const projects = [
-      project({ id: "active", status: "active", completed_at: null }),
-      project({ id: "paused", status: "paused", completed_at: null }),
+      project({ id: "active", started_at: "2025-01-01", status: "active", completed_at: null }),
+      project({ id: "paused", started_at: "2025-02-01", status: "paused", completed_at: null }),
       project({ id: "planned", status: "planned", completed_at: null }),
       project({ id: "completed", status: "completed", completed_at: "2025-03-15" }),
       project({ id: "archived", status: "active", archived_at: "2025-03-10", completed_at: null }),
-      project({ id: "unreliable", status: "active", completed_at: null }),
+      project({ id: "unreliable", started_at: null, status: "active", completed_at: null }),
+      project({ id: "paused-unreliable", started_at: null, status: "paused", completed_at: null }),
     ];
     const activities = [
       activity("active", "planned", "active", "2025-01-01T10:00:00Z"),
@@ -78,7 +86,10 @@ describe("Statistics metric definitions", () => {
     const wide = buildStatistics(emptySources({ projects, activities }), "all", "2025-04-30");
     expect(narrow.ongoing).toEqual(wide.ongoing);
     expect(narrow.ongoing.map(({ id, days }) => [id, days])).toEqual([["active", 119], ["paused", 88]]);
-    expect(narrow.coverage.ongoingProjects).toBe(3);
+    expect(narrow.coverage.ongoingProjects).toBe(4);
+    expect(narrow.coverage.pausedOngoingProjects).toBe(2);
+    // Excluding paused projects must also exclude those without a reliable start.
+    expect(narrow.coverage.ongoingProjects - narrow.coverage.pausedOngoingProjects).toBe(2);
   });
 
   it("counts completed physical project area once, including archived production projects, and excludes non-production projects", () => {
@@ -133,28 +144,12 @@ describe("Statistics metric definitions", () => {
     expect(report.months.find(month => month.month === "2025-02-01")?.creditedArea).toBeNull();
   });
 
-  it("measures elapsed completion duration from logged planned-to-active transition, including pause time", () => {
-    const subject = project({ completed_at: "2025-03-12" });
-    expect(recordedProjectDuration(subject, [
-      activity(subject.id, "planned", "active", "2025-03-01T10:00:00.000Z"),
-      activity(subject.id, "active", "paused", "2025-03-03T10:00:00.000Z"),
-      activity(subject.id, "paused", "active", "2025-03-10T10:00:00.000Z"),
-      activity(subject.id, "active", "completed", "2025-03-12T10:00:00.000Z"),
-    ], "2025-04-01")?.days).toBe(11);
+  it("includes pause time and ignores administrative activity timestamps", () => {
+    const report = buildStatistics(emptySources({ projects: [project()], activities: [
+      activity("project-1", "planned", "active", "2025-03-12T10:00:00Z"),
+      activity("project-1", "active", "paused", "2025-03-03T10:00:00Z"),
+      activity("project-1", "paused", "active", "2025-03-10T10:00:00Z"),
+    ] }), "all", "2025-04-01");
+    expect(report.durations[0].days).toBe(11);
   });
-
-  it("does not infer project starts from planned dates, updated state, legacy resumes, or contradictory project chronology", () => {
-    const subject = project({ completed_at: "2025-03-12" });
-    expect(recordedProjectDuration(subject, [], "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(subject, [activity(subject.id, "paused", "active", "2025-03-01T10:00:00.000Z")], "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(subject, [
-      activity(subject.id, "planned", "active", "2025-03-13T10:00:00.000Z"),
-      activity(subject.id, "active", "completed", "2025-03-14T10:00:00.000Z"),
-    ], "2025-04-01")).toBeNull();
-    expect(recordedProjectDuration(subject, [
-      activity(subject.id, "planned", "active", "2025-03-01T10:00:00.000Z"),
-      activity(subject.id, "active", "completed", "2025-03-15T10:00:00.000Z"),
-    ], "2025-04-01")?.days).toBe(11);
-  });
-
 });

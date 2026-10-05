@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createEditProjectSchema,
   createProjectCompletionDateSchema,
+  createProjectActualStartDateSchema,
   getProjectFormInput,
   getProjectValidationFailure,
   getProjectValidationMessages,
@@ -68,7 +69,7 @@ export async function updateProject(
       description: values.description || null,
       total_area_m2: values.total_area_m2,
       priority: values.priority,
-      start_date: values.start_date,
+      start_date: values.start_date || null,
       due_date: values.due_date || null,
     })
     .eq("id", project.id)
@@ -91,7 +92,13 @@ export async function updateProjectCompletionDate(
   formData: FormData,
 ): Promise<ProjectFormActionState> {
   const t = await getTranslations("ProjectForm");
-  const parsed = createProjectCompletionDateSchema(getProjectValidationMessages(t)).safeParse({ completed_at: formData.get("completed_at") });
+  const membership = await getActiveStudioAdmin();
+  if (!membership) return { formError: t("errors.editPermission") };
+  const project = await getProjectById(projectId);
+  if (!project || project.studio_id !== membership.studio_id || project.status !== "completed" || project.archived_at) {
+    return { formError: t("errors.unavailable") };
+  }
+  const parsed = createProjectCompletionDateSchema(getProjectValidationMessages(t), project.started_at).safeParse({ completed_at: formData.get("completed_at") });
   if (!parsed.success) {
     return {
       formError: t("validation.correctFields"),
@@ -99,12 +106,6 @@ export async function updateProjectCompletionDate(
     };
   }
 
-  const membership = await getActiveStudioAdmin();
-  if (!membership) return { formError: t("errors.editPermission") };
-  const project = await getProjectById(projectId);
-  if (!project || project.studio_id !== membership.studio_id || project.status !== "completed" || project.archived_at) {
-    return { formError: t("errors.unavailable") };
-  }
   if (project.completed_at === parsed.data.completed_at) {
     return { projectId: project.id, completedAt: project.completed_at };
   }
@@ -127,7 +128,39 @@ export async function updateProjectCompletionDate(
 
   revalidateProjectRoutes(project.id);
   revalidatePath("/leaderboard");
+  revalidatePath("/statistics");
   return { projectId: project.id, completedAt: data.completed_at };
+}
+
+export async function updateProjectActualStartDate(
+  projectId: string,
+  _previousState: ProjectFormActionState,
+  formData: FormData,
+): Promise<ProjectFormActionState> {
+  const t = await getTranslations("ProjectForm");
+  const membership = await getActiveStudioAdmin();
+  if (!membership) return { formError: t("errors.editPermission") };
+  const project = await getProjectById(projectId);
+  if (!project || project.studio_id !== membership.studio_id) return { formError: t("errors.unavailable") };
+
+  const parsed = createProjectActualStartDateSchema(getProjectValidationMessages(t), project.completed_at).safeParse({ started_at: formData.get("started_at") });
+  if (!parsed.success) return { fieldErrors: { started_at: parsed.error.issues[0]?.message ?? t("validation.dateInvalid") } };
+  if (project.started_at === parsed.data.started_at) return { projectId: project.id, startedAt: project.started_at };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects")
+    .update({ started_at: parsed.data.started_at })
+    .eq("id", project.id)
+    .eq("studio_id", membership.studio_id)
+    .select("id, started_at")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Unable to update project actual start date", error);
+    return { formError: t("errors.actualStartDateFailed") };
+  }
+  revalidateProjectRoutes(project.id);
+  revalidatePath("/statistics");
+  return { projectId: project.id, startedAt: data.started_at };
 }
 
 export async function archiveProject(projectId: string): Promise<void> {

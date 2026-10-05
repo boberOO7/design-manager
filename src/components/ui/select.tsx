@@ -3,6 +3,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check, ChevronDown, Search } from "lucide-react";
 import * as React from "react";
+import { buttonVariants } from "./button";
 import { cn } from "@/lib/utils";
 
 export type SelectItemProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -77,10 +78,11 @@ export type SelectProps = Omit<
   searchPlaceholder?: string;
   size?: "compact" | "default";
   value?: string;
+  variant?: "default" | "secondary";
   width?: "content" | "full";
 };
 
-const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, endAdornment, name, onClick, onKeyDown, onValueChange, placeholder, required, searchEmptyMessage, searchPlaceholder, size = "default", value, width = "full", ...triggerProps }, forwardedRef) {
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select({ "aria-invalid": ariaInvalid, children, className, contentMinWidth = "default", defaultValue, disabled, endAdornment, name, onClick, onKeyDown, onValueChange, placeholder, required, searchEmptyMessage, searchPlaceholder, size = "default", value, variant = "default", width = "full", ...triggerProps }, forwardedRef) {
   const items = collectSelectItems(children);
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
@@ -244,6 +246,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
             endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_2.5rem]" : "grid-cols-[minmax(0,1fr)_2.5rem]",
             size === "compact" ? "h-8 text-xs" : "h-11",
             width === "content" ? contentMinWidth === "natural" ? "w-fit max-w-[calc(100vw-2rem)]" : "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full",
+            variant === "secondary" && cn(buttonVariants({ variant: "outline", size: "compact" }), "grid cursor-pointer focus-visible:border-[var(--ui-border-strong)]", endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"),
             className,
           )}
           disabled={disabled}
@@ -253,14 +256,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           }}
           onKeyDown={handleKeyDown}
         >
-          <span className="grid min-w-0 pl-3 pr-2">
+          <span className={cn("grid min-w-0", variant === "secondary" ? "" : "pl-3 pr-2")}>
             <span className="col-start-1 row-start-1 min-w-0 truncate" title={selectedText || undefined}>{selectedItem ? selectedLabel : placeholder}</span>
             {width === "content" ? <span aria-hidden="true" className="invisible col-start-1 row-start-1 grid max-w-64">
               {items.map((item) => <span key={item.props.value} className="col-start-1 row-start-1 whitespace-nowrap">{item.props.textValue ?? getNodeText(item.props.children)}</span>)}
             </span> : null}
           </span>
           {endAdornment ? <span className="min-w-0 truncate whitespace-nowrap px-1 text-right text-xs text-[var(--ui-text-muted)]" aria-live="polite">{endAdornment}</span> : null}
-          <span className={cn("flex w-10 shrink-0 items-center justify-center border-l border-[var(--ui-border-subtle)] text-[var(--ui-text-muted)]", size === "compact" ? "h-6" : "h-7")}>
+          <span className={cn("flex shrink-0 items-center justify-center text-[var(--ui-text-muted)]", variant === "secondary" ? "" : cn("w-10 border-l border-[var(--ui-border-subtle)]", size === "compact" ? "h-6" : "h-7"))}>
             <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
           </span>
         </button>

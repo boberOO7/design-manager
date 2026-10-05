@@ -38,7 +38,7 @@ export interface Project {
   total_area_m2: number;
   status: ProjectStatus;
   priority: ProjectPriority;
-  start_date: string;
+  start_date: string | null;
   due_date?: string | null;
   completed_at?: string | null;
   completed_area_m2?: number | null;

@@ -5367,7 +5367,8 @@ export type Database = {
           project_type_custom: string | null
           show_progress: boolean
           site_address: string | null
-          start_date: string
+          start_date: string | null
+          started_at: string | null
           status: string
           studio_id: string
           total_area_m2: number
@@ -5393,7 +5394,8 @@ export type Database = {
           project_type_custom?: string | null
           show_progress?: boolean
           site_address?: string | null
-          start_date: string
+          start_date?: string | null
+          started_at?: string | null
           status?: string
           studio_id: string
           total_area_m2: number
@@ -5419,7 +5421,8 @@ export type Database = {
           project_type_custom?: string | null
           show_progress?: boolean
           site_address?: string | null
-          start_date?: string
+          start_date?: string | null
+          started_at?: string | null
           status?: string
           studio_id?: string
           total_area_m2?: number

@@ -90,8 +90,8 @@ test("project agreements, shared settlement, supervision, bonus and archived col
   await advance.getByRole("button",{name:plan.recordPayment,exact:true}).click();dialog=page.getByRole("dialog");
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
   await expect(dialog.getByText(new RegExp(t.movements.fullSettlement))).toHaveCount(0);
-  await expect(dialog.getByLabel(t.movements.actualAmount.replace("{currency}","UAH"),{exact:true})).toHaveValue("400");
-  await dialog.getByLabel(t.movements.actualAmount.replace("{currency}","UAH"),{exact:true}).fill("150");await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
+  await expect(dialog.getByLabel(t.settlement.received,{exact:true})).toHaveValue("400");
+  await dialog.getByLabel(t.settlement.received,{exact:true}).fill("150");await dialog.getByRole("button",{name:t.movements.record,exact:true}).click();await expect(page).toHaveURL(new RegExp(`/projects/${projectId}.*view=finance`));
   await expect(advance.getByText(plan.states.partial,{exact:true})).toBeVisible();
   expect(sql(`select concat(trim_scale(collected_amount),'|',trim_scale(outstanding_amount)) from public.finance_project_totals where project_id='${projectId}' and stream='design'`)).toBe("150|250");
   await page.goto("/finance/movements");await page.getByRole("button",{name:t.movements.add,exact:true}).click();dialog=page.getByRole("dialog");

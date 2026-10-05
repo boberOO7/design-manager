@@ -33,6 +33,8 @@ export type ProjectValidationMessages = {
   cityTooLong: string;
   clientNameTooLong: string;
   completionDateFuture: string;
+  actualStartDateFuture: string;
+  completionBeforeActualStart: string;
   countryInvalid: string;
   dateInvalid: string;
   descriptionTooLong: string;
@@ -55,6 +57,8 @@ export function getProjectValidationMessages(translate: (key: ProjectValidationM
     cityTooLong: translate("validation.cityTooLong"),
     clientNameTooLong: translate("validation.clientNameTooLong"),
     completionDateFuture: translate("validation.completionDateFuture"),
+    actualStartDateFuture: translate("validation.actualStartDateFuture"),
+    completionBeforeActualStart: translate("validation.completionBeforeActualStart"),
     countryInvalid: translate("validation.countryInvalid"),
     dateInvalid: translate("validation.dateInvalid"),
     descriptionTooLong: translate("validation.descriptionTooLong"),
@@ -93,17 +97,17 @@ function createProjectFields(messages: ProjectValidationMessages) {
     description: z.string().trim().max(5000, messages.descriptionTooLong).optional(),
     total_area_m2: z.coerce.number({ error: messages.areaInvalid }).positive(messages.areaPositive),
     priority: z.enum(["low", "normal", "high", "urgent"], { error: messages.priorityInvalid }),
-    start_date: dateSchema,
+    start_date: z.preprocess((value) => value === "" ? null : value, dateSchema.nullable().optional()),
     due_date: z.preprocess((value) => (value === "" ? undefined : value), dateSchema.optional()),
   };
 }
 
 function validateDateOrder(
-  project: { start_date: string; due_date?: string },
+  project: { start_date?: string | null; due_date?: string },
   context: z.RefinementCtx,
   message: string,
 ) {
-  if (project.due_date && project.due_date < project.start_date) {
+  if (project.start_date && project.due_date && project.due_date < project.start_date) {
     context.addIssue({
       code: "custom",
       message,
@@ -120,10 +124,24 @@ export function createEditProjectSchema(messages: ProjectValidationMessages) {
   return z.object(createProjectFields(messages)).strict().superRefine((project, context) => validateDateOrder(project, context, messages.dueDateBeforeStart));
 }
 
-export function createProjectCompletionDateSchema(messages: ProjectValidationMessages) {
+export function createProjectCompletionDateSchema(messages: ProjectValidationMessages, startedAt: string | null = null) {
   return z.object({ completed_at: createDateSchema(messages.dateInvalid) }).strict().superRefine((project, context) => {
+    if (startedAt && project.completed_at < startedAt) {
+      context.addIssue({ code: "custom", message: messages.completionBeforeActualStart, path: ["completed_at"] });
+    }
     if (project.completed_at > getKyivDateOnly()) {
       context.addIssue({ code: "custom", message: messages.completionDateFuture, path: ["completed_at"] });
+    }
+  });
+}
+
+export function createProjectActualStartDateSchema(messages: ProjectValidationMessages, completedAt: string | null = null) {
+  return z.object({ started_at: z.preprocess(value => value === "" ? null : value, createDateSchema(messages.dateInvalid).nullable()) }).strict().superRefine((project, context) => {
+    if (project.started_at && project.started_at > getKyivDateOnly()) {
+      context.addIssue({ code: "custom", message: messages.actualStartDateFuture, path: ["started_at"] });
+    }
+    if (project.started_at && completedAt && project.started_at > completedAt) {
+      context.addIssue({ code: "custom", message: messages.completionBeforeActualStart, path: ["started_at"] });
     }
   });
 }
@@ -134,8 +152,9 @@ export type ProjectFormField = keyof EditProjectFormValues;
 
 export type ProjectFormActionState = {
   completedAt?: string;
+  startedAt?: string | null;
   formError?: string;
-  fieldErrors?: Partial<Record<ProjectFormField | "completed_at", string>>;
+  fieldErrors?: Partial<Record<ProjectFormField | "completed_at" | "started_at", string>>;
   projectId?: string;
 };
 

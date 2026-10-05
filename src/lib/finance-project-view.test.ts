@@ -1,5 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
+import { nextProjectPayment, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
+
+describe("next contractual payment across confirmed orders", () => {
+  const item = (id: string, order_id: string, expected_payment_date: string | null, due_date: string | null = null) => ({ id, order_id, expected_payment_date, due_date });
+
+  it("finds the second order's unpaid payment when the first has no outstanding items", () => {
+    const next = item("second-payment", "second", "2026-10-10");
+    expect(nextProjectPayment([next], ["first", "second"])).toBe(next);
+  });
+
+  it("chooses the earliest effective date across orders, including overdue payments", () => {
+    const overdue = item("overdue", "second", null, "2026-09-01");
+    expect(nextProjectPayment([item("future", "first", "2026-10-20"), overdue, item("undated", "first", null)], ["first", "second"])).toBe(overdue);
+  });
+
+  it("uses expected date before due date and preserves saved schedule order for ties", () => {
+    const first = item("first-saved", "second", "2026-10-10", "2026-09-01");
+    expect(nextProjectPayment([first, item("second-saved", "first", null, "2026-10-10")], ["first", "second"])).toBe(first);
+  });
+
+  it("falls back to the first item in saved order/schedule order when every item is undated", () => {
+    const first = item("saved-first", "second", null);
+    expect(nextProjectPayment([first, item("saved-second", "first", null)], ["first", "second"])).toBe(first);
+  });
+
+  it("excludes draft/discarded orders and returns null only when confirmed orders have no candidates", () => {
+    expect(nextProjectPayment([item("draft", "draft-order", "2026-01-01")], ["confirmed"])).toBeNull();
+    expect(nextProjectPayment([], ["confirmed"])).toBeNull();
+  });
+});
+
+describe("order payment progress presentation", () => {
+  const total = (paid: string, closed = "0") => ({ contract_gross_amount: "100", contract_amount: "100", collected_amount: paid, closed_amount: closed });
+  it("keeps paid, partial, unpaid and closed states distinct from commercial lifecycle", () => {
+    expect(projectOrderPaymentProgress(total("0"), 2)).toEqual({ state: "unpaid", percent: 0 });
+    expect(projectOrderPaymentProgress(total("45"), 2)).toEqual({ state: "partial", percent: 45 });
+    expect(projectOrderPaymentProgress(total("100"), 2)).toEqual({ state: "paid", percent: 100 });
+    expect(projectOrderPaymentProgress(total("98", "2"), 2)).toEqual({ state: "closed", percent: 100 });
+  });
+  it("clamps an overpayment only for the visual bar and handles unknown contractual value", () => {
+    const overpaid = total("110");
+    expect(projectOrderPaymentProgress(overpaid, 2)).toEqual({ state: "paid", percent: 100 });
+    expect(overpaid.collected_amount).toBe("110");
+    expect(projectOrderPaymentProgress(undefined, 2)).toEqual({ state: "unpaid", percent: 0 });
+  });
+});
 
 describe("project finance presentation", () => {
   it("keeps unpaid agreement value regardless of whether the schedule is established", () => {

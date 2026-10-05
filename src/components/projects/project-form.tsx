@@ -160,7 +160,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
       </Select>
     </Field>
 
-    <Field error={fieldError("start_date")} id="start_date" label={t("plannedStartDate")} required>
+    <Field error={fieldError("start_date")} id="start_date" label={t("plannedStartDate")}>
       <DatePicker name="start_date" defaultValue={defaultValues.start_date} locale={locale} className="mt-2" invalid={Boolean(fieldError("start_date"))} {...dateErrorAttributes("start_date")} />
     </Field>
 

@@ -3,7 +3,7 @@ import type { ProductivityContributionAttribution } from "@/lib/productivity";
 import { getKyivDateOnly } from "@/lib/validation/project";
 
 type Tables = Database["public"]["Tables"];
-export type StatisticsProject = Pick<Tables["projects"]["Row"], "id" | "name" | "status" | "archived_at" | "completed_at" | "include_in_productivity" | "total_area_m2">;
+export type StatisticsProject = Pick<Tables["projects"]["Row"], "id" | "name" | "status" | "archived_at" | "started_at" | "completed_at" | "include_in_productivity" | "total_area_m2">;
 export type StatisticsTask = Pick<Tables["tasks"]["Row"], "id" | "project_id" | "completed_at">;
 export type StatisticsActivity = Pick<Tables["project_activity"]["Row"], "project_id" | "changes" | "created_at">;
 export const statisticsPeriods = ["3", "6", "12", "year", "all"] as const;
@@ -37,7 +37,8 @@ export function statisticsRange(period: StatisticsPeriod, today: string, availab
   return { from, through: today };
 }
 
-/** Real activation evidence, never planned start_date / updated_at. Pauses remain included.
+/** Logged activation evidence for CRM contact-to-start timing. Project duration
+ * and age use the authoritative started_at field below.
  * The first logged status change must itself be a start, so a legacy resume or
  * reopened completion is not mistaken for initial activation. Completion-date
  * corrections remain authoritative; contradictory chronology is excluded.
@@ -58,21 +59,25 @@ export function recordedProjectStart(projectId: string, activities: StatisticsAc
   return tasks.some(task => task.project_id === projectId && task.completed_at && task.completed_at < start.date) ? null : start;
 }
 
-export function recordedProjectDuration(project: StatisticsProject, activities: StatisticsActivity[], today: string, tasks: StatisticsTask[] = []) {
-  if (!["completed", "archived"].includes(project.status) || !project.completed_at || project.completed_at > today || !Number.isFinite(Date.parse(project.completed_at))) return null;
-  const start = recordedProjectStart(project.id, activities, project.completed_at, tasks);
-  if (!start) return null;
-  // completed_at is the authoritative, admin-correctable completion date. A
-  // second audit record is not required to prove an already recorded completion.
-  return { id: project.id, name: project.name, started: start.date, completed: project.completed_at,
-    days: Math.round((Date.parse(project.completed_at) - Date.parse(start.date)) / DAY) };
+function reliableActualStart(project: StatisticsProject, through: string) {
+  const start = project.started_at;
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start) || start > through) return null;
+  const timestamp = Date.parse(start);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === start ? start : null;
 }
 
-export function recordedProjectAge(project: StatisticsProject, activities: StatisticsActivity[], today: string, tasks: StatisticsTask[] = []) {
+export function recordedProjectDuration(project: StatisticsProject, today: string) {
+  if (!["completed", "archived"].includes(project.status) || !project.completed_at || project.completed_at > today || !Number.isFinite(Date.parse(project.completed_at))) return null;
+  const start = reliableActualStart(project, project.completed_at);
+  return start ? { id: project.id, name: project.name, started: start, completed: project.completed_at,
+    days: Math.round((Date.parse(project.completed_at) - Date.parse(start)) / DAY) } : null;
+}
+
+export function recordedProjectAge(project: StatisticsProject, today: string) {
   if (!["active", "paused"].includes(project.status) || project.archived_at || project.completed_at) return null;
-  const start = recordedProjectStart(project.id, activities, today, tasks);
-  return start ? { id: project.id, name: project.name, status: project.status, started: start.date,
-    days: Math.round((Date.parse(today) - Date.parse(start.date)) / DAY) } : null;
+  const start = reliableActualStart(project, today);
+  return start ? { id: project.id, name: project.name, status: project.status, started: start,
+    days: Math.round((Date.parse(today) - Date.parse(start)) / DAY) } : null;
 }
 
 export function median(values: number[]) {
@@ -136,12 +141,12 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
     if (bucket) bucket.completedTasks = (bucket.completedTasks ?? 0) + 1;
   }
   const durations = selectedProjects.flatMap(project => {
-    const duration = recordedProjectDuration(project, sources.activities, today, sources.tasks);
+    const duration = recordedProjectDuration(project, today);
     return duration ? [duration] : [];
   }).sort((a, b) => a.days - b.days || a.id.localeCompare(b.id));
   const ongoingProjects = production.filter(project => ["active", "paused"].includes(project.status) && !project.archived_at && !project.completed_at);
   const ongoing = ongoingProjects.flatMap(project => {
-    const age = recordedProjectAge(project, sources.activities, today, sources.tasks);
+    const age = recordedProjectAge(project, today);
     return age ? [age] : [];
   }).sort((a, b) => b.days - a.days || a.id.localeCompare(b.id));
   for (const month of months) month.durationMedian = median(durations.filter(project => monthOf(project.completed) === month.month).map(project => project.days));
@@ -156,7 +161,8 @@ export function buildStatistics(sources: StatisticsSources, period: StatisticsPe
       medianDays: median(durations.map(project => project.days)), meanDays: durations.length ? durations.reduce((sum, project) => sum + project.days, 0) / durations.length : null },
     coverage: { completionFrom, creditFrom, taskFrom, excludedCredits,
       missingCompletionDates: production.filter(project => project.status === "completed" && !project.completed_at).length,
-      durationProjects: durations.length, selectedProjects: selectedProjects.length, ongoingProjects: ongoingProjects.length } };
+      durationProjects: durations.length, selectedProjects: selectedProjects.length, ongoingProjects: ongoingProjects.length,
+      pausedOngoingProjects: ongoingProjects.filter(project => project.status === "paused").length } };
 }
 
 export type StatisticsReport = ReturnType<typeof buildStatistics>;

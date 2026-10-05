@@ -83,6 +83,9 @@ test("Project Finance rendered audit", async ({page}, testInfo) => {
    await expect(page.getByRole('button',{name:messages.orders.manage.replace('{count}','1'),exact:true})).toBeVisible();
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
    const summary=page.getByRole('region',{name:messages.orders.scope,exact:true});
+   await summary.getByRole('combobox',{name:messages.displayCurrency,exact:true}).click();
+   await page.getByRole('option',{name:'UAH',exact:true}).click();
+   await expect(summary).toContainText(/300[\s\u00a0]?000/);
    await expect(summary).toContainText(messages.orders.next);
    await expect(summary).toContainText('After concept');
    await expect(page.getByRole('heading',{name:'Final payment',exact:true})).toBeVisible();

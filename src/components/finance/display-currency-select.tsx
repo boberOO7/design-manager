@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Select, SelectItem } from "@/components/ui/select";
 import { financeDisplayCurrencySchema, type FinanceDisplayCurrency } from "@/lib/finance-display-currency";
 
-export function DisplayCurrencySelect({ value }: { value: FinanceDisplayCurrency }) {
+export function DisplayCurrencySelect({ value, variant = "default" }: { value: FinanceDisplayCurrency; variant?: "default" | "secondary" }) {
   const t = useTranslations("Finance");
   const router = useRouter();
   const [selected, setSelected] = useState(value);
@@ -21,7 +21,7 @@ export function DisplayCurrencySelect({ value }: { value: FinanceDisplayCurrency
       router.refresh();
     } catch { setSelected(value); } finally { setSaving(false); }
   }
-  return <Select aria-label={t("displayCurrency")} size="compact" className="w-24" value={selected} disabled={saving} onValueChange={change}>
+  return <Select aria-label={t("displayCurrency")} variant={variant} size="compact" width={variant === "secondary" ? "content" : "full"} contentMinWidth="natural" className="w-24" value={selected} disabled={saving} onValueChange={change}>
     {financeDisplayCurrencySchema.options.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}
   </Select>;
 }
