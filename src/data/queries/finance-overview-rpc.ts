@@ -22,15 +22,19 @@ export async function requestFinanceOverview(
     return response;
   };
 
-  const response = await request(1);
-  // This RPC and its forecast calculation are read-only. POST RPCs are not
-  // retried by the SDK. Never retry a PostgreSQL/PostgREST error or invalid JSON.
-  const retryable = response.error && !response.error.code && (
-    [502, 503, 504].includes(response.status) ||
-    (response.status === 0 && /^TypeError: (fetch failed|terminated)$/.test(response.error.message) &&
-      /\b(ECONNRESET|ETIMEDOUT|EAI_AGAIN|UND_ERR_SOCKET|UND_ERR_CONNECT_TIMEOUT)\b/.test(response.error.details))
-  );
-  if (!retryable) return response;
-  await new Promise(resolve => setTimeout(resolve, 150));
-  return request(2);
+  let response = await request(1);
+  // Repeating the overview safely reconciles the same automatic occurrences.
+  // POST RPCs are not retried by the SDK. Give a resetting upstream time to
+  // recover, but never retry a PostgreSQL/PostgREST error or invalid JSON.
+  for (const [index, delay] of [500, 1000, 2000].entries()) {
+    const retryable = response.error && !response.error.code && (
+      [502, 503, 504].includes(response.status) ||
+      (response.status === 0 && /^TypeError: (fetch failed|terminated)$/.test(response.error.message) &&
+        /\b(ECONNRESET|ETIMEDOUT|EAI_AGAIN|UND_ERR_SOCKET|UND_ERR_CONNECT_TIMEOUT)\b/.test(response.error.details))
+    );
+    if (!retryable) return response;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    response = await request(index + 2);
+  }
+  return response;
 }

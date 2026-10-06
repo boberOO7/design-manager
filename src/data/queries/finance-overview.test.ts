@@ -15,7 +15,7 @@ const report = {
 };
 describe("Overview application boundary", () => {
   beforeEach(() => { vi.clearAllMocks(); vi.spyOn(console, "warn").mockImplementation(() => {}); mocks.admin.mockResolvedValue({ studio_id: "studio" }); mocks.fx.mockResolvedValue({ rate: "40", source: "nbu", effectiveDate: today }); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
   it("denies non-admins before touching the database or rates", async () => {
     mocks.admin.mockResolvedValue(null);
     expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toBeNull();
@@ -78,12 +78,35 @@ describe("Overview application boundary", () => {
     expect(console.warn).toHaveBeenCalledWith("Finance Overview RPC failed.", expect.objectContaining({ status: 502, attempt: 1, durationMs: expect.any(Number) }));
   });
 
-  it("stops after two upstream failures and retains the original error", async () => {
+  it("waits for the upstream to recover after two consecutive gateway failures", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn(async () => {
+      const failed = fetch.mock.calls.length <= 2;
+      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : { ...report, requiredCurrencies: [] }), { status: failed ? 502 : 200 });
+    });
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
+    const result = getFinanceOverview(parseFinanceReportParams({}, today));
+    await vi.advanceTimersByTimeAsync(499);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toMatchObject({ forecast: report.forecast });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(mocks.fx).not.toHaveBeenCalled();
+  });
+
+  it("stops after four upstream failures and retains the original error", async () => {
+    vi.useFakeTimers();
     const error = { message: "An invalid response was received from the upstream server" };
     const fetch = vi.fn(async () => new Response(JSON.stringify(error), { status: 502 }));
     mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
-    await expect(getFinanceOverview(parseFinanceReportParams({}, today))).rejects.toMatchObject({ cause: error });
-    expect(fetch).toHaveBeenCalledTimes(2);
+    const result = expect(getFinanceOverview(parseFinanceReportParams({}, today))).rejects.toMatchObject({ cause: error });
+    await vi.advanceTimersByTimeAsync(3500);
+    await result;
+    expect(fetch).toHaveBeenCalledTimes(4);
     expect(mocks.fx).not.toHaveBeenCalled();
   });
 

@@ -61,7 +61,7 @@ it.each(["reset", "sql", "invalid", "settings", "vat"] as const)("preserves non-
     submissions: { urgentCount: 1 },
   });
   const rpcCalls = fetch.mock.calls.filter(([input]) => String(input).includes("get_finance_overview"));
-  expect(rpcCalls).toHaveLength(mode === "reset" ? 2 : mode === "settings" ? 0 : 1);
+  expect(rpcCalls).toHaveLength(mode === "reset" ? 4 : mode === "settings" ? 0 : 1);
   expect(console.error).toHaveBeenCalledWith("Dashboard Finance data is unavailable.", expect.any(Error));
 });
 
