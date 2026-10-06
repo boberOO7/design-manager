@@ -73,7 +73,9 @@ function dateLabel(date: string, options: Intl.DateTimeFormatOptions = { month: 
 function useCalendarItemTitle() {
   const t = useTranslations("Calendar");
   const common = useTranslations("Common");
-  return (item: CalendarItem) => item.source === "crm_follow_up" ? t("crmFollowUpEvent", { name: item.title }) : item.source === "studio_day_off" ? t("studioDayOffEvent", { name: item.title }) : item.source === "birthday" ? t("birthdayEvent", { name: item.member.fullName }) : item.source === "team_anniversary" ? t("teamAnniversaryEvent", { name: item.member.fullName }) : item.source === "salary_payment" ? t("salaryPaymentEvent", { name: item.member.fullName }) : getCalendarItemDisplayTitle(item, {
+  return (item: CalendarItem) => item.source === "calendar_event" && item.eventType === "business_trip"
+    ? t("businessTripEvent", { project: item.project?.name ?? item.title.replace(/^(Business trip|Відрядження)\s*·\s*/, "") })
+    : item.source === "crm_follow_up" ? t("crmFollowUpEvent", { name: item.title }) : item.source === "studio_day_off" ? t("studioDayOffEvent", { name: item.title }) : item.source === "birthday" ? t("birthdayEvent", { name: item.member.fullName }) : item.source === "team_anniversary" ? t("teamAnniversaryEvent", { name: item.member.fullName }) : item.source === "salary_payment" ? t("salaryPaymentEvent", { name: item.member.fullName }) : getCalendarItemDisplayTitle(item, {
     outOfOffice: t("outOfOffice"),
     pendingRequest: t("pendingRequest"),
     rejectedRequest: t("rejectedRequest"),

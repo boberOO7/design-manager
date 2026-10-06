@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLocale } from "next-intl/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
@@ -44,7 +45,7 @@ export async function PATCH(request: Request, context: Context) {
     if (!project) return NextResponse.json({ success: false, fieldErrors: { projectId: "Choose an accessible project." } }, { status: 400 });
     const { error: participantValidationError } = await supabase.rpc("validate_business_trip_participants", { p_studio_id: membership.studio_id, p_project_id: projectId, p_user_ids: value.participantIds });
     if (participantValidationError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantValidationError) }, { status: 400 });
-    if (value.eventType === "business_trip") value = { ...value, title: getBusinessTripTitle(project.name, request.headers.get("accept-language")?.toLowerCase().startsWith("uk") ? "uk" : "en") };
+    if (value.eventType === "business_trip") value = { ...value, title: getBusinessTripTitle(project.name, await getLocale()) };
   }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
     const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();

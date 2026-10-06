@@ -2,7 +2,7 @@ import "server-only";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { instantToDateOnly } from "@/lib/calendar";
-import { getDayOffCompensation } from "@/lib/time-off-compensation";
+import { getDayOffCompensation, getRequiredDayOffMinutes } from "@/lib/time-off-compensation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getEmployeeProfileEmployment(userId: string, now = new Date()) {
@@ -28,6 +28,7 @@ export async function getEmployeeProfileEmployment(userId: string, now = new Dat
     requests.push(...next.data);
   }
   const dayOffs = requests.filter((request) => request.request_type === "day_off");
+  const dayOffMinutes = dayOffs.reduce((total, request) => total + getRequiredDayOffMinutes({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day }), 0);
   let makeupMinutes = 0;
   // Reuse Calendar's compensation arithmetic. It includes scheduled events,
   // so this must never be presented as verified completed work or days worked.
@@ -50,7 +51,7 @@ export async function getEmployeeProfileEmployment(userId: string, now = new Dat
     makeupMinutes += batch.reduce((total, request) => total + getDayOffCompensation({ id: request.id, startDate: request.start_date, endDate: request.end_date, startTime: request.start_time, endTime: request.end_time, allDay: request.all_day }, contributions).compensatedMinutes, 0);
   }
   return {
-    asOf, absenceRequests: requests.length, makeupMinutes, availableVacationDays: balance.data,
+    asOf, absenceRequests: requests.length, dayOffMinutes, makeupMinutes, availableVacationDays: balance.data,
     // Preserve approved periods; the domain has no authoritative used-day total.
     vacationPeriods: requests.filter((request) => request.request_type === "vacation").slice(0, 2)
       .map((request) => ({ id: request.id, startDate: request.start_date, endDate: request.end_date })),

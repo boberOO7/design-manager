@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLocale } from "next-intl/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createCalendarEventInsertPayload } from "@/lib/calendar-event-insert";
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     if (value.participantIds.length === 0) return NextResponse.json({ success: false, fieldErrors: { participantIds: "Choose at least one business trip participant." } }, { status: 400 });
     const { data: project } = await supabase.from("projects").select("name").eq("id", value.projectId ?? "").eq("studio_id", activeMembership.studio_id).maybeSingle();
     if (!project) return NextResponse.json({ success: false, fieldErrors: { projectId: "Choose an accessible project." } }, { status: 400 });
-    value = { ...value, title: getBusinessTripTitle(project.name, request.headers.get("accept-language")?.toLowerCase().startsWith("uk") ? "uk" : "en") };
+    value = { ...value, title: getBusinessTripTitle(project.name, await getLocale()) };
   }
   const payload = createCalendarEventInsertPayload(value, authenticatedUser.id, {
     userId: activeMembership.authenticatedUserId,

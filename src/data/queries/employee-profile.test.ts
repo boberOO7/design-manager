@@ -28,7 +28,7 @@ beforeEach(() => {
   mocks.range.mockResolvedValue({ data: [], count: 0, error: null });
   mocks.attributions.mockResolvedValue([]);
   mocks.counts.mockResolvedValue({ data: [], count: 0, error: null });
-  mocks.employment.mockResolvedValue({ asOf: "2026-10-03", absenceRequests: 0, makeupMinutes: 0, availableVacationDays: null, vacationPeriods: [] });
+  mocks.employment.mockResolvedValue({ asOf: "2026-10-03", absenceRequests: 0, dayOffMinutes: 0, makeupMinutes: 0, availableVacationDays: null, vacationPeriods: [] });
   mocks.insert.mockResolvedValue({ error: null });
 });
 

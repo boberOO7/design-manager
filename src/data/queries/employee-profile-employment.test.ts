@@ -71,6 +71,7 @@ describe("employee profile employment privacy and source contract", () => {
     expect(result).toEqual({
       asOf: "2026-10-03",
       absenceRequests: 2,
+      dayOffMinutes: 480,
       makeupMinutes: 180,
       availableVacationDays: null,
       vacationPeriods: [{ id: "vacation-1", startDate: "2026-09-20", endDate: "2026-09-22" }],
@@ -83,6 +84,23 @@ describe("employee profile employment privacy and source contract", () => {
     expect(events.calls).toContainEqual(["eq", "studio_id", studioId]);
     expect(events.calls).toContainEqual(["eq", "event_type", "work_makeup"]);
     expect(events.calls).toContainEqual(["in", "compensates_time_off_request_id", [absenceId]]);
+  });
+
+  it("totals full and partial day offs without including vacation or sick leave", async () => {
+    const timeOff = queryResult([
+      { ...request, end_date: "2026-09-03" },
+      { ...request, id: "partial-day-off", all_day: false, start_time: "14:00:00", end_time: "15:30:00" },
+      { ...request, id: "vacation-1", request_type: "vacation" },
+      { ...request, id: "sick-leave-1", request_type: "sick_leave" },
+    ]);
+    const events = queryResult([]);
+    mocks.from.mockImplementation((table: string) => table === "time_off_requests" ? timeOff.query : events.query);
+    mocks.rpc.mockResolvedValue({ data: 7, error: null });
+    mocks.createClient.mockResolvedValue({ from: mocks.from, rpc: mocks.rpc });
+
+    const result = await getEmployeeProfileEmployment(employeeId, new Date("2026-10-03T12:00:00Z"));
+
+    expect(result).toMatchObject({ absenceRequests: 4, dayOffMinutes: 1530, makeupMinutes: 0 });
   });
 
   it("surfaces time-off, makeup, and balance query failures", async () => {
