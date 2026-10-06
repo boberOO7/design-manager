@@ -13,6 +13,7 @@ describe("effective movement pagination", () => {
       let selection="";
       const result=()=>table==="finance_current_movements" ? {data:[{id:"corrected"},{id:"refund"}],count:52,error:null}
         : table==="finance_movement_corrections" ? {data:[{original_movement_id:"original",replacement_movement_id:"corrected"}],error:null}
+        : table==="finance_allocations" ? {data:[],error:null}
         : selection==="related_movement_id" ? {data:[],error:null}
         : {data:[{id:"corrected",kind:"incoming",entries:[]},{id:"refund",kind:"refund",entries:[]}],count:155,error:null};
       const query={
@@ -21,6 +22,7 @@ describe("effective movement pagination", () => {
         order:(...args:unknown[])=>{mocks.calls.push({table,method:"order",args});return query;},
         range:(...args:unknown[])=>{mocks.calls.push({table,method:"range",args});return query;},
         in:(...args:unknown[])=>{mocks.calls.push({table,method:"in",args});return query;},
+        or:(...args:unknown[])=>{mocks.calls.push({table,method:"or",args});return query;},
         then:(resolve:(value:ReturnType<typeof result>)=>unknown)=>Promise.resolve(result()).then(resolve),
       };
       return query;

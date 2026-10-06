@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { FINANCE_OVERDUE_DB_FILTER } from "@/lib/finance-planning";
 import { nextProjectPayment } from "@/lib/finance-project-view";
+import { getFinanceMovementContexts } from "./finance-movement-context";
 
 export type FinancePlanningPeriod = "month" | "30days" | "3months" | "6months" | "all";
 
@@ -70,15 +71,16 @@ export async function getFinanceMovements(page: number, history = false) {
   if (error) throw new Error("Unable to load Finance movements.", { cause: error });
   // Query reverse links explicitly: PostgREST cannot embed this composite self-reference.
   const movements = data ?? [];
-  const [reversals, corrections] = await Promise.all([movements.length ? client.from("finance_movements")
+  const [reversals, corrections, contexts] = await Promise.all([movements.length ? client.from("finance_movements")
     .select("related_movement_id").eq("studio_id", admin.studio_id).eq("kind", "reversal")
     .in("related_movement_id", movements.map((movement) => movement.id)) : null,
     movements.length ? client.from("finance_movement_corrections").select("original_movement_id,replacement_movement_id")
-      .eq("studio_id", admin.studio_id).in("replacement_movement_id", movements.map((movement) => movement.id)) : null]);
+      .eq("studio_id", admin.studio_id).in("replacement_movement_id", movements.map((movement) => movement.id)) : null,
+    getFinanceMovementContexts(client, admin.studio_id, movements.map(movement => movement.id))]);
   if (reversals?.error || corrections?.error) throw new Error("Unable to load Finance history.", { cause: reversals?.error ?? corrections?.error });
   const reversedIds = new Set(reversals?.data?.map((movement) => movement.related_movement_id));
   const predecessors = new Map(corrections?.data?.map((link) => [link.replacement_movement_id, link.original_movement_id]));
-  return { movements: movements.map((movement) => ({ ...movement, reversed: reversedIds.has(movement.id), supersedesId: predecessors.get(movement.id) ?? null })), total: history ? count ?? 0 : current?.count ?? 0 };
+  return { movements: movements.map((movement) => ({ ...movement, context: contexts.get(movement.id) ?? [], reversed: reversedIds.has(movement.id), supersedesId: predecessors.get(movement.id) ?? null })), total: history ? count ?? 0 : current?.count ?? 0 };
 }
 export type FinanceMovementWithEntries = NonNullable<Awaited<ReturnType<typeof getFinanceMovements>>>["movements"][number];
 
