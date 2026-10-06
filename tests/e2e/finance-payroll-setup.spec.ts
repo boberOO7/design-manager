@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import en from "../../messages/en.json";
 import type { Database } from "../../src/types/database.types";
+import { signInLocalTestUser } from "../helpers/auth";
 
 const local=z.object({EQUIPMENT_TEST_SUPABASE_URL:z.url(),EQUIPMENT_TEST_SERVICE_KEY:z.string()}).parse(process.env);
 if(!["127.0.0.1","localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Local Finance fixtures only");
@@ -13,7 +14,7 @@ const studio=randomUUID(),bank=randomUUID();
 const actors=["admin","employee","employee","employee","employee"].map((role,index)=>({role,name:["Payroll admin","Payroll employee","Payroll designer","Payroll architect","Payroll assistant"][index],id:"",email:`payroll-${randomUUID()}@example.test`,password:`Finance-${randomUUID()}`}));
 function sql(statement:string){return execFileSync("docker",["exec","-i","supabase_db_design-manager","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-At"],{input:statement,encoding:"utf8"}).trim();}
 const t=en.Finance,s=t.schedules;
-async function login(page:Page,index=0){await page.goto("/login");await page.locator('input[type="email"]').fill(actors[index].email);await page.locator('input[type="password"]').fill(actors[index].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);}
+async function login(page:Page,index=0){await signInLocalTestUser(page,actors[index]);}
 
 test.beforeAll(async()=>{
   await client.from("studios").insert({id:studio,name:"Payroll browser test"}).throwOnError();
@@ -57,10 +58,9 @@ test("team setup resumes partial saves and groups preserve financial history", a
   await employee.getByLabel(s.agreedAmount, { exact: true }).fill("50000");
   await designer.getByLabel(s.agreedAmount, { exact: true }).fill("45000.123");
   await designer.getByRole("switch").click();
-  await designer.getByLabel(s.deductions, { exact: true }).fill("5000");
-  await designer.getByLabel(s.payout, { exact: true }).fill("40000");
   await designer.getByRole("button", { name: s.payrollCosts, exact: true }).click();
-  await designer.getByLabel(s.employerCost, { exact: true }).fill("0");
+  await designer.getByLabel(s.employeeTaxes, { exact: true }).fill("5000");
+  await designer.getByLabel(s.employerContributions, { exact: true }).fill("0");
   await dialog.getByRole("button", { name: s.setupSave, exact: true }).click();
   await expect(employee.getByRole("status")).toHaveText(s.setupSaved);
   await expect(designer.getByRole("status")).toHaveText(s.errors.amount);
@@ -71,7 +71,7 @@ test("team setup resumes partial saves and groups preserve financial history", a
   await dialog.getByRole("button", { name: t.movements.close, exact: true }).first().click();
   expect(sql(`select to_jsonb(t)::text from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.studio_id='${studio}' and s.employee_id='${actors[0].id}'`)).toBe(existing);
   expect(sql(`select count(*) from finance_schedule_terms where studio_id='${studio}'`)).toBe("3");
-  expect(sql(`select employee_deductions is null and employer_cost is null from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.employee_id='${actors[1].id}' and s.studio_id='${studio}'`)).toBe("t");
+  expect(sql(`select employee_deductions=0 and employer_cost=0 and employer_cost_status='fixed' from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.employee_id='${actors[1].id}' and s.studio_id='${studio}'`)).toBe("t");
   expect(sql(`select basis||'|'||employee_payout||'|'||employee_deductions||'|'||employer_cost from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.employee_id='${actors[2].id}' and s.studio_id='${studio}'`)).toBe("gross|40000|5000|0");
   for (const name of ["Office", "Software"]) {
     await page.getByRole("button", { name: s.addGroup, exact: true }).click(); dialog = page.getByRole("dialog");
@@ -182,4 +182,69 @@ test("recurring selection, mouse and keyboard focus, motion, and bulk organizati
   await expect(actions).toHaveCSS("opacity", "1");
   await expect(rent.getByRole("checkbox").locator("..")).toHaveCSS("opacity", "1");
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("mobile-actions.png"), fullPage: true });
+});
+
+test("compensation modal saves blank extras as known zero in Net and Gross modes", async ({ page }, testInfo) => {
+  await login(page);
+  const origin = new URL(String(testInfo.project.use.baseURL)).origin;
+  await page.context().addCookies([
+    { name: "studioflow-locale", value: "en", url: origin, sameSite: "Lax" },
+  ]);
+  await page.goto("/finance/schedules");
+  await page.getByRole("button", { name: s.addCompensation, exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: s.employee, exact: true }).click();
+  await page.getByRole("option", { name: "Payroll architect", exact: true }).click();
+  await dialog.getByLabel(s.agreedAmount, { exact: true }).fill("60000");
+  const costs = () => dialog.getByRole("button", { name: s.payrollCosts, exact: true });
+  await expect(costs()).toHaveAttribute("aria-expanded", "false");
+  await expect(dialog.getByText(s.costUnknown, { exact: true })).toHaveCount(0);
+  await expect(dialog.getByText(s.certainty, { exact: true })).toHaveCount(0);
+  await costs().click();
+  await dialog.getByLabel(s.employeeTaxes, { exact: true }).fill("");
+  await dialog.getByLabel(s.employerContributions, { exact: true }).fill("");
+  await costs().click();
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("payroll-net.png") });
+  await dialog.getByRole("button", { name: t.planning.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const terms = () => sql(`select basis||'|'||employee_payout||'|'||employee_deductions||'|'||employer_cost||'|'||employer_cost_status from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.studio_id='${studio}' and s.employee_id='${actors[3].id}' order by t.revision desc limit 1`);
+  expect(terms()).toBe("net|60000|0|0|fixed");
+  const row = page.locator("article").filter({ has: page.getByRole("heading", { name: "Payroll architect", exact: true }) });
+  await row.getByRole("button", { name: s.editPay, exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await expect(costs()).toHaveAttribute("aria-expanded", "false");
+  await dialog.getByRole("switch").click();
+  await costs().click();
+  await dialog.getByLabel(s.employeeTaxes, { exact: true }).fill("");
+  await dialog.getByLabel(s.employerContributions, { exact: true }).fill("");
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("payroll-gross.png") });
+  await dialog.getByRole("button", { name: t.planning.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(terms()).toBe("gross|60000|0|0|fixed");
+  await row.getByRole("button", { name: s.editPay, exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await costs().click();
+  await dialog.getByLabel(s.employeeTaxes, { exact: true }).fill("5000");
+  await dialog.getByLabel(s.employerContributions, { exact: true }).fill("1000");
+  await dialog.getByRole("button", { name: t.planning.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(terms()).toBe("gross|55000|5000|1000|fixed");
+  await row.getByRole("button", { name: s.editPay, exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await expect(costs()).toHaveAttribute("aria-expanded", "true");
+  await expect(dialog.getByLabel(s.employeeTaxes, { exact: true })).toHaveValue("5000");
+  await dialog.getByRole("button", { name: t.movements.close, exact: true }).first().click();
+  const input = { kind: "payroll", employeeId: actors[4].id, revision: 0, name: "Salary", amount: "1000", currency: "UAH", categoryId: sql(`select id from finance_categories where studio_id='${studio}' and default_key='salary'`), basis: "net", employeePayout: "1000", employeeDeductions: "0", employerCost: "50", employerCostStatus: "estimated", intervalMonths: 1, payoutDay: 1, paymentMonthOffset: 1, effectiveFrom: new Date().toISOString().slice(0, 7) + "-01", commitment: "agreed", certainty: "fixed", reason: "Legacy estimated term" };
+  sql(`select set_config('request.jwt.claim.sub','${actors[0].id}',false); select save_finance_schedule('${studio}','${randomUUID()}','${JSON.stringify(input)}'::jsonb);`);
+  await page.reload();
+  const estimatedRow = page.locator("article").filter({ has: page.getByRole("heading", { name: "Payroll assistant", exact: true }) });
+  await estimatedRow.getByRole("button", { name: s.editPay, exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await expect(costs()).toHaveAttribute("aria-expanded", "true");
+  await dialog.getByLabel(s.employerContributions, { exact: true }).fill("");
+  await dialog.getByLabel(s.employerContributions, { exact: true }).pressSequentially("60");
+  await expect(dialog.getByRole("button", { name: s.confirmCostAmount, exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: t.planning.save, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(sql(`select employer_cost_status from finance_schedule_terms t join finance_schedules s on s.id=t.schedule_id where s.studio_id='${studio}' and s.employee_id='${actors[4].id}' order by t.revision desc limit 1`)).toBe("estimated");
 });

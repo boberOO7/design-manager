@@ -32,6 +32,14 @@ describe("labor source issue composition", () => {
     ]);
   });
 
+  it("treats fixed zero extras as complete after recognition and preserves open-period issues", () => {
+    for (const basis of ["net", "gross"] as const) {
+      const known = source({ basis, deductionsStatus: "fixed", employerStatus: "fixed", knownCost: "1000", recognizedCost: "1000", remainingCost: "0" });
+      expect(laborSourceIssues([known], "2026-09-01", "2026-09-30")).toEqual([]);
+      expect(laborSourceIssues([{ ...known, remainingCost: "1000", canConfirm: false }], "2026-09-01", "2026-09-30").map(issue => issue.kind)).toEqual(["period_open"]);
+    }
+  });
+
   it("does not treat unknown employee deductions as a gross-payroll issue", () => {
     expect(laborSourceIssues([source({ basis: "gross", employerStatus: "fixed", remainingCost: "0.00" })], "2026-09-01", "2026-09-30")).toEqual([]);
   });

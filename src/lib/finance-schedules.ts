@@ -12,9 +12,15 @@ export const scheduleInputSchema = z.object({
   payoutDay: z.coerce.number().int().min(1).max(31), paymentMonthOffset: z.coerce.number().int().min(0).max(1).default(0),
   effectiveFrom: monthStart, effectiveThrough: z.union([z.iso.date(), z.literal("")]).default(""),
   commitment: z.enum(["agreed", "tentative"]), certainty: z.enum(["fixed", "estimated"]),
-  basis: z.enum(["", "net", "gross"]).default(""), employeePayout: z.union([planningAmount, z.literal("")]).default(""), employeeDeductions: optionalAmount,
-  employerCost: optionalAmount, employerCostStatus: z.enum(["unknown", "fixed", "estimated"]), reason: z.string().trim().min(1).max(2000),
-}).refine((v) => !v.effectiveThrough || (v.effectiveThrough >= v.effectiveFrom &&
+  basis: z.enum(["", "net", "gross"]).default(""), employeePayout: z.union([planningAmount, z.literal("")]).default(""), employeeDeductions: optionalAmount, employeeDeductionsUnknown: z.enum(["true", "false"]).default("false"),
+  employerCost: optionalAmount, employerCostStatus: z.enum(["unknown", "fixed", "estimated"]).default("fixed"), reason: z.string().trim().min(1).max(2000),
+}).transform((v) => v.kind !== "payroll" ? v : {
+  ...v,
+  employeeDeductions: v.employeeDeductionsUnknown === "true" ? v.employeeDeductions : v.employeeDeductions || "0",
+  employerCost: v.employerCostStatus === "unknown" ? v.employerCost : v.employerCost || "0",
+  employerCostStatus: v.employerCostStatus !== "unknown" && !v.employerCost ? "fixed" as const : v.employerCostStatus,
+}).refine((v) => v.kind !== "payroll" || v.employeeDeductionsUnknown !== "true" || v.basis === "net" && v.employeeDeductions === "", { path: ["employeeDeductions"] })
+  .refine((v) => !v.effectiveThrough || (v.effectiveThrough >= v.effectiveFrom &&
   new Date(Date.parse(`${v.effectiveThrough}T00:00:00Z`) + 86400000).getUTCDate() === 1), { path: ["effectiveThrough"] })
   .refine((v) => (v.employerCostStatus === "unknown") === (v.employerCost === ""), { path: ["employerCost"] })
   .refine((v) => v.kind !== "payroll" || Boolean(v.employeeId), { path: ["employeeId"] })
@@ -35,13 +41,13 @@ export function payrollPayoutDate(serviceDate: string | null, offset: number | n
   return `${month}-${String(Math.min(Math.max(day ?? 1, 1), last)).padStart(2, "0")}`;
 }
 
-export function payrollCompensationSummary(amount: string, basis: "net" | "gross", deductions: string, employerCost: string) {
+export function payrollCompensationSummary(amount: string, basis: "net" | "gross", deductions: string | null, employerCost: string | null) {
   const units = (value: string) => {
     if (!/^\d{1,10}(?:[.,]\d{1,4})?$/.test(value)) return null;
     const [whole, fraction = ""] = value.replace(",", ".").split(".");
     return BigInt(whole) * BigInt(10000) + BigInt(fraction.padEnd(4, "0") || "0");
   };
-  const amountUnits = units(amount), deductionUnits = deductions === "" ? null : units(deductions), employerUnits = employerCost === "" ? null : units(employerCost);
+  const amountUnits = units(amount), deductionUnits = deductions === null ? null : units(deductions.trim() || "0"), employerUnits = employerCost === null ? null : units(employerCost.trim() || "0");
   const text = (value: bigint | null) => {
     if (value === null || value < BigInt(0)) return null;
     const whole = value / BigInt(10000), fraction = String(value % BigInt(10000)).padStart(4, "0").replace(/0+$/, "");

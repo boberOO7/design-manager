@@ -5,12 +5,28 @@ const id = "66000000-0000-4000-8000-000000000001";
 const payroll = { requestId:id,revision:0,kind:"payroll",employeeId:id,name:"Salary",amount:"1000",currency:"UAH",categoryId:id,intervalMonths:1,payoutDay:31,paymentMonthOffset:1,effectiveFrom:"2026-01-01",commitment:"agreed",certainty:"fixed",basis:"net",employeePayout:"1000",employerCostStatus:"unknown",reason:"Agreement" };
 
 describe("Finance schedule input", () => {
-  it("summarizes net and gross compensation without rounding or inferring unknown costs", () => {
+  it("summarizes net and gross compensation exactly and distinguishes omitted from explicitly unknown costs", () => {
     expect(payrollCompensationSummary("1000", "net", "100", "50")).toEqual({ employeeReceives: "1000", studioCost: "1150" });
     expect(payrollCompensationSummary("1000", "gross", "100", "50")).toEqual({ employeeReceives: "900", studioCost: "1050" });
     expect(payrollCompensationSummary("1000", "gross", "1000", "50").employeeReceives).toBeNull();
-    expect(payrollCompensationSummary("1000", "net", "", "0")).toEqual({ employeeReceives: "1000", studioCost: null });
+    expect(payrollCompensationSummary("1000", "net", null, "0")).toEqual({ employeeReceives: "1000", studioCost: null });
     expect(payrollCompensationSummary("1000", "net", "0", "0")).toEqual({ employeeReceives: "1000", studioCost: "1000" });
+  });
+  it("saves blank or omitted extras as fixed zero for net and gross payroll", () => {
+    for (const basis of ["net", "gross"] as const) {
+      for (const extras of [{}, { employeeDeductions: "", employerCost: "" }]) {
+        const terms = scheduleInputSchema.parse({ ...payroll, basis, employerCostStatus: undefined, ...extras });
+        expect(terms).toMatchObject({ employeeDeductions: "0", employerCost: "0", employerCostStatus: "fixed" });
+        expect(payrollCompensationSummary(terms.amount, basis, terms.employeeDeductions, terms.employerCost)).toEqual({ employeeReceives: "1000", studioCost: "1000" });
+      }
+      expect(payrollCompensationSummary("1000", basis, "", "")).toEqual({ employeeReceives: "1000", studioCost: "1000" });
+      expect(payrollCompensationSummary("1000", basis, "0", null).studioCost).toBeNull();
+    }
+    expect(scheduleInputSchema.safeParse({ ...payroll, employeeDeductionsUnknown: "true", employeeDeductions: "0" }).success).toBe(false);
+  });
+  it("retains an intentional employer estimate but clearing its amount establishes zero", () => {
+    expect(scheduleInputSchema.parse({ ...payroll, employerCost: "50", employerCostStatus: "estimated" })).toMatchObject({ employerCost: "50", employerCostStatus: "estimated" });
+    expect(scheduleInputSchema.parse({ ...payroll, employerCost: "", employerCostStatus: "estimated" })).toMatchObject({ employerCost: "0", employerCostStatus: "fixed" });
   });
   it("maps a selected payout month to its service month and actual payout day", () => {
     expect(shiftFinanceMonth("2026-09", -1)).toBe("2026-08");
@@ -20,11 +36,12 @@ describe("Finance schedule input", () => {
   it("preserves unknown employer costs and supports explicit zero", () => {
     expect(scheduleInputSchema.parse(payroll).employerCost).toBe("");
     expect(scheduleInputSchema.parse({ ...payroll,employerCostStatus:"fixed",employerCost:"0" }).employerCost).toBe("0");
-    expect(scheduleInputSchema.safeParse({ ...payroll,employerCostStatus:"fixed" }).success).toBe(false);
+    expect(scheduleInputSchema.parse({ ...payroll,employerCostStatus:"fixed" }).employerCost).toBe("0");
     expect(scheduleInputSchema.safeParse({ ...payroll,employerCost:"1" }).success).toBe(false);
   });
-  it("preserves unknown net remittances and accepts known amount or explicit zero", () => {
-    expect(scheduleInputSchema.parse(payroll).employeeDeductions).toBe("");
+  it("defaults omitted net deductions to zero and retains intentional unknown", () => {
+    expect(scheduleInputSchema.parse(payroll).employeeDeductions).toBe("0");
+    expect(scheduleInputSchema.parse({ ...payroll, employeeDeductionsUnknown: "true" }).employeeDeductions).toBe("");
     for (const amount of ["0", "125,50"]) {
       expect(scheduleInputSchema.parse({ ...payroll, employeeDeductions: amount }).employeeDeductions).toBe(amount.replace(",", "."));
     }
@@ -41,8 +58,9 @@ describe("Finance schedule input", () => {
       expect(payrollCostSchema.safeParse({ ...input, ...patch }).success).toBe(false);
     }
   });
-  it("requires explicit gross deductions and positive payout without inventing taxes", () => {
-    expect(scheduleInputSchema.safeParse({ ...payroll,basis:"gross" }).success).toBe(false);
+  it("defaults gross deductions to zero while requiring a known positive payout", () => {
+    expect(scheduleInputSchema.safeParse({ ...payroll,basis:"gross" }).success).toBe(true);
+    expect(scheduleInputSchema.safeParse({ ...payroll,basis:"gross",employeeDeductionsUnknown:"true" }).success).toBe(false);
     expect(scheduleInputSchema.safeParse({ ...payroll,basis:"gross",employeeDeductions:"0" }).success).toBe(true);
     expect(scheduleInputSchema.safeParse({ ...payroll,employeePayout:"0" }).success).toBe(false);
   });
@@ -58,7 +76,7 @@ describe("Finance schedule input", () => {
       [{ effectiveThrough: "2026-02-27" }, "effectiveThroughInput"],
       [{ employeeId: "" }, "employeeRequired"],
       [{ amount: "" }, "compensationRequired"],
-      [{ employerCostStatus: "fixed" }, "employerCostRequired"],
+      [{ employerCost: "-1" }, "employerCostRequired"],
     ] as const) {
       const result = scheduleInputSchema.safeParse({ ...payroll, ...patch });
       expect(result.success ? "valid" : financeScheduleValidationError(result.error.issues)).toBe(error);

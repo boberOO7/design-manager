@@ -13,6 +13,7 @@ import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { BinarySwitch } from "@/components/ui/binary-switch";
+import { PayrollOptionalCosts } from "./payroll-optional-costs";
 import { PayrollSetup, initialPayrollMembers } from "./payroll-setup";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCurrencySelect } from "./currency-select";
@@ -82,9 +83,10 @@ function ScheduleForm({ data, editor, onSaved, onPending }: { data: Data; editor
   const [employee, setEmployee] = useState(schedule?.employee_id ?? (editor.intent === "bonus" ? editor.employeeId : "") ?? "");
   const [currency, setCurrency] = useState(current?.currency ?? data.settings?.base_currency ?? "UAH");
   const [basis, setBasis] = useState<"net" | "gross">(current?.basis === "gross" ? "gross" : "net");
-  const [costStatus, setCostStatus] = useState(current?.employer_cost_status ?? "fixed");
+  const [costStatus, setCostStatus] = useState<"unknown" | "fixed" | "estimated">(current?.employer_cost_status === "unknown" ? "unknown" : current?.employer_cost_status === "estimated" ? "estimated" : "fixed");
   const [amount, setAmount] = useState(current?.amount?.toString() ?? "");
-  const [employeeDeductions, setEmployeeDeductions] = useState(current?.employee_deductions?.toString() ?? "");
+  const [employeeDeductions, setEmployeeDeductions] = useState(current ? current.employee_deductions?.toString() ?? "" : "0");
+  const [deductionsUnknown, setDeductionsUnknown] = useState(Boolean(current && current.employee_deductions === null));
   const [employerCost, setEmployerCost] = useState(current ? current.employer_cost?.toString() ?? "" : "0");
   const [interval, setInterval] = useState(String(current?.interval_months ?? 1));
   const [offset, setOffset] = useState(String(current?.payment_month_offset ?? (payroll ? 1 : 0)));
@@ -99,8 +101,7 @@ function ScheduleForm({ data, editor, onSaved, onPending }: { data: Data; editor
   const [effectiveFromMonth, setEffectiveFromMonth] = useState(payroll ? schedule && !editable ? nextMonth.slice(0, 7) : shiftFinanceMonth((current?.effective_from ?? month).slice(0, 7), Number(current?.payment_month_offset ?? 1)) : (editable ? current?.effective_from ?? month : schedule ? nextMonth : month).slice(0, 7));
   const [effectiveThroughMonth, setEffectiveThroughMonth] = useState(payroll && current?.effective_through ? shiftFinanceMonth(current.effective_through.slice(0, 7), Number(current.payment_month_offset ?? 0)) : current?.effective_through?.slice(0, 7) ?? "");
   const salaryCategory = data.categories.find((c) => c.default_key === "salary" && !c.archived_at);
-  const payrollSummary = payrollCompensationSummary(amount, basis, employeeDeductions, employerCost);
-  const payrollCurrency = data.currencies.find((item) => item.code === currency);
+  const payrollSummary = payrollCompensationSummary(amount, basis, deductionsUnknown ? null : employeeDeductions, costStatus === "unknown" ? null : employerCost);
   const chooseEmployee = <FormField label={t("schedules.employee")}><Select name="employeeId" aria-label={t("schedules.employee")} value={employee} onValueChange={(value) => {
     setEmployee(value);
     const joinedAt = data.members.find((member) => member.user_id === value)?.joined_at;
@@ -145,16 +146,10 @@ function ScheduleForm({ data, editor, onSaved, onPending }: { data: Data; editor
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_8rem_minmax(15rem,1fr)] lg:items-end">
           <FormField label={t("schedules.agreedAmount")}><input type="hidden" name="amount" value={amount} /><Input aria-label={t("schedules.agreedAmount")} value={formatEditableAmount(amount)} onChange={(event) => setAmount(event.target.value.replace(/\s/g, ""))} inputMode="decimal" required /></FormField>{currencyField}
           <div className="motion-reduce:[&_*]:transition-none"><BinarySwitch emptyLabel={t("schedules.net")} label={t("schedules.basis")} value={basis} options={["net", "gross"] as const} optionLabel={(value) => t(`schedules.${value}`)} onChange={setBasis} /><input type="hidden" name="basis" value={basis} /></div>
-          <AnimatedDisclosure className="sm:col-span-2 lg:col-span-3" title={t("schedules.payrollCosts")}><div className="mt-2 space-y-3">
-            <p className="text-xs text-[var(--ui-text-muted)]">{t("schedules.compensationBasisHelp")}</p>
-            <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("schedules.employeeTaxes")}><Input name="employeeDeductions" value={employeeDeductions} onChange={(event) => setEmployeeDeductions(event.target.value)} inputMode="decimal" required={basis === "gross"} /></FormField>
-              <div className="space-y-2"><FormField label={t("schedules.employerContributions")}><Input name="employerCost" value={employerCost} onChange={(event) => setEmployerCost(event.target.value)} inputMode="decimal" disabled={costStatus === "unknown"} required={costStatus !== "unknown"} /></FormField><label className="flex min-h-9 items-center gap-2 text-xs text-[var(--ui-text-muted)]"><input type="checkbox" className="size-4" checked={costStatus === "unknown"} onChange={event => { setCostStatus(event.target.checked ? "unknown" : "fixed"); setEmployerCost(event.target.checked ? "" : "0"); }} />{t("schedules.costUnknown")}</label>{costStatus !== "unknown" && employerCost.trim() ? <FormField label={t("schedules.certainty")}><Select aria-label={t("schedules.certainty")} value={costStatus === "estimated" ? "estimated" : "fixed"} onValueChange={setCostStatus}>{["fixed", "estimated"].map((value) => <SelectItem key={value} value={value}>{t(`schedules.${value}`)}</SelectItem>)}</Select></FormField> : null}</div>
-            </div>
-            <p className="text-xs text-[var(--ui-text-muted)]">{t("schedules.compensationUnknownHelp")}</p>
-            <input type="hidden" name="employeePayout" value={payrollSummary.employeeReceives ?? ""} />
-            <input type="hidden" name="employerCostStatus" value={costStatus} />
-            {payrollSummary.employeeReceives !== null || payrollSummary.studioCost !== null ? <dl className="flex flex-wrap gap-x-5 gap-y-1 border-t border-[var(--ui-border-subtle)] pt-2 text-xs">{payrollSummary.employeeReceives !== null ? <div><dt className="inline text-[var(--ui-text-muted)]">{t("schedules.employeeReceives")}</dt><dd className="ml-1 inline font-medium text-[var(--ui-text)]">{payrollCurrency ? formatFinanceAmount(payrollSummary.employeeReceives, payrollCurrency, locale) : `${payrollSummary.employeeReceives} ${currency}`}</dd></div> : null}{payrollSummary.studioCost !== null ? <div><dt className="inline text-[var(--ui-text-muted)]">{t("schedules.studioCostSummary")}</dt><dd className="ml-1 inline font-medium text-[var(--ui-text)]">{payrollCurrency ? formatFinanceAmount(payrollSummary.studioCost, payrollCurrency, locale) : `${payrollSummary.studioCost} ${currency}`}</dd></div> : null}</dl> : null}
-          </div></AnimatedDisclosure>
+          <div className="sm:col-span-2 lg:col-span-3"><PayrollOptionalCosts basis={basis} deductions={employeeDeductions} deductionsUnknown={deductionsUnknown} employerCost={employerCost} employerStatus={costStatus}
+            onDeductions={setEmployeeDeductions} onDeductionsUnknown={unknown => { setDeductionsUnknown(unknown); setEmployeeDeductions(unknown ? "" : "0"); }} onEmployerCost={setEmployerCost} onEmployerStatus={status => { setCostStatus(status); if (status === "unknown" || costStatus === "unknown") setEmployerCost(status === "unknown" ? "" : "0"); }}
+            deductionsName="employeeDeductions" deductionsUnknownName="employeeDeductionsUnknown" employerCostName="employerCost" employerStatusName="employerCostStatus" /></div>
+          <input type="hidden" name="employeePayout" value={payrollSummary.employeeReceives ?? ""} />
           {paymentTiming}
           {effectivePeriod}
         </div>

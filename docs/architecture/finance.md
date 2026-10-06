@@ -521,12 +521,25 @@ or notifications containing private data.
   supply amounts; PostgreSQL validates exact currency precision and agreement
   arithmetic. Net equals payout, with remittances additional; gross equals payout
   plus explicit deductions. Unknown costs remain null, confirmed zero is explicit,
-  and estimated employer cost remains estimated. New payroll defaults employer
-  contributions to explicit zero; existing unknown terms remain unchanged.
+  and estimated employer cost remains estimated. New or edited payroll terms default
+  omitted deductions and employer contributions to known zero; deliberate unknown
+  period facts remain separate from term defaults.
   There is no statutory tax engine.
-- Net-pay forms accept additional remittances: blank is unknown, zero explicitly
-  confirms none, and a known amount is additional to payout. Gross arithmetic is
-  unchanged. Employer costs retain fixed/estimated choices.
+- Net-pay forms accept additional remittances: blanks mean zero on save, and an
+  explicit secondary choice retains unknown amounts. Gross requires known
+  deductions to derive payout. Existing estimated employer costs stay estimated
+  until explicitly confirmed or cleared to zero on save.
+- A one-time migration converts existing blank optional payroll components to
+  known zero, including previously explicit unknowns. Unused active terms are
+  normalized in place; consumed terms receive a forward revision after protected
+  periods. Existing occurrences receive append-only zero component completions,
+  preserving prior terms, cost revisions, recognition snapshots and cash. Nonzero
+  amounts and estimates remain unchanged. Future deliberate unknowns stay supported.
+  The follow-up `20261006205034` corrects remaining blank optional components in
+  existing terms in place without creating forward amendments. It preserves salary
+  amounts, payout dates, revision numbers, period cost facts, recognition snapshots
+  and cash; recurring terms are excluded. An unresolved explicit unknown period
+  fact blocks this correction until resolved through the existing completion RPC.
 - Expected payroll items expose completion of originally unknown remittances and
   employer costs for past service months or earned/allocated payouts. The guarded
   `complete_finance_payroll_cost` RPC appends reasoned, versioned facts to
@@ -696,14 +709,28 @@ and generation workflow must retain these timing and historical boundaries.
 
 ## Management Overview
 
-- `/finance` is the financial control center: recorded cash, recent net flow,
-  next-30-day outflow, overdue count, actionable coverage issues, current-month
-  operating flow bars and five upcoming payments. The default actual scope is
-  the last three calendar months through today, clipped at cutover; its dates
-  are explicit. Forecast/scenario, FX, Budget editing and history belong to
-  `/finance/planning`. Draft studios still see setup; account administration
-  remains at `/finance/accounts`. Finance routes share a dashboard-width shell
-  and tab navigation; Accounts and Categories stay in the manage menu.
+- `/finance` is the admin analytics overview. Its recognized result, revenue,
+  costs, monthly trend and direct/labor/overhead structure reuse Management P&L.
+  The default is the last three calendar months through today; month and year-to-date
+  selectors share the same scope with the project-performance comparison.
+  Recognized analytics and cash/Forecast render in independent Suspense boundaries
+  with isolated error states. A Forecast failure never suppresses recognized totals.
+  Draft studios still see setup; Finance navigation and operational routes are unchanged.
+- The presentation model keeps exact decimal amounts and existing historical FX.
+  Available nonzero subtotals are marked incomplete; unreviewed/unknown zero is
+  unavailable, while a reviewed zero remains zero. Months before recognition activation
+  are unavailable, not zero. Partial periods identify the accounting-start boundary.
+  Only sufficiently complete selected-period project results are ranked; incomplete
+  projects have a separate group and no margin. Period coverage, labor source/missing
+  period checks, project trips and FX retain their existing rules. Unallocated labor
+  only affects the comparison when that pool or its corrections contributes in the
+  selected period. Older project history does not invalidate a reviewed later period.
+  Management Reports, recognition, coverage, allocation and audit workflows remain
+  at their existing routes; Overview exposes contextual links, never their controls.
+- Cash/outlook is subordinate: current balances, next-30-day outflows, overdue
+  payments, forecast minimum and first canonical negative closing point. Risk absence
+  is never confirmed while the forecast has unresolved inputs. Account breakdown,
+  cash flow detail and chart data are disclosures. Budget comparison stays in Planning.
 - `get_finance_overview` first calls the canonical forecast/automatic coverage
   boundary. It projects existing ledger views and that forecast into exact
   numeric summaries; it creates no financial sources or alternative timing rules.
@@ -729,7 +756,8 @@ and generation workflow must retain these timing and historical boundaries.
 - Overview crops the existing daily projection at `upcomingThrough` (today + 30
   days, capped at the canonical horizon). Its final step carries the last canonical
   closing value to the window edge; it never recalculates cash. The canonical low
-  point is shown only when its date falls within this window. Planning retains
+  point is shown separately with its full forecast horizon; first deficit uses the
+  canonical base-currency projection before display rounding. Planning retains
   the full series. The Today boundary separates historical valuation from current
   assumed FX; Overview links preserve the report's horizon, scenario and FX rates.
 - Actual flow comparison uses `finance_planning_actuals`, excluding opening cash
@@ -743,17 +771,13 @@ and generation workflow must retain these timing and historical boundaries.
   visible even when a revised expected date controls cash timing.
 - Category Budget/Forecast/Actual sums the canonical monthly comparisons over the
   selected horizon, sorted by absolute variance. A full-horizon budget/variance is
-  unavailable unless every month has a baseline. Monthly detail links preserve
-  scenario, horizon and rate values. Overview shows only up to three nonzero
-  configured variances, with an explicit forecast horizon; absent baselines do not
-  produce an empty panel. Budget never becomes forecast cash.
+  unavailable unless every month has a baseline. Budget comparison and details stay
+  in Planning; Overview links preserve scenario, horizon and rate values.
 - Missing FX and forecast coverage keep affected summaries visibly incomplete.
-  One attention panel shows overdue items and canonical issues, with three
-  visible actions and a disclosure for the rest. Missing FX is grouped into one
-  planning action; per-item links open the owning workflow. Current-month income
-  and expense bars use existing operating flow rows, with financing and owner
-  distributions separately labelled below them.
+  Overview uses contextual statuses and links to the owning workflows. Cash flow
+  detail retains separate operating, financing and owner-distribution labels.
   No chart substitutes missing inputs with zero or hypothetical receipts.
+
 
 ## Business trips
 
@@ -912,6 +936,11 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   confirmed zero. Reports use one stable `get_finance_management_reporting` read
   boundary, shared exact-decimal models, filters/currency/version for UI and CSV.
   Changed sources reject stale CSV with 409 rather than exporting a different report.
+- Newly saved payroll terms default omitted deductions and employer costs to known
+  zero. Net deductions may be intentionally unknown; Gross requires known
+  deductions to derive payout. Employer cost can be explicitly unknown in either
+  basis. Existing null terms and historical cost revisions retain their meaning;
+  saving terms does not rewrite consumed payroll or recognition history.
 - Labor confirmation snapshots Payroll's known service-period cost: net payout
   plus fixed deductions and employer cost; gross basis plus employer cost without
   adding deductions twice. Salary bonuses remain distinct from contractor income.

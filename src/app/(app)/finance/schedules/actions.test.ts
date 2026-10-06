@@ -53,7 +53,7 @@ it("bulk setup reports partial success and reuses original request IDs on retry"
   expect(result.rows.map((value) => value.saved)).toEqual([true, false]);
   await saveInitialPayroll([second]);
   expect(mocks.rpc.mock.calls[1]).toEqual(mocks.rpc.mock.calls[2]);
-  expect(mocks.rpc).toHaveBeenLastCalledWith("save_finance_schedule", expect.objectContaining({ p_studio_id: "verified", p_input: expect.objectContaining({ id: "", revision: 0, employeeDeductions: "", employerCost: "" }) }));
+  expect(mocks.rpc).toHaveBeenLastCalledWith("save_finance_schedule", expect.objectContaining({ p_studio_id: "verified", p_input: expect.objectContaining({ id: "", revision: 0, employeeDeductions: "0", employerCost: "" }) }));
   mocks.rpc.mockClear();
   expect((await saveInitialPayroll([{ ...row, id }])).error).toBeTruthy();
   expect((await saveInitialPayroll([row, row])).error).toBeTruthy();
@@ -90,4 +90,12 @@ it("bulk organization permits Ungrouped and reports guarded RPC failures without
   mocks.rpc.mockResolvedValueOnce({ error: { message: "finance_group_invalid" } });
   expect(await moveFinanceRules({ groupId: "", scheduleIds: [id] })).toEqual({ moved: [], error: "schedules.moveRetry" });
   expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("manage_finance_recurring_group", { p_studio_id: "verified", p_operation: "assign", p_id: undefined, p_schedule_id: id });
+});
+
+it("passes known zero optional components to payroll saves in both salary modes", async () => {
+  for (const basis of ["net", "gross"]) {
+    const input = { intent: "schedule", kind: "payroll", revision: "0", name: "Salary", employeeId: id, amount: "1000", employeePayout: "1000", basis, currency: "UAH", categoryId: id, intervalMonths: "1", payoutDay: "5", effectiveFrom: "2026-09-01", commitment: "agreed", certainty: "fixed" };
+    expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("save_finance_schedule", expect.objectContaining({ p_input: expect.objectContaining({ employeeDeductions: "0", employerCost: "0", employerCostStatus: "fixed" }) }));
+  }
 });
