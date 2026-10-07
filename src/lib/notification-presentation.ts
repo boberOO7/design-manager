@@ -55,6 +55,8 @@ export type NotificationMessageKey =
   | "taskDueDateRemovedBody"
   | "taskPriorityAndDueDateChangedBody"
   | "taskPriorityChangedBody"
+  | "taskReviewRequestedTitle"
+  | "taskReviewRequestedBody"
   | "timeOffApprovedTitle"
   | "timeOffCancelledBody"
   | "timeOffCancelledTitle"
@@ -230,6 +232,16 @@ export function getNotificationPresentation(item: NotificationItem, locale: stri
       return subject && project
         ? { title: t("taskAssignedTitle"), body: t(bodyKey, { project, task: subject }) }
         : { title: t("taskAssignedTitle"), body: item.body };
+    }
+    case "task_review_requested": {
+      const project = metadataString(metadata, "projectName");
+      const round = metadata.roundNumber;
+      return {
+        title: t("taskReviewRequestedTitle"),
+        body: subject && project && typeof round === "number"
+          ? t("taskReviewRequestedBody", { project, task: subject, round })
+          : item.body,
+      };
     }
     case "task_details_changed":
       return { title: t("taskDetailsChangedTitle"), body: taskDetailsBody(item, metadata, locale, t) };

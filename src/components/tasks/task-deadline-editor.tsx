@@ -7,9 +7,10 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
 import { isTaskMilestoneStatus, TASK_MILESTONE_STATUSES, type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
+import { cn } from "@/lib/utils";
 import type { ProjectTask } from "@/types/tasks";
 
-export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChange, scheduledReview = false, statusLabel }: {
+export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChange, scheduledReview = false, statusLabel, className }: {
   deadlines: TaskDeadlineInput[];
   disabled: boolean;
   error?: string;
@@ -17,6 +18,7 @@ export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChang
   onChange: (deadlines: TaskDeadlineInput[]) => void;
   scheduledReview?: boolean;
   statusLabel: (status: ProjectTask["status"]) => string;
+  className?: string;
 }) {
   const t = useTranslations("Tasks");
   const availableStatuses = TASK_MILESTONE_STATUSES.filter((status) => !deadlines.some((deadline) => deadline.target_status === status));
@@ -25,7 +27,7 @@ export function TaskDeadlineEditor({ deadlines, disabled, error, locale, onChang
     onChange(deadlines.map((deadline, deadlineIndex) => deadlineIndex === index ? { ...deadline, ...update } : deadline));
   }
 
-  return <section aria-labelledby="task-deadlines" className="border-t border-[var(--ui-border-subtle)] pt-4">
+  return <section aria-labelledby="task-deadlines" className={cn("border-t border-[var(--ui-border-subtle)] pt-4", className)}>
     <h3 id="task-deadlines" className="text-sm font-semibold text-[var(--ui-text)]">{t("deadlines")}</h3>
     <div className="mt-2 space-y-2">
       {deadlines.map((deadline, index) => <div key={deadline.target_status} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-2">

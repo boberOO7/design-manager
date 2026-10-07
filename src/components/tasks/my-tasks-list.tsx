@@ -5,6 +5,7 @@ import { ChevronDown, FolderKanban } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { LifecycleDot } from "@/components/projects/project-lifecycle-dot";
+import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { MyOfficeAssignment } from "@/data/queries/office-assignments";
@@ -68,7 +69,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
     const itemStatus = item.kind === "project" ? status(item.task.status === "in_progress" ? "inProgress" : item.task.status) : office(`statuses.${item.assignment.status}`);
     const statusClass = item.kind === "project" ? getTaskStatusBadgeStyle(item.task.status).className : item.assignment.status === "done" ? "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]" : item.assignment.status === "in_progress" ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
     return <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left lg:grid lg:grid-cols-[minmax(0,1fr)_max-content_8rem_10rem]">
-      <span className="min-w-0 flex-[1_1_15rem] break-words text-sm font-medium text-[var(--ui-text)]">{item.title}</span>
+      <span className="min-w-0 flex-[1_1_15rem] break-words text-sm font-medium text-[var(--ui-text)]">{item.title}{item.kind === "project" ? <span className="ml-2 inline-flex"><TaskReviewBadge task={item.task} /></span> : null}</span>
       <span data-inbox-deadline className={`ui-numeric shrink-0 text-xs lg:justify-self-end ${item.overdue ? "font-semibold text-[var(--ui-danger-text)]" : item.deadline === today ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>
         {item.overdue ? `${t("overdue")} · ` : null}{item.deadline ? formatDateOnly(item.deadline, locale) : t("noDueDate")}
       </span>

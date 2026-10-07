@@ -145,6 +145,22 @@ describe("notification panel localization", () => {
     });
   });
 
+  it("localizes review requests with the round number and preserves task and project names", () => {
+    const notification = item({
+      notification_type: "task_review_requested",
+      metadata: { subject: "Concept design", projectName: "River House", roundNumber: 2 },
+    });
+    expect(presentation("en", notification)).toEqual({
+      title: "Task ready for your review",
+      body: "Review #2: “Concept design” in River House is waiting for your review.",
+    });
+    expect(presentation("uk", notification)).toEqual({
+      title: "Задача очікує вашої перевірки",
+      body: "Review #2: завдання «Concept design» у проєкті River House очікує вашої перевірки.",
+    });
+    expect(presentation("uk", { ...notification, metadata: {} }).body).toBe(notification.body);
+  });
+
   it("translates compatible legacy time-off rows without changing the requester name", () => {
     const legacy = item({
       notification_type: "time_off_request_submitted",

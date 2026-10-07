@@ -36,6 +36,7 @@ server guard before changing a write.
 | Project membership | Manage | No |
 | Task details/create/delete/bulk operations | Manage within studio/project constraints | No |
 | Task status, production progress, checklist | Any eligible studio project task | Own assigned eligible task |
+| Task leadership review | Configure and resolve eligible task rounds | Current reviewer may decide the active step; assignee may submit |
 | Collaborative task visibility | Yes | Included where query/policy permits; collaboration does not grant assignee mutation rights |
 | Dashboard | Studio metrics, attention, workload, own tasks | Personal tasks, projects, deadlines |
 | Leaderboard / credited m² | Active studio admins only | No access; the legacy employee-visibility setting does not grant access |

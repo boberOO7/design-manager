@@ -7,6 +7,9 @@ export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 export type TaskChecklistItem = Database["public"]["Tables"]["task_checklist_items"]["Row"];
 export type TaskStatusPeriod = Database["public"]["Tables"]["task_status_periods"]["Row"];
+export type TaskReviewer = Database["public"]["Tables"]["task_reviewers"]["Row"] & { reviewer: ProfileSummary | null };
+export type TaskReviewRoundReviewer = Database["public"]["Tables"]["task_review_round_reviewers"]["Row"] & { reviewer: ProfileSummary | null };
+export type TaskReviewRound = Database["public"]["Tables"]["task_review_rounds"]["Row"] & { reviewer: ProfileSummary | null; reviewers?: TaskReviewRoundReviewer[] };
 export type TaskSchedule = Pick<Database["public"]["Tables"]["task_schedules"]["Row"], "expected_workdays" | "baseline_start" | "baseline_due" | "current_start" | "current_due" | "is_blocked" | "is_paused"> & { predecessors: Array<{ id: string; title: string; status: string; scheduleCompleted: boolean }> };
 
 export const TASK_STATUS_VALUES = [
@@ -51,6 +54,11 @@ export type ProjectTask = Pick<
   | "production_completion"
   | "progress_weight"
 > & {
+  requires_review?: TaskRow["requires_review"];
+  reviewer_id?: TaskRow["reviewer_id"];
+  reviewer?: ProfileSummary | null;
+  reviewers?: TaskReviewer[];
+  review_rounds?: TaskReviewRound[];
   deadlines?: TaskDeadline[];
   schedule?: TaskSchedule | null;
   stage: TaskStage;

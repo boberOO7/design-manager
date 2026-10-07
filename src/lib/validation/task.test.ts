@@ -146,6 +146,15 @@ describe("task editing validation", () => {
     expect(taskEditSchema.safeParse({ ...validEdit, title: "  " }).success).toBe(false);
   });
 
+  it("preserves reviewer order, accepts no review, and rejects duplicate or invalid reviewers", () => {
+    const reviewers = [validTask.assignee_id, "123e4567-e89b-12d3-a456-426614174001"];
+    expect(taskEditSchema.parse({ ...validEdit, reviewer_ids: reviewers }).reviewer_ids).toEqual(reviewers);
+    expect(taskEditSchema.parse({ ...validEdit, reviewer_ids: [] }).reviewer_ids).toEqual([]);
+    expect(taskEditSchema.parse(validEdit).reviewer_ids).toBeUndefined();
+    expect(taskEditSchema.safeParse({ ...validEdit, reviewer_ids: [reviewers[0], reviewers[0]] }).success).toBe(false);
+    expect(taskEditSchema.safeParse({ ...validEdit, reviewer_ids: ["invalid"] }).success).toBe(false);
+  });
+
   it("allows an existing assignee to be cleared", () => {
     expect(taskEditSchema.parse({ ...validEdit, assignee_id: "" }).assignee_id).toBeNull();
     expect(taskEditSchema.parse({ ...validEdit, assignee_id: null }).assignee_id).toBeNull();

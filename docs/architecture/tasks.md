@@ -65,6 +65,43 @@ change is valid only when its destination is enabled for that task's stage.
 Project aggregation and attribution are described in
 [productivity.md](productivity.md).
 
+## Leadership review rounds
+
+- Administrators assign an ordered `task_reviewers` sequence through the task's
+  main Save action, atomically with its other fields, or the board context menu.
+  Context-menu assignment applies the same sequence to the whole selected batch
+  in one transaction through `bulk_configure_task_review`. An empty sequence disables
+  review. `tasks.requires_review` and `tasks.reviewer_id` mirror whether reviewers
+  exist and the first reviewer. Reviewers are active project members or active
+  studio administrators with project access.
+- Submitting from In progress enters the existing `internal_review` status and
+  atomically creates a numbered `task_review_rounds` row and snapshots the ordered
+  reviewers in `task_review_round_reviewers`. The round's stable UUID can be
+  referenced by future work sessions; waiting duration is calendar time since
+  submission, not tracked work time. No time tracking is implemented.
+- The current reviewer or studio administrator decides through `update_task_review`.
+  Each approval records `approved_at` on that reviewer's snapshot and forwards the
+  same open round to the next reviewer (`task_review_rounds.reviewer_id`). Only the
+  final approval closes the round and advances to enabled client `review`, or
+  `completed` when the stage omits client review. Rework at any step requires a
+  comment, closes the whole round, and returns the task to `in_progress`.
+  Resubmission starts the sequence again. Existing checklist, lifecycle,
+  attribution, deadline, and scheduling guards still apply.
+- Closed rounds retain reviewer, submission/completion timestamps, result, and
+  rework context, including the sequence snapshot and earlier approvals.
+  Resubmission creates the next round; stale round IDs and expected reviewer IDs
+  cannot resolve a later round or step. Direct status and bulk moves cannot bypass an active
+  review or move unapproved work beyond it. Review settings/stage cannot change
+  during an active round.
+- My Tasks exposes a review queue: rounds currently assigned to employees and all visible
+  rounds for administrators, ordered by submission time (oldest first). Queue
+  entries open task details for decisions. History is collapsed in the drawer.
+- Round submission and sequential reviewer handoff atomically create a private
+  `task_review_requested` notification for the current reviewer through the existing
+  notification helper (active recipients only; no self-notifications). The bell
+  links directly to the task. My Tasks also shows the pending queue count and a
+  queue link independently of notification read state.
+
 ## Status history
 
 - `task_status_periods` stores one row per visit to a workflow status, including

@@ -8,11 +8,11 @@ const collaboratorControlPath = new URL("./task-collaborator-multi-select.tsx", 
 const deadlineEditorPath = new URL("./task-deadline-editor.tsx", import.meta.url);
 
 describe("task details drawer contract", () => {
-  it("connects the visible eyebrow, dialog title, and close label to canonical messages", async () => {
+  it("connects the task heading, dialog title, and close label to canonical messages", async () => {
     const source = await readFile(drawerPath, "utf8");
 
     expect(source).toContain('title={t("taskDetails")}');
-    expect(source).toContain('{t("taskDetails")}</p>');
+    expect(source).toContain('<h2 id="task-details-title"');
     expect(source).toContain('aria-label={t("closeTaskDetails")}');
     expect(source).toContain("isOpen={isOpen}");
     expect(source).toContain("onExited={onExited}");
@@ -87,9 +87,10 @@ describe("task details drawer contract", () => {
     const source = await readFile(drawerPath, "utf8");
     expect(source).toContain('value={values.assignee_id ?? ""}');
     expect(source).toContain('assignee_id: assigneeId || null');
-    expect(source).toContain('<SelectItem value="">{t("unassigned")}</SelectItem>');
+    expect(source).toContain('<TaskPersonSelect label={t("assignee")}');
+    expect(source).toContain('emptyLabel={t("unassigned")}');
     expect(source).toContain('task.assignee ? <>');
-    expect(source).toContain(': t("unassigned")');
+    expect(source).toContain('{t("unassigned")}</span>');
   });
 
   it("keeps co-assignee selection compact and moves options into an accessible popover", async () => {
@@ -129,7 +130,7 @@ describe("task details drawer contract", () => {
   it("edits compact milestone deadlines and keeps status changes out of the task edit form", async () => {
     const source = await readFile(drawerPath, "utf8");
     const deadlineEditor = await readFile(deadlineEditorPath, "utf8");
-    const editPlanning = source.slice(source.indexOf('aria-labelledby="task-edit-planning"'), source.indexOf('aria-labelledby="task-edit-progress"'));
+    const editPlanning = source.slice(source.indexOf('aria-labelledby="task-edit-planning"'), source.indexOf('aria-labelledby="task-edit-checklist"'));
 
     expect(editPlanning).toContain("<TaskDeadlineEditor");
     expect(editPlanning).toContain("error={fieldErrors.deadlines}");

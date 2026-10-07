@@ -12,14 +12,19 @@ import {
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
 import styles from "./project-task-board.module.css";
-import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, Signal, UserPlus, X } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, ShieldCheck, Signal, UserPlus, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { ProjectTemplateStageDialog } from "@/components/tasks/project-template-stage-dialog";
 import { StageTaskEditor } from "@/components/tasks/stage-task-editor";
+import { BulkTaskReviewerEditor } from "@/components/tasks/bulk-task-reviewer-editor";
+import { getActiveTaskReview } from "@/lib/task-reviews";
+import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { taskPriorityLabel } from "@/components/tasks/task-select-presentation";
+import { ActionErrorToast } from "@/components/ui/action-error-toast";
+import { createTaskActionError, getTaskActionErrorCode } from "@/lib/task-action-errors";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import type { ConfiguredProjectStage, StageSchedulePause } from "@/data/queries/project-stage-columns";
@@ -230,6 +235,9 @@ function isSuccessfulBulkTaskStatusResponse(value: unknown): value is { success:
 function BulkTaskContextMenu({
   canManageTasks,
   canMoveSelection,
+  canConfigureReviews,
+  selectedTasks,
+  onReviewers,
   enabledStatuses,
   members,
   onAssign,
@@ -244,6 +252,9 @@ function BulkTaskContextMenu({
 }: {
   canManageTasks: boolean;
   canMoveSelection: boolean;
+  canConfigureReviews: boolean;
+  selectedTasks: ProjectTask[];
+  onReviewers: (reviewerIds: string[]) => Promise<boolean>;
   enabledStatuses: WritableTaskStatus[];
   members: AssignableProjectMember[];
   onAssign: (assignee: AssignableProjectMember) => Promise<boolean>;
@@ -259,8 +270,9 @@ function BulkTaskContextMenu({
   const locale = useLocale();
   const statusT = useTranslations("Status");
   const priorityT = useTranslations("Priority");
+  const taskT = useTranslations("Tasks");
   const isUkrainian = locale === "uk";
-  const [view, setView] = useState<"actions" | "assignee" | "deadline" | "priority" | "move">("actions");
+  const [view, setView] = useState<"actions" | "assignee" | "reviewers" | "deadline" | "priority" | "move">("actions");
   const [query, setQuery] = useState("");
   const availableDeadlineStatuses = TASK_MILESTONE_STATUSES.filter((status) => enabledStatuses.includes(status));
   const [deadlineStatus, setDeadlineStatus] = useState<TaskDeadlineInput["target_status"] | null>(availableDeadlineStatuses[0] ?? null);
@@ -289,7 +301,7 @@ function BulkTaskContextMenu({
   }
 
   const actionClassName = "flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-45";
-  const heading = view === "priority"
+  const heading = view === "reviewers" ? taskT("reviewAssign") : view === "priority"
     ? (isUkrainian ? "Змінити пріоритет" : "Change priority")
     : view === "assignee"
     ? (isUkrainian ? "Призначити виконавця" : "Assign assignee")
@@ -303,13 +315,14 @@ function BulkTaskContextMenu({
     aria-label={isUkrainian ? `Масові дії: ${selectedCount} задач` : `Bulk actions: ${selectedCount} tasks`}
     tabIndex={-1}
     data-bulk-menu
-    className="fixed z-50 w-80 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)] outline-none"
-    style={{ left: position.x, top: position.y }}
+    className="fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)] outline-none"
+    style={{ left: position.x, top: position.y, maxHeight: `calc(100dvh - ${position.y + 8}px)` }}
     onContextMenu={(event) => event.preventDefault()}
   >
     {view === "actions" ? <>
       <p className="px-3 pb-1 pt-2 text-xs font-semibold text-[var(--ui-text-muted)]">{isUkrainian ? `${selectedCount} задач вибрано` : `${selectedCount} tasks selected`}</p>
       <button type="button" className={actionClassName} disabled={!canManageTasks || isSubmitting} onClick={() => setView("assignee")}><UserPlus className="size-4" aria-hidden="true" />{isUkrainian ? "Призначити виконавця" : "Assign assignee"}</button>
+      <button type="button" className={actionClassName} disabled={!canManageTasks || !canConfigureReviews || isSubmitting} title={canManageTasks && !canConfigureReviews ? taskT("bulkReviewUnavailable") : undefined} onClick={() => setView("reviewers")}><ShieldCheck className="size-4" aria-hidden="true" />{taskT("reviewAssign")}</button>
       <button type="button" className={actionClassName} disabled={!canManageTasks || availableDeadlineStatuses.length === 0 || isSubmitting} onClick={() => setView("deadline")}><CalendarClock className="size-4" aria-hidden="true" />{isUkrainian ? "Встановити дедлайн" : "Set deadline"}</button>
       <button type="button" className={actionClassName} disabled={!canManageTasks || isSubmitting} onClick={() => setView("priority")}><Signal className="size-4" aria-hidden="true" />{isUkrainian ? "Змінити пріоритет" : "Change priority"}</button>
       <button type="button" className={actionClassName} disabled={!canMoveSelection || moveStatuses.length === 0 || isSubmitting} onClick={() => setView("move")}><FolderInput className="size-4" aria-hidden="true" />{isUkrainian ? "Перемістити до…" : "Move to…"}</button>
@@ -319,6 +332,7 @@ function BulkTaskContextMenu({
         <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={isUkrainian ? "Назад" : "Back"} onClick={() => setView("actions")}><ArrowLeft className="size-4" aria-hidden="true" /></button>
         <p className="text-sm font-semibold text-[var(--ui-text)]">{heading}</p>
       </div>
+      {view === "reviewers" ? <BulkTaskReviewerEditor tasks={selectedTasks} disabled={isSubmitting} onApply={(reviewerIds) => submit(() => onReviewers(reviewerIds))} /> : null}
       {view === "assignee" ? <div className="space-y-2 p-2 pt-1">
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isUkrainian ? "Пошук учасника" : "Search members"} aria-label={isUkrainian ? "Пошук учасника" : "Search members"} className="h-9 w-full rounded-md border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2.5 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" />
         <div className="max-h-56 space-y-0.5 overflow-y-auto">{filteredMembers.map((member) => <button key={member.id} type="button" disabled={isSubmitting} onClick={() => void submit(() => onAssign(member))} className={actionClassName}><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="board" /><span className="min-w-0"><span className="block truncate">{member.full_name}</span><span className="block truncate text-xs font-normal text-[var(--ui-text-muted)]">{member.job_title}</span></span></button>)}{filteredMembers.length === 0 ? <p className="py-4 text-center text-xs text-[var(--ui-text-muted)]">{isUkrainian ? "Учасників не знайдено." : "No members found."}</p> : null}</div>
@@ -393,6 +407,7 @@ function TaskCardContent({
           <span className="whitespace-nowrap">{task.due_date ? t("due", { date: formatDateShort(task.due_date, locale) }) : t("noDueDate")}</span>
           {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
           {scheduleLabel ? <span className="rounded-full bg-[var(--ui-info-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-info-text)]">{scheduleLabel}</span> : null}
+          <TaskReviewBadge task={task} />
           {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
           {isPending ? <LoaderCircle className="size-3 animate-spin text-[var(--ui-info-text)]" aria-label={t("saving")} /> : null}
         </div> : null}
@@ -401,6 +416,7 @@ function TaskCardContent({
         {task.due_date ? <span>{t("due", { date: formatDateShort(task.due_date, locale) })}</span> : <span>{t("noDueDate")}</span>}
         {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
         {scheduleLabel ? <span className="rounded-full bg-[var(--ui-info-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-info-text)]">{scheduleLabel}</span> : null}
+        <TaskReviewBadge task={task} />
         {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
         {isPending ? (
           <span className="inline-flex h-4 items-center gap-1 rounded-full bg-[var(--ui-info-surface)] px-1.5 font-medium leading-4 text-[var(--ui-info-text)]">
@@ -695,7 +711,8 @@ export function ProjectTaskBoard({
   const [taskSelection, setTaskSelection] = useState<TaskBoardSelection>({ stage: null, taskIds: [] });
   const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | null>(null);
   const [announcement, setAnnouncement] = useState("");
-  const [boardError, setBoardError] = useState<string | null>(null);
+  const [boardError, setBoardError] = useState<{ id: number; message: string } | null>(null);
+  const boardErrorIdRef = useRef(0);
   const [stageHeaderVariant, setStageHeaderVariant] = useState<"hairline" | "wash">("hairline");
   const [expandedStages, setExpandedStages] = useState<Record<TaskStage, boolean>>({ stage_1: true, stage_2: false, stage_3: false, stage_4: false });
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
@@ -931,6 +948,15 @@ export function ProjectTaskBoard({
     setExpandedStages((current) => ({ ...current, [stage]: !current[stage] }));
   }
 
+  function describeTaskError(error: unknown, fallback: string): string {
+    const code = getTaskActionErrorCode(error);
+    return code ? t(`actionErrors.${code}`) : fallback;
+  }
+
+  function showBoardError(message: string) {
+    setBoardError({ id: ++boardErrorIdRef.current, message });
+  }
+
   function setTaskPending(taskId: string, pending: boolean) {
     const nextPendingTaskIds = new Set(pendingTaskIdsRef.current);
     if (pending) nextPendingTaskIds.add(taskId);
@@ -960,7 +986,7 @@ export function ProjectTaskBoard({
         // A non-JSON response is handled as a safe failed update below.
       }
       if (!response.ok || !isSuccessfulTaskStatusResponse(result)) {
-        throw new Error(t("statusUpdateFailed"));
+        throw createTaskActionError(result, response.status);
       }
 
       confirmedStatusesRef.current.set(taskId, targetStatus);
@@ -985,10 +1011,9 @@ export function ProjectTaskBoard({
       setLocalTasks(rolledBackTasks);
       onProjectStatusChange?.(previousProjectStatus);
       setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : t("statusUpdateFailed");
-      const restoredMessage = t("statusRestored", { message });
-      setBoardError(restoredMessage);
-      setAnnouncement(restoredMessage);
+      const message = describeTaskError(error, t("statusUpdateFailed"));
+      const restoredMessage = getTaskActionErrorCode(error) === "savedRefreshFailed" ? message : t("statusRestored", { message });
+      showBoardError(restoredMessage);
     }
   }
 
@@ -998,7 +1023,7 @@ export function ProjectTaskBoard({
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage: source.stage, source_statuses: sourceStatuses, target_status: targetStatus, task_ids: source.taskIds }) });
       let result: unknown = null;
       try { result = await response.json(); } catch { /* handled below */ }
-      if (!response.ok || !isSuccessfulBulkTaskStatusResponse(result)) throw new Error(locale === "uk" ? "Не вдалося перемістити пакет задач." : "The task batch could not be moved.");
+      if (!response.ok || !isSuccessfulBulkTaskStatusResponse(result)) throw createTaskActionError(result, response.status);
       const refreshedTasks = appendTasksInOrder(result.tasks, source.taskIds);
       localTasksRef.current = refreshedTasks;
       setLocalTasks(refreshedTasks);
@@ -1012,10 +1037,9 @@ export function ProjectTaskBoard({
       setLocalTasks(previousTasks);
       onProjectStatusChange?.(previousProjectStatus);
       for (const taskId of source.taskIds) setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося перемістити пакет задач." : "The task batch could not be moved.");
-      const restoredMessage = t("statusRestored", { message });
-      setBoardError(restoredMessage);
-      setAnnouncement(restoredMessage);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося перемістити пакет задач." : "The task batch could not be moved."));
+      const restoredMessage = getTaskActionErrorCode(error) === "savedRefreshFailed" ? message : t("statusRestored", { message });
+      showBoardError(restoredMessage);
       return false;
     }
   }
@@ -1054,7 +1078,7 @@ export function ProjectTaskBoard({
       });
       let result: unknown = null;
       try { result = await response.json(); } catch { /* handled below */ }
-      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося призначити виконавця для задач етапу." : "The stage tasks could not be assigned.");
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
       localTasksRef.current = result.tasks;
       setLocalTasks(result.tasks);
       for (const taskId of taskIds) setTaskPending(taskId, false);
@@ -1064,9 +1088,8 @@ export function ProjectTaskBoard({
       localTasksRef.current = previousTasks;
       setLocalTasks(previousTasks);
       for (const taskId of taskIds) setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося призначити виконавця для задач етапу." : "The stage tasks could not be assigned.");
-      setBoardError(message);
-      setAnnouncement(message);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося призначити виконавця для задач етапу." : "The stage tasks could not be assigned."));
+      showBoardError(message);
       return false;
     }
   }
@@ -1086,7 +1109,7 @@ export function ProjectTaskBoard({
     try {
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/selected-assignee`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, assignee_id: assignee.id, task_ids: taskIds }) });
       const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося призначити виконавця для вибраних задач." : "The selected tasks could not be assigned.");
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
       localTasksRef.current = result.tasks;
       setLocalTasks(result.tasks);
       for (const taskId of taskIds) setTaskPending(taskId, false);
@@ -1096,10 +1119,32 @@ export function ProjectTaskBoard({
       localTasksRef.current = previousTasks;
       setLocalTasks(previousTasks);
       for (const taskId of taskIds) setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося призначити виконавця для вибраних задач." : "The selected tasks could not be assigned.");
-      setBoardError(message);
-      setAnnouncement(message);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося призначити виконавця для вибраних задач." : "The selected tasks could not be assigned."));
+      showBoardError(message);
       return false;
+    }
+  }
+
+  async function setSelectedTaskReviewers(reviewerIds: string[]): Promise<boolean> {
+    const taskIds = taskSelection.taskIds;
+    const stage = taskSelection.stage;
+    if (!stage || taskIds.length === 0 || taskIds.some((taskId) => pendingTaskIdsRef.current.has(taskId))) return false;
+    for (const taskId of taskIds) setTaskPending(taskId, true);
+    setBoardError(null);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-review`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, reviewer_ids: reviewerIds }) });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
+      localTasksRef.current = result.tasks;
+      setLocalTasks(result.tasks);
+      setAnnouncement(t("bulkReviewSaved", { count: taskIds.length }));
+      return true;
+    } catch (error) {
+      const message = describeTaskError(error, t("bulkReviewFailed"));
+      showBoardError(message);
+      return false;
+    } finally {
+      for (const taskId of taskIds) setTaskPending(taskId, false);
     }
   }
 
@@ -1112,15 +1157,14 @@ export function ProjectTaskBoard({
     try {
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-priority`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, priority }) });
       const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося змінити пріоритет вибраних задач." : "The selected task priorities could not be updated.");
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
       localTasksRef.current = result.tasks;
       setLocalTasks(result.tasks);
       setAnnouncement(locale === "uk" ? `Пріоритет змінено для ${taskIds.length} задач.` : `Priority updated for ${taskIds.length} tasks.`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося змінити пріоритет вибраних задач." : "The selected task priorities could not be updated.");
-      setBoardError(message);
-      setAnnouncement(message);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося змінити пріоритет вибраних задач." : "The selected task priorities could not be updated."));
+      showBoardError(message);
       return false;
     } finally {
       for (const taskId of taskIds) setTaskPending(taskId, false);
@@ -1136,7 +1180,7 @@ export function ProjectTaskBoard({
     try {
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-deadline`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, ...deadline }) });
       const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw new Error(locale === "uk" ? "Не вдалося встановити дедлайн для вибраних задач." : "The selected task deadlines could not be updated.");
+      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
       localTasksRef.current = result.tasks;
       setLocalTasks(result.tasks);
       for (const taskId of taskIds) setTaskPending(taskId, false);
@@ -1144,9 +1188,8 @@ export function ProjectTaskBoard({
       return true;
     } catch (error) {
       for (const taskId of taskIds) setTaskPending(taskId, false);
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося встановити дедлайн для вибраних задач." : "The selected task deadlines could not be updated.");
-      setBoardError(message);
-      setAnnouncement(message);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося встановити дедлайн для вибраних задач." : "The selected task deadlines could not be updated."));
+      showBoardError(message);
       return false;
     }
   }
@@ -1162,7 +1205,7 @@ export function ProjectTaskBoard({
       });
       const result: unknown = await response.json().catch(() => null);
       if (!response.ok || !isSuccessfulStageSchedulePauseResponse(result)) {
-        throw new Error(locale === "uk" ? "Не вдалося змінити паузу графіка." : "The schedule pause could not be updated.");
+        throw createTaskActionError(result, response.status);
       }
       localTasksRef.current = result.tasks;
       setLocalTasks(result.tasks);
@@ -1171,7 +1214,7 @@ export function ProjectTaskBoard({
         ? locale === "uk" ? "Графік етапу призупинено." : "Stage schedule paused."
         : locale === "uk" ? "Графік етапу відновлено." : "Stage schedule resumed.");
     } catch (error) {
-      setBoardError(error instanceof Error ? error.message : "The schedule pause could not be updated.");
+      showBoardError(describeTaskError(error, locale === "uk" ? "Не вдалося змінити паузу графіка." : "The schedule pause could not be updated."));
     } finally {
       setSavingScheduleStage(null);
     }
@@ -1188,13 +1231,12 @@ export function ProjectTaskBoard({
         body: JSON.stringify({ progress_method: method }),
       });
       const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isSuccessfulStageProgressMethodResponse(result)) throw new Error(locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
+      if (!response.ok || !isSuccessfulStageProgressMethodResponse(result)) throw createTaskActionError(result, response.status);
       onStageProgressMethodChange(stage, result.progressMethod);
       setAnnouncement(locale === "uk" ? "Метод прогресу оновлено." : "Progress method updated.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : (locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved.");
-      setBoardError(message);
-      setAnnouncement(message);
+      const message = describeTaskError(error, (locale === "uk" ? "Не вдалося зберегти метод прогресу." : "The progress method could not be saved."));
+      showBoardError(message);
     } finally {
       setSavingProgressMethodStage(null);
     }
@@ -1331,7 +1373,7 @@ export function ProjectTaskBoard({
           </Popover.Root>
         </div>
       </div>
-      {boardError ? <div role="alert" className="mb-4 rounded-xl border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{boardError}</div> : null}
+      {boardError ? <ActionErrorToast key={boardError.id} message={boardError.message} dismissLabel={t("dismissActionError")} onDismiss={() => setBoardError(null)} /> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="space-y-3">
@@ -1437,6 +1479,9 @@ export function ProjectTaskBoard({
       {taskContextMenu && taskSelection.stage && taskSelection.taskIds.length > 0 ? <BulkTaskContextMenu
         canManageTasks={canManageTasks && !selectedStageIsReadOnly}
         canMoveSelection={canMoveSelection}
+        canConfigureReviews={selectedTasks.length === taskSelection.taskIds.length && selectedTasks.every((task) => !getActiveTaskReview(task) && (task.requires_review || task.status === "todo" || task.status === "in_progress"))}
+        selectedTasks={selectedTasks}
+        onReviewers={setSelectedTaskReviewers}
         enabledStatuses={localStageColumns[taskSelection.stage]}
         members={members}
         onAssign={assignSelectedTasks}

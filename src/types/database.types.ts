@@ -5941,6 +5941,133 @@ export type Database = {
           },
         ]
       }
+      task_review_round_reviewers: {
+        Row: {
+          approved_at: string | null
+          position: number
+          reviewer_id: string
+          round_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          position: number
+          reviewer_id: string
+          round_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          position?: number
+          reviewer_id?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_review_round_reviewers_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_review_round_reviewers_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "task_review_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_review_rounds: {
+        Row: {
+          completed_at: string | null
+          id: string
+          project_id: string
+          result: string | null
+          reviewer_id: string
+          rework_comment: string | null
+          round_number: number
+          submitted_at: string
+          task_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          project_id: string
+          result?: string | null
+          reviewer_id: string
+          rework_comment?: string | null
+          round_number: number
+          submitted_at?: string
+          task_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          project_id?: string
+          result?: string | null
+          reviewer_id?: string
+          rework_comment?: string | null
+          round_number?: number
+          submitted_at?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_review_rounds_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_review_rounds_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_review_rounds_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reviewers: {
+        Row: {
+          position: number
+          reviewer_id: string
+          task_id: string
+        }
+        Insert: {
+          position: number
+          reviewer_id: string
+          task_id: string
+        }
+        Update: {
+          position?: number
+          reviewer_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reviewers_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reviewers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_schedule_dependencies: {
         Row: {
           predecessor_task_id: string
@@ -6097,6 +6224,8 @@ export type Database = {
           productivity_area_m2: number | null
           progress_weight: number
           project_id: string
+          requires_review: boolean
+          reviewer_id: string | null
           stage: string
           stage_position: number
           start_date: string | null
@@ -6120,6 +6249,8 @@ export type Database = {
           productivity_area_m2?: number | null
           progress_weight?: number
           project_id: string
+          requires_review?: boolean
+          reviewer_id?: string | null
           stage?: string
           stage_position?: number
           start_date?: string | null
@@ -6143,6 +6274,8 @@ export type Database = {
           productivity_area_m2?: number | null
           progress_weight?: number
           project_id?: string
+          requires_review?: boolean
+          reviewer_id?: string | null
           stage?: string
           stage_position?: number
           start_date?: string | null
@@ -6177,6 +6310,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -8445,6 +8585,15 @@ export type Database = {
           id: string
         }[]
       }
+      bulk_configure_task_review: {
+        Args: {
+          p_project_id: string
+          p_reviewer_ids: string[]
+          p_stage: string
+          p_task_ids: string[]
+        }
+        Returns: undefined
+      }
       bulk_move_project_tasks: {
         Args: {
           p_project_id: string
@@ -9450,6 +9599,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_task_review: {
+        Args: {
+          p_action: string
+          p_comment?: string
+          p_expected_reviewer_id?: string
+          p_requires_review?: boolean
+          p_reviewer_id?: string
+          p_reviewer_ids?: string[]
+          p_round_id?: string
+          p_task_id: string
+        }
+        Returns: undefined
+      }
       validate_business_trip_participants: {
         Args: {
           p_project_id: string
@@ -9534,6 +9696,7 @@ export type Database = {
         | "crm_lead_follow_up"
         | "equipment_maintenance_upcoming"
         | "equipment_maintenance_overdue"
+        | "task_review_requested"
       office_assignment_status:
         | "assigned"
         | "in_progress"
@@ -9759,6 +9922,7 @@ export const Constants = {
         "crm_lead_follow_up",
         "equipment_maintenance_upcoming",
         "equipment_maintenance_overdue",
+        "task_review_requested",
       ],
       office_assignment_status: [
         "assigned",

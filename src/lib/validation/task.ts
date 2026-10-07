@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
 import { TASK_STAGES } from "@/lib/task-stages";
 import { TASK_MILESTONE_STATUSES } from "@/lib/task-deadlines";
+import { taskReviewerIdsSchema } from "./task-review";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const dateSchema = z.string().refine((value) => {
@@ -124,6 +125,7 @@ export const taskEditSchema = z.object({
   progress_weight: progressWeightSchema,
   stage: z.enum(TASK_STAGES),
   completed_at: optionalDateSchema,
+  reviewer_ids: taskReviewerIdsSchema.optional(),
 }).strict();
 
 export const taskCompletionDateEditSchema = z.object({

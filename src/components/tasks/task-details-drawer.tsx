@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Minus, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Flag, Layers3, Minus, Pencil, RotateCcw, Ruler, SlidersHorizontal, Trash2, UserRound, Users, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,10 @@ import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist
 import { BOARD_COLUMNS, canEditTaskDetails, canEditTaskWork, getOptimisticTaskForStatus, isTaskStatus } from "@/lib/tasks";
 import { getTaskDeadlinePresentation, toTaskDeadlineInputs, type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborator-multi-select";
+import { TaskFieldLabel } from "@/components/tasks/task-field-label";
+import { TaskPersonSelect } from "@/components/tasks/task-person-select";
+import { TaskReviewSection } from "@/components/tasks/task-review-section";
+import { getTaskReviewerIds } from "@/lib/task-reviews";
 import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { cn, formatDate, formatDateOnlyDayMonth, formatNumber } from "@/lib/utils";
@@ -58,6 +62,7 @@ function makeFormValues(task: ProjectTask): {
   completed_area_m2: string;
   progress_weight: string;
   completed_at: string;
+  reviewer_ids: string[];
 } {
   return {
     title: task.title,
@@ -70,6 +75,7 @@ function makeFormValues(task: ProjectTask): {
     completed_area_m2: task.completed_area_m2?.toString() ?? "",
     progress_weight: task.progress_weight.toString(),
     completed_at: task.completed_at ?? "",
+    reviewer_ids: getTaskReviewerIds(task),
   };
 }
 
@@ -230,7 +236,7 @@ export function TaskDetailsDrawer({
       }
       if (response.ok && isTaskEditResponse(result) && result.success) {
         onTaskUpdated(result.task);
-        if (task.schedule) router.refresh();
+        if (task.schedule || JSON.stringify(values.reviewer_ids) !== JSON.stringify(makeFormValues(task).reviewer_ids)) router.refresh();
         checklistStore.seed(result.task);
         if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
         setValues(makeFormValues(result.task));
@@ -354,18 +360,24 @@ export function TaskDetailsDrawer({
     }
   }
 
+  const reviewSection = <TaskReviewSection task={task} canManageTasks={canManageTasks} currentUserId={currentUserId} isEditing={isEditing} isReadOnly={isProjectReadOnly} disabled={isSaving} reviewerIds={values.reviewer_ids} onReviewersChange={(reviewer_ids) => setValues((current) => ({ ...current, reviewer_ids }))} className={isEditing ? "mt-3 border-b-0 border-t border-[var(--ui-border-subtle)] pt-3 pb-0" : undefined} fieldError={fieldErrors.reviewer_ids} onPendingChange={setIsSaving} onUpdated={(updatedTask, updatedProjectStatus) => {
+    onTaskUpdated(updatedTask);
+    checklistStore.seed(updatedTask);
+    if (isProjectLifecycleStatus(updatedProjectStatus)) onProjectStatusUpdated?.(updatedProjectStatus);
+    router.refresh();
+  }} />;
+
   return (
-    <Drawer isOpen={isOpen} onClose={() => { if (!isDeleteDialogOpen) requestClose(); }} onExited={onExited} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[34rem]">
+    <Drawer isOpen={isOpen} onClose={() => { if (!isDeleteDialogOpen) requestClose(); }} onExited={onExited} initialFocusRef={panelRef} title={t("taskDetails")} className="w-full max-w-[40rem]">
       <div
         ref={panelRef}
         tabIndex={-1}
         className="flex h-dvh flex-col bg-[var(--ui-surface)] text-[var(--ui-text)] outline-none"
       >
-        <header className="sticky top-0 z-10 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] px-5 py-3 shadow-sm">
+        <header className="sticky top-0 z-10 border-b border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] px-5 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-text-subtle)]">{t("taskDetails")}</p>
-              <h2 id="task-details-title" className="mt-1 text-xl font-semibold leading-6 text-[var(--ui-text)]">{task.title}</h2>
+              <h2 id="task-details-title" className="break-words text-xl font-semibold leading-7 text-[var(--ui-text)]">{task.title}</h2>
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{statusLabel(task.status)}</span>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
@@ -383,7 +395,7 @@ export function TaskDetailsDrawer({
             </div>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <main className="@container min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           {successMessage ? <p role="status" className="mb-3 rounded-xl bg-[var(--ui-success-surface)] px-3 py-2 text-sm text-[var(--ui-success-text)]">{successMessage}</p> : null}
           {formError ? <p role="alert" className="mb-3 rounded-xl bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{formError}</p> : null}
           {isEditing ? (
@@ -398,56 +410,52 @@ export function TaskDetailsDrawer({
               </section> : null}
               {canEditTaskFields ? <>
               <section aria-labelledby="task-edit-main-information">
-                <h3 id="task-edit-main-information" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
-                <div className="mt-2 space-y-3">
+                <h3 id="task-edit-main-information" className="sr-only">{t("taskInformation")}</h3>
+                <div className="space-y-3">
                   <FormField label={t("title")} error={fieldErrors.title ? validation("correctFields") : undefined}>
-                    <Input autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} />
+                    <Input className="font-semibold" autoComplete="off" value={values.title} maxLength={200} disabled={isSaving} onChange={(event) => setValues({ ...values, title: event.target.value })} />
                   </FormField>
-                  <FormField label={t("description")} optional error={fieldErrors.description ? validation("correctFields") : undefined}>
+                  <FormField label={t("description")} optional optionalLabel={t("optional")} error={fieldErrors.description ? validation("correctFields") : undefined}>
                     <AutoGrowingTextarea autoComplete="off" value={values.description} maxLength={5000} disabled={isSaving} onChange={(event) => setValues({ ...values, description: event.target.value })} />
                   </FormField>
                 </div>
               </section>
               <section aria-labelledby="task-edit-planning" className="border-t border-[var(--ui-border-subtle)] pt-4">
-                <h3 id="task-edit-planning" className="text-sm font-semibold text-[var(--ui-text)]">{t("taskDetails")}</h3>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <FormField label={t("assignee")} optional error={fieldErrors.assignee_id ? validation("correctFields") : undefined}>
-                    <Select value={values.assignee_id ?? ""} disabled={isSaving} onValueChange={(assigneeId) => setValues((current) => ({ ...current, assignee_id: assigneeId || null, collaborator_ids: current.collaborator_ids.filter((id) => id !== assigneeId) }))}>
-                      <SelectItem value="">{t("unassigned")}</SelectItem>
-                      {members.map((member) => <SelectItem key={member.id} value={member.id}>{member.full_name}{member.job_title ? ` — ${roleLabel(member.job_title)}` : ""}</SelectItem>)}
-                    </Select>
+                <h3 id="task-edit-planning" className="sr-only">{t("taskDetails")}</h3>
+                <div className="grid gap-3 @md:grid-cols-2">
+                  <FormField as="div" label={<TaskFieldLabel label={t("assignee")} icon={UserRound} />} error={fieldErrors.assignee_id ? validation("correctFields") : undefined}>
+                    <TaskPersonSelect label={t("assignee")} value={values.assignee_id ?? ""} emptyLabel={t("unassigned")} disabled={isSaving} people={members} roleLabel={roleLabel} onChange={(assigneeId) => setValues((current) => ({ ...current, assignee_id: assigneeId || null, collaborator_ids: current.collaborator_ids.filter((id) => id !== assigneeId) }))} />
                   </FormField>
-                  <FormField label={t("coAssignees")} optional error={fieldErrors.collaborator_ids ? validation("correctFields") : undefined}>
+                  <FormField as="div" label={<TaskFieldLabel label={t("coAssignees")} icon={Users} />} error={fieldErrors.collaborator_ids ? validation("correctFields") : undefined}>
                     <TaskCollaboratorMultiSelect assigneeId={values.assignee_id} disabled={isSaving} members={members} selectedIds={values.collaborator_ids} onSelectedIdsChange={(collaborator_ids) => setValues((current) => ({ ...current, collaborator_ids }))} />
                   </FormField>
-                  <FormField label={t("priority")}>
-                    <Select value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
+                </div>
+                {reviewSection}
+                <div className="mt-4 grid gap-3 @md:grid-cols-2">
+                  <FormField label={<TaskFieldLabel label={t("priority")} icon={Flag} />}>
+                    <Select aria-label={t("priority")} value={values.priority} disabled={isSaving} onValueChange={(nextPriority) => setValues({ ...values, priority: nextPriority })}>
                       {TASK_PRIORITY_VALUES.map((priority) => taskPrioritySelectItem(priority, priorityT(priority)))}
                     </Select>
                   </FormField>
-                  <FormField label={t("stage")}>
-                    <Select value={values.stage} disabled={isSaving || Boolean(task.schedule)} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
+                  <FormField label={<TaskFieldLabel label={t("stage")} icon={Layers3} />}>
+                    <Select aria-label={t("stage")} value={values.stage} disabled={isSaving || Boolean(task.schedule)} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
                       {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
                     </Select>
                   </FormField>
+                  <section aria-labelledby="task-edit-progress" className="contents">
+                    <h3 id="task-edit-progress" className="sr-only">{t("progress")}</h3>
+                    <FormField as="div" className="gap-1" label={<TaskFieldLabel label={`${t("taskArea")} (${t("areaUnit")})`} icon={Ruler} htmlFor="task-edit-area" help={t("taskAreaEditHelp")} />} error={fieldErrors.completed_area_m2 ? validation("correctFields") : undefined}>
+                      <Input id="task-edit-area" autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} />
+                    </FormField>
+                    <FormField as="div" className="gap-1" label={<TaskFieldLabel label={t("progressWeight")} icon={SlidersHorizontal} htmlFor="task-edit-weight" help={t("progressWeightHelp")} />} error={fieldErrors.progress_weight ? validation("correctFields") : undefined}>
+                      <Input id="task-edit-weight" autoComplete="off" type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} />
+                    </FormField>
+                  </section>
                   {canManageTasks && task.status === "completed" ? <FormField label={t("completionDate")} error={fieldErrors.completed_at ? validation("correctFields") : undefined}>
                     <DatePicker value={values.completed_at} disabled={isSaving} invalid={Boolean(fieldErrors.completed_at)} locale={locale} onValueChange={(completed_at) => setValues((current) => ({ ...current, completed_at }))} />
                   </FormField> : null}
                 </div>
-                <TaskDeadlineEditor deadlines={values.deadlines} disabled={isSaving} scheduledReview={Boolean(task.schedule)} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
-              </section>
-              <section aria-labelledby="task-edit-progress" className="border-t border-[var(--ui-border-subtle)] pt-4">
-                <h3 id="task-edit-progress" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <FormField className="gap-1" label={t("taskArea")} optional error={fieldErrors.completed_area_m2 ? validation("correctFields") : undefined}>
-                    <Input autoComplete="off" type="number" min="0.01" step="0.01" inputMode="decimal" value={values.completed_area_m2} disabled={isSaving} onChange={(event) => setValues({ ...values, completed_area_m2: event.target.value })} />
-                    <p className="text-xs font-normal leading-4 text-[var(--ui-text-muted)]">{t("taskAreaEditHelp")}</p>
-                  </FormField>
-                  <FormField className="gap-1" label={t("progressWeight")} error={fieldErrors.progress_weight ? validation("correctFields") : undefined}>
-                    <Input autoComplete="off" type="number" min="0.01" max="1000" step="0.01" inputMode="decimal" value={values.progress_weight} disabled={isSaving} onChange={(event) => setValues({ ...values, progress_weight: event.target.value })} />
-                    <p className="text-xs font-normal leading-4 text-[var(--ui-text-muted)]">{t("progressWeightHelp")}</p>
-                  </FormField>
-                </div>
+                <TaskDeadlineEditor className="mt-4 border-t-0 pt-0" deadlines={values.deadlines} disabled={isSaving} scheduledReview={Boolean(task.schedule)} error={fieldErrors.deadlines} locale={locale} onChange={(deadlines) => setValues((current) => ({ ...current, deadlines }))} statusLabel={statusLabel} />
               </section>
               <section aria-labelledby="task-edit-checklist" className="border-t border-[var(--ui-border-subtle)] pt-4">
                 <div><h3 id="task-edit-checklist" className="text-sm font-semibold text-[var(--ui-text)]">{checklistT("checklist")}</h3><p className="mt-1 text-xs leading-4 text-[var(--ui-text-muted)]">{checklistT("description")}</p></div>
@@ -464,9 +472,9 @@ export function TaskDetailsDrawer({
             </div>
           ) : (
             <div className="space-y-6">
+              {reviewSection}
               <section aria-labelledby="task-progress-heading">
                 <div className="flex items-end justify-between gap-3"><h3 id="task-progress-heading" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3><span className="ui-numeric text-lg font-semibold text-[var(--ui-text)]">{formatNumber(taskProgress.presentedOverallPercent, locale)}%</span></div>
-                {task.completed_area_m2 !== null ? <p className="mt-2 text-xs text-[var(--ui-text-secondary)]">{t("taskArea")}: <span className="ui-numeric font-medium">{formatNumber(task.completed_area_m2, locale)} {t("areaUnit")}</span></p> : null}
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("overallProgressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={taskProgress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)] transition-[width] duration-300 ease-out motion-reduce:transition-none" style={{ width: `${taskProgress.overallPercent}%` }} /></div>
                 {task.status === "in_progress" && displayedChecklistItems.length === 0 ? <div className="mt-4 border-t border-[var(--ui-border-subtle)] pt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("manualProduction")}</span><div className="flex items-center gap-2"><span className="ui-numeric text-sm font-semibold text-[var(--ui-text)]">{formatNumber(taskProgress.presentedProductionPercent, locale)}%</span>{canEditWork && !isEditingManualProgress ? <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setIsEditingManualProgress(true)}>{t("change")}</Button> : null}</div></div>
@@ -484,12 +492,12 @@ export function TaskDetailsDrawer({
               </section> : null}
               <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
-                <dl className="mt-4 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span>{task.assignee.full_name}</span></> : t("unassigned")}</dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("coAssignees")}</dt><dd className="mt-1"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("stage")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{priorityT(task.priority)}</dd></div>
-                  {task.schedule ? <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("schedule")}</dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
+                <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 text-sm">
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("assignee")} icon={UserRound} /></dt><dd className="mt-2 flex min-w-0 items-start gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span className="min-w-0 break-words leading-6">{task.assignee.full_name}</span></> : <span className="font-normal text-[var(--ui-text-muted)]">{t("unassigned")}</span>}</dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("coAssignees")} icon={Users} /></dt><dd className="mt-2"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("stage")} icon={Layers3} /></dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("priority")} icon={Flag} /></dt><dd className="mt-1.5"><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span></dd></div>
+                  {task.schedule ? <div className="col-span-2"><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("schedule")} icon={CalendarDays} /></dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
                     <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })}</p>
                     <details className="group">
                       <summary className="w-fit cursor-pointer list-none font-medium marker:hidden focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("scheduleDue")}: {formatDateOnlyDayMonth(task.schedule.current_due, locale)}{task.schedule.current_due > task.schedule.baseline_due ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-secondary)]">{t("scheduleDrift", { count: scheduleWorkdayDrift(task.schedule.baseline_due, task.schedule.current_due) })}</span> : null}<ChevronDown className="ml-1 inline size-3 text-[var(--ui-text-muted)] transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /></summary>
@@ -497,13 +505,16 @@ export function TaskDetailsDrawer({
                     </details>
                     {task.schedule.is_paused ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("schedulePaused")}</p> : task.schedule.is_blocked ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("scheduleWaitingFor")}: {task.schedule.predecessors.filter((predecessor) => !predecessor.scheduleCompleted).map((predecessor) => predecessor.title).join(", ")}</p> : null}
                   </dd></div> : null}
-                  <div className="sm:col-span-2"><dt className="text-[var(--ui-text-muted)]">{t("deadlines")}</dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} schedule={task.schedule} status={task.status} statusLabel={statusLabel} /></dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-1 flex items-center gap-2 font-medium text-[var(--ui-text)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span>{task.creator.full_name}</span></> : t("unknown")}</dd></div>
-                  <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.created_at, locale)}</dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("deadlines")} icon={CalendarDays} /></dt><dd className="mt-2"><TaskDeadlineSummary deadlines={task.deadlines ?? []} locale={locale} noDeadlinesLabel={t("noDueDate")} schedule={task.schedule} status={task.status} statusLabel={statusLabel} /></dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("taskArea")} icon={Ruler} /></dt><dd className="mt-1.5 ui-numeric text-base font-semibold text-[var(--ui-text)]">{task.completed_area_m2 !== null ? <>{formatNumber(task.completed_area_m2, locale)} <span className="text-sm font-normal text-[var(--ui-text-secondary)]">{t("areaUnit")}</span></> : <span className="text-sm font-normal text-[var(--ui-text-muted)]">—</span>}</dd></div>
+                </dl>
+                <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 border-t border-[var(--ui-border-subtle)] pt-4 text-xs text-[var(--ui-text-muted)]">
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-2 flex min-w-0 items-center gap-2 text-[var(--ui-text-secondary)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span className="min-w-0 break-words">{task.creator.full_name}</span></> : t("unknown")}</dd></div>
+                  <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-2 leading-7 text-[var(--ui-text-secondary)]">{formatDate(task.created_at, locale)}</dd></div>
                   {canManageTasks && task.status === "completed" && task.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.completed_at, locale)}</dd></div> : null}
                 </dl>
               </section>
-              {!canManageTasks && canUpdateStatus ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">
+              {!canManageTasks && canUpdateStatus && !(task.requires_review && task.status === "internal_review") ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--ui-text)]">{t("updateStatus")}
                   <Select value={task.status} disabled={isSaving} onValueChange={(status) => void saveEmployeeStatus(status)} className="font-normal">
                     {taskStatusSelectItem(task.status, statusLabel(task.status))}
@@ -514,7 +525,7 @@ export function TaskDetailsDrawer({
             </div>
           )}
         </main>
-        {canEdit && isEditing ? <footer className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 py-3 shadow-[var(--ui-shadow-sticky)]">
+        {canEdit && isEditing ? <footer className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 py-3 shadow-[var(--ui-shadow-sticky)] sm:px-6">
           {showDiscardPrompt ? <div className="rounded-xl bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]">{t("unsavedChanges")}
             <div className="mt-2 flex justify-end gap-2"><Button type="button" size="sm" variant="outline" disabled={isSaving} onClick={discardChangesAndClose}>{t("discardChanges")}</Button><Button type="button" size="sm" disabled={isSaving} onClick={() => void saveTaskDetails()}>{t("saveChanges")}</Button></div>
           </div> : null}
@@ -569,14 +580,14 @@ function AutoGrowingTextarea({ className, value, ...props }: TextareaHTMLAttribu
     textarea.style.overflowY = textarea.scrollHeight > 240 ? "auto" : "hidden";
   }, [value]);
 
-  return <Textarea ref={textareaRef} value={value} rows={3} className={cn("min-h-[5.5rem] max-h-60 resize-none", className)} {...props} />;
+  return <Textarea ref={textareaRef} value={value} rows={2} className={cn("min-h-[4.5rem] max-h-60 resize-none", className)} {...props} />;
 }
 
 function TaskCollaboratorSummary({ collaborators, emptyLabel }: {
   collaborators: ProjectTask["collaborators"];
   emptyLabel: string;
 }) {
-  if (!collaborators.length) return <span className="font-medium text-[var(--ui-text-muted)]">{emptyLabel}</span>;
+  if (!collaborators.length) return <span className="font-normal text-[var(--ui-text-muted)]">{emptyLabel}</span>;
 
   if (collaborators.length <= 2) {
     return <div className="flex flex-wrap gap-x-3 gap-y-1.5">

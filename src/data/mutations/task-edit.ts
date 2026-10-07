@@ -75,7 +75,7 @@ export async function updateTaskDetailsMutation(
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_task_details_with_collaborators", {
     p_task_id: authorization.task.id,
-    p_task: update,
+    p_task: { ...update, reviewer_ids: parsed.data.reviewer_ids },
     p_collaborator_ids: parsed.data.collaborator_ids,
     p_deadlines: parsed.data.deadlines,
   });
@@ -87,6 +87,8 @@ export async function updateTaskDetailsMutation(
   revalidatePath("/leaderboard");
   revalidatePath("/projects");
   revalidatePath("/dashboard");
+  revalidatePath(`/projects/${authorization.task.project_id}`);
+  revalidatePath("/my-tasks");
 
   try {
     const task = await getProjectTaskById(authorization.task.id);
