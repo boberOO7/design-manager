@@ -39,6 +39,79 @@ describe("Statistics query access boundary", () => {
     expect(report?.from).toBe("2026-10-01");
   });
 
+  it("adds review activity without giving the reviewer completed-task or productivity credit", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([{ id: "credit", project_id: "project", task_id: "task", contributor_id: "worker",
+      contributor_name: "Worker", contributor_job_title: "Designer", credited_area_m2: 100, source_type: "task",
+      task_stage: "stage_2", completed_at: "2026-10-04T10:00:00Z" }]);
+    const sources: Record<string, unknown[]> = {
+      projects: [{ id: "project", name: "Project", status: "active", archived_at: null, started_at: "2026-09-01",
+        completed_at: null, include_in_productivity: true, total_area_m2: 100 }],
+      tasks: [{ id: "task", project_id: "project", completed_at: "2026-10-04" }],
+      task_review_rounds: [{ id: "round", reviewer_id: "reviewer", completed_at: "2026-10-03T10:00:00Z", result: "approved",
+        reviewers: [{ reviewer_id: "reviewer", approved_at: "2026-10-03T10:00:00Z" }] }],
+      work_log_entries: [{ id: "entry", user_id: "reviewer", work_date: "2026-10-03", activity_kind: "review", task_id: "task", review_round_id: "round", minutes: 60, task: { project_id: "project" } }],
+      calendar_events: [{ id: "meeting", event_type: "meeting", starts_at: "2026-10-03T09:00:00Z", ends_at: "2026-10-03T10:00:00Z",
+        all_day: false, project_id: "project", organizer_id: "reviewer", assignee_id: null, cancelled_at: null, recurrence_rule: null,
+        series_id: null, occurrence_start: null, compensates_time_off_request_id: null }],
+    };
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
+    const withReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(withReviews?.work.totals).toEqual({ reviewMinutes: 60, taskMinutes: 0, totalMinutes: 60, reviewsCompleted: 1 });
+    expect(withReviews?.work.projects).toEqual([{ id: "project", name: "Project", taskMinutes: 0, reviewMinutes: 60, totalMinutes: 60 }]);
+    expect(withReviews?.calendar.people[0].hours).toBe(1);
+    expect(withReviews?.totals).toMatchObject({ completedTasks: 1, creditedArea: 100, contributors: 1 });
+    sources.task_review_rounds = [];
+    sources.work_log_entries = [];
+    const withoutReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(withReviews?.totals).toEqual(withoutReviews?.totals);
+    expect(withReviews?.months).toEqual(withoutReviews?.months);
+    expect(withoutReviews?.work.totals.totalMinutes).toBe(0);
+    expect(withoutReviews?.calendar.people[0].hours).toBe(1);
+  });
+
+  it("resolves project time from logs for unfinished tasks and retains time if the task join is unavailable", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([]);
+    const sources: Record<string, unknown[]> = {
+      projects: [{ id: "project", name: "Active project", status: "active", archived_at: null, started_at: null,
+        completed_at: null, include_in_productivity: false, total_area_m2: 0 }],
+      tasks: [], // The Overview source contains completed tasks only.
+      work_log_entries: [
+        { id: "entry", user_id: "worker", work_date: "2026-10-03", activity_kind: "task", task_id: "unfinished", review_round_id: null, minutes: 91, task: { project_id: "project" } },
+        { id: "unavailable", user_id: "worker", work_date: "2026-10-03", activity_kind: "task", task_id: "unavailable", review_round_id: null, minutes: 31, task: null },
+      ],
+    };
+    const select = vi.fn().mockReturnThis();
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select, eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
+    const report = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(select).toHaveBeenCalledWith(expect.stringContaining("task:tasks!work_log_entries_task_id_fkey(project_id)"));
+    expect(report?.work.projects).toEqual([
+      { id: "project", name: "Active project", taskMinutes: 91, reviewMinutes: 0, totalMinutes: 91 },
+      { id: null, name: null, taskMinutes: 31, reviewMinutes: 0, totalMinutes: 31 },
+    ]);
+    expect(report?.work.totals.totalMinutes).toBe(122);
+    expect(report?.totals.completedTasks).toBeNull(); // No completed-project sample for Overview.
+  });
+
+  it.each(["work_log_entries", "task_review_rounds"])("uses %s evidence for the shared all-history boundary", async table => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([]);
+    const sources: Record<string, unknown[]> = {
+      work_log_entries: [{ id: "entry", user_id: "reviewer", work_date: "2024-02-10", activity_kind: "review", task_id: "task", review_round_id: "round", minutes: 60 }],
+      task_review_rounds: [{ id: "round", reviewer_id: "reviewer", completed_at: "2024-02-10T10:00:00Z", result: "approved",
+        reviewers: [{ reviewer_id: "reviewer", approved_at: "2024-02-10T10:00:00Z" }] }],
+    };
+    mocks.client.mockResolvedValue({ from: vi.fn((name: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: name === table ? sources[name] : [], error: null }) })) });
+    const report = await getStatistics("all", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(report?.from).toBe("2024-02-01");
+    expect(report?.work.months[0].month).toBe(report?.from);
+    expect(report?.work.totals).toMatchObject(table === "work_log_entries" ? { reviewMinutes: 60 } : { reviewsCompleted: 1 });
+  });
+
   it("loads all source rows beyond the API cap, including an exact multiple", async () => {
     const all = Array.from({ length: 2000 }, (_, id) => ({ id }));
     const page = vi.fn(async (offset: number) => ({ data: all.slice(offset, offset + 1000), error: null }));

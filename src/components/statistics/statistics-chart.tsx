@@ -2,6 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { formatStatisticsDuration } from "@/lib/statistics";
 
 export type StatisticsChartSegment = { key: string; label: string; value: number; display: string; color: string };
 export type StatisticsChartPoint = { month: string; value: number | null; display: string; detail?: string; segments?: StatisticsChartSegment[] };
@@ -9,8 +10,8 @@ export type StatisticsChartPoint = { month: string; value: number | null; displa
 /** The existing Finance chart's native SVG approach, scoped to monthly series.
  * Missing evidence creates gaps; exact values are available on hover and focus.
  */
-export function StatisticsChart({ title, unit, points, kind = "bar", color = "var(--ui-text-secondary)", compact = false, showData = true }: {
-  title: string; unit: string; points: StatisticsChartPoint[]; kind?: "bar" | "line"; color?: string; compact?: boolean; showData?: boolean;
+export function StatisticsChart({ title, unit, points, kind = "bar", color = "var(--ui-text-secondary)", compact = false, showData = true, duration = false }: {
+  title: string; unit: string; points: StatisticsChartPoint[]; kind?: "bar" | "line"; color?: string; compact?: boolean; showData?: boolean; duration?: boolean;
 }) {
   const t = useTranslations("Statistics");
   const locale = useLocale();
@@ -32,7 +33,7 @@ export function StatisticsChart({ title, unit, points, kind = "bar", color = "va
   useLayoutEffect(() => {
     if (measured) container.current?.querySelector("svg")?.dispatchEvent(new Event("statistics-chart-ready", { bubbles: true }));
   }, [measured]);
-  const left = 46, right = 10, top = 20, bottom = compact ? 98 : 180, height = bottom + 32;
+  const left = duration ? 60 : 46, right = 10, top = 20, bottom = compact ? 98 : 180, height = bottom + 32;
   const values = points.flatMap(point => point.value === null ? [] : [point.value]);
   const maximum = Math.max(1, ...values);
   const step = (width - left - right) / Math.max(1, points.length);
@@ -65,7 +66,7 @@ export function StatisticsChart({ title, unit, points, kind = "bar", color = "va
         {width > 0 ? <>
         {[0, maximum / 2, maximum].map((value, index) => <g key={index}>
           <line x1={left} x2={width - right} y1={y(value)} y2={y(value)} stroke="var(--ui-border)" strokeDasharray={index ? "3 5" : undefined} />
-          <text x={left - 8} y={y(value) + 4} textAnchor="end" fill="var(--ui-text-muted)" fontSize="10">{new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)}</text>
+          <text x={left - 8} y={y(value) + 4} textAnchor="end" fill="var(--ui-text-muted)" fontSize="10">{duration ? formatStatisticsDuration(value) : new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)}</text>
         </g>)}
         {kind === "line" ? path.split("M").filter(run => run.trim()).map((run, index) => <path key={index} data-statistics-line d={`M${run}`} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />) : null}
         {points.map((point, index) => {

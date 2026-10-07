@@ -50,7 +50,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
       .eq("event.studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("calendar_event_participants").select("event_id,user_id,event:calendar_events!inner(studio_id)")
       .eq("event.studio_id", studio).order("event_id").order("user_id").range(offset, offset + 999)),
-    readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,activity_kind,task_id,review_round_id,minutes")
+    readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,activity_kind,task_id,review_round_id,minutes,task:tasks!work_log_entries_task_id_fkey(project_id)")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("task_review_rounds")
       .select("id,reviewer_id,completed_at,result,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")
@@ -69,11 +69,12 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   }
   const range = { from: overview.from, through: overview.through };
   const people = members.map(row => ({ id: row.user_id, name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active }));
+  const calendar = buildCalendarStatistics(events, projects, range, now, { members: people, assignments: calendarStatisticsAssignments(events, invites, participants) });
   return { ...overview,
-    work: buildWorkStatistics(workLog, reviewRounds, people, range),
+    work: buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects),
     leads: buildCrmStatistics(leads, activities, range, today, tasks, leadHistory),
     attendance: buildAttendanceStatistics(timeOff, events, people, range, now),
-    calendar: buildCalendarStatistics(events, projects, range, now, { members: people, assignments: calendarStatisticsAssignments(events, invites, participants) }),
+    calendar,
   };
 }
 

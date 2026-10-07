@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProductivityContributionAttribution } from "@/lib/productivity";
 import {
   buildStatistics,
+  formatStatisticsDuration,
   recordedProjectDuration,
   recordedProjectAge,
   type StatisticsActivity,
@@ -25,6 +26,14 @@ const emptySources = (overrides: Partial<StatisticsSources> = {}): StatisticsSou
   projects: [], tasks: [], activities: [], attributions: [], ...overrides,
 });
 describe("Statistics metric definitions", () => {
+  it("formats measured hours as hours:minutes while keeping unknown time unavailable", () => {
+    expect(formatStatisticsDuration(1930 / 60)).toBe("32:10");
+    expect(formatStatisticsDuration(6.25)).toBe("6:15");
+    expect(formatStatisticsDuration(91 / 60)).toBe("1:31");
+    expect(formatStatisticsDuration(0)).toBe("0:00");
+    expect(formatStatisticsDuration(null)).toBe("—");
+    expect(formatStatisticsDuration(59.9 / 60)).toBe("1:00");
+  });
   it("keeps 100 physical m² separate from 200 legitimate discipline credits and deduplicates repeated source IDs", () => {
     const designer = attribution();
     const architect = attribution({ id: "credit-2", task_id: "task-2", contributor_id: "architect", credited_area_m2: 100 });

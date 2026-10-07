@@ -25,6 +25,13 @@ const monthOf = (date: string) => `${date.slice(0, 7)}-01`;
 const first = (dates: string[]) => dates.sort()[0] ?? null;
 const inRange = (date: string | null, from: string, through: string): date is string => date !== null && date >= from && date <= through;
 
+/** Presentation rounds to a minute; source durations remain untouched. */
+export function formatStatisticsDuration(hours: number | null) {
+  if (hours === null) return "—";
+  const minutes = Math.round(hours * 60);
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
 export function parseStatisticsPeriod(value: string | string[] | undefined): StatisticsPeriod {
   return statisticsPeriods.find(period => period === value) ?? "12";
 }

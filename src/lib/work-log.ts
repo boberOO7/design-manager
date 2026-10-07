@@ -56,25 +56,55 @@ export function summarizeLoggedTime(entries: WorkLogEntry[], calendarMinutes = 0
   return { taskMinutes, reviewMinutes, calendarMinutes, totalMinutes: taskMinutes + reviewMinutes + calendarMinutes };
 }
 
-export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; user_id: string; work_date: string }>,
-  rounds: ReviewStatisticsRound[], members: Array<{ id: string; name: string; active: boolean }>, range: { from: string; through: string }) {
-  const people = new Map(members.map(member => [member.id, { ...member, reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0 }]));
+export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; user_id: string; work_date: string; project_id: string | null }>,
+  rounds: ReviewStatisticsRound[], members: Array<{ id: string; name: string; active: boolean }>, range: { from: string; through: string },
+  projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = []) {
+  const empty = () => ({ reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, totalMinutes: 0 });
+  const people = new Map(members.map(member => [member.id, { ...member, ...empty() }]));
+  const projectNames = new Map(projects.map(project => [project.id, project.name]));
+  const projectTime = new Map<string | null, { id: string | null; name: string | null; taskMinutes: number; reviewMinutes: number; totalMinutes: number }>();
+  const months = [];
+  for (let month = `${range.from.slice(0, 7)}-01`; month <= range.through;) {
+    months.push({ month, ...empty() });
+    const [year, number] = month.split("-").map(Number);
+    month = new Date(Date.UTC(year, number, 1)).toISOString().slice(0, 10);
+  }
+  const byMonth = new Map(months.map(month => [month.month.slice(0, 7), month]));
   const person = (id: string) => {
     let row = people.get(id);
-    if (!row) { row = { id, name: "", active: false, reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0 }; people.set(id, row); }
+    if (!row) { row = { id, name: "", active: false, ...empty() }; people.set(id, row); }
     return row;
   };
   for (const credit of completedReviewCredits(rounds)) {
     const date = instantToDateOnly(credit.completedAt);
-    if (date >= range.from && date <= range.through) person(credit.userId).reviewsCompleted++;
+    if (date < range.from || date > range.through) continue;
+    person(credit.userId).reviewsCompleted++;
+    const month = byMonth.get(date.slice(0, 7));
+    if (month) month.reviewsCompleted++;
   }
   for (const row of new Map(entries.map(entry => [entry.id, entry])).values()) {
     if (row.work_date < range.from || row.work_date > range.through) continue;
-    if (row.activity_kind === "review") person(row.user_id).reviewMinutes += row.minutes;
-    else person(row.user_id).taskMinutes += row.minutes;
+    const key = row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
+    person(row.user_id)[key] += row.minutes;
+    let project = projectTime.get(row.project_id);
+    if (!project) {
+      project = { id: row.project_id, name: projectNames.get(row.project_id ?? "") ?? null, taskMinutes: 0, reviewMinutes: 0, totalMinutes: 0 };
+      projectTime.set(row.project_id, project);
+    }
+    project[key] += row.minutes;
+    project.totalMinutes += row.minutes;
+    const month = byMonth.get(row.work_date.slice(0, 7));
+    if (month) month[key] += row.minutes;
   }
-  return [...people.values()].filter(row => row.active || row.reviewsCompleted || row.taskMinutes || row.reviewMinutes)
+  const employees = [...people.values()].filter(row => row.active || row.reviewsCompleted || row.taskMinutes || row.reviewMinutes)
     .sort((left, right) => left.name.localeCompare(right.name));
+  for (const row of [...employees, ...months]) row.totalMinutes = row.taskMinutes + row.reviewMinutes;
+  const totals = employees.reduce((sum, row) => ({ reviewsCompleted: sum.reviewsCompleted + row.reviewsCompleted,
+    taskMinutes: sum.taskMinutes + row.taskMinutes, reviewMinutes: sum.reviewMinutes + row.reviewMinutes,
+    totalMinutes: sum.totalMinutes + row.totalMinutes }), empty());
+  const projectRows = [...projectTime.values()].sort((left, right) => right.totalMinutes - left.totalMinutes
+    || (left.name ?? "").localeCompare(right.name ?? "") || (left.id ?? "").localeCompare(right.id ?? ""));
+  return { employees, months, totals, projects: projectRows };
 }
 
 export function getDailyCalendarContext(events: Array<StatisticsCalendarEvent & { assignee_id: string | null }>,

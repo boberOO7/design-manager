@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, getSuggestedTaskIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
-import type { StatisticsCalendarEvent } from "./statistics-calendar";
+import { buildCalendarStatistics, calendarStatisticsAssignments, type StatisticsCalendarEvent } from "./statistics-calendar";
+import { statisticsPeriods, statisticsRange } from "./statistics";
 
 const taskId = "82000000-0000-4000-8000-000000000001";
 const roundId = "82000000-0000-4000-8000-000000000002";
@@ -13,8 +14,52 @@ const event = (changes: Partial<StatisticsCalendarEvent & { assignee_id: string 
   project_id: null, organizer_id: "reviewer", assignee_id: null, cancelled_at: null, recurrence_rule: null, series_id: null,
   occurrence_start: null, compensates_time_off_request_id: null, ...changes,
 });
+const entry = (changes: Partial<Parameters<typeof buildWorkStatistics>[0][number]> = {}): Parameters<typeof buildWorkStatistics>[0][number] => ({
+  id: "entry", user_id: "worker", work_date: "2026-10-07", activity_kind: "task", task_id: taskId, project_id: "project", review_round_id: null, minutes: 60, ...changes,
+});
 
 describe("work log domain", () => {
+  it("groups task and review minutes by project once, including unavailable project details", () => {
+    const first = entry({ minutes: 91 });
+    const report = buildWorkStatistics([first, first,
+      entry({ id: "collaborator", user_id: "collaborator", minutes: 29 }),
+      entry({ id: "review-1", user_id: "reviewer", activity_kind: "review", review_round_id: roundId, minutes: 35 }),
+      entry({ id: "task-2", task_id: "active-task", project_id: "active-project", minutes: 60 }),
+      entry({ id: "review-2", task_id: "active-task", project_id: "active-project", user_id: "reviewer", activity_kind: "review", review_round_id: "round-2", minutes: 120 }),
+      entry({ id: "missing", project_id: null, minutes: 15 }),
+      entry({ id: "outside", project_id: "outside-project", work_date: "2026-09-30", minutes: 999 }),
+    ], [round(), round({ id: "round-2" })], [], { from: "2026-10-01", through: "2026-10-07" }, [
+      { id: "project", name: "Completed project" }, { id: "active-project", name: "Active project" }, { id: "idle", name: "No time" },
+    ]);
+    expect(report.projects).toEqual([
+      { id: "active-project", name: "Active project", taskMinutes: 60, reviewMinutes: 120, totalMinutes: 180 },
+      { id: "project", name: "Completed project", taskMinutes: 120, reviewMinutes: 35, totalMinutes: 155 },
+      { id: null, name: null, taskMinutes: 15, reviewMinutes: 0, totalMinutes: 15 },
+    ]);
+    for (const key of ["taskMinutes", "reviewMinutes", "totalMinutes"] as const) {
+      expect(report.projects.reduce((sum, project) => sum + project[key], 0)).toBe(report.totals[key]);
+      expect(report.employees.reduce((sum, person) => sum + person[key], 0)).toBe(report.totals[key]);
+    }
+    expect(report.totals.totalMinutes).toBe(350);
+  });
+
+  it("keeps time for known project IDs with missing metadata and adds none for completed reviews without logs", () => {
+    const range = { from: "2026-10-01", through: "2026-10-07" };
+    expect(buildWorkStatistics([entry()], [], [], range).projects).toEqual([
+      { id: "project", name: null, taskMinutes: 60, reviewMinutes: 0, totalMinutes: 60 },
+    ]);
+    const withoutLogs = buildWorkStatistics([], [round()], [], range, [{ id: "project", name: "Project" }]);
+    expect(withoutLogs.projects).toEqual([]);
+    expect(withoutLogs.totals).toMatchObject({ totalMinutes: 0, reviewsCompleted: 1 });
+  });
+
+  it("preserves whole minutes before display rounding", () => {
+    const report = buildWorkStatistics([entry({ minutes: 1 }), entry({ id: "review", activity_kind: "review", review_round_id: roundId, minutes: 1 })],
+      [], [], { from: "2026-10-01", through: "2026-10-07" });
+    expect(report.totals).toMatchObject({ taskMinutes: 1, reviewMinutes: 1, totalMinutes: 2 });
+    expect(report.months[0].totalMinutes).toBe(2);
+  });
+
   it("requires a specific round for reviews and rejects duplicate or fractional entries", () => {
     const row = { activity_kind: "task", task_id: taskId, review_round_id: null, minutes: 60 };
     expect(workLogInputSchema.safeParse({ date: "2026-10-07", entries: [row] }).success).toBe(true);
@@ -31,12 +76,81 @@ describe("work log domain", () => {
       { reviewer_id: "waiting", approved_at: null },
     ] });
     expect(completedReviewCredits([completed, completed]).map(row => row.userId)).toEqual(["reviewer", "second"]);
-    const entries = [{ id: "entry", user_id: "reviewer", work_date: "2026-10-07", activity_kind: "review", task_id: taskId, review_round_id: roundId, minutes: 25 }];
+    const entries = [entry({ user_id: "reviewer", activity_kind: "review", review_round_id: roundId, minutes: 25 })];
     const report = buildWorkStatistics([...entries, ...entries], [completed], [], { from: "2026-10-01", through: "2026-10-07" });
-    expect(report.find(row => row.id === "reviewer")).toMatchObject({ reviewsCompleted: 1, taskMinutes: 0, reviewMinutes: 25 });
-    expect(report[0]).not.toHaveProperty("completedTasks");
-    expect(report[0]).not.toHaveProperty("areaM2");
-    expect(buildWorkStatistics(entries, [completed], [], { from: "2026-09-01", through: "2026-09-30" })).toEqual([]);
+    expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ reviewsCompleted: 1, taskMinutes: 0, reviewMinutes: 25 });
+    expect(report.employees[0]).not.toHaveProperty("completedTasks");
+    expect(report.employees[0]).not.toHaveProperty("areaM2");
+    expect(buildWorkStatistics(entries, [completed], [], { from: "2026-09-01", through: "2026-09-30" }).employees).toEqual([]);
+  });
+
+  it("attributes task time to each logger and review time to its logger for each specific round", () => {
+    const task = entry({ minutes: 90 });
+    const report = buildWorkStatistics([task, task, entry({ id: "collaborator", user_id: "collaborator", minutes: 30 }),
+      entry({ id: "review-1", user_id: "reviewer", activity_kind: "review", review_round_id: roundId, minutes: 25 }),
+      entry({ id: "review-2", user_id: "reviewer", activity_kind: "review", review_round_id: "round-2", minutes: 35 }),
+    ], [round(), round({ id: "round-2", completed_at: null, result: null })], [], { from: "2026-10-01", through: "2026-10-07" });
+    expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, reviewMinutes: 0, reviewsCompleted: 0 });
+    expect(report.employees.find(row => row.id === "collaborator")).toMatchObject({ taskMinutes: 30, reviewMinutes: 0 });
+    expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ taskMinutes: 0, reviewMinutes: 60, reviewsCompleted: 1 });
+    expect(report.totals).toEqual({ taskMinutes: 120, reviewMinutes: 60, totalMinutes: 180, reviewsCompleted: 1 });
+    expect(report.months[0]).toMatchObject(report.totals);
+  });
+
+  it.each(statisticsPeriods)("clips work dates and Kyiv review completion dates to the %s period, inclusively", period => {
+    const range = statisticsRange(period, "2026-10-07", "2024-02-15");
+    const before = new Date(Date.parse(range.from) - 86_400_000).toISOString().slice(0, 10);
+    const atStart = `${before}T22:00:00Z`; // After midnight Kyiv, including winter UTC+2.
+    const atEnd = "2026-10-07T20:59:59Z";
+    const rounds = [round({ id: "before", completed_at: `${before}T20:00:00Z` }), round({ id: "start", completed_at: atStart }),
+      round({ id: "end", completed_at: atEnd }), round({ id: "after", completed_at: "2026-10-07T21:00:00Z" })];
+    const report = buildWorkStatistics([
+      entry({ id: "before", work_date: before, minutes: 999 }), entry({ id: "start", work_date: range.from, minutes: 30 }),
+      entry({ id: "end", work_date: range.through, minutes: 60 }), entry({ id: "after", work_date: "2026-10-08", minutes: 999 }),
+    ], rounds, [], range);
+    expect(report.totals).toMatchObject({ taskMinutes: 90, reviewsCompleted: 2 });
+    expect(report.months.reduce((sum, month) => sum + month.totalMinutes, 0)).toBe(90);
+    expect(report.projects.reduce((sum, project) => sum + project.totalMinutes, 0)).toBe(90);
+    expect(report.months.reduce((sum, month) => sum + month.reviewsCompleted, 0)).toBe(2);
+    expect(report.months[0].month).toBe(range.from);
+  });
+
+  it("keeps Calendar participation separate from logged work, preserving both sources' period boundaries", () => {
+    const range = { from: "2026-09-01", through: "2026-10-01" };
+    const now = "2026-10-02T12:00:00Z";
+    const spanning = event({ id: "spanning", starts_at: "2026-09-30T20:00:00Z", ends_at: "2026-10-01T02:00:00Z" });
+    const rows = [spanning, spanning,
+      event({ id: "clipped", starts_at: "2026-08-31T20:00:00Z", ends_at: "2026-09-01T01:00:00Z" }),
+      event({ id: "makeup", event_type: "work_makeup", starts_at: "2026-09-10T09:00:00Z", ends_at: "2026-09-10T10:00:00Z" }),
+      event({ id: "all-day", all_day: true, starts_at: "2026-09-10T21:00:00Z", ends_at: "2026-09-11T21:00:00Z" }),
+      event({ id: "cancelled", cancelled_at: now, starts_at: "2026-09-10T09:00:00Z", ends_at: "2026-09-10T10:00:00Z" }),
+      event({ id: "general", event_type: "general", starts_at: "2026-09-10T09:00:00Z", ends_at: "2026-09-10T10:00:00Z" }),
+      event({ id: "ongoing", starts_at: "2026-10-01T09:00:00Z", ends_at: "2026-10-03T10:00:00Z" }),
+      event({ id: "future", starts_at: "2026-10-03T09:00:00Z", ends_at: "2026-10-03T10:00:00Z" }),
+    ];
+    const invites = [
+      { event_id: "spanning", user_id: "reviewer", status: "accepted" as const },
+      { event_id: "spanning", user_id: "worker", status: "pending" as const },
+      { event_id: "spanning", user_id: "declined", status: "declined" as const },
+    ];
+    const members = [{ id: "reviewer", name: "Reviewer", active: true }, { id: "worker", name: "Worker", active: false }, { id: "idle", name: "Idle", active: true }];
+    const calendar = buildCalendarStatistics(rows, [], range, now, { members, assignments: calendarStatisticsAssignments(rows, invites, []) });
+    const logged = [entry({ work_date: "2026-09-10", minutes: 90 }),
+      entry({ id: "review", user_id: "reviewer", work_date: "2026-10-01", activity_kind: "review", review_round_id: roundId, minutes: 30 })];
+    const report = buildWorkStatistics([...logged, ...logged], [round({ completed_at: "2026-10-01T09:00:00Z" })], members, range);
+    expect(calendar.totals.hours).toBe(11); // Event durations, including unassigned general activity.
+    expect(calendar.people.find(row => row.id === "reviewer")?.hours).toBe(10);
+    expect(calendar.people.find(row => row.id === "worker")?.hours).toBe(6);
+    expect(report.totals).toEqual({ taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1 });
+    expect(report.totals).not.toHaveProperty("calendarMinutes");
+    expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ reviewMinutes: 30, totalMinutes: 30 });
+    expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, totalMinutes: 90, active: false });
+    expect(report.employees.find(row => row.id === "idle")?.totalMinutes).toBe(0);
+    expect(report.months).toMatchObject([
+      { month: "2026-09-01", taskMinutes: 90, reviewMinutes: 0, totalMinutes: 90 },
+      { month: "2026-10-01", taskMinutes: 0, reviewMinutes: 30, totalMinutes: 30 },
+    ]);
+    expect(report.months.reduce((sum, row) => sum + row.totalMinutes, 0)).toBe(report.totals.totalMinutes);
   });
 
   it("suggests participating-task interactions and workflow changes", () => {
