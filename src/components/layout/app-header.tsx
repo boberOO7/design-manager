@@ -7,6 +7,7 @@ import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { LanguageSelector } from "@/components/layout/language-selector";
 import { ProfileAvatarEditor } from "@/components/layout/profile-avatar-editor";
+import { WorkLogTrigger } from "@/components/work-log/work-log-trigger";
 import { getTranslations } from "next-intl/server";
 import { getNotificationData } from "@/data/queries/notifications";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
@@ -68,6 +69,7 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
         />
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <WorkLogTrigger />
         <LanguageSelector />
         <ThemeSwitch />
         <NotificationBell initialData={notifications} popupsEnabled={profile.notification_popups_enabled} soundEnabled={profile.notification_sound_enabled} userId={profile.id} />

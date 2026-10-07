@@ -129,9 +129,10 @@ export default async function EmployeeProfilePage({ params, searchParams }: {
           {activity.heatmap.total === 0 ? <p className="mt-3 text-xs leading-5 text-[var(--ui-text-muted)]">{t("heatmapEmpty")}</p> : null}
         </div>
         <div className="border-t border-[var(--ui-border-subtle)] px-4 py-4 sm:px-6">
-          <dl className="grid grid-cols-3 gap-x-5 text-xs">
-            {[{ label: t("completedTasks"), value: activity.completedTasks }, { label: t("projectParticipation"), value: data.projectCount }, { label: t("completedProjects"), value: data.completedProjectCount }].map((metric) => <div key={metric.label} className="flex min-w-0 flex-col gap-1"><dt className="order-2 leading-5 text-[var(--ui-text-muted)]">{metric.label}</dt><dd className="order-1 text-base leading-6 font-semibold tabular-nums">{number.format(metric.value)}</dd></div>)}
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs sm:grid-cols-4">
+            {[{ label: t("completedTasks"), value: activity.completedTasks }, { label: t("reviewsCompleted"), value: activity.workTime.reviewsCompleted }, { label: t("projectParticipation"), value: data.projectCount }, { label: t("completedProjects"), value: data.completedProjectCount }].map((metric) => <div key={metric.label} className="flex min-w-0 flex-col gap-1"><dt className="order-2 leading-5 text-[var(--ui-text-muted)]">{metric.label}</dt><dd className="order-1 text-base leading-6 font-semibold tabular-nums">{number.format(metric.value)}</dd></div>)}
           </dl>
+          <p className="mt-3 text-xs text-[var(--ui-text-secondary)]">{t("loggedTaskTime")}: {t("hours", { count: number.format(activity.workTime.taskMinutes / 60) })} · {t("loggedReviewTime")}: {t("hours", { count: number.format(activity.workTime.reviewMinutes / 60) })}</p>
           <p className="mt-3 text-[11px] leading-5 text-[var(--ui-text-muted)]">{t("allTime")} · {t("accessibleProjects")}</p>
         </div>
       </section> : null}

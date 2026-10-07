@@ -13,6 +13,13 @@ all-history starts at the earliest retained source date across the sections.
 Current cohort outcomes and future attendance commitments are labelled
 separately. Definitions live in `src/lib/statistics*.ts`, with colocated tests.
 
+Team statistics and self/admin employee profiles also show completed review
+rounds and logged task/review minutes (`src/lib/work-log.ts`). A completed round
+counts once per reviewer who approved a step or returned it for rework; waiting
+reviewers receive no count. Reviews do not enter completed-task counts or the
+productivity attribution ledger. Calendar activity statistics keep their existing
+source and definitions.
+
 | Measure | Source and definition | Historical limit |
 | --- | --- | --- |
 | Completed projects / delivered physical area | Production-enabled Projects currently completed, or archived with `completed_at`; count each project once and sum `total_area_m2` by official completion date. | Area is the current project field, not a historical snapshot. Reopening clears completion; this is retained completion state, not every completion cycle. |

@@ -17,9 +17,10 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const upcomingPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).eq("status", "approved").is("cancelled_at", null).lte("start_date", upcomingEnd).gte("end_date", today).order("start_date").limit(50);
   const recentPromise = supabase.from("time_off_requests").select(select).eq("studio_id", membership.studio_id).in("status", ["approved", "rejected", "cancelled"]).order("updated_at", { ascending: false }).limit(20);
   const policyPromise = supabase.rpc("get_studio_vacation_policy", { p_studio_id: membership.studio_id }).single();
+  const workdayPromise = supabase.from("studios").select("standard_workday_minutes").eq("id", membership.studio_id).single();
   const membersPromise = supabase.from("studio_members").select("is_active, system_role").eq("studio_id", membership.studio_id).limit(500);
-  const [pendingResult, upcomingResult, recentResult, membersResult, policyResult, leaderboardBonusConfig] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, policyPromise, getStudioLeaderboardBonusConfig(membership.studio_id)]);
-  const error = [pendingResult.error, upcomingResult.error, recentResult.error, membersResult.error, policyResult.error].find(Boolean);
+  const [pendingResult, upcomingResult, recentResult, membersResult, policyResult, leaderboardBonusConfig, workdayResult] = await Promise.all([pendingPromise, upcomingPromise, recentPromise, membersPromise, policyPromise, getStudioLeaderboardBonusConfig(membership.studio_id), workdayPromise]);
+  const error = [pendingResult.error, upcomingResult.error, recentResult.error, membersResult.error, policyResult.error, workdayResult.error].find(Boolean);
   if (error) throw new Error("Unable to load Administration data.", { cause: error });
   const requestIds = [...(pendingResult.data ?? []), ...(upcomingResult.data ?? []), ...(recentResult.data ?? [])].map((request) => request.id);
   const reviewNotesResult = requestIds.length
@@ -41,5 +42,5 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const policy = policyResult.data;
   if (!policy || !["carry_all", "capped", "none"].includes(policy.carry_rule)) throw new Error("Unable to load vacation policy.");
   const vacationPolicy: VacationPolicy = { annualDays: policy.annual_days, carryRule: policy.carry_rule === "capped" ? "capped" : policy.carry_rule === "none" ? "none" : "carry_all", carryCapDays: policy.carry_cap_days };
-  return { studioId: membership.studio_id, vacationPolicy, vacationVisibleToEmployees: membership.vacationVisibleToEmployees, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
+  return { studioId: membership.studio_id, standardWorkdayMinutes: workdayResult.data?.standard_workday_minutes ?? 480, vacationPolicy, vacationVisibleToEmployees: membership.vacationVisibleToEmployees, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
 }

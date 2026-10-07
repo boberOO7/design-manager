@@ -3,6 +3,7 @@ import "server-only";
 import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getCanonicalProductivityAttributions } from "@/data/queries/productivity-attributions";
 import { getEmployeeProfileEmployment } from "@/data/queries/employee-profile-employment";
+import { getEmployeeWorkStatistics } from "@/data/queries/work-log";
 import { buildProfileHeatmap, getProfileActivityBounds, summarizeProfileContributions } from "@/lib/employee-profile";
 import { instantToDateOnly } from "@/lib/calendar";
 import { isOperationalProjectStatus } from "@/lib/project-lifecycle";
@@ -114,11 +115,12 @@ export async function getEmployeeProfile(userId: string) {
         }
         return rows;
       };
-      const [completedTasks, inProgressTasks, assigned, collaborated, assignedNow, collaboratedNow, timeOff, daysOff] = await Promise.all([
+      const [completedTasks, inProgressTasks, assigned, collaborated, assignedNow, collaboratedNow, timeOff, daysOff, workTime] = await Promise.all([
         countTasks("completed"), countTasks("in_progress"), loadCompletions(false), loadCompletions(true),
         currentTasks(false), currentTasks(true), approvedPeriods(),
         supabase.from("studio_days_off").select("date").eq("studio_id", membership.studio_id)
           .gte("date", bounds.start).lte("date", bounds.today),
+        getEmployeeWorkStatistics(membership.studio_id, userId),
       ]);
       if (assignedNow.error || collaboratedNow.error || daysOff.error || !daysOff.data) {
         throw new Error("Unable to load profile activity.", { cause: assignedNow.error ?? collaboratedNow.error ?? daysOff.error });
@@ -127,7 +129,7 @@ export async function getEmployeeProfile(userId: string) {
         .sort((left, right) => (left.due_date ?? "9999").localeCompare(right.due_date ?? "9999") || left.id.localeCompare(right.id))
         .slice(0, 2).map((task) => ({ id: task.id, title: task.title, projectId: task.project.id, projectName: task.project.name }));
       return {
-        completedTasks, inProgressTasks, currentTasks: snapshot,
+        completedTasks, inProgressTasks, currentTasks: snapshot, workTime,
         heatmap: buildProfileHeatmap({ tasks: [...assigned, ...collaborated], joinedAt: person.joined_at, timeOff, studioDaysOff: daysOff.data.map((day) => day.date), now }),
       };
     })() : Promise.resolve(null),

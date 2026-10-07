@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { isTimePickerDiscreteWheel, TIME_PICKER_HOURS, TIME_PICKER_MINUTES, TIME_PICKER_ROW_HEIGHT } from "./time-picker";
+import { DURATION_PICKER_HOURS, isTimePickerDiscreteWheel, TIME_PICKER_HOURS, TIME_PICKER_MINUTES, TIME_PICKER_ROW_HEIGHT } from "./time-picker";
 
 const globalsPath = new URL("../../app/globals.css", import.meta.url);
 
@@ -8,6 +8,10 @@ describe("TimePicker options", () => {
   it("offers every hour and only five-minute choices", () => {
     expect(TIME_PICKER_HOURS).toEqual(Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")));
     expect(TIME_PICKER_MINUTES).toEqual(["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]);
+  });
+
+  it("offers duration hours from zero through twelve", () => {
+    expect(DURATION_PICKER_HOURS).toEqual(Array.from({ length: 13 }, (_, hour) => String(hour).padStart(2, "0")));
   });
 
   it("uses the shared scrollbar utility on the scrolling columns", async () => {

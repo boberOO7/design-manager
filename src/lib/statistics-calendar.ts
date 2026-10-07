@@ -118,7 +118,7 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
     ids.add(personId);
     peopleByEvent.set(eventId, ids);
   }
-  const perPerson = new Map<string, AttendanceMember & StatisticsCalendarMetrics>();
+  const perPerson = new Map<string, AttendanceMember & StatisticsCalendarMetrics & { categories: Array<{ eventType: typeof STATISTICS_CALENDAR_TYPES[number] } & StatisticsCalendarMetrics> }>();
   const totals = emptyMetrics(), projectLinked = emptyMetrics(), unlinked = emptyMetrics();
   const months: Array<{ month: string; count: number; hours: number; timedCount: number; allDayDays: number; types: Array<{ eventType: typeof STATISTICS_CALENDAR_TYPES[number]; count: number }> }> = [];
   for (let month = `${range.from.slice(0, 7)}-01`; month <= range.through;) {
@@ -155,8 +155,10 @@ export function buildCalendarStatistics(events: StatisticsCalendarEvent[], proje
     const assigned = peopleByEvent.get(event.id);
     if (!assigned?.size) unassignedCount++;
     for (const id of assigned ?? []) {
-      const person = perPerson.get(id) ?? { id, name: memberById.get(id)?.name ?? "", active: memberById.get(id)?.active ?? false, ...emptyMetrics() };
+      const person = perPerson.get(id) ?? { id, name: memberById.get(id)?.name ?? "", active: memberById.get(id)?.active ?? false, ...emptyMetrics(), categories: STATISTICS_CALENDAR_TYPES.map(eventType => ({ eventType, ...emptyMetrics() })) };
       accumulate(person, event, clippedStart, clippedEnd, valid);
+      const personalCategory = person.categories.find(category => category.eventType === event.event_type);
+      if (personalCategory) accumulate(personalCategory, event, clippedStart, clippedEnd, valid);
       perPerson.set(id, person);
     }
     const countMonth = monthByDate.get(instantToDateOnly(new Date(clippedStart).toISOString()).slice(0, 7));

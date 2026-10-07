@@ -7,13 +7,14 @@ import { cn } from "@/lib/utils";
 
 export const TIME_PICKER_HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
 export const TIME_PICKER_MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
+export const DURATION_PICKER_HOURS = TIME_PICKER_HOURS.slice(0, 13);
 export const TIME_PICKER_ROW_HEIGHT = 40;
 
 const TIME_VALUE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const DOM_DELTA_LINE = 1;
 
-function parseTime(value: string) {
-  const match = TIME_VALUE.exec(value);
+function parseTime(value: string, mode: "time" | "duration") {
+  const match = (mode === "duration" ? /^(\d{2,}):([0-5]\d)$/ : TIME_VALUE).exec(value);
   return { hour: match?.[1] ?? "00", minute: match?.[2] ?? "00" };
 }
 
@@ -37,12 +38,13 @@ export const timePickerClassName = "flex h-11 w-full items-center justify-betwee
 export type TimePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "defaultValue" | "onChange" | "value"> & {
   defaultValue?: string;
   locale?: string;
+  mode?: "time" | "duration";
   name?: string;
   onValueChange?: (value: string) => void;
   value?: string;
 };
 
-export function TimePicker({ className, defaultValue = "00:00", disabled, locale = "en", name, onValueChange, value, ...buttonProps }: TimePickerProps) {
+export function TimePicker({ className, defaultValue = "00:00", disabled, locale = "en", mode = "time", name, onValueChange, value, ...buttonProps }: TimePickerProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -50,7 +52,10 @@ export function TimePicker({ className, defaultValue = "00:00", disabled, locale
   const hourColumnRef = React.useRef<HTMLDivElement>(null);
   const minuteColumnRef = React.useRef<HTMLDivElement>(null);
   const selectedValue = value ?? internalValue;
-  const selected = parseTime(selectedValue);
+  const selected = parseTime(selectedValue, mode);
+  // Keep existing logged durations selectable without rounding or truncating them.
+  const hours = mode === "duration" ? [...new Set([...DURATION_PICKER_HOURS, selected.hour])].sort((a, b) => Number(a) - Number(b)) : TIME_PICKER_HOURS;
+  const minutes = mode === "duration" ? [...new Set([...TIME_PICKER_MINUTES, selected.minute])].sort((a, b) => Number(a) - Number(b)) : TIME_PICKER_MINUTES;
   const portalContainer = triggerNode?.closest("dialog, [role='dialog']") ?? undefined;
   const labels = locale.startsWith("uk") ? { chooseTime: "Вибрати час", hours: "Години", minutes: "Хвилини" } : { chooseTime: "Choose time", hours: "Hours", minutes: "Minutes" };
 
@@ -91,8 +96,8 @@ export function TimePicker({ className, defaultValue = "00:00", disabled, locale
     <Popover.Portal container={portalContainer}>
       <Popover.Content align="start" sideOffset={6} collisionPadding={8} className="z-[80] w-48 overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-2 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()}>
         <div className="grid grid-cols-2 gap-2" aria-label={labels.chooseTime}>
-          <TimeColumn label={labels.hours} values={TIME_PICKER_HOURS} selectedValue={selected.hour} onSelect={(hour) => setTime(hour, selected.minute)} scrollRef={hourColumnRef} />
-          <TimeColumn label={labels.minutes} values={TIME_PICKER_MINUTES} selectedValue={selected.minute} onSelect={(minute) => setTime(selected.hour, minute)} scrollRef={minuteColumnRef} />
+          <TimeColumn label={labels.hours} values={hours} selectedValue={selected.hour} onSelect={(hour) => setTime(hour, selected.minute)} scrollRef={hourColumnRef} />
+          <TimeColumn label={labels.minutes} values={minutes} selectedValue={selected.minute} onSelect={(minute) => setTime(selected.hour, minute)} scrollRef={minuteColumnRef} />
         </div>
       </Popover.Content>
     </Popover.Portal>

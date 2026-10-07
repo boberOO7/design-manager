@@ -5562,6 +5562,7 @@ export type Database = {
           leaderboard_visible_to_employees: boolean
           name: string
           phone: string | null
+          standard_workday_minutes: number
           updated_at: string
           vacation_visible_to_employees: boolean
           website: string | null
@@ -5576,6 +5577,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name: string
           phone?: string | null
+          standard_workday_minutes?: number
           updated_at?: string
           vacation_visible_to_employees?: boolean
           website?: string | null
@@ -5590,6 +5592,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name?: string
           phone?: string | null
+          standard_workday_minutes?: number
           updated_at?: string
           vacation_visible_to_employees?: boolean
           website?: string | null
@@ -6465,6 +6468,74 @@ export type Database = {
           },
           {
             foreignKeyName: "time_off_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_log_entries: {
+        Row: {
+          activity_kind: string
+          created_at: string
+          id: string
+          minutes: number
+          review_round_id: string | null
+          studio_id: string
+          task_id: string
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          activity_kind: string
+          created_at?: string
+          id?: string
+          minutes: number
+          review_round_id?: string | null
+          studio_id: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          activity_kind?: string
+          created_at?: string
+          id?: string
+          minutes?: number
+          review_round_id?: string | null
+          studio_id?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_log_entries_review_round_id_task_id_fkey"
+            columns: ["review_round_id", "task_id"]
+            isOneToOne: false
+            referencedRelation: "task_review_rounds"
+            referencedColumns: ["id", "task_id"]
+          },
+          {
+            foreignKeyName: "work_log_entries_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_log_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_log_entries_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -9235,6 +9306,10 @@ export type Database = {
         }
         Returns: string
       }
+      save_daily_work_log: {
+        Args: { p_entries: Json; p_work_date: string }
+        Returns: undefined
+      }
       save_finance_account: {
         Args: {
           p_account_id?: string
@@ -9474,6 +9549,10 @@ export type Database = {
           p_reason?: string
           p_stage: string
         }
+        Returns: undefined
+      }
+      set_standard_workday_minutes: {
+        Args: { p_minutes: number; p_studio_id: string }
         Returns: undefined
       }
       set_task_checklist_template: {

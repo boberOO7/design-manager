@@ -9,6 +9,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import type { CrmStatisticsReport } from "@/lib/statistics-crm";
 import { attendanceCategories, type AttendanceStatistics, type AttendanceLeave } from "@/lib/statistics-attendance";
 import type { StatisticsCalendarReport } from "@/lib/statistics-calendar";
+import type { buildWorkStatistics } from "@/lib/work-log";
 import { StatisticsChart } from "./statistics-chart";
 import { StatisticsInfo } from "./statistics-info";
 import { StatisticsCardHeader as Title, StatisticsMetric as Value, statisticsPanel as panel, statisticsTable as tableClass } from "./statistics-card";
@@ -21,6 +22,22 @@ async function presentation() {
 }
 function Comparison({ label, value, total, detail, color, eventType }: { label: React.ReactNode; value: number; total: number; detail?: string; color?: string; eventType?: string }) {
   return <div><div className="mb-2 flex justify-between gap-4 text-xs"><span className="min-w-0 text-[var(--ui-text-secondary)]">{label}</span><span className="text-right tabular-nums text-[var(--ui-text)]">{value}{detail ? <span className="mt-1 block text-[var(--ui-text-muted)]">{detail}</span> : null}</span></div><div aria-hidden="true" className="h-1.5 rounded bg-[var(--ui-surface-muted)]"><div data-statistics-progress data-event-type={eventType} className="h-full rounded" style={{ width: `${total ? value / total * 100 : 0}%`, backgroundColor: color ?? "var(--ui-text-secondary)" }} /></div></div>;
+}
+
+export async function WorkStatistics({ report }: { report: ReturnType<typeof buildWorkStatistics> }) {
+  const { t, number } = await presentation();
+  return <section className={panel} aria-label={t("workTitle")}>
+    <Title title={t("workTitle")} info={t("workDefinition")} />
+    <div className="overflow-x-auto"><table className={tableClass}>
+      <thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr>
+        <th scope="col">{t("employee")}</th><th scope="col">{t("reviewsCompleted")}</th><th scope="col">{t("loggedTaskHours")}</th><th scope="col">{t("loggedReviewHours")}</th>
+      </tr></thead>
+      <tbody>{report.map(person => <tr key={person.id} className="border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)]">
+        <th scope="row" className="font-medium text-[var(--ui-text)]"><Link href={`/team/${person.id}`} className="hover:underline">{person.name || t("formerEmployee")}</Link></th>
+        <td className="tabular-nums">{number(person.reviewsCompleted, 0)}</td><td className="tabular-nums">{number(person.taskMinutes / 60)}</td><td className="tabular-nums">{number(person.reviewMinutes / 60)}</td>
+      </tr>)}</tbody>
+    </table></div>
+  </section>;
 }
 
 export async function LeadsStatistics({ report }: { report: CrmStatisticsReport }) {

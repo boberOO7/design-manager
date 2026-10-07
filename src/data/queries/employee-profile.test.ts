@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ resolve: vi.fn(), admin: vi.fn(), createClient: vi.fn(), attributions: vi.fn(), employment: vi.fn(), from: vi.fn(), select: vi.fn(), counts: vi.fn(), maybeSingle: vi.fn(), range: vi.fn(), insert: vi.fn() }));
+const mocks = vi.hoisted(() => ({ resolve: vi.fn(), admin: vi.fn(), createClient: vi.fn(), attributions: vi.fn(), employment: vi.fn(), workStatistics: vi.fn(), from: vi.fn(), select: vi.fn(), counts: vi.fn(), maybeSingle: vi.fn(), range: vi.fn(), insert: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/data/queries/active-studio-membership", () => ({ resolveActiveStudioMembership: mocks.resolve }));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/data/queries/productivity-attributions", () => ({ getCanonicalProductivityAttributions: mocks.attributions }));
 vi.mock("@/data/queries/employee-profile-employment", () => ({ getEmployeeProfileEmployment: mocks.employment }));
+vi.mock("@/data/queries/work-log", () => ({ getEmployeeWorkStatistics: mocks.workStatistics }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getEmployeeProfile } from "./employee-profile";
@@ -29,6 +30,7 @@ beforeEach(() => {
   mocks.attributions.mockResolvedValue([]);
   mocks.counts.mockResolvedValue({ data: [], count: 0, error: null });
   mocks.employment.mockResolvedValue({ asOf: "2026-10-03", absenceRequests: 0, dayOffMinutes: 0, makeupMinutes: 0, availableVacationDays: null, vacationPeriods: [] });
+  mocks.workStatistics.mockResolvedValue({ reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, calendarMinutes: 0, totalMinutes: 0 });
   mocks.insert.mockResolvedValue({ error: null });
 });
 

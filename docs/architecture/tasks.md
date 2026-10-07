@@ -222,6 +222,20 @@ progress-query field set and the same progress/health helpers. Their reads exclu
 checklist text, people profiles, descriptions, and deadline completion history;
 active deadlines are selected before removing milestone rows from context props.
 
+## Daily Work Log
+
+Daily Work Log (`/api/work-log`, `src/data/queries/work-log.ts`) stores positive
+whole minutes in `work_log_entries` by user, Kyiv work date, task, and optional
+specific review round. The guarded `save_daily_work_log` RPC resolves the actor's
+single active membership and atomically edits their day; RLS reads are self/admin.
+Existing entries stay editable after project access changes. Task suggestions are
+limited to the user's assigned/collaborating tasks: daily activity (including
+checklist/progress edits), workflow changes, and active In Progress tasks even
+without daily activity. Reviews use submission/resolution timestamps. Other active tasks and assigned rounds can be added
+manually. Calendar context reuses canonical participant/recurrence statistics and
+is never persisted as work-log rows. Standard-day minutes live on `studios`
+(default 480), with an admin-guarded setter; no overtime calculation is attached.
+
 ## Canonical sources
 
 - `src/types/tasks.ts`

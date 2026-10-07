@@ -2209,7 +2209,10 @@
     "insufficientApprovers": "Requires {required} active admins; only {active} available.",
     "noJobTitle": "No job title",
     "reviewedBy": "Reviewed by {name}",
-    "pageDescription": "Time-off decisions, upcoming availability, and studio access."
+    "pageDescription": "Time-off decisions, upcoming availability, and studio access.",
+    "standardWorkday": "Standard workday",
+    "workdayHours": "Duration, hours",
+    "workdaySaveFailed": "Unable to save the standard workday."
   },
   "Leaderboard": {
     "title": "Leaderboard",
@@ -4482,7 +4485,10 @@
     "noCurrentWork": "No current tasks or active project participation to show.",
     "accessibleProjects": "Accessible projects",
     "privateContext": "Private admin context",
-    "creditedTaskCompletions": "Credited task completions"
+    "creditedTaskCompletions": "Credited task completions",
+    "reviewsCompleted": "Reviews completed",
+    "loggedTaskTime": "Logged task time",
+    "loggedReviewTime": "Logged review time"
   },
   "Statistics": {
     "unallocatedMakeup": "{count} across period boundary",
@@ -4689,6 +4695,51 @@
     "method_calendar": "An event counts once for the studio and once for each involved person. All-day spans are not work hours; scheduled events do not prove attendance.",
     "durationExcluded": "{count} excluded: missing or inconsistent actual start",
     "unassignedEvents": "{count} events have no recorded participation roles.",
-    "noCalendarPeople": "No recorded participants for elapsed events."
+    "noCalendarPeople": "No recorded participants for elapsed events.",
+    "workTitle": "Task work and reviews",
+    "reviewsCompleted": "Reviews completed",
+    "loggedTaskHours": "Logged task hours",
+    "loggedReviewHours": "Logged review hours",
+    "workDefinition": "Completed rounds count for reviewers who resolved a review, including rework. Time comes from work logs within the selected period. Reviews add no completed tasks or m² credit. Calendar activities retain their separate statistics."
+  },
+  "WorkLog": {
+    "entry": "Log time",
+    "title": "Daily work log",
+    "close": "Close",
+    "date": "Date",
+    "loading": "Loading…",
+    "tasks": "Tasks",
+    "reviews": "Reviews",
+    "durationHint": "Duration in h:mm · minutes in steps of 5",
+    "duration": "{hours} h {minutes} min",
+    "durationFor": "Duration: {activity}",
+    "reviewRound": "Review #{number}",
+    "unavailableTask": "Unavailable task",
+    "remove": "Remove: {activity}",
+    "empty": "No entries for this day yet. Add work manually.",
+    "addWork": "Add work",
+    "chooseWork": "Choose a task or review",
+    "yourWork": "My tasks and reviews",
+    "otherStudioTasks": "Other studio tasks",
+    "searchWork": "Search by title or project",
+    "noSearchResults": "No results found",
+    "noAdditionalWork": "All available tasks and reviews have already been added.",
+    "calendar": "From Calendar · read only",
+    "calendarSource": "Duration of ended Calendar events. All-day events do not add hours.",
+    "allDay": "All day · no timed hours",
+    "total": "Daily total:",
+    "save": "Save",
+    "saving": "Saving…",
+    "durationInvalid": "Enter time in whole minutes.",
+    "loadFailed": "Unable to load the work log.",
+    "saveFailed": "Unable to save time. Please try again.",
+    "retry": "Retry",
+    "event_general": "General",
+    "event_meeting": "Meetings",
+    "event_interview": "Interviews",
+    "event_site_visit": "Site visits",
+    "event_business_trip": "Business trips",
+    "event_presentation": "Presentations",
+    "event_internal_review": "Internal reviews"
   }
 }

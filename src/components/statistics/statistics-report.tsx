@@ -6,7 +6,7 @@ import { StatisticsChart } from "@/components/statistics/statistics-chart";
 import { median, statisticsPeriods, statisticsSections, type StatisticsSection } from "@/lib/statistics";
 import type { StatisticsPageReport } from "@/data/queries/statistics";
 import { StatisticsCardHeader, StatisticsMetric as Headline, statisticsPanel as panel } from "./statistics-card";
-import { LeadsStatistics, TeamStatistics, CalendarStatistics } from "./statistics-sections";
+import { LeadsStatistics, TeamStatistics, CalendarStatistics, WorkStatistics } from "./statistics-sections";
 import { OngoingProjects } from "./ongoing-projects";
 import { StatisticsMotion } from "./statistics-motion";
 
@@ -36,7 +36,7 @@ export async function StatisticsReportView({ report, section }: { report: Statis
     </nav>
     </div>
     <StatisticsMotion section={section} period={report.period}>
-    {section === "leads" ? <LeadsStatistics report={report.leads} /> : section === "team" ? <TeamStatistics report={report.attendance} today={report.today} /> : section === "calendar" ? <CalendarStatistics report={report.calendar} /> : <>
+    {section === "leads" ? <LeadsStatistics report={report.leads} /> : section === "team" ? <><WorkStatistics report={report.work} /><TeamStatistics report={report.attendance} today={report.today} /></> : section === "calendar" ? <CalendarStatistics report={report.calendar} /> : <>
     <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <section data-statistics-reveal="0" id="stats-production" aria-labelledby="stats-production-title" className={panel}>
         <StatisticsCardHeader titleId="stats-production-title" title={t("productionTitle")} infoLabel={t("physicalArea")} info={<><p>{t("physicalDefinition")}</p><p>{t("projectHistoryNote")}</p><p>{coverage(report.coverage.completionFrom)}</p></>} />
