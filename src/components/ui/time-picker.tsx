@@ -37,6 +37,10 @@ export const timePickerClassName = "flex h-11 w-full items-center justify-betwee
 
 export type TimePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "defaultValue" | "onChange" | "value"> & {
   defaultValue?: string;
+  editable?: boolean;
+  inputProps?: Omit<React.InputHTMLAttributes<HTMLInputElement>, "defaultValue" | "value" | "onChange" | "onBlur" | "onKeyDown" | "disabled"> & {
+    [key: `data-${string}`]: string | number | boolean | undefined;
+  };
   locale?: string;
   mode?: "time" | "duration";
   name?: string;
@@ -44,8 +48,9 @@ export type TimePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   value?: string;
 };
 
-export function TimePicker({ className, defaultValue = "00:00", disabled, locale = "en", mode = "time", name, onValueChange, value, ...buttonProps }: TimePickerProps) {
+export function TimePicker({ className, defaultValue = "00:00", disabled, editable = false, inputProps, locale = "en", mode = "time", name, onValueChange, value, ...buttonProps }: TimePickerProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
+  const [draft, setDraft] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [triggerNode, setTriggerNode] = React.useState<HTMLButtonElement | null>(null);
@@ -79,20 +84,37 @@ export function TimePicker({ className, defaultValue = "00:00", disabled, locale
     return () => window.cancelAnimationFrame(frame);
   }, [open, selected.hour, selected.minute]);
 
-  function setTime(hour: string, minute: string) {
-    const nextValue = `${hour}:${minute}`;
+  function commitValue(nextValue: string) {
+    setDraft(null);
     if (value === undefined) setInternalValue(nextValue);
     onValueChange?.(nextValue);
   }
+  function setTime(hour: string, minute: string) { commitValue(`${hour}:${minute}`); }
+
+  const clock = <Clock3 aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-secondary)]" strokeWidth={1.8} />;
 
   return <Popover.Root open={open} onOpenChange={setOpen}>
     {name ? <input type="hidden" name={name} value={selectedValue} /> : null}
-    <Popover.Trigger asChild>
-      <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled} className={cn(timePickerClassName, className)} {...buttonProps}>
+    {editable ? <Popover.Anchor asChild>
+      <div data-time-picker-control data-state={open ? "open" : "closed"} data-disabled={disabled || undefined}
+        className={cn(timePickerClassName, "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--ui-focus)] has-[:focus-visible]:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:bg-[var(--ui-surface-muted)] data-[disabled=true]:opacity-60", className)}>
+        <input {...inputProps} type="text" disabled={disabled} value={draft ?? selectedValue}
+          className={cn("ui-numeric min-w-0 flex-1 bg-transparent font-medium outline-none disabled:cursor-not-allowed", inputProps?.className)}
+          onChange={event => setDraft(event.target.value)}
+          onBlur={event => { if (draft !== null) commitValue(event.target.value); }}
+          onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
+        <Popover.Trigger asChild>
+          <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled || inputProps?.readOnly}
+            className="shrink-0 rounded outline-none" {...buttonProps}
+            aria-label={`${labels.chooseTime}: ${inputProps?.["aria-label"] ?? ""}`}>{clock}</button>
+        </Popover.Trigger>
+      </div>
+    </Popover.Anchor> : <Popover.Trigger asChild>
+      <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled} data-time-picker-control className={cn(timePickerClassName, className)} {...buttonProps}>
         <span className="ui-numeric font-medium">{selectedValue}</span>
-        <Clock3 aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-secondary)]" strokeWidth={1.8} />
+        {clock}
       </button>
-    </Popover.Trigger>
+    </Popover.Trigger>}
     <Popover.Portal container={portalContainer}>
       <Popover.Content align="start" sideOffset={6} collisionPadding={8} className="z-[80] w-48 overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-2 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()}>
         <div className="grid grid-cols-2 gap-2" aria-label={labels.chooseTime}>

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveActiveStudioMembership, type ActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { getMyTaskStageNames } from "@/data/queries/tasks";
 import { loadAllRows } from "@/data/queries/all-rows";
 import { createClient } from "@/lib/supabase/server";
 import { addCalendarDays, instantToDateOnly, startOfMondayWeek } from "@/lib/calendar";
@@ -42,16 +43,16 @@ export async function getDailyWorkLog(date: string) {
   const { start, end } = workLogDayBounds(date);
   const [saved, activities, tasks, rounds, events, submission] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries")
-      .select("activity_kind,task_id,review_round_id,minutes,task:tasks(title,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
+      .select("activity_kind,task_id,review_round_id,minutes,task:tasks(title,project_id,stage,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
       .eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("project_activity").select("entity_id,actor_id,changes")
       .eq("studio_id", studioId).eq("entity_type", "task").gte("created_at", start).lt("created_at", end)
       .order("created_at", { ascending: false }).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("tasks")
-      .select("id,title,status,assignee_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at),collaborators:task_collaborators(user_id)")
+      .select("id,title,status,assignee_id,project_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at),collaborators:task_collaborators(user_id)")
       .eq("project.studio_id", studioId).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("task_review_rounds")
-      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at,position),task:tasks!inner(title,status,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at))")
+      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at,position),task:tasks!inner(title,status,project_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at))")
       .eq("task.project.studio_id", studioId).lt("submitted_at", end)
       .or(`completed_at.is.null,completed_at.gte.${start}`).order("id").range(from, to)),
     loadWorkLogCalendar(client, studioId),
@@ -74,25 +75,31 @@ export async function getDailyWorkLog(date: string) {
   const byTask = new Map(taskRows.map(task => [task.id, task]));
   const rows = [
     ...(saved.data ?? []).map(row => ({ activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id,
-      minutes: row.minutes, title: row.task?.title ?? null, projectName: row.task?.project?.name ?? null, roundNumber: row.round?.round_number ?? null })),
+      projectId: row.task?.project_id ?? null, stage: row.task?.stage ?? null, minutes: row.minutes, title: row.task?.title ?? null, projectName: row.task?.project?.name ?? null, roundNumber: row.round?.round_number ?? null })),
     ...suggestedIds.flatMap(id => {
       const task = byTask.get(id);
-      return task ? [{ activity_kind: "task", task_id: id, review_round_id: null, minutes: 0, title: task.title, projectName: task.project.name, roundNumber: null }] : [];
+      return task ? [{ activity_kind: "task", task_id: id, review_round_id: null, minutes: 0, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, roundNumber: null }] : [];
     }),
     ...relevantReviews.map(round => ({ activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
-      title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number })),
+      projectId: round.task.project_id, stage: round.task.stage, title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number })),
   ];
   const rowByKey = new Map<string, typeof rows[number]>();
   for (const row of rows) if (!rowByKey.has(workLogRowKey(row))) rowByKey.set(workLogRowKey(row), row);
   const uniqueRows = [...rowByKey.values()];
   const additionalReviews = reviewRows.filter(round => round.reviewers.some(row => row.reviewer_id === userId))
     .map(round => ({ activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
-      title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number }));
+      projectId: round.task.project_id, stage: round.task.stage, title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number }));
+  const stageNames = await getMyTaskStageNames([...new Set([
+    ...uniqueRows.map(row => row.projectId), ...additionalReviews.map(row => row.projectId), ...activeTasks.map(task => task.project_id),
+  ].filter((id): id is string => id !== null))]);
+  const withStageName = <T extends { projectId: string | null; stage: string | null }>(row: T) => ({
+    ...row, stageName: row.projectId && row.stage ? stageNames[`${row.projectId}:${row.stage}`] ?? null : null,
+  });
   const calendarEvents = events.data ?? [];
   const calendar = getDailyCalendarContext(calendarEvents, calendarEvents.flatMap(row => row.invites),
     calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString());
-  return dailyWorkLogSchema.parse({ date, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows, additionalReviews, activeTasks: activeTasks.map(task => ({
-    id: task.id, title: task.title, projectName: task.project.name, isParticipating: participating.has(task.id),
+  return dailyWorkLogSchema.parse({ date, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), activeTasks: activeTasks.map(task => withStageName({
+    id: task.id, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, isParticipating: participating.has(task.id),
   })), calendar });
 }
 

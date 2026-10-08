@@ -8,9 +8,9 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
-import { TimePicker } from "@/components/ui/time-picker";
 import { addCalendarDays, instantToDateOnly, parseDateOnly, startOfMondayWeek } from "@/lib/calendar";
-import { dailyWorkLogSchema, isWorkLogDateEditable, summarizeLoggedTime, weeklyWorkLogSchema, workLogInputSchema, workLogRowKey, type WeeklyWorkLog } from "@/lib/work-log";
+import { dailyWorkLogSchema, groupWorkLogRows, isWorkLogDateEditable, previewWorkLogWeek, summarizeLoggedTime, weeklyWorkLogSchema, workLogInputSchema, workLogRowKey, type WeeklyWorkLog } from "@/lib/work-log";
+import { WorkLogGroup } from "./work-log-group";
 import { WorkLogWeek } from "./work-log-week";
 import type { DailyWorkLog } from "@/data/queries/work-log";
 
@@ -88,9 +88,11 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
   }
 
   const total = summarizeLoggedTime(rows, data?.calendar.minutes ?? 0);
+  const visibleWeek = week && dirty && !loadingDay && data?.date === date
+    ? previewWorkLogWeek(week, date, rows, data.calendar.minutes) : week;
   const available: DailyWorkLog["rows"] = data ? [
     ...data.activeTasks.map(task => ({ activity_kind: "task" as const, task_id: task.id, review_round_id: null,
-      minutes: 0, title: task.title, projectName: task.projectName, roundNumber: null })),
+      minutes: 0, projectId: task.projectId, stage: task.stage, stageName: task.stageName, title: task.title, projectName: task.projectName, roundNumber: null })),
     ...data.additionalReviews,
   ].filter(row => !rows.some(current => workLogRowKey(current) === workLogRowKey(row))) : [];
   const personalTaskIds = new Set(data?.activeTasks.filter(task => task.isParticipating).map(task => task.id));
@@ -118,7 +120,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
   }
 
   return <Dialog isOpen hideHeader ariaLabel={t("title")} closeLabel={t("close")} closeDisabled={saving}
-    onRequestClose={() => { if (!saving) onClose(); }} className="max-w-2xl sm:h-[min(88dvh,56rem)]">
+    onRequestClose={() => { if (!saving) onClose(); }} className="max-w-[52rem] sm:h-[min(88dvh,56rem)]">
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ui-border)] px-4 py-2 sm:px-6">
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
         <h2 className="text-base font-semibold">{t("title")}</h2>
@@ -136,7 +138,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
         <Button type="button" variant="ghost" size="sm" disabled={saving || dirty || weekDate >= startOfMondayWeek(today)} aria-label={t("nextWeek")} onClick={() => navigateWeek(7)}><ChevronRight aria-hidden className="size-4" /></Button>
       </div>
       <div className="min-h-20" aria-busy={loadingWeek}>
-        {week ? <WorkLogWeek week={week} today={today} activeDate={date} disabled={saving || dirty || weekDisabled || catchUpDates.length > 0} onSelect={openDay} /> : null}
+        {visibleWeek ? <WorkLogWeek week={visibleWeek} today={today} activeDate={date} disabled={saving || dirty || weekDisabled || catchUpDates.length > 0} onSelect={openDay} /> : null}
       </div>
       {catchUpDates.length ? <p className="text-xs text-[var(--ui-text-muted)]">{t("catchUpRemaining", { count: catchUpDates.length })}</p>
         : !weekDisabled && week?.days.some(day => day.missing) ? <Button type="button" variant="ghost" size="sm" disabled={saving || dirty} onClick={catchUp}>{t("fillMissing")}</Button> : null}
@@ -155,25 +157,14 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
               <h3 className="flex items-center gap-2 font-semibold"><Icon aria-hidden className="size-4" />{label}<span className="font-normal">· {group.length}</span></h3>
               <span className="shrink-0 tabular-nums">{duration(group.reduce((sum, row) => sum + row.minutes, 0))}</span>
             </div>
-            <ul className="divide-y divide-[var(--ui-border-subtle)]">{group.map(row => <li key={workLogRowKey(row)} data-work-log-row={workLogRowKey(row)} className="flex items-center gap-2 py-3 sm:gap-3">
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="line-clamp-2 text-sm font-medium" title={row.title ?? t("unavailableTask")}>{row.title ?? t("unavailableTask")}</p>
-                <div className="flex min-w-0 items-center gap-2 text-xs text-[var(--ui-text-muted)]">
-                  {isReview ? <span className="shrink-0 rounded bg-[var(--ui-info-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-info-text)]">{t("reviewRound", { number: row.roundNumber ?? "?" })}</span> : null}
-                  <span className="truncate">{row.projectName}</span>
-                </div>
-              </div>
-              <TimePicker mode="duration" locale={locale} className={`w-28 shrink-0 gap-2 tabular-nums ${row.minutes === 0 ? "text-[var(--ui-text-muted)] [&>span]:font-normal" : ""}`} disabled={saving} data-work-log-duration
-                value={`${String(Math.floor(row.minutes / 60)).padStart(2, "0")}:${String(row.minutes % 60).padStart(2, "0")}`}
-                aria-label={t("durationFor", { activity: `${isReview ? t("reviewRound", { number: row.roundNumber ?? "?" }) + ": " : ""}${row.title ?? t("unavailableTask")}` })}
-                onValueChange={value => {
-                  const [hours, minutes] = value.split(":").map(Number);
-                  setDirty(true);
-                  setRows(current => current.map(item => workLogRowKey(item) === workLogRowKey(row) ? { ...item, minutes: hours * 60 + minutes } : item));
-                }} />
-              <button type="button" disabled={saving} aria-label={t("remove", { activity: `${isReview ? t("reviewRound", { number: row.roundNumber ?? "?" }) + ": " : ""}${row.title ?? t("unavailableTask")}` })} className="flex size-8 shrink-0 items-center justify-center rounded text-[var(--ui-text-muted)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"
-                onClick={() => { setDirty(true); setRows(current => current.filter(item => workLogRowKey(item) !== workLogRowKey(row))); }}><X aria-hidden className="size-4" /></button>
-            </li>)}</ul>
+            {groupWorkLogRows(group).map(projectStage => <WorkLogGroup key={`${data.date}:${projectStage.key}`} group={projectStage} disabled={editorDisabled}
+              onChange={(key, minutes) => { setDirty(true); setRows(current => current.map(row => workLogRowKey(row) === key ? { ...row, minutes } : row)); }}
+              onRemove={key => { setDirty(true); setRows(current => current.filter(row => workLogRowKey(row) !== key)); }}
+              onAllocate={allocated => {
+                const byKey = new Map(allocated.map(row => [workLogRowKey(row), row.minutes]));
+                setDirty(true);
+                setRows(current => current.map(row => { const minutes = byKey.get(workLogRowKey(row)); return minutes === undefined ? row : { ...row, minutes }; }));
+              }} />)}
           </section>;
         }) : <p className="text-sm text-[var(--ui-text-muted)]">{t("empty")}</p>}
         <div className="space-y-2">
@@ -203,7 +194,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
     <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-[var(--ui-border)] px-4 py-3 sm:px-6">
       <div className="space-y-1">
         <p className="text-sm"><span className="text-[var(--ui-text-muted)]">{t("total")} </span><strong className="font-semibold tabular-nums" data-work-log-total>{duration(total.totalMinutes)}</strong></p>
-        <p className="text-xs text-[var(--ui-text-muted)]">{t("weeklyTotal")} <span className="tabular-nums" data-work-log-week-total>{duration(week?.totals.totalMinutes ?? 0)}</span></p>
+        <p className="text-xs text-[var(--ui-text-muted)]">{t("weeklyTotal")} <span className="tabular-nums" data-work-log-week-total>{duration(visibleWeek?.totals.totalMinutes ?? 0)}</span></p>
       </div>
       <Button type="button" size="sm" disabled={!data || editorDisabled} onClick={() => void save()}>{saving ? t("saving") : catchUpDates.length ? t("saveAndContinue") : t("save")}</Button>
     </footer>

@@ -4,6 +4,7 @@ import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import { isActivityChange, isActivityChanges } from "@/lib/project-activity";
 import { buildCalendarStatistics, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
 import type { Database, Json } from "@/types/database.types";
+import { TASK_STAGES } from "@/lib/task-stages";
 
 type Tables = Database["public"]["Tables"];
 export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">;
@@ -20,12 +21,16 @@ export const workLogInputSchema = z.object({
   date: z.iso.date(), entries: z.array(entrySchema),
 }).refine(({ entries }) => new Set(entries.map(workLogRowKey)).size === entries.length);
 
+const workLogProjectFields = {
+  projectId: z.uuid().nullable(), stage: z.enum(TASK_STAGES).nullable(), stageName: z.string().nullable(),
+};
 const dailyRowSchema = entryFields.extend({
+  ...workLogProjectFields,
   minutes: z.number().int().nonnegative(), title: z.string().nullable(), projectName: z.string().nullable(), roundNumber: z.number().nullable(),
 });
 export const dailyWorkLogSchema = z.object({
   date: z.iso.date(), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
-  activeTasks: z.array(z.object({ id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
+  activeTasks: z.array(z.object({ ...workLogProjectFields, id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
   calendar: z.object({ minutes: z.number().nonnegative(), categories: z.array(z.object({ eventType: z.enum(STATISTICS_CALENDAR_TYPES), minutes: z.number().nonnegative(), allDayCount: z.number() })) }),
 });
 
@@ -38,6 +43,53 @@ export const weeklyWorkLogSchema = z.object({
   totals: timeSummarySchema,
 });
 export type WeeklyWorkLog = z.infer<typeof weeklyWorkLogSchema>;
+export type WorkLogRow = z.infer<typeof dailyRowSchema>;
+
+export function groupWorkLogRows(rows: WorkLogRow[]) {
+  const groups = new Map<string, { key: string; projectName: string | null; stage: WorkLogRow["stage"]; stageName: string | null; rows: WorkLogRow[]; minutes: number }>();
+  for (const row of rows) {
+    const key = JSON.stringify([row.activity_kind, row.projectId, row.stage]);
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, projectName: row.projectName, stage: row.stage, stageName: row.stageName, rows: [], minutes: 0 };
+      groups.set(key, group);
+    }
+    group.rows.push(row);
+    group.minutes += row.minutes;
+  }
+  return [...groups.values()];
+}
+
+export function parseWorkLogDuration(value: string) {
+  const match = /^(\d{2,}):([0-5]\d)$/.exec(value.trim());
+  if (!match) return null;
+  const minutes = Number(match[1]) * 60 + Number(match[2]);
+  return Number.isSafeInteger(minutes) && minutes <= 2147483647 ? minutes : null;
+}
+
+export function allocateReviewMinutes<T extends WorkLogEntry>(rows: T[], selectedKeys: string[], totalMinutes: number, confirmOverwrite = false) {
+  const keys = new Set(selectedKeys);
+  const selected = rows.filter(row => row.activity_kind === "review" && keys.has(workLogRowKey(row)));
+  if (!selected.length || !Number.isSafeInteger(totalMinutes) || totalMinutes < 0 || totalMinutes > 2147483647) {
+    return { status: "invalid" as const };
+  }
+  if (!confirmOverwrite && selected.some(row => row.minutes > 0)) return { status: "confirmationRequired" as const };
+  const minutes = Math.floor(totalMinutes / selected.length), remainder = totalMinutes % selected.length;
+  // Give remaining whole minutes to the first selected rows in their displayed order.
+  const allocation = new Map(selected.map((row, index) => [workLogRowKey(row), minutes + (index < remainder ? 1 : 0)]));
+  return { status: "applied" as const, rows: rows.map(row => {
+    const allocated = allocation.get(workLogRowKey(row));
+    return allocated === undefined ? row : { ...row, minutes: allocated };
+  }) };
+}
+
+export function previewWorkLogWeek(week: WeeklyWorkLog, date: string, rows: WorkLogEntry[], calendarMinutes: number): WeeklyWorkLog {
+  const days = week.days.map(day => day.date === date ? { ...day, ...summarizeLoggedTime(rows, calendarMinutes) } : day);
+  const totals = days.reduce((sum, day) => ({ taskMinutes: sum.taskMinutes + day.taskMinutes,
+    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
+    totalMinutes: sum.totalMinutes + day.totalMinutes }), summarizeLoggedTime([]));
+  return { ...week, days, totals };
+}
 export const workLogRemindersSchema = z.object({
   scope: z.string(), today: z.iso.date(), missingDates: z.array(z.iso.date()), latestEligibleDate: z.iso.date().nullable(),
   previousWeek: z.iso.date(), previousWeekMissing: z.array(z.iso.date()),

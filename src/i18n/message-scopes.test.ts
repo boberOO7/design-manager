@@ -60,6 +60,17 @@ function namespaces(file: string, seen = new Set<string>()): string[] {
 }
 
 describe("domain message ownership", () => {
+  it("provides localized Work Log stages through the shell without duplicate domain ownership", () => {
+    for (const messages of [en, uk]) {
+      const shell = selectMessages(messages, "shell");
+      expect(shell.TaskStages).toEqual(messages.TaskStages);
+      expect(shell.WorkLog).toEqual(messages.WorkLog);
+    }
+    for (const scope of ["dashboard", "projects", "tasks"] as const) {
+      expect(messageScopes[scope]).not.toContain("TaskStages");
+    }
+  });
+
   it("selects whole, identical namespaces for both locales and rejects missing dictionaries", () => {
     for (const [scope, names] of Object.entries(messageScopes)) {
       expect(new Set(names).size, scope).toBe(names.length);
