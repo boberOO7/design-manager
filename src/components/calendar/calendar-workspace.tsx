@@ -34,6 +34,7 @@ import { getTimeOffStatusBadgeStyle } from "@/lib/semantic-styles";
 import { getRequiredDayOffMinutes, getWorkMakeupMinutes } from "@/lib/time-off-compensation";
 import { getTimeOffRequestPresentation, timeOffRequestTypeKey, timeOffStatusKey } from "@/lib/time-off-labels";
 import { getCalendarEventDetailConfig, getCalendarEventTypeConfig } from "@/lib/calendar-event-types";
+import { getCalendarInvitationErrorKey } from "@/lib/calendar-invitation-error";
 import type { CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, CalendarTimeFormat, CalendarView, MeetingMode, TimeOffRequestType } from "@/types/calendar";
 
 const CalendarTimeZoneContext = createContext(APPLICATION_TIME_ZONE);
@@ -454,6 +455,7 @@ function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated, t
   const itemTypeLabel = useCalendarItemTypeLabel();
   const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [reviewNote, setReviewNote] = useState("");
   const timeOffMutationInFlight = useRef(false);
+  const notifications = useTranslations("Notifications");
   const itemEyebrow = itemTypeLabel(item);
   async function cancelEvent() { if (item.source !== "calendar_event") return; const thisOccurrence = item.occurrenceStart && window.confirm(locale.startsWith("uk") ? "Скасувати лише цю подію? Натисніть «Скасувати» для всієї серії." : "Cancel only this event? Press Cancel to cancel the entire series."); if (!thisOccurrence && !window.confirm(t("cancelEventConfirm"))) return; setPending(true); const suffix = thisOccurrence ? `?scope=this&occurrenceStart=${encodeURIComponent(item.occurrenceStart ?? "")}` : ""; const response = await fetch(`/api/calendar/events/${encodeURIComponent(item.id)}${suffix}`, { method: "DELETE" }); setPending(false); if (response.ok) onMutated(null, item.key); else setError(t("eventCancelFailed")); }
   async function respondToInvitation(inviteId: string, invitationStatus: "accepted" | "declined") {
@@ -462,8 +464,8 @@ function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated, t
       const response = await fetch(`/api/calendar/invitations/${encodeURIComponent(inviteId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: invitationStatus }) });
       const result: unknown = await response.json();
       if (response.ok && isMutationResult(result) && result.item?.source === "calendar_event") onMutated(result.item, null);
-      else setError(t("eventSaveFailed"));
-    } catch { setError(t("eventSaveFailed")); } finally { setPending(false); }
+      else setError(notifications(getCalendarInvitationErrorKey(result)));
+    } catch { setError(notifications("invitationResponseFailed")); } finally { setPending(false); }
   }
   async function timeOffAction(action: "approve" | "reject" | "cancel") { if (item.source !== "time_off_request_admin" || timeOffMutationInFlight.current) return; if (action === "cancel" && !window.confirm(t("cancelRequestConfirm"))) return; timeOffMutationInFlight.current = true; setPending(true); setError(""); try { const result = await updateTimeOffRequest(item.id, action, reviewNote); if (isTimeOffMutationResult(result)) onMutated(result.item ?? null, result.removedKey ?? null); else setError(timeOff("requestUpdateFailed")); } catch { setError(timeOff("requestUpdateFailed")); } finally { timeOffMutationInFlight.current = false; setPending(false); } }
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={itemTitle(item)} eyebrow={itemEyebrow} item={item} onClose={pending ? () => undefined : onClose}>{error ? <p role="alert" className="mb-4 rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="space-y-6 text-sm">

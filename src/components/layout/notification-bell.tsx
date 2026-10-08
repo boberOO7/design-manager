@@ -12,6 +12,7 @@ import type { NotificationData, NotificationItem } from "@/data/queries/notifica
 import { addRealtimeToast, dismissRealtimeToast, getRealtimeNotificationDelivery, markAllNotificationsRead, markNotificationRead, mergeNotifications, notificationFromRealtimeRow, unreadNotificationCount } from "@/lib/notifications";
 import { formatNotificationRelativeTime, getNotificationPresentation } from "@/lib/notification-presentation";
 import { createClient } from "@/lib/supabase/client";
+import { getCalendarInvitationErrorKey } from "@/lib/calendar-invitation-error";
 import type { Database } from "@/types/database.types";
 
 type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
@@ -84,6 +85,7 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("unread");
   const [pending, setPending] = useState<string | null>(null);
+  const [invitationError, setInvitationError] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const sessionStartedAtRef = useRef(initialData.realtimeStartedAt);
@@ -115,6 +117,7 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
     return () => { void supabase.removeChannel(channel); };
   }, [userId]);
   function openNotifications() {
+    setInvitationError("");
     setFilter("unread");
     setOpen(true);
   }
@@ -137,14 +140,19 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
   async function respondToInvite(item: NotificationItem, status: "accepted" | "declined") {
     const inviteId = typeof item.metadata === "object" && item.metadata !== null && !Array.isArray(item.metadata) && typeof item.metadata.inviteId === "string" ? item.metadata.inviteId : null;
     if (!inviteId || pending) return;
+    setInvitationError("");
     setPending(item.id);
     try {
       const response = await fetch(`/api/calendar/invitations/${encodeURIComponent(inviteId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (!response.ok) throw new Error("failed");
+      if (!response.ok) {
+        const result: unknown = await response.json();
+        setInvitationError(t(getCalendarInvitationErrorKey(result)));
+        return;
+      }
       setItems((current) => markNotificationRead(current, item.id, new Date().toISOString()));
       setOpen(false);
       router.push(`${item.href}${item.href.includes("?") ? "&" : "?"}refresh=${Date.now()}`);
-    } finally { setPending(null); }
+    } catch { setInvitationError(t("invitationResponseFailed")); } finally { setPending(null); }
   }
   return <>
     <ShellControl ref={triggerRef} onClick={openNotifications} aria-expanded={open} aria-controls="notifications-drawer" aria-label={t("bellLabel", { count: unread })} className="relative size-11">
@@ -155,6 +163,7 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
       <div id="notifications-drawer" className="flex min-h-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-[var(--ui-border)] p-5"><div><h2 className="font-semibold">{t("title")}</h2><p className="text-sm text-[var(--ui-text-muted)]">{t("unreadCount", { count: unread })}</p></div><button ref={closeRef} type="button" onClick={requestClose} className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-[var(--ui-surface-muted)]" aria-label={t("close")}><X size={18}/></button></header>
         <div className="flex items-center justify-between border-b border-[var(--ui-border-subtle)] px-5 py-3"><SegmentedControl ariaLabel={t("filterLabel")} items={[{ value: "unread", label: t("unread") }, { value: "all", label: t("all") }]} value={filter} onValueChange={setFilter} /><button type="button" disabled={!unread || pending !== null} aria-busy={pending === "all"} onClick={() => void readAll()} className="text-sm font-medium text-[var(--ui-text-secondary)] disabled:text-[var(--ui-text-subtle)]">{t("markAllAsRead")}</button></div>
+        {invitationError ? <p role="alert" className="mx-5 my-3 rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{invitationError}</p> : null}
         <div className="flex-1 overflow-y-auto">{visible.length ? visible.map((item) => { const Icon = iconFor(item.notification_type); const inviteId = typeof item.metadata === "object" && item.metadata !== null && !Array.isArray(item.metadata) && typeof item.metadata.inviteId === "string" ? item.metadata.inviteId : null; const copy = getNotificationPresentation(item, locale, (key, values) => t(key, values)); return <div key={item.id} className={`border-b border-[var(--ui-border-subtle)] ${item.read_at ? "" : "bg-[var(--ui-surface-muted)]"}`}><button type="button" disabled={pending !== null} onClick={async () => { if (await readOne(item)) { setOpen(false); router.push(item.href); } }} className="flex w-full gap-3 p-5 text-left hover:bg-[var(--ui-surface-subtle)]"><Icon className="mt-0.5 size-4 text-[var(--ui-text-muted)]"/><span className="min-w-0 flex-1"><span className="flex justify-between gap-3"><strong className="text-sm text-[var(--ui-text)]">{copy.title}</strong><time className="shrink-0 text-xs text-[var(--ui-text-muted)]" dateTime={item.created_at}>{formatNotificationRelativeTime(item.created_at, locale)}</time></span><span className="mt-1 block text-sm leading-5 text-[var(--ui-text-secondary)]">{copy.body}</span></span>{item.read_at ? null : <span className="mt-2 size-2 rounded-full bg-[var(--ui-action-primary)]"/>}</button>{item.notification_type === "calendar_event_invitation" && inviteId && !item.read_at ? <div className="flex gap-2 px-5 pb-4"><button type="button" disabled={pending !== null} onClick={() => void respondToInvite(item, "accepted")} className="min-h-9 rounded-lg bg-[var(--ui-action-primary)] px-3 text-sm font-medium text-[var(--ui-action-primary-text)] disabled:opacity-60">{t("accept")}</button><button type="button" disabled={pending !== null} onClick={() => void respondToInvite(item, "declined")} className="min-h-9 rounded-lg border border-[var(--ui-border)] px-3 text-sm font-medium text-[var(--ui-text-secondary)] disabled:opacity-60">{t("decline")}</button></div> : null}</div>; }) : <p className="p-8 text-center text-sm text-[var(--ui-text-muted)]">{filter === "unread" ? t("allCaughtUp") : t("noNotifications")}</p>}</div>
       </div>
     </Drawer>
