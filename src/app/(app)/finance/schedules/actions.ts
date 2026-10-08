@@ -6,6 +6,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { employeeBonusSchema, financeScheduleError, financeScheduleValidationError, generateObligationsSchema, payrollCostSchema, removePayrollSchema, scheduleInputSchema, stopScheduleSchema } from "@/lib/finance-schedules";
 import type { FinanceActionState } from "@/lib/finance";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
 export async function saveFinanceSchedule(_state: FinanceActionState, form: FormData): Promise<FinanceActionState> {
   const t = await getTranslations("Finance");
@@ -64,6 +65,8 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
   }
   revalidatePath("/finance", "layout");
   revalidatePath("/calendar");
+  scheduleAutomaticLabor(admin.studio_id);
+  revalidatePath("/projects/[projectId]", "page");
   return { status: "success" };
 }
 
@@ -98,6 +101,8 @@ export async function saveInitialPayroll(input: unknown) {
   }
   revalidatePath("/finance", "layout");
   revalidatePath("/calendar");
+  if (rows.some(row => row.saved)) scheduleAutomaticLabor(admin.studio_id);
+  revalidatePath("/projects/[projectId]", "page");
   return { error: "", rows };
 }
 

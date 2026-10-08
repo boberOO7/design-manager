@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { financeAmountText, financeAmountUnits } from "./finance";
+import { convertFinanceDisplayAmount } from "./finance-display-report";
 
 const decimal = z.string().regex(/^-?\d+(?:\.\d+)?$/);
 const status = z.enum(["unknown", "estimated", "fixed"]);
@@ -18,9 +19,32 @@ export const laborPoolSchema = z.object({
 export type LaborPool = z.infer<typeof laborPoolSchema>;
 export const laborAllocationSchema = z.object({ entry_id: z.uuid(), project_id: z.uuid(), amount: decimal, revision: z.number().int(), reason: z.string(), created_at: z.string() });
 export const laborMissingPeriodSchema = z.object({ scheduleId: z.uuid(), label: z.string(), periodStart: z.iso.date(), periodEnd: z.iso.date() });
+export const automaticLaborPeriodSchema = z.object({
+  obligationId: z.uuid(), employeeId: z.uuid(), label: z.string(), periodStart: z.iso.date(), periodEnd: z.iso.date(), digest: z.string(),
+  source: laborSourceSchema.nullable(), expectedMinutes: z.number().nonnegative(), completedDays: z.number().int(), requiredDays: z.number().int(),
+  missingDates: z.array(z.iso.date()), projectIds: z.array(z.uuid()), issues: z.array(z.string()), manual: z.boolean(),
+  status: z.enum(["applied", "pending_review", "exception", "manual", "pending", "provisional"]),
+  accruedFrom: z.iso.date().optional(), asOf: z.iso.date().optional(),
+  reportingCurrency: z.string().optional(),
+  provisionalAllocations: z.array(z.object({ projectId: z.uuid(), amount: decimal })).optional(),
+  provisionalDailyAllocations: z.array(z.object({ date: z.iso.date(), projectId: z.uuid(), amount: decimal })).optional(),
+  provisionalRemainder: decimal.nullable().optional(),
+  provisionalFx: z.object({ rate: decimal, source: z.string(), effectiveDate: z.iso.date() }).nullable().optional(),
+  shares: z.record(z.string(), z.union([decimal, z.number()])),
+  proposedAllocations: z.array(z.object({ projectId: z.uuid(), amount: decimal })).optional(), proposedRemainder: decimal.nullable().optional(),
+  proposalFx: z.object({ rate: decimal, source: z.string(), effectiveDate: z.iso.date() }).nullable().optional(),
+  pools: z.array(z.object({ id: z.uuid(), available: decimal.nullable(), native: decimal, revision: z.number().int(),
+    fx: z.object({ rate: decimal, source: z.string(), effectiveDate: z.iso.date() }).nullable() })),
+});
 export const laborDataSchema = z.object({ missingPeriods: z.array(laborMissingPeriodSchema).default([]), sources: z.array(laborSourceSchema), pools: z.array(laborPoolSchema), allocations: z.array(laborAllocationSchema),
-  allocationHistory: z.array(z.object({id:z.uuid(),entryId:z.uuid(),revision:z.number().int(),method:z.literal("manual_management"),reason:z.string(),createdAt:z.string(),createdBy:z.uuid(),
-    items:z.array(z.object({projectId:z.uuid(),amount:decimal}))})).default([]) });
+  allocationHistory: z.array(z.object({id:z.uuid(),entryId:z.uuid(),revision:z.number().int(),method:z.enum(["manual_management", "automatic_work_tracking"]),reason:z.string(),createdAt:z.string(),createdBy:z.uuid(),
+    items:z.array(z.object({projectId:z.uuid(),amount:decimal}))})).default([]),
+  automation: z.object({ startsOn: z.iso.date(), internalProjectId: z.uuid() }).nullable().optional(),
+  employees: z.array(z.object({ id: z.uuid(), name: z.string() })).optional(),
+  capacity: z.array(z.object({ id: z.uuid(), employee_id: z.uuid().nullable(), effective_from: z.iso.date(), daily_minutes: z.number().int().positive(), weekdays: z.array(z.number().int()) })).optional(),
+  automaticPeriods: z.array(automaticLaborPeriodSchema).optional(),
+  projectIssues: z.array(z.object({ projectId: z.uuid(), employeeId: z.uuid(), periodStart: z.iso.date(), periodEnd: z.iso.date(), kind: z.string() })).optional(),
+});
 export type FinanceLaborData = z.infer<typeof laborDataSchema>;
 const positive = decimal.refine(v => financeAmountUnits(v, 4) > BigInt(0));
 export const laborConfirmationInputSchema = z.object({
@@ -46,4 +70,34 @@ export function laborSourceIssues(sources: LaborSource[], from: string, to: stri
 }
 export function unallocatedLaborAmount(pool: LaborPool, digits: number) {
   return pool.available_reporting_amount === null ? null : financeAmountText(financeAmountUnits(pool.available_reporting_amount, digits) - financeAmountUnits(pool.allocated_amount, digits), digits);
+}
+
+/** Studio remainder is legitimate; only source/reporting problems affect margins. */
+export function projectLaborIncomplete(data: FinanceLaborData, projectId: string, from: string, to: string) {
+  if (data.projectIssues !== undefined) return data.projectIssues.some(issue => issue.projectId === projectId && issue.periodStart <= to && issue.periodEnd >= from);
+  // Older payloads retain their existing completeness contract.
+  return laborSourceIssues(data.sources, from, to).length > 0 || data.missingPeriods.some(period => period.periodStart <= to && period.periodEnd >= from);
+}
+
+/** Provisional amounts never enter recognized project rows or the studio P&L. */
+export function projectProvisionalLabor(data: FinanceLaborData, projectId: string, from: string, to: string, displayCurrency: string, digits: number, rates: ReadonlyMap<string, string>) {
+  let total = BigInt(0), unknown = 0, asOf: string | null = null, periods = 0;
+  for (const period of data.automaticPeriods ?? []) {
+    if (period.status !== "provisional" || period.manual || period.pools.length || !period.asOf
+      || (period.accruedFrom ?? period.periodStart) > to || period.asOf < from || !period.projectIds.includes(projectId)) continue;
+    periods++;
+    if (!asOf || period.asOf > asOf) asOf = period.asOf;
+    const items = period.provisionalDailyAllocations?.filter(item => item.projectId === projectId && item.date >= from && item.date <= to);
+    const amount = items ? financeAmountText(items.reduce((sum, item) => sum + financeAmountUnits(item.amount, 4), BigInt(0)), 4)
+      : period.provisionalAllocations?.find(item => item.projectId === projectId)?.amount;
+    if (period.provisionalRemainder == null) { unknown++; continue; }
+    const rate = period.reportingCurrency === displayCurrency ? "1" : rates.get(period.provisionalFx?.effectiveDate ?? period.asOf);
+    // Reporting-currency amounts use the snapshot date for display FX.
+    if (!rate && financeAmountUnits(amount ?? "0", 4) !== BigInt(0)) { unknown++; continue; }
+    total += financeAmountUnits(convertFinanceDisplayAmount(amount ?? "0", rate ?? "1", digits), digits);
+    if (period.issues.some(issue => ["unknown_deductions", "unknown_employer_cost"].includes(issue))
+      || data.projectIssues?.some(issue => issue.projectId === projectId && issue.employeeId === period.employeeId
+        && issue.periodStart <= to && issue.periodEnd >= from && issue.periodStart <= period.periodEnd && issue.periodEnd >= period.periodStart)) unknown++;
+  }
+  return { known: financeAmountText(total, digits), unknown, asOf, periods };
 }

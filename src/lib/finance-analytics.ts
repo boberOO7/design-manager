@@ -1,6 +1,6 @@
 import { financeAmountText, financeAmountUnits } from "./finance";
 import { managementCoverageIssues, summarizeManagementEntries } from "./finance-management";
-import { laborSourceIssues, unallocatedLaborAmount } from "./finance-labor";
+import { laborSourceIssues, unallocatedLaborAmount, projectLaborIncomplete } from "./finance-labor";
 import type { FinanceManagementData } from "@/data/queries/finance-management";
 import type { FinanceOverview } from "./finance-overview";
 
@@ -58,8 +58,6 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
     months.push({ month, ...summarize(from > month ? from : month, to < last ? to : last), current: month.slice(0, 7) === data.today.slice(0, 7) });
   }
   const summaryStart = start && from < start ? start : from;
-  const periodLaborIncomplete = laborSourceIssues(data.labor.sources, summaryStart, to).length > 0
-    || data.labor.missingPeriods.some(p => p.periodStart <= to && p.periodEnd >= summaryStart);
   const unallocatedLabor = data.labor.pools.some(pool => {
     const relevant = data.amountRows.some(row => row.source_entry_id === pool.id && row.recognized_on >= summaryStart && row.recognized_on <= to)
       || data.entries.some(entry => entry.related_entry_id === pool.id && entry.recognized_on >= summaryStart && entry.recognized_on <= to);
@@ -71,10 +69,10 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
     // This ranking is a selected-period comparison, not a lifetime/final margin.
     // Reuse coverage/source rules on that period; older unknown history cannot
     // invalidate a reviewed later month. No labor allocation is inferred.
-    const incomplete = !summary.available || Boolean(start && from < start) || periodLaborIncomplete
+    const incomplete = !summary.available || Boolean(start && from < start) || projectLaborIncomplete(data.labor, row.projectId, summaryStart, to)
       || managementCoverageIssues(data.coverage, summaryStart, to, row.projectId).length > 0
       || row.period.missingFx > 0 || data.tripSources.some(trip => trip.projectId === row.projectId && trip.date >= summaryStart && trip.date <= to)
-      || unallocatedLabor;
+      || (data.labor.projectIssues === undefined && unallocatedLabor);
     return { id: row.projectId, name: row.name, result: metric(row.period.result, incomplete, summary.available),
       margin: incomplete ? null : row.period.margin };
   });

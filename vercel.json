@@ -8,6 +8,10 @@
   },
   "crons": [
     {
+      "path": "/api/finance/automatic-labor",
+      "schedule": "45 3 * * *"
+    },
+    {
       "path": "/api/integrations/google-calendar/reconcile",
       "schedule": "0 3 * * *"
     },

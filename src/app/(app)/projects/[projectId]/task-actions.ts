@@ -153,6 +153,9 @@ export async function deleteProjectTask(taskId: string): Promise<TaskDeleteActio
     .maybeSingle();
 
   if (error || !data) {
+    if (error?.code === "23503" && error.message.includes("work_log_entries")) {
+      return { formError: "This task has recorded work and cannot be deleted. Cancel it to preserve work history." };
+    }
     console.error("Unable to delete project task", error);
     return { formError: "The task could not be deleted. Please try again." };
   }

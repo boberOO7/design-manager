@@ -1827,6 +1827,51 @@ export type Database = {
           },
         ]
       }
+      finance_labor_activation_revisions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          preview_digest: string | null
+          previous_starts_on: string
+          starts_on: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          preview_digest?: string | null
+          previous_starts_on: string
+          starts_on: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          preview_digest?: string | null
+          previous_starts_on?: string
+          starts_on?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_activation_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_labor_activation_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_labor_automation"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
       finance_labor_allocation_items: {
         Row: {
           amount: number
@@ -1928,6 +1973,165 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_labor_allocation_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_labor_automation: {
+        Row: {
+          created_at: string
+          created_by: string
+          internal_project_id: string
+          starts_on: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          internal_project_id: string
+          starts_on: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          internal_project_id?: string
+          starts_on?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_automation_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_labor_automation_internal_project_id_studio_id_fkey"
+            columns: ["internal_project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "finance_labor_automation_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: true
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_labor_calculations: {
+        Row: {
+          created_at: string
+          created_by: string
+          digest: string
+          id: string
+          initiated_by: string
+          obligation_id: string
+          snapshot: Json
+          status: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          digest: string
+          id?: string
+          initiated_by: string
+          obligation_id: string
+          snapshot: Json
+          status: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          digest?: string
+          id?: string
+          initiated_by?: string
+          obligation_id?: string
+          snapshot?: Json
+          status?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_calculations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_labor_calculations_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_labor_calculations_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+        ]
+      }
+      finance_labor_capacity_revisions: {
+        Row: {
+          created_at: string
+          created_by: string
+          daily_minutes: number
+          effective_from: string
+          employee_id: string | null
+          id: string
+          studio_id: string
+          weekdays: number[]
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          daily_minutes: number
+          effective_from: string
+          employee_id?: string | null
+          id?: string
+          studio_id: string
+          weekdays: number[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          daily_minutes?: number
+          effective_from?: string
+          employee_id?: string | null
+          id?: string
+          studio_id?: string
+          weekdays?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_labor_capacity_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_labor_capacity_revisions_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_labor_capacity_revisions_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "finance_settings"
@@ -6475,6 +6679,48 @@ export type Database = {
           },
         ]
       }
+      work_log_day_revisions: {
+        Row: {
+          created_at: string
+          entries: Json
+          id: number
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          entries: Json
+          id?: never
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          entries?: Json
+          id?: never
+          studio_id?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_log_day_revisions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_log_day_revisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_log_days: {
         Row: {
           studio_id: string
@@ -8816,6 +9062,10 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      configure_finance_labor_automation: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       confirm_finance_trip_recognition: {
         Args: {
           p_entry_id: string
@@ -9166,6 +9416,25 @@ export type Database = {
           p_submission_id: string
         }
         Returns: undefined
+      }
+      prepare_finance_automatic_labor: {
+        Args: { p_studio_id?: string }
+        Returns: Json
+      }
+      preview_finance_labor_activation: {
+        Args: { p_input: Json; p_studio_id: string }
+        Returns: Json
+      }
+      process_finance_automatic_labor: {
+        Args: {
+          p_approve?: boolean
+          p_digest: string
+          p_fx?: Json
+          p_obligation_id: string
+          p_request_id?: string
+          p_studio_id: string
+        }
+        Returns: string
       }
       project_vacation_request: {
         Args: {

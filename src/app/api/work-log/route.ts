@@ -6,6 +6,7 @@ import { resolveActiveStudioMembership } from "@/data/queries/active-studio-memb
 import { createClient } from "@/lib/supabase/server";
 import { instantToDateOnly } from "@/lib/calendar";
 import { isWorkLogDateEditable, workLogInputSchema } from "@/lib/work-log";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -25,6 +26,7 @@ export async function PUT(request: Request) {
   const client = await createClient();
   const { error } = await client.rpc("save_daily_work_log", { p_work_date: input.data.date, p_entries: input.data.entries });
   if (error) return NextResponse.json({ success: false }, { status: 400 });
+  scheduleAutomaticLabor(access.membership.studio_id);
   revalidatePath(`/team/${access.membership.authenticatedUserId}`);
   revalidatePath("/statistics");
   return NextResponse.json({ success: true });

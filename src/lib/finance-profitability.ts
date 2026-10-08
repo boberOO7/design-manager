@@ -35,7 +35,7 @@ export type ProjectReporting = z.infer<typeof projectReportingSchema>;
 import { financeAmountText, financeAmountUnits } from "./finance";
 import { convertFinanceDisplayAmount } from "./finance-display-report";
 import { managementAmountRows, managementCoverageIssues, summarizeManagementEntries, type ManagementAmountRow, type ReportCoverage, type managementDisplayEntries } from "./finance-management";
-import { laborSourceIssues, type FinanceLaborData } from "./finance-labor";
+import { projectLaborIncomplete, type FinanceLaborData } from "./finance-labor";
 
 type DisplayEntry = ReturnType<typeof managementDisplayEntries>[number];
 export function proportionalAmount(value: string, numerator: bigint, denominator: bigint, digits: number) {
@@ -153,7 +153,8 @@ export function buildProjectProfitability(input: {
     const coverageGaps = input.start && input.to >= input.start ? managementCoverageIssues(input.coverage, input.from < input.start ? input.start : input.from, input.to, project.id).length : 0;
     const pendingTripCount = (input.pendingTrips ?? []).filter(trip => trip.projectId === project.id && trip.date <= input.today).length;
     const historyIncomplete = !input.start || !project.startsOn || project.startsOn < input.start || input.from < input.start;
-    const laborIncomplete = laborSourceIssues(input.labor.sources, input.start ?? input.today, input.today).length > 0 || input.labor.missingPeriods.length > 0;
+    const laborIncomplete = projectLaborIncomplete(input.labor, project.id, input.start ?? input.today, input.today);
+    const periodLaborIncomplete = projectLaborIncomplete(input.labor, project.id, input.from, input.to);
     // Preserve recognized revenue's historical valuation. Only unperformed agreed
     // native services use the explicitly dated contract reference assumption.
     const remainingValues = finite.map(design => {
@@ -175,6 +176,6 @@ export function buildProjectProfitability(input: {
       received: { period: received(input.from, input.to), lifetime: received("1900-01-01", input.today) },
       agreed: { net: agreedNet, gross: agreedValue("gross_amount"), complete: completeRevenue, referenceDate: input.today },
       contracts, matched: input.reporting.matched.filter(row => row.projectId === project.id), estimate, estimateDisplay, estimateStale, budgetVariance,
-      finalMargin: finalResult === null || targetRevenue === null ? null : margin(finalResult, targetRevenue, digits), pendingTripCount, coverageGaps, historyIncomplete, laborIncomplete };
+      finalMargin: finalResult === null || targetRevenue === null ? null : margin(finalResult, targetRevenue, digits), pendingTripCount, coverageGaps, historyIncomplete, laborIncomplete, periodLaborIncomplete };
   });
 }

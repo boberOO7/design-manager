@@ -17,6 +17,7 @@ import { Select, SelectItem } from "@/components/ui/select";
 import { financeAmountText, financeAmountUnits, formatFinanceAmount, type FinanceCurrency } from "@/lib/finance";
 import { laborSourceIssues, unallocatedLaborAmount, type FinanceLaborData, type LaborPool, type LaborSource } from "@/lib/finance-labor";
 import { formatDateOnly } from "@/lib/utils";
+import { AutomaticLaborSection } from "./automatic-labor-section";
 
 type Project = { id: string; name: string };
 type SplitItem = { id: string; projectId: string; amount: string };
@@ -53,12 +54,13 @@ function selectedAllocations(data: FinanceLaborData, entryIds: Set<string>, digi
   return [...totals].map(([projectId, amount]) => ({ projectId, amount: financeAmountText(amount, digits) }));
 }
 
-export function ManagementLaborSection({ data, projects, currencies, baseCurrency, from, to }: {
+export function ManagementLaborSection({ data, projects, currencies, baseCurrency, from, to, today }: {
   data: FinanceLaborData; projects: Project[]; currencies: FinanceCurrency[]; baseCurrency: string; from: string; to: string; today: string;
 }) {
   const t = useTranslations("Finance.labor"), locale = useLocale(), router = useRouter();
-  const sources = data.sources.filter(source => source.periodStart <= to && source.periodEnd >= from);
-  const pools = data.pools.filter(pool => pool.period_start <= to && pool.period_end >= from);
+  const automatic = new Set((data.automaticPeriods ?? []).filter(period => !period.manual).map(period => period.obligationId));
+  const sources = data.sources.filter(source => source.periodStart <= to && source.periodEnd >= from && !automatic.has(source.obligationId));
+  const pools = data.pools.filter(pool => pool.period_start <= to && pool.period_end >= from && !automatic.has(pool.obligation_id));
   const issues = laborSourceIssues(data.sources, from, to);
   const missingPeriods = data.missingPeriods.filter(period => period.periodStart <= to && period.periodEnd >= from);
   const currency = (code: string) => currencies.find(item => item.code === code);
@@ -67,6 +69,7 @@ export function ManagementLaborSection({ data, projects, currencies, baseCurrenc
   const refresh = () => router.refresh();
 
   return <section className="space-y-4" aria-label={t("title")}>
+    <AutomaticLaborSection data={data} projects={projects} currencies={currencies} baseCurrency={baseCurrency} from={from} to={to} today={today}/>
     <div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="text-lg font-semibold">{t("title")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{date(from)} – {date(to)} · {baseCurrency}</p></div></div>
     {issues.length + missingPeriods.length ? <div role="status" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] p-3 text-sm text-[var(--ui-warning-text)]"><p>{t("unknownWarning", { count: issues.length + missingPeriods.length })}</p><ul className="mt-1 list-inside list-disc">{[...new Set(issues.map(issue => `${issue.label} · ${t(`issue.${issue.kind}`)}`))].map(issue => <li key={issue}>{issue}</li>)}</ul>{missingPeriods.length ? <ul className="mt-1 list-inside list-disc">{missingPeriods.map(period => <li key={`${period.scheduleId}-${period.periodStart}`}>{period.label} · {t("missingPeriod", { from: date(period.periodStart), to: date(period.periodEnd) })} <Link href="/finance/schedules" className="underline">{t("openPayroll")}</Link></li>)}</ul> : null}</div> : null}
     <Panel className={`${panel} space-y-3`}>
@@ -112,7 +115,7 @@ export function ManagementLaborSection({ data, projects, currencies, baseCurrenc
           const unit = currency(baseCurrency);
           return <li key={history.id} className="py-2 text-xs">
             <p className="font-medium">{pool?.description ?? t("historicalSource", { id: history.entryId })} · v{history.revision}</p>
-            <p className="mt-1 text-[var(--ui-text-secondary)]">{date(history.createdAt.slice(0, 10))} · {t("allocationMethod")}: {t("manualManagement")} · {t("allocationAuthor")}: {history.createdBy} · {history.reason}</p>
+            <p className="mt-1 text-[var(--ui-text-secondary)]">{date(history.createdAt.slice(0, 10))} · {t("allocationMethod")}: {history.method === "manual_management" ? t("manualManagement") : t("auto.title")} · {t("allocationAuthor")}: {history.createdBy} · {history.reason}</p>
             {history.items.length ? <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[var(--ui-text-secondary)]">{history.items.map((item, index) => <li key={`${history.id}-${item.projectId}-${index}`}>{projects.find(project => project.id === item.projectId)?.name ?? t("projectUnavailable")} · {displayAmount(item.amount, unit, locale, baseCurrency)}</li>)}</ul> : <p className="mt-1 text-[var(--ui-text-muted)]">{t("allocationCleared")}</p>}
           </li>;
         })}</ol>

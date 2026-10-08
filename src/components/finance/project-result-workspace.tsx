@@ -34,12 +34,17 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
   const date = (value: string) => formatDateOnly(value, locale);
   const knownCosts = financeAmountText(financeAmountUnits(row.lifetime.directCost, data.currency.minor_units) + financeAmountUnits(row.lifetime.labor, data.currency.minor_units), data.currency.minor_units);
   const selected = period === "all" ? row.lifetime : row.period;
+  const provisionalRow = data.provisionalLabor.find(item => item.projectId === projectId);
+  const provisional = period === "all" ? provisionalRow?.lifetime : provisionalRow?.period;
+  const provisionalResult = provisional ? financeAmountText(financeAmountUnits(selected.result, data.currency.minor_units)
+    - financeAmountUnits(provisional.known, data.currency.minor_units), data.currency.minor_units) : null;
   const selectedKnownCosts = period === "all" ? knownCosts : financeAmountText(financeAmountUnits(selected.directCost, data.currency.minor_units) + financeAmountUnits(selected.labor, data.currency.minor_units), data.currency.minor_units);
   const historyIncomplete = period === "all" ? row.historyIncomplete : Boolean(recognitionStart && data.filters.from < recognitionStart);
   const periodUnavailable = !recognitionActive || Boolean(recognitionStart && data.filters.to < recognitionStart);
-  const costIncomplete = Boolean(row.coverageGaps || row.laborIncomplete || selected.missingFx || row.pendingTripCount);
+  const selectedLaborIncomplete = period === "all" ? row.laborIncomplete : row.periodLaborIncomplete;
+  const costIncomplete = Boolean(row.coverageGaps || selectedLaborIncomplete || selected.missingFx || row.pendingTripCount);
   const directIncomplete = Boolean(historyIncomplete || row.coverageGaps || selected.missingFx || row.pendingTripCount);
-  const laborIncomplete = Boolean(historyIncomplete || row.coverageGaps || row.laborIncomplete || selected.missingFx);
+  const laborIncomplete = Boolean(historyIncomplete || row.coverageGaps || selectedLaborIncomplete || selected.missingFx);
   const resultIncomplete = costIncomplete || historyIncomplete;
   const costDisplayIncomplete = costIncomplete || historyIncomplete;
   const displayKnown = (amount: string | null, incomplete: boolean) => {
@@ -101,6 +106,15 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
         {showKnownSuffix(selected.revenue, historyIncomplete || selected.missingFx > 0) || showKnownSuffix(selectedKnownCosts, costDisplayIncomplete) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("knownSubtotalSuffix")}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] pt-3"><p className="text-xs text-[var(--ui-text-secondary)]">{t("recognitionActionHelp")}</p><Button type="button" onClick={() => setRecognitionOpen(true)}>{t("recognizeWork")}</Button></div>
       </article>
+
+      {provisional && provisional.periods > 0 ? <section className={`${panel} space-y-3`} aria-labelledby="project-provisional-labor-title" data-provisional-labor>
+        <h3 id="project-provisional-labor-title" className="font-semibold">{t("provisionalLabor")}</h3>
+        <p className="text-xs text-[var(--ui-text-secondary)]">{t("provisionalHelp", { date: date(provisional.asOf ?? data.today) })}</p>
+        <dl className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-3"><dt>{t("provisionalLabor")}</dt><dd className="font-medium tabular-nums">{displayKnown(provisional.known, provisional.unknown > 0)}{provisional.unknown > 0 && financeAmountUnits(provisional.known, data.currency.minor_units) > BigInt(0) ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{t("knownSubtotalSuffix")}</span> : null}</dd></div>
+          <div className="flex items-center justify-between gap-3"><dt>{t("provisionalResult")}</dt><dd className="font-medium tabular-nums">{provisional.unknown > 0 || costIncomplete || historyIncomplete ? t("unknown") : money(provisionalResult)}</dd></div>
+        </dl>
+      </section> : null}
 
       <section className={`${panel} space-y-3`} aria-labelledby="project-result-costs">
         <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id="project-result-costs" className="font-semibold">{t("costBreakdown")}</h3><p className="text-xs text-[var(--ui-text-muted)]">{data.displayCurrency}</p></div>

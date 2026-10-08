@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), rpc: vi.fn(), labor: vi.fn() }));
+vi.mock("@/lib/finance-automatic-labor", () => ({ scheduleAutomaticLabor: mocks.labor }));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -21,6 +22,7 @@ it("keeps bonus notes optional while preserving explicit dates and entered notes
   for (const description of ["", "Personal award"]) {
     const input = { intent: "bonus", employeeId: id, amount: "75", currency: "UAH", periodStart: "2026-09-01", periodEnd: "2026-09-20", dueDate: "2026-10-10", description };
     expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
+    expect(mocks.labor).toHaveBeenCalledWith("verified");
     expect(mocks.rpc).toHaveBeenLastCalledWith("create_finance_employee_bonus", expect.objectContaining({ p_studio_id: "verified", p_input: expect.objectContaining({ description: description || "schedules.addBonus", periodStart: input.periodStart, periodEnd: input.periodEnd, dueDate: input.dueDate }) }));
   }
 });
