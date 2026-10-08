@@ -461,6 +461,12 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   await admin.client.rpc("update_task_review", { p_task_id: fallbackTaskId, p_action: "configure", p_reviewer_ids: [reviewer.id] }).throwOnError();
   await assignee.client.rpc("update_task_review", { p_task_id: fallbackTaskId, p_action: "submit" }).throwOnError();
   const singletonRound = (await reviewer.client.from("task_review_rounds").select("id").eq("task_id", fallbackTaskId).single().throwOnError()).data;
+  // Open waiting reviews become suggestions only after actual review activity.
+  for (const roundId of [roundIds[9], singletonRound.id]) {
+    const sessionId = randomUUID();
+    await reviewer.client.rpc("control_review_timer", { p_action: "start", p_session_id: sessionId, p_round_ids: [roundId] }).throwOnError();
+    await reviewer.client.rpc("control_review_timer", { p_action: "pause", p_session_id: sessionId }).throwOnError();
+  }
   reviewSql(`update public.project_task_stage_columns set display_name='Review plans' where project_id=${sqlId(projectId)} and stage='stage_1';
     update public.project_task_stage_columns set display_name=null where project_id=${sqlId(projectId)} and stage='stage_2';`);
   const { start } = workLogDayBounds(today);
@@ -486,7 +492,7 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(group.locator(`[id="${await toggle.getAttribute("aria-controls")}"]`)).toHaveAttribute("inert", "");
   await expect(group.getByRole("button", { name: uk.WorkLog.selectPart, exact: true })).toHaveCount(0);
-  await expect(total).toHaveValue("00:00");
+  await expect(total).toHaveText("00:00");
   await expect(singleton).toBeVisible();
   await expect(singleton).toContainText(uk.TaskStages.stage_2);
   await expect(singleton.locator("[data-work-log-group-duration]")).toHaveCount(0);
@@ -500,15 +506,29 @@ test("direct review group time → manual edit → save/reopen, partial selectio
     expect(entry.height).toBe(header.height);
   }
   await expectAligned(singleton.locator("[data-time-picker-control]"));
+  const groupTypography = await total.locator(":scope > span").evaluate(element => {
+    const style = getComputedStyle(element);
+    return [style.fontFamily, style.fontSize, style.fontWeight];
+  });
+  const rowTypography = await singleton.locator("[data-work-log-duration] > span").evaluate(element => {
+    const style = getComputedStyle(element);
+    return [style.fontFamily, style.fontSize, style.fontWeight];
+  });
+  expect(groupTypography).toEqual(rowTypography);
   const width = (await log.boundingBox())?.width;
   expect(width).toBeGreaterThanOrEqual(800);
   expect(width).toBeLessThanOrEqual(850);
 
-  await groupControl.getByRole("button").click();
+  await expect(total).toHaveJSProperty("tagName", "BUTTON");
+  await expect(group.getByRole("textbox")).toHaveCount(0);
+  await total.locator(":scope > span").click();
+  await expect(log.getByRole("listbox", { name: "Години", exact: true })).toBeVisible();
+  await total.press("1");
+  await expect(total).toHaveText("00:00");
   await log.getByRole("listbox", { name: "Години", exact: true }).getByRole("option", { name: "03", exact: true }).click();
   await log.getByRole("listbox", { name: "Хвилини", exact: true }).getByRole("option", { name: "00", exact: true }).click();
-  await groupControl.getByRole("button").click();
-  await expect(total).toHaveValue("03:00");
+  await total.click();
+  await expect(total).toHaveText("03:00");
   await expect(log.locator("[data-work-log-total]")).toHaveText("3 год 45 хв");
   await expect(log.locator("[data-work-log-week-total]")).toHaveText("3 год 45 хв");
   await expect(log.locator(`[data-work-log-day="${today}"] [data-work-log-day-total]`)).toHaveText("3:45");
@@ -523,7 +543,7 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   }
   await expect(log.locator('[data-work-log-row^="review:"]')).toHaveCount(11);
   await chooseDuration(log, row(1), "00", "25");
-  await expect(total).toHaveValue("03:07");
+  await expect(total).toHaveText("03:07");
   await expect(row(0).locator("[data-work-log-duration]")).toHaveText("00:18");
   await chooseDuration(log, singleton, "00", "10");
   await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 2 хв");
@@ -532,7 +552,7 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   await expect(log).toHaveCount(0);
   await entry.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(total).toHaveValue("03:07");
+  await expect(total).toHaveText("03:07");
   await expect(singleton.locator("[data-work-log-duration]")).toHaveText("00:10");
   await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 2 хв");
   await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 2 хв");
@@ -548,41 +568,43 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   await expect(total).toBeDisabled();
   await row(0).getByRole("checkbox").check();
   await row(1).getByRole("checkbox").check();
-  await expect(total).toHaveValue("00:43");
+  await expect(total).toHaveText("00:43");
   await expect(group).toContainText("Для вибраних: 2 із 10");
   await expect(group).toContainText("Усього в групі: 03:07");
-  page.once("dialog", async dialog => { expect(dialog.message()).toContain("00:41"); await dialog.dismiss(); });
-  await total.fill("00:41");
-  await total.press("Enter");
-  await expect(total).toHaveValue("00:43");
+  await total.locator(":scope > span").click();
+  page.once("dialog", async dialog => { expect(dialog.message()).toContain("00:45"); await dialog.dismiss(); });
+  await log.getByRole("listbox", { name: "Хвилини", exact: true }).getByRole("option", { name: "45", exact: true }).click();
+  await total.click();
+  await expect(total).toHaveText("00:43");
   await expect(row(0).locator("[data-work-log-duration]")).toHaveText("00:18");
   await expect(row(1).locator("[data-work-log-duration]")).toHaveText("00:25");
+  await total.click();
   page.once("dialog", async dialog => { await dialog.accept(); });
-  await total.fill("00:41");
-  await total.press("Tab"); // Blur uses the same allocation path as Enter.
-  await expect(total).toHaveValue("00:41");
+  await log.getByRole("listbox", { name: "Хвилини", exact: true }).getByRole("option", { name: "45", exact: true }).click();
+  await total.click();
+  await expect(total).toHaveText("00:45");
   const selectedMinutes = await Promise.all([row(0), row(1)].map(async item => {
     const [hours, minutes] = (await item.locator("[data-work-log-duration]").innerText()).split(":").map(Number);
     return hours * 60 + minutes;
   }));
-  expect(selectedMinutes.sort((a, b) => a - b)).toEqual([20, 21]);
+  expect(selectedMinutes.sort((a, b) => a - b)).toEqual([22, 23]);
   for (let index = 2; index < 10; index++) await expect(row(index).locator("[data-work-log-duration]")).toHaveText("00:18");
   await expect(singleton.locator("[data-work-log-duration]")).toHaveText("00:10");
-  await expect(group).toContainText("Усього в групі: 03:05");
+  await expect(group).toContainText("Усього в групі: 03:09");
   await group.getByRole("button", { name: uk.WorkLog.allReviews, exact: true }).click();
-  await expect(total).toHaveValue("03:05");
+  await expect(total).toHaveText("03:09");
   await saveWorkLog(log, true);
   await expect(log).toHaveCount(0);
   await entry.click();
-  await expect(total).toHaveValue("03:05");
-  await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 0 хв");
-  await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 0 хв");
+  await expect(total).toHaveText("03:09");
+  await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 4 хв");
+  await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 4 хв");
   await log.getByRole("button", { name: uk.WorkLog.previousWeek, exact: true }).click();
   await expect(log.locator(`[data-work-log-day="${previousMonday}"]`)).toBeVisible();
   await log.getByRole("button", { name: uk.WorkLog.nextWeek, exact: true }).click();
   await expect(log.locator(`[data-work-log-day="${today}"]`)).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(total).toHaveValue("03:05");
-  await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 0 хв");
-  await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 0 хв");
+  await expect(total).toHaveText("03:09");
+  await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 4 хв");
+  await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 4 хв");
 });

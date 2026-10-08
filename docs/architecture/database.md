@@ -28,6 +28,7 @@ Use this map instead of duplicating their fields here.
 | Tenant and identity | `studios`, `profiles`, `studio_members`, admin-only `employee_profile_notes` |
 | Projects | `projects`, `project_members`, `project_task_stage_columns`, `project_templates`, `project_template_tasks`, `project_activity`, legacy `project_area_progress` |
 | Tasks | `tasks`, `task_reviewers`, `task_review_rounds`, `task_review_round_reviewers`, `task_status_periods`, `task_collaborators`, `task_deadlines`, `task_schedules`, `task_schedule_dependencies`, `task_checklist_items`, `checklist_templates`, `checklist_template_items` |
+| Work tracking | `work_log_entries`, `work_log_days`, `review_timer_sessions`, `review_timer_members`, `review_timer_intervals`, `review_timer_daily`, `review_timer_buckets` |
 | Productivity | `productivity_attributions`, `project_stage_productivity_budgets`, `leaderboard_bonus_rules` |
 | Calendar | `calendar_events`, `calendar_event_invites`, `calendar_event_participants`, `calendar_event_attendees`, `time_off_requests`, `time_off_request_approvals`, `studio_days_off` |
 | Google projection | `google_calendar_connections`, `google_calendar_server_credentials`, `google_calendar_event_mappings`, `google_calendar_reconciliation_jobs` |

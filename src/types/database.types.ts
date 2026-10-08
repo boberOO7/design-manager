@@ -5649,6 +5649,216 @@ export type Database = {
           },
         ]
       }
+      review_timer_buckets: {
+        Row: {
+          allocation: Json
+          elapsed_us: number
+          membership_key: string
+          minutes: number
+          round_ids: string[]
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          allocation?: Json
+          elapsed_us?: number
+          membership_key: string
+          minutes?: number
+          round_ids: string[]
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          allocation?: Json
+          elapsed_us?: number
+          membership_key?: string
+          minutes?: number
+          round_ids?: string[]
+          studio_id?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_timer_buckets_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_timer_buckets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_timer_daily: {
+        Row: {
+          carry_minutes: number
+          elapsed_us: number
+          minutes: number
+          round_id: string
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          carry_minutes?: number
+          elapsed_us?: number
+          minutes?: number
+          round_id: string
+          studio_id: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          carry_minutes?: number
+          elapsed_us?: number
+          minutes?: number
+          round_id?: string
+          studio_id?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_timer_daily_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "task_review_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_timer_daily_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_timer_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_timer_intervals: {
+        Row: {
+          ended_at: string | null
+          session_id: string
+          started_at: string
+        }
+        Insert: {
+          ended_at?: string | null
+          session_id: string
+          started_at: string
+        }
+        Update: {
+          ended_at?: string | null
+          session_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_timer_intervals_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "review_timer_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_timer_members: {
+        Row: {
+          finished_at: string | null
+          round_id: string
+          session_id: string
+        }
+        Insert: {
+          finished_at?: string | null
+          round_id: string
+          session_id: string
+        }
+        Update: {
+          finished_at?: string | null
+          round_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_timer_members_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "task_review_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_timer_members_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "review_timer_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_timer_sessions: {
+        Row: {
+          accounted_at: string | null
+          elapsed_us: number
+          id: string
+          paused_at: string | null
+          running_since: string | null
+          started_at: string
+          state: string
+          studio_id: string
+          user_id: string
+        }
+        Insert: {
+          accounted_at?: string | null
+          elapsed_us?: number
+          id: string
+          paused_at?: string | null
+          running_since?: string | null
+          started_at?: string
+          state: string
+          studio_id: string
+          user_id: string
+        }
+        Update: {
+          accounted_at?: string | null
+          elapsed_us?: number
+          id?: string
+          paused_at?: string | null
+          running_since?: string | null
+          started_at?: string
+          state?: string
+          studio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_timer_sessions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_timer_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_days_off: {
         Row: {
           created_at: string
@@ -9075,6 +9285,14 @@ export type Database = {
         }
         Returns: string
       }
+      control_review_timer: {
+        Args: {
+          p_action: string
+          p_round_ids?: string[]
+          p_session_id?: string
+        }
+        Returns: string
+      }
       correct_finance_movement: {
         Args: {
           p_input: Json
@@ -9377,6 +9595,10 @@ export type Database = {
         Args: { p_as_of: string; p_studio_id: string; p_user_id: string }
         Returns: number
       }
+      get_work_log_timer_snapshot: {
+        Args: { p_work_date: string }
+        Returns: Json
+      }
       import_equipment_catalog_batch: {
         Args: {
           p_generation: string
@@ -9612,7 +9834,7 @@ export type Database = {
         Returns: string
       }
       save_daily_work_log: {
-        Args: { p_entries: Json; p_work_date: string }
+        Args: { p_entries: Json; p_timer_snapshot?: Json; p_work_date: string }
         Returns: undefined
       }
       save_finance_account: {
@@ -9895,6 +10117,7 @@ export type Database = {
         }
         Returns: string
       }
+      sync_review_timer: { Args: never; Returns: Json }
       transition_office_assignment: {
         Args: {
           p_assignment_id: string

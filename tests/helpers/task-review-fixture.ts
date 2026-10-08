@@ -20,7 +20,12 @@ export async function createTaskReviewFixture() {
   const studioId = randomUUID(), projectId = randomUUID(), taskId = randomUUID(), fallbackTaskId = randomUUID();
   const accounts: Array<{ id: string; email: string; password: string; name: string; client: ReturnType<typeof createClient<Database>> }> = [];
   async function dispose() {
-    reviewSql(`delete from public.project_activity where studio_id=${sqlId(studioId)};
+    reviewSql(`delete from public.review_timer_buckets where studio_id=${sqlId(studioId)};
+      delete from public.review_timer_daily where studio_id=${sqlId(studioId)};
+      delete from public.review_timer_sessions where studio_id=${sqlId(studioId)};
+      delete from public.work_log_entries where studio_id=${sqlId(studioId)};
+      delete from public.work_log_days where studio_id=${sqlId(studioId)};
+      delete from public.project_activity where studio_id=${sqlId(studioId)};
       delete from public.tasks where project_id=${sqlId(projectId)};
       delete from public.project_members where project_id=${sqlId(projectId)};
       delete from public.projects where id=${sqlId(projectId)};
@@ -51,7 +56,13 @@ export async function createTaskReviewFixture() {
       (${sqlId(taskId)},${sqlId(projectId)},'Review lifecycle task','stage_1','in_progress','high',${sqlId(assignee.id)},${sqlId(admin.id)}),
       (${sqlId(fallbackTaskId)},${sqlId(projectId)},'Review without client step','stage_2','in_progress','normal',${sqlId(assignee.id)},${sqlId(admin.id)});
       update public.project_task_stage_columns set enabled_statuses=array['todo','in_progress','internal_review','completed'] where project_id=${sqlId(projectId)} and stage='stage_2';`);
-    return { studioId, projectId, taskId, fallbackTaskId, admin, assignee, reviewer, outsider, service, dispose };
+    async function createAuthenticatedClient(account: typeof admin) {
+      const client = createClient<Database>(local.API_URL, local.PUBLISHABLE_KEY, options);
+      const signedIn = await client.auth.signInWithPassword({ email: account.email, password: account.password });
+      if (signedIn.error) throw signedIn.error;
+      return client;
+    }
+    return { studioId, projectId, taskId, fallbackTaskId, admin, assignee, reviewer, outsider, service, dispose, createAuthenticatedClient };
   } catch (error) { await dispose(); throw error; }
 }
 export type TaskReviewFixture = Awaited<ReturnType<typeof createTaskReviewFixture>>;

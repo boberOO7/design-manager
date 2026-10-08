@@ -4,11 +4,11 @@ import type en from "../../messages/en.json";
 type Namespace = keyof typeof en;
 
 // Whole namespaces belong to domains, including their optional editors/drawers.
-const taskMessages = ["Tasks", "Checklists", "Templates", "Status", "Priority", "Validation", "Roles"] as const;
+const taskMessages = ["Tasks", "ReviewTimer", "Checklists", "Templates", "Status", "Priority", "Validation", "Roles"] as const;
 
 export const messageScopes = {
   root: ["Common", "Account"],
-  shell: ["Navigation", "Notifications", "CitySearch", "WorkLog", "TaskStages"],
+  shell: ["Navigation", "Notifications", "CitySearch", "WorkLog", "TaskStages", "ReviewTimer"],
   dashboard: ["Dashboard", "OfficeAssignments", ...taskMessages],
   projects: ["Projects", "ProjectForm", "ProjectTypes", "ProjectWorkspace", "Workspace", "StageConfiguration", "StageTaskEditor", "BoardTaskCard", "ProjectTemplates", "Team", "Calendar", ...taskMessages],
   tasks: ["OfficeAssignments", ...taskMessages],

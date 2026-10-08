@@ -102,7 +102,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
 
   async function save() {
     if (!data || editorDisabled) return;
-    const input = workLogInputSchema.safeParse({ date: data.date, entries: rows.filter(row => row.minutes > 0).map(row => ({
+    const input = workLogInputSchema.safeParse({ date: data.date, timerSnapshot: data.timerSnapshot, entries: rows.filter(row => row.minutes > 0).map(row => ({
       activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id, minutes: row.minutes,
     })) });
     if (!input.success) { setError(t("durationInvalid")); return; }

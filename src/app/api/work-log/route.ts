@@ -24,7 +24,7 @@ export async function PUT(request: Request) {
   const access = await resolveActiveStudioMembership();
   if (access.status !== "ACTIVE_STUDIO") return NextResponse.json({ success: false }, { status: 403 });
   const client = await createClient();
-  const { error } = await client.rpc("save_daily_work_log", { p_work_date: input.data.date, p_entries: input.data.entries });
+  const { error } = await client.rpc("save_daily_work_log", { p_work_date: input.data.date, p_entries: input.data.entries, p_timer_snapshot: input.data.timerSnapshot });
   if (error) return NextResponse.json({ success: false }, { status: 400 });
   scheduleAutomaticLabor(access.membership.studio_id);
   revalidatePath(`/team/${access.membership.authenticatedUserId}`);

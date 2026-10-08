@@ -81,15 +81,13 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
         </span>
         <span className="shrink-0 text-xs text-[var(--ui-text-muted)]">{t("entryCount", { count: group.rows.length })}</span>
       </button>
-      <TimePicker editable mode="duration" locale={locale} value={formatTime(selectedMinutes)} onValueChange={commit}
-        disabled={disabled || (isReview && !selected.length)}
-        className={`w-28 gap-2 tabular-nums ${selectedMinutes === 0 ? "text-[var(--ui-text-muted)] [&_input]:font-normal" : ""} ${invalid ? "border-[var(--ui-danger-text)]" : ""}`}
-        inputProps={{
-          "data-work-log-group-duration": true,
-          "aria-label": t(partial ? "selectedGroupDuration" : "groupDuration", { project: group.projectName ?? t("unavailableProject"), stage: stageName ?? "" }),
-          "aria-describedby": partial ? `${contentId}-scope` : undefined, "aria-invalid": invalid || undefined,
-          readOnly: !isReview, title: !isReview ? t("taskGroupDuration") : undefined,
-        }} />
+      <TimePicker mode="duration" locale={locale} value={formatTime(selectedMinutes)} onValueChange={commit}
+        disabled={disabled || !isReview || !selected.length}
+        className={`w-28 shrink-0 gap-2 tabular-nums ${selectedMinutes === 0 ? "text-[var(--ui-text-muted)] [&>span]:font-normal" : ""} ${invalid ? "border-[var(--ui-danger-text)]" : ""}`}
+        data-work-log-group-duration
+        aria-label={t(partial ? "selectedGroupDuration" : "groupDuration", { project: group.projectName ?? t("unavailableProject"), stage: stageName ?? "" })}
+        aria-describedby={partial ? `${contentId}-scope` : undefined} aria-invalid={invalid || undefined}
+        title={!isReview ? t("taskGroupDuration") : undefined} />
       <span aria-hidden className="size-8" />
     </div>
     {partial ? <p id={`${contentId}-scope`} className="pb-2 text-right text-xs text-[var(--ui-text-muted)]">{t("selectionScope", { count: selected.length, total: group.rows.length })} · {t("groupTotal", { duration: formatTime(group.minutes) })}</p> : null}

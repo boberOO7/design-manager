@@ -64,11 +64,12 @@ test("task → submit → review queue → rework → Review #2 → approve", as
     const queue = reviewerPage.getByRole("list", { name: uk.Tasks.reviewQueue });
     await expect(queue).toContainText("Review #1");
     await expect(queue).toContainText("Review Assignee");
-    await expect(queue).toContainText("Review Reviewer");
+    await expect(queue).not.toContainText("Review Reviewer");
     await expect(queue).toContainText(uk.Priority.high);
-    await expect(queue.getByRole("button")).toHaveCount(0);
+    await expect(queue.getByRole("button", { name: uk.ReviewTimer.start })).toBeVisible();
     await queue.getByRole("link").click();
     const reviewerDrawer = reviewerPage.getByRole("dialog", { name: uk.Tasks.taskDetails });
+    await reviewerDrawer.getByRole("button", { name: uk.ReviewTimer.start }).click();
     await reviewerDrawer.getByRole("button", { name: uk.Tasks.reviewSendBack }).click();
     await expect(reviewerDrawer.getByRole("button", { name: uk.Tasks.reviewConfirmRework, exact: true })).toBeDisabled();
     await reviewerDrawer.getByRole("textbox", { name: uk.Tasks.reviewFixComment }).fill("Виправити креслення");
@@ -85,6 +86,7 @@ test("task → submit → review queue → rework → Review #2 → approve", as
     await reviewerPage.reload();
     await expect(reviewerPage.getByRole("list", { name: uk.Tasks.reviewQueue })).toContainText("Review #2");
     await reviewerPage.getByRole("list", { name: uk.Tasks.reviewQueue }).getByRole("link").click();
+    await reviewerDrawer.getByRole("button", { name: uk.ReviewTimer.start }).click();
     await reviewerDrawer.getByRole("button", { name: uk.Tasks.reviewApprove }).click();
     // The designer approves only their step; management completes this round.
     await expect(reviewerDrawer.getByRole("heading", { name: "Review #2", exact: true })).toBeVisible();
@@ -94,6 +96,7 @@ test("task → submit → review queue → rework → Review #2 → approve", as
     const managementQueue = page.getByRole("list", { name: uk.Tasks.reviewQueue });
     await expect(managementQueue).toContainText("Review Admin");
     await managementQueue.getByRole("link").click();
+    await adminDrawer.getByRole("button", { name: uk.ReviewTimer.start }).click();
     await adminDrawer.getByRole("button", { name: uk.Tasks.reviewApprove }).click();
     await expect(adminDrawer.locator("header")).toContainText(uk.Status.review);
     await reviewerPage.reload();

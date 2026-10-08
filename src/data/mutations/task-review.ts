@@ -1,5 +1,6 @@
 import "server-only";
 
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -37,6 +38,7 @@ export async function updateTaskReviewMutation(taskId: string, input: unknown): 
     ...(action.action === "rework" ? { p_comment: action.comment } : {}),
   });
   if (error) return { success: false, formError: error.message };
+  if (action.action === "approved" || action.action === "rework") scheduleAutomaticLabor(resolution.membership.studio_id);
   const task = await getProjectTaskById(taskId);
   if (!task) return { success: false, formError: "The review was saved. Please refresh the task." };
   const { data: project, error: projectError } = await supabase.from("projects").select("status").eq("id", task.project_id).single();

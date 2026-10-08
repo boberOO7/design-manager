@@ -16,9 +16,11 @@ const entryFields = z.object({
   activity_kind: z.enum(["task", "review"]), task_id: z.uuid(), review_round_id: z.uuid().nullable(),
   minutes: z.number().int().positive().max(2147483647),
 });
+export const workLogTimerSnapshotSchema = z.object({ entries: z.array(entryFields),
+  timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()), changed: z.boolean(), studioId: z.uuid().nullable() });
 const entrySchema = entryFields.refine(row => (row.activity_kind === "review") === (row.review_round_id !== null));
 export const workLogInputSchema = z.object({
-  date: z.iso.date(), entries: z.array(entrySchema),
+  date: z.iso.date(), entries: z.array(entrySchema), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).optional(),
 }).refine(({ entries }) => new Set(entries.map(workLogRowKey)).size === entries.length);
 
 const workLogProjectFields = {
@@ -29,7 +31,7 @@ const dailyRowSchema = entryFields.extend({
   minutes: z.number().int().nonnegative(), title: z.string().nullable(), projectName: z.string().nullable(), roundNumber: z.number().nullable(),
 });
 export const dailyWorkLogSchema = z.object({
-  date: z.iso.date(), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
+  date: z.iso.date(), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).default({}), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
   activeTasks: z.array(z.object({ ...workLogProjectFields, id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
   calendar: z.object({ minutes: z.number().nonnegative(), categories: z.array(z.object({ eventType: z.enum(STATISTICS_CALENDAR_TYPES), minutes: z.number().nonnegative(), allDayCount: z.number() })) }),
 });
@@ -165,20 +167,8 @@ export function getSuggestedReviewRoundIds(rounds: SuggestedReviewRound[], userI
   return rounds.filter(round => {
     const ownStep = round.reviewers.find(step => step.reviewer_id === userId);
     if (!ownStep || Date.parse(round.submitted_at) >= Date.parse(end)) return false;
-    const approvedToday = inDay(ownStep.approved_at);
-    // Previous approvals establish when the current sequential step began.
-    const activeSince = Math.max(Date.parse(round.submitted_at), ...round.reviewers
-      .filter(step => step.position < ownStep.position && step.approved_at)
-      .map(step => Date.parse(step.approved_at ?? round.submitted_at)));
-    // Preserve actual same-day activity, including resolved rounds.
-    if (approvedToday || (round.reviewer_id === userId
-      && (inDay(round.completed_at) || (inDay(round.submitted_at) && activeSince < Date.parse(end))))) return true;
-    // Only the current unresolved step carries into subsequent days.
-    return round.completed_at === null && round.reviewer_id === userId && ownStep.approved_at === null
-      && round.task.status === "internal_review" && !round.task.project.archived_at
-      && round.task.project.status !== "archived"
-      && (round.task.project.status !== "completed" || round.task.stage === "stage_4")
-      && activeSince < Date.parse(end);
+    // Queue waiting is not work. Legacy same-day resolutions are actual activity.
+    return inDay(ownStep.approved_at) || (round.reviewer_id === userId && inDay(round.completed_at));
   }).map(round => round.id);
 }
 

@@ -646,3 +646,46 @@ body,
   animation-duration: 200ms;
   animation-timing-function: ease-out;
 }
+
+.review-timer-island {
+  position: absolute;
+  z-index: 40;
+  top: calc((var(--ui-shell-header-height) - 36px) / 2);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 18px;
+  background: #1c1a17;
+  color: #e7e5e4;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.16);
+}
+.review-timer-island-row { height: 36px; }
+.review-timer-island-details { visibility: hidden; opacity: 0; }
+
+/* Preserve the existing compact mobile controls; the island uses the upper band. */
+@media (width < 640px) {
+  .review-timer-island { top: 0; width: 220px; height: 22px; border-radius: 11px; }
+  .review-timer-island-row { height: 22px; }
+  [data-application-header]:has([data-active-review-timer]) {
+    padding-inline: 12px;
+    [data-header-profile] { display: none; }
+    [data-header-review-controls] { margin-left: 8px; gap: 6px; }
+    [data-header-main-controls] {
+      gap: 4px;
+      > button,
+      > div:not([data-work-log-reminder]) > button {
+        min-height: 32px;
+        min-width: 32px;
+        height: 32px;
+        width: 32px;
+        padding-inline: 0;
+        font-size: 0;
+        gap: 0;
+      }
+      > button > span:not([aria-hidden]):not([data-work-log-missing-count]) { display: none; }
+    }
+  }
+}

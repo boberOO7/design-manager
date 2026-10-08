@@ -19,7 +19,7 @@ export default async function MyTasksPage({ searchParams }: { searchParams: Prom
   const t = await getTranslations("Tasks");
   const reviewView = (await searchParams).view === "review";
   const [profile, tasks, assignments, rounds] = await Promise.all([getCurrentUserProfile(), reviewView ? Promise.resolve([]) : getMyTasks(), reviewView ? Promise.resolve([]) : getMyOfficeAssignments(), getTaskReviewQueue()]);
-  const stageNames = await getMyTaskStageNames([...new Set(tasks.map((task) => task.project_id))]);
+  const stageNames = await getMyTaskStageNames([...new Set([...tasks.map((task) => task.project_id), ...rounds.map(round => round.task.project.id)])]);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   return (
@@ -33,7 +33,7 @@ export default async function MyTasksPage({ searchParams }: { searchParams: Prom
         <span className="flex-1 text-[var(--ui-text)]">{t("reviewQueuePending", { count: rounds.length })}</span>
         <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]" />
       </Link> : null}
-      {profile ? reviewView ? <TaskReviewQueue rounds={rounds} /> : <MyTasksList currentUserId={profile.id} tasks={tasks} assignments={assignments} stageNames={stageNames} today={today} /> : null}
+      {profile ? reviewView ? <TaskReviewQueue rounds={rounds} currentUserId={profile.id} stageNames={stageNames} /> : <MyTasksList currentUserId={profile.id} tasks={tasks} assignments={assignments} stageNames={stageNames} today={today} /> : null}
     </div>
   );
 }

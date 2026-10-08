@@ -30,7 +30,7 @@ export async function getTaskReviewQueue() {
   const supabase = await createClient();
   const { data, error } = await loadAllRows((from, to) => {
     let query = supabase.from("task_review_rounds")
-      .select("id, round_number, reviewer_id, submitted_at, task:tasks!inner(id, title, stage, status, priority, assignee:profiles!tasks_assignee_id_fkey(full_name), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(full_name)")
+      .select("id, round_number, reviewer_id, submitted_at, task:tasks!inner(id, title, stage, status, priority, assignee:profiles!tasks_assignee_id_fkey(full_name,avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(full_name)")
       .is("completed_at", null).eq("task.status", "internal_review").is("task.project.archived_at", null)
       .order("submitted_at").order("id").range(from, to);
     if (membership.system_role !== "admin") query = query.eq("reviewer_id", membership.authenticatedUserId);

@@ -8,6 +8,7 @@ import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { LanguageSelector } from "@/components/layout/language-selector";
 import { ProfileAvatarEditor } from "@/components/layout/profile-avatar-editor";
 import { WorkLogTrigger } from "@/components/work-log/work-log-trigger";
+import { ActiveReviewTimer } from "@/components/layout/active-review-timer";
 import { getTranslations } from "next-intl/server";
 import { getNotificationData } from "@/data/queries/notifications";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
@@ -43,10 +44,10 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
   const roleKey = getCanonicalRoleTranslationKey(profile.job_title);
 
   return (
-    <header className="flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
-      <div className="flex min-w-0 items-center gap-3">
+    <header data-application-header className="relative flex h-[var(--ui-shell-header-height)] shrink-0 items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-5 lg:px-8">
+      <div data-header-identity className="flex min-w-0 items-center gap-3">
         <MobileNavigation crmAttentionCount={crmAttentionCount} leaderboardVisibleToEmployees={leaderboardVisibleToEmployees} systemRole={systemRole} />
-        <Link href={`/team/${profile.id}`} aria-label={t("viewProfile")} className="flex min-w-0 items-center gap-3 rounded-[var(--ui-radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2">
+        <Link data-header-profile href={`/team/${profile.id}`} aria-label={t("viewProfile")} className="flex min-w-0 items-center gap-3 rounded-[var(--ui-radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2">
           <UserAvatar imageUrl={profile.avatar_url} name={profile.full_name} size="header" decorative />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-[var(--ui-text)]">{profile.full_name}</p>
@@ -68,13 +69,16 @@ export async function AppHeader({ crmAttentionCount, joinedAt, leaderboardVisibl
           userId={profile.id}
         />
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <WorkLogTrigger />
-        <LanguageSelector />
-        <ThemeSwitch />
-        <NotificationBell initialData={notifications} popupsEnabled={profile.notification_popups_enabled} soundEnabled={profile.notification_sound_enabled} userId={profile.id} />
-        <SignOutButton />
+      <div data-header-review-controls className="ml-3 flex min-w-0 flex-1 items-center justify-end gap-2">
+        <div data-header-main-controls className="flex shrink-0 items-center gap-2">
+          <WorkLogTrigger />
+          <LanguageSelector />
+          <ThemeSwitch />
+          <NotificationBell initialData={notifications} popupsEnabled={profile.notification_popups_enabled} soundEnabled={profile.notification_sound_enabled} userId={profile.id} />
+          <SignOutButton />
+        </div>
       </div>
+      <ActiveReviewTimer />
     </header>
   );
 }

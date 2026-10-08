@@ -7,10 +7,13 @@ import { taskReviewCandidatesSchema as reviewersSchema } from "@/lib/validation/
 import { ChevronDown, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormField, Textarea } from "@/components/ui/form-field";
+import { ReviewActionButton } from "./review-action-button";
 import { TaskReviewerEditor } from "./task-reviewer-editor";
 import { TaskFieldLabel } from "./task-field-label";
 import { TaskReviewWaiting } from "./task-review-badge";
 import { getActiveTaskReview, getLatestTaskReview } from "@/lib/task-reviews";
+import { useReviewTimer } from "@/hooks/use-review-timer";
+import { formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound } from "@/lib/review-timer";
 import { cn, formatDate } from "@/lib/utils";
 import type { TaskReviewAction } from "@/lib/validation/task-review";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
@@ -38,6 +41,12 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
   const locale = useLocale();
   const active = getActiveTaskReview(task);
   const latest = getLatestTaskReview(task);
+  const timerText = useTranslations("ReviewTimer");
+  const timer = useReviewTimer();
+  const timerState = active ? reviewTimerForRound(timer.snapshot, active.id, active.reviewer_id, timer.serverNow) : null;
+  const ownActiveTimer = timer.snapshot?.sessions.find(session => session.user_id === currentUserId && session.state === "active");
+  const timerDisabled = disabled || timer.pending;
+  const canResolve = active && (active.reviewer_id !== currentUserId || timerState?.state === "active" || timerState?.state === "paused");
   const [showRework, setShowRework] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
@@ -78,6 +87,7 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
         throw new Error(isReviewResponse(result) && !result.success ? result.formError : t("updateFailed"));
       }
       onUpdated(result.task, result.projectStatus);
+      window.dispatchEvent(new Event("review-timer-change"));
       setComment("");
       setShowRework(false);
     } catch (cause) {
@@ -96,13 +106,24 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
     </div> : task.requires_review ? <p className="mt-2 text-sm text-[var(--ui-text-secondary)]">{t(active ? "reviewer" : "reviewers")}: <span className="font-medium text-[var(--ui-text)]">{active ? active.reviewer?.full_name ?? t("unknown") : assignedReviewers.map((reviewer) => reviewer.full_name).join(" → ") || task.reviewer?.full_name || t("unassigned")}</span></p> : null}
     {active ? <div className="mt-2 space-y-3">
       <TaskReviewWaiting submittedAt={active.submitted_at} />
+      {timerState ? <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className={timerState.state === "active" ? "font-medium text-[var(--ui-info-text)]" : "text-[var(--ui-text-muted)]"}>{timerText(timerState.state)}</span>
+        {timerState.state !== "waiting" ? <span data-review-elapsed className="tabular-nums">{formatReviewElapsed(timerState.state === "active" && timerState.session && timerState.session.members.length > 1 ? reviewGroupElapsed(timer.snapshot, timerState.session, timer.serverNow) : timerState.seconds)}</span> : null}
+        {timerState.session && timerState.session.members.length > 1 && timerState.state === "active" ? <span className="text-[var(--ui-text-muted)]">{timerText("activeSession", { count: timerState.session.members.length })}</span> : null}
+      </div> : null}
+      {timer.error ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{timerText(timer.error === "conflict" ? "overlap" : "failed")}</p> : null}
       {activeSteps.length > 1 ? <ol aria-label={t("reviewSequence")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ui-text-muted)]">
         {activeSteps.map((step, index) => <li key={step.reviewer_id} className={step.reviewer_id === active.reviewer_id ? "font-medium text-[var(--ui-text)]" : undefined}>{index ? <span aria-hidden="true" className="mr-2">→</span> : null}{step.approved_at ? <span aria-label={t("reviewApproved")}>✓ </span> : null}{step.reviewer?.full_name ?? t("unknown")}</li>)}
       </ol> : null}
       {!isReadOnly && (canManageTasks || active.reviewer_id === currentUserId) ? <>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" disabled={disabled} onClick={() => void mutate({ action: "approved", round_id: active.id, reviewer_id: active.reviewer_id })}>{t("reviewApprove")}</Button>
-          <Button type="button" size="sm" variant="outline" disabled={disabled} aria-expanded={showRework} aria-controls="task-review-rework" onClick={() => setShowRework((shown) => !shown)}>{t("reviewSendBack")}</Button>
+        <div className="flex flex-nowrap gap-0.5 overflow-x-auto">
+          {active.reviewer_id === currentUserId && timerState ? timerState.state === "active" && timerState.session ? <ReviewActionButton action="pause" disabled={timerDisabled} title={timerState.session.members.length > 1 ? timerText("sharedPause") : undefined}
+            onClick={() => { const sessionId = timerState.session?.id; if (sessionId) void timer.control({ action: "pause", sessionId }); }}>{timerText("pause")}</ReviewActionButton>
+            : <ReviewActionButton action="start" disabled={timerDisabled || !timer.snapshot || Boolean(ownActiveTimer)} onClick={() => void timer.control({ action: "start", roundIds: [active.id] })}>{timerText(timerState.state === "waiting" ? "start" : "resume")}</ReviewActionButton> : null}
+          {canResolve ? <>
+            <ReviewActionButton action="approve" disabled={timerDisabled} onClick={() => void mutate({ action: "approved", round_id: active.id, reviewer_id: active.reviewer_id })}>{t("reviewApprove")}</ReviewActionButton>
+            <ReviewActionButton action="rework" disabled={timerDisabled} aria-expanded={showRework} aria-controls="task-review-rework" onClick={() => setShowRework((shown) => !shown)}>{t("reviewSendBack")}</ReviewActionButton>
+          </> : null}
         </div>
         <div id="task-review-rework" className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${showRework ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`} inert={!showRework}>
           <div className="min-h-0 overflow-hidden"><form onSubmit={(event) => { event.preventDefault(); if (comment.trim()) void mutate({ action: "rework", round_id: active.id, reviewer_id: active.reviewer_id, comment }); }} className="space-y-2">

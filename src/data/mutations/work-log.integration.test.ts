@@ -48,7 +48,7 @@ describe("persisted daily work log and reviewer statistics", () => {
     const row = { activity_kind: "review", task_id: taskId, review_round_id: first.id, minutes: 25 };
     scope(reviewer);
     const tomorrow = addCalendarDays(date, 1);
-    expect((await getDailyWorkLog(tomorrow))?.rows.find(item => item.review_round_id === first.id)).toMatchObject({ minutes: 0, roundNumber: 1 });
+    expect((await getDailyWorkLog(tomorrow))?.rows.find(item => item.review_round_id === first.id)).toBeUndefined();
     await reviewer.client.rpc("save_daily_work_log", { p_work_date: date, p_entries: [row] }).throwOnError();
     expect((await assignee.client.rpc("save_daily_work_log", { p_work_date: date, p_entries: [row] })).error).not.toBeNull();
     expect((await reviewer.client.rpc("save_daily_work_log", { p_work_date: date, p_entries: [{ ...row, task_id: fixture.fallbackTaskId }] })).error).not.toBeNull();

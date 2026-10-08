@@ -77,8 +77,8 @@ Project aggregation and attribution are described in
 - Submitting from In progress enters the existing `internal_review` status and
   atomically creates a numbered `task_review_rounds` row and snapshots the ordered
   reviewers in `task_review_round_reviewers`. The round's stable UUID can be
-  referenced by future work sessions; waiting duration is calendar time since
-  submission, not tracked work time. No time tracking is implemented.
+  referenced by persistent review timer sessions; waiting duration is calendar
+  time since submission and is never counted as tracked work.
 - The current reviewer or studio administrator decides through `update_task_review`.
   Each approval records `approved_at` on that reviewer's snapshot and forwards the
   same open round to the next reviewer (`task_review_rounds.reviewer_id`). Only the
@@ -95,7 +95,25 @@ Project aggregation and attribution are described in
   during an active round.
 - My Tasks exposes a review queue: rounds currently assigned to employees and all visible
   rounds for administrators, ordered by submission time (oldest first). Queue
-  entries open task details for decisions. History is collapsed in the drawer.
+  entries open task details and support direct approval/rework. Project/stage groups
+  with 2+ rounds are initially collapsed; single rounds remain ordinary rows.
+  Reviewer steps derive Waiting/Active/Paused/Completed from persisted timer history.
+  Active shared-group actions pause/account the frozen session before resolving
+  its current reviewer steps through the same per-task workflow; later reviewer
+  steps and newly queued rounds are excluded. Partial batches refresh the queue.
+- The authenticated application shell shares one timer snapshot/clock between the
+  global header, queue, and task details. The header links to the active round or
+  project/stage group; timer changes notify other tabs and reload server state.
+- `control_review_timer` starts/pauses one user-wide active session, protected by a
+  unique partial index and reviewer advisory locks. A shared session freezes its
+  round membership and tracks elapsed server microseconds once. Resume creates a
+  new idempotent session ID; previous intervals remain historical. Approval/rework
+  accounts and pauses the whole shared session before closing the individual step.
+  Profile/membership/project eligibility loss pauses it in that transition transaction.
+- `review_timer_daily` keeps exact date-split time and automatic minute baselines;
+  `review_timer_buckets` conserves each fixed membership's equal whole-minute
+  allocation (UUID order resolves remainders). Precision carried between membership
+  shapes is separate from the group's own minutes and is never posted twice.
 - Round submission and sequential reviewer handoff atomically create a private
   `task_review_requested` notification for the current reviewer through the existing
   notification helper (active recipients only; no self-notifications). The bell
@@ -231,8 +249,14 @@ single active membership and atomically edits their day; RLS reads are self/admi
 Existing entries stay editable after project access changes. Task suggestions are
 limited to the user's assigned/collaborating tasks: daily activity (including
 checklist/progress edits), workflow changes, and active In Progress tasks even
-without daily activity. Reviews use submission/resolution timestamps. Other active tasks and assigned rounds can be added
-manually. Calendar context reuses canonical participant/recurrence statistics and
+without daily activity. Automatic review suggestions require timer activity,
+recorded time, or same-day resolution; untouched waiting reviews are excluded.
+Other active tasks and assigned rounds can still be added manually. Timer reads,
+pauses, and decisions checkpoint time across Kyiv date boundaries into the same
+editable entries. `get_work_log_timer_snapshot` atomically captures totals and
+automatic baselines; saves merge later timer deltas instead of overwriting them.
+Automatic timer writes never create or submit `work_log_days`. Explicit daily
+submission and the existing weekly/statistics aggregations remain separate. Calendar context reuses canonical participant/recurrence statistics and
 is never persisted as work-log rows. Standard-day minutes live on `studios`
 (default 480), with an admin-guarded setter; no overtime calculation is attached.
 

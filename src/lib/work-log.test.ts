@@ -214,13 +214,13 @@ describe("pending review suggestions", () => {
     reviewers: [{ reviewer_id: "reviewer", approved_at: null, position: 0 }],
     task: { status: "internal_review", stage: "stage_1", project: { status: "active", archived_at: null } }, ...changes,
   });
-  it("carries unfinished current reviews across days without suggesting work before submission", () => {
+  it("does not suggest untouched waiting reviews on submission or subsequent days", () => {
     expect(getSuggestedReviewRoundIds([pending()], "reviewer", "2026-10-06")).toEqual([]);
     for (const date of ["2026-10-07", "2026-10-08", "2026-10-12"]) {
-      expect(getSuggestedReviewRoundIds([pending()], "reviewer", date)).toEqual([roundId]);
+      expect(getSuggestedReviewRoundIds([pending()], "reviewer", date)).toEqual([]);
     }
   });
-  it("only carries the active sequential step, after the previous reviewer approved", () => {
+  it("does not infer work from a sequential reviewer handoff", () => {
     const waiting = pending({ reviewer_id: "first", reviewers: [
       { reviewer_id: "first", approved_at: null, position: 0 }, { reviewer_id: "reviewer", approved_at: null, position: 1 },
     ] });
@@ -230,7 +230,7 @@ describe("pending review suggestions", () => {
     ] });
     expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-07")).toEqual([]);
     expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-08")).toEqual([]);
-    expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-09")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-09")).toEqual([]);
   });
   it("preserves same-day completion activity but stops carrying closed or approved reviews", () => {
     const closed = pending({ completed_at: "2026-10-08T10:00:00Z" });
@@ -242,14 +242,14 @@ describe("pending review suggestions", () => {
     expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-08")).toEqual([roundId]);
     expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-09")).toEqual([]);
   });
-  it("uses the existing queue's task and project eligibility for carried reviews", () => {
+  it("does not treat queue eligibility as actual review activity", () => {
     const base = pending();
     for (const task of [
       { ...base.task, status: "in_progress" as const },
       { ...base.task, project: { ...base.task.project, archived_at: "2026-10-08T10:00:00Z" } },
       { ...base.task, project: { ...base.task.project, status: "completed" as const } },
     ]) expect(getSuggestedReviewRoundIds([pending({ task })], "reviewer", "2026-10-09")).toEqual([]);
-    expect(getSuggestedReviewRoundIds([pending({ task: { ...base.task, stage: "stage_4", project: { ...base.task.project, status: "completed" } } })], "reviewer", "2026-10-09")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([pending({ task: { ...base.task, stage: "stage_4", project: { ...base.task.project, status: "completed" } } })], "reviewer", "2026-10-09")).toEqual([]);
   });
 });
 
