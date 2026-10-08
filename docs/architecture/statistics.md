@@ -20,6 +20,22 @@ reviewers receive no count. Reviews do not enter completed-task counts or the
 productivity attribution ledger. Calendar activity statistics keep their existing
 source and definitions.
 
+The header Work Log keeps the daily editor under one week navigator, with saved
+daily totals and submission statuses. The UI, Work Log API and authenticated save RPC accept only today
+or earlier dates in Kyiv; past weeks remain editable. Weekly task/review totals read `work_log_entries`; Calendar duration uses the canonical
+daily Calendar calculation and remains read-only. `work_log_days.submitted_at`
+records explicit submission through the atomic `save_daily_work_log` RPC,
+including an empty 0-hour day. Duration and the studio's standard-workday setting
+never determine completion. The submission migration backfills retained entries;
+old empty saves have no retained evidence. Missing-day eligibility reuses weekday,
+membership and studio-day-off rules, excluding approved, uncancelled all-day
+absences. Partial-day absences remain eligible. Reminder toasts are local to the
+browser session, with one per Kyiv day and one prior-week summary per week.
+The badge, toasts and missing-day catch-up use only dates before today in the
+current and previous Monday-based week, starting no earlier than the later of
+Work Tracking rollout (`2026-10-07`) and the employee's join date. Older logs
+retain their totals and submission statuses and remain navigable/editable.
+
 | Measure | Source and definition | Historical limit |
 | --- | --- | --- |
 | Completed projects / delivered physical area | Production-enabled Projects currently completed, or archived with `completed_at`; count each project once and sum `total_area_m2` by official completion date. | Area is the current project field, not a historical snapshot. Reopening clears completion; this is retained completion state, not every completion cycle. |

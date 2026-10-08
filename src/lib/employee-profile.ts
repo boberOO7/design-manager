@@ -1,4 +1,5 @@
-import { addCalendarDays, APPLICATION_TIME_ZONE, instantToDateOnly, parseDateOnly, startOfMondayWeek } from "@/lib/calendar";
+import { addCalendarDays, APPLICATION_TIME_ZONE, instantToDateOnly, startOfMondayWeek } from "@/lib/calendar";
+import { getWorkdayKind } from "@/lib/workdays";
 import { filterProductivityAttributionsForPeriod, getKyivMonthBounds, projectProductivityLeaderboard, type ProductivityContributionAttribution } from "@/lib/productivity";
 import type { Database } from "@/types/database.types";
 
@@ -29,16 +30,11 @@ export function buildProfileHeatmap({ tasks, joinedAt, timeOff = [], studioDaysO
     seen.add(task.id);
     counts.set(day, (counts.get(day) ?? 0) + 1);
   }
-  const daysOff = new Set(studioDaysOff);
   const days = Array.from({ length: 52 * 7 }, (_, index) => {
     const date = addCalendarDays(start, index);
     const count = counts.get(date) ?? 0;
-    const weekday = parseDateOnly(date).getDay();
     const kind = date > today ? "future"
-      : joinedDate && date < joinedDate ? "before_joining"
-      : daysOff.has(date) ? "studio_day_off"
-      : timeOff.some((period) => period.start_date <= date && period.end_date >= date) ? "time_off"
-      : weekday === 0 || weekday === 6 ? "weekend" : "day";
+      : getWorkdayKind(date, { joinedDate, timeOff, studioDaysOff });
     return { date, count, kind, level: count === 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : count <= 6 ? 3 : 4 };
   });
   return {

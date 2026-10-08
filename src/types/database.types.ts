@@ -6475,6 +6475,42 @@ export type Database = {
           },
         ]
       }
+      work_log_days: {
+        Row: {
+          studio_id: string
+          submitted_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          studio_id: string
+          submitted_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          studio_id?: string
+          submitted_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_log_days_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_log_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_log_entries: {
         Row: {
           activity_kind: string

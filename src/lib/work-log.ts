@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { addCalendarDays, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, instantToDateOnly, startOfMondayWeek, zonedWallTimeToIso } from "@/lib/calendar";
+import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import { isActivityChange, isActivityChanges } from "@/lib/project-activity";
 import { buildCalendarStatistics, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
 import type { Database, Json } from "@/types/database.types";
@@ -23,17 +24,110 @@ const dailyRowSchema = entryFields.extend({
   minutes: z.number().int().nonnegative(), title: z.string().nullable(), projectName: z.string().nullable(), roundNumber: z.number().nullable(),
 });
 export const dailyWorkLogSchema = z.object({
-  date: z.iso.date(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
+  date: z.iso.date(), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
   activeTasks: z.array(z.object({ id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
   calendar: z.object({ minutes: z.number().nonnegative(), categories: z.array(z.object({ eventType: z.enum(STATISTICS_CALENDAR_TYPES), minutes: z.number().nonnegative(), allDayCount: z.number() })) }),
 });
+
+const timeSummarySchema = z.object({ taskMinutes: z.number().nonnegative(), reviewMinutes: z.number().nonnegative(),
+  calendarMinutes: z.number().nonnegative(), totalMinutes: z.number().nonnegative() });
+export const weeklyWorkLogSchema = z.object({
+  start: z.iso.date(), through: z.iso.date(), today: z.iso.date(),
+  days: z.array(timeSummarySchema.extend({ date: z.iso.date(), submittedAt: z.string().nullable(),
+    kind: z.enum(WORKDAY_KINDS), missing: z.boolean() })),
+  totals: timeSummarySchema,
+});
+export type WeeklyWorkLog = z.infer<typeof weeklyWorkLogSchema>;
+export const workLogRemindersSchema = z.object({
+  scope: z.string(), today: z.iso.date(), missingDates: z.array(z.iso.date()), latestEligibleDate: z.iso.date().nullable(),
+  previousWeek: z.iso.date(), previousWeekMissing: z.array(z.iso.date()),
+});
+export type WorkLogReminders = z.infer<typeof workLogRemindersSchema>;
+
+export type WorkLogEligibility = Parameters<typeof getWorkdayKind>[1];
+type SubmittedDay = Pick<Tables["work_log_days"]["Row"], "work_date" | "submitted_at">;
+
+// Work Tracking was introduced on this Kyiv date (the original Work Log migration).
+export const WORK_TRACKING_ROLLOUT_DATE = "2026-10-07";
+
+export function getWorkLogReminderWindow(today: string, joinedDate: string | null) {
+  const previousWeek = addCalendarDays(startOfMondayWeek(today), -7);
+  const from = [WORK_TRACKING_ROLLOUT_DATE, joinedDate ?? today]
+    .reduce((latest, date) => date > latest ? date : latest, previousWeek);
+  return { from, previousWeek };
+}
+
+export function buildWeeklyWorkLog(date: string, today: string, entries: Array<WorkLogEntry & { work_date: string }>,
+  submissions: SubmittedDay[], calendarMinutes: ReadonlyMap<string, number>, eligibility: WorkLogEligibility): WeeklyWorkLog {
+  const start = startOfMondayWeek(date);
+  const reminderWindow = getWorkLogReminderWindow(today, eligibility.joinedDate);
+  const submitted = new Map(submissions.map(day => [day.work_date, day.submitted_at]));
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const day = addCalendarDays(start, index);
+    const submittedAt = submitted.get(day) ?? null;
+    const kind = getWorkdayKind(day, eligibility);
+    return { date: day, submittedAt, kind, missing: day >= reminderWindow.from && day < today && kind === "day" && submittedAt === null,
+      ...summarizeLoggedTime(entries.filter(row => row.work_date === day), calendarMinutes.get(day) ?? 0) };
+  });
+  const totals = days.reduce((sum, day) => ({ taskMinutes: sum.taskMinutes + day.taskMinutes,
+    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
+    totalMinutes: sum.totalMinutes + day.totalMinutes }), summarizeLoggedTime([]));
+  return { start, through: addCalendarDays(start, 6), today, days, totals };
+}
+
+export function buildWorkLogReminders(today: string, submissions: SubmittedDay[], eligibility: WorkLogEligibility) {
+  const submitted = new Set(submissions.map(day => day.work_date));
+  const missingDates: string[] = [];
+  let latestEligibleDate: string | null = null;
+  const { from, previousWeek } = getWorkLogReminderWindow(today, eligibility.joinedDate);
+  for (let day = from; day < today; day = addCalendarDays(day, 1)) {
+    if (getWorkdayKind(day, eligibility) !== "day") continue;
+    latestEligibleDate = day;
+    if (!submitted.has(day)) missingDates.push(day);
+  }
+  const week = startOfMondayWeek(today);
+  return { today, missingDates, latestEligibleDate, previousWeek,
+    previousWeekMissing: missingDates.filter(day => day >= previousWeek && day < week) };
+}
 
 export function workLogRowKey(row: Pick<WorkLogEntry, "task_id" | "review_round_id">) {
   return row.review_round_id ? `review:${row.review_round_id}` : `task:${row.task_id}`;
 }
 
+export function isWorkLogDateEditable(date: string, today: string) {
+  return date <= today;
+}
+
 export function workLogDayBounds(date: string) {
   return { start: zonedWallTimeToIso(`${date}T00:00`), end: zonedWallTimeToIso(`${addCalendarDays(date, 1)}T00:00`) };
+}
+
+type SuggestedReviewRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "reviewer_id" | "submitted_at" | "completed_at"> & {
+  reviewers: Array<Pick<Tables["task_review_round_reviewers"]["Row"], "reviewer_id" | "approved_at" | "position">>;
+  task: Pick<Tables["tasks"]["Row"], "status" | "stage"> & { project: Pick<Tables["projects"]["Row"], "status" | "archived_at"> };
+};
+
+export function getSuggestedReviewRoundIds(rounds: SuggestedReviewRound[], userId: string, date: string) {
+  const { start, end } = workLogDayBounds(date);
+  const inDay = (instant: string | null) => instant !== null && Date.parse(instant) >= Date.parse(start) && Date.parse(instant) < Date.parse(end);
+  return rounds.filter(round => {
+    const ownStep = round.reviewers.find(step => step.reviewer_id === userId);
+    if (!ownStep || Date.parse(round.submitted_at) >= Date.parse(end)) return false;
+    const approvedToday = inDay(ownStep.approved_at);
+    // Previous approvals establish when the current sequential step began.
+    const activeSince = Math.max(Date.parse(round.submitted_at), ...round.reviewers
+      .filter(step => step.position < ownStep.position && step.approved_at)
+      .map(step => Date.parse(step.approved_at ?? round.submitted_at)));
+    // Preserve actual same-day activity, including resolved rounds.
+    if (approvedToday || (round.reviewer_id === userId
+      && (inDay(round.completed_at) || (inDay(round.submitted_at) && activeSince < Date.parse(end))))) return true;
+    // Only the current unresolved step carries into subsequent days.
+    return round.completed_at === null && round.reviewer_id === userId && ownStep.approved_at === null
+      && round.task.status === "internal_review" && !round.task.project.archived_at
+      && round.task.project.status !== "archived"
+      && (round.task.project.status !== "completed" || round.task.stage === "stage_4")
+      && activeSince < Date.parse(end);
+  }).map(round => round.id);
 }
 
 /** A completed round credits each reviewer who actually resolved their step,

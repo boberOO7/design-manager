@@ -1,5 +1,6 @@
+import { instantToDateOnly } from "./calendar";
 import { describe, expect, it } from "vitest";
-import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, getSuggestedTaskIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
+import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, isWorkLogDateEditable, getSuggestedTaskIds, getSuggestedReviewRoundIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
 import { buildCalendarStatistics, calendarStatisticsAssignments, type StatisticsCalendarEvent } from "./statistics-calendar";
 import { statisticsPeriods, statisticsRange } from "./statistics";
 
@@ -203,5 +204,69 @@ describe("work log domain", () => {
     const moved = event({ id: "override", series_id: parent.id, occurrence_start: parent.starts_at, starts_at: "2026-10-08T06:00:00Z", ends_at: "2026-10-08T07:00:00Z" });
     expect(getDailyCalendarContext([parent, moved], [], [], "reviewer", "2026-10-07", "2026-10-09T12:00:00Z").minutes).toBe(0);
     expect(workLogDayBounds("2026-10-07")).toEqual({ start: "2026-10-06T21:00:00.000Z", end: "2026-10-07T21:00:00.000Z" });
+  });
+});
+
+
+describe("pending review suggestions", () => {
+  const pending = (changes: Partial<Parameters<typeof getSuggestedReviewRoundIds>[0][number]> = {}): Parameters<typeof getSuggestedReviewRoundIds>[0][number] => ({
+    id: roundId, reviewer_id: "reviewer", submitted_at: "2026-10-07T10:00:00Z", completed_at: null,
+    reviewers: [{ reviewer_id: "reviewer", approved_at: null, position: 0 }],
+    task: { status: "internal_review", stage: "stage_1", project: { status: "active", archived_at: null } }, ...changes,
+  });
+  it("carries unfinished current reviews across days without suggesting work before submission", () => {
+    expect(getSuggestedReviewRoundIds([pending()], "reviewer", "2026-10-06")).toEqual([]);
+    for (const date of ["2026-10-07", "2026-10-08", "2026-10-12"]) {
+      expect(getSuggestedReviewRoundIds([pending()], "reviewer", date)).toEqual([roundId]);
+    }
+  });
+  it("only carries the active sequential step, after the previous reviewer approved", () => {
+    const waiting = pending({ reviewer_id: "first", reviewers: [
+      { reviewer_id: "first", approved_at: null, position: 0 }, { reviewer_id: "reviewer", approved_at: null, position: 1 },
+    ] });
+    expect(getSuggestedReviewRoundIds([waiting], "reviewer", "2026-10-08")).toEqual([]);
+    const active = pending({ reviewers: [
+      { reviewer_id: "first", approved_at: "2026-10-09T10:00:00Z", position: 0 }, { reviewer_id: "reviewer", approved_at: null, position: 1 },
+    ] });
+    expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-07")).toEqual([]);
+    expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-08")).toEqual([]);
+    expect(getSuggestedReviewRoundIds([active], "reviewer", "2026-10-09")).toEqual([roundId]);
+  });
+  it("preserves same-day completion activity but stops carrying closed or approved reviews", () => {
+    const closed = pending({ completed_at: "2026-10-08T10:00:00Z" });
+    expect(getSuggestedReviewRoundIds([closed], "reviewer", "2026-10-08")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([closed], "reviewer", "2026-10-09")).toEqual([]);
+    const approvedStep = pending({ reviewer_id: "second", reviewers: [
+      { reviewer_id: "reviewer", approved_at: "2026-10-08T10:00:00Z", position: 0 }, { reviewer_id: "second", approved_at: null, position: 1 },
+    ] });
+    expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-08")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-09")).toEqual([]);
+  });
+  it("uses the existing queue's task and project eligibility for carried reviews", () => {
+    const base = pending();
+    for (const task of [
+      { ...base.task, status: "in_progress" as const },
+      { ...base.task, project: { ...base.task.project, archived_at: "2026-10-08T10:00:00Z" } },
+      { ...base.task, project: { ...base.task.project, status: "completed" as const } },
+    ]) expect(getSuggestedReviewRoundIds([pending({ task })], "reviewer", "2026-10-09")).toEqual([]);
+    expect(getSuggestedReviewRoundIds([pending({ task: { ...base.task, stage: "stage_4", project: { ...base.task.project, status: "completed" } } })], "reviewer", "2026-10-09")).toEqual([roundId]);
+  });
+});
+
+
+describe("editable Work Log dates", () => {
+  it("allows historical days and today, and rejects future dates across month and year boundaries", () => {
+    for (const date of ["2025-12-31", "2026-01-01", "2026-10-07", "2026-10-08"]) {
+      expect(isWorkLogDateEditable(date, "2026-10-08")).toBe(true);
+    }
+    for (const date of ["2026-10-09", "2026-11-01", "2027-01-01"]) {
+      expect(isWorkLogDateEditable(date, "2026-10-08")).toBe(false);
+    }
+  });
+  it("uses the Kyiv day rather than the UTC day at midnight", () => {
+    const today = instantToDateOnly("2026-10-08T21:30:00Z");
+    expect(today).toBe("2026-10-09");
+    expect(isWorkLogDateEditable("2026-10-09", today)).toBe(true);
+    expect(isWorkLogDateEditable("2026-10-10", today)).toBe(false);
   });
 });

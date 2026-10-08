@@ -1,10 +1,38 @@
 import "server-only";
 
-import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
+import { resolveActiveStudioMembership, type ActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { loadAllRows } from "@/data/queries/all-rows";
 import { createClient } from "@/lib/supabase/server";
-import { instantToDateOnly } from "@/lib/calendar";
-import { completedReviewCredits, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedTaskIds, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
+import { addCalendarDays, instantToDateOnly, startOfMondayWeek } from "@/lib/calendar";
+import { buildWeeklyWorkLog, buildWorkLogReminders, completedReviewCredits, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedReviewRoundIds, getSuggestedTaskIds, getWorkLogReminderWindow, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+function loadWorkLogCalendar(client: Client, studioId: string) {
+  return loadAllRows((from, to) => client.from("calendar_events")
+    .select("id,event_type,starts_at,ends_at,all_day,project_id,organizer_id,assignee_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id,invites:calendar_event_invites(event_id,user_id,status),participants:calendar_event_participants(event_id,user_id)")
+    .eq("studio_id", studioId).order("id").range(from, to));
+}
+
+async function loadWorkLogEligibility(client: Client, membership: ActiveStudioMembership, from: string | null, through: string) {
+  let joinedAt = membership.joined_at;
+  if (!joinedAt) {
+    const profile = await client.from("profiles").select("created_at").eq("id", membership.authenticatedUserId).single();
+    if (profile.error) throw new Error("Unable to load membership date.", { cause: profile.error });
+    joinedAt = profile.data.created_at;
+  }
+  const joinedDate = instantToDateOnly(joinedAt);
+  const start = from ?? getWorkLogReminderWindow(through, joinedDate).from;
+  const [absences, daysOff] = await Promise.all([
+    loadAllRows((first, last) => client.from("time_off_requests").select("start_date,end_date")
+      .eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId)
+      .eq("status", "approved").eq("all_day", true).is("cancelled_at", null)
+      .lte("start_date", through).gte("end_date", start).order("id").range(first, last)),
+    loadAllRows((first, last) => client.from("studio_days_off").select("date")
+      .eq("studio_id", membership.studio_id).gte("date", start).lte("date", through).order("date").range(first, last)),
+  ]);
+  if (absences.error || daysOff.error) throw new Error("Unable to load work calendar.", { cause: absences.error ?? daysOff.error });
+  return { joinedDate, timeOff: absences.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date) };
+}
 
 export async function getDailyWorkLog(date: string) {
   const access = await resolveActiveStudioMembership();
@@ -12,8 +40,7 @@ export async function getDailyWorkLog(date: string) {
   const { studio_id: studioId, authenticatedUserId: userId } = access.membership;
   const client = await createClient();
   const { start, end } = workLogDayBounds(date);
-  const inDay = (instant: string | null) => instant !== null && Date.parse(instant) >= Date.parse(start) && Date.parse(instant) < Date.parse(end);
-  const [saved, activities, tasks, rounds, events] = await Promise.all([
+  const [saved, activities, tasks, rounds, events, submission] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries")
       .select("activity_kind,task_id,review_round_id,minutes,task:tasks(title,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
       .eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).order("id").range(from, to)),
@@ -24,13 +51,13 @@ export async function getDailyWorkLog(date: string) {
       .select("id,title,status,assignee_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at),collaborators:task_collaborators(user_id)")
       .eq("project.studio_id", studioId).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("task_review_rounds")
-      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at),task:tasks!inner(title,project:projects!tasks_project_id_fkey!inner(studio_id,name))")
+      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at,position),task:tasks!inner(title,status,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at))")
       .eq("task.project.studio_id", studioId).lt("submitted_at", end)
       .or(`completed_at.is.null,completed_at.gte.${start}`).order("id").range(from, to)),
-    loadAllRows((from, to) => client.from("calendar_events")
-      .select("id,event_type,starts_at,ends_at,all_day,project_id,organizer_id,assignee_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id,invites:calendar_event_invites(event_id,user_id,status),participants:calendar_event_participants(event_id,user_id)")
-      .eq("studio_id", studioId).order("id").range(from, to)),
+    loadWorkLogCalendar(client, studioId),
+    client.from("work_log_days").select("submitted_at").eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).maybeSingle(),
   ]);
+  if (submission.error) throw new Error("Unable to load work log submission.", { cause: submission.error });
   for (const result of [saved, activities, tasks, rounds, events]) {
     if (result.error || !result.data) throw new Error("Unable to load daily work log.", { cause: result.error });
   }
@@ -39,10 +66,8 @@ export async function getDailyWorkLog(date: string) {
   const activeTasks = taskRows.filter(task => task.status !== "completed" && task.status !== "cancelled"
     && !task.project.archived_at && task.project.status !== "archived"
     && (task.project.status !== "completed" || task.stage === "stage_4"));
-  const relevantReviews = reviewRows.filter(round => round.reviewers.some(row => row.reviewer_id === userId
-    && (round.reviewer_id === userId || inDay(row.approved_at)))
-    && (inDay(round.submitted_at) || inDay(round.completed_at)
-      || round.reviewers.some(row => row.reviewer_id === userId && inDay(row.approved_at))));
+  const suggestedReviewIds = new Set(getSuggestedReviewRoundIds(reviewRows, userId, date));
+  const relevantReviews = reviewRows.filter(round => suggestedReviewIds.has(round.id));
   const reviewTaskIds = new Set(reviewRows.filter(round => round.reviewers.some(row => row.reviewer_id === userId)).map(round => round.task_id));
   const suggestedIds = getSuggestedTaskIds(activities.data ?? [], userId, participating, reviewTaskIds,
     activeTasks.filter(task => task.status === "in_progress").map(task => task.id));
@@ -66,12 +91,53 @@ export async function getDailyWorkLog(date: string) {
   const calendarEvents = events.data ?? [];
   const calendar = getDailyCalendarContext(calendarEvents, calendarEvents.flatMap(row => row.invites),
     calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString());
-  return dailyWorkLogSchema.parse({ date, rows: uniqueRows, additionalReviews, activeTasks: activeTasks.map(task => ({
+  return dailyWorkLogSchema.parse({ date, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows, additionalReviews, activeTasks: activeTasks.map(task => ({
     id: task.id, title: task.title, projectName: task.project.name, isParticipating: participating.has(task.id),
   })), calendar });
 }
 
 export type DailyWorkLog = NonNullable<Awaited<ReturnType<typeof getDailyWorkLog>>>;
+
+export async function getWeeklyWorkLog(date: string, now = new Date()) {
+  const access = await resolveActiveStudioMembership();
+  if (access.status !== "ACTIVE_STUDIO") return null;
+  const { membership } = access;
+  const { studio_id: studioId, authenticatedUserId: userId } = membership;
+  const client = await createClient();
+  const start = startOfMondayWeek(date), through = addCalendarDays(start, 6);
+  const [entries, submissions, events, eligibility] = await Promise.all([
+    loadAllRows((from, to) => client.from("work_log_entries").select("activity_kind,task_id,review_round_id,minutes,work_date")
+      .eq("studio_id", studioId).eq("user_id", userId).gte("work_date", start).lte("work_date", through).order("id").range(from, to)),
+    client.from("work_log_days").select("work_date,submitted_at").eq("studio_id", studioId).eq("user_id", userId)
+      .gte("work_date", start).lte("work_date", through),
+    loadWorkLogCalendar(client, studioId),
+    loadWorkLogEligibility(client, membership, start, through),
+  ]);
+  if (entries.error || submissions.error || events.error) throw new Error("Unable to load weekly work log.", { cause: entries.error ?? submissions.error ?? events.error });
+  const calendarEvents = events.data ?? [];
+  const invites = calendarEvents.flatMap(row => row.invites), participants = calendarEvents.flatMap(row => row.participants);
+  const calendarMinutes = new Map(Array.from({ length: 7 }, (_, index) => {
+    const day = addCalendarDays(start, index);
+    return [day, getDailyCalendarContext(calendarEvents, invites, participants, userId, day, now.toISOString()).minutes];
+  }));
+  return buildWeeklyWorkLog(date, instantToDateOnly(now.toISOString()), entries.data ?? [], submissions.data ?? [], calendarMinutes, eligibility);
+}
+
+export async function getWorkLogReminders(now = new Date()) {
+  const access = await resolveActiveStudioMembership();
+  if (access.status !== "ACTIVE_STUDIO") return null;
+  const { membership } = access;
+  const client = await createClient();
+  const today = instantToDateOnly(now.toISOString());
+  const eligibility = await loadWorkLogEligibility(client, membership, null, today);
+  const reminderWindow = getWorkLogReminderWindow(today, eligibility.joinedDate);
+  const submissions = await loadAllRows((from, to) => client.from("work_log_days").select("work_date,submitted_at")
+    .eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId)
+    .gte("work_date", reminderWindow.from).lt("work_date", today).order("work_date").range(from, to));
+  if (submissions.error) throw new Error("Unable to load work log reminders.", { cause: submissions.error });
+  return { scope: `${membership.studio_id}:${membership.authenticatedUserId}`,
+    ...buildWorkLogReminders(today, submissions.data ?? [], eligibility) };
+}
 
 export async function getEmployeeWorkStatistics(studioId: string, userId: string) {
   const client = await createClient();
