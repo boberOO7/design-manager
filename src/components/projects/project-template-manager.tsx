@@ -4,14 +4,14 @@ import { DragDropProvider, DragOverlay, PointerSensor, useDragDropManager, useDr
 import { Scroller } from "@dnd-kit/dom";
 import { useSortable } from "@dnd-kit/react/sortable";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, GitFork, GripVertical, Link2, Link2Off, ListChecks, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Copy, GitFork, GripVertical, Link2, Link2Off, ListChecks, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import { getActiveProjectTemplates, getTemplateDependencyIssue, getTemplateStageTasks, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStage, type ProjectTemplateTask } from "@/lib/project-templates";
+import { createProjectTemplateCopy, getActiveProjectTemplates, getTemplateDependencyIssue, getTemplateStageTasks, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, PROJECT_TEMPLATE_STAGES, type ProjectTemplate, type ProjectTemplateStage, type ProjectTemplateTask } from "@/lib/project-templates";
 import { getProjectTemplateTaskDestination, isProjectTemplateTaskDestinationChange, moveProjectTemplateTask, type ProjectTemplateTaskDestination } from "@/lib/project-template-task-order";
 import { isProjectTypeKey, PROJECT_TYPE_KEYS, type ProjectTypeKey } from "@/lib/validation/project";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ function newTask(stage: ProjectTemplateStage, position: number): ProjectTemplate
 
 export function ProjectTemplateManager({ initialTemplates, studioId, checklistTemplates }: { initialTemplates: ProjectTemplate[]; studioId: string; checklistTemplates: StudioChecklistTemplate[] }) {
   const projectTypes = useTranslations("ProjectTypes");
+  const projectTemplates = useTranslations("ProjectTemplates");
   const [templates, setTemplates] = useState(initialTemplates);
   const [selectedId, setSelectedId] = useState<string | null>(initialTemplates[0]?.id ?? null);
   const [category, setCategory] = useState<TemplateCategory>("all");
@@ -55,6 +56,11 @@ export function ProjectTemplateManager({ initialTemplates, studioId, checklistTe
   function selectCategory(nextCategory: TemplateCategory) { const nextTemplates = nextCategory === "all" ? activeTemplates : activeTemplates.filter((template) => template.projectType === nextCategory); setCategory(nextCategory); setSelectedId(nextTemplates[0]?.id ?? null); setDraft(null); setError(""); setMode("preview"); }
   function beginEdit() { if (selected) { setDraft(draftFrom(selected)); setPendingTask(null); setError(""); setMode("edit"); } }
   function beginCreate() { setSelectedId(null); setDraft(draftFrom(null)); setPendingTask(null); setError(""); setMode("create"); }
+  function beginDuplicate() {
+    if (!selected) return;
+    setDraft(createProjectTemplateCopy(selected, projectTemplates("copyName", { name: selected.name })));
+    setPendingTask(null); setError(""); setMode("create");
+  }
   function updateTask(taskId: string, patch: Partial<ProjectTemplateTask>) {
     setDraft((current) => current ? { ...current, tasks: current.tasks.map((task) => {
       if (task.id === taskId) return { ...task, ...patch, dependsOnIds: patch.expectedWorkdays === null || (patch.dependencyMode && patch.dependencyMode !== "custom") ? [] : patch.dependsOnIds ?? task.dependsOnIds };
@@ -156,7 +162,7 @@ export function ProjectTemplateManager({ initialTemplates, studioId, checklistTe
         </div>
       </div>
     </div>
-    {mode === "preview" ? <TemplatePreview checklistTemplates={checklistTemplates} template={selected} onDelete={remove} onEdit={beginEdit} projectTypeLabel={projectTypes} /> : draft ? <TemplateEditor checklistTemplates={checklistTemplates} draft={draft} error={error} onAddTask={beginTaskDraft} onClosePendingTask={closeEmptyTaskDraft} onCancelPendingTask={cancelTaskDraft} onCancel={() => { setDraft(null); setPendingTask(null); setMode("preview"); setError(""); }} onCommitPendingTask={commitPendingTask} onMoveTask={moveTask} onPendingTaskChange={updatePendingTask} onRemoveTask={removeDraftTask} onUpdate={(patch) => setDraft({ ...draft, ...patch })} onUpdateTask={updateTask} onSave={() => void save()} pendingTask={pendingTask} projectTypeLabel={projectTypes} saving={saving} /> : null}
+    {mode === "preview" ? <TemplatePreview checklistTemplates={checklistTemplates} template={selected} onDelete={remove} onDuplicate={beginDuplicate} onEdit={beginEdit} projectTypeLabel={projectTypes} /> : draft ? <TemplateEditor checklistTemplates={checklistTemplates} draft={draft} error={error} onAddTask={beginTaskDraft} onClosePendingTask={closeEmptyTaskDraft} onCancelPendingTask={cancelTaskDraft} onCancel={() => { setDraft(null); setPendingTask(null); setMode("preview"); setError(""); }} onCommitPendingTask={commitPendingTask} onMoveTask={moveTask} onPendingTaskChange={updatePendingTask} onRemoveTask={removeDraftTask} onUpdate={(patch) => setDraft({ ...draft, ...patch })} onUpdateTask={updateTask} onSave={() => void save()} pendingTask={pendingTask} projectTypeLabel={projectTypes} saving={saving} /> : null}
   </div>;
 }
 
@@ -164,9 +170,10 @@ function TemplateHeader({ children, compact = false }: { children: React.ReactNo
   return <header className={cn("flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ui-border)]", compact ? "py-0" : "min-h-16 py-2")}>{children}</header>;
 }
 
-function TemplatePreview({ checklistTemplates, onDelete, onEdit, projectTypeLabel, template }: { checklistTemplates: StudioChecklistTemplate[]; onDelete: (template: ProjectTemplate) => void; onEdit: () => void; projectTypeLabel: (key: ProjectTypeKey) => string; template: ProjectTemplate | null }) {
+function TemplatePreview({ checklistTemplates, onDelete, onDuplicate, onEdit, projectTypeLabel, template }: { checklistTemplates: StudioChecklistTemplate[]; onDelete: (template: ProjectTemplate) => void; onDuplicate: () => void; onEdit: () => void; projectTypeLabel: (key: ProjectTypeKey) => string; template: ProjectTemplate | null }) {
+  const projectTemplates = useTranslations("ProjectTemplates");
   if (!template) return <section className="rounded-[var(--ui-radius-panel)] border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface-subtle)] p-6 text-sm text-[var(--ui-text-muted)]">Оберіть шаблон зі списку або створіть новий.</section>;
-  return <section className="min-w-0 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><TemplateHeader compact><div className="min-w-0"><h1 className="truncate text-xl font-semibold tracking-tight text-[var(--ui-text)]">{template.name}</h1><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--ui-text-muted)]"><span>{projectTypeLabel(template.projectType)}</span><span className="ui-numeric">{template.tasks.length} задач</span>{template.isDefault ? <span className="text-[var(--ui-success-text)]">За замовчуванням</span> : null}</div></div><div className="flex shrink-0 gap-1"><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-text-secondary)]" onClick={onEdit} aria-label={`Редагувати ${template.name}`} title="Редагувати"><Pencil className="size-4" aria-hidden="true" /></Button><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-text-secondary)] hover:text-[var(--ui-danger-text)]" onClick={() => onDelete(template)} aria-label={`Видалити ${template.name}`} title="Видалити"><Trash2 className="size-4" aria-hidden="true" /></Button></div></TemplateHeader><TemplateStageGrid checklistTemplates={checklistTemplates} tasks={template.tasks} /></section>;
+  return <section className="min-w-0 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5"><TemplateHeader compact><div className="min-w-0"><h1 className="truncate text-xl font-semibold tracking-tight text-[var(--ui-text)]">{template.name}</h1><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--ui-text-muted)]"><span>{projectTypeLabel(template.projectType)}</span><span className="ui-numeric">{template.tasks.length} задач</span>{template.isDefault ? <span className="text-[var(--ui-success-text)]">За замовчуванням</span> : null}</div></div><div className="flex shrink-0 gap-1"><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-text-secondary)]" onClick={onEdit} aria-label={`Редагувати ${template.name}`} title="Редагувати"><Pencil className="size-4" aria-hidden="true" /></Button><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-text-secondary)]" onClick={onDuplicate} aria-label={projectTemplates("duplicateTemplate")} title={projectTemplates("duplicateTemplate")}><Copy className="size-4" aria-hidden="true" /></Button><Button type="button" size="sm" variant="ghost" className="size-10 p-0 text-[var(--ui-text-secondary)] hover:text-[var(--ui-danger-text)]" onClick={() => onDelete(template)} aria-label={`Видалити ${template.name}`} title="Видалити"><Trash2 className="size-4" aria-hidden="true" /></Button></div></TemplateHeader><TemplateStageGrid checklistTemplates={checklistTemplates} tasks={template.tasks} /></section>;
 }
 
 function TemplateEditor({ checklistTemplates, draft, error, onAddTask, onCancel, onCancelPendingTask, onClosePendingTask, onCommitPendingTask, onMoveTask, onPendingTaskChange, onRemoveTask, onSave, onUpdate, onUpdateTask, pendingTask, projectTypeLabel, saving }: { checklistTemplates: StudioChecklistTemplate[]; draft: Draft; error: string; onAddTask: (stage: ProjectTemplateStage) => void; onCancel: () => void; onClosePendingTask: () => void; onCancelPendingTask: () => void; onCommitPendingTask: () => void; onMoveTask: (sourceId: string, destination: ProjectTemplateTaskDestination) => boolean; onPendingTaskChange: (title: string) => void; onRemoveTask: (taskId: string) => void; onSave: () => void; onUpdate: (patch: Partial<Draft>) => void; onUpdateTask: (taskId: string, patch: Partial<ProjectTemplateTask>) => void; pendingTask: PendingTask | null; projectTypeLabel: (key: ProjectTypeKey) => string; saving: boolean }) {

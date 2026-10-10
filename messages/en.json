@@ -1133,6 +1133,8 @@
     "removeStage": "Remove {title}"
   },
   "ProjectTemplates": {
+    "duplicateTemplate": "Duplicate template",
+    "copyName": "{name} (copy)",
     "stageScheduleStartDate": "Stage schedule start date",
     "defaultTemplate": "Default template",
     "applyStageAction": "Apply template",

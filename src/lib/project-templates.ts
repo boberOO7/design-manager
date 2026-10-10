@@ -34,6 +34,20 @@ export type ProjectTemplate = {
   tasks: ProjectTemplateTask[];
 };
 
+export function createProjectTemplateCopy(template: ProjectTemplate, name: string): Omit<ProjectTemplate, "id"> & { id: null } {
+  const copiedTasks = new Map(template.tasks.map((task) => [task.id, { ...task, id: crypto.randomUUID() }]));
+  return {
+    ...template,
+    id: null,
+    name,
+    isDefault: false,
+    tasks: [...copiedTasks.values()].map((task) => ({
+      ...task,
+      dependsOnIds: task.dependsOnIds.map((id) => copiedTasks.get(id)?.id ?? id),
+    })),
+  };
+}
+
 export function getActiveProjectTemplates(templates: readonly ProjectTemplate[]) {
   return templates.filter((template) => template.isActive);
 }

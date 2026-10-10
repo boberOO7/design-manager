@@ -1133,6 +1133,8 @@
     "removeStage": "Видалити «{title}»"
   },
   "ProjectTemplates": {
+    "duplicateTemplate": "Дублювати шаблон",
+    "copyName": "{name} (копія)",
     "stageScheduleStartDate": "Дата початку графіка етапу",
     "defaultTemplate": "Шаблон за замовчуванням",
     "applyStageAction": "Застосувати шаблон",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { moveProjectTemplateTask } from "@/lib/project-template-task-order";
-import { getActiveProjectTemplates, getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateDependencyIssue, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
+import { createProjectTemplateCopy, getActiveProjectTemplates, getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateDependencyIssue, getTemplateStageTasks, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
 
 const templates: ProjectTemplate[] = [
   { id: "dental", name: "Стоматологія", projectType: "medical", isActive: true, isDefault: true, tasks: [] },
@@ -52,6 +52,62 @@ describe("project template selection", () => {
 function scheduledTask(id: string, position: number, dependencyMode: ProjectTemplateTask["dependencyMode"] = "after_previous", dependsOnIds: string[] = []): ProjectTemplateTask {
   return { id, stage: "stage_1", title: id, priority: "normal", position, checklistTemplateId: null, expectedWorkdays: 1, dependencyMode, dependsOnIds };
 }
+
+describe("project template duplication", () => {
+  function populatedTemplate(): ProjectTemplate {
+    return { ...templates[0], tasks: [
+      { ...scheduledTask("A", 0, "independent"), checklistTemplateId: "shared-checklist", expectedWorkdays: 2 },
+      scheduledTask("B", 1),
+      scheduledTask("C", 2, "independent"),
+      scheduledTask("D", 3, "custom", ["B", "C"]),
+      { ...scheduledTask("E", 4, "independent"), stage: "stage_2", expectedWorkdays: 5 },
+      { ...scheduledTask("F", 5, "independent"), stage: "stage_3", expectedWorkdays: null },
+      { ...scheduledTask("G", 6, "independent"), stage: "stage_4", expectedWorkdays: null },
+    ] };
+  }
+
+  it("copies all stages and task configuration with new IDs and remapped dependencies", () => {
+    const original = populatedTemplate();
+    const copy = createProjectTemplateCopy(original, `${original.name} (копія)`);
+    const copiedIds = new Map(original.tasks.map((task, index) => [task.id, copy.tasks[index].id]));
+
+    expect(copy).toMatchObject({ id: null, name: "Стоматологія (копія)", projectType: "medical", isActive: true, isDefault: false });
+    expect(new Set(copy.tasks.map((task) => task.id)).size).toBe(original.tasks.length);
+    for (const [index, task] of copy.tasks.entries()) {
+      expect(original.tasks.some((source) => source.id === task.id)).toBe(false);
+      expect(task).toEqual({ ...original.tasks[index], id: task.id, dependsOnIds: original.tasks[index].dependsOnIds.map((id) => copiedIds.get(id)) });
+      expect(task).not.toBe(original.tasks[index]);
+      expect(task.dependsOnIds).not.toBe(original.tasks[index].dependsOnIds);
+    }
+    expect(getTemplateStageTasks(copy, "stage_1").map((task) => task.title)).toEqual(["A", "B", "C", "D"]);
+    expect(getTemplateTaskDirectDependencies(copy.tasks, copy.tasks[1].id)).toEqual([copy.tasks[0].id]);
+    expect(getTemplateTaskDirectDependencies(copy.tasks, copy.tasks[3].id)).toEqual([copy.tasks[1].id, copy.tasks[2].id]);
+    expect(getTemplateDependencyIssue(copy.tasks)).toBeNull();
+  });
+
+  it("keeps the original and its default status unchanged when the copy is edited, saved, and removed", () => {
+    const original = populatedTemplate();
+    const snapshot = structuredClone(original);
+    const copy = createProjectTemplateCopy(original, `${original.name} (копія)`);
+    copy.name = "Новий шаблон";
+    copy.tasks[0].title = "Нова задача";
+    copy.tasks[0].expectedWorkdays = 7;
+    copy.tasks[3].dependsOnIds.pop();
+    copy.tasks.pop();
+
+    const saved = { ...copy, id: "saved-copy" };
+    const result = mergeSavedProjectTemplate([original], saved);
+    expect(result.find((template) => template.id === saved.id)).toEqual(saved);
+    expect(result.find((template) => template.id === original.id)).toEqual(snapshot);
+    expect(getDefaultProjectTemplate(result, "medical")).toEqual(snapshot);
+    expect(result.filter((template) => template.id !== saved.id)).toEqual([snapshot]);
+    expect(original).toEqual(snapshot);
+  });
+
+  it("also copies empty templates", () => {
+    expect(createProjectTemplateCopy(templates[0], "Стоматологія (копія)")).toEqual({ ...templates[0], id: null, name: "Стоматологія (копія)", isDefault: false, tasks: [] });
+  });
+});
 
 describe("template dependency modes", () => {
   it("defaults an ordered chain to only its immediate predecessor and follows reorder", () => {
