@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatReviewElapsed, reviewGroupElapsed, reviewSessionElapsed, reviewTimerForRound, type ReviewTimerSnapshot } from "./review-timer";
+import { formatReviewElapsed, reviewGroupElapsed, reviewSessionElapsed, reviewTimerForRound, reviewTimerPollingInterval, type ReviewTimerSnapshot } from "./review-timer";
 
 describe("review timer presentation", () => {
   const now = Date.parse("2026-10-08T10:02:00Z");
@@ -7,6 +7,22 @@ describe("review timer presentation", () => {
     accounted_at: "2026-10-08T10:01:00Z", elapsed_us: 60_000_000,
     members: [{ round_id: "a", finished_at: null }, { round_id: "b", finished_at: null }] };
   const snapshot: ReviewTimerSnapshot = { serverNow: new Date(now).toISOString(), userId: "reviewer", sessions: [session] };
+  it("switches between idle, running, paused, resumed, and finished polling cadences", () => {
+    const idle = { ...snapshot, sessions: [] };
+    const paused: ReviewTimerSnapshot = { ...snapshot, sessions: [{ ...session, state: "paused", accounted_at: null }] };
+    const finished: ReviewTimerSnapshot = { ...snapshot, sessions: [{ ...session, state: "completed", accounted_at: null }] };
+    expect([idle, snapshot, paused, snapshot, finished].map(reviewTimerPollingInterval)).toEqual([120_000, 15_000, 60_000, 15_000, 120_000]);
+    expect(reviewTimerPollingInterval(null)).toBe(120_000);
+  });
+  it("keeps active accounting cadence when an admin observes another reviewer's timer", () => {
+    const paused: ReviewTimerSnapshot = { ...snapshot, sessions: [{ ...session, state: "paused" }] };
+    expect(reviewTimerPollingInterval({ ...paused, sessions: [...paused.sessions, { ...session, user_id: "another-reviewer" }] })).toBe(15_000);
+    expect(reviewTimerPollingInterval({ ...paused, userId: "admin" })).toBe(60_000);
+  });
+  it("does not treat completed paused members as unfinished review work", () => {
+    expect(reviewTimerPollingInterval({ ...snapshot, sessions: [{ ...session, state: "paused", accounted_at: null,
+      members: session.members.map(member => ({ ...member, finished_at: snapshot.serverNow })) }] })).toBe(120_000);
+  });
   it("extrapolates from the authoritative checkpoint and counts group time once", () => {
     expect(reviewSessionElapsed(session, now)).toBe(120);
     expect(reviewTimerForRound(snapshot, "a", "reviewer", now).seconds).toBe(60);

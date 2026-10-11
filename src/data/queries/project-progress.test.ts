@@ -21,17 +21,21 @@ const tasks: Array<ProjectTaskForProgress & { project_id: string; deadlines: Arr
 }));
 
 const taskRequests: URL[] = [];
+const tablesRequested: string[] = [];
 let failedOffset: number | null;
 
 beforeEach(() => {
   vi.clearAllMocks();
   taskRequests.length = 0;
+  tablesRequested.length = 0;
+  mocks.refresh.mockResolvedValue(undefined);
   failedOffset = null;
   const client = createClient<ApplicationDatabase>("http://localhost:54321", "test-key", {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { fetch: async (input) => {
       const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
       const table = url.pathname.split("/").at(-1);
+      if (table) tablesRequested.push(table);
       const offset = Number(url.searchParams.get("offset") ?? 0);
       const limit = Math.min(1000, Number(url.searchParams.get("limit") ?? 1000));
       if (table === "tasks") {
@@ -50,6 +54,20 @@ beforeEach(() => {
 });
 
 describe("complete project-summary reads", () => {
+  it("loads participants and stage configuration while schedules refresh, then reads task progress", async () => {
+    let finishRefresh = () => {};
+    mocks.refresh.mockReturnValueOnce(new Promise<void>(resolve => { finishRefresh = resolve; }));
+    const loading = getAccessibleProjectsWithTasks();
+    await vi.waitFor(() => {
+      expect(tablesRequested).toContain("project_members");
+      expect(tablesRequested).toContain("project_task_stage_columns");
+    });
+    expect(taskRequests).toHaveLength(0);
+    finishRefresh();
+    expect((await loading).error).toBeNull();
+    expect(taskRequests).not.toHaveLength(0);
+  });
+
   it("loads a portfolio above the API cap in batches and matches individual detail summaries", async () => {
     const result = await getAccessibleProjectsWithTasks();
     expect(result.error).toBeNull();

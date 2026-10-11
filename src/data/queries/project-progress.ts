@@ -60,9 +60,8 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   }
   if (projects.length === 0) return { projects: [], error: null };
   const ids = projects.map((project) => project.id);
-  await refreshProjectTaskSchedules(ids);
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
-    getTasksForProgress(supabase, ids),
+    refreshProjectTaskSchedules(ids).then(() => getTasksForProgress(supabase, ids)),
     loadAllRows((from, to) => supabase
       .from("project_members")
       .select("project_id, user_id, profile:profiles!project_members_user_id_fkey!inner(id, full_name, avatar_url, is_active)")

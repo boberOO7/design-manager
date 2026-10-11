@@ -104,8 +104,9 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
       if (action === "rework") setRework({ ...target, rounds: remaining });
     } finally {
       // Partial batches retain successful transitions and refresh the unfinished queue.
+      window.dispatchEvent(new Event("review-timer-change"));
       await timer.reload().catch(() => setError(timerText("failed")));
-      router.refresh(); window.dispatchEvent(new Event("review-timer-change"));
+      router.refresh();
       resolutionPending.current = false; setResolving(false);
     }
   }

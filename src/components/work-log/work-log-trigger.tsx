@@ -21,32 +21,42 @@ export function WorkLogTrigger() {
   const seen = useRef(new Map<string, string>());
   const modalOpen = useRef(false);
   const requestSequence = useRef(0);
-  const refresh = useCallback(async (showToast = true, signal?: AbortSignal) => {
+  const inFlight = useRef<Promise<void> | null>(null);
+  const refresh = useCallback((showToast = true, signal?: AbortSignal) => {
+    if (showToast && inFlight.current) return inFlight.current;
     const sequence = ++requestSequence.current;
-    try {
-      const response = await fetch("/api/work-log?mode=reminders", { signal });
-      if (!response.ok) return;
-      const loaded = workLogRemindersSchema.parse(await response.json());
-      if (signal?.aborted || sequence !== requestSequence.current) return;
-      setData(loaded);
-      setReminder(current => current && isWorkLogReminderRelevant(current, loaded) ? current : null);
-      if (!showToast || modalOpen.current) return;
-      let next: WorkLogReminder | null;
-      try { next = takeWorkLogReminder(loaded, window.sessionStorage); }
-      catch { next = takeWorkLogReminder(loaded, { getItem: key => seen.current.get(key) ?? null, setItem: (key, value) => { seen.current.set(key, value); } }); }
-      if (next) setReminder(next);
-    } catch { /* Optional reminders must never block the daily editor. */ }
+    const request = (async () => {
+      try {
+        const response = await fetch("/api/work-log?mode=reminders", { signal });
+        if (!response.ok) return;
+        const loaded = workLogRemindersSchema.parse(await response.json());
+        if (signal?.aborted || sequence !== requestSequence.current) return;
+        setData(loaded);
+        setReminder(current => current && isWorkLogReminderRelevant(current, loaded) ? current : null);
+        if (!showToast || modalOpen.current) return;
+        let next: WorkLogReminder | null;
+        try { next = takeWorkLogReminder(loaded, window.sessionStorage); }
+        catch { next = takeWorkLogReminder(loaded, { getItem: key => seen.current.get(key) ?? null, setItem: (key, value) => { seen.current.set(key, value); } }); }
+        if (next) setReminder(next);
+      } catch { /* Optional reminders must never block the daily editor. */ }
+    })().finally(() => { if (inFlight.current === request) inFlight.current = null; });
+    inFlight.current = request;
+    return request;
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    void refresh(true, controller.signal);
+    const initialLoad = window.setTimeout(() => { void refresh(true, controller.signal); }, 0);
     const onFocus = () => { void refresh(true, controller.signal); };
     window.addEventListener("focus", onFocus);
+    return () => { controller.abort(); window.clearTimeout(initialLoad); window.removeEventListener("focus", onFocus); };
+  }, [refresh]);
+
+  useEffect(() => {
     // Refresh when a long-running session crosses midnight in Kyiv.
     const today = instantToDateOnly(new Date().toISOString());
-    const timer = window.setTimeout(onFocus, Date.parse(workLogDayBounds(today).end) - Date.now() + 1000);
-    return () => { controller.abort(); window.clearTimeout(timer); window.removeEventListener("focus", onFocus); };
+    const timer = window.setTimeout(() => { void refresh(); }, Date.parse(workLogDayBounds(today).end) - Date.now() + 1000);
+    return () => window.clearTimeout(timer);
   }, [refresh, data?.today]);
 
   function launch(date?: string) {

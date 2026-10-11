@@ -16,6 +16,13 @@ export const reviewTimerSnapshotSchema = z.object({
 export type ReviewTimerSnapshot = z.infer<typeof reviewTimerSnapshotSchema>;
 export type ReviewTimerSession = ReviewTimerSnapshot["sessions"][number];
 
+export function reviewTimerPollingInterval(snapshot: ReviewTimerSnapshot | null) {
+  // The RLS-scoped snapshot may include other reviewers' timers for admin views.
+  if (snapshot?.sessions.some(session => session.state === "active")) return 15_000;
+  if (snapshot?.sessions.some(session => session.state === "paused" && session.members.some(member => !member.finished_at))) return 60_000;
+  return 120_000;
+}
+
 export function currentReviewTimerSession(snapshot: ReviewTimerSnapshot | null) {
   const own = snapshot?.sessions.filter(session => session.user_id === snapshot.userId) ?? [];
   const active = own.find(session => session.state === "active");
