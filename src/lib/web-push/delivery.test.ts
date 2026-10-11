@@ -31,6 +31,26 @@ describe("server Web Push delivery", () => {
     expect(await deliverWebPush()).toMatchObject(status === 404 || status === 410 ? { expired: 1 } : { retry: 1 });
     expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", expect.objectContaining({ p_status: status }));
   });
+  it("expires a regex-shaped invalid subscription public key rejected by real encryption", async () => {
+    const { default: actual } = await vi.importActual<{ default: typeof webPush }>("web-push");
+    mocks.send.mockImplementation((...args: Parameters<typeof webPush.generateRequestDetails>) => {
+      // Request generation encrypts locally; never contact the provider.
+      actual.generateRequestDetails(...args);
+      return Promise.resolve({ statusCode: 201 });
+    });
+    expect(await deliverWebPush()).toMatchObject({ expired: 1, retry: 0 });
+    expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 410 });
+  });
+  it.each([
+    new Error("Socket timeout"),
+    Object.assign(new Error("connection reset"), { code: "ECONNRESET" }),
+    Object.assign(new Error("VAPID signing failed"), { code: "ERR_OSSL_UNSUPPORTED" }),
+    new Error("unrelated encryption failure"),
+  ])("keeps transient and unrelated local failures retryable: %s", async error => {
+    mocks.send.mockRejectedValueOnce(error);
+    expect(await deliverWebPush()).toMatchObject({ expired: 0, retry: 1 });
+    expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 0 });
+  });
   it("rejects unsafe endpoints and rotated VAPID bindings before sending", async () => {
     mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [{ ...job, endpoint: "https://127.0.0.1/private" }, { ...job, vapid_public_key: "old-key" }] : null, error: null }));
     expect(await deliverWebPush()).toMatchObject({ expired: 2 });

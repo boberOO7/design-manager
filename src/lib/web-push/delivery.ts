@@ -26,6 +26,9 @@ export async function deliverWebPush() {
       } catch (error) {
         // Provider error bodies/endpoints can contain capabilities; never log them.
         if (error instanceof webPush.WebPushError) status = error.statusCode;
+        // The encryption library's ECDH failure identifies an invalid p256dh
+        // point. Reuse expired-endpoint cleanup; all other errors still retry.
+        else if (error instanceof Error && "code" in error && error.code === "ERR_CRYPTO_ECDH_INVALID_PUBLIC_KEY") status = 410;
       }
     }
     const finished = await admin.rpc("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: status });

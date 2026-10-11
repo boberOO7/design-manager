@@ -392,6 +392,8 @@
     "rememberMe": "Remember me",
     "signingOut": "Signing out…",
     "signOutFailed": "Failed to sign out.",
+    "signOutPushCleanupFailed": "You’re still signed in. We couldn’t safely stop background notifications. Check your connection, reload StudioFlow, then try signing out again.",
+    "reloadStudioFlow": "Reload StudioFlow",
     "notificationsUnavailable": "Notifications unavailable",
     "editProfilePhoto": "Edit profile photo",
     "closeProfilePhoto": "Close profile settings",

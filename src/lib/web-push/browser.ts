@@ -31,12 +31,77 @@ export function pushOptInOwner() {
   try { return localStorage.getItem(optInKey); } catch { return null; }
 }
 
+async function clearWorkerNotifications(worker: ServiceWorker) {
+  await new Promise<void>((resolve, reject) => {
+    const channel = new MessageChannel();
+    const finish = (error?: Error) => {
+      clearTimeout(timeout);
+      channel.port1.close();
+      channel.port2.close();
+      if (error) reject(error); else resolve();
+    };
+    const timeout = setTimeout(() => finish(new Error("Push cleanup acknowledgement timed out.")), 10_000);
+    channel.port1.onmessage = (event: MessageEvent<unknown>) => {
+      if (event.data && typeof event.data === "object" && "type" in event.data) {
+        if (event.data.type === "STUDIOFLOW_PUSH_CLEARED") finish();
+        else if (event.data.type === "STUDIOFLOW_PUSH_CLEAR_FAILED") finish(new Error("Push cleanup failed."));
+      }
+    };
+    try { worker.postMessage({ type: "STUDIOFLOW_PUSH_CLEAR" }, [channel.port2]); }
+    catch { finish(new Error("Push cleanup unavailable.")); }
+  });
+}
+
+async function updatedWorker(registration: ServiceWorkerRegistration, previous: ServiceWorker) {
+  return new Promise<ServiceWorker>((resolve, reject) => {
+    const workers = new Set<ServiceWorker>();
+    let settled = false;
+    const finish = (worker?: ServiceWorker) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      registration.removeEventListener("updatefound", check);
+      workers.forEach(value => value.removeEventListener("statechange", check));
+      if (worker) resolve(worker); else reject(new Error("Updated Push worker unavailable."));
+    };
+    const check = () => {
+      if (settled) return;
+      for (const worker of [previous, registration.installing, registration.waiting, registration.active]) {
+        if (worker && !workers.has(worker)) {
+          workers.add(worker);
+          worker.addEventListener("statechange", check);
+        }
+      }
+      // Activation retires the previous worker after its pending events finish.
+      // An ACK from a replacement alone cannot confirm the old worker is done.
+      const active = registration.active;
+      if (active && active !== previous && active.state === "activated" && previous.state === "redundant") finish(active);
+    };
+    const timeout = setTimeout(() => finish(), 10_000);
+    registration.addEventListener("updatefound", check);
+    check();
+    try {
+      if (!settled) void registration.update().then(() => {
+        check();
+        if (!registration.installing && !registration.waiting && registration.active === previous) finish();
+      }).catch(() => finish());
+    } catch { finish(); }
+  });
+}
+
 export async function disableWebPush() {
   try { localStorage.removeItem(optInKey); } catch { /* Storage may be disabled. */ }
   if (!window.isSecureContext || !("serviceWorker" in navigator)) return;
   const registration = await navigator.serviceWorker.getRegistration("/");
   if (!registration) return;
-  registration.active?.postMessage({ type: "STUDIOFLOW_PUSH_CLEAR" });
+  const worker = registration.active;
+  if (worker) {
+    try { await clearWorkerNotifications(worker); }
+    catch (error) {
+      try { await clearWorkerNotifications(await updatedWorker(registration, worker)); }
+      catch { throw error; } // Never replace an unconfirmed cleanup with success.
+    }
+  }
   const subscription = await registration.pushManager?.getSubscription();
   if (!subscription) return;
   // Unsubscribe first: a network failure must not leave this browser receiving.
@@ -78,6 +143,7 @@ export async function enableWebPush(userId: string, locale: string) {
     try {
       await saveSubscription(subscription, locale, userId);
       localStorage.setItem(optInKey, userId);
+      registration.active?.postMessage({ type: "STUDIOFLOW_PUSH_ENABLED" });
     } catch (error) {
       await subscription.unsubscribe();
       try { localStorage.removeItem(optInKey); } catch { /* Storage may be disabled. */ }

@@ -16,15 +16,19 @@ export function SignOutButton() {
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cleanupFailed, setCleanupFailed] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   const handleSignOut = async () => {
     setIsLoading(true);
     setError(null);
+    setCleanupFailed(false);
+    let cleanupComplete = false;
     try {
-      // Session deletion and verified SW requests revoke delivery even if browser cleanup fails.
-      await disableWebPush().catch(() => {});
+      // Do not revoke the session until pending worker displays are cancelled and closed.
+      await disableWebPush();
+      cleanupComplete = true;
       const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
       if (signOutError) throw signOutError;
       setRememberMe(true);
@@ -32,7 +36,8 @@ export function SignOutButton() {
       router.refresh();
     } catch (err) {
       console.error("Error signing out:", err);
-      setError(t("signOutFailed"));
+      setCleanupFailed(!cleanupComplete);
+      setError(t(cleanupComplete ? "signOutFailed" : "signOutPushCleanupFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -50,6 +55,7 @@ export function SignOutButton() {
         {isLoading ? t("signingOut") : t("signOut")}
       </ShellControl>
       {error ? <span role="alert" className="text-xs text-[var(--ui-danger-text)]">{error}</span> : null}
+      {cleanupFailed ? <Button type="button" variant="outline" size="sm" disabled={isLoading} onClick={() => window.location.reload()}>{t("reloadStudioFlow")}</Button> : null}
       <Dialog isOpen={confirmationOpen} onRequestClose={() => { if (!isLoading) setConfirmationOpen(false); }} returnFocusRef={triggerRef} closeDisabled={isLoading} closeLabel={t("close")} title={t("signOutConfirmTitle")} description={t("signOutConfirmDescription")} className="h-auto max-w-md">
         <div className="flex justify-end gap-2 p-5 sm:p-6">
           <Button data-dialog-initial-focus type="button" variant="outline" disabled={isLoading} onClick={() => setConfirmationOpen(false)}>{t("cancel")}</Button>

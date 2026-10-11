@@ -392,6 +392,8 @@
     "rememberMe": "Запам’ятати мене",
     "signingOut": "Вихід…",
     "signOutFailed": "Не вдалося вийти.",
+    "signOutPushCleanupFailed": "Ви ще в акаунті. Не вдалося безпечно зупинити фонові сповіщення. Перевірте з’єднання, перезавантажте StudioFlow і спробуйте вийти ще раз.",
+    "reloadStudioFlow": "Перезавантажити StudioFlow",
     "notificationsUnavailable": "Сповіщення недоступні",
     "editProfilePhoto": "Змінити фото профілю",
     "closeProfilePhoto": "Закрити налаштування профілю",

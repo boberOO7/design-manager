@@ -6,6 +6,7 @@ function worker(windows: { focused: boolean; visibilityState: "visible" | "hidde
   const handlers = new Map<string, (event: object) => void>();
   const shown = new Map<string, boolean>();
   const show = vi.fn().mockResolvedValue(undefined);
+  const getNotifications = vi.fn().mockResolvedValue([]);
   const navigate = vi.fn().mockResolvedValue({});
   const focus = vi.fn().mockResolvedValue(undefined);
   const openWindow = vi.fn();
@@ -16,6 +17,7 @@ function worker(windows: { focused: boolean; visibilityState: "visible" | "hidde
       const transaction = { oncomplete: () => {}, objectStore: () => ({
         get: (id: string) => ({ result: shown.get(id) }),
         put: (value: boolean,id: string) => { shown.set(id,value); return { result: id }; },
+        clear: () => { shown.clear(); return { result: undefined }; },
       }) };
       queueMicrotask(() => transaction.oncomplete());
       return transaction;
@@ -26,9 +28,10 @@ function worker(windows: { focused: boolean; visibilityState: "visible" | "hidde
     queueMicrotask(() => request.onsuccess());
     return request;
   } };
-  runInNewContext(readFileSync("public/sw.js","utf8"), { URL, Notification: { permission: "granted" }, indexedDB, fetch,
+  const matchAll = vi.fn(async () => windows.map(client => ({ ...client, url: client.url ?? "https://studio.test/dashboard", navigate, focus })));
+  runInNewContext(readFileSync("public/sw.js","utf8"), { URL, AbortController, Notification: { permission: "granted" }, indexedDB, fetch,
     self: { location: { origin: "https://studio.test" }, addEventListener: (name: string,handler: (event: object) => void) => handlers.set(name,handler),
-      registration: { showNotification: show }, clients: { matchAll: async () => windows.map(client => ({ ...client, url: client.url ?? "https://studio.test/dashboard", navigate, focus })), openWindow } },
+      registration: { showNotification: show, getNotifications }, clients: { matchAll, openWindow } },
   });
   async function fire(name: string, input: object) {
     let work = Promise.resolve();
@@ -36,10 +39,90 @@ function worker(windows: { focused: boolean; visibilityState: "visible" | "hidde
     await work;
   }
   const data = { notificationId: "65000000-0000-0000-0000-000000000030", subscriptionId: "65000000-0000-0000-0000-000000000020", recipientId: "65000000-0000-0000-0000-000000000010", body: "Sensitive HR preview" };
-  return { handlers, show, navigate, focus, fetch, openWindow, data, fire };
+  return { handlers, show, getNotifications, matchAll, navigate, focus, fetch, openWindow, data, fire };
 }
 
 describe("background Push service worker", () => {
+  it("CLEAR aborts an in-flight preview and invalidates queued push work", async () => {
+    const w = worker();
+    let signal: AbortSignal | undefined;
+    w.fetch.mockImplementationOnce((_url, options: RequestInit) => new Promise((_resolve, reject) => {
+      signal = options.signal ?? undefined;
+      signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    }));
+    const pending = w.fire("push", { data: { json: () => w.data } });
+    await vi.waitFor(() => expect(w.fetch).toHaveBeenCalledOnce());
+    const queued = w.fire("push", { data: { json: () => ({ ...w.data, notificationId: "65000000-0000-0000-0000-000000000031" }) } });
+    const port = { postMessage: vi.fn(), close: vi.fn() };
+    await w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" }, ports: [port] });
+    await Promise.all([pending, queued]);
+    expect(signal?.aborted).toBe(true);
+    expect(w.fetch).toHaveBeenCalledOnce();
+    expect(w.show).not.toHaveBeenCalled();
+    expect(port.postMessage).toHaveBeenCalledWith({ type: "STUDIOFLOW_PUSH_CLEARED" });
+    expect(port.close).toHaveBeenCalledOnce();
+  });
+
+  it("CLEAR prevents a late preview response from displaying after cancellation", async () => {
+    const w = worker();
+    let release = () => {};
+    w.fetch.mockImplementationOnce(() => new Promise(resolve => {
+      release = () => resolve({ ok: true, json: async () => ({ recipientId: w.data.recipientId, href: "/dashboard", read: false }) });
+    }));
+    const pending = w.fire("push", { data: { json: () => w.data } });
+    await vi.waitFor(() => expect(w.fetch).toHaveBeenCalledOnce());
+    const port = { postMessage: vi.fn(), close: vi.fn() };
+    const clearing = w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" }, ports: [port] });
+    release();
+    await Promise.all([pending, clearing]);
+    expect(w.show).not.toHaveBeenCalled();
+    expect(port.postMessage).toHaveBeenCalledWith({ type: "STUDIOFLOW_PUSH_CLEARED" });
+  });
+
+  it("CLEAR rechecks cancellation after the asynchronous window lookup", async () => {
+    const w = worker();
+    let release = () => {};
+    w.matchAll.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve([]); }));
+    const pending = w.fire("push", { data: { json: () => w.data } });
+    await vi.waitFor(() => expect(w.matchAll).toHaveBeenCalledOnce());
+    const clearing = w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" } });
+    release();
+    await Promise.all([pending, clearing]);
+    expect(w.show).not.toHaveBeenCalled();
+  });
+
+  it("CLEAR waits for an in-flight display, closes it before ACK and requires fresh opt-in", async () => {
+    const w = worker();
+    let release = () => {};
+    w.show.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve(undefined); }));
+    const pending = w.fire("push", { data: { json: () => w.data } });
+    await vi.waitFor(() => expect(w.show).toHaveBeenCalledOnce());
+    const close = vi.fn();
+    w.getNotifications.mockResolvedValueOnce([{ close }]);
+    const port = { postMessage: vi.fn(), close: vi.fn() };
+    const clearing = w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" }, ports: [port] });
+    expect(w.getNotifications).not.toHaveBeenCalled();
+    expect(port.postMessage).not.toHaveBeenCalled();
+    release();
+    await Promise.all([pending, clearing]);
+    expect(close).toHaveBeenCalledOnce();
+    expect(close.mock.invocationCallOrder[0]).toBeLessThan(port.postMessage.mock.invocationCallOrder[0]);
+    expect(port.postMessage).toHaveBeenCalledWith({ type: "STUDIOFLOW_PUSH_CLEARED" });
+    await w.fire("push", { data: { json: () => w.data } });
+    expect(w.show).toHaveBeenCalledOnce();
+    await w.fire("message", { data: { type: "STUDIOFLOW_PUSH_ENABLED" } });
+    await w.fire("push", { data: { json: () => w.data } });
+    expect(w.show).toHaveBeenCalledTimes(2);
+  });
+
+  it("CLEAR reports failed cleanup rather than acknowledging success", async () => {
+    const w = worker();
+    w.getNotifications.mockRejectedValueOnce(new Error("worker cleanup failed"));
+    const port = { postMessage: vi.fn(), close: vi.fn() };
+    await w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" }, ports: [port] });
+    expect(port.postMessage).toHaveBeenCalledExactlyOnceWith({ type: "STUDIOFLOW_PUSH_CLEAR_FAILED" });
+  });
+
   it("displays the authorized server preview instead of untrusted push text", async () => {
     const w = worker();
     w.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ recipientId: w.data.recipientId, href: "/projects/project?task=task", read: false, title: "Нове призначене завдання", body: "«План кухні» · Квартира" }) });

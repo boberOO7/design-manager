@@ -26,9 +26,9 @@ async function receipt(id, write = false) {
   } finally { db.close(); }
 }
 
-async function resolveNotification(data) {
+async function resolveNotification(data, signal) {
   if (!data || !uuid.test(data.notificationId) || !uuid.test(data.subscriptionId) || !uuid.test(data.recipientId)) return null;
-  const response = await fetch(`/api/push/notifications/${data.notificationId}?subscriptionId=${data.subscriptionId}`, { credentials: "include", cache: "no-store" });
+  const response = await fetch(`/api/push/notifications/${data.notificationId}?subscriptionId=${data.subscriptionId}`, { credentials: "include", cache: "no-store", signal });
   if (!response.ok) return null;
   const notification = await response.json();
   if (notification.recipientId !== data.recipientId || typeof notification.href !== "string") return null;
@@ -38,15 +38,26 @@ async function resolveNotification(data) {
 }
 
 let pushWork = Promise.resolve();
+let pushGeneration = 0;
+let pushPaused = false;
+let previewRequest;
 self.addEventListener("push", event => {
-  if (!event.data) return;
+  if (!event.data || pushPaused) return;
   let data;
   try { data = event.data.json(); } catch { return; }
+  const generation = pushGeneration;
+  const cancelled = () => pushPaused || generation !== pushGeneration;
   pushWork = pushWork.catch(() => {}).then(async () => {
-    if (Notification.permission !== "granted") return;
-    const notification = await resolveNotification(data);
-    if (!notification || notification.read || await receipt(data.notificationId).catch(() => false)) return;
+    if (cancelled() || Notification.permission !== "granted") return;
+    const controller = new AbortController();
+    previewRequest = controller;
+    let notification;
+    try { notification = await resolveNotification(data, controller.signal); }
+    catch (error) { if (cancelled()) return; throw error; }
+    finally { if (previewRequest === controller) previewRequest = undefined; }
+    if (cancelled() || !notification || notification.read || await receipt(data.notificationId).catch(() => false)) return;
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (cancelled()) return;
     if (windows.some(client => client.focused && new URL(client.url).origin === self.location.origin)) {
       await receipt(data.notificationId, true).catch(() => {});
       return;
@@ -94,17 +105,32 @@ self.addEventListener("pushsubscriptionchange", event => {
 });
 
 self.addEventListener("message", event => {
+  if (event.data?.type === "STUDIOFLOW_PUSH_ENABLED") {
+    // Only an explicit, successfully saved opt-in resumes this worker.
+    pushPaused = false;
+    return;
+  }
   if (event.data?.type !== "STUDIOFLOW_PUSH_CLEAR") return;
-  event.waitUntil((async () => {
+  ++pushGeneration;
+  pushPaused = true;
+  previewRequest?.abort();
+  // showNotification cannot be aborted. Wait for it before closing and ACKing.
+  pushWork = pushWork.catch(() => {}).then(async () => {
     const notifications = await self.registration.getNotifications();
     notifications.forEach(notification => notification.close());
     const db = await receiptDatabase();
-    await new Promise((resolve, reject) => {
-      const transaction = db.transaction("shown", "readwrite");
-      transaction.objectStore("shown").clear();
-      transaction.oncomplete = resolve;
-      transaction.onerror = reject;
-    });
-    db.close();
-  })());
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction("shown", "readwrite");
+        transaction.objectStore("shown").clear();
+        transaction.oncomplete = resolve;
+        transaction.onerror = reject;
+      });
+    } finally { db.close(); }
+  });
+  const port = event.ports?.[0];
+  event.waitUntil(pushWork.then(
+    () => port?.postMessage({ type: "STUDIOFLOW_PUSH_CLEARED" }),
+    () => port?.postMessage({ type: "STUDIOFLOW_PUSH_CLEAR_FAILED" }),
+  ).finally(() => port?.close()));
 });
