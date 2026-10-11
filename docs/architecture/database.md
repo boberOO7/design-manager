@@ -35,7 +35,7 @@ Use this map instead of duplicating their fields here.
 | Contractors | `contractors`, `contractor_categories`, `contractor_subcategories` |
 | CRM | `crm_leads`, `crm_lead_history`, `crm_candidates`, `crm_recruiting_cycles` |
 | Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments`, `workstations`, `equipment`, `equipment_service_events`, `office_floor_plan_placements` |
-| Delivery | `notifications` |
+| Delivery | `notifications`, session-bound `web_push_subscriptions`, server-only `web_push_deliveries`; `private.web_push_dispatch_state` coordinates post-commit pg_net calls and pending-work retry timers |
 | Finance | `finance_settings`, `finance_accounts`, `finance_currencies`, `finance_movements`, `finance_movement_entries`, `finance_categories`, `finance_expected_items`, `finance_allocations`, `finance_planning_requests`; derived views separate broad payment availability from actionable advances; see [Finance](finance.md) for cash, expected balances and historical invariants |
 
 ## Database boundary patterns

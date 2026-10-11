@@ -9,6 +9,7 @@ import { getTranslations } from "next-intl/server";
 import { DomainMessages } from "@/i18n/domain-messages";
 import { ReviewTimerProvider } from "@/hooks/use-review-timer";
 import { getReviewTimerSnapshot } from "@/data/queries/review-timers";
+import { PushLifecycle } from "@/components/layout/push-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <DomainMessages scope="shell">
+    <PushLifecycle key={studio.authenticatedUserId} userId={studio.authenticatedUserId} />
     <ReviewTimerProvider key={`${studio.studio_id}:${studio.authenticatedUserId}`} initialSnapshot={reviewTimer}>
     <div className="flex min-h-screen bg-[var(--ui-page)] text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
       <a href="#main-content" className="sr-only z-[60] rounded-[var(--ui-radius-control)] bg-[var(--ui-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--ui-action-primary-text)] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skipToContent")}</a>

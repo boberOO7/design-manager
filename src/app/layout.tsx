@@ -6,6 +6,7 @@ import { DARK_THEME_COLOR, LIGHT_THEME_COLOR } from "@/lib/theme";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { selectMessages } from "@/i18n/message-scopes";
+import { PwaProvider } from "@/components/layout/pwa-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +23,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
   title: "StudioFlow",
   description: t("tagline"),
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "StudioFlow", statusBarStyle: "default" },
   icons: {
+    apple: "/icons/studioflow-180.png",
     icon: [
       {
         url: "/favicon-light.svg",
@@ -55,7 +59,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <DocumentBootstrap />
       </head>
       <body className="min-h-full bg-[var(--ui-page)] font-sans text-[var(--ui-text)] lg:h-dvh lg:overflow-hidden">
-        <NextIntlClientProvider locale={locale} messages={selectMessages(messages, "root")}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale} messages={selectMessages(messages, "root")}><PwaProvider>{children}</PwaProvider></NextIntlClientProvider>
       </body>
     </html>
   );

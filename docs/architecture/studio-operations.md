@@ -327,7 +327,15 @@ Invariants:
 - A protected daily Vercel cron calls the idempotent equipment-maintenance
   notification RPC. Per-cycle due-date markers deduplicate upcoming and overdue
   thresholds and reset when a new due date is established.
-- Email, Web Push, service workers, and background delivery are not implemented.
+- Optional Web Push reuses notification inserts through a session-bound,
+  recipient-private subscription table and transactional delivery queue. A
+  post-commit pg_net webhook calls the protected server worker for generic OS
+  previews. Self-removing pg_cron timers recover only pending/failed work; there
+  is no Vercel Push cron or idle queue polling. Service-worker
+  display/click handling verifies the current recipient and reuses saved links.
+  Installation is optional on desktop Chrome/Edge; there is no offline cache.
+  See [PWA and Web Push](../pwa-web-push.md) for lifecycle and deployment details.
+- Email delivery is not implemented.
 
 Canonical paths: `src/data/queries/notifications.ts`,
 `src/components/layout/notification-bell.tsx`, `src/app/api/notifications/`, and

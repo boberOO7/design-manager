@@ -6889,6 +6889,98 @@ export type Database = {
           },
         ]
       }
+      web_push_deliveries: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          id: string
+          last_status: number | null
+          lease_token: string | null
+          next_attempt_at: string
+          notification_id: string
+          subscription_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          id?: string
+          last_status?: number | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          notification_id: string
+          subscription_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          id?: string
+          last_status?: number | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          notification_id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_push_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_push_deliveries_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "web_push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          locale: string
+          p256dh: string
+          session_id: string
+          user_id: string
+          vapid_public_key: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          locale?: string
+          p256dh: string
+          session_id: string
+          user_id: string
+          vapid_public_key: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          locale?: string
+          p256dh?: string
+          session_id?: string
+          user_id?: string
+          vapid_public_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_log_day_revisions: {
         Row: {
           created_at: string
@@ -9241,6 +9333,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_web_push_deliveries: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          auth: string
+          endpoint: string
+          id: string
+          lease_token: string
+          locale: string
+          notification_id: string
+          p256dh: string
+          subscription_id: string
+          user_id: string
+          vapid_public_key: string
+        }[]
+      }
       close_finance_expected_remainder: {
         Args: {
           p_date: string
@@ -9271,6 +9379,10 @@ export type Database = {
       complete_finance_payroll_cost: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
+      }
+      complete_web_push_dispatch: {
+        Args: { p_dispatch_id: string; p_success: boolean }
+        Returns: undefined
       }
       configure_finance_labor_automation: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
@@ -9440,6 +9552,10 @@ export type Database = {
           p_run_id: string
           p_source: string
         }
+        Returns: undefined
+      }
+      finish_web_push_delivery: {
+        Args: { p_id: string; p_lease_token: string; p_status: number }
         Returns: undefined
       }
       generate_equipment_maintenance_notifications: {
@@ -9738,6 +9854,16 @@ export type Database = {
       refresh_project_task_schedules: {
         Args: { p_project_ids: string[] }
         Returns: undefined
+      }
+      register_web_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_locale?: string
+          p_p256dh: string
+          p_vapid_public_key: string
+        }
+        Returns: string
       }
       reject_time_off_request: {
         Args: { p_request_id: string; p_review_note?: string }

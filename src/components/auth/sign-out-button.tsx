@@ -8,6 +8,7 @@ import { createClient, setRememberMe } from "@/lib/supabase/client";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { disableWebPush } from "@/lib/web-push/browser";
 
 export function SignOutButton() {
   const t = useTranslations("Account");
@@ -22,7 +23,10 @@ export function SignOutButton() {
     setIsLoading(true);
     setError(null);
     try {
-      await supabase.auth.signOut({ scope: "local" });
+      // Session deletion and verified SW requests revoke delivery even if browser cleanup fails.
+      await disableWebPush().catch(() => {});
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
+      if (signOutError) throw signOutError;
       setRememberMe(true);
       router.replace("/login");
       router.refresh();
