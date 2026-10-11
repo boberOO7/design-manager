@@ -13,6 +13,7 @@ import { isTaskOverdue } from "@/lib/tasks";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { DashboardTaskSummary, ProjectTask } from "@/types/tasks";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function DashboardTaskList({ currentUserId, tasks, items, today }: { currentUserId: string; tasks: DashboardTaskSummary[]; items: AdminMyWorkItem[]; today?: string }) {
   const t = useTranslations("Dashboard");
@@ -97,11 +98,11 @@ export function DashboardTaskList({ currentUserId, tasks, items, today }: { curr
         return <li key={task.id} className="group grid grid-cols-[minmax(0,1fr)_2.25rem] items-center gap-x-1 rounded-[var(--ui-radius-control)] px-3 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] sm:px-4 xl:grid-cols-[minmax(0,1fr)_10rem_5rem_10rem_2.25rem]">
           <button type="button" aria-label={`${task.title}. ${t("openTaskDetails")}`} onClick={() => openTaskDrawer(task.id)} className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_max-content] items-center gap-x-3 gap-y-1 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] xl:col-span-4 xl:grid-cols-[minmax(0,1fr)_10rem_5rem_10rem] xl:gap-x-1">
             <span className="min-w-0"><b className="block truncate text-sm font-medium text-[var(--ui-text)]">{task.title}</b><small className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{task.project.name}{relevantPriority ? ` · ${priority(task.priority)}` : ""}</small></span>
-            <span className={`ui-numeric min-w-0 truncate whitespace-nowrap text-xs ${overdue ? "font-semibold text-[var(--ui-danger-text)]" : dueToday ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`} title={task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}>{overdue ? `${t("overdue")} · ` : ""}{task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}</span>
-            <span className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]" title={stages(task.stage)}>{stages(task.stage)}</span>
+            <Tooltip content={task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}><span className={`ui-numeric min-w-0 truncate whitespace-nowrap text-xs ${overdue ? "font-semibold text-[var(--ui-danger-text)]" : dueToday ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>{overdue ? `${t("overdue")} · ` : ""}{task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}</span></Tooltip>
+            <Tooltip content={stages(task.stage)}><span className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]">{stages(task.stage)}</span></Tooltip>
             <span className={`w-fit max-w-full truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
           </button>
-          <Link href={`/projects/${task.project_id}?task=${task.id}`} aria-label={taskT("goToProject")} title={taskT("goToProject")} onClick={(event) => event.stopPropagation()} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><FolderKanban className="size-4" aria-hidden="true" /></Link>
+          <Tooltip content={taskT("goToProject")}><Link href={`/projects/${task.project_id}?task=${task.id}`} aria-label={taskT("goToProject")} onClick={(event) => event.stopPropagation()} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><FolderKanban className="size-4" aria-hidden="true" /></Link></Tooltip>
         </li>;
       })}
     </ul>

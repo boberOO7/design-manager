@@ -48,7 +48,7 @@ describe("PeoplePicker accessibility", () => {
     const people = [...props.people, { id: "third", name: "Third Person" }, { id: "fourth", name: "Fourth Person" }];
     const markup = renderToStaticMarkup(<PeoplePicker {...props} people={people} selectedIds={people.map((person) => person.id)} />);
     expect(markup.match(/data-people-chip="true"/g)).toHaveLength(2);
-    expect(markup).toMatch(/data-people-overflow="true">\+2<\/span>/);
+    expect(markup).toMatch(/data-people-overflow="true"[^>]*>\+2<\/span>/);
     expect(markup).not.toContain('aria-label="Remove Third Person"');
     expect(markup.match(/type="checkbox"[^>]*checked=""/g)).toHaveLength(4);
     expect(markup).toContain("Third Person");

@@ -6,6 +6,7 @@ import { ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TimePicker } from "@/components/ui/time-picker";
 import { allocateReviewMinutes, parseWorkLogDuration, workLogRowKey, type groupWorkLogRows, type WorkLogRow } from "@/lib/work-log";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }: {
   group: ReturnType<typeof groupWorkLogRows>[number]; disabled: boolean;
@@ -51,7 +52,7 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
         {isReview && partial && group.rows.length > 1 ? <input type="checkbox" aria-label={t("selectReview", { activity })} className="size-4 shrink-0 accent-[var(--ui-action-primary)]"
           disabled={disabled} checked={selectedKeys.includes(key)} onChange={event => select(event.target.checked ? [...selectedKeys, key] : selectedKeys.filter(value => value !== key))} /> : null}
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="line-clamp-2 text-sm font-medium" title={row.title ?? t("unavailableTask")}>{row.title ?? t("unavailableTask")}</p>
+          <Tooltip content={row.title ?? t("unavailableTask")}><p className="line-clamp-2 text-sm font-medium" tabIndex={0}>{row.title ?? t("unavailableTask")}</p></Tooltip>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ui-text-muted)]">
             {isReview ? <span className="shrink-0 rounded bg-[var(--ui-info-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-info-text)]">{t("reviewRound", { number: row.roundNumber ?? "?" })}</span> : null}
             <span className="truncate">{row.projectName}{stageName ? ` · ${stageName}` : ""}</span>
@@ -76,7 +77,7 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
         className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--ui-radius-control)] py-1 text-left text-sm transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">
         <ChevronDown aria-hidden className={`size-4 shrink-0 text-[var(--ui-text-muted)] transition-transform duration-200 motion-reduce:transition-none ${expanded ? "" : "-rotate-90"}`} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium" title={group.projectName ?? t("unavailableProject")}>{group.projectName ?? t("unavailableProject")}</span>
+          <Tooltip content={group.projectName ?? t("unavailableProject")}><span className="block truncate font-medium">{group.projectName ?? t("unavailableProject")}</span></Tooltip>
           {stageName ? <span className="block truncate text-xs text-[var(--ui-text-muted)]">{stageName}</span> : null}
         </span>
         <span className="shrink-0 text-xs text-[var(--ui-text-muted)]">{t("entryCount", { count: group.rows.length })}</span>
@@ -87,7 +88,7 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
         data-work-log-group-duration
         aria-label={t(partial ? "selectedGroupDuration" : "groupDuration", { project: group.projectName ?? t("unavailableProject"), stage: stageName ?? "" })}
         aria-describedby={partial ? `${contentId}-scope` : undefined} aria-invalid={invalid || undefined}
-        title={!isReview ? t("taskGroupDuration") : undefined} />
+        tooltip={!isReview ? t("taskGroupDuration") : undefined} />
       <span aria-hidden className="size-8" />
     </div>
     {partial ? <p id={`${contentId}-scope`} className="pb-2 text-right text-xs text-[var(--ui-text-muted)]">{t("selectionScope", { count: selected.length, total: group.rows.length })} · {t("groupTotal", { duration: formatTime(group.minutes) })}</p> : null}

@@ -47,7 +47,7 @@ describe("application shell cleanup", () => {
     expect(sidebar).not.toContain("studioName");
     expect(sidebar).toContain("StudioFlowMark");
     expect(sidebar).toContain("SpaceLogoFull");
-    expect(sidebar).toContain('title={t(item.messageKey)}');
+    expect(sidebar).toContain('content={t(item.messageKey)}');
     expect(sidebar).not.toContain("toLocaleUpperCase");
     expect(sidebar).toContain('t("poweredBy", { product: "StudioFlow" })');
     expect(sidebar).not.toContain('t("tagline")');

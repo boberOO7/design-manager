@@ -22,6 +22,7 @@ import { formatFinanceAmount, type FinanceCurrency } from "@/lib/finance";
 import { projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectPaymentDefaultKey, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput, type ProjectDiscountType } from "@/lib/finance-project-plan";
 import { cn } from "@/lib/utils";
 import type { FinanceProjectData } from "@/data/queries/finance";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Row = ProjectPlanInput["items"][number] & { key: string; percentage: string; defaultName: string };
 type RowCopy = {
@@ -114,7 +115,7 @@ function PaymentRow({ amount, copy, index, locale, money, onMove, onRemove, onUp
   const act = (run: () => void) => { setActionsOpen(false); run(); };
   return <li ref={ref} className={cn("py-2 transition-opacity", isDragging && "opacity-35")} data-plan-row>
     <div className={cn("grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-end gap-x-2 gap-y-3", paymentColumns(strategy))}>
-      <button ref={handleRef} type="button" aria-label={copy.drag} title={copy.drag} className="flex size-11 cursor-grab items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] active:cursor-grabbing lg:size-9"><GripVertical className="size-4" aria-hidden="true"/></button>
+      <Tooltip content={copy.drag}><button ref={handleRef} type="button" aria-label={copy.drag} className="flex size-11 cursor-grab items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] active:cursor-grabbing lg:size-9"><GripVertical className="size-4" aria-hidden="true"/></button></Tooltip>
       <label className={field}><span className="lg:sr-only">{copy.name}</span><Input aria-label={copy.name} value={row.name} onChange={(event) => onUpdate(index, { name: event.target.value })} required maxLength={2000} className={compactControl}/></label>
       <div className="col-span-3 grid grid-cols-2 items-end gap-3 lg:contents">
         {strategy === "redistribute" ? <label className={field}><span className="lg:sr-only">{copy.percentage}</span><DecimalInput aria-label={copy.percentage} value={row.percentage} onChange={(event) => onUpdate(index, { percentage: event.target.value })} required className={compactControl}/></label> : null}

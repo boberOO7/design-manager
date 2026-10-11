@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getAvatarOriginalImageUrl } from "@/lib/user-avatar";
 import { StudioMemberLifecycleControls } from "@/components/team/studio-member-lifecycle-controls";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type TeamMemberCardProps = {
   avatarUrl: string | null;
@@ -47,7 +48,7 @@ export function TeamMemberCard({ avatarUrl, birthDate, birthdayLabel, canEditPro
     <div className="flex min-w-0 w-full flex-1 flex-col pt-4">
       <h3 className="truncate text-lg font-semibold leading-6 text-[var(--ui-text)]"><Link href={`/team/${userId}`} className="rounded-sm transition-colors hover:text-[var(--ui-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{fullName}</Link></h3>
       {jobTitle ? <p className="mt-1 truncate text-sm leading-5 text-[var(--ui-text-secondary)]">{jobTitle}</p> : <p className="mt-1 text-sm leading-5 text-[var(--ui-text-subtle)]">{t("jobTitleUnavailable")}</p>}
-      {location ? <p className="mt-3 flex min-w-0 items-center justify-center gap-1.5 text-sm leading-5 text-[var(--ui-text-muted)]"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span className="truncate" title={location}>{location}</span></p> : null}
+      {location ? <p className="mt-3 flex min-w-0 items-center justify-center gap-1.5 text-sm leading-5 text-[var(--ui-text-muted)]"><MapPin aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><Tooltip content={location}><span className="truncate" tabIndex={0}>{location}</span></Tooltip></p> : null}
       {birthDate ? <p className="mt-2 flex items-center justify-center gap-1.5 text-xs leading-5 text-[var(--ui-text-muted)]"><span className="sr-only">{t("birthday")}: </span><CakeSlice aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-subtle)]" /><span>{birthdayLabel}</span></p> : null}
       {!isActive && removedAt ? <p className="mt-2 text-xs text-[var(--ui-text-muted)]">{t("removedOn", { date: new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(removedAt)) })}</p> : null}
       <div className="mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-[var(--ui-border-subtle)] pt-3 text-xs">

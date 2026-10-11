@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const WORKLOAD_CAPACITY_KEY = "dashboard-workload-visible-rows";
 const MIN_WORKLOAD_ROWS = 4;
@@ -55,7 +56,7 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
 
   return <div className={resizable ? "relative" : undefined}>
     <div ref={ref} className="overflow-y-auto" style={resizable ? (rowHeight ? { maxHeight: rowHeight * visibleRows + 4 * (visibleRows - 1) } : undefined) : { maxHeight }}>{children}</div>
-    {resizable ? <button type="button" aria-label={resizeLabel} onPointerDown={resizeStart} onPointerMove={resizeMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onKeyDown={(event) => {
+    {resizable ? <Tooltip content={resizeLabel}><button type="button" aria-label={resizeLabel} onPointerDown={resizeStart} onPointerMove={resizeMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onKeyDown={(event) => {
       const delta = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
       if (delta) {
         event.preventDefault();
@@ -65,6 +66,6 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
           return next;
         });
       }
-    }} className="absolute bottom-0 right-0 z-10 size-5 touch-none cursor-ns-resize rounded-tl text-[var(--ui-text-muted)] opacity-30 transition-opacity hover:opacity-80 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" title={resizeLabel}><span aria-hidden="true" className="absolute bottom-1 right-1 size-2 border-b-2 border-r-2 border-current" /></button> : null}
+    }} className="absolute bottom-0 right-0 z-10 size-5 touch-none cursor-ns-resize rounded-tl text-[var(--ui-text-muted)] opacity-30 transition-opacity hover:opacity-80 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]"><span aria-hidden="true" className="absolute bottom-1 right-1 size-2 border-b-2 border-r-2 border-current" /></button></Tooltip> : null}
   </div>;
 }

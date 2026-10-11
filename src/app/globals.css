@@ -689,3 +689,17 @@ body,
     }
   }
 }
+
+@keyframes tooltip-enter {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ui-tooltip[data-state="delayed-open"],
+.ui-tooltip[data-state="instant-open"] {
+  animation: tooltip-enter 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-tooltip[data-state] { animation: none; }
+}

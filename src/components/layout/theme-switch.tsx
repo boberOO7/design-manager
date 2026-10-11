@@ -13,6 +13,7 @@ import {
   THEME_STORAGE_KEY,
   type ResolvedTheme,
 } from "@/lib/theme";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const themeChangeEvent = "studioflow-theme-change";
 
@@ -73,9 +74,8 @@ export function ThemeSwitch() {
   }
 
   return (
-    <ShellControl
+    <Tooltip content={label}><ShellControl
       aria-label={label}
-      title={label}
       onClick={toggleTheme}
       className="group size-11"
     >
@@ -87,6 +87,6 @@ export function ThemeSwitch() {
           className="theme-switch__icon theme-switch__moon absolute inset-0 size-5"
         />
       </span>
-    </ShellControl>
+    </ShellControl></Tooltip>
   );
 }

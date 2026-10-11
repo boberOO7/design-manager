@@ -7,6 +7,7 @@ import { Check, CheckCheck, ChevronDown, History, MoreHorizontal, Plus } from "l
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { AnimatedFormContent } from "@/components/ui/animated-form-content";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function ProjectPaymentRow({ id, title, date, amount, status, statusClass, completed, progress, nativeAmount, open, hasDetails, expense, children, onRecord, onEdit, onMatch, onCancel, onHistory, onCloseRemainder, tripHref }: {
   id: string; title: string; date: string; amount: string; status: string; statusClass: string;
@@ -30,7 +31,7 @@ export function ProjectPaymentRow({ id, title, date, amount, status, statusClass
         {onRecord ? <Button size="sm" variant="ghost" className="col-start-1 row-start-1 min-h-11 justify-self-start gap-1.5 whitespace-normal px-2 text-xs font-semibold text-[var(--ui-text)] @min-[64rem]:col-start-4 @min-[64rem]:justify-self-end" onClick={onRecord}><Plus aria-hidden="true" className="size-3.5 shrink-0"/>{t(expense ? "project.recordExpense" : "planning.recordPayment")}</Button> : null}
         <div className="col-start-2 row-start-1 grid grid-cols-[repeat(3,2.75rem)] items-center gap-2 @min-[64rem]:col-start-6">
           {hasDetails ? detailToggle() : null}
-          {onHistory ? <Button size="sm" variant="ghost" className="col-start-2 row-start-1 size-11 p-0" aria-label={t("projectWorkspace.historyNamed", { name: title })} title={t("projectWorkspace.history")} onClick={onHistory}><History aria-hidden="true" className="size-4"/></Button> : null}
+          {onHistory ? <Tooltip content={t("projectWorkspace.history")}><Button size="sm" variant="ghost" className="col-start-2 row-start-1 size-11 p-0" aria-label={t("projectWorkspace.historyNamed", { name: title })} onClick={onHistory}><History aria-hidden="true" className="size-4"/></Button></Tooltip> : null}
           {rowActions()}
         </div>
       </div>

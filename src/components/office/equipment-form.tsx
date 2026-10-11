@@ -15,6 +15,7 @@ import { EQUIPMENT_LIFECYCLE_STATES, EQUIPMENT_TYPES, isEquipmentType, type Equi
 import { CAPACITY_UNITS, CPU_FAMILIES, DRIVE_TYPES, GPU_FAMILIES, MEMORY_TYPES, POWER_SUPPLY_EFFICIENCIES, computerConfigurationSchema, computerConfigurationSummaries, hasComputerConfiguration, normalizeComputerConfiguration, type ComputerConfiguration } from "@/lib/pc-configuration";
 import type { EquipmentFieldUpdate } from "@/lib/validation/equipment";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Section = "identification" | "processor" | "graphics" | "memory" | "drives" | "motherboard" | "powerSupply";
 
@@ -29,7 +30,7 @@ function AccordionSection({ children, title, summary, isOpen, onOpen, Icon }: { 
     const target = event.target;
     if (target instanceof HTMLElement) window.setTimeout(() => target.focus(), 230);
   }} onChange={() => setInvalid(false)}>
-    <h3><button id={`${id}-trigger`} type="button" aria-expanded={isOpen} aria-controls={id} onClick={onOpen} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[var(--ui-text)]">{title}</span><span className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-muted)]" title={summary}>{summary || t("configuration.empty")}</span></span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform duration-[220ms]", isOpen && "rotate-180")} /></button></h3>
+    <h3><Tooltip content={summary}><button id={`${id}-trigger`} type="button" aria-expanded={isOpen} aria-controls={id} onClick={onOpen} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4 shrink-0 text-[var(--ui-text-muted)]" aria-hidden="true" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[var(--ui-text)]">{title}</span><span className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-muted)]">{summary || t("configuration.empty")}</span></span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform duration-[220ms]", isOpen && "rotate-180")} /></button></Tooltip></h3>
     <AnimatedFormContent id={id} labelledBy={`${id}-trigger`} isOpen={isOpen}><div className="grid gap-4 border-t border-[var(--ui-border-subtle)] p-4">{invalid ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("configuration.invalid")}</p> : null}{children}</div></AnimatedFormContent>
   </section>;
 }

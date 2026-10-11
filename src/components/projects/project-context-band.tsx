@@ -17,6 +17,7 @@ import { formatDateOnly, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
 import { getProjectTypeDisplayName, isProjectPriority, isProjectTypeKey, type ProjectTypeKey } from "@/lib/validation/project";
 import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const PROJECT_TYPE_ICONS = { private: House, commercial: Building, horeca: UtensilsCrossed, medical: Cross, other: Shapes } satisfies Record<ProjectTypeKey, LucideIcon>;
 
@@ -170,9 +171,9 @@ function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, 
 
 function LifecycleDot({ label, status }: { label: string; status: string }) {
   const className = status === "active" ? "bg-[var(--ui-success-accent)]" : status === "paused" ? "bg-[var(--ui-info-accent)]" : status === "completed" ? "bg-[var(--ui-violet-text)]" : "bg-[var(--ui-text-muted)]";
-  return <span role="img" aria-label={label} title={label} className={`size-2.5 shrink-0 rounded-full ${className}`}><span className="sr-only">{label}</span></span>;
+  return <Tooltip content={label}><span role="img" aria-label={label} tabIndex={0} className={`size-2.5 shrink-0 rounded-full ${className}`}><span className="sr-only">{label}</span></span></Tooltip>;
 }
 
 function Badge({ className, label, title }: { className: string; label: string; title?: string }) {
-  return <span title={title} className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${className}`}>{label}</span>;
+  return <Tooltip content={title}><span tabIndex={0} className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${className}`}>{label}</span></Tooltip>;
 }

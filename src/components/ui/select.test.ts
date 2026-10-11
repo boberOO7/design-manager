@@ -36,7 +36,7 @@ describe("shared Select contract", () => {
   it("sizes from every option while wrapping only multi-word labels on narrow screens", async () => {
     const source = await readFile(selectPath, "utf8");
 
-    expect(source).toContain("title={selectedText || undefined}");
+    expect(source).toContain("content={open ? undefined : selectedText || undefined}");
     expect(source).toContain('aria-hidden="true" className="invisible col-start-1 row-start-1 grid max-w-64"');
     expect(source).toContain('className="col-start-1 row-start-1 whitespace-nowrap"');
     expect(source).toContain("grid-cols-[1rem_minmax(0,1fr)]");

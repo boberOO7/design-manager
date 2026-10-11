@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ShellControl } from "@/components/layout/shell-control";
 import { localeCookieName, type AppLocale } from "@/i18n/config";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function LanguageSelector() {
   const locale = useLocale() as AppLocale;
@@ -19,13 +20,12 @@ export function LanguageSelector() {
     router.refresh();
   }
 
-  return <ShellControl
+  return <Tooltip content={label}><ShellControl
     aria-label={label}
-    title={label}
     onClick={switchLocale}
     className="min-w-11 gap-1.5 px-2.5 font-semibold tracking-wide"
   >
     <Languages size={16} aria-hidden="true" />
     <span className="text-xs leading-none">{locale === "en" ? "EN" : "УКР"}</span>
-  </ShellControl>;
+  </ShellControl></Tooltip>;
 }

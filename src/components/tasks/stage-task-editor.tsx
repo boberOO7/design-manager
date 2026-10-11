@@ -12,6 +12,7 @@ import { stageTaskEditSchema } from "@/lib/validation/task";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import type { TaskStage } from "@/lib/task-stages";
 import type { ProjectTask } from "@/types/tasks";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Draft = {
   key: string;
@@ -157,15 +158,15 @@ export function StageTaskEditor({ projectId, stage, stageName, tasks, templates,
               </div> : <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-start gap-2 sm:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,1fr)_5rem]">
                 <label className="min-w-0"><span className="sr-only">{t("nameRow", { row: index + 1 })}</span><Input id={`stage-task-title-${row.key}`} data-dialog-initial-focus={index === 0 ? true : undefined} autoComplete="off" required maxLength={200} value={row.title} disabled={saving} onChange={(event) => update(row.key, { title: event.target.value })} onKeyDown={(event) => nextField(event, row.key, "title")} className="h-10" /></label>
                 <label><span className="sr-only">{t("areaRow", { row: index + 1 })}</span><Input id={`stage-task-area-${row.key}`} autoComplete="off" type="number" inputMode="decimal" min="0.01" max="1000000" step="0.01" placeholder={tasksT("areaUnit")} value={row.area} disabled={saving} onChange={(event) => update(row.key, { area: event.target.value })} onKeyDown={(event) => nextField(event, row.key, "area")} className="h-10 ui-numeric" /></label>
-                <label className="min-w-0" title={canChangeChecklist ? undefined : t("checklistLocked")}><span className="sr-only">{t("checklistRow", { row: index + 1 })}</span>
+                <Tooltip content={canChangeChecklist ? undefined : t("checklistLocked")}><label className="min-w-0" tabIndex={canChangeChecklist ? undefined : 0}><span className="sr-only">{t("checklistRow", { row: index + 1 })}</span>
                   <select className={`${inputClassName} h-10 pr-6`} value={row.templateId} disabled={saving || !canChangeChecklist} onChange={(event) => update(row.key, { templateId: event.target.value })}>
                     <option value="">{templatesT("noChecklistTemplate")}</option>
                     {templates.filter((template) => !template.archivedAt || template.id === row.templateId).map((template) => <option key={template.id} value={template.id} disabled={Boolean(template.archivedAt)}>{template.name}</option>)}
                   </select>
-                </label>
+                </label></Tooltip>
                 <div className="flex items-center justify-end">
-                  <Button type="button" variant="ghost" aria-label={t("duplicateRow", { row: index + 1 })} title={t("duplicate")} className="size-10 shrink-0 p-0" disabled={saving || !canCreate} onClick={() => add(row)}><Copy className="size-4" /></Button>
-                  <Button type="button" variant="ghost" aria-label={t("deleteRow", { row: index + 1 })} title={tasksT("deleteTask")} disabled={saving} onClick={() => row.taskId ? update(row.key, { deleted: true }) : setRows((current) => current.filter((item) => item.key !== row.key))} className="size-10 shrink-0 p-0 text-[var(--ui-danger-text)]"><Trash2 className="size-4" /></Button>
+                  <Tooltip content={t("duplicate")}><Button type="button" variant="ghost" aria-label={t("duplicateRow", { row: index + 1 })} className="size-10 shrink-0 p-0" disabled={saving || !canCreate} onClick={() => add(row)}><Copy className="size-4" /></Button></Tooltip>
+                  <Tooltip content={tasksT("deleteTask")}><Button type="button" variant="ghost" aria-label={t("deleteRow", { row: index + 1 })} disabled={saving} onClick={() => row.taskId ? update(row.key, { deleted: true }) : setRows((current) => current.filter((item) => item.key !== row.key))} className="size-10 shrink-0 p-0 text-[var(--ui-danger-text)]"><Trash2 className="size-4" /></Button></Tooltip>
                 </div>
               </div>}
             </li>;

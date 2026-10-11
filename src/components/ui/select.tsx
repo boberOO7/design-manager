@@ -5,6 +5,7 @@ import { Check, ChevronDown, Search } from "lucide-react";
 import * as React from "react";
 import { buttonVariants } from "./button";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export type SelectItemProps = React.HTMLAttributes<HTMLDivElement> & {
   disabled?: boolean;
@@ -228,7 +229,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
         setHighlightedValue(selectedIsEnabled ? selectedValue : getNextSelectValue(itemModels, undefined, "first"));
       }
     }}>
-      <PopoverPrimitive.Trigger asChild>
+      <Tooltip content={open ? undefined : selectedText || undefined}><PopoverPrimitive.Trigger asChild>
         <button
           ref={setTriggerRef}
           type="button"
@@ -257,7 +258,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           onKeyDown={handleKeyDown}
         >
           <span className={cn("grid min-w-0", variant === "secondary" ? "" : "pl-3 pr-2")}>
-            <span className="col-start-1 row-start-1 min-w-0 truncate" title={selectedText || undefined}>{selectedItem ? selectedLabel : placeholder}</span>
+            <span className="col-start-1 row-start-1 min-w-0 truncate">{selectedItem ? selectedLabel : placeholder}</span>
             {width === "content" ? <span aria-hidden="true" className="invisible col-start-1 row-start-1 grid max-w-64">
               {items.map((item) => <span key={item.props.value} className="col-start-1 row-start-1 whitespace-nowrap">{item.props.textValue ?? getNodeText(item.props.children)}</span>)}
             </span> : null}
@@ -267,7 +268,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
             <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
           </span>
         </button>
-      </PopoverPrimitive.Trigger>
+      </PopoverPrimitive.Trigger></Tooltip>
       <PopoverPrimitive.Portal container={portalContainer}>
         <PopoverPrimitive.Content
           align="start"

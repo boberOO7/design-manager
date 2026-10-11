@@ -26,6 +26,7 @@ import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
 import { projectCashSplitItemsSchema } from "@/lib/finance-profitability";
 import { financeMovementContextLabels } from "@/lib/finance-movement-context";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
@@ -252,7 +253,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
           <span className="col-start-1 row-start-2 text-xs text-[var(--ui-text-muted)] lg:col-start-1 lg:row-start-1">{formatDateOnly(movement.financial_date, locale)}<span className="lg:hidden"> · {t(`movements.kinds.${movement.kind}`)}</span></span>
           <span className="col-start-1 row-start-1 min-w-0 text-sm font-medium text-[var(--ui-text)] lg:col-start-2">
             <span className="block truncate">{title}{unresolved ? <span className="ml-2 text-xs font-normal text-[var(--ui-warning-text)]">{t("movements.valuationUnresolved")}</span> : null}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
-            {context ? <span title={context} className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{context}</span> : null}
+            {context ? <Tooltip content={context}><span tabIndex={0} className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{context}</span></Tooltip> : null}
           </span>
           <span className="col-start-1 row-start-3 min-w-0 truncate text-xs text-[var(--ui-text-secondary)] lg:col-start-3 lg:row-start-1 lg:text-sm">{accountText}</span>
           <span className="hidden text-xs text-[var(--ui-text-secondary)] lg:col-start-4 lg:block">{t(`movements.kinds.${movement.kind}`)} · {t(`movements.natures.${movement.nature}`)}</span>

@@ -11,7 +11,7 @@ describe("office assignments workspace contract", () => {
     expect(row).toContain("officeListDesktopGridClassName");
     expect(patterns).toContain('xl:grid-cols-[minmax(14rem,1.4fr)_minmax(10rem,0.75fr)_minmax(11rem,0.85fr)_7.5rem_13.5rem]');
     expect(row).toContain('font-semibold uppercase tracking-wide');
-    expect(row).toContain("title={item.title}");
+    expect(row).toContain("content={item.title}");
     expect(row).not.toContain("item.description");
     expect(row).toContain("<Person person={item.responsible}");
     expect(row).toContain("const displayedDate = terminal ? item.updatedAt : item.deadline ?? item.createdAt");

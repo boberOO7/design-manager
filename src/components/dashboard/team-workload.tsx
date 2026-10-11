@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { getCurrentStatusAge, isTaskInWorkloadCategory, type TeamWorkloadMember, type WorkloadCategory } from "@/lib/dashboard";
 import { formatDate } from "@/lib/utils";
 import type { DashboardWorkloadTask } from "@/types/tasks";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const METRICS: Array<{ category: WorkloadCategory; icon: ComponentType<LucideProps>; risk?: boolean; iconClassName?: string }> = [
   { category: "todo", icon: ListTodo },
@@ -85,8 +86,8 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
           </div>
           <div className="pointer-events-none relative grid grid-cols-[minmax(6rem,1.5fr)_repeat(5,minmax(2.25rem,1fr))] items-center gap-x-1 text-sm lg:grid-cols-[8rem_repeat(5,4.25rem)] lg:gap-x-2">
             {member.workloadAreaM2 > 0
-              ? <button type="button" onClick={() => expand(member.id, "area")} title={areaTitle} aria-label={t("openWorkloadArea", { name: member.full_name, area: areaLabel })} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap rounded-[var(--ui-radius-control)] font-semibold text-[var(--ui-text)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)]">{areaContent}</button>
-              : <span role="img" title={areaTitle} aria-label={areaTitle} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap text-[var(--ui-text-muted)]">{areaContent}</span>}
+              ? <Tooltip content={areaTitle}><button type="button" onClick={() => expand(member.id, "area")} aria-label={t("openWorkloadArea", { name: member.full_name, area: areaLabel })} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap rounded-[var(--ui-radius-control)] font-semibold text-[var(--ui-text)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)]">{areaContent}</button></Tooltip>
+              : <Tooltip content={areaTitle}><span role="img" tabIndex={0} aria-label={areaTitle} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap text-[var(--ui-text-muted)]">{areaContent}</span></Tooltip>}
             {METRICS.map((metric) => {
               const value = metricValue(member, metric.category);
               const label = categoryLabel(metric.category);
@@ -95,8 +96,8 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
               const color = value === 0 ? "text-[var(--ui-text-muted)]" : activeRisk ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]";
               const content = <><metric.icon aria-hidden="true" className={`size-4 ${value > 0 && !activeRisk ? metric.iconClassName ?? "" : ""}`} /><span className="ui-numeric tabular-nums">{value}</span></>;
               return value > 0
-                ? <button key={metric.category} type="button" onClick={() => expand(member.id, metric.category)} title={title} aria-label={t("openWorkloadTasks", { count: value, name: member.full_name, category: label })} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-[var(--ui-radius-control)] font-semibold transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)] ${color}`}>{content}</button>
-                : <span key={metric.category} role="img" title={title} aria-label={title} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 ${color}`}>{content}</span>;
+                ? <Tooltip content={title} key={metric.category}><button type="button" onClick={() => expand(member.id, metric.category)} aria-label={t("openWorkloadTasks", { count: value, name: member.full_name, category: label })} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-[var(--ui-radius-control)] font-semibold transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)] ${color}`}>{content}</button></Tooltip>
+                : <Tooltip content={title} key={metric.category}><span role="img" tabIndex={0} aria-label={title} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 ${color}`}>{content}</span></Tooltip>;
             })}
           </div>
         </div>

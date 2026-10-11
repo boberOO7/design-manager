@@ -78,7 +78,7 @@ describe("submissions workspace contract", () => {
     expect(row).toContain('font-semibold uppercase tracking-wide');
     expect(row).toContain('t(`types.${item.type}`)');
     expect(row.match(/t\(`types\.\$\{item\.type\}`\)/g)).toHaveLength(2);
-    expect(row).toContain("title={item.title}");
+    expect(row).toContain("content={item.title}");
     expect(row).toContain('rounded-full bg-[var(--ui-warning-surface)]');
     expect(row).toContain('text-[var(--ui-warning-text)]');
     expect(row).toContain("xl:min-h-7");

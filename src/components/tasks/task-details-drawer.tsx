@@ -37,6 +37,7 @@ import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type TaskEditResponse =
   | { success: true; task: ProjectTask; projectStatus: string }
@@ -385,9 +386,9 @@ export function TaskDetailsDrawer({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              {canEdit && !isEditing ? <Button type="button" size="sm" variant="ghost" disabled={isSaving || isDeleting} onClick={() => setIsEditing(true)} aria-label={t("editTask")} title={t("editTask")} className="size-9 p-0">
+              {canEdit && !isEditing ? <Tooltip content={t("editTask")}><Button type="button" size="sm" variant="ghost" disabled={isSaving || isDeleting} onClick={() => setIsEditing(true)} aria-label={t("editTask")} className="size-9 p-0">
                 <Pencil className="size-4" aria-hidden="true" />
-              </Button> : null}
+              </Button></Tooltip> : null}
               {canManageTasks ? <Popover.Root><Popover.Trigger asChild><button type="button" disabled={isSaving || isDeleting} aria-label={t("taskActions")} className="flex size-9 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-not-allowed disabled:opacity-50"><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={8} className="z-[70] min-w-40 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" onClick={() => setIsDeleteDialogOpen(true)} className="flex min-h-10 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-2px)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Trash2 className="size-4" aria-hidden="true" />{t("deleteTask")}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
               <Button type="button" size="sm" variant="ghost" disabled={isSaving || isDeleting} onClick={requestClose} aria-label={t("closeTaskDetails")} className="size-9 p-0">
                 <X className="size-4" aria-hidden="true" />
@@ -599,8 +600,8 @@ function TaskCollaboratorSummary({ collaborators, emptyLabel }: {
   const hiddenCollaborators = collaborators.slice(3);
   return <div className="flex items-center" aria-label={collaborators.map((collaborator) => collaborator.full_name).join(", ")}>
     <div className="flex -space-x-1.5">
-      {visibleCollaborators.map((collaborator) => <span key={collaborator.id} title={collaborator.full_name} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span>)}
-      <span title={hiddenCollaborators.map((collaborator) => collaborator.full_name).join(", ")} className="inline-flex size-7 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{hiddenCollaborators.length}</span>
+      {visibleCollaborators.map((collaborator) => <Tooltip content={collaborator.full_name} key={collaborator.id}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar decorative imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" /></span></Tooltip>)}
+      <Tooltip content={hiddenCollaborators.map((collaborator) => collaborator.full_name).join(", ")}><span tabIndex={0} className="inline-flex size-7 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[10px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{hiddenCollaborators.length}</span></Tooltip>
     </div>
   </div>;
 }
@@ -610,7 +611,7 @@ function ChecklistItemAction({ canEdit, item, onToggleNotNeeded }: { canEdit: bo
   if (!canEdit) return null;
   const label = t(item.is_not_needed ? "markPending" : "markNotNeeded");
   const Icon = item.is_not_needed ? RotateCcw : CircleMinus;
-  return <button type="button" aria-label={label} title={label} onClick={() => onToggleNotNeeded(!item.is_not_needed)} className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4" aria-hidden="true" /></button>;
+  return <Tooltip content={label}><button type="button" aria-label={label} onClick={() => onToggleNotNeeded(!item.is_not_needed)} className="flex size-9 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><Icon className="size-4" aria-hidden="true" /></button></Tooltip>;
 }
 
 function ChecklistItemRow({ canToggle, item, onToggle, onToggleNotNeeded, pending }: {

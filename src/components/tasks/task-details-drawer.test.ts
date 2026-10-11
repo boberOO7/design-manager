@@ -64,7 +64,7 @@ describe("task details drawer contract", () => {
     expect(header).toContain("Pencil");
     expect(header).toContain('canEdit && !isEditing');
     expect(header).toContain('aria-label={t("editTask")}');
-    expect(header).toContain('title={t("editTask")}');
+    expect(header).toContain('content={t("editTask")}');
     expect(source).toContain('canEdit && isEditing ? <footer');
     expect(source).not.toContain(': <Button type="button" onClick={() => setIsEditing(true)}');
     expect(en.Tasks.editTask).toBe("Edit task");

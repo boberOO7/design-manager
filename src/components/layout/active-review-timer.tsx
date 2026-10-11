@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useReviewTimer } from "@/hooks/use-review-timer";
 import { parseMotionPreference } from "@/lib/motion";
 import { currentReviewTimerSession, formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound, type ReviewTimerSession, type ReviewTimerSnapshot } from "@/lib/review-timer";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function ActiveReviewTimer() {
   const timer = useReviewTimer();
@@ -122,24 +123,24 @@ function ReviewIsland({ timer, session, review }: {
     ? { action: "start", roundIds: session.members.filter(member => !member.finished_at).map(member => member.round_id) }
     : { action: "pause", sessionId: session.id }); };
   return <div ref={surface} data-active-review-timer data-review-island data-state={session.state} data-expanded={expanded} className="review-timer-island">
-    <button ref={toggle} type="button" data-review-island-toggle aria-expanded={expanded} aria-controls={contentId}
-      aria-label={`${t(expanded ? "collapseTimer" : "expandTimer")}: ${fullLabel} · ${t(session.state)}`} title={fullLabel}
-      onClick={() => setExpanded(current => !current)} className="absolute inset-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]" />
+    <Tooltip content={fullLabel}><button ref={toggle} type="button" data-review-island-toggle aria-expanded={expanded} aria-controls={contentId}
+      aria-label={`${t(expanded ? "collapseTimer" : "expandTimer")}: ${fullLabel} · ${t(session.state)}`}
+      onClick={() => setExpanded(current => !current)} className="absolute inset-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]" /></Tooltip>
     <div ref={topRow} className="review-timer-island-row pointer-events-none relative flex items-center gap-2 px-2.5 text-xs">
-      <span aria-hidden title={t(session.state)} className={`size-1.5 shrink-0 rounded-full ${paused ? "border border-[#a8a29e]" : "bg-[var(--ui-info-accent)]"}`} />
+      <Tooltip content={t(session.state)}><span aria-hidden className={`size-1.5 shrink-0 rounded-full ${paused ? "border border-[#a8a29e]" : "bg-[var(--ui-info-accent)]"}`} /></Tooltip>
       <span className="min-w-0 flex-1 truncate font-medium">{expanded ? t(paused ? group ? "groupPaused" : "reviewPaused" : group ? "groupInProgress" : "reviewInProgress") : label}</span>
       <span data-active-review-elapsed className="shrink-0 whitespace-nowrap tabular-nums">{formatReviewElapsed(seconds)}</span>
-      <button type="button" aria-label={controlLabel} title={timer.error ? t("failed") : controlLabel} disabled={timer.pending}
+      <Tooltip content={timer.error ? t("failed") : controlLabel}><button type="button" aria-label={controlLabel} disabled={timer.pending}
         aria-hidden={expanded} inert={expanded} tabIndex={expanded ? -1 : 0}
         onClick={control} className={`pointer-events-auto relative flex size-5 max-h-full shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-60 ${expanded ? "invisible" : ""} ${timer.error ? "text-[var(--ui-danger-text)]" : ""}`}>
         <ControlIcon aria-hidden className="size-3" />
-      </button>
+      </button></Tooltip>
     </div>
     <div ref={details} id={contentId} data-review-island-details aria-hidden={!expanded} inert={!expanded} className="review-timer-island-details pointer-events-none absolute top-10 px-4 pb-4 pt-2">
-      <p className="truncate text-sm font-medium" title={review.projectName}>{review.projectName}</p>
+      <Tooltip content={review.projectName}><p className="truncate text-sm font-medium" tabIndex={0}>{review.projectName}</p></Tooltip>
       <div className="mt-1 text-xs leading-5 text-[#a8a29e]">
-        {group ? <p className="flex gap-2"><span className="min-w-0 truncate" title={stage}>{stage}</span><span className="shrink-0">· {t("reviewCount", { count: session.members.filter(member => !member.finished_at).length })}</span></p>
-          : <p className="line-clamp-2" title={review.taskTitle}>{review.taskTitle}</p>}
+        {group ? <p className="flex gap-2"><Tooltip content={stage}><span className="min-w-0 truncate" tabIndex={0}>{stage}</span></Tooltip><span className="shrink-0">· {t("reviewCount", { count: session.members.filter(member => !member.finished_at).length })}</span></p>
+          : <Tooltip content={review.taskTitle}><p className="line-clamp-2" tabIndex={0}>{review.taskTitle}</p></Tooltip>}
       </div>
       <div className="pointer-events-auto relative z-10 mt-3 flex items-center justify-end gap-1">
         <Button size="sm" variant="ghost" disabled={timer.pending} onClick={control} className="gap-1.5 px-2 text-xs text-[#e7e5e4] hover:bg-white/10 hover:text-white"><ControlIcon aria-hidden className="size-3.5" />{controlLabel}</Button>

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import styles from "./project-context-band.module.css";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function ProjectLifecycleControls({ projectId, children }: { projectId: string; children?: ReactNode }) {
   const t = useTranslations("ProjectWorkspace");
@@ -33,7 +34,7 @@ export function ProjectLifecycleControls({ projectId, children }: { projectId: s
     } finally { setPending(false); }
   }
   return <PopoverPrimitive.Root>
-    <PopoverPrimitive.Trigger asChild><button type="button" aria-label={t("moreActions")} title={t("moreActions")} className={styles.iconAction}><MoreHorizontal className="size-4" aria-hidden="true" /></button></PopoverPrimitive.Trigger>
+    <Tooltip content={t("moreActions")}><PopoverPrimitive.Trigger asChild><button type="button" aria-label={t("moreActions")} className={styles.iconAction}><MoreHorizontal className="size-4" aria-hidden="true" /></button></PopoverPrimitive.Trigger></Tooltip>
     <PopoverPrimitive.Portal><PopoverPrimitive.Content align="end" sideOffset={8} collisionPadding={16} aria-label={t("moreActions")} className={styles.actionMenu}>
     {actions[status].map((action) => <button key={action.status} type="button" className={styles.menuAction} disabled={pending} onClick={() => void updateStatus(action.status)}><action.icon className="size-4" aria-hidden="true" />{action.label}</button>)}
     {status === "paused" ? <button type="button" disabled={pending} onClick={() => void updateStatus("planned")} className={styles.menuAction}><RotateCcw className="size-4" aria-hidden="true" />{t("returnToPlanned")}</button> : null}

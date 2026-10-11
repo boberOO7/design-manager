@@ -18,6 +18,7 @@ import { canWorkOnTaskInProject, isProjectLifecycleStatus } from "@/lib/project-
 import { formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound } from "@/lib/review-timer";
 import { useReviewTimer } from "@/hooks/use-review-timer";
 import type { TaskReviewQueueItem } from "@/data/queries/task-reviews";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const rowGrid = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 px-4 py-3 @min-[76rem]:grid-cols-[minmax(9.5rem,2fr)_minmax(9.5rem,1fr)_7.5rem_6.5rem_6rem_27rem_2.25rem]";
 
@@ -77,10 +78,10 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
   }
 
   function projectLink(projectId: string, taskId?: string) {
-    return <Link href={`/projects/${projectId}${taskId ? `?task=${taskId}` : ""}`} aria-label={t("goToProject")} title={t("goToProject")}
+    return <Tooltip content={t("goToProject")}><Link href={`/projects/${projectId}${taskId ? `?task=${taskId}` : ""}`} aria-label={t("goToProject")}
       className="pointer-events-auto relative z-10 flex size-9 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] @max-[76rem]:col-start-2 @max-[76rem]:row-start-1 @max-[76rem]:justify-self-end">
       <FolderKanban aria-hidden className="size-4" />
-    </Link>;
+    </Link></Tooltip>;
   }
 
   async function resolve(target: { rounds: TaskReviewQueueItem[]; sessionId?: string }, action: "approved" | "rework") {
@@ -142,8 +143,8 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
       <button type="button" data-review-open aria-label={t("openTask", { name: round.task.title })} onClick={() => openDetails(round)}
         className="absolute inset-0 cursor-pointer transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-focus)] motion-reduce:transition-none" />
       <div className="pointer-events-none relative min-w-0">
-        <p className="truncate text-xs text-[var(--ui-text-muted)]" title={round.task.project.name}>{round.task.project.name}</p>
-        <p className="line-clamp-2 text-sm font-medium text-[var(--ui-text)]" title={round.task.title}>{round.task.title}</p>
+        <Tooltip content={round.task.project.name}><p className="truncate text-xs text-[var(--ui-text-muted)]" tabIndex={0}>{round.task.project.name}</p></Tooltip>
+        <Tooltip content={round.task.title}><p className="line-clamp-2 text-sm font-medium text-[var(--ui-text)]" tabIndex={0}>{round.task.title}</p></Tooltip>
       </div>
       <div className="pointer-events-none relative flex min-w-0 items-center gap-2 @max-[76rem]:col-start-1 @max-[76rem]:row-start-2">
         <UserAvatar decorative size="boardCard" name={round.task.assignee?.full_name} imageUrl={round.task.assignee?.avatar_url} />
@@ -196,7 +197,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
             </button>
             <div className="pointer-events-none relative flex min-w-0 items-center gap-2">
               <ChevronDown aria-hidden className={`size-4 shrink-0 text-[var(--ui-text-muted)] transition-transform duration-200 motion-reduce:transition-none ${open ? "" : "-rotate-90"}`} />
-              <span className="min-w-0"><span className="block truncate text-sm font-medium" title={items[0].task.project.name}>{items[0].task.project.name}</span><span className="block truncate text-xs text-[var(--ui-text-muted)]">{stage}</span></span>
+              <span className="min-w-0"><Tooltip content={items[0].task.project.name}><span className="block truncate text-sm font-medium" tabIndex={0}>{items[0].task.project.name}</span></Tooltip><span className="block truncate text-xs text-[var(--ui-text-muted)]">{stage}</span></span>
             </div>
             <span aria-hidden className="hidden @min-[76rem]:block" />
             <span className="pointer-events-none relative text-xs text-[var(--ui-text-muted)] @max-[76rem]:col-start-1 @max-[76rem]:row-start-2">{timerText("reviewCount", { count: items.length })}</span>

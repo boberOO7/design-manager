@@ -58,7 +58,7 @@ describe("contractor subcategory presentation", () => {
     expect(source).toContain('border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-muted)]');
     expect(source).toContain('<span className="text-[var(--ui-text-muted)]">—</span>');
     expect(source).not.toContain('aria-hidden="true" className="text-xs leading-none text-[var(--ui-text-muted)]">›</span>');
-    expect(source).toContain('text-xs font-normal leading-5 text-[var(--ui-text-secondary)]" title={contractor.subcategory.name}');
+    expect(source).toContain('text-xs font-normal leading-5 text-[var(--ui-text-secondary)]"');
   });
 
   it("keeps dynamic category badges contained and discoverable in the category filter", async () => {
@@ -68,6 +68,6 @@ describe("contractor subcategory presentation", () => {
     expect(source).toContain('className="block min-w-0"');
     expect(source).toContain('inline-flex max-w-full min-w-0 items-center rounded-full');
     expect(source).toContain('className="min-w-0 truncate whitespace-nowrap">{item.name}</span>');
-    expect(source).toContain('title={item.name}');
+    expect(source).toContain('content={item.name}');
   });
 });

@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Clock3 } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export const TIME_PICKER_HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
 export const TIME_PICKER_MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
@@ -42,13 +43,14 @@ export type TimePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
     [key: `data-${string}`]: string | number | boolean | undefined;
   };
   locale?: string;
+  tooltip?: string;
   mode?: "time" | "duration";
   name?: string;
   onValueChange?: (value: string) => void;
   value?: string;
 };
 
-export function TimePicker({ className, defaultValue = "00:00", disabled, editable = false, inputProps, locale = "en", mode = "time", name, onValueChange, value, ...buttonProps }: TimePickerProps) {
+export function TimePicker({ className, defaultValue = "00:00", disabled, editable = false, inputProps, locale = "en", mode = "time", name, onValueChange, tooltip, value, ...buttonProps }: TimePickerProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const [draft, setDraft] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -103,18 +105,18 @@ export function TimePicker({ className, defaultValue = "00:00", disabled, editab
           onChange={event => setDraft(event.target.value)}
           onBlur={event => { if (draft !== null) commitValue(event.target.value); }}
           onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
-        <Popover.Trigger asChild>
+        <Tooltip content={tooltip}><Popover.Trigger asChild>
           <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled || inputProps?.readOnly}
             className="shrink-0 rounded outline-none" {...buttonProps}
             aria-label={`${labels.chooseTime}: ${inputProps?.["aria-label"] ?? ""}`}>{clock}</button>
-        </Popover.Trigger>
+        </Popover.Trigger></Tooltip>
       </div>
-    </Popover.Anchor> : <Popover.Trigger asChild>
+    </Popover.Anchor> : <Tooltip content={tooltip}><Popover.Trigger asChild>
       <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled} data-time-picker-control className={cn(timePickerClassName, className)} {...buttonProps}>
         <span className="ui-numeric font-medium">{selectedValue}</span>
         {clock}
       </button>
-    </Popover.Trigger>}
+    </Popover.Trigger></Tooltip>}
     <Popover.Portal container={portalContainer}>
       <Popover.Content align="start" sideOffset={6} collisionPadding={8} className="z-[80] w-48 overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-2 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]" onOpenAutoFocus={(event) => event.preventDefault()}>
         <div className="grid grid-cols-2 gap-2" aria-label={labels.chooseTime}>

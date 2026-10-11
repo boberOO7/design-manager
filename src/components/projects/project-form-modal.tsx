@@ -8,6 +8,7 @@ import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { getProjectDialogCloseIntent } from "@/lib/project-dialog";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
 import type { ProjectTemplate } from "@/lib/project-templates";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function ProjectFormModal({
   action,
@@ -57,7 +58,7 @@ export function ProjectFormModal({
   }
 
   return <>
-    <Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} className={triggerIcon ? "size-9 p-0" : triggerLeadingIcon ? "min-h-11 gap-1.5" : undefined} aria-label={triggerIcon ? triggerLabel : undefined} title={triggerIcon ? triggerLabel : undefined} onClick={() => setIsOpen(true)}>{triggerIcon ?? <>{triggerLeadingIcon}{triggerLabel}</>}</Button>
+    <Tooltip content={triggerIcon ? triggerLabel : undefined}><Button ref={triggerRef} type="button" size={triggerSize} variant={triggerVariant} className={triggerIcon ? "size-9 p-0" : triggerLeadingIcon ? "min-h-11 gap-1.5" : undefined} aria-label={triggerIcon ? triggerLabel : undefined} onClick={() => setIsOpen(true)}>{triggerIcon ?? <>{triggerLeadingIcon}{triggerLabel}</>}</Button></Tooltip>
     <Dialog
       closeDisabled={isPending}
       closeLabel={closeLabel}

@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, Search, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type PersonOption = { id: string; name: string; avatarUrl?: string | null };
 
@@ -43,11 +44,11 @@ export function PeoplePicker({ people, selectedIds, onChange, label, placeholder
         <button ref={setTriggerNode} type="button" disabled={disabled} aria-label={label} aria-invalid={invalid || undefined} className="absolute inset-0 rounded-[var(--ui-radius-control)] focus-visible:outline-none disabled:cursor-not-allowed" data-people-trigger />
       </Popover.Trigger>
       <div className="pointer-events-none relative flex min-w-0 flex-1 items-center gap-1.5 py-1" data-people-chips>
-        {visibleChips.map((person) => <button key={person.id} type="button" disabled={disabled} onClick={() => { toggle(person.id); (open ? searchRef.current : triggerNode)?.focus({ preventScroll: true }); }} aria-label={removeLabel(person.name)} title={person.name} className="people-picker-chip pointer-events-auto inline-flex h-8 min-w-0 max-w-48 shrink items-center gap-1 rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] py-1 pl-1 pr-2 text-sm font-normal text-[var(--ui-text)] transition-colors duration-180 hover:border-[var(--ui-text-muted)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none disabled:cursor-not-allowed" data-people-chip>
+        {visibleChips.map((person) => <Tooltip content={person.name} key={person.id}><button type="button" disabled={disabled} onClick={() => { toggle(person.id); (open ? searchRef.current : triggerNode)?.focus({ preventScroll: true }); }} aria-label={removeLabel(person.name)} className="people-picker-chip pointer-events-auto inline-flex h-8 min-w-0 max-w-48 shrink items-center gap-1 rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] py-1 pl-1 pr-2 text-sm font-normal text-[var(--ui-text)] transition-colors duration-180 hover:border-[var(--ui-text-muted)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none disabled:cursor-not-allowed" data-people-chip>
               <UserAvatar decorative imageUrl={person.avatarUrl} name={person.name} size="board" />
               <span className="min-w-0 truncate">{person.name}</span><X aria-hidden="true" className="size-3 shrink-0 text-[var(--ui-text-secondary)]" />
-            </button>)}
-        {overflowCount > 0 ? <span className="people-picker-chip ui-numeric inline-flex h-8 shrink-0 items-center rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-2 text-xs font-medium text-[var(--ui-text-secondary)]" title={selected.slice(2).map((person) => person.name).join(", ")} data-people-overflow>+{overflowCount}</span> : null}
+            </button></Tooltip>)}
+        {overflowCount > 0 ? <Tooltip content={selected.slice(2).map((person) => person.name).join(", ")}><span className="people-picker-chip ui-numeric inline-flex h-8 shrink-0 items-center rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-2 text-xs font-medium text-[var(--ui-text-secondary)]" tabIndex={0} data-people-overflow>+{overflowCount}</span></Tooltip> : null}
         {!selected.length ? <span className="truncate px-1 text-sm font-normal text-[var(--ui-text-muted)]">{placeholder}</span> : null}
       </div>
       <ChevronDown aria-hidden="true" className={`pointer-events-none relative ml-2 size-4 shrink-0 text-[var(--ui-text-muted)] transition-transform duration-180 ${open ? "rotate-180" : ""}`} />

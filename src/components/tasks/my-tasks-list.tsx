@@ -15,6 +15,7 @@ import { getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { mergeProjectTask } from "@/lib/tasks";
 import { formatDateOnly } from "@/lib/utils";
 import type { MyTask, ProjectTask } from "@/types/tasks";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const periods: InboxFilters["period"][] = ["all", "overdue", "today", "week"];
 const states: InboxFilters["state"][] = ["active", "completed", "all"];
@@ -73,7 +74,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
       <span data-inbox-deadline className={`ui-numeric shrink-0 text-xs lg:justify-self-end ${item.overdue ? "font-semibold text-[var(--ui-danger-text)]" : item.deadline === today ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>
         {item.overdue ? `${t("overdue")} · ` : null}{item.deadline ? formatDateOnly(item.deadline, locale) : t("noDueDate")}
       </span>
-      {item.kind === "project" ? <span data-inbox-stage className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]" title={stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}>{stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}</span> : <span aria-hidden="true" className="hidden lg:block" />}
+      {item.kind === "project" ? <Tooltip content={stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}><span data-inbox-stage className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]" tabIndex={0}>{stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}</span></Tooltip> : <span aria-hidden="true" className="hidden lg:block" />}
       <span data-inbox-status className={`min-w-0 w-fit max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>{itemStatus}</span>
     </span>;
   }

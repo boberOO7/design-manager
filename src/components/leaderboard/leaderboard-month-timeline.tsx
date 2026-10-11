@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { LeaderboardMonthRange } from "@/lib/productivity";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Endpoint = keyof LeaderboardMonthRange;
 
@@ -114,7 +115,7 @@ export function LeaderboardMonthTimeline({ value, locale, onCommit }: { value: L
     <div className="grid grid-cols-2 gap-2">
       {(["from", "through"] as const).map((endpoint) => <button key={endpoint} type="button" aria-pressed={activeEndpoint === endpoint} data-endpoint={endpoint} className={cn(controlClass, "min-w-0 px-2 py-1.5 text-left", activeEndpoint === endpoint ? "bg-[var(--ui-surface-muted)] text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]")} onClick={() => setActiveEndpoint(endpoint)} onKeyDown={(event) => adjustWithKeyboard(event, endpoint)} onKeyUp={finishKeyboard} onBlur={finishKeyboard}>
         <span className="block text-xs">{t(endpoint === "from" ? "rangeStart" : "rangeEnd")}</span>
-        <span className="mt-0.5 flex items-center justify-between gap-1 text-sm font-semibold capitalize tabular-nums"><span className="truncate">{fullLabel(monthIndex(draft[endpoint]))}</span>{!isVisible(monthIndex(draft[endpoint])) ? <span title={t("outsideTimeline")} className="shrink-0 text-[var(--ui-text-muted)]">{monthIndex(draft[endpoint]) < bounds.first ? <ChevronLeft aria-hidden="true" className="size-3.5" /> : <ChevronRight aria-hidden="true" className="size-3.5" />}<span className="sr-only">{t("outsideTimeline")}</span></span> : null}</span>
+        <span className="mt-0.5 flex items-center justify-between gap-1 text-sm font-semibold capitalize tabular-nums"><span className="truncate">{fullLabel(monthIndex(draft[endpoint]))}</span>{!isVisible(monthIndex(draft[endpoint])) ? <Tooltip content={t("outsideTimeline")}><span className="shrink-0 text-[var(--ui-text-muted)]">{monthIndex(draft[endpoint]) < bounds.first ? <ChevronLeft aria-hidden="true" className="size-3.5" /> : <ChevronRight aria-hidden="true" className="size-3.5" />}<span className="sr-only">{t("outsideTimeline")}</span></span></Tooltip> : null}</span>
       </button>)}
     </div>
     <div className="mt-3 flex items-center justify-between gap-2 text-xs">

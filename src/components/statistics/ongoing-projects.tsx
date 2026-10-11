@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { StatisticsMetric } from "./statistics-card";
 import type { StatisticsReport } from "@/lib/statistics";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function OngoingProjects({ projects, today, totalCount, pausedCount, medianAge, activeMedianAge }: {
   projects: StatisticsReport["ongoing"];
@@ -26,7 +27,7 @@ export function OngoingProjects({ projects, today, totalCount, pausedCount, medi
   const row = (project: StatisticsReport["ongoing"][number]) => <li key={project.id}>
     <Link href={`/projects/${project.id}`} className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-[var(--ui-radius-control)] px-3 py-2.5 transition-colors duration-[180ms] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-focus)]">
       <span className="min-w-0">
-        <span className="block truncate text-xs font-medium leading-5 text-[var(--ui-text-secondary)] group-hover:text-[var(--ui-text)]" title={project.name}>{project.name}</span>
+        <Tooltip content={project.name}><span className="block truncate text-xs font-medium leading-5 text-[var(--ui-text-secondary)] group-hover:text-[var(--ui-text)]">{project.name}</span></Tooltip>
         <span className="mt-0.5 block text-[10px] leading-4 text-[var(--ui-text-muted)]">{t("recordedStart", { date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(project.started)) })}{project.status === "paused" ? ` · ${t("pausedProject")}` : ""}</span>
       </span>
       <span className="whitespace-nowrap text-right text-xs font-medium leading-5 tabular-nums text-[var(--ui-text)]">{new Intl.NumberFormat(locale).format(project.days)} <span className="font-normal text-[var(--ui-text-muted)]">{t("days")}</span></span>
