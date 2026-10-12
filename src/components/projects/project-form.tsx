@@ -174,7 +174,7 @@ export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "
   </div>;
 
   return <form ref={formRef} className={cn(layout === "modal" ? "flex min-h-0 flex-1 flex-col" : "space-y-6")} autoComplete="off" noValidate onInput={markDirty} onSubmit={submit}>
-    <div className={cn(layout === "modal" ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6" : undefined)}>{fields}
+    <div className={cn(layout === "modal" ? "min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] px-4 py-4 sm:px-6" : undefined)}>{fields}
       <p aria-live="polite" className={metadata.countryResetMessage ? "mt-3 text-sm text-[var(--ui-text-muted)]" : "sr-only"}>{metadata.countryResetMessage}</p>
       {visibleState.formError ? <div role="alert" className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-4 py-3 text-sm text-[var(--ui-danger-text)]">{visibleState.formError}</div> : null}
     </div>

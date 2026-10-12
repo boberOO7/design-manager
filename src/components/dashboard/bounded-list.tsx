@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 const WORKLOAD_CAPACITY_KEY = "dashboard-workload-visible-rows";
 const MIN_WORKLOAD_ROWS = 4;
@@ -25,9 +26,13 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
     const list = ref.current?.querySelector("ul");
     if (!(list instanceof HTMLElement)) return;
     const rows = Array.from(list.children).filter((row): row is HTMLElement => row instanceof HTMLElement);
-    const row = rows[0]?.firstElementChild;
+    const surfaces = rows.map((row) => row.firstElementChild).filter((row): row is HTMLElement => row instanceof HTMLElement);
     const measure = () => {
-      if (resizable) setRowHeight(row instanceof HTMLElement ? row.offsetHeight : undefined);
+      if (resizable) {
+        setRowHeight(surfaces[0]?.getBoundingClientRect().height);
+        const visible = surfaces.slice(0, visibleRows);
+        setMaxHeight(visible.reduce((height, row) => height + row.getBoundingClientRect().height, 0) + 4 * Math.max(0, visible.length - 1));
+      }
       else {
         const last = rows[5];
         setMaxHeight(last ? last.offsetTop + last.offsetHeight - rows[0].offsetTop : undefined);
@@ -35,14 +40,14 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
     };
     const observer = new ResizeObserver(measure);
     observer.observe(list);
-    if (resizable && row instanceof HTMLElement) observer.observe(row);
+    if (resizable) surfaces.forEach((row) => observer.observe(row));
     else rows.slice(0, 6).forEach((item) => observer.observe(item));
     measure();
     return () => observer.disconnect();
-  }, [children, resizable]);
+  }, [children, resizable, visibleRows]);
 
   function resizeStart(event: PointerEvent<HTMLButtonElement>) {
-    if (!rowHeight) return;
+    if (!rowHeight || event.button !== 0) return;
     drag.current = { y: event.clientY, rows: visibleRows, rowHeight: rowHeight + 4 };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -54,9 +59,9 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
     localStorage.setItem(WORKLOAD_CAPACITY_KEY, String(next));
   }
 
-  return <div className={resizable ? "relative" : undefined}>
-    <div ref={ref} className="overflow-y-auto" style={resizable ? (rowHeight ? { maxHeight: rowHeight * visibleRows + 4 * (visibleRows - 1) } : undefined) : { maxHeight }}>{children}</div>
-    {resizable ? <Tooltip content={resizeLabel}><button type="button" aria-label={resizeLabel} onPointerDown={resizeStart} onPointerMove={resizeMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onKeyDown={(event) => {
+  return <div className={resizable ? "relative pb-2" : undefined}>
+    <div ref={ref} className={cn("overflow-y-auto [scrollbar-gutter:stable]", resizable && "[scrollbar-gutter:stable_both-edges]")} style={{ maxHeight }}>{children}</div>
+    {resizable ? <Tooltip content={resizeLabel}><button type="button" aria-label={resizeLabel} onPointerDown={resizeStart} onPointerMove={resizeMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }} onKeyDown={(event) => {
       const delta = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
       if (delta) {
         event.preventDefault();
@@ -66,6 +71,6 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
           return next;
         });
       }
-    }} className="absolute bottom-0 right-0 z-10 size-5 touch-none cursor-ns-resize rounded-tl text-[var(--ui-text-muted)] opacity-30 transition-opacity hover:opacity-80 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]"><span aria-hidden="true" className="absolute bottom-1 right-1 size-2 border-b-2 border-r-2 border-current" /></button></Tooltip> : null}
+    }} className="absolute bottom-0 right-0 z-10 size-6 touch-none cursor-ns-resize select-none rounded-br-[calc(var(--ui-radius-panel)-1px)] text-[var(--ui-text-muted)] [clip-path:polygon(100%_0,100%_100%,0_100%)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:bg-[var(--ui-surface-muted)] focus-visible:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none"><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="absolute bottom-0 right-0 size-5"><path d="M5 16a11 11 0 0 0 11-11M10 16a6 6 0 0 0 6-6" /></svg></button></Tooltip> : null}
   </div>;
 }

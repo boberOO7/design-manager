@@ -501,6 +501,7 @@
     "account": "Signed in as {email}"
   },
   "Dashboard": {
+    "sectionHelp": "Help: {section}",
     "metadata": "Dashboard",
     "title": "Dashboard",
     "loginDescription": "Please log in to view your dashboard.",

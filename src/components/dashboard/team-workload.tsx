@@ -6,9 +6,10 @@ import { CircleAlert, ClipboardCheck, Clock3, Flame, ListTodo, Play, Ruler, type
 import { useState, type ComponentType } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getCurrentStatusAge, isTaskInWorkloadCategory, type TeamWorkloadMember, type WorkloadCategory } from "@/lib/dashboard";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { DashboardWorkloadTask } from "@/types/tasks";
 import { Tooltip } from "@/components/ui/tooltip";
+import { WorkloadMetricContent, WorkloadMetricDock } from "@/components/dashboard/workload-metric-dock";
 
 const METRICS: Array<{ category: WorkloadCategory; icon: ComponentType<LucideProps>; risk?: boolean; iconClassName?: string }> = [
   { category: "todo", icon: ListTodo },
@@ -17,6 +18,8 @@ const METRICS: Array<{ category: WorkloadCategory; icon: ComponentType<LucidePro
   { category: "urgent", icon: Flame, risk: true },
   { category: "overdue", icon: CircleAlert, risk: true },
 ];
+
+const metricButtonClassName = "relative z-10 pointer-events-auto inline-flex min-h-8 items-center justify-center rounded-[var(--ui-radius-control)] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)]";
 
 function metricValue(member: TeamWorkloadMember, category: WorkloadCategory) {
   if (category === "todo") return member.todoCount;
@@ -73,10 +76,10 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
       }
       const areaLabel = t("workloadAreaValue", { area: formatArea(member.workloadAreaM2, locale) });
       const areaTitle = `${areaLabel} · ${categoryLabel("area")}`;
-      const areaContent = <><Ruler aria-hidden="true" className="size-4" /><span className="ui-numeric tabular-nums">{areaLabel}</span></>;
+      const areaContent = <WorkloadMetricContent><Ruler aria-hidden="true" className="size-4" /><span className="ui-numeric tabular-nums">{areaLabel}</span></WorkloadMetricContent>;
       return <li key={member.id} className="rounded-[calc(var(--ui-radius-panel)-0.125rem)]">
-        <div className="relative grid gap-x-3 gap-y-1.5 px-3 py-2.5 lg:grid-cols-[minmax(0,1fr)_31.75rem] lg:items-center">
-          <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
+        <div className={cn("relative grid gap-x-3 gap-y-1.5 rounded-[calc(var(--ui-radius-panel)-0.125rem)] px-1.5 py-2.5 transition-colors duration-[180ms] ease-out hover:bg-[var(--ui-surface-muted)] focus-within:bg-[var(--ui-surface-muted)] motion-reduce:transition-none lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-center 2xl:grid-cols-[minmax(0,1fr)_31.75rem]", isExpanded && "bg-[var(--ui-surface-muted)]")}>
+          <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
           <div className="pointer-events-none relative flex min-w-0 items-center gap-2.5">
             <span className="rounded-full ring-2 ring-[var(--ui-surface)] shadow-sm"><UserAvatar imageUrl={member.avatar_url} name={member.full_name} size="boardCard" decorative /></span>
             <div className="min-w-0">
@@ -84,26 +87,26 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
               <small className="block text-[var(--ui-text-muted)]">{member.job_title}</small>
             </div>
           </div>
-          <div className="pointer-events-none relative grid grid-cols-[minmax(6rem,1.5fr)_repeat(5,minmax(2.25rem,1fr))] items-center gap-x-1 text-sm lg:grid-cols-[8rem_repeat(5,4.25rem)] lg:gap-x-2">
+          <WorkloadMetricDock className="pointer-events-none relative grid grid-cols-[minmax(6rem,1.5fr)_repeat(5,minmax(2.25rem,1fr))] items-center gap-x-1 text-sm lg:grid-cols-[6.5rem_repeat(5,3rem)] lg:gap-x-2 2xl:grid-cols-[8rem_repeat(5,4.25rem)]">
             {member.workloadAreaM2 > 0
-              ? <Tooltip content={areaTitle}><button type="button" onClick={() => expand(member.id, "area")} aria-label={t("openWorkloadArea", { name: member.full_name, area: areaLabel })} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap rounded-[var(--ui-radius-control)] font-semibold text-[var(--ui-text)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)]">{areaContent}</button></Tooltip>
-              : <Tooltip content={areaTitle}><span role="img" tabIndex={0} aria-label={areaTitle} className="pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap text-[var(--ui-text-muted)]">{areaContent}</span></Tooltip>}
+              ? <Tooltip content={areaTitle}><button data-workload-metric type="button" onClick={() => expand(member.id, "area")} aria-label={t("openWorkloadArea", { name: member.full_name, area: areaLabel })} className={`${metricButtonClassName} whitespace-nowrap text-[var(--ui-text)]`}>{areaContent}</button></Tooltip>
+              : <Tooltip content={areaTitle}><span data-workload-metric role="img" tabIndex={0} aria-label={areaTitle} className="relative z-10 pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 whitespace-nowrap text-[var(--ui-text-muted)]">{areaContent}</span></Tooltip>}
             {METRICS.map((metric) => {
               const value = metricValue(member, metric.category);
               const label = categoryLabel(metric.category);
               const title = `${label} · ${value}`;
               const activeRisk = metric.risk && value > 0;
               const color = value === 0 ? "text-[var(--ui-text-muted)]" : activeRisk ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text)]";
-              const content = <><metric.icon aria-hidden="true" className={`size-4 ${value > 0 && !activeRisk ? metric.iconClassName ?? "" : ""}`} /><span className="ui-numeric tabular-nums">{value}</span></>;
+              const content = <WorkloadMetricContent><metric.icon aria-hidden="true" className={`size-4 ${value > 0 && !activeRisk ? metric.iconClassName ?? "" : ""}`} /><span className="ui-numeric tabular-nums">{value}</span></WorkloadMetricContent>;
               return value > 0
-                ? <Tooltip content={title} key={metric.category}><button type="button" onClick={() => expand(member.id, metric.category)} aria-label={t("openWorkloadTasks", { count: value, name: member.full_name, category: label })} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-[var(--ui-radius-control)] font-semibold transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus-ring)] ${color}`}>{content}</button></Tooltip>
-                : <Tooltip content={title} key={metric.category}><span role="img" tabIndex={0} aria-label={title} className={`pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 ${color}`}>{content}</span></Tooltip>;
+                ? <Tooltip content={title} key={metric.category}><button data-workload-metric type="button" onClick={() => expand(member.id, metric.category)} aria-label={t("openWorkloadTasks", { count: value, name: member.full_name, category: label })} className={`${metricButtonClassName} ${color}`}>{content}</button></Tooltip>
+                : <Tooltip content={title} key={metric.category}><span data-workload-metric role="img" tabIndex={0} aria-label={title} className={`relative z-10 pointer-events-auto inline-flex min-h-8 items-center justify-center gap-1 ${color}`}>{content}</span></Tooltip>;
             })}
-          </div>
+          </WorkloadMetricDock>
         </div>
         <div aria-hidden={!isExpanded} inert={!isExpanded} className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
           <div className="overflow-hidden">
-            <div className="border-t border-[var(--ui-border)] px-3 pb-2 pt-2.5">
+            <div className="px-1.5 pb-2 pt-2.5">
               <p className="mb-2 text-xs font-medium text-[var(--ui-text-secondary)]">{categoryLabel(selectedCategory)} · {tasks.length}</p>
               <div className="space-y-3">{[...projectGroups].map(([projectId, group]) => {
                 const projectTasks = tasks.filter((task) => task.project_id === projectId);
@@ -141,7 +144,7 @@ function InlineTask({ asOf, locale, task, today, showArea }: { asOf: string; loc
   const status = useTranslations("Status");
   const age = formatStatusAge(task.currentStatusEnteredAt, asOf, t);
   const overdue = task.due_date !== null && task.due_date < today;
-  return <li><Link href={`/projects/${task.project_id}?task=${task.id}`} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--ui-radius-control)] px-2.5 py-2 transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]">
+  return <li><Link href={`/projects/${task.project_id}?task=${task.id}`} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--ui-radius-control)] px-2.5 py-2 transition-colors duration-[180ms] ease-out hover:bg-[var(--ui-surface-muted)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]">
     <span className="min-w-0 truncate text-sm font-medium text-[var(--ui-text)]">{task.title}</span>
     <span className="flex shrink-0 flex-col items-end gap-0.5 text-xs">{showArea ? <span className="ui-numeric font-semibold text-[var(--ui-text-secondary)]">{t("workloadTaskArea", { area: formatArea(task.workloadAreaM2, locale) })}</span> : null}{showArea ? <span className="text-[var(--ui-text-muted)]">{status(task.status === "in_progress" ? "inProgress" : task.status)}</span> : null}{age ? <span className="inline-flex items-center gap-1 text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("statusAgeInStatus", { duration: age })}</span> : null}{task.due_date ? <time dateTime={task.due_date} className={overdue ? "font-medium text-[var(--ui-danger-text)]" : "text-[var(--ui-text-muted)]"}>{overdue ? `${t("overdue")} · ${formatDate(task.due_date, locale)}` : t("dueDate", { date: formatDate(task.due_date, locale) })}</time> : null}</span>
   </Link></li>;

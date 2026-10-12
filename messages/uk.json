@@ -501,6 +501,7 @@
     "account": "Ви ввійшли як {email}"
   },
   "Dashboard": {
+    "sectionHelp": "Пояснення: {section}",
     "metadata": "Огляд",
     "title": "Огляд",
     "loginDescription": "Увійдіть, щоб переглянути огляд.",
