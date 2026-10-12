@@ -107,8 +107,8 @@ export type WorkLogReminders = z.infer<typeof workLogRemindersSchema>;
 export type WorkLogEligibility = Parameters<typeof getWorkdayKind>[1];
 type SubmittedDay = Pick<Tables["work_log_days"]["Row"], "work_date" | "submitted_at">;
 
-// Work Tracking was introduced on this Kyiv date (the original Work Log migration).
-export const WORK_TRACKING_ROLLOUT_DATE = "2026-10-07";
+// Fixed production rollout date in the Work Log's Europe/Kyiv work-date timezone.
+export const WORK_TRACKING_ROLLOUT_DATE = "2026-10-12";
 
 export function getWorkLogReminderWindow(today: string, joinedDate: string | null) {
   const previousWeek = addCalendarDays(startOfMondayWeek(today), -7);

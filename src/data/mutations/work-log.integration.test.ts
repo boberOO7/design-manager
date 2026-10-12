@@ -187,6 +187,6 @@ describe("persisted daily work log and reviewer statistics", () => {
     expect(data?.missingDates).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09", "2026-11-10", "2026-11-11"]);
     expect(data?.previousWeekMissing).toHaveLength(5);
     const rollout = await getWorkLogReminders(new Date("2026-10-08T12:00:00Z"));
-    expect(rollout?.missingDates).toEqual(["2026-10-07"]);
+    expect(rollout?.missingDates).toEqual([]);
   });
 });

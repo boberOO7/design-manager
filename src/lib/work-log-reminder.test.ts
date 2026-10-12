@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildWeeklyWorkLog, buildWorkLogReminders, getWorkLogReminderWindow, WORK_TRACKING_ROLLOUT_DATE } from "./work-log";
+import { buildWeeklyWorkLog, buildWorkLogReminders, getWorkLogReminderWindow, isWorkLogDateEditable, workLogInputSchema, WORK_TRACKING_ROLLOUT_DATE } from "./work-log";
 import { isWorkLogReminderRelevant, takeWorkLogReminder } from "./work-log-reminder";
+import { instantToDateOnly } from "./calendar";
 
 const submitted = (date: string) => ({ work_date: date, submitted_at: `${date}T12:00:00Z` });
 const eligibility = { joinedDate: "2026-11-02" };
@@ -13,11 +14,40 @@ const storage = () => {
 describe("weekly Work Log and missing-day reminders", () => {
   it("caps a long-tenure employee's reminders at rollout and never includes today", () => {
     const rules = { joinedDate: "2024-01-01" };
-    expect(getWorkLogReminderWindow("2026-10-08", rules.joinedDate).from).toBe(WORK_TRACKING_ROLLOUT_DATE);
-    expect(buildWorkLogReminders("2026-10-07", [], rules)).toMatchObject({ missingDates: [], latestEligibleDate: null, previousWeekMissing: [] });
-    expect(buildWorkLogReminders("2026-10-08", [], rules)).toMatchObject({ missingDates: ["2026-10-07"], latestEligibleDate: "2026-10-07", previousWeekMissing: [] });
-    expect(buildWorkLogReminders("2026-10-08", [submitted("2026-10-07")], rules).missingDates).toEqual([]);
-    expect(buildWorkLogReminders("2026-10-06", [], rules).missingDates).toEqual([]);
+    expect(WORK_TRACKING_ROLLOUT_DATE).toBe("2026-10-12");
+    expect(getWorkLogReminderWindow("2026-10-13", rules.joinedDate).from).toBe(WORK_TRACKING_ROLLOUT_DATE);
+    for (const today of ["2026-10-08", "2026-10-09", "2026-10-11", "2026-10-12"]) {
+      expect(buildWorkLogReminders(today, [], rules)).toMatchObject({ missingDates: [], latestEligibleDate: null, previousWeekMissing: [] });
+    }
+    const firstReminder = { scope: "studio:user", ...buildWorkLogReminders("2026-10-13", [], rules) };
+    expect(firstReminder).toMatchObject({ missingDates: ["2026-10-12"], latestEligibleDate: "2026-10-12", previousWeekMissing: [] });
+    expect(takeWorkLogReminder(firstReminder, storage())).toMatchObject({ kind: "day", date: "2026-10-12", count: 1, yesterday: true });
+    expect(buildWorkLogReminders("2026-10-13", [submitted("2026-10-12")], rules).missingDates).toEqual([]);
+    const week = buildWeeklyWorkLog("2026-10-12", "2026-10-13", [], [], new Map(), rules);
+    expect(week.days[0]).toMatchObject({ date: "2026-10-12", missing: true });
+    expect(week.days[1]).toMatchObject({ date: "2026-10-13", missing: false });
+  });
+
+  it("starts reminders at Kyiv midnight on October 13 and keeps the first eligible previous week", () => {
+    const rules = { joinedDate: "2024-01-01" };
+    const beforeMidnight = instantToDateOnly("2026-10-12T20:59:59Z");
+    const afterMidnight = instantToDateOnly("2026-10-12T21:00:00Z");
+    expect(buildWorkLogReminders(beforeMidnight, [], rules).missingDates).toEqual([]);
+    expect(buildWorkLogReminders(afterMidnight, [], rules).missingDates).toEqual(["2026-10-12"]);
+    expect(buildWorkLogReminders("2026-10-19", [], rules).previousWeekMissing).toEqual([
+      "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16",
+    ]);
+  });
+
+  it("preserves saved pre-rollout work and allows manual editing without requiring earlier days", () => {
+    const date = "2026-10-08", today = "2026-10-13", rules = { joinedDate: "2024-01-01" };
+    const entry = { activity_kind: "task", task_id: "82000000-0000-4000-8000-000000000001", review_round_id: null, minutes: 90 };
+    expect(isWorkLogDateEditable(date, today)).toBe(true);
+    expect(workLogInputSchema.safeParse({ date, entries: [entry] }).success).toBe(true);
+    const week = buildWeeklyWorkLog(date, today, [{ ...entry, work_date: date }], [submitted(date)], new Map(), rules);
+    expect(week.days.every(day => !day.missing)).toBe(true);
+    expect(week.days[3]).toMatchObject({ date, submittedAt: submitted(date).submitted_at, totalMinutes: 90 });
+    expect(week.totals.totalMinutes).toBe(90);
   });
 
   it("uses the later join date and keeps future join dates ineligible", () => {

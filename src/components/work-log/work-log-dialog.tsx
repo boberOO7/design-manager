@@ -153,7 +153,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
           const Icon = isReview ? ShieldCheck : kind === "internal" ? BriefcaseBusiness : ListTodo;
           const label = t(isReview ? "reviews" : kind === "internal" ? "internalWork" : "tasks");
           return <section key={kind} aria-label={label}>
-            <div className={`flex items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-3 py-2 text-xs ${isReview ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"}`}>
+            <div className={`flex items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-3 py-2 text-xs ${isReview ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : kind === "internal" ? "bg-[color-mix(in_srgb,var(--ui-violet-surface)_45%,var(--ui-surface))] text-[color-mix(in_srgb,var(--ui-violet-text)_75%,var(--ui-text-secondary))]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"}`}>
               <h3 className="flex items-center gap-2 font-semibold"><Icon aria-hidden className="size-4" />{label}<span className="font-normal">· {group.length}</span></h3>
               <span className="shrink-0 tabular-nums">{duration(group.reduce((sum, row) => sum + row.minutes, 0))}</span>
             </div>
