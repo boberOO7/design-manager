@@ -75,7 +75,7 @@ export async function updateTaskDetailsMutation(
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_task_details_with_collaborators", {
     p_task_id: authorization.task.id,
-    p_task: { ...update, reviewer_ids: parsed.data.reviewer_ids },
+    p_task: { ...update, reviewer_ids: parsed.data.reviewer_ids, review_round_id: parsed.data.review_round_id, review_reviewer_id: parsed.data.review_reviewer_id },
     p_collaborator_ids: parsed.data.collaborator_ids,
     p_deadlines: parsed.data.deadlines,
   });

@@ -12,14 +12,14 @@ import {
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
 import styles from "./project-task-board.module.css";
-import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, LoaderCircle, Plus, ShieldCheck, Signal, UserPlus, X } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, Info, LoaderCircle, Plus, ShieldCheck, Signal, UserPlus, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
 import { ProjectTemplateStageDialog } from "@/components/tasks/project-template-stage-dialog";
 import { StageTaskEditor } from "@/components/tasks/stage-task-editor";
 import { BulkTaskReviewerEditor } from "@/components/tasks/bulk-task-reviewer-editor";
-import { getActiveTaskReview } from "@/lib/task-reviews";
+import { canConfigureTaskReview, getActiveTaskReview } from "@/lib/task-reviews";
 import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { taskPriorityLabel } from "@/components/tasks/task-select-presentation";
@@ -316,8 +316,8 @@ function BulkTaskContextMenu({
     aria-label={isUkrainian ? `Масові дії: ${selectedCount} задач` : `Bulk actions: ${selectedCount} tasks`}
     tabIndex={-1}
     data-bulk-menu
-    className="fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)] outline-none"
-    style={{ left: position.x, top: position.y, maxHeight: `calc(100dvh - ${position.y + 8}px)` }}
+    className={`fixed z-50 ${view === "reviewers" ? "w-[26rem]" : "w-80"} max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)] outline-none transition-[width,left] duration-200 motion-reduce:transition-none`}
+    style={{ left: view === "reviewers" ? `min(${position.x}px, max(8px, calc(100vw - 26rem - 8px)))` : position.x, top: position.y, maxHeight: `calc(100dvh - ${position.y + 8}px)` }}
     onContextMenu={(event) => event.preventDefault()}
   >
     {view === "actions" ? <>
@@ -332,6 +332,11 @@ function BulkTaskContextMenu({
       <div className="flex items-center gap-1 px-1 py-1">
         <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={isUkrainian ? "Назад" : "Back"} onClick={() => setView("actions")}><ArrowLeft className="size-4" aria-hidden="true" /></button>
         <p className="text-sm font-semibold text-[var(--ui-text)]">{heading}</p>
+        {view === "reviewers" ? <Tooltip content={taskT("bulkReviewHelp")} openOnClick>
+          <button type="button" aria-label={taskT("fieldHelp", { field: heading })} className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
+            <Info className="size-3.5" aria-hidden="true" />
+          </button>
+        </Tooltip> : null}
       </div>
       {view === "reviewers" ? <BulkTaskReviewerEditor tasks={selectedTasks} disabled={isSubmitting} onApply={(reviewerIds) => submit(() => onReviewers(reviewerIds))} /> : null}
       {view === "assignee" ? <div className="space-y-2 p-2 pt-1">
@@ -380,7 +385,7 @@ function TaskCardContent({
   const visibleCollaboratorCount = task.assignee ? 3 : 4;
 
   return (
-    <div className={cn("relative rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] transition-[border-color,box-shadow]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected && "border-[var(--ui-focus)] ring-2 ring-[var(--ui-focus)] ring-offset-1 ring-offset-[var(--ui-surface-muted)]")}>
+    <div className={cn("relative rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] transition-[border-color,box-shadow]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected && "border-[var(--ui-focus)]")}>
       {isSelected ? <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)] shadow-sm"><Check className="size-3" /></span> : null}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
@@ -1133,11 +1138,19 @@ export function ProjectTaskBoard({
     for (const taskId of taskIds) setTaskPending(taskId, true);
     setBoardError(null);
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-review`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage, task_ids: taskIds, reviewer_ids: reviewerIds }) });
+      const singleTask = taskIds.length === 1 ? localTasksRef.current.find(task => task.id === taskIds[0]) : undefined;
+      const round = singleTask ? getActiveTaskReview(singleTask) : null;
+      const response = await fetch(round && singleTask ? `/api/tasks/${encodeURIComponent(singleTask.id)}/review` : `/api/projects/${encodeURIComponent(projectId)}/tasks/bulk-review`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(round
+        ? { action: "reassign", round_id: round.id, reviewer_id: round.reviewer_id, reviewer_ids: reviewerIds }
+        : { stage, task_ids: taskIds, reviewer_ids: reviewerIds }) });
       const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isSuccessfulBulkTaskStageAssignmentResponse(result)) throw createTaskActionError(result, response.status);
-      localTasksRef.current = result.tasks;
-      setLocalTasks(result.tasks);
+      if (!response.ok) throw createTaskActionError(result, response.status);
+      if (round && isSuccessfulTaskStatusResponse(result)) {
+        localTasksRef.current = mergeProjectTask(localTasksRef.current, result.task);
+        window.dispatchEvent(new Event("review-timer-change"));
+      } else if (!round && isSuccessfulBulkTaskStageAssignmentResponse(result)) localTasksRef.current = result.tasks;
+      else throw createTaskActionError(result, response.status);
+      setLocalTasks(localTasksRef.current);
       setAnnouncement(t("bulkReviewSaved", { count: taskIds.length }));
       return true;
     } catch (error) {
@@ -1480,7 +1493,7 @@ export function ProjectTaskBoard({
       {taskContextMenu && taskSelection.stage && taskSelection.taskIds.length > 0 ? <BulkTaskContextMenu
         canManageTasks={canManageTasks && !selectedStageIsReadOnly}
         canMoveSelection={canMoveSelection}
-        canConfigureReviews={selectedTasks.length === taskSelection.taskIds.length && selectedTasks.every((task) => !getActiveTaskReview(task) && (task.requires_review || task.status === "todo" || task.status === "in_progress"))}
+        canConfigureReviews={selectedTasks.length === taskSelection.taskIds.length && selectedTasks.every((task) => canConfigureTaskReview(task) && (selectedTasks.length === 1 || !getActiveTaskReview(task)))}
         selectedTasks={selectedTasks}
         onReviewers={setSelectedTaskReviewers}
         enabledStatuses={localStageColumns[taskSelection.stage]}

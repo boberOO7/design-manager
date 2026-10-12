@@ -309,6 +309,28 @@ describe("optimistic task Board state", () => {
     expect(groups.done.map((task) => task.id)).toEqual(["task-1"]);
   });
 
+  it("retains reviewer assignment changes when every other task field stays the same", () => {
+    const original = makeTask({ status: "internal_review", requires_review: false, reviewers: [] });
+    const reviewer = { id: "reviewer", full_name: "Reviewer", job_title: "Designer" };
+    const updated = { ...original, requires_review: true, reviewer_id: reviewer.id, reviewer,
+      reviewers: [{ task_id: original.id, reviewer_id: reviewer.id, position: 0, reviewer }] };
+    expect(areProjectTaskSnapshotsEqual([original], [updated])).toBe(false);
+    expect(mergeProjectTask([original], updated)[0]).toEqual(updated);
+    const replacement = { ...updated, reviewer_id: "replacement", reviewer: { ...reviewer, id: "replacement" } };
+    expect(mergeProjectTask([updated], replacement)[0]).toEqual(replacement);
+  });
+
+  it("retains sequential handoff and approval changes within the same open round", () => {
+    const task = makeTask({ status: "internal_review", requires_review: true, reviewer_id: "first" });
+    const original = { ...task, review_rounds: [{ id: "round", task_id: task.id, project_id: task.project_id, round_number: 1,
+      reviewer_id: "first", reviewer: null, submitted_at: "2026-10-12T10:00:00Z", completed_at: null, result: null, rework_comment: null,
+      reviewers: [{ round_id: "round", reviewer_id: "first", position: 0, approved_at: null, reviewer: null }] }] };
+    const updated = { ...task, review_rounds: [{ ...original.review_rounds[0], reviewer_id: "second",
+      reviewers: [{ ...original.review_rounds[0].reviewers[0], approved_at: "2026-10-12T11:00:00Z" }] }] };
+    expect(mergeProjectTask([original], updated)[0]).toEqual(updated);
+    expect(reconcileProjectTasks([updated], [original], new Set(), new Map())[0]).toEqual(updated);
+  });
+
   it("opens a card only when a drag was not activated", () => {
     expect(shouldOpenTaskDrawer(false)).toBe(true);
     expect(shouldOpenTaskDrawer(true)).toBe(false);

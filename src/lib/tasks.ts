@@ -211,6 +211,11 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.stage_position === right.stage_position
     && left.priority === right.priority
     && left.assignee_id === right.assignee_id
+    && left.requires_review === right.requires_review
+    && left.reviewer_id === right.reviewer_id
+    && areTaskPeopleEqual(left.reviewer ?? null, right.reviewer ?? null)
+    && JSON.stringify(left.reviewers ?? []) === JSON.stringify(right.reviewers ?? [])
+    && JSON.stringify(left.review_rounds ?? []) === JSON.stringify(right.review_rounds ?? [])
     && left.due_date === right.due_date
     && (left.deadlines?.length ?? 0) === (right.deadlines?.length ?? 0)
     && (left.deadlines ?? []).every((deadline, index) => deadline.id === right.deadlines?.[index]?.id && deadline.target_status === right.deadlines?.[index]?.target_status && deadline.due_date === right.deadlines?.[index]?.due_date)

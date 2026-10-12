@@ -126,7 +126,9 @@ export const taskEditSchema = z.object({
   stage: z.enum(TASK_STAGES),
   completed_at: optionalDateSchema,
   reviewer_ids: taskReviewerIdsSchema.optional(),
-}).strict();
+  review_round_id: z.uuid().optional(),
+  review_reviewer_id: z.uuid().optional(),
+}).strict().refine(value => Boolean(value.review_round_id) === Boolean(value.review_reviewer_id), "Provide the current review round and reviewer together");
 
 export const taskCompletionDateEditSchema = z.object({
   completed_at: dateSchema,

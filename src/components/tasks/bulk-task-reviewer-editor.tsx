@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { TaskReviewerEditor } from "./task-reviewer-editor";
-import { getTaskReviewerIds } from "@/lib/task-reviews";
+import { getActiveTaskReview, getTaskReviewerIds } from "@/lib/task-reviews";
 import { taskReviewCandidatesSchema } from "@/lib/validation/task-review";
 import type { ProjectTask } from "@/types/tasks";
 
@@ -34,10 +34,11 @@ export function BulkTaskReviewerEditor({ tasks, disabled, onApply }: { tasks: Pr
   }, [taskId, attempt]);
   const assigned = tasks.flatMap((task) => (task.reviewers ?? []).flatMap((assignment) => assignment.reviewer ? [assignment.reviewer] : []));
   const options = [...new Map([...assigned, ...reviewers].map((reviewer) => [reviewer.id, reviewer])).values()];
+  const active = tasks.length === 1 ? getActiveTaskReview(tasks[0]) : null;
+  const lockedCount = active?.reviewers?.filter(step => step.approved_at).length ?? 0;
   return <div className="@container space-y-3 p-2">
-    <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("bulkReviewHelp")}</p>
-    <TaskReviewerEditor reviewers={options} selectedIds={reviewerIds} disabled={disabled || loading || error} onChange={setReviewerIds} />
+    <TaskReviewerEditor reviewers={options} selectedIds={reviewerIds} lockedCount={lockedCount} disabled={disabled || loading || error} onChange={setReviewerIds} />
     {error ? <div className="space-y-2"><p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("reviewLoadFailed")}</p><Button type="button" variant="outline" size="sm" onClick={() => setAttempt((current) => current + 1)}>{t("reviewRetry")}</Button></div> : null}
-    <Button type="button" className="w-full" disabled={disabled || loading || error || !taskId} onClick={() => void onApply(reviewerIds)}>{t(disabled ? "saving" : "bulkReviewApply")}</Button>
+    <Button type="button" className="w-full" disabled={disabled || loading || error || !taskId || Boolean(active && reviewerIds.length <= lockedCount)} onClick={() => void onApply(reviewerIds)}>{t(disabled ? "saving" : "bulkReviewApply")}</Button>
   </div>;
 }

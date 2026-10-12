@@ -34,11 +34,12 @@ export async function updateTaskReviewMutation(taskId: string, input: unknown): 
   const { error } = await supabase.rpc("update_task_review", {
     p_task_id: taskId, p_action: action.action,
     ...(action.action === "configure" ? { p_requires_review: action.requires_review, p_reviewer_id: action.reviewer_id ?? undefined } : {}),
+    ...(action.action === "reassign" ? { p_round_id: action.round_id, p_expected_reviewer_id: action.reviewer_id, p_reviewer_ids: action.reviewer_ids } : {}),
     ...(action.action === "approved" || action.action === "rework" ? { p_round_id: action.round_id, p_expected_reviewer_id: action.reviewer_id } : {}),
     ...(action.action === "rework" ? { p_comment: action.comment } : {}),
   });
   if (error) return { success: false, formError: error.message };
-  if (action.action === "approved" || action.action === "rework") scheduleAutomaticLabor(resolution.membership.studio_id);
+  if (action.action === "approved" || action.action === "rework" || action.action === "reassign") scheduleAutomaticLabor(resolution.membership.studio_id);
   const task = await getProjectTaskById(taskId);
   if (!task) return { success: false, formError: "The review was saved. Please refresh the task." };
   const { data: project, error: projectError } = await supabase.from("projects").select("status").eq("id", task.project_id).single();

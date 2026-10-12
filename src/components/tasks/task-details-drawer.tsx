@@ -23,7 +23,7 @@ import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborato
 import { TaskFieldLabel } from "@/components/tasks/task-field-label";
 import { TaskPersonSelect } from "@/components/tasks/task-person-select";
 import { TaskReviewSection } from "@/components/tasks/task-review-section";
-import { getTaskReviewerIds } from "@/lib/task-reviews";
+import { getActiveTaskReview, getTaskReviewerIds } from "@/lib/task-reviews";
 import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
 import { calculateTaskProgress } from "@/lib/project-progress";
 import { cn, formatDate, formatDateOnlyDayMonth, formatNumber } from "@/lib/utils";
@@ -226,7 +226,7 @@ export function TaskDetailsDrawer({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(canEditTaskFields
-          ? { ...values, deadlines: toTaskDeadlineInputs(values.deadlines) }
+          ? { ...values, deadlines: toTaskDeadlineInputs(values.deadlines), review_round_id: getActiveTaskReview(task)?.id, review_reviewer_id: getActiveTaskReview(task)?.reviewer_id }
           : { completed_at: values.completed_at }),
       });
       let result: unknown = null;
@@ -237,7 +237,9 @@ export function TaskDetailsDrawer({
       }
       if (response.ok && isTaskEditResponse(result) && result.success) {
         onTaskUpdated(result.task);
-        if (task.schedule || JSON.stringify(values.reviewer_ids) !== JSON.stringify(makeFormValues(task).reviewer_ids)) router.refresh();
+        const reviewersChanged = JSON.stringify(values.reviewer_ids) !== JSON.stringify(makeFormValues(task).reviewer_ids);
+        if (reviewersChanged) window.dispatchEvent(new Event("review-timer-change"));
+        if (task.schedule || reviewersChanged) router.refresh();
         checklistStore.seed(result.task);
         if (isProjectLifecycleStatus(result.projectStatus)) onProjectStatusUpdated?.(result.projectStatus);
         setValues(makeFormValues(result.task));

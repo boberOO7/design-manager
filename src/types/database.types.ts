@@ -5819,6 +5819,7 @@ export type Database = {
           state: string
           studio_id: string
           user_id: string
+          work_session_id: string
         }
         Insert: {
           accounted_at?: string | null
@@ -5830,6 +5831,7 @@ export type Database = {
           state: string
           studio_id: string
           user_id: string
+          work_session_id?: string
         }
         Update: {
           accounted_at?: string | null
@@ -5841,6 +5843,7 @@ export type Database = {
           state?: string
           studio_id?: string
           user_id?: string
+          work_session_id?: string
         }
         Relationships: [
           {

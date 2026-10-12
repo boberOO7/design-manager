@@ -79,6 +79,9 @@ Project aggregation and attribution are described in
   reviewers in `task_review_round_reviewers`. The round's stable UUID can be
   referenced by persistent review timer sessions; waiting duration is calendar
   time since submission and is never counted as tracked work.
+- Existing Internal Review tasks without an open round can receive reviewers in
+  place. Assignment creates the next numbered round and reviewer snapshot, without
+  a status transition, and delivers the normal current-reviewer request notification.
 - The current reviewer or studio administrator decides through `update_task_review`.
   Each approval records `approved_at` on that reviewer's snapshot and forwards the
   same open round to the next reviewer (`task_review_rounds.reviewer_id`). Only the
@@ -91,12 +94,20 @@ Project aggregation and attribution are described in
   rework context, including the sequence snapshot and earlier approvals.
   Resubmission creates the next round; stale round IDs and expected reviewer IDs
   cannot resolve a later round or step. Direct status and bulk moves cannot bypass an active
-  review or move unapproved work beyond it. Review settings/stage cannot change
-  during an active round.
-- My Tasks exposes a review queue: rounds currently assigned to employees and all visible
-  rounds for administrators, ordered by submission time (oldest first). Queue
+  review or move unapproved work beyond it. During an active round, administrators
+  may reassign the pending sequence with an expected round/current reviewer;
+  approved steps and their positions remain fixed. Reassignment records history
+  and checkpoints the outgoing reviewer's timer without changing task status.
+  Main Edit/Save performs this reassignment atomically with metadata, before taking
+  task locks. Single-task Board assignment uses the same guarded reassignment RPC.
+  Review cannot be disabled and the stage cannot change during an active round.
+- My Tasks exposes a personal review queue for the currently responsible reviewer,
+  including administrators, ordered by submission time (oldest first). Administrators
+  retain management access through project tasks. Queue
   entries open task details and support direct approval/rework. Project/stage groups
   with 2+ rounds are initially collapsed; single rounds remain ordinary rows.
+  Ctrl/Cmd-click selects an exact subset within one project/stage and starts it
+  through the same shared timer as whole-group actions.
   Reviewer steps derive Waiting/Active/Paused/Completed from persisted timer history.
   Active shared-group actions pause/account the frozen session before resolving
   its current reviewer steps through the same per-task workflow; later reviewer
@@ -107,7 +118,8 @@ Project aggregation and attribution are described in
 - `control_review_timer` starts/pauses one user-wide active session, protected by a
   unique partial index and reviewer advisory locks. A shared session freezes its
   round membership and tracks elapsed server microseconds once. Resume creates a
-  new idempotent session ID; previous intervals remain historical. Approval/rework
+  new idempotent interval ID; `work_session_id` preserves one logical session across
+  exact unfinished-membership resumes. Previous intervals remain historical. Approval/rework
   accounts and pauses the whole shared session before closing the individual step.
   Profile/membership/project eligibility loss pauses it in that transition transaction.
 - `review_timer_daily` keeps exact date-split time and automatic minute baselines;

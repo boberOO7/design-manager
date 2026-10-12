@@ -8,7 +8,7 @@ import { getMyTaskStageNames } from "@/data/queries/tasks";
 import { loadAllRows } from "@/data/queries/all-rows";
 import { createClient } from "@/lib/supabase/server";
 import { addCalendarDays, instantToDateOnly, startOfMondayWeek } from "@/lib/calendar";
-import { workLogTimerSnapshotSchema, buildWeeklyWorkLog, buildWorkLogReminders, completedReviewCredits, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedReviewRoundIds, getSuggestedTaskIds, isTaskWorkPlausible, getWorkLogReminderWindow, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
+import { workLogTimerSnapshotSchema, buildWeeklyWorkLog, buildWorkLogReminders, completedReviewCredits, completedReviewSessions, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedReviewRoundIds, getSuggestedTaskIds, isTaskWorkPlausible, getWorkLogReminderWindow, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 function loadWorkLogCalendar(client: Client, studioId: string) {
@@ -182,14 +182,18 @@ export async function getWorkLogReminders(now = new Date()) {
 export async function getEmployeeWorkStatistics(studioId: string, userId: string) {
   const client = await createClient();
   const today = instantToDateOnly(new Date().toISOString());
-  const [rounds, entries] = await Promise.all([
+  const [rounds, entries, sessions] = await Promise.all([
     loadAllRows((from, to) => client.from("task_review_rounds")
       .select("id,reviewer_id,result,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")
-      .eq("project.studio_id", studioId).not("completed_at", "is", null).lte("completed_at", new Date().toISOString()).order("id").range(from, to)),
+      .eq("project.studio_id", studioId).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("work_log_entries").select("internal_activity_type,activity_kind,task_id,review_round_id,minutes")
       .eq("studio_id", studioId).eq("user_id", userId).lte("work_date", today).order("id").range(from, to)),
+    loadAllRows((from, to) => client.from("review_timer_sessions")
+      .select("id,work_session_id,user_id,state,elapsed_us,members:review_timer_members(round_id,finished_at)")
+      .eq("studio_id", studioId).eq("user_id", userId).order("id").range(from, to)),
   ]);
-  if (rounds.error || entries.error) throw new Error("Unable to load employee work statistics.", { cause: rounds.error ?? entries.error });
-  return { reviewsCompleted: completedReviewCredits(rounds.data ?? []).filter(row => row.userId === userId).length,
+  if (rounds.error || entries.error || sessions.error) throw new Error("Unable to load employee work statistics.", { cause: rounds.error ?? entries.error ?? sessions.error });
+  return { reviewsCompleted: completedReviewCredits(rounds.data ?? []).filter(row => row.userId === userId && instantToDateOnly(row.completedAt) <= today).length,
+    reviewSessionsCompleted: completedReviewSessions(sessions.data ?? []).filter(row => instantToDateOnly(row.completedAt) <= today).length,
     ...summarizeLoggedTime(entries.data ?? []) };
 }

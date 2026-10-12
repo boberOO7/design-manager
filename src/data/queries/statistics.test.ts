@@ -58,7 +58,7 @@ describe("Statistics query access boundary", () => {
     mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
     const withReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
-    expect(withReviews?.work.totals).toEqual({ internalMinutes: 0, reviewMinutes: 60, taskMinutes: 0, totalMinutes: 60, reviewsCompleted: 1 });
+    expect(withReviews?.work.totals).toEqual({ internalMinutes: 0, reviewMinutes: 60, taskMinutes: 0, totalMinutes: 60, reviewsCompleted: 1, reviewSessionsCompleted: 0 });
     expect(withReviews?.work.projects).toEqual([{ id: "project", name: "Project", taskMinutes: 0, reviewMinutes: 60, totalMinutes: 60 }]);
     expect(withReviews?.calendar.people[0].hours).toBe(1);
     expect(withReviews?.totals).toMatchObject({ completedTasks: 1, creditedArea: 100, contributors: 1 });

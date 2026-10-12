@@ -8,7 +8,7 @@ import { getKyivDateOnly } from "@/lib/validation/project";
 import { buildCrmStatistics } from "@/lib/statistics-crm";
 import { buildAttendanceStatistics } from "@/lib/statistics-attendance";
 import { buildCalendarStatistics, calendarStatisticsAssignments } from "@/lib/statistics-calendar";
-import { buildWorkStatistics } from "@/lib/work-log";
+import { buildWorkStatistics, completedReviewCredits, completedReviewSessions } from "@/lib/work-log";
 
 /** Page each independent source, with stable ordering, past PostgREST's 1,000
  * row cap. No per-project/person queries.
@@ -28,7 +28,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   if (!admin) return null;
   const client = await createClient();
   const studio = admin.studio_id;
-  const [projects, tasks, activities, attributions, leads, timeOff, events, members, leadHistory, invites, participants, workLog, reviewRounds] = await Promise.all([
+  const [projects, tasks, activities, attributions, leads, timeOff, events, members, leadHistory, invites, participants, workLog, reviewRounds, reviewSessions] = await Promise.all([
     readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,started_at,completed_at,include_in_productivity,total_area_m2")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("tasks").select("id,project_id,completed_at,project:projects!inner(studio_id)").eq("project.studio_id", studio)
@@ -55,6 +55,9 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
     readStatisticsPages(offset => client.from("task_review_rounds")
       .select("id,reviewer_id,completed_at,result,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")
       .eq("project.studio_id", studio).order("id").range(offset, offset + 999)),
+    readStatisticsPages(offset => client.from("review_timer_sessions")
+      .select("id,work_session_id,user_id,state,elapsed_us,members:review_timer_members(round_id,finished_at)")
+      .eq("studio_id", studio).order("id").range(offset, offset + 999)),
   ]);
   // Only report aggregates and the admin attendance row identities are returned.
   // HR explanations and CRM contact details are not payloads.
@@ -63,7 +66,8 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   if (period === "all") {
     const firstDate = [overview.from, ...leads.map(row => getKyivDateOnly(new Date(row.created_at))),
       ...timeOff.map(row => row.start_date), ...events.map(row => getKyivDateOnly(new Date(row.starts_at))),
-      ...workLog.map(row => row.work_date), ...reviewRounds.flatMap(row => row.completed_at ? [getKyivDateOnly(new Date(row.completed_at))] : [])]
+      ...workLog.map(row => row.work_date), ...completedReviewCredits(reviewRounds).map(row => getKyivDateOnly(new Date(row.completedAt))),
+      ...completedReviewSessions(reviewSessions).map(row => getKyivDateOnly(new Date(row.completedAt)))]
       .filter(date => date <= today).sort()[0];
     overview = buildStatistics(sources, period, today, `${firstDate.slice(0, 7)}-01`);
   }
@@ -71,7 +75,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
   const people = members.map(row => ({ id: row.user_id, name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active }));
   const calendar = buildCalendarStatistics(events, projects, range, now, { members: people, assignments: calendarStatisticsAssignments(events, invites, participants) });
   return { ...overview,
-    work: buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects),
+    work: buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects, reviewSessions),
     leads: buildCrmStatistics(leads, activities, range, today, tasks, leadHistory),
     attendance: buildAttendanceStatistics(timeOff, events, people, range, now),
     calendar,

@@ -1,5 +1,9 @@
 import type { ProjectTask, TaskReviewRound } from "@/types/tasks";
 
+export function canConfigureTaskReview(task: Pick<ProjectTask, "requires_review" | "status">) {
+  return task.requires_review || ["todo", "in_progress", "internal_review"].includes(task.status);
+}
+
 export function getTaskReviewerIds(task: Pick<ProjectTask, "reviewers" | "reviewer_id">): string[] {
   return task.reviewers ? [...task.reviewers].sort((left, right) => left.position - right.position).map((reviewer) => reviewer.reviewer_id) : task.reviewer_id ? [task.reviewer_id] : [];
 }

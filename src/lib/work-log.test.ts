@@ -1,6 +1,6 @@
 import { instantToDateOnly } from "./calendar";
 import { describe, expect, it } from "vitest";
-import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, isWorkLogDateEditable, isTaskWorkPlausible, getSuggestedTaskIds, getSuggestedReviewRoundIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
+import { buildWorkStatistics, completedReviewCredits, completedReviewSessions, type ReviewStatisticsSession, getDailyCalendarContext, isWorkLogDateEditable, isTaskWorkPlausible, getSuggestedTaskIds, getSuggestedReviewRoundIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
 import { buildCalendarStatistics, calendarStatisticsAssignments, type StatisticsCalendarEvent } from "./statistics-calendar";
 import { statisticsPeriods, statisticsRange } from "./statistics";
 
@@ -8,7 +8,7 @@ const taskId = "82000000-0000-4000-8000-000000000001";
 const roundId = "82000000-0000-4000-8000-000000000002";
 const round = (changes: Partial<ReviewStatisticsRound> = {}): ReviewStatisticsRound => ({
   id: roundId, reviewer_id: "reviewer", completed_at: "2026-10-07T10:00:00Z", result: "approved",
-  reviewers: [{ reviewer_id: "reviewer", approved_at: "2026-10-07T10:00:00Z" }], ...changes,
+  reviewers: [{ reviewer_id: "reviewer", approved_at: changes.completed_at === undefined ? "2026-10-07T10:00:00Z" : changes.completed_at }], ...changes,
 });
 const event = (changes: Partial<StatisticsCalendarEvent & { assignee_id: string | null }> = {}): StatisticsCalendarEvent & { assignee_id: string | null } => ({
   id: "meeting", event_type: "meeting", starts_at: "2026-10-07T06:00:00Z", ends_at: "2026-10-07T07:00:00Z", all_day: false,
@@ -20,6 +20,29 @@ const entry = (changes: Partial<Parameters<typeof buildWorkStatistics>[0][number
 });
 
 describe("work log domain", () => {
+  it("counts ten reviewed steps as one shared work session across pauses and resumes", () => {
+    const finished_at = "2026-10-07T10:00:00Z";
+    const members = Array.from({ length: 10 }, (_, index) => ({ round_id: `round-${index}`, finished_at }));
+    const session: ReviewStatisticsSession = { id: "interval-1", work_session_id: "shared", user_id: "reviewer", state: "completed", elapsed_us: 60_000_000, members };
+    const resumed = { ...session, id: "interval-2", elapsed_us: 120_000_000 };
+    expect(completedReviewSessions([session, session, resumed])).toHaveLength(1);
+    expect(completedReviewSessions([session, { ...resumed, state: "paused", members: [{ round_id: "round-0", finished_at: null }] }])).toEqual([]);
+    const report = buildWorkStatistics([], members.map(member => round({ id: member.round_id })), [], { from: "2026-10-01", through: "2026-10-07" }, [], [session, resumed]);
+    expect(report.totals).toMatchObject({ reviewsCompleted: 10, reviewSessionsCompleted: 1 });
+    expect(report.employees[0]).toMatchObject({ reviewsCompleted: 10, reviewSessionsCompleted: 1 });
+    expect(report.months[0]).toMatchObject({ reviewsCompleted: 10, reviewSessionsCompleted: 1 });
+    expect(buildWorkStatistics([], [], [], { from: "2026-09-01", through: "2026-09-30" }, [], [session, resumed]).totals.reviewSessionsCompleted).toBe(0);
+  });
+
+  it("credits each sequential step on its own date while excluding waiting reviewers", () => {
+    const review = round({ completed_at: null, result: null, reviewer_id: "next", reviewers: [
+      { reviewer_id: "reviewer", approved_at: "2026-09-30T20:00:00Z" }, { reviewer_id: "next", approved_at: null },
+    ] });
+    expect(completedReviewCredits([review])).toEqual([{ roundId, userId: "reviewer", completedAt: "2026-09-30T20:00:00Z" }]);
+    expect(buildWorkStatistics([], [review], [], { from: "2026-09-01", through: "2026-09-30" }).totals.reviewsCompleted).toBe(1);
+    expect(buildWorkStatistics([], [review], [], { from: "2026-10-01", through: "2026-10-07" }).totals.reviewsCompleted).toBe(0);
+  });
+
   it("groups task and review minutes by project once, including unavailable project details", () => {
     const first = entry({ minutes: 91 });
     const report = buildWorkStatistics([first, first,
@@ -94,7 +117,7 @@ describe("work log domain", () => {
     expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, reviewMinutes: 0, reviewsCompleted: 0 });
     expect(report.employees.find(row => row.id === "collaborator")).toMatchObject({ taskMinutes: 30, reviewMinutes: 0 });
     expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ taskMinutes: 0, reviewMinutes: 60, reviewsCompleted: 1 });
-    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 120, reviewMinutes: 60, totalMinutes: 180, reviewsCompleted: 1 });
+    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 120, reviewMinutes: 60, totalMinutes: 180, reviewsCompleted: 1, reviewSessionsCompleted: 0 });
     expect(report.months[0]).toMatchObject(report.totals);
   });
 
@@ -142,7 +165,7 @@ describe("work log domain", () => {
     expect(calendar.totals.hours).toBe(11); // Event durations, including unassigned general activity.
     expect(calendar.people.find(row => row.id === "reviewer")?.hours).toBe(10);
     expect(calendar.people.find(row => row.id === "worker")?.hours).toBe(6);
-    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1 });
+    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1, reviewSessionsCompleted: 0 });
     expect(report.totals).not.toHaveProperty("calendarMinutes");
     expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ reviewMinutes: 30, totalMinutes: 30 });
     expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, totalMinutes: 90, active: false });
@@ -277,7 +300,7 @@ it("counts internal work separately without project, review, or productivity cre
   expect(workLogInputSchema.safeParse({ date: internal.work_date, entries: [{ ...internal, task_id: taskId }] }).success).toBe(false);
   expect(workLogInputSchema.safeParse({ date: internal.work_date, entries: [{ ...internal, internal_activity_type: null }] }).success).toBe(false);
   const report = buildWorkStatistics([internal, internal], [], [], { from: "2026-10-01", through: "2026-10-07" });
-  expect(report.totals).toEqual({ taskMinutes: 0, reviewMinutes: 0, internalMinutes: 45, totalMinutes: 45, reviewsCompleted: 0 });
+  expect(report.totals).toEqual({ taskMinutes: 0, reviewMinutes: 0, internalMinutes: 45, totalMinutes: 45, reviewsCompleted: 0, reviewSessionsCompleted: 0 });
   expect(report.months[0]).toMatchObject(report.totals);
   expect(report.employees[0]).toMatchObject(report.totals);
   expect(report.projects).toEqual([]);

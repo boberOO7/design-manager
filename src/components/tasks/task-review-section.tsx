@@ -11,7 +11,7 @@ import { ReviewActionButton } from "./review-action-button";
 import { TaskReviewerEditor } from "./task-reviewer-editor";
 import { TaskFieldLabel } from "./task-field-label";
 import { TaskReviewWaiting } from "./task-review-badge";
-import { getActiveTaskReview, getLatestTaskReview } from "@/lib/task-reviews";
+import { canConfigureTaskReview, getActiveTaskReview, getLatestTaskReview } from "@/lib/task-reviews";
 import { useReviewTimer } from "@/hooks/use-review-timer";
 import { formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound } from "@/lib/review-timer";
 import { cn, formatDate } from "@/lib/utils";
@@ -49,19 +49,24 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
   const canResolve = active && (active.reviewer_id !== currentUserId || timerState?.state === "active" || timerState?.state === "paused");
   const [showRework, setShowRework] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showAssignment, setShowAssignment] = useState(false);
+  const [assignmentIds, setAssignmentIds] = useState<string[]>([]);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [reviewers, setReviewers] = useState<z.infer<typeof reviewersSchema>["reviewers"]>([]);
   const [loadingReviewers, setLoadingReviewers] = useState(false);
   const [reviewerLoadAttempt, setReviewerLoadAttempt] = useState(0);
-  const canConfigure = canManageTasks && isEditing && !isReadOnly && !active;
+  const canConfigure = canManageTasks && isEditing && !isReadOnly;
+  const canReassign = canManageTasks && !isEditing && !isReadOnly && Boolean(active);
+  const loadReviewers = canConfigure || canReassign && showAssignment;
   const completed = (task.review_rounds ?? []).filter((round) => round.completed_at).sort((left, right) => right.round_number - left.round_number);
   const assignedReviewers = [...(task.reviewers ?? [])].sort((left, right) => left.position - right.position).flatMap((assignment) => assignment.reviewer ? [assignment.reviewer] : []);
   const reviewerOptions = [...new Map([...assignedReviewers, ...reviewers].map((reviewer) => [reviewer.id, reviewer])).values()];
   const activeSteps = [...(active?.reviewers ?? [])].sort((left, right) => left.position - right.position);
+  const approvedCount = activeSteps.filter(step => step.approved_at).length;
 
   useEffect(() => {
-    if (!canConfigure) return;
+    if (!loadReviewers) return;
     let cancelled = false;
     setLoadingReviewers(true);
     setError(null);
@@ -72,7 +77,7 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
     }).catch(() => { if (!cancelled) setError(t("reviewLoadFailed")); })
       .finally(() => { if (!cancelled) setLoadingReviewers(false); });
     return () => { cancelled = true; };
-  }, [canConfigure, task.id, t, reviewerLoadAttempt]);
+  }, [loadReviewers, task.id, t, reviewerLoadAttempt]);
 
   async function mutate(action: TaskReviewAction) {
     if (disabled) return;
@@ -90,6 +95,7 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
       window.dispatchEvent(new Event("review-timer-change"));
       setComment("");
       setShowRework(false);
+      setShowAssignment(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("updateFailed"));
     } finally { onPendingChange(false); }
@@ -100,7 +106,7 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
     <h3 id="task-review-title" className={cn("flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]", canConfigure && "sr-only")}><ShieldCheck aria-hidden="true" className={cn("size-4", active ? "text-[var(--ui-info-text)]" : "text-[var(--ui-text-muted)]")} />{active ? t("reviewRound", { number: active.round_number }) : t("reviewSection")}</h3>
     {canConfigure ? <div className="space-y-2">
       <FormField as="div" label={<TaskFieldLabel label={t("reviewers")} icon={ShieldCheck} help={t("reviewSelectionHelp")} />} error={fieldError}>
-        <TaskReviewerEditor reviewers={reviewerOptions} selectedIds={reviewerIds} disabled={disabled || loadingReviewers || !task.requires_review && !["todo", "in_progress"].includes(task.status)} onChange={onReviewersChange} />
+        <TaskReviewerEditor reviewers={reviewerOptions} selectedIds={reviewerIds} lockedCount={approvedCount} disabled={disabled || loadingReviewers || !canConfigureTaskReview(task)} onChange={onReviewersChange} />
       </FormField>
       {error === t("reviewLoadFailed") ? <Button type="button" size="sm" variant="outline" disabled={loadingReviewers} onClick={() => setReviewerLoadAttempt((attempt) => attempt + 1)}>{t("reviewRetry")}</Button> : null}
     </div> : task.requires_review ? <p className="mt-2 text-sm text-[var(--ui-text-secondary)]">{t(active ? "reviewer" : "reviewers")}: <span className="font-medium text-[var(--ui-text)]">{active ? active.reviewer?.full_name ?? t("unknown") : assignedReviewers.map((reviewer) => reviewer.full_name).join(" → ") || task.reviewer?.full_name || t("unassigned")}</span></p> : null}
@@ -115,6 +121,23 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
       {activeSteps.length > 1 ? <ol aria-label={t("reviewSequence")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ui-text-muted)]">
         {activeSteps.map((step, index) => <li key={step.reviewer_id} className={step.reviewer_id === active.reviewer_id ? "font-medium text-[var(--ui-text)]" : undefined}>{index ? <span aria-hidden="true" className="mr-2">→</span> : null}{step.approved_at ? <span aria-label={t("reviewApproved")}>✓ </span> : null}{step.reviewer?.full_name ?? t("unknown")}</li>)}
       </ol> : null}
+      {canReassign ? <div>
+        <Button type="button" size="sm" variant="outline" disabled={timerDisabled} aria-expanded={showAssignment} onClick={() => {
+          setAssignmentIds(activeSteps.map(step => step.reviewer_id));
+          setShowAssignment(shown => !shown); setError(null);
+        }}>{t("reviewChangeReviewers")}</Button>
+        <div className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${showAssignment ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`} inert={!showAssignment}>
+          <div className="min-h-0 overflow-hidden"><div className="space-y-3 pt-3">
+            <p className="text-xs text-[var(--ui-text-muted)]">{t("reviewReassignmentHelp")}</p>
+            <TaskReviewerEditor reviewers={reviewerOptions} selectedIds={assignmentIds} lockedCount={approvedCount} disabled={timerDisabled || loadingReviewers} onChange={setAssignmentIds} />
+            {error === t("reviewLoadFailed") ? <Button type="button" size="sm" variant="outline" disabled={loadingReviewers} onClick={() => setReviewerLoadAttempt(attempt => attempt + 1)}>{t("reviewRetry")}</Button> : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" disabled={timerDisabled} onClick={() => setShowAssignment(false)}>{t("cancel")}</Button>
+              <Button type="button" size="sm" disabled={timerDisabled || loadingReviewers || assignmentIds.length <= approvedCount} onClick={() => void mutate({ action: "reassign", round_id: active.id, reviewer_id: active.reviewer_id, reviewer_ids: assignmentIds })}>{t("saveChanges")}</Button>
+            </div>
+          </div></div>
+        </div>
+      </div> : null}
       {!isReadOnly && (canManageTasks || active.reviewer_id === currentUserId) ? <>
         <div className="flex flex-nowrap gap-0.5 overflow-x-auto">
           {active.reviewer_id === currentUserId && timerState ? timerState.state === "active" && timerState.session ? <ReviewActionButton action="pause" disabled={timerDisabled} title={timerState.session.members.length > 1 ? timerText("sharedPause") : undefined}

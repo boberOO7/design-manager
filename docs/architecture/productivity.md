@@ -105,6 +105,11 @@ rows without `voided_at`.
 - Review suggestions use actor-specific decisions or timer history, never
   assignment or approval timestamps alone. Ambiguous older edits/decisions stay
   manually addable; saved historical entries remain independent of suggestions.
+- Review statistics separate resolved reviewer steps from completed work sessions.
+  Steps count on each approval/rework date, including approvals in open rounds.
+  A logical `review_timer_sessions.work_session_id` counts once when all its tracked
+  members finish; pause/resume interval rows do not multiply it. Shared time remains
+  attributed by reviewer and round, without task-completion or m² credit.
 - Calendar time retains its existing source and separate statistics. Internal
   activity logging does not create or copy Calendar time.
 

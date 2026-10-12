@@ -12,6 +12,9 @@ export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kin
 export type ReviewStatisticsRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "reviewer_id" | "completed_at" | "result"> & {
   reviewers: Array<Pick<Tables["task_review_round_reviewers"]["Row"], "reviewer_id" | "approved_at">>;
 };
+export type ReviewStatisticsSession = Pick<Tables["review_timer_sessions"]["Row"], "id" | "work_session_id" | "user_id" | "state" | "elapsed_us"> & {
+  members: Array<Pick<Tables["review_timer_members"]["Row"], "round_id" | "finished_at">>;
+};
 
 const entryFields = z.object({
   activity_kind: z.enum(["task", "review", "internal"]), task_id: z.uuid().nullable(), review_round_id: z.uuid().nullable(),
@@ -195,18 +198,30 @@ export function isTaskWorkPlausible(task: Pick<Tables["tasks"]["Row"], "complete
     && !(task.stage !== "stage_4" && task.project.completed_at && task.project.completed_at < effectiveDay);
 }
 
-/** A completed round credits each reviewer who actually resolved their step,
- * including the reviewer returning it for rework. Waiting reviewers earn no count.
- */
+/** Count decisions on their own dates, including handoffs in still-open rounds. */
 export function completedReviewCredits(rounds: ReviewStatisticsRound[]) {
   const credits = new Map<string, { roundId: string; userId: string; completedAt: string }>();
   for (const round of rounds) {
-    if (!round.completed_at) continue;
-    const reviewers = new Set(round.reviewers.filter(row => row.approved_at).map(row => row.reviewer_id));
-    if (round.result === "rework") reviewers.add(round.reviewer_id);
-    for (const userId of reviewers) credits.set(`${round.id}:${userId}`, { roundId: round.id, userId, completedAt: round.completed_at });
+    for (const step of round.reviewers) {
+      if (step.approved_at) credits.set(`${round.id}:${step.reviewer_id}`, { roundId: round.id, userId: step.reviewer_id, completedAt: step.approved_at });
+    }
+    if (round.result === "rework" && round.completed_at) credits.set(`${round.id}:${round.reviewer_id}`, { roundId: round.id, userId: round.reviewer_id, completedAt: round.completed_at });
   }
   return [...credits.values()];
+}
+
+export function completedReviewSessions(sessions: ReviewStatisticsSession[]) {
+  const groups = new Map<string, ReviewStatisticsSession[]>();
+  for (const session of new Map(sessions.map(row => [row.id, row])).values()) {
+    const key = `${session.user_id}:${session.work_session_id}`;
+    groups.set(key, [...(groups.get(key) ?? []), session]);
+  }
+  return [...groups.values()].flatMap(intervals => {
+    if (intervals.some(interval => interval.state !== "completed" || !interval.members.length || interval.members.some(member => !member.finished_at))
+      || !intervals.some(interval => interval.elapsed_us > 0)) return [];
+    const completedAt = intervals.flatMap(interval => interval.members.flatMap(member => member.finished_at ? [member.finished_at] : [])).sort().at(-1);
+    return completedAt ? [{ sessionId: intervals[0].work_session_id, userId: intervals[0].user_id, completedAt }] : [];
+  });
 }
 
 export function summarizeLoggedTime(entries: WorkLogEntry[], calendarMinutes = 0) {
@@ -218,8 +233,8 @@ export function summarizeLoggedTime(entries: WorkLogEntry[], calendarMinutes = 0
 
 export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; user_id: string; work_date: string; project_id: string | null }>,
   rounds: ReviewStatisticsRound[], members: Array<{ id: string; name: string; active: boolean }>, range: { from: string; through: string },
-  projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = []) {
-  const empty = () => ({ reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, internalMinutes: 0, totalMinutes: 0 });
+  projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = [], sessions: ReviewStatisticsSession[] = []) {
+  const empty = () => ({ reviewsCompleted: 0, reviewSessionsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, internalMinutes: 0, totalMinutes: 0 });
   const people = new Map(members.map(member => [member.id, { ...member, ...empty() }]));
   const projectNames = new Map(projects.map(project => [project.id, project.name]));
   const projectTime = new Map<string | null, { id: string | null; name: string | null; taskMinutes: number; reviewMinutes: number; totalMinutes: number }>();
@@ -242,6 +257,13 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
     const month = byMonth.get(date.slice(0, 7));
     if (month) month.reviewsCompleted++;
   }
+  for (const session of completedReviewSessions(sessions)) {
+    const date = instantToDateOnly(session.completedAt);
+    if (date < range.from || date > range.through) continue;
+    person(session.userId).reviewSessionsCompleted++;
+    const month = byMonth.get(date.slice(0, 7));
+    if (month) month.reviewSessionsCompleted++;
+  }
   for (const row of new Map(entries.map(entry => [entry.id, entry])).values()) {
     if (row.work_date < range.from || row.work_date > range.through) continue;
     const key = row.activity_kind === "internal" ? "internalMinutes" : row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
@@ -258,10 +280,11 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
     project[projectKey] += row.minutes;
     project.totalMinutes += row.minutes;
   }
-  const employees = [...people.values()].filter(row => row.active || row.reviewsCompleted || row.taskMinutes || row.reviewMinutes || row.internalMinutes)
+  const employees = [...people.values()].filter(row => row.active || row.reviewsCompleted || row.reviewSessionsCompleted || row.taskMinutes || row.reviewMinutes || row.internalMinutes)
     .sort((left, right) => left.name.localeCompare(right.name));
   for (const row of [...employees, ...months]) row.totalMinutes = row.taskMinutes + row.reviewMinutes + row.internalMinutes;
   const totals = employees.reduce((sum, row) => ({ reviewsCompleted: sum.reviewsCompleted + row.reviewsCompleted,
+    reviewSessionsCompleted: sum.reviewSessionsCompleted + row.reviewSessionsCompleted,
     taskMinutes: sum.taskMinutes + row.taskMinutes, reviewMinutes: sum.reviewMinutes + row.reviewMinutes, internalMinutes: sum.internalMinutes + row.internalMinutes,
     totalMinutes: sum.totalMinutes + row.totalMinutes }), empty());
   const projectRows = [...projectTime.values()].sort((left, right) => right.totalMinutes - left.totalMinutes

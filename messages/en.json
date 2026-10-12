@@ -997,7 +997,9 @@
     "deleteTaskDescription": "Delete “{name}”? This cannot be undone.",
     "closeTaskDeleteConfirmation": "Close task deletion confirmation",
     "deleting": "Deleting…",
-    "deleteFailed": "The task could not be deleted. Please try again."
+    "deleteFailed": "The task could not be deleted. Please try again.",
+    "reviewChangeReviewers": "Change reviewers",
+    "reviewReassignmentHelp": "Approved steps stay unchanged. Replacing the current reviewer safely stops and records their timer."
   },
   "Workspace": {
     "backToProjects": "Projects",
@@ -4648,10 +4650,11 @@
     "accessibleProjects": "Accessible projects",
     "privateContext": "Private admin context",
     "creditedTaskCompletions": "Credited task completions",
-    "reviewsCompleted": "Reviews completed",
+    "reviewsCompleted": "Task review steps completed",
     "loggedTaskTime": "Logged task time",
     "loggedReviewTime": "Logged review time",
-    "loggedInternalTime": "Logged internal time"
+    "loggedInternalTime": "Logged internal time",
+    "reviewSessionsCompleted": "Review sessions completed"
   },
   "Statistics": {
     "unallocatedMakeup": "{count} across period boundary",
@@ -4863,7 +4866,7 @@
     "workTitle": "Work time",
     "internalWork": "Internal work",
     "loggedInternalHours": "Internal work · h:mm",
-    "reviewsCompleted": "Reviews completed",
+    "reviewsCompleted": "Task review steps completed",
     "loggedTaskHours": "Tasks · h:mm",
     "loggedReviewHours": "Reviews · h:mm",
     "trackedWorkTime": "Total tracked time",
@@ -4876,7 +4879,8 @@
     "workComposition": "Work time sources",
     "noWorkTime": "No work time recorded for this period.",
     "workLogNote": "Task, review and internal work time recorded in the work log is included. Event participation is shown in the Calendar tab.",
-    "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Completed rounds count once for each reviewer who resolved a step, including rework. Reviews add no completed tasks or m² credit. The total includes logged task, review and internal work time. Internal work adds no completed tasks or m² credit and is not attributed to a project. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting."
+    "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Each resolved reviewer step counts on its approval or rework date, including approvals in an open round. Reviews add no completed tasks or m² credit. The total includes logged task, review and internal work time. Internal work adds no completed tasks or m² credit and is not attributed to a project. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting. Review sessions count shared work once across pause/resume; task review steps count each reviewer’s decisions separately.",
+    "reviewSessionsCompleted": "Review sessions completed"
   },
   "WorkLog": {
     "internalWork": "Internal work",
@@ -4982,6 +4986,9 @@
     "cancel": "Cancel",
     "expandTimer": "Expand review timer",
     "collapseTimer": "Collapse review timer",
-    "sharedPause": "Pausing stops the shared timer for the whole group."
+    "sharedPause": "Pausing stops the shared timer for the whole group.",
+    "selectionHelp": "Ctrl/Cmd+Click to select reviews from one project and stage.",
+    "selectedCount": "{count} selected",
+    "clearSelection": "Clear selection"
   }
 }

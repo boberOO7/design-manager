@@ -13,6 +13,7 @@ export const taskReviewActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("configure"), requires_review: z.boolean(), reviewer_id: z.uuid().nullable() }).strict()
     .refine((value) => !value.requires_review || value.reviewer_id !== null, { message: "Choose a reviewer", path: ["reviewer_id"] }),
   z.object({ action: z.literal("submit") }).strict(),
+  z.object({ action: z.literal("reassign"), round_id: z.uuid(), reviewer_id: z.uuid(), reviewer_ids: taskReviewerIdsSchema.refine(ids => ids.length > 0, "Keep a pending reviewer") }).strict(),
   z.object({ action: z.literal("approved"), round_id: z.uuid(), reviewer_id: z.uuid().optional() }).strict(),
   z.object({ action: z.literal("rework"), round_id: z.uuid(), reviewer_id: z.uuid().optional(), comment: z.string().trim().min(1).max(5000) }).strict(),
 ]);

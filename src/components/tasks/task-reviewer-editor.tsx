@@ -5,10 +5,11 @@ import { useTranslations } from "next-intl";
 import { TaskPersonSelect } from "./task-person-select";
 import type { ProjectTask } from "@/types/tasks";
 
-export function TaskReviewerEditor({ reviewers, selectedIds, disabled, onChange }: {
+export function TaskReviewerEditor({ reviewers, selectedIds, disabled, lockedCount = 0, onChange }: {
   reviewers: Array<Pick<NonNullable<ProjectTask["reviewer"]>, "id" | "full_name"> & Partial<Pick<NonNullable<ProjectTask["reviewer"]>, "avatar_url">>>;
   selectedIds: string[];
   disabled: boolean;
+  lockedCount?: number;
   onChange: (ids: string[]) => void;
 }) {
   const t = useTranslations("Tasks");
@@ -24,13 +25,13 @@ export function TaskReviewerEditor({ reviewers, selectedIds, disabled, onChange 
     {selectedIds.length ? <ol aria-label={t("reviewSequence")} className="space-y-2">
       {selectedIds.map((id, index) => {
         const name = reviewers.find((reviewer) => reviewer.id === id)?.full_name ?? t("unknown");
-        return <li key={id} className="grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-x-1 @md:grid-cols-[1.25rem_minmax(0,1fr)_auto]">
+        return <li key={id} className="grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-x-1">
           <span className="ui-numeric text-xs text-[var(--ui-text-muted)]">{index + 1}.</span>
-          <TaskPersonSelect label={t("reviewSequenceReviewer", { number: index + 1 })} value={id} disabled={disabled} onChange={(reviewerId) => onChange(selectedIds.map((current, position) => position === index ? reviewerId : current))} people={reviewers.filter((reviewer) => reviewer.id === id || !selectedIds.includes(reviewer.id))} />
-          <div className="col-start-2 flex justify-end @md:col-start-3">
-            <button type="button" className={buttonClass} disabled={disabled || index === 0} onClick={() => move(index, -1)} aria-label={t("reviewMoveUp", { name })}><ArrowUp aria-hidden="true" className="size-3.5" /></button>
-            <button type="button" className={buttonClass} disabled={disabled || index === selectedIds.length - 1} onClick={() => move(index, 1)} aria-label={t("reviewMoveDown", { name })}><ArrowDown aria-hidden="true" className="size-3.5" /></button>
-            <button type="button" className={buttonClass} disabled={disabled} onClick={() => onChange(selectedIds.filter((current) => current !== id))} aria-label={t("reviewRemoveReviewer", { name })}><X aria-hidden="true" className="size-3.5" /></button>
+          <TaskPersonSelect label={t("reviewSequenceReviewer", { number: index + 1 })} value={id} disabled={disabled || index < lockedCount} onChange={(reviewerId) => onChange(selectedIds.map((current, position) => position === index ? reviewerId : current))} people={reviewers.filter((reviewer) => reviewer.id === id || !selectedIds.includes(reviewer.id))} />
+          <div className="flex items-center">
+            <button type="button" className={buttonClass} disabled={disabled || index <= lockedCount} onClick={() => move(index, -1)} aria-label={t("reviewMoveUp", { name })}><ArrowUp aria-hidden="true" className="size-3.5" /></button>
+            <button type="button" className={buttonClass} disabled={disabled || index < lockedCount || index === selectedIds.length - 1} onClick={() => move(index, 1)} aria-label={t("reviewMoveDown", { name })}><ArrowDown aria-hidden="true" className="size-3.5" /></button>
+            <button type="button" className={buttonClass} disabled={disabled || index < lockedCount} onClick={() => onChange(selectedIds.filter((current) => current !== id))} aria-label={t("reviewRemoveReviewer", { name })}><X aria-hidden="true" className="size-3.5" /></button>
           </div>
         </li>;
       })}

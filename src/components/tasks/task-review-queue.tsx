@@ -19,6 +19,7 @@ import { formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound } from "@/
 import { useReviewTimer } from "@/hooks/use-review-timer";
 import type { TaskReviewQueueItem } from "@/data/queries/task-reviews";
 import { Tooltip } from "@/components/ui/tooltip";
+import { eligibleReviewSelection, toggleReviewSelection } from "@/lib/review-queue-selection";
 
 const rowGrid = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 px-4 py-3 @min-[76rem]:grid-cols-[minmax(9.5rem,2fr)_minmax(9.5rem,1fr)_7.5rem_6.5rem_6rem_27rem_2.25rem]";
 
@@ -35,6 +36,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
   const focusedRequest = useRef<string | null>(null);
   const timer = useReviewTimer();
   const [expanded, setExpanded] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [resolving, setResolving] = useState(false);
   const [rework, setRework] = useState<{ rounds: TaskReviewQueueItem[]; sessionId?: string } | null>(null);
   const [comment, setComment] = useState("");
@@ -49,6 +51,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
   const queueRef = useRef<HTMLUListElement>(null);
   const scopeId = useId();
   const disabled = resolving || timer.pending;
+  const selected = eligibleReviewSelection(selectedIds, rounds, currentUserId);
   const groups = new Map<string, TaskReviewQueueItem[]>();
   for (const round of rounds) {
     const key = `${round.task.project.id}:${round.task.stage}`;
@@ -56,6 +59,16 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
   }
   const ownActive = timer.snapshot?.sessions.find(session => session.state === "active" && session.user_id === currentUserId);
   const showReviewer = rounds.some(round => round.reviewer_id !== currentUserId);
+
+  useEffect(() => {
+    setSelectedIds(current => current.filter(id => rounds.some(round => round.id === id && round.reviewer_id === currentUserId)));
+  }, [rounds, currentUserId]);
+
+  useEffect(() => {
+    const clear = (event: KeyboardEvent) => { if (event.key === "Escape") setSelectedIds([]); };
+    window.addEventListener("keydown", clear);
+    return () => window.removeEventListener("keydown", clear);
+  }, []);
 
   const openDetails = useCallback((round: TaskReviewQueueItem) => {
     const request = ++detailRequest.current;
@@ -140,9 +153,13 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
     const state = reviewTimerForRound(timer.snapshot, round.id, round.reviewer_id, timer.serverNow);
     const shared = state.state === "active" && (state.session?.members.length ?? 0) > 1;
     const own = round.reviewer_id === currentUserId;
-    return <div key={round.id} data-review-row={round.id} className={`${rowGrid} relative border-t border-[var(--ui-border-subtle)] ${state.state === "active" && !shared ? "bg-[var(--ui-info-surface)]" : ""}`}>
-      <button type="button" data-review-open aria-label={t("openTask", { name: round.task.title })} onClick={() => openDetails(round)}
-        className="absolute inset-0 cursor-pointer transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-focus)] motion-reduce:transition-none" />
+    const isSelected = selected.some(item => item.id === round.id);
+    return <div key={round.id} data-review-row={round.id} data-review-selected={isSelected} className={`${rowGrid} relative border-t border-[var(--ui-border-subtle)] transition-colors duration-200 ${isSelected || state.state === "active" && !shared ? "bg-[var(--ui-info-surface)]" : ""}`}>
+      <button type="button" data-review-open aria-pressed={isSelected} aria-label={t("openTask", { name: round.task.title })} onClick={event => {
+        if (event.ctrlKey || event.metaKey) { event.preventDefault(); if (!disabled && !ownActive) setSelectedIds(current => toggleReviewSelection(current, round, rounds, currentUserId)); }
+        else openDetails(round);
+      }}
+        className={`absolute inset-0 cursor-pointer transition-colors duration-200 ${isSelected ? "hover:bg-[var(--ui-info-surface)]" : "hover:bg-[var(--ui-surface-subtle)]"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-focus)] motion-reduce:transition-none`} />
       <div className="pointer-events-none relative min-w-0">
         <Tooltip content={round.task.project.name}><p className="truncate text-xs text-[var(--ui-text-muted)]" tabIndex={0}>{round.task.project.name}</p></Tooltip>
         <Tooltip content={round.task.title}><p className="line-clamp-2 text-sm font-medium text-[var(--ui-text)]" tabIndex={0}>{round.task.title}</p></Tooltip>
@@ -175,6 +192,16 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
   }
 
   return <div className="@container">
+    {rounds.length ? <p className="mb-2 text-xs text-[var(--ui-text-muted)]">{timerText("selectionHelp")}</p> : null}
+    {selected.length ? <div data-review-selection-toolbar role="toolbar" aria-label={timerText("selectedCount", { count: selected.length })} className="fixed bottom-4 left-1/2 z-40 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 shadow-[var(--ui-shadow-popover)] transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none">
+      <span className="text-xs font-medium text-[var(--ui-text-secondary)]" role="status">{timerText("selectedCount", { count: selected.length })}</span>
+      <div className="flex items-center gap-1">
+        <ReviewActionButton action="start" disabled={disabled || !timer.snapshot || Boolean(ownActive)} onClick={() => {
+          void timer.control({ action: "start", roundIds: selected.map(round => round.id) }).then(started => { if (started) setSelectedIds([]); });
+        }}>{timerText("start")}</ReviewActionButton>
+        <Button size="sm" variant="ghost" disabled={disabled} onClick={() => setSelectedIds([])}>{timerText("clearSelection")}</Button>
+      </div>
+    </div> : null}
     {timer.error ? <p role="alert" className="mb-3 text-sm text-[var(--ui-danger-text)]">{timerText(timer.error === "conflict" ? "overlap" : "failed")}</p> : null}
     {error && !rework ? <p role="alert" className="mb-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
     {!rounds.length ? <p className="py-10 text-center text-sm text-[var(--ui-text-muted)]">{t("reviewQueueEmpty")}</p> : <ul ref={queueRef} aria-label={t("reviewQueue")} className="border-x border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
