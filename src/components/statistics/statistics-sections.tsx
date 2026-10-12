@@ -31,6 +31,7 @@ export async function WorkStatistics({ report }: { report: ReturnType<typeof bui
     { key: "taskMinutes", label: t("taskWork"), color: "var(--ui-text-secondary)" },
     { key: "reviewMinutes", label: t("reviewWork"), color: "var(--ui-success-accent)" },
   ] as const;
+  const workSeries = [...series, { key: "internalMinutes", label: t("internalWork"), color: "var(--ui-info-text)" }] as const;
   const hours = (minutes: number) => formatStatisticsDuration(minutes / 60);
   const durationUnit = t("durationUnit");
   const largestProject = Math.max(1, ...report.projects.map(project => project.totalMinutes));
@@ -38,17 +39,17 @@ export async function WorkStatistics({ report }: { report: ReturnType<typeof bui
     <Title titleId="stats-work-title" title={t("workTitle")} info={t("workDefinition")} />
     <div className="flex flex-wrap gap-x-10 gap-y-4 p-5" data-testid="work-summary">
       <Value label={t("trackedWorkTime")} value={hours(report.totals.totalMinutes)} unit={durationUnit} />
-      {series.map(item => <Value key={item.key} label={item.label} value={hours(report.totals[item.key])} unit={durationUnit} />)}
+      {workSeries.map(item => <Value key={item.key} label={item.label} value={hours(report.totals[item.key])} unit={durationUnit} />)}
       <Value label={t("reviewsCompleted")} value={number(report.totals.reviewsCompleted, 0)} />
     </div>
     <p className="px-5 pb-4 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workLogNote")}</p>
     {report.totals.totalMinutes > 0 ? <div id="stats-work-months" className="space-y-3 border-t border-[var(--ui-border)] p-5">
       <StatisticsChart title={t("workByMonth")} unit={durationUnit} duration compact showData={false} points={report.months.map(month => ({
         month: month.month, value: month.totalMinutes / 60, display: hours(month.totalMinutes),
-        segments: series.map(item => ({ key: item.key, label: item.label, color: item.color, value: month[item.key] / 60, display: hours(month[item.key]) })),
+        segments: workSeries.map(item => ({ key: item.key, label: item.label, color: item.color, value: month[item.key] / 60, display: hours(month[item.key]) })),
       }))} />
       <ul aria-label={t("workComposition")} className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--ui-text-secondary)]">
-        {series.map(item => <li key={item.key} className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />{item.label}</li>)}
+        {workSeries.map(item => <li key={item.key} className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />{item.label}</li>)}
       </ul>
     </div> : <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noWorkTime")}</p>}
     <div id="stats-work-projects" className="border-t border-[var(--ui-border)]">
@@ -76,12 +77,12 @@ export async function WorkStatistics({ report }: { report: ReturnType<typeof bui
       <caption className="sr-only">{t("workTitle")}</caption>
       <thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr>
         <th scope="col" className="sticky left-0 z-20 min-w-44 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">{t("employee")}</th>
-        <th scope="col" className="whitespace-nowrap text-right">{t("loggedTaskHours")}</th><th scope="col" className="whitespace-nowrap text-right">{t("loggedReviewHours")}</th>
+        <th scope="col" className="whitespace-nowrap text-right">{t("loggedTaskHours")}</th><th scope="col" className="whitespace-nowrap text-right">{t("loggedReviewHours")}</th><th scope="col" className="whitespace-nowrap text-right">{t("loggedInternalHours")}</th>
         <th scope="col" className="whitespace-nowrap border-l border-[var(--ui-border-subtle)] text-right">{t("total")} · {durationUnit}</th><th scope="col" className="min-w-32 text-right">{t("reviewsCompleted")}</th>
       </tr></thead>
       <tbody>{report.employees.map(person => <tr key={person.id} className="group border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-subtle)]">
         <th scope="row" className="sticky left-0 z-10 border-r border-[var(--ui-border)] bg-[var(--ui-surface)] font-medium text-[var(--ui-text)] transition-colors duration-[180ms] group-hover:bg-[var(--ui-surface-subtle)]"><Link href={`/team/${person.id}`} className="flex items-center gap-2.5 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><UserAvatar name={person.name || t("formerEmployee")} size="boardCard" decorative /><span className="min-w-0"><span className="block">{person.name || t("formerEmployee")}</span>{!person.active ? <span className="mt-0.5 block text-[10px] font-normal text-[var(--ui-text-muted)]">{t("inactiveEmployee")}</span> : null}</span></Link></th>
-        {series.map(item => <td key={item.key} className="text-right tabular-nums">{hours(person[item.key])}</td>)}
+        {workSeries.map(item => <td key={item.key} className="text-right tabular-nums">{hours(person[item.key])}</td>)}
         <td className="border-l border-[var(--ui-border-subtle)] text-right font-semibold tabular-nums text-[var(--ui-text)]">{hours(person.totalMinutes)}</td><td className="text-right tabular-nums">{number(person.reviewsCompleted, 0)}</td>
       </tr>)}</tbody>
     </table></div>

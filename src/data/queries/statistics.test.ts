@@ -58,10 +58,17 @@ describe("Statistics query access boundary", () => {
     mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
     const withReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
-    expect(withReviews?.work.totals).toEqual({ reviewMinutes: 60, taskMinutes: 0, totalMinutes: 60, reviewsCompleted: 1 });
+    expect(withReviews?.work.totals).toEqual({ internalMinutes: 0, reviewMinutes: 60, taskMinutes: 0, totalMinutes: 60, reviewsCompleted: 1 });
     expect(withReviews?.work.projects).toEqual([{ id: "project", name: "Project", taskMinutes: 0, reviewMinutes: 60, totalMinutes: 60 }]);
     expect(withReviews?.calendar.people[0].hours).toBe(1);
     expect(withReviews?.totals).toMatchObject({ completedTasks: 1, creditedArea: 100, contributors: 1 });
+    sources.work_log_entries.push({ id: "internal", user_id: "admin", work_date: "2026-10-03", activity_kind: "internal",
+      internal_activity_type: "team_walkthrough", task_id: null, review_round_id: null, minutes: 45, task: null });
+    const withInternal = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(withInternal?.work.totals).toMatchObject({ internalMinutes: 45, totalMinutes: 105 });
+    expect(withInternal?.work.projects).toEqual(withReviews?.work.projects);
+    expect(withInternal?.totals).toEqual(withReviews?.totals);
+    expect(withInternal?.calendar).toEqual(withReviews?.calendar);
     sources.task_review_rounds = [];
     sources.work_log_entries = [];
     const withoutReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");

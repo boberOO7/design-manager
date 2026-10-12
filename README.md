@@ -70,7 +70,9 @@ session/direct URL for that project, then run `pnpm dev:refresh-prod`. The role
 needs `SELECT` on public tables and sequences and `BYPASSRLS`, without write grants. The
 command checks the linked project and role permissions, reads through a
 read-only transaction, preserves application data, neutralizes credential/token
-fields and excludes Google Calendar connections, then rebuilds and restores
+fields and excludes Google Calendar connections and session-bound Web Push
+subscriptions/deliveries (production Auth sessions are never copied), then rebuilds
+and restores
 **only the local database**. Production users cannot log in locally; it prints
 a generated shared password for `admin@studioflow.local` and `employee@studioflow.local`.
 Both local Auth identities use existing restored profile IDs. The employee is the

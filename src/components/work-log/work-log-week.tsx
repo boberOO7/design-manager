@@ -20,7 +20,7 @@ export function WorkLogWeek({ week, today, onSelect, activeDate, disabled = fals
       const dayDisabled = disabled || future;
       const status = t(day.submittedAt ? "completed" : day.kind === "day" ? "notFilled" : `day_${day.kind}`);
       const description = `${format.format(parseDateOnly(day.date))}: ${status} · ${duration(day.totalMinutes)}`;
-      const breakdown = `${t("tasks")}: ${duration(day.taskMinutes)} · ${t("reviews")}: ${duration(day.reviewMinutes)}${day.calendarMinutes ? ` · ${t("calendarShort")}: ${duration(day.calendarMinutes)}` : ""}`;
+      const breakdown = `${t("tasks")}: ${duration(day.taskMinutes)} · ${t("reviews")}: ${duration(day.reviewMinutes)}${day.internalMinutes ? ` · ${t("internalWork")}: ${duration(day.internalMinutes)}` : ""}${day.calendarMinutes ? ` · ${t("calendarShort")}: ${duration(day.calendarMinutes)}` : ""}`;
       return <li key={day.date} className={`px-0.5 ${dayDisabled ? "cursor-not-allowed" : ""}`}>
         <Tooltip content={`${description}\n${breakdown}`}><button type="button" data-work-log-day={day.date} disabled={dayDisabled}
           aria-pressed={activeDate === day.date} aria-label={description} onClick={() => onSelect(day.date)}

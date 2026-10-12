@@ -23,6 +23,9 @@ export async function PUT(request: Request) {
   if (!input.success || !isWorkLogDateEditable(input.data.date, instantToDateOnly(new Date().toISOString()))) return NextResponse.json({ success: false }, { status: 400 });
   const access = await resolveActiveStudioMembership();
   if (access.status !== "ACTIVE_STUDIO") return NextResponse.json({ success: false }, { status: 403 });
+  if (input.data.entries.some(entry => entry.activity_kind === "internal") && access.membership.system_role !== "admin") {
+    return NextResponse.json({ success: false }, { status: 403 });
+  }
   const client = await createClient();
   const { error } = await client.rpc("save_daily_work_log", { p_work_date: input.data.date, p_entries: input.data.entries, p_timer_snapshot: input.data.timerSnapshot });
   if (error) return NextResponse.json({ success: false }, { status: 400 });

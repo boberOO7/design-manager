@@ -1,6 +1,6 @@
 import { instantToDateOnly } from "./calendar";
 import { describe, expect, it } from "vitest";
-import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, isWorkLogDateEditable, getSuggestedTaskIds, getSuggestedReviewRoundIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
+import { buildWorkStatistics, completedReviewCredits, getDailyCalendarContext, isWorkLogDateEditable, isTaskWorkPlausible, getSuggestedTaskIds, getSuggestedReviewRoundIds, summarizeLoggedTime, workLogDayBounds, workLogInputSchema, type ReviewStatisticsRound } from "./work-log";
 import { buildCalendarStatistics, calendarStatisticsAssignments, type StatisticsCalendarEvent } from "./statistics-calendar";
 import { statisticsPeriods, statisticsRange } from "./statistics";
 
@@ -94,7 +94,7 @@ describe("work log domain", () => {
     expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, reviewMinutes: 0, reviewsCompleted: 0 });
     expect(report.employees.find(row => row.id === "collaborator")).toMatchObject({ taskMinutes: 30, reviewMinutes: 0 });
     expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ taskMinutes: 0, reviewMinutes: 60, reviewsCompleted: 1 });
-    expect(report.totals).toEqual({ taskMinutes: 120, reviewMinutes: 60, totalMinutes: 180, reviewsCompleted: 1 });
+    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 120, reviewMinutes: 60, totalMinutes: 180, reviewsCompleted: 1 });
     expect(report.months[0]).toMatchObject(report.totals);
   });
 
@@ -142,7 +142,7 @@ describe("work log domain", () => {
     expect(calendar.totals.hours).toBe(11); // Event durations, including unassigned general activity.
     expect(calendar.people.find(row => row.id === "reviewer")?.hours).toBe(10);
     expect(calendar.people.find(row => row.id === "worker")?.hours).toBe(6);
-    expect(report.totals).toEqual({ taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1 });
+    expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1 });
     expect(report.totals).not.toHaveProperty("calendarMinutes");
     expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ reviewMinutes: 30, totalMinutes: 30 });
     expect(report.employees.find(row => row.id === "worker")).toMatchObject({ taskMinutes: 90, totalMinutes: 90, active: false });
@@ -157,35 +157,35 @@ describe("work log domain", () => {
   it("suggests participating-task interactions and workflow changes", () => {
     const participating = new Set(["edited", "moved", "idle", "unrelated"]);
     const activities = [
-      { entity_id: "edited", actor_id: "reviewer", changes: { checklist_item: "item" } },
-      { entity_id: "moved", actor_id: "admin", changes: { status: { from: "todo", to: "in_progress" } } },
-      { entity_id: "review-task", actor_id: "reviewer", changes: { status: { from: "internal_review", to: "review" } } },
-      { entity_id: "unrelated", actor_id: "admin", changes: { priority: { from: "low", to: "high" } } },
+      { action_type: "task_updated", entity_id: "edited", actor_id: "reviewer", changes: { checklist_progress: { is_completed: { from: false, to: true } } } },
+      { action_type: "task_updated", entity_id: "moved", actor_id: "admin", changes: { status: { from: "todo", to: "in_progress" } } },
+      { action_type: "task_updated", entity_id: "review-task", actor_id: "reviewer", changes: { status: { from: "internal_review", to: "review" } } },
+      { action_type: "task_updated", entity_id: "unrelated", actor_id: "admin", changes: { priority: { from: "low", to: "high" } } },
     ];
-    expect(getSuggestedTaskIds(activities, "reviewer", participating, new Set(["review-task"]))).toEqual(["edited", "moved"]);
+    expect(getSuggestedTaskIds(activities, "reviewer", participating, [])).toEqual(["edited"]);
   });
 
   it("also suggests participating in-progress tasks without daily activity, without duplicates or foreign tasks", () => {
     const participating = new Set(["assigned", "collaborating", "edited"]);
     const inProgress = ["assigned", "collaborating", "edited", "foreign"];
-    expect(getSuggestedTaskIds([], "reviewer", participating, new Set(), inProgress))
+    expect(getSuggestedTaskIds([], "reviewer", participating, inProgress))
       .toEqual(["assigned", "collaborating", "edited"]);
     expect(getSuggestedTaskIds([
-      { entity_id: "edited", actor_id: "reviewer", changes: { checklist_item: "item" } },
-    ], "reviewer", participating, new Set(), inProgress))
+      { action_type: "task_updated", entity_id: "edited", actor_id: "reviewer", changes: { checklist_progress: { is_completed: { from: false, to: true } } } },
+    ], "reviewer", participating, inProgress))
       .toEqual(["edited", "assigned", "collaborating"]);
   });
 
   it("does not suggest other employees' tasks after the user moves or edits them", () => {
     const activities = [
       ...["in_progress", "internal_review", "review", "completed"].map(status => ({
-        entity_id: `foreign-${status}`, actor_id: "reviewer", changes: { status: { from: "todo", to: status } },
+        action_type: "task_updated", entity_id: `foreign-${status}`, actor_id: "reviewer", changes: { status: { from: "todo", to: status } },
       })),
-      { entity_id: "foreign-edited", actor_id: "reviewer", changes: { checklist_item: "item" } },
-      { entity_id: "assigned", actor_id: "reviewer", changes: { checklist_item: "item" } },
-      { entity_id: "collaborating", actor_id: "reviewer", changes: { checklist_item: "item" } },
+      { action_type: "task_updated", entity_id: "foreign-edited", actor_id: "reviewer", changes: { checklist_progress: { is_completed: { from: false, to: true } } } },
+      { action_type: "task_updated", entity_id: "assigned", actor_id: "reviewer", changes: { checklist_progress: { is_completed: { from: false, to: true } } } },
+      { action_type: "task_updated", entity_id: "collaborating", actor_id: "reviewer", changes: { checklist_progress: { is_completed: { from: false, to: true } } } },
     ];
-    expect(getSuggestedTaskIds(activities, "reviewer", new Set(["assigned", "collaborating"]), new Set()))
+    expect(getSuggestedTaskIds(activities, "reviewer", new Set(["assigned", "collaborating"])))
       .toEqual(["assigned", "collaborating"]);
   });
 
@@ -196,7 +196,7 @@ describe("work log domain", () => {
     expect(context.minutes).toBe(60);
     const total = summarizeLoggedTime([{ activity_kind: "task", task_id: taskId, review_round_id: null, minutes: 90 },
       { activity_kind: "review", task_id: taskId, review_round_id: roundId, minutes: 30 }], context.minutes);
-    expect(total).toEqual({ taskMinutes: 90, reviewMinutes: 30, calendarMinutes: 60, totalMinutes: 180 });
+    expect(total).toEqual({ internalMinutes: 0, taskMinutes: 90, reviewMinutes: 30, calendarMinutes: 60, totalMinutes: 180 });
   });
 
   it("keeps recurrence overrides and Kyiv day boundaries canonical", () => {
@@ -234,12 +234,12 @@ describe("pending review suggestions", () => {
   });
   it("preserves same-day completion activity but stops carrying closed or approved reviews", () => {
     const closed = pending({ completed_at: "2026-10-08T10:00:00Z" });
-    expect(getSuggestedReviewRoundIds([closed], "reviewer", "2026-10-08")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([closed], "reviewer", "2026-10-08", [{ action_type: "task_updated", entity_id: taskId, actor_id: "reviewer", changes: { review_round_id: roundId, review_action: "rework" } }])).toEqual([roundId]);
     expect(getSuggestedReviewRoundIds([closed], "reviewer", "2026-10-09")).toEqual([]);
     const approvedStep = pending({ reviewer_id: "second", reviewers: [
       { reviewer_id: "reviewer", approved_at: "2026-10-08T10:00:00Z", position: 0 }, { reviewer_id: "second", approved_at: null, position: 1 },
     ] });
-    expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-08")).toEqual([roundId]);
+    expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-08", [{ action_type: "task_updated", entity_id: taskId, actor_id: "reviewer", changes: { review_round_id: roundId, review_action: "approved" } }])).toEqual([roundId]);
     expect(getSuggestedReviewRoundIds([approvedStep], "reviewer", "2026-10-09")).toEqual([]);
   });
   it("does not treat queue eligibility as actual review activity", () => {
@@ -269,4 +269,49 @@ describe("editable Work Log dates", () => {
     expect(isWorkLogDateEditable("2026-10-09", today)).toBe(true);
     expect(isWorkLogDateEditable("2026-10-10", today)).toBe(false);
   });
+});
+
+it("counts internal work separately without project, review, or productivity credit", () => {
+  const internal = entry({ activity_kind: "internal", task_id: null, project_id: null, internal_activity_type: "team_walkthrough", minutes: 45 });
+  expect(workLogInputSchema.safeParse({ date: internal.work_date, entries: [internal] }).success).toBe(true);
+  expect(workLogInputSchema.safeParse({ date: internal.work_date, entries: [{ ...internal, task_id: taskId }] }).success).toBe(false);
+  expect(workLogInputSchema.safeParse({ date: internal.work_date, entries: [{ ...internal, internal_activity_type: null }] }).success).toBe(false);
+  const report = buildWorkStatistics([internal, internal], [], [], { from: "2026-10-01", through: "2026-10-07" });
+  expect(report.totals).toEqual({ taskMinutes: 0, reviewMinutes: 0, internalMinutes: 45, totalMinutes: 45, reviewsCompleted: 0 });
+  expect(report.months[0]).toMatchObject(report.totals);
+  expect(report.employees[0]).toMatchObject(report.totals);
+  expect(report.projects).toEqual([]);
+  expect(summarizeLoggedTime([internal], 30)).toEqual({ taskMinutes: 0, reviewMinutes: 0, internalMinutes: 45, calendarMinutes: 30, totalMinutes: 75 });
+});
+
+it("excludes creation, metadata, ambiguous legacy edits and other actors from task work", () => {
+  const activity = { action_type: "task_updated", entity_id: taskId, actor_id: "worker", changes: {} };
+  const ids = new Set([taskId]);
+  for (const changes of [{ priority: { from: "low", to: "high" } }, { completed_at: { from: "2026-10-07", to: "2026-05-20" } },
+    { work_details_updated: true }, { checklist_item: "item", operation: "INSERT" },
+    { status: { from: "internal_review", to: "completed" } }]) {
+    expect(getSuggestedTaskIds([{ ...activity, changes }], "worker", ids)).toEqual([]);
+  }
+  expect(getSuggestedTaskIds([{ ...activity, action_type: "task_created", changes: { status: "completed" } }], "worker", ids)).toEqual([]);
+  expect(getSuggestedTaskIds([{ ...activity, actor_id: "admin", changes: { status: { from: "in_progress", to: "completed" } } }], "worker", ids)).toEqual([]);
+  for (const changes of [{ status: { from: "in_progress", to: "internal_review" } }, { status: { from: "review", to: "completed" } },
+    { production_completion: { from: "50", to: "100" } }, { checklist_progress: { is_completed: { from: false, to: true } } }]) {
+    expect(getSuggestedTaskIds([{ ...activity, changes }], "worker", ids)).toEqual([taskId]);
+  }
+});
+
+it("uses historical completion only to suppress mismatched suggestions, never to invent work", () => {
+  const task = { completed_at: null, stage: "stage_1" as const, project: { completed_at: "2026-05-20" } };
+  expect(isTaskWorkPlausible(task, "2026-10-08")).toBe(false);
+  expect(isTaskWorkPlausible({ ...task, stage: "stage_4" }, "2026-10-08")).toBe(true);
+  expect(isTaskWorkPlausible({ ...task, completed_at: "2026-05-20", project: { completed_at: null } }, "2026-10-08")).toBe(false);
+  expect(isTaskWorkPlausible({ ...task, completed_at: "2026-10-08", project: { completed_at: null } }, "2026-10-08")).toBe(true);
+  expect(getSuggestedTaskIds([], "worker", new Set([taskId]))).toEqual([]);
+});
+
+it("retains actual Kyiv-midnight workflow events whose SQL completion default is the UTC date", () => {
+  const task = { stage: "stage_1" as const, completed_at: "2026-10-07", project: { completed_at: "2026-10-07" } };
+  expect(isTaskWorkPlausible(task, "2026-10-08", "2026-10-07T21:30:00Z")).toBe(true);
+  expect(isTaskWorkPlausible(task, "2026-10-08", "2026-10-08T12:00:00Z")).toBe(false);
+  expect(isTaskWorkPlausible({ ...task, completed_at: "2026-05-20" }, "2026-10-08", "2026-10-07T21:30:00Z")).toBe(false);
 });

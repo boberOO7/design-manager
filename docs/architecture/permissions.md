@@ -52,6 +52,7 @@ server guard before changing a write.
 | Office assignments | Create/manage/cancel; read all in studio | Read and transition assignments for which responsible |
 | Workstations and equipment | Read and manage within active studio | No access |
 | Finance settings, accounts, cash ledger/FX, categories, expected items, settlement, project agreements/revenue, employee compensation, recurring obligations, cash budgets, forecasts/snapshots and unapplied money | Active profile and active studio admin; RLS, guarded RPCs and caller-context views, including archived projects | No access, including the Project Finance tab |
+| Internal Work Log activities | Log own activities and read studio history | No access; guarded daily RPC and restrictive row-read policy |
 | Notifications | Own recipient rows only | Own recipient rows only |
 
 ## Invariants

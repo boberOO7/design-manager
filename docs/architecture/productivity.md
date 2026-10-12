@@ -85,6 +85,29 @@ rows without `voided_at`.
   the base totals; inspect `leaderboard_bonus_rules` and its query/helpers before
   changing calculations.
 
+## Work Log time
+
+- Daily submission (`work_log_days`) is independent of duration, including saved
+  zero-hour days. Task, review, and admin-only internal rows share the atomic save
+  RPC, selected work date, and daily/weekly summaries.
+- `work_log_entries.internal_activity_type` identifies internal work without a
+  task, review round, project, or Calendar event. Initially `team_walkthrough`;
+  future types require extending the constraint and application labels.
+- Internal minutes enter employee/team time totals separately, without task/m²
+  credit or project direct-labor attribution. They enter the existing labor
+  normalization denominator, like internal-project time, without project shares.
+  RLS hides internal rows from
+  non-admins, including after demotion; ordinary saves preserve hidden history.
+- Automatic task suggestions require current participation and actor-owned
+  workflow or explicit progress activity. Effective completion dates suppress
+  mismatched historical work; creation and metadata edits do not prove labor.
+  Open In Progress tasks remain useful today; past dates require status history.
+- Review suggestions use actor-specific decisions or timer history, never
+  assignment or approval timestamps alone. Ambiguous older edits/decisions stay
+  manually addable; saved historical entries remain independent of suggestions.
+- Calendar time retains its existing source and separate statistics. Internal
+  activity logging does not create or copy Calendar time.
+
 ## Current unresolved boundary
 
 `project_area_progress` and `project_members.assigned_area_m2` remain in the

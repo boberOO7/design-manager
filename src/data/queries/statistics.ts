@@ -50,7 +50,7 @@ export async function getStatistics(period: StatisticsPeriod, today = getKyivDat
       .eq("event.studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("calendar_event_participants").select("event_id,user_id,event:calendar_events!inner(studio_id)")
       .eq("event.studio_id", studio).order("event_id").order("user_id").range(offset, offset + 999)),
-    readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,activity_kind,task_id,review_round_id,minutes,task:tasks!work_log_entries_task_id_fkey(project_id)")
+    readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,internal_activity_type,activity_kind,task_id,review_round_id,minutes,task:tasks!work_log_entries_task_id_fkey(project_id)")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     readStatisticsPages(offset => client.from("task_review_rounds")
       .select("id,reviewer_id,completed_at,result,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")

@@ -25,6 +25,9 @@ EXCLUDED = (
     "google_calendar_connections",
     "google_calendar_event_mappings",
     "google_calendar_reconciliation_jobs",
+    # Session-bound capabilities and their queue cannot outlive excluded auth.sessions.
+    "web_push_subscriptions",
+    "web_push_deliveries",
     "finance_currencies",  # Seeded by a migration during every local reset.
 )
 COPY = re.compile(r'^COPY "public"\."([a-z_]+)" \((.+)\) FROM stdin;$')
@@ -468,14 +471,17 @@ def self_test():
         assert auth.count("extensions.crypt(") == 2 and auth.count("INSERT INTO auth.identities") == 1
         assert ADMIN_EMAIL in auth and EMPLOYEE_EMAIL in auth
         assert f"'{other_id}','authenticated','authenticated',NULL,NULL,NULL" in auth
-        with raw.open("a") as output:
-            output.write('COPY "public"."google_calendar_server_credentials" ("encrypted_refresh_token") FROM stdin;\nsecret\n\\.\n')
-        try:
-            sanitize(raw, safe, {**schema, ("google_calendar_server_credentials", "encrypted_refresh_token"): "text"})
-        except RuntimeError as error:
-            assert "Excluded table" in str(error)
-        else:
-            raise AssertionError("Integration token table was imported")
+        ordinary_data = raw.read_text()
+        for table, field in (("google_calendar_server_credentials", "encrypted_refresh_token"),
+                             ("web_push_subscriptions", "session_id"),
+                             ("web_push_deliveries", "subscription_id")):
+            raw.write_text(ordinary_data + f'COPY "public"."{table}" ("{field}") FROM stdin;\n{studio_id}\n\\.\n')
+            try:
+                sanitize(raw, safe, {**schema, (table, field): "text"})
+            except RuntimeError as error:
+                assert f"Excluded table {table}" in str(error)
+            else:
+                raise AssertionError(f"Excluded table {table} was imported")
     print("Sanitizer checks passed")
 
 

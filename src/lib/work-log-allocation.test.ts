@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { allocateReviewMinutes, buildWeeklyWorkLog, groupWorkLogRows, previewWorkLogWeek, summarizeLoggedTime, parseWorkLogDuration, workLogRowKey, type WorkLogRow } from "./work-log";
 
 const review = (round: number, changes: Partial<WorkLogRow> = {}): WorkLogRow => ({
-  activity_kind: "review", task_id: "task", review_round_id: `round-${round}`, minutes: 0,
+  internal_activity_type: null, activity_kind: "review", task_id: "task", review_round_id: `round-${round}`, minutes: 0,
   title: "Drawing", projectId: "project", projectName: "Project", stage: "stage_1", stageName: "Plans", roundNumber: round, ...changes,
 });
 
@@ -104,7 +104,7 @@ describe("Work Log grouping and allocation", () => {
       [{ work_date: "2026-10-06", submitted_at: "saved" }], new Map([[date, 45]]), { joinedDate: "2026-10-01" });
     const preview = previewWorkLogWeek(week, date, edited, 45);
     expect(preview.days.find(day => day.date === date)).toMatchObject({ reviewMinutes: 195, calendarMinutes: 45, totalMinutes: 240, submittedAt: null });
-    expect(preview.totals).toEqual({ taskMinutes: 0, reviewMinutes: 225, calendarMinutes: 45, totalMinutes: 270 });
+    expect(preview.totals).toEqual({ internalMinutes: 0, taskMinutes: 0, reviewMinutes: 225, calendarMinutes: 45, totalMinutes: 270 });
     expect(preview.days.find(day => day.date === "2026-10-06")).toEqual(week.days.find(day => day.date === "2026-10-06"));
     expect(previewWorkLogWeek(preview, date, edited, 45)).toEqual(preview);
     expect(week.totals.totalMinutes).toBe(75);

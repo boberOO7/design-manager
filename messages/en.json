@@ -4650,7 +4650,8 @@
     "creditedTaskCompletions": "Credited task completions",
     "reviewsCompleted": "Reviews completed",
     "loggedTaskTime": "Logged task time",
-    "loggedReviewTime": "Logged review time"
+    "loggedReviewTime": "Logged review time",
+    "loggedInternalTime": "Logged internal time"
   },
   "Statistics": {
     "unallocatedMakeup": "{count} across period boundary",
@@ -4860,6 +4861,8 @@
     "unassignedEvents": "{count} events have no recorded participation roles.",
     "noCalendarPeople": "No recorded participants for elapsed events.",
     "workTitle": "Work time",
+    "internalWork": "Internal work",
+    "loggedInternalHours": "Internal work · h:mm",
     "reviewsCompleted": "Reviews completed",
     "loggedTaskHours": "Tasks · h:mm",
     "loggedReviewHours": "Reviews · h:mm",
@@ -4872,10 +4875,12 @@
     "noProjectWorkTime": "No project work time recorded for this period.",
     "workComposition": "Work time sources",
     "noWorkTime": "No work time recorded for this period.",
-    "workLogNote": "Only task and review time recorded in the work log is included. Event participation is shown in the Calendar tab.",
-    "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Completed rounds count once for each reviewer who resolved a step, including rework. Reviews add no completed tasks or m² credit. The total includes only logged task and review time. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting."
+    "workLogNote": "Task, review and internal work time recorded in the work log is included. Event participation is shown in the Calendar tab.",
+    "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Completed rounds count once for each reviewer who resolved a step, including rework. Reviews add no completed tasks or m² credit. The total includes logged task, review and internal work time. Internal work adds no completed tasks or m² credit and is not attributed to a project. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting."
   },
   "WorkLog": {
+    "internalWork": "Internal work",
+    "internal_team_walkthrough": "Team walkthrough",
     "week": "Week",
     "weeklyTotal": "Weekly total:",
     "previousWeek": "Previous week",

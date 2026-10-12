@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { createTaskReviewFixture, reviewSql, sqlId, type TaskReviewFixture } from "../helpers/task-review-fixture";
+import { backdateWorkLogProject } from "../helpers/work-log-fixture";
 import { signInLocalTestUser } from "../helpers/auth";
 import { buildWorkLogReminders, dailyWorkLogSchema, getWorkLogReminderWindow, weeklyWorkLogSchema, workLogDayBounds, workLogRemindersSchema } from "../../src/lib/work-log";
 import { addCalendarDays, instantToDateOnly, startOfMondayWeek, zonedWallTimeToIso } from "../../src/lib/calendar";
@@ -607,4 +608,59 @@ test("direct review group time → manual edit → save/reopen, partial selectio
   await expect(total).toHaveText("03:09");
   await expect(log.locator("[data-work-log-total]")).toHaveText("4 год 4 хв");
   await expect(log.locator("[data-work-log-week-total]")).toHaveText("4 год 4 хв");
+});
+
+test("admin internal work persists while historical project entry creates no task suggestions", async ({ page }) => {
+  const { admin, assignee, projectId, taskId, fallbackTaskId } = fixture;
+  const today = instantToDateOnly(new Date().toISOString());
+  backdateWorkLogProject(fixture);
+  await admin.client.rpc("save_daily_work_log", { p_work_date: "2026-05-20", p_entries: [
+    { activity_kind: "task", task_id: taskId, review_round_id: null, minutes: 75 },
+  ] }).throwOnError();
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: test.info().project.use.baseURL ?? "http://localhost:3000" }]);
+  await signInLocalTestUser(page, admin);
+  await page.goto(`/projects/${projectId}`);
+  const open = page.getByRole("button", { name: uk.WorkLog.entry, exact: true });
+  await open.click();
+  const log = page.getByRole("dialog", { name: uk.WorkLog.title });
+  await expect(log.locator(`[data-work-log-row="task:${taskId}"]`)).toHaveCount(0);
+  await expect(log.locator(`[data-work-log-row="task:${fallbackTaskId}"]`)).toHaveCount(0);
+  const add = log.getByRole("button", { name: uk.WorkLog.internalWork, exact: true });
+  await expect(add).toBeEnabled();
+  await add.click();
+  const row = log.locator('[data-work-log-row="internal:team_walkthrough"]');
+  await expect(row).toContainText(uk.WorkLog.internal_team_walkthrough);
+  await expect(log.getByRole("region", { name: uk.WorkLog.internalWork, exact: true })).toBeVisible();
+  await chooseDuration(log, row, "00", "45");
+  await expect(log.locator("[data-work-log-total]")).toHaveText("0 год 45 хв");
+  await expect(log.locator("[data-work-log-week-total]")).toHaveText("0 год 45 хв");
+  await saveWorkLog(log, true);
+  await open.click();
+  await expect(row.locator("[data-work-log-duration]")).toHaveText("00:45");
+  await chooseDuration(log, row, "01", "30");
+  await saveWorkLog(log);
+  await expect(row.locator("[data-work-log-duration]")).toHaveText("01:30");
+  await log.getByRole("button", { name: uk.WorkLog.previousWeek }).click();
+  await expect(row).toHaveCount(0);
+  await log.getByRole("button", { name: uk.WorkLog.nextWeek }).click();
+  await expect(row.locator("[data-work-log-duration]")).toHaveText("01:30");
+  await chooseWorkDate(log, "2026-05-20");
+  await expect(log.locator(`[data-work-log-row="task:${taskId}"] [data-work-log-duration]`)).toHaveText("01:15");
+  await expect(log.locator(`[data-work-log-row="task:${fallbackTaskId}"]`)).toHaveCount(0);
+  await chooseWorkDate(log, today);
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: uk.WorkLog.remove.replace("{activity}", uk.WorkLog.internal_team_walkthrough) }).click();
+  await saveWorkLog(log);
+  await expect(log.locator("[data-work-log-total]")).toHaveText("0 год 0 хв");
+  const daily = dailyWorkLogSchema.parse(await (await page.request.get(`/api/work-log?date=${today}`)).json());
+  expect(daily.submittedAt).toBeTruthy();
+  expect(daily.rows).toEqual([]);
+  await log.getByRole("button", { name: uk.WorkLog.close, exact: true }).click();
+  await signInLocalTestUser(page, assignee);
+  await page.goto(`/projects/${projectId}`);
+  await open.click();
+  await expect(log.getByRole("button", { name: uk.WorkLog.internalWork, exact: true })).toHaveCount(0);
+  expect((await page.request.put("/api/work-log", { data: { date: today, entries: [
+    { activity_kind: "internal", internal_activity_type: "team_walkthrough", task_id: null, review_round_id: null, minutes: 45 },
+  ] } })).status()).toBe(403);
 });

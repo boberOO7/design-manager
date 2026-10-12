@@ -3,22 +3,26 @@ import { addCalendarDays, instantToDateOnly, startOfMondayWeek, zonedWallTimeToI
 import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import { isActivityChange, isActivityChanges } from "@/lib/project-activity";
 import { buildCalendarStatistics, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
-import type { Database, Json } from "@/types/database.types";
+import type { Database } from "@/types/database.types";
 import { TASK_STAGES } from "@/lib/task-stages";
 
 type Tables = Database["public"]["Tables"];
-export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">;
+export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">
+  & Partial<Pick<Tables["work_log_entries"]["Row"], "internal_activity_type">>;
 export type ReviewStatisticsRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "reviewer_id" | "completed_at" | "result"> & {
   reviewers: Array<Pick<Tables["task_review_round_reviewers"]["Row"], "reviewer_id" | "approved_at">>;
 };
 
 const entryFields = z.object({
-  activity_kind: z.enum(["task", "review"]), task_id: z.uuid(), review_round_id: z.uuid().nullable(),
+  activity_kind: z.enum(["task", "review", "internal"]), task_id: z.uuid().nullable(), review_round_id: z.uuid().nullable(),
+  internal_activity_type: z.enum(["team_walkthrough"]).nullable().default(null),
   minutes: z.number().int().positive().max(2147483647),
 });
 export const workLogTimerSnapshotSchema = z.object({ entries: z.array(entryFields),
   timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()), changed: z.boolean(), studioId: z.uuid().nullable() });
-const entrySchema = entryFields.refine(row => (row.activity_kind === "review") === (row.review_round_id !== null));
+const entrySchema = entryFields.refine(row => row.activity_kind === "internal"
+  ? row.internal_activity_type !== null && row.task_id === null && row.review_round_id === null
+  : row.internal_activity_type === null && row.task_id !== null && (row.activity_kind === "review") === (row.review_round_id !== null));
 export const workLogInputSchema = z.object({
   date: z.iso.date(), entries: z.array(entrySchema), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).optional(),
 }).refine(({ entries }) => new Set(entries.map(workLogRowKey)).size === entries.length);
@@ -31,12 +35,13 @@ const dailyRowSchema = entryFields.extend({
   minutes: z.number().int().nonnegative(), title: z.string().nullable(), projectName: z.string().nullable(), roundNumber: z.number().nullable(),
 });
 export const dailyWorkLogSchema = z.object({
+  canLogInternalWork: z.boolean().default(false),
   date: z.iso.date(), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).default({}), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
   activeTasks: z.array(z.object({ ...workLogProjectFields, id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
   calendar: z.object({ minutes: z.number().nonnegative(), categories: z.array(z.object({ eventType: z.enum(STATISTICS_CALENDAR_TYPES), minutes: z.number().nonnegative(), allDayCount: z.number() })) }),
 });
 
-const timeSummarySchema = z.object({ taskMinutes: z.number().nonnegative(), reviewMinutes: z.number().nonnegative(),
+const timeSummarySchema = z.object({ internalMinutes: z.number().nonnegative().default(0), taskMinutes: z.number().nonnegative(), reviewMinutes: z.number().nonnegative(),
   calendarMinutes: z.number().nonnegative(), totalMinutes: z.number().nonnegative() });
 export const weeklyWorkLogSchema = z.object({
   start: z.iso.date(), through: z.iso.date(), today: z.iso.date(),
@@ -50,7 +55,8 @@ export type WorkLogRow = z.infer<typeof dailyRowSchema>;
 export function groupWorkLogRows(rows: WorkLogRow[]) {
   const groups = new Map<string, { key: string; projectName: string | null; stage: WorkLogRow["stage"]; stageName: string | null; rows: WorkLogRow[]; minutes: number }>();
   for (const row of rows) {
-    const key = JSON.stringify([row.activity_kind, row.projectId, row.stage]);
+    const key = JSON.stringify(row.activity_kind === "internal"
+      ? [row.activity_kind, row.internal_activity_type] : [row.activity_kind, row.projectId, row.stage]);
     let group = groups.get(key);
     if (!group) {
       group = { key, projectName: row.projectName, stage: row.stage, stageName: row.stageName, rows: [], minutes: 0 };
@@ -88,7 +94,7 @@ export function allocateReviewMinutes<T extends WorkLogEntry>(rows: T[], selecte
 export function previewWorkLogWeek(week: WeeklyWorkLog, date: string, rows: WorkLogEntry[], calendarMinutes: number): WeeklyWorkLog {
   const days = week.days.map(day => day.date === date ? { ...day, ...summarizeLoggedTime(rows, calendarMinutes) } : day);
   const totals = days.reduce((sum, day) => ({ taskMinutes: sum.taskMinutes + day.taskMinutes,
-    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
+    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, internalMinutes: sum.internalMinutes + day.internalMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
     totalMinutes: sum.totalMinutes + day.totalMinutes }), summarizeLoggedTime([]));
   return { ...week, days, totals };
 }
@@ -124,7 +130,7 @@ export function buildWeeklyWorkLog(date: string, today: string, entries: Array<W
       ...summarizeLoggedTime(entries.filter(row => row.work_date === day), calendarMinutes.get(day) ?? 0) };
   });
   const totals = days.reduce((sum, day) => ({ taskMinutes: sum.taskMinutes + day.taskMinutes,
-    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
+    reviewMinutes: sum.reviewMinutes + day.reviewMinutes, internalMinutes: sum.internalMinutes + day.internalMinutes, calendarMinutes: sum.calendarMinutes + day.calendarMinutes,
     totalMinutes: sum.totalMinutes + day.totalMinutes }), summarizeLoggedTime([]));
   return { start, through: addCalendarDays(start, 6), today, days, totals };
 }
@@ -144,7 +150,8 @@ export function buildWorkLogReminders(today: string, submissions: SubmittedDay[]
     previousWeekMissing: missingDates.filter(day => day >= previousWeek && day < week) };
 }
 
-export function workLogRowKey(row: Pick<WorkLogEntry, "task_id" | "review_round_id">) {
+export function workLogRowKey(row: Pick<WorkLogEntry, "task_id" | "review_round_id" | "internal_activity_type">) {
+  if (row.internal_activity_type) return `internal:${row.internal_activity_type}`;
   return row.review_round_id ? `review:${row.review_round_id}` : `task:${row.task_id}`;
 }
 
@@ -161,15 +168,31 @@ type SuggestedReviewRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "re
   task: Pick<Tables["tasks"]["Row"], "status" | "stage"> & { project: Pick<Tables["projects"]["Row"], "status" | "archived_at"> };
 };
 
-export function getSuggestedReviewRoundIds(rounds: SuggestedReviewRound[], userId: string, date: string) {
-  const { start, end } = workLogDayBounds(date);
-  const inDay = (instant: string | null) => instant !== null && Date.parse(instant) >= Date.parse(start) && Date.parse(instant) < Date.parse(end);
-  return rounds.filter(round => {
-    const ownStep = round.reviewers.find(step => step.reviewer_id === userId);
-    if (!ownStep || Date.parse(round.submitted_at) >= Date.parse(end)) return false;
-    // Queue waiting is not work. Legacy same-day resolutions are actual activity.
-    return inDay(ownStep.approved_at) || (round.reviewer_id === userId && inDay(round.completed_at));
-  }).map(round => round.id);
+export type WorkLogActivity = Pick<Tables["project_activity"]["Row"], "action_type" | "entity_id" | "actor_id" | "changes">;
+
+export function getSuggestedReviewRoundIds(rounds: SuggestedReviewRound[], userId: string, date: string,
+  activities: WorkLogActivity[] = []) {
+  const { end } = workLogDayBounds(date);
+  const actedRounds = new Set(activities.flatMap(activity => {
+    if (activity.actor_id !== userId || !isActivityChanges(activity.changes)) return [];
+    const { review_round_id, review_action } = activity.changes;
+    return typeof review_round_id === "string" && (review_action === "approved" || review_action === "rework") ? [review_round_id] : [];
+  }));
+  // Legacy approval timestamps lack the resolver's identity. Timer history is
+  // merged separately; ambiguous legacy decisions remain manually addable.
+  return rounds.filter(round => actedRounds.has(round.id) && Date.parse(round.submitted_at) < Date.parse(end)
+    && round.reviewers.some(step => step.reviewer_id === userId)).map(round => round.id);
+}
+
+export function isTaskWorkPlausible(task: Pick<Tables["tasks"]["Row"], "completed_at" | "stage"> & {
+  project: Pick<Tables["projects"]["Row"], "completed_at">;
+}, date: string, activityInstant?: string) {
+  // Workflow defaults use SQL current_date, while logs use Kyiv days. A real
+  // event after Kyiv midnight can still have the preceding UTC completion date.
+  const utcDate = activityInstant ? new Date(activityInstant).toISOString().slice(0, 10) : date;
+  const effectiveDay = utcDate < date ? utcDate : date;
+  return !(task.completed_at && task.completed_at < effectiveDay)
+    && !(task.stage !== "stage_4" && task.project.completed_at && task.project.completed_at < effectiveDay);
 }
 
 /** A completed round credits each reviewer who actually resolved their step,
@@ -189,13 +212,14 @@ export function completedReviewCredits(rounds: ReviewStatisticsRound[]) {
 export function summarizeLoggedTime(entries: WorkLogEntry[], calendarMinutes = 0) {
   const taskMinutes = entries.filter(row => row.activity_kind === "task").reduce((sum, row) => sum + row.minutes, 0);
   const reviewMinutes = entries.filter(row => row.activity_kind === "review").reduce((sum, row) => sum + row.minutes, 0);
-  return { taskMinutes, reviewMinutes, calendarMinutes, totalMinutes: taskMinutes + reviewMinutes + calendarMinutes };
+  const internalMinutes = entries.filter(row => row.activity_kind === "internal").reduce((sum, row) => sum + row.minutes, 0);
+  return { taskMinutes, reviewMinutes, internalMinutes, calendarMinutes, totalMinutes: taskMinutes + reviewMinutes + internalMinutes + calendarMinutes };
 }
 
 export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; user_id: string; work_date: string; project_id: string | null }>,
   rounds: ReviewStatisticsRound[], members: Array<{ id: string; name: string; active: boolean }>, range: { from: string; through: string },
   projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = []) {
-  const empty = () => ({ reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, totalMinutes: 0 });
+  const empty = () => ({ reviewsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, internalMinutes: 0, totalMinutes: 0 });
   const people = new Map(members.map(member => [member.id, { ...member, ...empty() }]));
   const projectNames = new Map(projects.map(project => [project.id, project.name]));
   const projectTime = new Map<string | null, { id: string | null; name: string | null; taskMinutes: number; reviewMinutes: number; totalMinutes: number }>();
@@ -220,23 +244,25 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
   }
   for (const row of new Map(entries.map(entry => [entry.id, entry])).values()) {
     if (row.work_date < range.from || row.work_date > range.through) continue;
-    const key = row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
+    const key = row.activity_kind === "internal" ? "internalMinutes" : row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
     person(row.user_id)[key] += row.minutes;
+    const month = byMonth.get(row.work_date.slice(0, 7));
+    if (month) month[key] += row.minutes;
+    if (row.activity_kind === "internal") continue;
+    const projectKey = row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
     let project = projectTime.get(row.project_id);
     if (!project) {
       project = { id: row.project_id, name: projectNames.get(row.project_id ?? "") ?? null, taskMinutes: 0, reviewMinutes: 0, totalMinutes: 0 };
       projectTime.set(row.project_id, project);
     }
-    project[key] += row.minutes;
+    project[projectKey] += row.minutes;
     project.totalMinutes += row.minutes;
-    const month = byMonth.get(row.work_date.slice(0, 7));
-    if (month) month[key] += row.minutes;
   }
-  const employees = [...people.values()].filter(row => row.active || row.reviewsCompleted || row.taskMinutes || row.reviewMinutes)
+  const employees = [...people.values()].filter(row => row.active || row.reviewsCompleted || row.taskMinutes || row.reviewMinutes || row.internalMinutes)
     .sort((left, right) => left.name.localeCompare(right.name));
-  for (const row of [...employees, ...months]) row.totalMinutes = row.taskMinutes + row.reviewMinutes;
+  for (const row of [...employees, ...months]) row.totalMinutes = row.taskMinutes + row.reviewMinutes + row.internalMinutes;
   const totals = employees.reduce((sum, row) => ({ reviewsCompleted: sum.reviewsCompleted + row.reviewsCompleted,
-    taskMinutes: sum.taskMinutes + row.taskMinutes, reviewMinutes: sum.reviewMinutes + row.reviewMinutes,
+    taskMinutes: sum.taskMinutes + row.taskMinutes, reviewMinutes: sum.reviewMinutes + row.reviewMinutes, internalMinutes: sum.internalMinutes + row.internalMinutes,
     totalMinutes: sum.totalMinutes + row.totalMinutes }), empty());
   const projectRows = [...projectTime.values()].sort((left, right) => right.totalMinutes - left.totalMinutes
     || (left.name ?? "").localeCompare(right.name ?? "") || (left.id ?? "").localeCompare(right.id ?? ""));
@@ -259,17 +285,21 @@ export function getDailyCalendarContext(events: Array<StatisticsCalendarEvent & 
   return { minutes: (person?.hours ?? 0) * 60, categories };
 }
 
-export function getSuggestedTaskIds(activities: Array<{ entity_id: string | null; actor_id: string | null; changes: Json }>,
-  userId: string, participatingTaskIds: Set<string>, reviewTaskIds: Set<string>, inProgressTaskIds: string[] = []) {
-  const interacted: string[] = [], transitioned: string[] = [];
+export function getSuggestedTaskIds(activities: WorkLogActivity[],
+  userId: string, participatingTaskIds: Set<string>, inProgressTaskIds: string[] = []) {
+  const worked: string[] = [];
   for (const activity of activities) {
-    if (!activity.entity_id || !participatingTaskIds.has(activity.entity_id)) continue;
+    if (activity.action_type !== "task_updated" || activity.actor_id !== userId
+      || !activity.entity_id || !participatingTaskIds.has(activity.entity_id)) continue;
     const changes = isActivityChanges(activity.changes) ? activity.changes : {};
     const status = isActivityChange(changes.status) ? changes.status : null;
-    // Resolving a review is reviewer activity, not task production work.
-    const reviewResolution = reviewTaskIds.has(activity.entity_id) && status?.from === "internal_review";
-    if (activity.actor_id === userId && !reviewResolution) interacted.push(activity.entity_id);
-    else if (status && status.to !== "todo" && status.to !== "cancelled") transitioned.push(activity.entity_id);
+    // Review decisions belong to review work. Creation and generic legacy
+    // detail/checklist edits cannot reliably distinguish progress from metadata.
+    const workflow = status && status.from !== "internal_review" && status.from !== status.to
+      && ["in_progress", "internal_review", "review", "completed"].includes(String(status.to));
+    const progress = isActivityChange(changes.production_completion)
+      && changes.production_completion.from !== changes.production_completion.to;
+    if (workflow || progress || isActivityChanges(changes.checklist_progress)) worked.push(activity.entity_id);
   }
-  return [...new Set([...interacted, ...transitioned, ...inProgressTaskIds.filter(id => participatingTaskIds.has(id))])];
+  return [...new Set([...worked, ...inProgressTaskIds.filter(id => participatingTaskIds.has(id))])];
 }

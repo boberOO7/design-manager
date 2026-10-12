@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListTodo, Plus, ShieldCheck, X } from "lucide-react";
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, ListTodo, Plus, ShieldCheck, X } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -91,19 +91,19 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
   const visibleWeek = week && dirty && !loadingDay && data?.date === date
     ? previewWorkLogWeek(week, date, rows, data.calendar.minutes) : week;
   const available: DailyWorkLog["rows"] = data ? [
-    ...data.activeTasks.map(task => ({ activity_kind: "task" as const, task_id: task.id, review_round_id: null,
+    ...data.activeTasks.map(task => ({ internal_activity_type: null, activity_kind: "task" as const, task_id: task.id, review_round_id: null,
       minutes: 0, projectId: task.projectId, stage: task.stage, stageName: task.stageName, title: task.title, projectName: task.projectName, roundNumber: null })),
     ...data.additionalReviews,
   ].filter(row => !rows.some(current => workLogRowKey(current) === workLogRowKey(row))) : [];
   const personalTaskIds = new Set(data?.activeTasks.filter(task => task.isParticipating).map(task => task.id));
-  const personalWork = available.filter(row => row.activity_kind === "review" || personalTaskIds.has(row.task_id));
-  const otherWork = available.filter(row => row.activity_kind === "task" && !personalTaskIds.has(row.task_id));
+  const personalWork = available.filter(row => row.activity_kind === "review" || row.task_id !== null && personalTaskIds.has(row.task_id));
+  const otherWork = available.filter(row => row.activity_kind === "task" && !(row.task_id !== null && personalTaskIds.has(row.task_id)));
   const choices = addingOthers ? otherWork : personalWork;
 
   async function save() {
     if (!data || editorDisabled) return;
     const input = workLogInputSchema.safeParse({ date: data.date, timerSnapshot: data.timerSnapshot, entries: rows.filter(row => row.minutes > 0).map(row => ({
-      activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id, minutes: row.minutes,
+      internal_activity_type: row.internal_activity_type, activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id, minutes: row.minutes,
     })) });
     if (!input.success) { setError(t("durationInvalid")); return; }
     setSaving(true); setError("");
@@ -146,12 +146,12 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
     </div>
     <div data-work-log-scroll className="min-h-0 flex-1 space-y-4 overflow-y-auto [scrollbar-gutter:stable] px-4 py-4 sm:px-6">
       {data ? <div inert={editorDisabled} aria-busy={loadingDay} className="space-y-4">
-        {rows.length ? (["task", "review"] as const).map(kind => {
+        {rows.length ? (["task", "review", "internal"] as const).map(kind => {
           const group = rows.filter(row => row.activity_kind === kind);
           if (!group.length) return null;
           const isReview = kind === "review";
-          const Icon = isReview ? ShieldCheck : ListTodo;
-          const label = t(isReview ? "reviews" : "tasks");
+          const Icon = isReview ? ShieldCheck : kind === "internal" ? BriefcaseBusiness : ListTodo;
+          const label = t(isReview ? "reviews" : kind === "internal" ? "internalWork" : "tasks");
           return <section key={kind} aria-label={label}>
             <div className={`flex items-center justify-between gap-3 rounded-[var(--ui-radius-control)] px-3 py-2 text-xs ${isReview ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]"}`}>
               <h3 className="flex items-center gap-2 font-semibold"><Icon aria-hidden className="size-4" />{label}<span className="font-normal">· {group.length}</span></h3>
@@ -169,6 +169,13 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
         }) : <p className="text-sm text-[var(--ui-text-muted)]">{t("empty")}</p>}
         <div className="space-y-2">
           <Button type="button" variant="ghost" size="sm" disabled={saving || !available.length} aria-expanded={adding} onClick={() => { setAdding(value => !value); setAddingOthers(false); }}><Plus aria-hidden className="mr-1 size-4" />{t("addWork")}</Button>
+          {data.canLogInternalWork ? <Button type="button" variant="ghost" size="sm"
+            disabled={editorDisabled || rows.some(row => row.internal_activity_type === "team_walkthrough")}
+            onClick={() => {
+              setDirty(true);
+              setRows(current => [...current, { activity_kind: "internal", internal_activity_type: "team_walkthrough", task_id: null,
+                review_round_id: null, minutes: 0, projectId: null, stage: null, stageName: null, title: null, projectName: null, roundNumber: null }]);
+            }}><Plus aria-hidden className="mr-1 size-4" />{t("internalWork")}</Button> : null}
           <div aria-hidden={!adding} inert={!adding} className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${adding ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
             <div className="min-h-0 overflow-hidden"><div className="space-y-2">
               {addingOthers ? <p className="text-xs font-medium text-[var(--ui-text-secondary)]">{t("otherStudioTasks")}</p> : null}

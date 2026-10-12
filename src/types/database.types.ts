@@ -7064,10 +7064,11 @@ export type Database = {
           activity_kind: string
           created_at: string
           id: string
+          internal_activity_type: string | null
           minutes: number
           review_round_id: string | null
           studio_id: string
-          task_id: string
+          task_id: string | null
           updated_at: string
           user_id: string
           work_date: string
@@ -7076,10 +7077,11 @@ export type Database = {
           activity_kind: string
           created_at?: string
           id?: string
+          internal_activity_type?: string | null
           minutes: number
           review_round_id?: string | null
           studio_id: string
-          task_id: string
+          task_id?: string | null
           updated_at?: string
           user_id: string
           work_date: string
@@ -7088,10 +7090,11 @@ export type Database = {
           activity_kind?: string
           created_at?: string
           id?: string
+          internal_activity_type?: string | null
           minutes?: number
           review_round_id?: string | null
           studio_id?: string
-          task_id?: string
+          task_id?: string | null
           updated_at?: string
           user_id?: string
           work_date?: string

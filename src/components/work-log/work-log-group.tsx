@@ -46,17 +46,18 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
 
   function renderRow(row: WorkLogRow) {
     const key = workLogRowKey(row);
-    const activity = `${isReview ? t("reviewRound", { number: row.roundNumber ?? "?" }) + ": " : ""}${row.title ?? t("unavailableTask")}`;
+    const title = row.internal_activity_type ? t(`internal_${row.internal_activity_type}`) : row.title ?? t("unavailableTask");
+    const activity = `${isReview ? t("reviewRound", { number: row.roundNumber ?? "?" }) + ": " : ""}${title}`;
     return <li key={key} data-work-log-row={key} className="grid grid-cols-[minmax(0,1fr)_7rem_2rem] items-center gap-2 py-3 sm:gap-3">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {isReview && partial && group.rows.length > 1 ? <input type="checkbox" aria-label={t("selectReview", { activity })} className="size-4 shrink-0 accent-[var(--ui-action-primary)]"
           disabled={disabled} checked={selectedKeys.includes(key)} onChange={event => select(event.target.checked ? [...selectedKeys, key] : selectedKeys.filter(value => value !== key))} /> : null}
         <div className="min-w-0 flex-1 space-y-1">
-          <Tooltip content={row.title ?? t("unavailableTask")}><p className="line-clamp-2 text-sm font-medium" tabIndex={0}>{row.title ?? t("unavailableTask")}</p></Tooltip>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ui-text-muted)]">
+          <Tooltip content={title}><p className="line-clamp-2 text-sm font-medium" tabIndex={0}>{title}</p></Tooltip>
+          {row.activity_kind !== "internal" ? <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ui-text-muted)]">
             {isReview ? <span className="shrink-0 rounded bg-[var(--ui-info-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ui-info-text)]">{t("reviewRound", { number: row.roundNumber ?? "?" })}</span> : null}
             <span className="truncate">{row.projectName}{stageName ? ` · ${stageName}` : ""}</span>
-          </div>
+          </div> : null}
         </div>
       </div>
       <TimePicker mode="duration" locale={locale} className={`w-28 shrink-0 gap-2 tabular-nums ${row.minutes === 0 ? "text-[var(--ui-text-muted)] [&>span]:font-normal" : ""}`} disabled={disabled} data-work-log-duration

@@ -8,7 +8,7 @@ import { getMyTaskStageNames } from "@/data/queries/tasks";
 import { loadAllRows } from "@/data/queries/all-rows";
 import { createClient } from "@/lib/supabase/server";
 import { addCalendarDays, instantToDateOnly, startOfMondayWeek } from "@/lib/calendar";
-import { workLogTimerSnapshotSchema, buildWeeklyWorkLog, buildWorkLogReminders, completedReviewCredits, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedReviewRoundIds, getSuggestedTaskIds, getWorkLogReminderWindow, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
+import { workLogTimerSnapshotSchema, buildWeeklyWorkLog, buildWorkLogReminders, completedReviewCredits, dailyWorkLogSchema, getDailyCalendarContext, getSuggestedReviewRoundIds, getSuggestedTaskIds, isTaskWorkPlausible, getWorkLogReminderWindow, summarizeLoggedTime, workLogDayBounds, workLogRowKey } from "@/lib/work-log";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 function loadWorkLogCalendar(client: Client, studioId: string) {
@@ -48,25 +48,28 @@ export async function getDailyWorkLog(date: string) {
   const logSnapshot = workLogTimerSnapshotSchema.parse(persisted.data);
   if (logSnapshot.changed && logSnapshot.studioId) scheduleAutomaticLabor(logSnapshot.studioId);
   const { start, end } = workLogDayBounds(date);
-  const [saved, activities, tasks, rounds, events, submission] = await Promise.all([
+  const [saved, activities, tasks, rounds, events, submission, statusPeriods] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries")
-      .select("activity_kind,task_id,review_round_id,minutes,task:tasks(title,project_id,stage,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
+      .select("internal_activity_type,activity_kind,task_id,review_round_id,minutes,task:tasks(title,project_id,stage,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
       .eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).order("id").range(from, to)),
-    loadAllRows((from, to) => client.from("project_activity").select("entity_id,actor_id,changes")
+    loadAllRows((from, to) => client.from("project_activity").select("action_type,entity_id,actor_id,changes,created_at").eq("actor_id", userId)
       .eq("studio_id", studioId).eq("entity_type", "task").gte("created_at", start).lt("created_at", end)
       .order("created_at", { ascending: false }).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("tasks")
-      .select("id,title,status,assignee_id,project_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at),collaborators:task_collaborators(user_id)")
+      .select("id,title,status,assignee_id,project_id,stage,completed_at,created_at,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at,completed_at),collaborators:task_collaborators(user_id)")
       .eq("project.studio_id", studioId).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("task_review_rounds")
-      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at,position),task:tasks!inner(title,status,project_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at))")
+      .select("id,task_id,round_number,reviewer_id,submitted_at,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at,position),task:tasks!inner(title,status,project_id,stage,project:projects!tasks_project_id_fkey!inner(studio_id,name,status,archived_at,completed_at))")
       .eq("task.project.studio_id", studioId).lt("submitted_at", end)
       .order("id").range(from, to)),
     loadWorkLogCalendar(client, studioId),
     client.from("work_log_days").select("submitted_at").eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).maybeSingle(),
+    loadAllRows((from, to) => client.from("task_status_periods").select("task_id,entered_at,exited_at")
+      .eq("studio_id", studioId).eq("status", "in_progress").lt("entered_at", end)
+      .or(`exited_at.is.null,exited_at.gt.${start}`).order("id").range(from, to)),
   ]);
   if (submission.error) throw new Error("Unable to load work log submission.", { cause: submission.error });
-  for (const result of [saved, activities, tasks, rounds, events]) {
+  for (const result of [saved, activities, tasks, rounds, events, statusPeriods]) {
     if (result.error || !result.data) throw new Error("Unable to load daily work log.", { cause: result.error });
   }
   const taskRows = tasks.data ?? [], reviewRows = rounds.data ?? [];
@@ -74,19 +77,27 @@ export async function getDailyWorkLog(date: string) {
   const activeTasks = taskRows.filter(task => task.status !== "completed" && task.status !== "cancelled"
     && !task.project.archived_at && task.project.status !== "archived"
     && (task.project.status !== "completed" || task.stage === "stage_4"));
-  const suggestedReviewIds = new Set(getSuggestedReviewRoundIds(reviewRows, userId, date));
+  const suggestedReviewIds = new Set(getSuggestedReviewRoundIds(reviewRows, userId, date, activities.data ?? []));
   for (const roundId of Object.keys(logSnapshot.timerSnapshot)) suggestedReviewIds.add(roundId);
   const relevantReviews = reviewRows.filter(round => suggestedReviewIds.has(round.id));
-  const reviewTaskIds = new Set(reviewRows.filter(round => round.reviewers.some(row => row.reviewer_id === userId)).map(round => round.task_id));
-  const suggestedIds = getSuggestedTaskIds(activities.data ?? [], userId, participating, reviewTaskIds,
-    activeTasks.filter(task => task.status === "in_progress").map(task => task.id));
   const byTask = new Map(taskRows.map(task => [task.id, task]));
+  const plausibleTaskIds = new Set(taskRows.filter(task => participating.has(task.id) && isTaskWorkPlausible(task, date)).map(task => task.id));
+  const inProgressOnDate = new Set((statusPeriods.data ?? []).map(period => period.task_id));
+  // Current open status remains a useful today-only fallback when legacy
+  // transition history is missing. Past dates require a recorded status period.
+  const workActivities = (activities.data ?? []).filter(activity => {
+    const task = activity.entity_id ? byTask.get(activity.entity_id) : null;
+    return task && isTaskWorkPlausible(task, date, activity.created_at);
+  });
+  const suggestedIds = getSuggestedTaskIds(workActivities, userId, participating,
+    activeTasks.filter(task => plausibleTaskIds.has(task.id) && task.status === "in_progress" && task.created_at < end
+      && (inProgressOnDate.has(task.id) || date === instantToDateOnly(new Date().toISOString()))).map(task => task.id));
   const savedByKey = new Map((saved.data ?? []).map(row => [workLogRowKey(row), row]));
   const byRound = new Map(reviewRows.map(round => [round.id, round]));
   const rows = [
     ...logSnapshot.entries.map(entry => {
       const row = savedByKey.get(workLogRowKey(entry));
-      const task = byTask.get(entry.task_id);
+      const task = entry.task_id ? byTask.get(entry.task_id) : null;
       const round = entry.review_round_id ? byRound.get(entry.review_round_id) : null;
       return { ...entry, projectId: row?.task?.project_id ?? task?.project_id ?? null, stage: row?.task?.stage ?? task?.stage ?? null,
         title: row?.task?.title ?? task?.title ?? null, projectName: row?.task?.project?.name ?? task?.project.name ?? null,
@@ -94,19 +105,19 @@ export async function getDailyWorkLog(date: string) {
     }),
     ...suggestedIds.flatMap(id => {
       const task = byTask.get(id);
-      return task ? [{ activity_kind: "task", task_id: id, review_round_id: null, minutes: 0, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, roundNumber: null }] : [];
+      return task ? [{ internal_activity_type: null, activity_kind: "task", task_id: id, review_round_id: null, minutes: 0, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, roundNumber: null }] : [];
     }),
-    ...relevantReviews.map(round => ({ activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
+    ...relevantReviews.map(round => ({ internal_activity_type: null, activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
       projectId: round.task.project_id, stage: round.task.stage, title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number })),
   ];
   const rowByKey = new Map<string, typeof rows[number]>();
   for (const row of rows) if (!rowByKey.has(workLogRowKey(row))) rowByKey.set(workLogRowKey(row), row);
   const uniqueRows = [...rowByKey.values()];
   const additionalReviews = reviewRows.filter(round => round.reviewers.some(row => row.reviewer_id === userId))
-    .map(round => ({ activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
+    .map(round => ({ internal_activity_type: null, activity_kind: "review", task_id: round.task_id, review_round_id: round.id, minutes: 0,
       projectId: round.task.project_id, stage: round.task.stage, title: round.task.title, projectName: round.task.project.name, roundNumber: round.round_number }));
   const stageNames = await getMyTaskStageNames([...new Set([
-    ...uniqueRows.map(row => row.projectId), ...additionalReviews.map(row => row.projectId), ...activeTasks.map(task => task.project_id),
+    ...uniqueRows.map(row => row.projectId), ...additionalReviews.map(row => row.projectId), ...taskRows.map(task => task.project_id),
   ].filter((id): id is string => id !== null))]);
   const withStageName = <T extends { projectId: string | null; stage: string | null }>(row: T) => ({
     ...row, stageName: row.projectId && row.stage ? stageNames[`${row.projectId}:${row.stage}`] ?? null : null,
@@ -114,7 +125,9 @@ export async function getDailyWorkLog(date: string) {
   const calendarEvents = events.data ?? [];
   const calendar = getDailyCalendarContext(calendarEvents, calendarEvents.flatMap(row => row.invites),
     calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString());
-  return dailyWorkLogSchema.parse({ date, timerSnapshot: logSnapshot.timerSnapshot, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), activeTasks: activeTasks.map(task => withStageName({
+  // Explicit manual choices include closed/historical work; suggestions above
+  // remain conservative. Saved rows are always retained independently.
+  return dailyWorkLogSchema.parse({ date, canLogInternalWork: access.membership.system_role === "admin", timerSnapshot: logSnapshot.timerSnapshot, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), activeTasks: taskRows.map(task => withStageName({
     id: task.id, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, isParticipating: participating.has(task.id),
   })), calendar });
 }
@@ -133,7 +146,7 @@ export async function getWeeklyWorkLog(date: string, now = new Date()) {
   if (synced.changed && synced.studioId) scheduleAutomaticLabor(synced.studioId);
   const start = startOfMondayWeek(date), through = addCalendarDays(start, 6);
   const [entries, submissions, events, eligibility] = await Promise.all([
-    loadAllRows((from, to) => client.from("work_log_entries").select("activity_kind,task_id,review_round_id,minutes,work_date")
+    loadAllRows((from, to) => client.from("work_log_entries").select("internal_activity_type,activity_kind,task_id,review_round_id,minutes,work_date")
       .eq("studio_id", studioId).eq("user_id", userId).gte("work_date", start).lte("work_date", through).order("id").range(from, to)),
     client.from("work_log_days").select("work_date,submitted_at").eq("studio_id", studioId).eq("user_id", userId)
       .gte("work_date", start).lte("work_date", through),
@@ -173,7 +186,7 @@ export async function getEmployeeWorkStatistics(studioId: string, userId: string
     loadAllRows((from, to) => client.from("task_review_rounds")
       .select("id,reviewer_id,result,completed_at,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")
       .eq("project.studio_id", studioId).not("completed_at", "is", null).lte("completed_at", new Date().toISOString()).order("id").range(from, to)),
-    loadAllRows((from, to) => client.from("work_log_entries").select("activity_kind,task_id,review_round_id,minutes")
+    loadAllRows((from, to) => client.from("work_log_entries").select("internal_activity_type,activity_kind,task_id,review_round_id,minutes")
       .eq("studio_id", studioId).eq("user_id", userId).lte("work_date", today).order("id").range(from, to)),
   ]);
   if (rounds.error || entries.error) throw new Error("Unable to load employee work statistics.", { cause: rounds.error ?? entries.error });

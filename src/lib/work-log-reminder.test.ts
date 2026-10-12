@@ -71,7 +71,7 @@ describe("weekly Work Log and missing-day reminders", () => {
       { activity_kind: "task", task_id: "task", review_round_id: null, minutes: 999, work_date: "2026-10-28" },
     ], [submitted("2026-11-02"), submitted("2026-11-03")], new Map([["2026-11-02", 45], ["2026-11-03", 60]]), eligibility);
     expect(week.days[0]).toMatchObject({ taskMinutes: 90, reviewMinutes: 25, calendarMinutes: 45, totalMinutes: 160 });
-    expect(week.totals).toEqual({ taskMinutes: 120, reviewMinutes: 25, calendarMinutes: 105, totalMinutes: 250 });
+    expect(week.totals).toEqual({ internalMinutes: 0, taskMinutes: 120, reviewMinutes: 25, calendarMinutes: 105, totalMinutes: 250 });
     expect(week.days.reduce((sum, day) => sum + day.totalMinutes, 0)).toBe(week.totals.totalMinutes);
   });
 
