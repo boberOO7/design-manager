@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useLocale, useTranslations } from "next-intl";
 import { Copy, Download, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePwa } from "./pwa-provider";
 import { SettingsHelp, settingsHelpPanelClassName } from "./settings-help";
-import { disableWebPush, enableWebPush, pushOptInOwner, pushStatus, pushSupported, registerStudioFlowWorker } from "@/lib/web-push/browser";
+import { disableWebPush, enableWebPush, pushOptInOwner, pushStatus, pushSupported, registerStudioFlowWorker, testWebPush } from "@/lib/web-push/browser";
 
 type PushState = "enabled" | "disabled" | "blocked" | "unsupported";
 
@@ -18,21 +18,27 @@ export function SystemNotificationSettings({ userId }: { userId: string }) {
   const [configured, setConfigured] = useState(true);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testFeedback, setTestFeedback] = useState<"pushTestAccepted" | "pushTestRateLimited" | "pushTestExpired" | "pushTestFailed" | null>(null);
+  const refreshVersion = useRef(0);
   useEffect(() => {
     let active = true;
     const refresh = async () => {
+      const version = ++refreshVersion.current;
+      const current = () => active && version === refreshVersion.current;
       try {
-        if (!pushSupported()) { if (active) setState("unsupported"); return; }
-        if (Notification.permission === "denied") { if (active) setState("blocked"); return; }
+        if (!pushSupported()) { if (current()) setState("unsupported"); return; }
+        if (Notification.permission === "denied") { if (current()) setState("blocked"); return; }
         const registration = await registerStudioFlowWorker();
         const subscription = await registration.pushManager.getSubscription();
         const status = await pushStatus(subscription);
-        if (active) {
+        if (current()) {
           setConfigured(!!status.publicKey);
+          setError(false);
           setState(Notification.permission === "granted" && status.enabled && pushOptInOwner() === userId ? "enabled" : "disabled");
         }
-      } catch { if (active) setError(true); }
-      finally { if (active) setBusy(false); }
+      } catch { if (current()) setError(true); }
+      finally { if (current()) setBusy(false); }
     };
     void refresh();
     window.addEventListener("studioflow-push-change", refresh);
@@ -40,8 +46,10 @@ export function SystemNotificationSettings({ userId }: { userId: string }) {
   }, [userId]);
 
   async function toggle() {
+    ++refreshVersion.current;
     setBusy(true);
     setError(false);
+    setTestFeedback(null);
     try {
       if (state === "enabled") { await disableWebPush(); setState("disabled"); }
       else {
@@ -52,14 +60,29 @@ export function SystemNotificationSettings({ userId }: { userId: string }) {
     finally { setBusy(false); }
   }
 
+  async function sendTest() {
+    setTesting(true);
+    setTestFeedback(null);
+    try {
+      const result = await testWebPush();
+      const expired = ["subscription_missing", "provider_404", "provider_410", "vapid_public_key_mismatch", "invalid_endpoint", "invalid_subscription_key"].includes(result.reason);
+      setTestFeedback(result.accepted ? "pushTestAccepted" : result.reason === "rate_limited" ? "pushTestRateLimited" : expired ? "pushTestExpired" : "pushTestFailed");
+      if (expired) { await disableWebPush(); setState("disabled"); }
+      window.dispatchEvent(new Event("studioflow-push-change"));
+    } catch { setTestFeedback("pushTestFailed"); }
+    finally { setTesting(false); }
+  }
+
   return <div className="mt-2 border-t border-[var(--ui-border-subtle)] pt-3">
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
         <div className="flex items-center gap-1"><span className="text-sm text-[var(--ui-text)]">{t("systemNotifications")}</span><SettingsHelp label={t("systemNotifications")}><p>{t(state === "blocked" ? "pushBlockedHelp" : state === "unsupported" ? "pushUnsupportedHelp" : "pushDescription")}</p></SettingsHelp></div>
         <p className="text-xs text-[var(--ui-text-muted)]" role="status">{t(`pushState_${state}`)}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={t(state === "enabled" ? "pushDisableLabel" : "pushEnableLabel")} aria-busy={busy} disabled={busy || state === "blocked" || state === "unsupported" || (!configured && state !== "enabled")} onClick={() => void toggle()}>{state === "enabled" ? t("pushDisable") : t("pushEnable")}</Button>
+      <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={t(state === "enabled" ? "pushDisableLabel" : "pushEnableLabel")} aria-busy={busy} disabled={busy || testing || state === "blocked" || state === "unsupported" || (!configured && state !== "enabled")} onClick={() => void toggle()}>{state === "enabled" ? t("pushDisable") : t("pushEnable")}</Button>
     </div>
+    {state === "enabled" ? <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 px-0 text-xs" disabled={busy || testing} aria-busy={testing} onClick={() => void sendTest()}>{t(testing ? "pushTestSending" : "pushTestSend")}</Button> : null}
+    {testFeedback ? <p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]" role="status">{t(testFeedback)}</p> : null}
     {state === "blocked" ? <p className="mt-2 text-xs leading-5 text-[var(--ui-text-muted)]">{t("pushBlockedHelp")}</p> : null}
     {!configured ? <p className="mt-2 text-xs text-[var(--ui-text-muted)]">{t("pushNotConfigured")}</p> : null}
     {error ? <p className="mt-2 text-sm text-[var(--ui-danger-text)]" role="alert">{t("pushFailed")}</p> : null}

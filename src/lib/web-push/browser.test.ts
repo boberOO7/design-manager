@@ -164,6 +164,39 @@ describe("Push browser lifecycle", () => {
     expect(requestPermission).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith("/api/push/subscriptions", expect.objectContaining({ method: "POST" }));
   });
+  it("an in-flight reconciliation cannot unsubscribe the subsequent opt-in", async () => {
+    let release = () => {};
+    getSubscription.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve(null); }));
+    const browser = await import("./browser");
+    const reconciling = browser.reconcileWebPush(userId, "uk");
+    await vi.waitFor(() => expect(getSubscription).toHaveBeenCalledOnce());
+    const enabling = browser.enableWebPush(userId, "uk");
+    expect(requestPermission).toHaveBeenCalledOnce();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(subscribe).not.toHaveBeenCalled();
+    release();
+    await Promise.all([reconciling, enabling]);
+    expect(unsubscribe).not.toHaveBeenCalled();
+    expect(stored.get("studioflow-push-owner")).toBe(userId);
+  });
+  it("disable waits for an in-flight refresh registration before deleting it", async () => {
+    stored.set("studioflow-push-owner", userId);
+    getSubscription.mockResolvedValue(subscription);
+    let release = () => {};
+    fetchMock.mockImplementation(async (_url, options) => {
+      if (options?.method === "POST") return new Promise(resolve => { release = () => resolve(new Response(JSON.stringify({ userId }))); });
+      return new Response(JSON.stringify({ userId, publicKey, enabled: true }));
+    });
+    const browser = await import("./browser");
+    const reconciling = browser.reconcileWebPush(userId, "uk");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/push/subscriptions", expect.objectContaining({ method: "POST" })));
+    const disabling = browser.disableWebPush();
+    expect(unsubscribe).not.toHaveBeenCalled();
+    release();
+    await Promise.all([reconciling, disabling]);
+    expect(fetchMock.mock.calls.at(-1)?.[1].method).toBe("DELETE");
+    expect(stored.size).toBe(0);
+  });
   it("does not silently revive an expired endpoint", async () => {
     stored.set("studioflow-push-owner",userId);
     getSubscription.mockResolvedValue(subscription);

@@ -9349,6 +9349,7 @@ export type Database = {
           vapid_public_key: string
         }[]
       }
+      claim_web_push_test: { Args: { p_endpoint: string }; Returns: string }
       close_finance_expected_remainder: {
         Args: {
           p_date: string

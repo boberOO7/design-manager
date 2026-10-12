@@ -61,10 +61,23 @@ Provider acceptance followed by a worker crash can still cause a transport retry
 Web Push does not offer exactly-once transport. Focused StudioFlow windows suppress
 redundant system notifications where the browser permits invisible Push handling.
 
+The enabled settings state includes a current-device self-test. Its same-origin
+authenticated route uses the normal encrypted sender, without creating a task or
+notification-history row. A caller-bound RPC verifies the live session and limits
+tests to one per user per minute in a private table, including across devices and
+subscription replacement. Provider acceptance is reported separately from OS
+display. The worker verifies the recipient/subscription before showing a test,
+and permits this explicit test while StudioFlow is focused. Delivery failures log
+only reason/status, and dispatcher results include failure-reason counts; expired
+subscription cleanup remains unchanged. Configuration validates that the VAPID
+private key derives the configured public key before registration or claiming work.
+
 ## Deployment
 
 - Apply `20261010214627_web_push.sql`, then
   `20261010222211_event_driven_web_push.sql` through the normal migration process.
+  The self-test also requires `20261012143927_web_push_self_test.sql` for its
+  caller-bound cooldown RPC.
   They require pg_net, pg_cron and Supabase Vault (the second migration enables
   them). pg_cron must support interval schedules; local validation used 1.6.4.
   Do not rewrite earlier migrations. No remote migration is applied by

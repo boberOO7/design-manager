@@ -3,6 +3,14 @@ import { z } from "zod";
 const optInKey = "studioflow-push-owner";
 let registrationPromise: Promise<ServiceWorkerRegistration> | undefined;
 let enabling = false;
+// Reconciliation must finish before a toggle creates or removes an endpoint.
+let pushOperation: Promise<unknown> = Promise.resolve();
+
+function serializePush<T>(operation: () => Promise<T>) {
+  const pending = pushOperation.catch(() => {}).then(operation);
+  pushOperation = pending;
+  return pending;
+}
 
 export function pushSupported() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -89,7 +97,7 @@ async function updatedWorker(registration: ServiceWorkerRegistration, previous: 
   });
 }
 
-export async function disableWebPush() {
+async function clearWebPush() {
   try { localStorage.removeItem(optInKey); } catch { /* Storage may be disabled. */ }
   if (!window.isSecureContext || !("serviceWorker" in navigator)) return;
   const registration = await navigator.serviceWorker.getRegistration("/");
@@ -112,6 +120,10 @@ export async function disableWebPush() {
   window.dispatchEvent(new Event("studioflow-push-change"));
 }
 
+export function disableWebPush() {
+  return serializePush(clearWebPush);
+}
+
 async function saveSubscription(subscription: PushSubscription, locale: string, userId: string) {
   const serialized = subscription.toJSON();
   const response = await fetch("/api/push/subscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedUserId: userId, endpoint: subscription.endpoint, keys: serialized.keys, locale: locale === "en" ? "en" : "uk" }) });
@@ -129,45 +141,63 @@ export async function enableWebPush(userId: string, locale: string) {
   enabling = true;
   try {
     // Must be invoked directly by the user's click, before any awaited work.
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
-    const registration = await registerStudioFlowWorker();
-    const status = await pushStatus();
-    if (status.userId !== userId || !status.publicKey) throw new Error("Push is not configured.");
-    let subscription = await registration.pushManager.getSubscription();
-    if (subscription && (pushOptInOwner() !== userId || subscriptionKey(subscription) !== status.publicKey)) {
-      await disableWebPush();
-      subscription = null;
-    }
-    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: status.publicKey });
-    try {
-      await saveSubscription(subscription, locale, userId);
-      localStorage.setItem(optInKey, userId);
-      registration.active?.postMessage({ type: "STUDIOFLOW_PUSH_ENABLED" });
-    } catch (error) {
-      await subscription.unsubscribe();
-      try { localStorage.removeItem(optInKey); } catch { /* Storage may be disabled. */ }
-      throw error;
-    }
-    window.dispatchEvent(new Event("studioflow-push-change"));
+    const permissionRequest = Notification.requestPermission().catch(() => null);
+    await serializePush(async () => {
+      const permission = await permissionRequest;
+      if (permission === null) throw new Error("Push permission unavailable.");
+      if (permission !== "granted") return;
+      const registration = await registerStudioFlowWorker();
+      const status = await pushStatus();
+      if (status.userId !== userId || !status.publicKey) throw new Error("Push is not configured.");
+      let subscription = await registration.pushManager.getSubscription();
+      if (subscription && (pushOptInOwner() !== userId || subscriptionKey(subscription) !== status.publicKey)) {
+        await clearWebPush();
+        subscription = null;
+      }
+      if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: status.publicKey });
+      try {
+        await saveSubscription(subscription, locale, userId);
+        localStorage.setItem(optInKey, userId);
+        registration.active?.postMessage({ type: "STUDIOFLOW_PUSH_ENABLED" });
+      } catch (error) {
+        await subscription.unsubscribe();
+        try { localStorage.removeItem(optInKey); } catch { /* Storage may be disabled. */ }
+        throw error;
+      }
+      window.dispatchEvent(new Event("studioflow-push-change"));
+    });
   } finally { enabling = false; }
 }
 
 export async function reconcileWebPush(userId: string, locale: string) {
   if (!pushSupported() || enabling) return;
-  const owner = pushOptInOwner();
-  const registration = await registerStudioFlowWorker();
-  const subscription = await registration.pushManager.getSubscription();
-  if (owner !== userId || Notification.permission !== "granted") {
-    if (owner || subscription) await disableWebPush();
-    return;
-  }
-  // An expired endpoint or rotated VAPID key needs another explicit enable click.
-  if (!subscription) { localStorage.removeItem(optInKey); return; }
-  const status = await pushStatus(subscription);
-  if (status.userId !== userId || !status.publicKey) return;
-  if (!status.enabled) { await disableWebPush(); return; }
-  if (subscriptionKey(subscription) !== status.publicKey) { await disableWebPush(); return; }
-  // Refresh locale/session binding only for an existing explicit registration.
-  await saveSubscription(subscription, locale, userId);
+  return serializePush(async () => {
+    if (enabling) return;
+    const owner = pushOptInOwner();
+    const registration = await registerStudioFlowWorker();
+    const subscription = await registration.pushManager.getSubscription();
+    if (owner !== userId || Notification.permission !== "granted") {
+      if (owner || subscription) await clearWebPush();
+      return;
+    }
+    // An expired endpoint or rotated VAPID key needs another explicit enable click.
+    if (!subscription) { localStorage.removeItem(optInKey); return; }
+    const status = await pushStatus(subscription);
+    if (status.userId !== userId || !status.publicKey) return;
+    if (!status.enabled) { await clearWebPush(); return; }
+    if (subscriptionKey(subscription) !== status.publicKey) { await clearWebPush(); return; }
+    // Refresh locale/session binding only for an existing explicit registration.
+    await saveSubscription(subscription, locale, userId);
+  });
+}
+
+export async function testWebPush() {
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const subscription = await registration?.pushManager.getSubscription();
+  if (!subscription) return { accepted: false, reason: "subscription_missing" };
+  const response = await fetch("/api/push/test", {
+    method: "POST", headers: { "X-Push-Endpoint": subscription.endpoint },
+  });
+  const result = z.object({ accepted: z.boolean().optional(), reason: z.string().optional() }).parse(await response.json());
+  return { accepted: response.ok && result.accepted === true, reason: result.reason ?? "unavailable" };
 }

@@ -7,14 +7,15 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: mocks.
 vi.mock("web-push", async importOriginal => ({ ...await importOriginal<typeof import("web-push")>(), default: { ...await importOriginal<typeof import("web-push")>(), sendNotification: mocks.send } }));
 import { deliverWebPush } from "./delivery";
 
-const key = "D".repeat(87);
+const vapid = (await vi.importActual<{ default: typeof webPush }>("web-push")).default.generateVAPIDKeys();
+const key = vapid.publicKey;
 const job = { id: randomUUID(), lease_token: randomUUID(), subscription_id: randomUUID(), notification_id: randomUUID(), user_id: randomUUID(), endpoint: "https://fcm.googleapis.com/fcm/send/capability", p256dh: "B".repeat(87), auth: "C".repeat(22), vapid_public_key: key, locale: "uk", attempts: 1 };
 
 describe("server Web Push delivery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("WEB_PUSH_VAPID_PUBLIC_KEY", key);
-    vi.stubEnv("WEB_PUSH_VAPID_PRIVATE_KEY", "E".repeat(43));
+    vi.stubEnv("WEB_PUSH_VAPID_PRIVATE_KEY", vapid.privateKey);
     vi.stubEnv("WEB_PUSH_VAPID_SUBJECT", "mailto:admin@example.test");
     vi.stubEnv("CRON_SECRET", "cron-secret");
     mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [job] : null, error: null }));
@@ -28,7 +29,7 @@ describe("server Web Push delivery", () => {
   });
   it.each([404,410,429,503])("records provider status %i for expiry or retry", async status => {
     mocks.send.mockRejectedValue(new webPush.WebPushError("provider error",status,{},"",job.endpoint));
-    expect(await deliverWebPush()).toMatchObject(status === 404 || status === 410 ? { expired: 1 } : { retry: 1 });
+    expect(await deliverWebPush()).toMatchObject(status === 404 || status === 410 ? { expired: 1, failureReasons: { [`provider_${status}`]: 1 } } : { retry: 1, failureReasons: { provider_rejected: 1 } });
     expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", expect.objectContaining({ p_status: status }));
   });
   it("expires a regex-shaped invalid subscription public key rejected by real encryption", async () => {
@@ -38,7 +39,7 @@ describe("server Web Push delivery", () => {
       actual.generateRequestDetails(...args);
       return Promise.resolve({ statusCode: 201 });
     });
-    expect(await deliverWebPush()).toMatchObject({ expired: 1, retry: 0 });
+    expect(await deliverWebPush()).toMatchObject({ expired: 1, retry: 0, failureReasons: { invalid_subscription_key: 1 } });
     expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 410 });
   });
   it.each([
@@ -53,7 +54,7 @@ describe("server Web Push delivery", () => {
   });
   it("rejects unsafe endpoints and rotated VAPID bindings before sending", async () => {
     mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [{ ...job, endpoint: "https://127.0.0.1/private" }, { ...job, vapid_public_key: "old-key" }] : null, error: null }));
-    expect(await deliverWebPush()).toMatchObject({ expired: 2 });
+    expect(await deliverWebPush()).toMatchObject({ expired: 2, failureReasons: { invalid_endpoint: 1, vapid_public_key_mismatch: 1 } });
     expect(mocks.send).not.toHaveBeenCalled();
   });
   it("does not claim jobs without configuration", async () => {

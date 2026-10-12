@@ -28,7 +28,8 @@ async function receipt(id, write = false) {
 
 async function resolveNotification(data, signal) {
   if (!data || !uuid.test(data.notificationId) || !uuid.test(data.subscriptionId) || !uuid.test(data.recipientId)) return null;
-  const response = await fetch(`/api/push/notifications/${data.notificationId}?subscriptionId=${data.subscriptionId}`, { credentials: "include", cache: "no-store", signal });
+  const path = data.test === true ? `/api/push/test?subscriptionId=${data.subscriptionId}` : `/api/push/notifications/${data.notificationId}?subscriptionId=${data.subscriptionId}`;
+  const response = await fetch(path, { credentials: "include", cache: "no-store", signal });
   if (!response.ok) return null;
   const notification = await response.json();
   if (notification.recipientId !== data.recipientId || typeof notification.href !== "string") return null;
@@ -58,7 +59,7 @@ self.addEventListener("push", event => {
     if (cancelled() || !notification || notification.read || await receipt(data.notificationId).catch(() => false)) return;
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (cancelled()) return;
-    if (windows.some(client => client.focused && new URL(client.url).origin === self.location.origin)) {
+    if (notification.test !== true && windows.some(client => client.focused && new URL(client.url).origin === self.location.origin)) {
       await receipt(data.notificationId, true).catch(() => {});
       return;
     }
@@ -68,7 +69,7 @@ self.addEventListener("push", event => {
       body: typeof notification.body === "string" && notification.body.trim() ? notification.body : data.body === "You have a new notification in StudioFlow." ? data.body : "У вас нове сповіщення у StudioFlow.",
       icon: "/icons/studioflow-192.png", badge: "/icons/studioflow-badge.png",
       tag: `studioflow-${data.notificationId}`, renotify: false,
-      data: { notificationId: data.notificationId, subscriptionId: data.subscriptionId, recipientId: data.recipientId },
+      data: { notificationId: data.notificationId, subscriptionId: data.subscriptionId, recipientId: data.recipientId, test: notification.test === true },
     });
     await receipt(data.notificationId, true).catch(() => {});
   });

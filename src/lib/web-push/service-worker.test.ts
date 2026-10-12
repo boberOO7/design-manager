@@ -142,6 +142,21 @@ describe("background Push service worker", () => {
     await w.fire("push",{ data: { json: () => w.data } });
     expect(w.show).not.toHaveBeenCalled();
   });
+  it("displays an authenticated self-test while focused and keeps normal suppression", async () => {
+    const w = worker([{ focused: true, visibilityState: "visible" }]);
+    w.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ recipientId: w.data.recipientId, href: "/dashboard", read: false, title: "StudioFlow", body: "Це тестове сповіщення StudioFlow.", test: true }) });
+    await w.fire("push", { data: { json: () => ({ ...w.data, test: true }) } });
+    expect(w.fetch).toHaveBeenCalledWith(`/api/push/test?subscriptionId=${w.data.subscriptionId}`, expect.objectContaining({ credentials: "include" }));
+    expect(w.show).toHaveBeenCalledWith("StudioFlow", expect.objectContaining({ body: "Це тестове сповіщення StudioFlow." }));
+    await w.fire("push", { data: { json: () => ({ ...w.data, notificationId: "65000000-0000-0000-0000-000000000031" }) } });
+    expect(w.show).toHaveBeenCalledOnce();
+  });
+  it("a test flag cannot bypass the authenticated recipient check", async () => {
+    const w = worker([{ focused: true, visibilityState: "visible" }]);
+    w.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ recipientId: "another-user", href: "/dashboard", read: false, test: true }) });
+    await w.fire("push", { data: { json: () => ({ ...w.data, test: true }) } });
+    expect(w.show).not.toHaveBeenCalled();
+  });
   it.each([
     { name: "visible StudioFlow tab with another tab or application focused", windows: [{ focused: false, visibilityState: "visible" as const }] },
     { name: "minimized StudioFlow window", windows: [{ focused: false, visibilityState: "hidden" as const }] },
