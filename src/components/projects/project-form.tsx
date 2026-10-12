@@ -34,7 +34,7 @@ export type ProjectFormDefaults = {
 
 export type ProjectFormAction = (state: ProjectFormActionState, formData: FormData) => Promise<ProjectFormActionState>;
 
-const inputClassName = "mt-2 h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none transition-colors placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus:ring-[var(--ui-danger-text)]";
+const inputClassName = "ui-form-control mt-2 h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] transition-colors placeholder:text-[var(--ui-text-muted)] aria-invalid:border-[var(--ui-danger-border)]";
 
 export function ProjectForm({ action, cancelHref, defaultValues = {}, layout = "page", members = [], mode, onCancel, onDirtyChange, onPendingChange, onSuccess, templates = [] }: {
   action: ProjectFormAction;

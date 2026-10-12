@@ -34,7 +34,7 @@ export function isTimePickerDiscreteWheel(deltaY: number, deltaMode: number) {
   return deltaY !== 0 && (deltaMode === DOM_DELTA_LINE || Math.abs(deltaY) >= TIME_PICKER_ROW_HEIGHT);
 }
 
-export const timePickerClassName = "flex h-11 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-left text-sm text-[var(--ui-text)] transition-[border-color,background-color,box-shadow] hover:border-[var(--ui-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 data-[state=open]:border-[var(--ui-focus)] data-[state=open]:bg-[var(--ui-surface-subtle)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--ui-focus)] data-[state=open]:ring-offset-2";
+export const timePickerClassName = "ui-form-control flex h-11 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-left text-sm text-[var(--ui-text)] transition-[border-color,background-color,box-shadow] disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 data-[state=open]:bg-[var(--ui-surface-subtle)]";
 
 export type TimePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "defaultValue" | "onChange" | "value"> & {
   defaultValue?: string;
@@ -99,15 +99,15 @@ export function TimePicker({ className, defaultValue = "00:00", disabled, editab
     {name ? <input type="hidden" name={name} value={selectedValue} /> : null}
     {editable ? <Popover.Anchor asChild>
       <div data-time-picker-control data-state={open ? "open" : "closed"} data-disabled={disabled || undefined}
-        className={cn(timePickerClassName, "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--ui-focus)] has-[:focus-visible]:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:bg-[var(--ui-surface-muted)] data-[disabled=true]:opacity-60", className)}>
+        className={cn(timePickerClassName, "data-[disabled=true]:cursor-not-allowed data-[disabled=true]:bg-[var(--ui-surface-muted)] data-[disabled=true]:opacity-60", className)}>
         <input {...inputProps} type="text" disabled={disabled} value={draft ?? selectedValue}
-          className={cn("ui-numeric min-w-0 flex-1 bg-transparent font-medium outline-none disabled:cursor-not-allowed", inputProps?.className)}
+          className={cn("ui-form-control-content ui-numeric min-w-0 flex-1 bg-transparent font-medium outline-none disabled:cursor-not-allowed", inputProps?.className)}
           onChange={event => setDraft(event.target.value)}
           onBlur={event => { if (draft !== null) commitValue(event.target.value); }}
           onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
         <Tooltip content={tooltip}><Popover.Trigger asChild>
           <button ref={(node) => { triggerRef.current = node; setTriggerNode(node); }} type="button" disabled={disabled || inputProps?.readOnly}
-            className="shrink-0 rounded outline-none" {...buttonProps}
+            className="ui-form-control-content shrink-0 rounded" {...buttonProps}
             aria-label={`${labels.chooseTime}: ${inputProps?.["aria-label"] ?? ""}`}>{clock}</button>
         </Popover.Trigger></Tooltip>
       </div>

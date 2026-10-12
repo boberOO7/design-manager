@@ -431,6 +431,38 @@ body,
   outline-offset: 2px;
 }
 
+/* Form focus follows the existing border; keyboard focus sits on that same edge. */
+.ui-form-control {
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, outline-color 180ms ease;
+}
+
+.ui-form-control:not(:disabled):not([data-disabled="true"]):is(:hover, :focus-within, [data-state="open"], [data-open="true"]) {
+  border-color: var(--ui-control-interaction-border, var(--ui-text-muted));
+}
+
+.ui-form-control:is(:focus-within, [data-state="open"], [data-open="true"]),
+.ui-form-control-content:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ui-form-control:is(:focus-visible, :has(.ui-form-control-content:focus-visible)) {
+  outline: 1px solid var(--ui-control-focus, var(--ui-focus));
+  outline-offset: -1px;
+}
+
+.ui-form-control:not(:disabled):not([data-disabled="true"]):is([aria-invalid="true"], [data-invalid="true"], :has(.ui-form-control-content[aria-invalid="true"])) {
+  --ui-control-interaction-border: var(--ui-danger-border);
+  --ui-control-focus: var(--ui-danger-text);
+  border-color: var(--ui-danger-border);
+}
+
+@media (forced-colors: active) {
+  .ui-form-control:is(:focus-visible, :has(.ui-form-control-content:focus-visible)) {
+    outline-color: Highlight;
+  }
+}
+
 #main-content:focus-visible {
   outline: none;
 }
@@ -521,23 +553,8 @@ body,
   outline: none;
 }
 
-/* Keep other drawers and shared field defaults unchanged. */
-.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[role="switch"], button[data-calendar-field]):not(:disabled):hover {
-  border-color: var(--ui-text-muted);
-}
-
 .calendar-event-form :is(button[role="combobox"], button[data-calendar-field]):not(:disabled):is(:hover, [data-state="open"]) {
   background-color: var(--ui-surface);
-}
-
-.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[role="switch"], button[data-calendar-field]):is(:focus, :focus-visible, [data-state="open"]) {
-  border-color: var(--ui-focus);
-  box-shadow: none;
-  outline: none;
-}
-
-.calendar-event-form :is(input.border, textarea.border, button[role="combobox"], button[data-calendar-field])[aria-invalid="true"] {
-  border-color: var(--ui-danger-border);
 }
 
 @keyframes notification-toast-in {

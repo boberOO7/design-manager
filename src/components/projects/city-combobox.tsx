@@ -117,7 +117,7 @@ export function CityCombobox({ className, countryCode, describedBy, invalid, nam
           aria-expanded={open}
           aria-invalid={invalid || undefined}
           autoComplete="off"
-          className="h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-10 text-sm text-[var(--ui-text)] outline-none transition-colors placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)] aria-invalid:border-[var(--ui-danger-border)]"
+          className="ui-form-control h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-10 text-sm text-[var(--ui-text)] transition-colors placeholder:text-[var(--ui-text-muted)] aria-invalid:border-[var(--ui-danger-border)]"
           name={name}
           onChange={(event) => {
             const nextValue = event.target.value;

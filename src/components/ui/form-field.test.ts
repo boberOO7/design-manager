@@ -5,13 +5,12 @@ import { inputClassName, textareaClassName } from "./form-field";
 import { timePickerClassName } from "./time-picker";
 
 describe("shared form-control focus contract", () => {
-  it("uses the same keyboard-only focus treatment for inputs, textareas, selects, and buttons", () => {
-    for (const className of [inputClassName, textareaClassName, buttonVariants()]) {
-      expect(className).toContain("focus-visible:outline-none");
-      expect(className).toContain("focus-visible:ring-2");
-      expect(className).toContain("focus-visible:ring-[var(--ui-focus)]");
-      expect(className).not.toContain("focus:ring-");
+  it("uses the shared border-based treatment for fields and keeps action-button focus", () => {
+    for (const className of [inputClassName, textareaClassName, datePickerClassName, timePickerClassName]) {
+      expect(className).toContain("ui-form-control");
+      expect(className).not.toContain("ring-");
     }
+    expect(buttonVariants()).toContain("focus-visible:ring-2");
   });
 
   it("uses the strong semantic border for equivalent default form shells", () => {

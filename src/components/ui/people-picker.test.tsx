@@ -32,7 +32,7 @@ describe("PeoplePicker accessibility", () => {
   it("provides a labelled search input with focus owned by its shell", () => {
     const markup = renderToStaticMarkup(<PeoplePicker {...props} selectedIds={[]} />);
     expect(markup).toContain('aria-label="Search people"');
-    expect(markup).toContain("focus-within:border-[var(--ui-focus)]");
+    expect(markup).toContain("ui-form-control");
     expect(markup).not.toContain("focus-within:ring-");
     expect(markup).toMatch(/<input[^>]*focus-visible:outline-none[^>]*focus-visible:ring-0[^>]*>/);
   });

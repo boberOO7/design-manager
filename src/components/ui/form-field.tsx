@@ -2,8 +2,8 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode, type TextareaHTML
 import { cn } from "@/lib/utils";
 
 export const focusVisibleClassName = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2";
-export const inputClassName = `h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] transition-colors focus-visible:border-[var(--ui-focus)] ${focusVisibleClassName} disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60`;
-export const textareaClassName = `w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-sm leading-6 text-[var(--ui-text)] transition-colors focus-visible:border-[var(--ui-focus)] ${focusVisibleClassName} disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60`;
+export const inputClassName = "ui-form-control h-11 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] transition-colors disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60";
+export const textareaClassName = "ui-form-control w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 py-2 text-sm leading-6 text-[var(--ui-text)] transition-colors disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(inputClassName, className)} {...props} />;

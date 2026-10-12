@@ -37,7 +37,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
   const projects = [...new Map(tasks.filter((task) => task.status !== "cancelled").map((task) => [task.project_id, task.project])).entries()]
     .sort((left, right) => left[1].name.localeCompare(right[1].name));
   const selectedTask = selectedTaskId ? tasks.find((task) => task.id === selectedTaskId) ?? null : null;
-  const controlClass = "h-9 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]";
+  const controlClass = "ui-form-control h-9 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)]";
 
   function openTaskDrawer(taskId: string) {
     isTaskDrawerOpenRef.current = true;

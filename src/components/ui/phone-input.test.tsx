@@ -50,7 +50,7 @@ describe("shared phone input", () => {
       expect(markup).toContain('value="+380 (67) 123-45-67"');
       expect(markup).toContain('type="tel"');
       expect(markup).toContain('inputMode="tel"');
-      expect(markup).toContain("focus-visible:ring");
+      expect(markup).toContain("ui-form-control");
       expect(markup).toContain("disabled:cursor-not-allowed");
     }
     expect(form).toContain('name="phone"');

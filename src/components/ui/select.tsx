@@ -243,11 +243,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           aria-invalid={ariaInvalid || requiredInvalid || undefined}
           aria-required={required || undefined}
           className={cn(
-            "group grid min-w-0 items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:border-[var(--ui-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 aria-invalid:border-[var(--ui-danger-border)] aria-invalid:focus-visible:ring-[var(--ui-danger-text)] data-[placeholder]:text-[var(--ui-text-muted)] data-[state=open]:border-[var(--ui-focus)] data-[state=open]:bg-[var(--ui-surface-subtle)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--ui-focus)] data-[state=open]:ring-offset-2",
+            "ui-form-control group grid min-w-0 items-center overflow-hidden rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-subtle)] disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60 aria-invalid:border-[var(--ui-danger-border)] data-[placeholder]:text-[var(--ui-text-muted)] data-[state=open]:bg-[var(--ui-surface-subtle)]",
             endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_2.5rem]" : "grid-cols-[minmax(0,1fr)_2.5rem]",
             size === "compact" ? "h-8 text-xs" : "h-11",
             width === "content" ? contentMinWidth === "natural" ? "w-fit max-w-[calc(100vw-2rem)]" : "w-fit min-w-32 max-w-[calc(100vw-2rem)]" : "w-full",
-            variant === "secondary" && cn(buttonVariants({ variant: "outline", size: "compact" }), "grid cursor-pointer focus-visible:border-[var(--ui-border-strong)]", endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"),
+            variant === "secondary" && cn(buttonVariants({ variant: "outline", size: "compact" }), "grid cursor-pointer", endAdornment ? "grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"),
             className,
           )}
           disabled={disabled}
@@ -286,7 +286,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
         >
           {searchPlaceholder ? <div className="relative border-b border-[var(--ui-border-subtle)] p-2">
             <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
-            <input ref={searchRef} role="combobox" aria-activedescendant={highlightedValue !== undefined ? contextValue.getItemId(highlightedValue) : undefined} aria-autocomplete="list" aria-controls={listboxId} aria-expanded="true" aria-label={searchPlaceholder} autoComplete="off" className="h-9 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-3 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus:border-[var(--ui-focus)] focus:ring-2 focus:ring-[var(--ui-focus-soft)]" placeholder={searchPlaceholder} value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setHighlightedValue(undefined); }} onKeyDown={handleSearchKeyDown} />
+            <input ref={searchRef} role="combobox" aria-activedescendant={highlightedValue !== undefined ? contextValue.getItemId(highlightedValue) : undefined} aria-autocomplete="list" aria-controls={listboxId} aria-expanded="true" aria-label={searchPlaceholder} autoComplete="off" className="ui-form-control h-9 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] pl-9 pr-3 text-sm text-[var(--ui-text)] placeholder:text-[var(--ui-text-muted)]" placeholder={searchPlaceholder} value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setHighlightedValue(undefined); }} onKeyDown={handleSearchKeyDown} />
           </div> : null}
           <div
             id={listboxId}

@@ -74,7 +74,7 @@ export function AddProjectMemberForm({
               onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}
               placeholder={t("searchMembers")}
               aria-label={t("searchMembers")}
-              className="h-9 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] outline-none placeholder:text-[var(--ui-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"
+              className="ui-form-control h-9 w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 text-sm text-[var(--ui-text)] placeholder:text-[var(--ui-text-muted)]"
             />
             <div className="max-h-64 space-y-0.5 overflow-y-auto">
               {filteredMembers.map((member) => {

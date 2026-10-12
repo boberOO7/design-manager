@@ -54,7 +54,7 @@ function labels(locale: string) {
     : { clear: "Clear", next: "Next", previous: "Previous", today: "Today", chooseDate: "Choose date", chooseMonth: "Choose month", chooseYear: "Choose year", dayView: "Day view", monthView: "Month view", yearView: "Year view" };
 }
 
-export const datePickerClassName = "flex h-11 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-left text-sm text-[var(--ui-text)] transition-[border-color,background-color,box-shadow] hover:border-[var(--ui-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60";
+export const datePickerClassName = "ui-form-control flex h-11 w-full items-center justify-between gap-3 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-left text-sm text-[var(--ui-text)] transition-[border-color,background-color,box-shadow] disabled:cursor-not-allowed disabled:bg-[var(--ui-surface-muted)] disabled:opacity-60";
 
 export type DatePickerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "defaultValue" | "onChange" | "value"> & {
   defaultValue?: string;
