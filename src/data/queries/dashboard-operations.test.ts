@@ -3,12 +3,24 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Database } from "@/types/database.types";
 import { getDashboardOperations } from "./dashboard-operations";
 
-const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), displayCurrency: vi.fn(), cache: new Map<unknown, Map<string, unknown>>() }));
 vi.mock("server-only", () => ({}));
+// Model one RSC request, including argument-keyed in-flight promises.
+vi.mock("react", () => ({ cache: (fn: (...args: unknown[]) => unknown) => (...args: unknown[]) => {
+  let values = mocks.cache.get(fn);
+  if (!values) { values = new Map(); mocks.cache.set(fn, values); }
+  const key = JSON.stringify(args);
+  if (!values.has(key)) values.set(key, fn(...args));
+  return values.get(key);
+} }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("./active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("./crm", () => ({ getActiveCrmLeadCount: async () => 3 }));
-vi.mock("./finance-display-currency", () => ({ getFinanceDisplayCurrency: async () => "UAH" }));
+vi.mock("./finance-display-currency", () => ({ getFinanceDisplayCurrency: mocks.displayCurrency }));
+vi.mock("@/lib/finance-fx", () => ({
+  resolveFinanceFx: async () => ({ rate: "0.025", source: "nbu", effectiveDate: "2026-10-03" }),
+  resolveFinanceFxDates: async (_from: string, _to: string, dates: string[]) => new Map(dates.map(date => [date, "0.025"])),
+}));
 
 const today = "2026-10-03";
 const now = new Date(`${today}T10:00:00Z`);
@@ -19,6 +31,8 @@ const report = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.cache.clear();
+  mocks.displayCurrency.mockResolvedValue("UAH");
   mocks.admin.mockResolvedValue({ studio_id: "studio", authenticatedUserId: "admin" });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -110,4 +124,32 @@ it("starts Finance while unrelated CRM reads are still pending", async () => {
   await vi.waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toBe(true));
   release();
   expect(await pending).toMatchObject({ financeUnavailable: false, crm: { activeCount: 3 }, finance: { month: { profitAndLoss: "80.0000" } } });
+});
+
+it("overlaps display reads with VAT after valuation and shares currency precision in flight", async () => {
+  const fetch = setup("success");
+  mocks.displayCurrency.mockResolvedValue("USD");
+  const original = fetch.getMockImplementation();
+  if (!original) throw new Error("Expected local fetch fixture");
+  let release: () => void = () => {};
+  const vatReady = new Promise<void>(resolve => { release = resolve; });
+  fetch.mockImplementation(async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith("finance_project_vat_actuals")) await vatReady;
+    if (new URL(String(input)).pathname.endsWith("finance_planning_actuals")) return Response.json([
+      { financial_date: today, amount: "100.00", category_id: null, direction: "incoming", nature: "operating" },
+    ]);
+    return original(input, init);
+  });
+  const pending = getDashboardOperations(today, now);
+  const callsTo = (table: string) => fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith(`/${table}`));
+  await vi.waitFor(() => expect(callsTo("finance_planning_actuals")).toHaveLength(1));
+  expect(callsTo("finance_project_vat_actuals")).toHaveLength(1);
+  expect(callsTo("finance_currencies")).toHaveLength(1);
+  expect(callsTo("get_finance_overview_after_refresh")).toHaveLength(1);
+  release();
+  expect(await pending).toMatchObject({ financeUnavailable: false, finance: {
+    month: { currency: "USD", expectedInflow: "0.0000", profitAndLoss: "2.0000" },
+  } });
+  expect(callsTo("finance_currencies")).toHaveLength(1);
+  expect(console.error).not.toHaveBeenCalled();
 });

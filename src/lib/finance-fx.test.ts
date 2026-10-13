@@ -7,6 +7,7 @@ vi.mock("react", () => ({ cache: (fn: () => unknown) => () => {
   return render.values.get(fn);
 } }));
 import { parseNbuRate, resolveFinanceFx, resolveFinanceFxDates } from "./finance-fx";
+import { resolveForecastAssumptions } from "@/data/queries/finance-report-fx";
 
 describe("historical Finance FX", () => {
   beforeEach(() => render.values.clear());
@@ -74,6 +75,27 @@ describe("historical Finance FX", () => {
     render.values.clear();
     expect((await resolveFinanceFx("USD", "UAH", "2026-09-05", "nbu", "")).rate).toBe("42");
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it.each([false, true])("shares forecast and inverse display keys while preserving historical rates and manual overrides: %s", async manual => {
+    const fetcher = vi.fn(async (input: URL) => Response.json([4, 5].map(day => ({
+      cc: input.searchParams.get("valcode")?.toUpperCase(), exchangedate: `0${day}.09.2026`, rate_per_unit: day === 4 ? 50 : 40,
+    }))));
+    vi.stubGlobal("fetch", fetcher);
+    const forecast = await resolveForecastAssumptions({ asOf: "2026-09-05", currency: "UAH", items: [], issues: [] },
+      manual ? [{ currency: "EUR", rate: "39", source: "manual", effectiveDate: "2026-09-05" }] : [],
+      ["EUR", "PLN", "USD", "USD"]);
+    expect(forecast.find(row => row.currency === "EUR")).toMatchObject({ rate: manual ? "39" : "40", source: manual ? "manual" : "nbu" });
+    const [current, historical] = await Promise.all([
+      resolveFinanceFx("UAH", "USD", "2026-09-05", "nbu", ""),
+      resolveFinanceFxDates("UAH", "USD", ["2026-09-04", "2026-09-05"]),
+    ]);
+    expect(current.rate).toBe("0.025");
+    expect(historical).toEqual(new Map([["2026-09-04", "0.02"], ["2026-09-05", "0.025"]]));
+    expect(fetcher.mock.calls.map(([url]) => [url.searchParams.get("valcode"), url.searchParams.get("start"), url.searchParams.get("end")])).toEqual([
+      ...(!manual ? [["eur", "20260905", "20260905"]] : []),
+      ["pln", "20260905", "20260905"], ["usd", "20260905", "20260905"],
+      ["usd", "20260904", "20260904"],
+    ]);
   });
   it("keeps year/date boundaries and retries failed dates without inventing historical rates", async () => {
     const fetcher = vi.fn(async (input: URL) => Response.json([{

@@ -10,7 +10,7 @@ import { isTerminalSubmissionStatus } from "@/lib/submissions";
 import type { SubmissionSummary } from "@/data/queries/submissions";
 import type { DashboardOfficeAssignment } from "@/lib/dashboard";
 import { financeDashboardMonthSummary } from "@/lib/finance-overview";
-import { getFinanceDisplayOverview, getFinanceDisplayRate, getFinanceOverview } from "./finance-overview";
+import { getFinanceDisplayOverview, getFinanceDisplayRate, getFinanceDisplayUnit, getFinanceOverview } from "./finance-overview";
 import { getFinanceDisplayCurrency } from "./finance-display-currency";
 import { convertFinanceDisplayAmount } from "@/lib/finance-display-report";
 import { getActiveCrmLeadCount } from "./crm";
@@ -97,24 +97,26 @@ async function getDashboardFinance(client: Awaited<ReturnType<typeof createClien
     if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
     const [overview, displayCurrency] = await traceDashboardStage("operations.finance.overview_and_currency", () => Promise.all([traceDashboardStage("operations.finance.overview", () => getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" })), traceDashboardStage("operations.finance.display_currency", getFinanceDisplayCurrency)]));
     if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
-    const vatActuals = await traceDashboardStage("operations.finance.vat_actuals", () => client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
-      .eq("studio_id", studioId).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf));
+    const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
+    // All these reads depend on the prepared overview, but not on one another.
+    const [vatActuals, displayOverview, displayUnit, projects] = await Promise.all([
+      traceDashboardStage("operations.finance.vat_actuals", () => client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
+        .eq("studio_id", studioId).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf)),
+      traceDashboardStage("operations.finance.display_overview", () => getFinanceDisplayOverview(overview, displayCurrency)),
+      traceDashboardStage("operations.finance.display_unit", () => getFinanceDisplayUnit(displayCurrency)),
+      projectIds.length ? traceDashboardStage("operations.finance.projects", () => client.from("projects").select("id,name").eq("studio_id", studioId).in("id", projectIds)) : null,
+    ]);
     if (vatActuals.error) throw new Error("Unable to load project VAT actuals.", { cause: vatActuals.error });
-    const displayOverview = await traceDashboardStage("operations.finance.display_overview", () => getFinanceDisplayOverview(overview, displayCurrency));
     if (!displayOverview) throw new Error("Unable to display Dashboard Finance signals.");
-    const displayUnit = await traceDashboardStage("operations.finance.display_unit", () => client.from("finance_currencies").select("minor_units").eq("code", displayCurrency).single());
-    if (displayUnit.error || !displayUnit.data) throw new Error("Unable to load Dashboard display currency.", { cause: displayUnit.error });
+    if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
     const vatAdjustments = await traceDashboardStage("operations.finance.vat_fx", () => Promise.all((vatActuals.data ?? []).map(async row => ({
       date: row.financial_date ?? "",
       amount: row.vat_reporting_amount === null || displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
         row.vat_reporting_amount,
         await getFinanceDisplayRate(overview.forecast.currency, displayCurrency, row.financial_date ?? overview.forecast.asOf),
-        displayUnit.data.minor_units,
+        displayUnit,
       ),
     }))));
-    const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
-    const projects = projectIds.length ? await traceDashboardStage("operations.finance.projects", () => client.from("projects").select("id,name").eq("studio_id", studioId).in("id", projectIds)) : null;
-    if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
     const projectNames = new Map(projects?.data?.map((project) => [project.id, project.name]));
     const upcoming = overview.forecast.items
       .filter((item) => item.date !== null && item.date >= overview.forecast.asOf && item.date <= overview.upcomingThrough && (item.dueDate === null || item.dueDate >= overview.forecast.asOf))

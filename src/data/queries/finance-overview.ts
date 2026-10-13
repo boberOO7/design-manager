@@ -30,16 +30,23 @@ export async function getFinanceOverview(context: ReturnType<typeof parseFinance
 export const getFinanceDisplayRate = cache(async (from: string, to: string, date: string) =>
   (await resolveFinanceFx(from, to, date, "nbu", "")).rate);
 
+export const getFinanceDisplayUnit = cache(async (currency: FinanceDisplayCurrency) => {
+  const client = await createClient();
+  const { data, error } = await client.from("finance_currencies").select("minor_units").eq("code", currency).single();
+  if (error || !data) throw new Error("Unable to load Finance display currency.", { cause: error });
+  return data.minor_units;
+});
+
 export async function getFinanceDisplayOverview(data: NonNullable<Awaited<ReturnType<typeof getFinanceOverview>>>, currency: FinanceDisplayCurrency) {
   if (data.forecast.currency === currency) return data;
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
   const [unit, openings] = await traceDashboardStage("operations.finance.display.context_reads", () => Promise.all([
-    client.from("finance_currencies").select("minor_units").eq("code", currency).single(),
+    getFinanceDisplayUnit(currency),
     client.from("finance_accounts").select("currency,opening_balance::text,opening_reporting_amount::text").eq("studio_id", admin.studio_id),
   ]));
-  if (unit.error || openings.error || !unit.data) throw new Error("Unable to load display currency context.", { cause: unit.error ?? openings.error });
+  if (openings.error) throw new Error("Unable to load display currency context.", { cause: openings.error });
   const actuals: Array<{ financial_date: string; amount: string | null; category_id: string | null; direction: "incoming" | "outgoing"; nature: "operating" | "financing" | "owner_distribution" }> = [];
   const cashEffects: Array<{ financial_date: string; amount: string | null }> = [];
   for (let offset = 0; ; offset += 1000) {
@@ -61,5 +68,5 @@ export async function getFinanceDisplayOverview(data: NonNullable<Awaited<Return
     getFinanceDisplayRate(data.forecast.currency, currency, data.forecast.asOf),
     resolveFinanceFxDates(data.forecast.currency, currency, [...dates]),
   ]));
-  return projectFinanceDisplayReport(data, currency, unit.data.minor_units, currentRate, datedRates, cashEffects, actuals, openingAmounts);
+  return projectFinanceDisplayReport(data, currency, unit, currentRate, datedRates, cashEffects, actuals, openingAmounts);
 }
