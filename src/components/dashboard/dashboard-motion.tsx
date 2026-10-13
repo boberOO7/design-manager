@@ -3,11 +3,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useServerInsertedHTML } from "next/navigation";
 import type { gsap } from "gsap";
-import { parseMotionPreference } from "@/lib/motion";
+import { continueInstaLoadEntries, readInstaLoadEntry, watchInstaLoadMotion } from "@/components/shared/instaload-reveal";
 import { applyWorkloadCapacity, readWorkloadCapacity, workloadCapacityBootstrapScript } from "@/lib/dashboard-workload-preference";
 
 type Position = { left: number; top: number };
-const entryAnimations = new Set(["dashboard-row-enter", "dashboard-value-enter"]);
 
 /** Continue the server-painted reveal; each streamed contribution owns its own clock. */
 export function DashboardMotion({ children }: { children: ReactNode }) {
@@ -28,8 +27,6 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
     const root = container.current;
     if (!root) return;
     applyWorkloadCapacity(readWorkloadCapacity());
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const disabled = () => reduced.matches || parseMotionPreference(document.documentElement.dataset.motion ?? null) === "off";
     const contexts = new Map<HTMLElement, gsap.Context>();
     const snapshots = new Map<HTMLElement, Map<string, Position>>();
     let engine: typeof gsap | undefined;
@@ -42,6 +39,7 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
       contexts.delete(scope);
     };
     const finish = () => root.querySelectorAll<HTMLElement>("[data-dashboard-ready]").forEach(finishScope);
+    const motion = watchInstaLoadMotion(root, finish);
 
     const reveal = () => {
       if (disposed) return;
@@ -65,7 +63,7 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
         const previous = scopes.current.get(name);
         scopes.current.set(name, scope);
         const arrivals = Array.from(scope.querySelectorAll<HTMLElement>("[data-dashboard-arrival]"));
-        if (disabled() || (previous && previous !== scope)) {
+        if (motion.disabled() || (previous && previous !== scope)) {
           if (previous && previous !== scope) finishScope(previous);
           finishScope(scope);
           arrivals.forEach(element => { if (element.dataset.dashboardArrival) seen.current.add(element.dataset.dashboardArrival); });
@@ -88,14 +86,8 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
           if (!key || seen.current.has(key)) return [];
           seen.current.add(key);
           const target = element.querySelector<HTMLElement>("[data-dashboard-value]") ?? element;
-          const animation = target.getAnimations().find((animation): animation is CSSAnimation => animation instanceof CSSAnimation && entryAnimations.has(animation.animationName));
-          const elapsed = typeof animation?.currentTime === "number" ? animation.currentTime : 0;
-          const duration = animation?.effect?.getTiming().duration;
-          const remaining = typeof duration === "number" ? Math.max(0, (duration - elapsed) / 1000) : 0;
-          const box = target.getBoundingClientRect();
-          if (!remaining || box.bottom <= 0 || box.top >= window.innerHeight) return [];
-          const style = getComputedStyle(target);
-          return [{ element, target, clip: style.clipPath, y: new DOMMatrixReadOnly(style.transform).m42, remaining }];
+          const entry = readInstaLoadEntry(element, target);
+          return entry ? [entry] : [];
         });
         // Removing the CSS owner and taking over happen in the same pre-paint turn.
         scope.dataset.dashboardEntrance = "ready";
@@ -109,18 +101,7 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
           }, 0));
           // Finish the row relocation before revealing its new neighbour.
           const start = moves.length ? sequence.duration() : 0;
-          entries.forEach(({ element, target, clip, y, remaining }, index) => {
-            const at = start + Math.min(0.1, index * 0.025);
-            sequence.fromTo(target, { clipPath: clip, y }, {
-              clipPath: "inset(0% 0% 0% 0%)", y: 0, duration: remaining,
-              ease: target === element ? "power3.out" : "back.out(1.05)", clearProps: "clipPath,transform",
-            }, at);
-            const icons = element.querySelectorAll<HTMLElement>("[data-dashboard-icon]");
-            if (icons.length) sequence.fromTo(icons, { scale: 0.82, rotation: -10 }, {
-              scale: 1, rotation: 0, duration: Math.min(0.46, remaining + 0.08),
-              ease: "elastic.out(0.6,0.5)", clearProps: "transform",
-            }, at);
-          });
+          continueInstaLoadEntries(sequence, entries, start);
         });
       });
     };
@@ -137,18 +118,12 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
       snapshots.set(scope, positions);
       scope.dataset.dashboardEntrance = "finance";
     };
-    const preferencesChanged = () => { if (disabled()) finish(); };
     const content = new MutationObserver(reveal);
     content.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-dashboard-hydrated"] });
-    const preferences = new MutationObserver(preferencesChanged);
-    preferences.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
-    reduced.addEventListener("change", preferencesChanged);
     root.addEventListener("dashboard-before-stream-update", beforeUpdate);
     root.addEventListener("dashboard-ready", reveal);
-    root.addEventListener("focusin", finish);
-    root.addEventListener("pointerdown", finish);
     reveal();
-    if (!disabled()) void import("gsap").then(({ gsap }) => {
+    if (!motion.disabled()) void import("gsap").then(({ gsap }) => {
       if (disposed) return;
       engine = gsap;
       reveal();
@@ -156,12 +131,9 @@ export function DashboardMotion({ children }: { children: ReactNode }) {
     return () => {
       disposed = true;
       content.disconnect();
-      preferences.disconnect();
-      reduced.removeEventListener("change", preferencesChanged);
+      motion.dispose();
       root.removeEventListener("dashboard-before-stream-update", beforeUpdate);
       root.removeEventListener("dashboard-ready", reveal);
-      root.removeEventListener("focusin", finish);
-      root.removeEventListener("pointerdown", finish);
       // Leave CSS-only fallback reveals alone during a Strict Mode rehearsal.
       contexts.forEach((context, scope) => { context.revert(); scope.dataset.dashboardEntrance = "ready"; });
       contexts.clear();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProjectsListLink } from "@/components/projects/projects-list-link";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
@@ -53,13 +54,14 @@ export function MobileNavigation({ crmAttentionCount, leaderboardVisibleToEmploy
         <nav aria-label={t("main")} className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {items.map((item) => {
             const Icon = navigationIcons[item.href];
+            const NavigationLink = item.href === "/projects" ? ProjectsListLink : Link;
             const active = isNavigationItemActive(pathname, item.href);
             const attentionCount = item.href === "/crm" ? crmAttentionCount : 0;
-            return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={cn("flex min-h-11 items-center gap-3 rounded-[var(--ui-radius-control)] px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]")}>
+            return <NavigationLink key={item.href} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={cn("flex min-h-11 items-center gap-3 rounded-[var(--ui-radius-control)] px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]")}>
               <Icon size={18} aria-hidden="true" />
               {t(item.messageKey)}
               {attentionCount > 0 ? <><span aria-hidden="true" className="ml-auto min-w-4 rounded-full border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-1 text-center text-[10px] font-bold leading-[14px] text-[var(--ui-danger-text)]">{formatNavigationAttentionCount(attentionCount)}</span><span className="sr-only">{t("crmAttention", { count: attentionCount })}</span></> : null}
-            </Link>;
+            </NavigationLink>;
           })}
         </nav>
       </div>

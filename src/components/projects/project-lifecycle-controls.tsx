@@ -2,6 +2,7 @@
 
 import { Check, MoreHorizontal, Pause, Play, RotateCcw } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useTranslations } from "next-intl";
 import styles from "./project-context-band.module.css";
@@ -11,6 +12,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 export function ProjectLifecycleControls({ projectId, children }: { projectId: string; children?: ReactNode }) {
   const t = useTranslations("ProjectWorkspace");
+  const router = useRouter();
   const { status, setStatus } = useProjectLifecycle();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function ProjectLifecycleControls({ projectId, children }: { projectId: s
       if (!response.ok || typeof result !== "object" || result === null || !("success" in result) || result.success !== true || !("status" in result) || typeof result.status !== "string") throw new Error(t("lifecycleError"));
       if (!isProjectLifecycleStatus(result.status)) throw new Error(t("lifecycleError"));
       setStatus(result.status);
+      router.refresh();
     } catch (cause) {
       setStatus(previous);
       setError(cause instanceof Error ? cause.message : t("lifecycleError"));

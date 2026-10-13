@@ -22,7 +22,7 @@ export function resetProjectListFilters() {
   window.history.replaceState(null, "", `/projects${params.size ? `?${params}` : ""}${window.location.hash}`);
 }
 
-export function ProjectListControls({ action, filters }: { action?: ReactNode; filters: ProjectListFilters }) {
+export function ProjectListControls({ action, disabled = false, filters }: { action?: ReactNode; disabled?: boolean; filters: ProjectListFilters }) {
   const t = useTranslations("Projects");
   const calendar = useTranslations("Calendar");
   const priority = useTranslations("Priority");
@@ -35,15 +35,15 @@ export function ProjectListControls({ action, filters }: { action?: ReactNode; f
     <label className={`${listToolbarSearchClassName} basis-64 flex-1 lg:max-w-sm`}>
       <span className="sr-only">{t("searchLabel")}</span>
       <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" />
-      <Input value={filters.query} onChange={(event) => update("query", event.target.value)} className="pl-9" placeholder={t("searchPlaceholder")} type="search" />
+      <Input disabled={disabled} value={filters.query} onChange={(event) => update("query", event.target.value)} className="pl-9" placeholder={t("searchPlaceholder")} type="search" />
     </label>
-    <fieldset className="min-w-0"><legend className="sr-only">{calendar("filters")}</legend><div className="flex flex-wrap items-center gap-3">
+    <fieldset disabled={disabled} className="min-w-0"><legend className="sr-only">{calendar("filters")}</legend><div className="flex flex-wrap items-center gap-3">
       <FilterSelect label={t("lifecycle")} value={filters.lifecycle} options={PROJECT_LIST_LIFECYCLE_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_LIFECYCLE_LABEL_KEYS[option])} onChange={(value) => update("lifecycle", value)} />
       <FilterSelect label={t("health")} value={filters.health} options={PROJECT_LIST_HEALTH_FILTERS} getOptionLabel={(option) => t(PROJECT_LIST_HEALTH_LABEL_KEYS[option])} onChange={(value) => update("health", value)} />
       <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
     </div></fieldset>
-    {hasActiveProjectListFilters(filters) ? <Button type="button" variant="ghost" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : null}
-    {action ? <div className="ml-auto shrink-0">{action}</div> : null}
+    {hasActiveProjectListFilters(filters) ? <Button disabled={disabled} type="button" variant="ghost" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : null}
+    {action ? <div inert={disabled} className="ml-auto shrink-0">{action}</div> : null}
   </div>;
 }
 

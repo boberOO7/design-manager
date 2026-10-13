@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProjectsListLink } from "@/components/projects/projects-list-link";
 import { usePathname } from "next/navigation";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -79,16 +80,17 @@ export function AppSidebar({ crmAttentionCount, leaderboardVisibleToEmployees, s
         <nav aria-label={t("main")} className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-4">
           {items.map((item) => {
             const Icon = navigationIcons[item.href];
+            const NavigationLink = item.href === "/projects" ? ProjectsListLink : Link;
             const active = isNavigationItemActive(pathname, item.href);
             const attentionCount = item.href === "/crm" ? crmAttentionCount : 0;
             return (
-              <Tooltip content={t(item.messageKey)} key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onPointerUp={blurAfterPointerNavigation} className={cn("relative flex min-h-11 items-center overflow-hidden rounded-[var(--ui-radius-control)] text-sm font-medium transition-[background-color,color] duration-[200ms] ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]")}>
+              <Tooltip content={t(item.messageKey)} key={item.href}><NavigationLink href={item.href} aria-current={active ? "page" : undefined} onPointerUp={blurAfterPointerNavigation} className={cn("relative flex min-h-11 items-center overflow-hidden rounded-[var(--ui-radius-control)] text-sm font-medium transition-[background-color,color] duration-[200ms] ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", active ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)]")}>
                 <Icon className="absolute left-[23px] top-1/2 size-[18px] -translate-y-1/2" aria-hidden="true" />
                 <span className={cn("pointer-events-none ml-[52px] shrink-0 whitespace-nowrap transition-opacity duration-[320ms] ease-[cubic-bezier(0.65,0,0.35,1)]", isExpanded ? "opacity-100" : "opacity-0")}>
                   {t(item.messageKey)}
                 </span>
                 {attentionCount > 0 ? <><span aria-hidden="true" className="absolute right-3 top-1/2 min-w-4 -translate-y-1/2 rounded-full border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-1 text-center text-[10px] font-bold leading-[14px] text-[var(--ui-danger-text)]">{formatNavigationAttentionCount(attentionCount)}</span><span className="sr-only">{t("crmAttention", { count: attentionCount })}</span></> : null}
-              </Link></Tooltip>
+              </NavigationLink></Tooltip>
             );
           })}
         </nav>

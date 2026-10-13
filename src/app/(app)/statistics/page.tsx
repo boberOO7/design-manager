@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { getStatistics } from "@/data/queries/statistics";
+import { getStatisticsStreams } from "@/data/queries/statistics";
 import { parseStatisticsPeriod, parseStatisticsSection } from "@/lib/statistics";
 import { StatisticsReportView } from "@/components/statistics/statistics-report";
 
@@ -15,13 +15,13 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
   const params = await searchParams;
   const period = parseStatisticsPeriod(params.period);
   const section = parseStatisticsSection(params.section);
-  let report;
+  let streams;
   try {
-    report = await getStatistics(period);
+    streams = await getStatisticsStreams(period);
   } catch (error) {
     console.error("Unable to load Statistics", error);
     return <div role="alert" className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] p-5 text-sm text-[var(--ui-danger-text)]">{t("loadFailed")}</div>;
   }
-  if (!report) redirect("/dashboard");
-  return <StatisticsReportView report={report} section={section} />;
+  if (!streams) redirect("/dashboard");
+  return <StatisticsReportView streams={streams} section={section} />;
 }

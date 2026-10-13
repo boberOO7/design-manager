@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ProjectsListLink as Link } from "./projects-list-link";
 import styles from "./project-context-band.module.css";
 import { ArrowLeft, Building, Building2, CalendarClock, CalendarDays, Cross, Flag, House, MapPin, Pause, Ruler, Shapes, SlidersHorizontal, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";

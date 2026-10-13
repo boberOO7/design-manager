@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { loadAllRows } from "./all-rows";
@@ -43,10 +44,10 @@ export type AccessibleProjectWithTasks = ProjectListRow & {
   tasks: ProjectTaskForProgress[];
 };
 
-/** Batched RLS-scoped queries for accessible projects, their tasks, and active participants. */
-export async function getAccessibleProjectsWithTasks(): Promise<{ projects: AccessibleProjectWithTasks[]; error: null } | { projects: null; error: "query_failed" }> {
+// Request-scoped only: the navigation access check and streamed loader share this read.
+export const getAccessibleProjectListRows = cache(async () => {
   const supabase = await createClient();
-  const { data: projects, error: projectsError } = await loadAllRows((from, to) => supabase
+  return loadAllRows((from, to) => supabase
     .from("projects")
     .select("id, name, project_code, client_name, description, status, priority, due_date, archived_at, total_area_m2")
     .is("archived_at", null)
@@ -54,6 +55,12 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
     .order("start_date", { ascending: false })
     .order("id").range(from, to)
     .overrideTypes<ProjectListRow[], { merge: false }>());
+});
+
+/** Batched RLS-scoped queries for accessible projects, their tasks, and active participants. */
+export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }: { refreshSchedules?: boolean } = {}): Promise<{ projects: AccessibleProjectWithTasks[]; error: null } | { projects: null; error: "query_failed" }> {
+  const supabase = await createClient();
+  const { data: projects, error: projectsError } = await getAccessibleProjectListRows();
   if (projectsError || !projects) {
     console.error("Unable to load accessible projects", projectsError);
     return { projects: null, error: "query_failed" };
@@ -61,7 +68,7 @@ export async function getAccessibleProjectsWithTasks(): Promise<{ projects: Acce
   if (projects.length === 0) return { projects: [], error: null };
   const ids = projects.map((project) => project.id);
   const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
-    refreshProjectTaskSchedules(ids).then(() => getTasksForProgress(supabase, ids)),
+    (refreshSchedules ? refreshProjectTaskSchedules(ids) : Promise.resolve()).then(() => getTasksForProgress(supabase, ids)),
     loadAllRows((from, to) => supabase
       .from("project_members")
       .select("project_id, user_id, profile:profiles!project_members_user_id_fkey!inner(id, full_name, avatar_url, is_active)")

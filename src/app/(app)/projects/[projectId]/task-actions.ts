@@ -21,6 +21,8 @@ import {
 
 function revalidateTaskCreationRoutes(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
   revalidatePath("/my-tasks");
 }
 

@@ -2,57 +2,54 @@
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { gsap } from "gsap";
-import { parseMotionPreference } from "@/lib/motion";
+import { watchInstaLoadMotion } from "@/components/shared/instaload-reveal";
 import type { StatisticsPeriod, StatisticsSection } from "@/lib/statistics";
 
-/** One clock for the structural reveal and its plots; no chart remounts to replay. */
+/** Plots join their streamed scope once, without replaying on effect reconnection. */
 export function StatisticsMotion({ section, period, children }: {
   section: StatisticsSection; period: StatisticsPeriod; children: ReactNode;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const filled = useRef(new WeakSet<HTMLElement>());
+  const registered = useRef(new WeakSet<SVGSVGElement>());
 
   useLayoutEffect(() => {
     const root = container.current;
     if (!root) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const disabled = () => {
-      const preference = parseMotionPreference(document.documentElement.dataset.motion ?? null);
-      return preference === "off" || (preference === "system" && reduced.matches);
-    };
+    let interrupted = false;
     let context: gsap.Context | undefined;
-    let timeline: gsap.core.Timeline | undefined;
     let registerChart: (svg: SVGSVGElement) => void = () => {};
 
-    if (!disabled()) {
-      root.dataset.statisticsMotion = "pending";
+    const finish = () => { interrupted = true; context?.revert(); context = undefined; root.dataset.statisticsMotion = "complete"; };
+    const motion = watchInstaLoadMotion(root, finish);
+    if (!motion.disabled()) {
       context = gsap.context(() => {
         const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-statistics-reveal]"))
           .map(element => ({ element, box: element.getBoundingClientRect() }))
           .sort((a, b) => a.box.top - b.box.top || a.box.left - b.box.left);
-        const starts = new Map(cards.map(({ element }, index) => [element, index * 0.24]));
-        const registered = new WeakSet<SVGSVGElement>();
+        const starts = new Map(cards.map(({ element }, index) => [element, Math.min(0.1, index * 0.025)]));
         const sequence = gsap.timeline({ onComplete: () => { root.dataset.statisticsMotion = "complete"; } });
-        timeline = sequence;
 
         cards.forEach(({ element }) => {
           const start = starts.get(element) ?? 0;
-          sequence.fromTo(element, { clipPath: "inset(0% 0% 100% 0%)" }, {
-            clipPath: "inset(0% 0% 0% 0%)", duration: 0.56, ease: "power2.inOut", clearProps: "clipPath",
-          }, start);
-          const fills = element.querySelectorAll<HTMLElement>("[data-statistics-progress]");
+          const fills = Array.from(element.querySelectorAll<HTMLElement>("[data-statistics-progress]")).filter(fill => {
+            if (filled.current.has(fill)) return false;
+            filled.current.add(fill);
+            return true;
+          });
           if (fills.length) sequence.fromTo(fills, { scaleX: 0, transformOrigin: "left center" }, {
             scaleX: 1, duration: 0.64, ease: "power2.out", clearProps: "transform,transformOrigin",
-          }, start + 0.42);
+          }, start);
         });
 
         registerChart = svg => {
           const card = svg.closest<HTMLElement>("[data-statistics-reveal]");
-          if (!card || registered.has(svg)) return;
+          if (!card || registered.current.has(svg)) return;
           const bars = svg.querySelectorAll<SVGGElement>("[data-statistics-bar]");
           const lines = Array.from(svg.querySelectorAll<SVGPathElement>("[data-statistics-line]"));
           if (!bars.length && !lines.length) return; // The measured plot may arrive in a nested layout effect.
-          registered.add(svg);
-          const start = (starts.get(card) ?? 0) + 0.42;
+          registered.current.add(svg);
+          const start = starts.get(card) ?? 0;
           if (bars.length) sequence.fromTo(bars, {
             scaleY: 0, svgOrigin: `0 ${svg.dataset.statisticsBaseline}`,
           }, {
@@ -79,41 +76,25 @@ export function StatisticsMotion({ section, period, children }: {
           }
         };
         root.querySelectorAll<SVGSVGElement>("svg[data-statistics-baseline]").forEach(registerChart);
-        root.dataset.statisticsMotion = "running";
+        root.dataset.statisticsMotion = sequence.duration() ? "running" : "complete";
       }, root);
     } else root.dataset.statisticsMotion = "complete";
 
     // Charts reserve their final height on the server and announce measured SVGs before paint.
     const chartReady = (event: Event) => {
       const svg = event.target;
-      if (svg instanceof SVGSVGElement && context) context.add(() => registerChart(svg));
+      if (svg instanceof SVGSVGElement && context && !motion.disabled() && !interrupted) context.add(() => registerChart(svg));
     };
-    const finish = () => timeline?.progress(1);
-    const preferenceChanged = () => {
-      if (!disabled()) return;
-      context?.revert();
-      context = undefined;
-      timeline = undefined;
-      root.dataset.statisticsMotion = "complete";
-    };
-    const observer = new MutationObserver(preferenceChanged);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
-    reduced.addEventListener("change", preferenceChanged);
     root.addEventListener("statistics-chart-ready", chartReady);
-    root.addEventListener("focusin", finish);
-    root.addEventListener("pointerdown", finish);
     return () => {
-      observer.disconnect();
-      reduced.removeEventListener("change", preferenceChanged);
+      motion.dispose();
       root.removeEventListener("statistics-chart-ready", chartReady);
-      root.removeEventListener("focusin", finish);
-      root.removeEventListener("pointerdown", finish);
       context?.revert();
+      root.dataset.statisticsMotion = "complete";
     };
   }, [section, period]);
 
-  return <div ref={container} data-statistics-motion="pending" className="statistics-tab-content min-w-0 space-y-4">
-    <noscript><style>{".statistics-tab-content [data-statistics-reveal] { clip-path: none !important; }"}</style></noscript>
+  return <div ref={container} data-statistics-motion="complete" className="statistics-tab-content h-full min-w-0">
     {children}
   </div>;
 }

@@ -6,7 +6,13 @@ vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: moc
 vi.mock("@/data/queries/productivity-attributions", () => ({ getCanonicalProductivityAttributions: mocks.attributions }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 
-import { getStatistics, readStatisticsPages } from "@/data/queries/statistics";
+import { getStatistics, getStatisticsStreams, readStatisticsPages } from "@/data/queries/statistics";
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
 
 describe("Statistics query access boundary", () => {
   afterEach(() => vi.clearAllMocks());
@@ -117,6 +123,49 @@ describe("Statistics query access boundary", () => {
     expect(report?.from).toBe("2024-02-01");
     expect(report?.work.months[0].month).toBe(report?.from);
     expect(report?.work.totals).toMatchObject(table === "work_log_entries" ? { reviewMinutes: 60 } : { reviewsCompleted: 1 });
+  });
+
+  it("streams production and attendance while credits and work are delayed, sharing every source read", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    const credits = deferred<[]>();
+    const work = deferred<{ data: []; error: null }>();
+    mocks.attributions.mockReturnValue(credits.promise);
+    const from = vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(), range: vi.fn().mockReturnValue(table === "work_log_entries" ? work.promise : Promise.resolve({ data: [], error: null })) }));
+    mocks.client.mockResolvedValue({ from });
+    const streams = await getStatisticsStreams("3", "2026-10-07", "2026-10-07T12:00:00Z");
+    expect(streams).not.toBeNull();
+    let creditReady = false, workReady = false;
+    void streams?.overview.then(() => { creditReady = true; });
+    void streams?.work.then(() => { workReady = true; });
+    await expect(streams?.production).resolves.toMatchObject({ from: "2026-08-01", through: "2026-10-07" });
+    await expect(streams?.attendance).resolves.toBeDefined();
+    expect(creditReady).toBe(false);
+    expect(workReady).toBe(false);
+    credits.resolve([]);
+    work.resolve({ data: [], error: null });
+    await Promise.all([streams?.overview, streams?.work, streams?.calendar, streams?.leads]);
+    expect(mocks.attributions).toHaveBeenCalledOnce();
+    expect(from.mock.calls).toHaveLength(13);
+    expect(new Set(from.mock.calls.map(([table]) => table)).size).toBe(13);
+  });
+
+  it("waits for the shared all-history range before streaming any dated report", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([]);
+    const evidence = deferred<{ data: Array<{ id: string; user_id: string; work_date: string; activity_kind: string; minutes: number }>; error: null }>();
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(), range: vi.fn().mockReturnValue(table === "work_log_entries" ? evidence.promise : Promise.resolve({ data: [], error: null })) })) });
+    const streams = await getStatisticsStreams("all", "2026-10-07", "2026-10-07T12:00:00Z");
+    let ready = false;
+    void streams?.production.then(() => { ready = true; });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ready).toBe(false);
+    evidence.resolve({ data: [{ id: "old", user_id: "admin", work_date: "2024-02-10", activity_kind: "internal", minutes: 60 }], error: null });
+    const [production, overview, work] = await Promise.all([streams?.production, streams?.overview, streams?.work]);
+    expect(production?.from).toBe("2024-02-01");
+    expect(overview?.from).toBe(production?.from);
+    expect(work?.months[0].month).toBe(production?.from);
   });
 
   it("loads all source rows beyond the API cap, including an exact multiple", async () => {

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./instaload.css";
 
 :root {
   /* Quiet architectural operations system: warm neutral, compact, high-contrast. */
@@ -272,9 +273,6 @@ body,
 .dashboard-metric-panel--five .dashboard-metric-cell { flex: 1 0 50%; }
 @media (min-width: 768px) { .dashboard-metric-panel--five .dashboard-metric-cell { flex-basis: 33.333%; } }
 @media (min-width: 1280px) { .dashboard-metric-panel--five .dashboard-metric-cell { flex-basis: 20%; } }
-.dashboard-blueprint { position: relative; overflow: hidden; }
-.blueprint-mark { display: block; border: 1px solid color-mix(in srgb, var(--ui-text-muted) 17%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--ui-surface-muted) 65%, transparent); }
-.blueprint-mark.rounded-full { border-radius: 9999px; }
 .dashboard-attention > div > div:last-child { min-height: 12rem; }
 .dashboard-upcoming > div > div:last-child { min-height: 28.25rem; }
 .blueprint-row { display: flex; min-width: 0; align-items: center; gap: 0.75rem; padding: 0.625rem 0.75rem; min-height: 4.5rem; }
@@ -288,17 +286,6 @@ body,
   .blueprint-workload-metrics { flex-basis: 24rem; flex-shrink: 0; }
 }
 @media (min-width: 1536px) { .blueprint-workload-metrics { flex-basis: 31.75rem; } }
-.dashboard-blueprint::after { content: ""; pointer-events: none; position: absolute; inset-block: 0; width: 32%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ui-info-text) 5%, transparent), transparent); animation: dashboard-blueprint-shimmer 2.8s linear infinite; }
-@keyframes dashboard-blueprint-shimmer { from { transform: translateX(-110%); } to { transform: translateX(420%); } }
-
-/* Start at server paint. GSAP continues the remaining reveal after hydration. */
-[data-dashboard-entrance="pending"] [data-dashboard-arrival]:not(.dashboard-metric-cell),
-[data-dashboard-entrance="finance"] [data-dashboard-arrival^="attention:receiv"],
-[data-dashboard-entrance="finance"] [data-dashboard-arrival="attention:obligations"],
-[data-dashboard-entrance="finance"] [data-dashboard-arrival^="upcoming:finance:"] { animation: dashboard-row-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-[data-dashboard-entrance="pending"] [data-dashboard-value] { animation: dashboard-value-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-@keyframes dashboard-row-enter { from { clip-path: var(--dashboard-row-reveal-mask, inset(0% 100% 0% 0%)); transform: translateY(var(--dashboard-row-reveal-offset, 8px)); } to { clip-path: inset(0% 0% 0% 0%); transform: translateY(0); } }
-@keyframes dashboard-value-enter { from { clip-path: inset(100% 0% 0% 0%); transform: translateY(12px); } to { clip-path: inset(0% 0% 0% 0%); transform: translateY(0); } }
 
 /* Reserve the existing row caps before the client can measure the real rows. */
 /* Reveal complete columns together, without translated rows enlarging scroll overflow. */
@@ -308,13 +295,6 @@ body,
 .blueprint-rows--workload { padding-bottom: 0.5rem; }
 .dashboard-workload-list { max-height: calc(var(--dashboard-workload-visible-rows, 10) * var(--dashboard-workload-row-height) + (var(--dashboard-workload-visible-rows, 10) - 1) * 0.25rem); }
 @media (min-width: 1024px) { .blueprint-rows--workload, .dashboard-workload-list { --dashboard-workload-row-height: calc(1.5rem + 1.2rem + 1.25rem); } }
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-blueprint::after { animation: none; display: none; }
-  :root [data-dashboard-entrance] [data-dashboard-arrival], :root [data-dashboard-entrance] [data-dashboard-value] { animation: none; }
-}
-:root[data-motion="off"] .dashboard-blueprint::after { animation: none; display: none; }
-:root[data-motion="off"] [data-dashboard-entrance] [data-dashboard-arrival],
-:root[data-motion="off"] [data-dashboard-entrance] [data-dashboard-value] { animation: none; }
 
 *::-webkit-scrollbar {
   width: var(--ui-scrollbar-size);
@@ -618,17 +598,6 @@ body,
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* Reserve the final layout and the initial aperture before hydration/tab paint.
-   GSAP owns the reveal after the scoped timeline has been assembled. */
-:root[data-motion="on"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal],
-:root[data-motion="system"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal] {
-  clip-path: inset(0% 0% 100% 0%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root[data-motion="system"] .statistics-tab-content[data-statistics-motion="pending"] [data-statistics-reveal] { clip-path: none; }
 }
 
 @supports (interpolate-size: allow-keywords) {

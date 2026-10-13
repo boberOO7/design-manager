@@ -42,5 +42,6 @@ export async function updateProjectLifecycleStatus(projectId: string, requestedS
     .maybeSingle();
   if (error || !data || !isProjectLifecycleStatus(data.status)) return { success: false, formError: "The project lifecycle could not be updated. Please try again." };
   revalidatePath("/leaderboard");
+  revalidatePath("/projects");
   return { success: true, status: data.status };
 }

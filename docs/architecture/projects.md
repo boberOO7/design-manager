@@ -108,7 +108,7 @@ row cap. List, non-board detail views, and the live board use the shared
 `calculateProjectSummary()` result: task counts include all stages except
 cancelled tasks; overall progress weights Stages 1–3 by 20/40/40. The live board
 publishes its computed summary to the project header, and stage progress methods
-are shared workspace state. No project-summary percentage is persisted or cached;
+are shared workspace state. No project-summary percentage is persisted or server-cached;
 legacy `project_area_progress` is not a summary input.
 Lifecycle, health, priority, and sort URL parameters filter/order that presented
 collection in the client using the canonical list helpers. Filter changes replace
@@ -116,6 +116,20 @@ the current history entry without reloading the dataset; direct URLs and
 Back/Forward restore the controls and list. Project links carry those parameters
 through the project workspace so its Projects return link and reloads preserve
 the selected list; creation still uses normal server navigation.
+
+The measured cached-first warm-return benefit required the experimental
+`unstable_dynamicStaleTime` page override; it is excluded from the release.
+Ordinary Projects returns use fresh server navigation with the accepted streaming
+blueprint/reveal. Next's default back/forward history reuse remains guarded by a
+read-only authenticated user/studio/role/membership/RLS scope check before private
+content is revealed, followed by a committed refresh. Server-render IDs distinguish
+fresh server data from retained history, avoiding duplicate checks/refreshes on
+ordinary visits. There is no separate client data cache or browser payload storage.
+Projects links keep speculative prefetch disabled: the pilot increased traffic and
+cold latency, while Next 16.2 full prefetch omits its identifying request header.
+Tagged speculation skips schedule maintenance and shared-layout timer synchronization.
+Project/task Server Actions revalidate `/projects`; lifecycle API controls also
+refresh the router. No experimental page-cache configuration is enabled.
 
 ## Activity History
 

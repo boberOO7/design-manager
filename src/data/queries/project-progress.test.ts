@@ -54,6 +54,13 @@ beforeEach(() => {
 });
 
 describe("complete project-summary reads", () => {
+  it("keeps speculative list reads read-only without dropping any summary data", async () => {
+    const result = await getAccessibleProjectsWithTasks({ refreshSchedules: false });
+    expect(result.error).toBeNull();
+    expect(result.projects?.map(project => project.tasks.length)).toEqual([600, 600, 0]);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(tablesRequested).toEqual(expect.arrayContaining(["projects", "tasks", "project_members", "project_task_stage_columns"]));
+  });
   it("loads participants and stage configuration while schedules refresh, then reads task progress", async () => {
     let finishRefresh = () => {};
     mocks.refresh.mockReturnValueOnce(new Promise<void>(resolve => { finishRefresh = resolve; }));

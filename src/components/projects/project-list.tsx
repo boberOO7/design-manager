@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import { SortableListHeader } from "@/components/shared/sortable-list-header";
 import { LifecycleDot } from "./project-lifecycle-dot";
 import { useSearchParams } from "next/navigation";
@@ -20,19 +20,28 @@ type ProjectItem = Pick<PresentedProject<AccessibleProjectWithTasks>, "id" | "na
 
 const healthKeys = { on_track: "healthOnTrack", needs_attention: "healthNeedsAttention", deadline_soon: "healthDeadlineSoon", overdue: "healthOverdue", completed: "healthCompleted" } as const;
 
-const desktopGridClassName = "grid-cols-[minmax(16rem,3.25fr)_minmax(10.5rem,1.1fr)_minmax(19rem,1.8fr)_minmax(8rem,1.35fr)_minmax(6.5rem,1fr)]";
+import { projectListDesktopGridClassName } from "./project-list-layout";
 const deadlineContentClassName = "justify-self-center text-center";
 
-export function ProjectListWorkspace({ action, loadError = false, projects }: { action?: ReactNode; loadError?: boolean; projects: readonly ProjectItem[] }) {
-  const t = useTranslations("Projects");
+function useProjectListFilters() {
   const params = useSearchParams();
-  const filters = getProjectListFilters(Object.fromEntries(
+  return getProjectListFilters(Object.fromEntries(
     PROJECT_LIST_FILTER_KEYS.map((key) => [key, params.getAll(key).length > 1 ? params.getAll(key) : params.get(key) ?? undefined]),
   ));
+}
+
+export function ProjectListToolbar({ action }: { action?: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useLayoutEffect(() => setReady(true), []);
+  return <ProjectListControls action={action} disabled={!ready} filters={useProjectListFilters()} />;
+}
+
+export function ProjectListResults({ loadError = false, projects }: { loadError?: boolean; projects: readonly ProjectItem[] }) {
+  const t = useTranslations("Projects");
+  const filters = useProjectListFilters();
   const visibleProjects = filterAndSortProjects(projects, filters);
   const emptyState = getProjectListEmptyState(filters);
   return <>
-    <ProjectListControls action={action} filters={filters} />
     {loadError ? <EmptyState title={t("loadTitle")} description={t("loadDescription")} className="border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)]" /> : projects.length === 0 ? <EmptyState title={t("empty")} description={t("emptyDescription")} /> : visibleProjects.length ? <ProjectList filters={filters} projects={visibleProjects} /> : <EmptyState title={t(emptyState.titleKey)} description={t("emptyFilteredDescription")} action={emptyState.canReset ? <Button variant="outline" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : undefined} />}
     {!loadError && hasActiveProjectListFilters(filters) ? <p className="text-sm text-[var(--ui-text-muted)]">{t("filteredCount", { visible: visibleProjects.length, total: projects.length })}</p> : null}
   </>;
@@ -42,7 +51,7 @@ export function ProjectList({ filters, projects }: { filters: ReturnType<typeof 
   const t = useTranslations("Projects");
   return <div className="@container">
     <div className="@min-[70rem]:overflow-hidden @min-[70rem]:rounded-[var(--ui-radius-panel)] @min-[70rem]:border @min-[70rem]:border-[var(--ui-border)] @min-[70rem]:bg-[var(--ui-surface)]">
-      <div role="group" aria-label={t("sortProjects")} className={`mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-left text-xs font-medium text-[var(--ui-text-muted)] @min-[70rem]:mb-0 @min-[70rem]:grid ${desktopGridClassName} @min-[70rem]:gap-x-4 @min-[80rem]:gap-x-7 @min-[70rem]:border-b @min-[70rem]:border-[var(--ui-border)] @min-[70rem]:bg-[var(--ui-surface-muted)] @min-[70rem]:px-4 @min-[70rem]:py-1`}>
+      <div role="group" aria-label={t("sortProjects")} className={`mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-left text-xs font-medium text-[var(--ui-text-muted)] @min-[70rem]:mb-0 @min-[70rem]:grid ${projectListDesktopGridClassName} @min-[70rem]:gap-x-4 @min-[80rem]:gap-x-7 @min-[70rem]:border-b @min-[70rem]:border-[var(--ui-border)] @min-[70rem]:bg-[var(--ui-surface-muted)] @min-[70rem]:px-4 @min-[70rem]:py-1`}>
         <SortableProjectHeader filters={filters} label={t("project")} sort="name" />
         <span className="hidden @min-[70rem]:block">{t("participants")}</span>
         <SortableProjectHeader filters={filters} label={t("progress")} sort="progress" />
@@ -61,11 +70,11 @@ function SortableProjectHeader({ className = "", filters, label, sort }: { class
   return <SortableListHeader active={active} className={className} direction={filters.direction} label={label} nextDirection={next.direction} onClick={() => updateProjectListFilters(next)} />;
 }
 
-function ProjectDesktopRow({ filters, project }: { filters: ReturnType<typeof getProjectListFilters>; project: ProjectItem }) { const paused = project.status === "paused"; return <li><Link href={getProjectHref(project.id, filters)} className={`grid min-h-24 ${desktopGridClassName} items-center gap-x-4 @min-[80rem]:gap-x-7 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]`}><ProjectIdentity project={project} /><ProjectParticipants participants={project.participants} /><div className="min-w-0"><ProjectProgress project={project} compact muted={paused} /></div><div className={`min-w-0 ${deadlineContentClassName}`}><ProjectDeadlines project={project} compact muted={paused} /></div><ProjectSignals centered project={project} /></Link></li>; }
+function ProjectDesktopRow({ filters, project }: { filters: ReturnType<typeof getProjectListFilters>; project: ProjectItem }) { const paused = project.status === "paused"; return <li data-instaload-arrival={project.id}><Link prefetch={false} href={getProjectHref(project.id, filters)} className={`grid min-h-24 ${projectListDesktopGridClassName} items-center gap-x-4 @min-[80rem]:gap-x-7 px-4 py-3 text-left transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)]`}><ProjectIdentity project={project} /><ProjectParticipants participants={project.participants} /><div className="min-w-0"><ProjectProgress project={project} compact muted={paused} /></div><div className={`min-w-0 ${deadlineContentClassName}`}><ProjectDeadlines project={project} compact muted={paused} /></div><ProjectSignals centered project={project} /></Link></li>; }
 function ProjectMobileCard({ filters, project }: { filters: ReturnType<typeof getProjectListFilters>; project: ProjectItem }) {
   const t = useTranslations("Projects");
   const paused = project.status === "paused";
-  return <li className="min-w-0"><Link href={getProjectHref(project.id, filters)} className="flex h-full min-h-56 flex-col rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 transition-colors hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
+  return <li data-instaload-arrival={project.id} className="min-w-0"><Link prefetch={false} href={getProjectHref(project.id, filters)} className="flex h-full min-h-56 flex-col rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 transition-colors hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
     <ProjectIdentity project={project} />
     <div className="mt-3 flex min-h-10 items-start justify-between gap-3">
       <ProjectSignals project={project} />

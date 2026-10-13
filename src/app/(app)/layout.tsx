@@ -10,6 +10,8 @@ import { DomainMessages } from "@/i18n/domain-messages";
 import { ReviewTimerProvider } from "@/hooks/use-review-timer";
 import { getReviewTimerSnapshot } from "@/data/queries/review-timers";
 import { PushLifecycle } from "@/components/layout/push-lifecycle";
+import { headers } from "next/headers";
+import { PROJECTS_PREFETCH_HEADER } from "@/lib/projects-prefetch-request";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const projectsPrefetch = (await headers()).get(PROJECTS_PREFETCH_HEADER) === "1";
   const [t, access] = await Promise.all([getTranslations("Common"), resolveActiveStudioMembership()]);
 
   if (access.status === "UNAUTHENTICATED" || access.status === "AUTH_ERROR") {
@@ -44,7 +47,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [profile, crmAttentionCount, reviewTimer] = await Promise.all([
     getCurrentUserProfile(),
     studio.system_role === "admin" ? getCrmOverdueLeadFollowUpCount() : Promise.resolve(0),
-    getReviewTimerSnapshot().catch(() => null),
+    // Timer synchronization can enqueue labor writes; speculative Projects reads must not run it.
+    projectsPrefetch ? Promise.resolve(null) : getReviewTimerSnapshot().catch(() => null),
   ]);
   if (!profile) throw new Error("Authenticated user with active studio membership is missing a Profile.");
 
