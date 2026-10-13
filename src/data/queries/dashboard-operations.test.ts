@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Database } from "@/types/database.types";
-import { getDashboardOperations } from "./dashboard-operations";
+import { getDashboardOperations, getDashboardOperationalSignals, getDashboardFinanceSummary } from "./dashboard-operations";
 
 const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), displayCurrency: vi.fn(), cache: new Map<unknown, Map<string, unknown>>() }));
 vi.mock("server-only", () => ({}));
@@ -152,4 +152,25 @@ it("overlaps display reads with VAT after valuation and shares currency precisio
   } });
   expect(callsTo("finance_currencies")).toHaveLength(1);
   expect(console.error).not.toHaveBeenCalled();
+});
+
+it("delivers operational signals while Finance waits, and shares each source in the request", async () => {
+  const fetch = setup("success");
+  const original = fetch.getMockImplementation();
+  if (!original) throw new Error("Expected local fetch fixture");
+  let release: () => void = () => {};
+  const financeReady = new Promise<void>(resolve => { release = resolve; });
+  fetch.mockImplementation(async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith("finance_settings")) await financeReady;
+    return original(input, init);
+  });
+  const finance = getDashboardFinanceSummary();
+  const signals = getDashboardOperationalSignals(today, now);
+  expect(getDashboardFinanceSummary()).toBe(finance);
+  expect(getDashboardOperationalSignals(today, now)).toBe(signals);
+  expect(await signals).toMatchObject({ crm: { activeCount: 3 }, office: { overdueAssignmentCount: 1 } });
+  expect(fetch.mock.calls.filter(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toHaveLength(0);
+  release();
+  expect(await finance).toMatchObject({ financeUnavailable: false, finance: { month: { profitAndLoss: "80.0000" } } });
+  expect(fetch.mock.calls.filter(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toHaveLength(1);
 });

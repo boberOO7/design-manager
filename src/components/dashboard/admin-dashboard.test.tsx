@@ -1,7 +1,6 @@
 import { isValidElement, type ReactNode } from "react";
 import { expect, it, vi } from "vitest";
-import { AdminDashboardView } from "./admin-dashboard";
-import type { AdminDashboard } from "@/data/queries/dashboard";
+import { FinanceMetrics, FinanceStatus } from "./admin-dashboard";
 import type { DashboardOperations } from "@/data/queries/dashboard-operations";
 import type { DashboardMetric } from "@/lib/dashboard-presentation";
 
@@ -12,11 +11,6 @@ vi.mock("next-intl/server", () => ({
 vi.mock("@/components/tasks/dashboard-task-list", () => ({ DashboardTaskList: () => null }));
 vi.mock("@/components/dashboard/team-workload", () => ({ TeamWorkload: () => null }));
 
-const dashboard: AdminDashboard = {
-  kind: "admin", profile: { id: "admin", full_name: "Admin" }, asOf: "2026-10-03T10:00:00Z", today: "2026-10-03",
-  metrics: { activeProjects: 2, activeTasks: 3, overdueTasks: 1 },
-  attentionProjects: [], deadlines: [], workload: [], myTasks: [],
-};
 const operations: DashboardOperations = {
   finance: null, financeUnavailable: true,
   crm: { activeCount: 4, overdueCount: 0, upcoming: [] },
@@ -29,18 +23,18 @@ function inspect(node: ReactNode): { statuses: ReactNode[]; metrics: DashboardMe
     const children = node.map(inspect);
     return { statuses: children.flatMap(child => child.statuses), metrics: children.flatMap(child => child.metrics) };
   }
-  if (!isValidElement<{ children?: ReactNode; role?: string; metrics?: DashboardMetric[] }>(node)) return { statuses: [], metrics: [] };
+  if (!isValidElement<{ children?: ReactNode; role?: string; metric?: DashboardMetric; metrics?: DashboardMetric[] }>(node)) return { statuses: [], metrics: [] };
   const children = inspect(node.props.children);
-  return { statuses: [...children.statuses, ...(node.props.role === "status" ? [node.props.children] : [])], metrics: [...children.metrics, ...(node.props.metrics ?? [])] };
+  return { statuses: [...children.statuses, ...(node.props.role === "status" ? [node.props.children] : [])], metrics: [...children.metrics, ...(node.props.metrics ?? []), ...(node.props.metric ? [node.props.metric] : [])] };
 }
 
-it("makes unavailable Finance explicit and keeps other dashboard metrics instead of presenting finance as zero", async () => {
-  const result = inspect(await AdminDashboardView({ dashboard, administration: null, operations }));
+it("makes unavailable Finance explicit without presenting missing amounts as zero", async () => {
+  const result = inspect([await FinanceMetrics({ pending: Promise.resolve(operations) }), await FinanceStatus({ pending: Promise.resolve(operations) })]);
   expect(result.statuses).toContain("financeUnavailable");
-  expect(result.metrics.map(metric => metric.value)).toEqual([2, 3, 1, 4, "—", "—"]);
+  expect(result.metrics.map(metric => metric.value)).toEqual(["—", "—"]);
 });
 
 it("does not show an error when Finance setup has not been completed", async () => {
-  const result = inspect(await AdminDashboardView({ dashboard, administration: null, operations: { ...operations, financeUnavailable: false } }));
+  const result = inspect(await FinanceStatus({ pending: Promise.resolve({ ...operations, financeUnavailable: false }) }));
   expect(result.statuses).not.toContain("financeUnavailable");
 });

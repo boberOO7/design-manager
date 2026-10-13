@@ -3,23 +3,18 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-
-const WORKLOAD_CAPACITY_KEY = "dashboard-workload-visible-rows";
-const MIN_WORKLOAD_ROWS = 4;
-const MAX_WORKLOAD_ROWS = 15;
+import { DEFAULT_WORKLOAD_ROWS, MIN_WORKLOAD_ROWS, MAX_WORKLOAD_ROWS, readWorkloadCapacity, saveWorkloadCapacity } from "@/lib/dashboard-workload-preference";
 
 export function BoundedDashboardList({ children, resizable = false, resizeLabel }: { children: ReactNode; resizable?: boolean; resizeLabel?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ y: number; rows: number; rowHeight: number } | null>(null);
   const [rowHeight, setRowHeight] = useState<number>();
   const [maxHeight, setMaxHeight] = useState<number>();
-  const [visibleRows, setVisibleRows] = useState(10);
+  const [visibleRows, setVisibleRows] = useState(DEFAULT_WORKLOAD_ROWS);
 
   useLayoutEffect(() => {
     if (!resizable) return;
-    const value = localStorage.getItem(WORKLOAD_CAPACITY_KEY);
-    const stored = value === null ? NaN : Number(value);
-    if (Number.isInteger(stored)) setVisibleRows(Math.max(MIN_WORKLOAD_ROWS, Math.min(MAX_WORKLOAD_ROWS, stored)));
+    setVisibleRows(readWorkloadCapacity());
   }, [resizable]);
 
   useLayoutEffect(() => {
@@ -56,18 +51,18 @@ export function BoundedDashboardList({ children, resizable = false, resizeLabel 
     if (!drag.current) return;
     const next = Math.max(MIN_WORKLOAD_ROWS, Math.min(MAX_WORKLOAD_ROWS, drag.current.rows + Math.round((event.clientY - drag.current.y) / drag.current.rowHeight)));
     setVisibleRows(next);
-    localStorage.setItem(WORKLOAD_CAPACITY_KEY, String(next));
+    saveWorkloadCapacity(next);
   }
 
   return <div className={resizable ? "relative pb-2" : undefined}>
-    <div ref={ref} className={cn("overflow-y-auto [scrollbar-gutter:stable]", resizable && "[scrollbar-gutter:stable_both-edges]")} style={{ maxHeight }}>{children}</div>
+    <div ref={ref} className={cn("dashboard-bounded-list overflow-y-auto [scrollbar-gutter:stable]", resizable && "dashboard-workload-list [scrollbar-gutter:stable_both-edges]")} style={{ maxHeight }}>{children}</div>
     {resizable ? <Tooltip content={resizeLabel}><button type="button" aria-label={resizeLabel} onPointerDown={resizeStart} onPointerMove={resizeMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }} onKeyDown={(event) => {
       const delta = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
       if (delta) {
         event.preventDefault();
         setVisibleRows((rows) => {
           const next = Math.max(MIN_WORKLOAD_ROWS, Math.min(MAX_WORKLOAD_ROWS, rows + delta));
-          localStorage.setItem(WORKLOAD_CAPACITY_KEY, String(next));
+          saveWorkloadCapacity(next);
           return next;
         });
       }

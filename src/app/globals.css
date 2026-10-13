@@ -259,40 +259,62 @@ body,
   scrollbar-color: var(--ui-border-strong) var(--ui-page);
 }
 
-@keyframes dashboard-enter {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+/* The blueprint shares the final surface and row geometry; only its ink moves. */
+.dashboard-metric-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; }
+.dashboard-metric-cell { display: flex; min-width: 0; min-height: 6rem; flex-direction: column; border-bottom: 1px solid var(--ui-border); border-right: 1px solid var(--ui-border); padding: 0.875rem 1rem; }
+.dashboard-metric-panel > .dashboard-metric-cell:last-child, [data-dashboard-ready="finance-metrics"] > .dashboard-metric-cell:last-child { border-right: 0; }
+@media (min-width: 768px) { .dashboard-metric-panel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) {
+  .dashboard-metric-panel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .dashboard-metric-cell { border-bottom: 0; }
 }
-
-.dashboard-reveal {
-  animation: dashboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.dashboard-metric-panel--five { display: flex; flex-wrap: wrap; }
+.dashboard-metric-panel--five .dashboard-metric-cell { flex: 1 0 50%; }
+@media (min-width: 768px) { .dashboard-metric-panel--five .dashboard-metric-cell { flex-basis: 33.333%; } }
+@media (min-width: 1280px) { .dashboard-metric-panel--five .dashboard-metric-cell { flex-basis: 20%; } }
+.dashboard-blueprint { position: relative; overflow: hidden; }
+.blueprint-mark { display: block; border: 1px solid color-mix(in srgb, var(--ui-text-muted) 17%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--ui-surface-muted) 65%, transparent); }
+.blueprint-mark.rounded-full { border-radius: 9999px; }
+.dashboard-attention > div > div:last-child { min-height: 12rem; }
+.dashboard-upcoming > div > div:last-child { min-height: 28.25rem; }
+.blueprint-row { display: flex; min-width: 0; align-items: center; gap: 0.75rem; padding: 0.625rem 0.75rem; min-height: 4.5rem; }
+.blueprint-row--attention { min-height: 5.25rem; }
+.blueprint-row--tasks { min-height: 4rem; }
+.blueprint-row--projects { min-height: 4.25rem; }
+.blueprint-row--workload { flex-wrap: wrap; min-height: var(--dashboard-workload-row-height); padding-inline: 1rem; }
+.blueprint-workload-metrics { display: flex; flex-basis: 100%; align-items: center; justify-content: space-around; gap: 0.5rem; }
+@media (min-width: 1024px) {
+  .blueprint-row--workload { flex-wrap: nowrap; }
+  .blueprint-workload-metrics { flex-basis: 24rem; flex-shrink: 0; }
 }
+@media (min-width: 1536px) { .blueprint-workload-metrics { flex-basis: 31.75rem; } }
+.dashboard-blueprint::after { content: ""; pointer-events: none; position: absolute; inset-block: 0; width: 32%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ui-info-text) 5%, transparent), transparent); animation: dashboard-blueprint-shimmer 2.8s linear infinite; }
+@keyframes dashboard-blueprint-shimmer { from { transform: translateX(-110%); } to { transform: translateX(420%); } }
 
-.dashboard-reveal-delay-1 {
-  animation-delay: 70ms;
-}
+/* Start at server paint. GSAP continues the remaining reveal after hydration. */
+[data-dashboard-entrance="pending"] [data-dashboard-arrival]:not(.dashboard-metric-cell),
+[data-dashboard-entrance="finance"] [data-dashboard-arrival^="attention:receiv"],
+[data-dashboard-entrance="finance"] [data-dashboard-arrival="attention:obligations"],
+[data-dashboard-entrance="finance"] [data-dashboard-arrival^="upcoming:finance:"] { animation: dashboard-row-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+[data-dashboard-entrance="pending"] [data-dashboard-value] { animation: dashboard-value-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes dashboard-row-enter { from { clip-path: var(--dashboard-row-reveal-mask, inset(0% 100% 0% 0%)); transform: translateY(var(--dashboard-row-reveal-offset, 8px)); } to { clip-path: inset(0% 0% 0% 0%); transform: translateY(0); } }
+@keyframes dashboard-value-enter { from { clip-path: inset(100% 0% 0% 0%); transform: translateY(12px); } to { clip-path: inset(0% 0% 0% 0%); transform: translateY(0); } }
 
-.dashboard-reveal-delay-2 {
-  animation-delay: 120ms;
-}
-
-.dashboard-reveal-delay-3 {
-  animation-delay: 170ms;
-}
-
+/* Reserve the existing row caps before the client can measure the real rows. */
+/* Reveal complete columns together, without translated rows enlarging scroll overflow. */
+.dashboard-bounded-list { max-height: 28.25rem; --dashboard-row-reveal-mask: inset(0% 0% 100% 0%); --dashboard-row-reveal-offset: 0px; }
+/* Name and small role line + padding; mobile also includes the metric row and gap. */
+.blueprint-rows--workload, .dashboard-workload-list { --dashboard-workload-row-height: calc(1.5rem + 1.2rem + 1.25rem + 2rem + 0.375rem); }
+.blueprint-rows--workload { padding-bottom: 0.5rem; }
+.dashboard-workload-list { max-height: calc(var(--dashboard-workload-visible-rows, 10) * var(--dashboard-workload-row-height) + (var(--dashboard-workload-visible-rows, 10) - 1) * 0.25rem); }
+@media (min-width: 1024px) { .blueprint-rows--workload, .dashboard-workload-list { --dashboard-workload-row-height: calc(1.5rem + 1.2rem + 1.25rem); } }
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-reveal,
-  .dashboard-reveal-delay-1,
-  .dashboard-reveal-delay-2,
-  .dashboard-reveal-delay-3 {
-    animation: none;
-  }
+  .dashboard-blueprint::after { animation: none; display: none; }
+  :root [data-dashboard-entrance] [data-dashboard-arrival], :root [data-dashboard-entrance] [data-dashboard-value] { animation: none; }
 }
+:root[data-motion="off"] .dashboard-blueprint::after { animation: none; display: none; }
+:root[data-motion="off"] [data-dashboard-entrance] [data-dashboard-arrival],
+:root[data-motion="off"] [data-dashboard-entrance] [data-dashboard-value] { animation: none; }
 
 *::-webkit-scrollbar {
   width: var(--ui-scrollbar-size);

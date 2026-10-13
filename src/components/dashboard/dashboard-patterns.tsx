@@ -12,20 +12,26 @@ const metricToneClasses = {
   danger: "text-[var(--ui-danger-text)]",
 } as const;
 
-export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {
+export function MetricPanel({ children, count = 6 }: { children: ReactNode; count?: number }) {
+  return <Panel className={cn("dashboard-metric-panel", count === 5 && "dashboard-metric-panel--five")}>{children}</Panel>;
+}
+
+export function MetricCell({ metric }: { metric: DashboardMetric }) {
   const t = useTranslations("Dashboard");
   const locale = useLocale();
-  return <Panel className={metrics.length === 5 ? "flex flex-wrap overflow-hidden" : "grid grid-cols-2 overflow-hidden md:grid-cols-3 xl:grid-cols-6"}>
-    {metrics.map((metric) => <div key={metric.labelKey} className={cn("flex min-w-0 flex-col border-b border-r border-[var(--ui-border)] px-4 py-3.5 last:border-r-0 xl:border-b-0", metrics.length === 5 && "basis-1/2 grow md:basis-1/3 xl:basis-1/5")}>
-      <p className="text-xs font-medium leading-4 text-[var(--ui-text-muted)]">{t(metric.labelKey)}</p>
-      <p className={cn("ui-numeric mt-auto break-words pt-2 text-xl font-semibold tracking-tight", metricToneClasses[metric.tone])}>{typeof metric.value === "number" ? formatNumber(metric.value, locale) : metric.value}</p>
-    </div>)}
-  </Panel>;
+  return <div className="dashboard-metric-cell" data-dashboard-arrival={metric.labelKey}>
+    <p className="text-xs font-medium leading-4 text-[var(--ui-text-muted)]">{t(metric.labelKey)}</p>
+    <p data-dashboard-value className={cn("ui-numeric mt-auto break-words pt-2 text-xl font-semibold tracking-tight", metricToneClasses[metric.tone])}>{typeof metric.value === "number" ? formatNumber(metric.value, locale) : metric.value}</p>
+  </div>;
+}
+
+export function MetricStrip({ metrics }: { metrics: DashboardMetric[] }) {
+  return <MetricPanel count={metrics.length}>{metrics.map(metric => <MetricCell key={metric.labelKey} metric={metric} />)}</MetricPanel>;
 }
 
 export function DashboardOverview({ metrics }: { metrics: DashboardMetric[] }) {
   const t = useTranslations("Dashboard");
-  return <section className="dashboard-reveal space-y-3"><h1 className="text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1><MetricStrip metrics={metrics} /></section>;
+  return <section className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1><MetricStrip metrics={metrics} /></section>;
 }
 
 export function DashboardSection({ children, className, description, flushContent = false, title }: { children: ReactNode; className?: string; description?: string; flushContent?: boolean; title: string }) {

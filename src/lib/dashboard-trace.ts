@@ -39,7 +39,7 @@ export function createDashboardTrace(requestId: string, requestStartedAt: number
     },
     flush() {
       const loader = spans.find(span => span.stage === "dashboard.loader");
-      const branches = spans.filter(span => ["tasks", "administration", "operations"].includes(span.stage));
+      const branches = spans.filter(span => ["tasks", "administration", "operations", "finance"].includes(span.stage));
       const completed = branches.filter(span => span.completion_ms !== null);
       const last = completed.reduce<Span | null>((latest, span) => !latest || span.completion_ms! > latest.completion_ms! ? span : latest, null);
       // Completion offsets identify the last ready branch; overlapping durations must not be summed.
@@ -47,6 +47,7 @@ export function createDashboardTrace(requestId: string, requestStartedAt: number
         console.info(JSON.stringify({
           event: "studioflow.dashboard.trace", version: 1, request_id: requestId,
           scope: "proxy_to_dashboard_loader", loader_complete_ms: loader?.completion_ms ?? null,
+          content_complete_ms: completed.length === branches.length ? last?.completion_ms ?? null : null,
           critical_branch: branches.length === completed.length ? last?.stage ?? null : null,
           parallel_window_ms: completed.length === branches.length && last
             ? round(last.completion_ms! - Math.min(...branches.map(span => span.start_ms))) : null,

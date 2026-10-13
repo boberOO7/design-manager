@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { traceDashboardStage } from "@/lib/dashboard-trace";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
@@ -37,7 +38,23 @@ export type DashboardOperations = {
   submissions: { urgentCount: number };
 };
 
+export type DashboardOperationalSignals = Omit<DashboardOperations, "finance" | "financeUnavailable">;
+export type DashboardFinance = Pick<DashboardOperations, "finance" | "financeUnavailable">;
+
+// Retain the aggregate API for existing consumers; the dashboard streams these independently.
 export async function getDashboardOperations(today: string, now = new Date()): Promise<DashboardOperations | null> {
+  const [signals, finance] = await Promise.all([getDashboardOperationalSignals(today, now), getDashboardFinanceSummary()]);
+  return signals ? { ...signals, ...finance } : null;
+}
+
+export const getDashboardFinanceSummary = cache(async (): Promise<DashboardFinance> => {
+  const admin = await getActiveStudioAdmin();
+  if (!admin) return { finance: null, financeUnavailable: false };
+  const client = await createClient();
+  return traceDashboardStage("operations.finance", () => getDashboardFinance(client, admin.studio_id));
+});
+
+export const getDashboardOperationalSignals = cache(async (today: string, now = new Date()): Promise<DashboardOperationalSignals | null> => {
   const admin = await traceDashboardStage("operations.context", getActiveStudioAdmin);
   if (!admin) return null;
   const client = await createClient();
@@ -48,8 +65,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     .eq("responsible_admin_id", admin.authenticatedUserId)
     .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
     .not("next_contact_at", "is", null);
-  const [finance, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await traceDashboardStage("operations.parallel_reads", () => Promise.all([
-    traceDashboardStage("operations.finance", () => getDashboardFinance(client, admin.studio_id)),
+  const [activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await traceDashboardStage("operations.parallel_reads", () => Promise.all([
     traceDashboardStage("operations.crm.active", getActiveCrmLeadCount),
     traceDashboardStage("operations.crm.overdue", () => leadScope().lt("next_contact_at", nowIso).order("next_contact_at").limit(1)),
     traceDashboardStage("operations.crm.upcoming", () => leadScope().gte("next_contact_at", nowIso).lt("next_contact_at", upcomingEndExclusive).order("next_contact_at")),
@@ -81,8 +97,8 @@ export async function getDashboardOperations(today: string, now = new Date()): P
       id: item.id, title: item.display_name ?? item.asset_tag, date: item.next_maintenance_due_date,
     }] : []),
   };
-  return { crm, office, equipment, submissions, ...finance };
-}
+  return { crm, office, equipment, submissions };
+});
 
 async function getDashboardFinance(client: Awaited<ReturnType<typeof createClient>>, studioId: string): Promise<Pick<DashboardOperations, "finance" | "financeUnavailable">> {
   try {

@@ -30,7 +30,7 @@ it("reports overlapping branch offsets and the last ready branch, without payloa
   trace.flush();
   expect(log).toHaveBeenCalledExactlyOnceWith(JSON.stringify({
     event: "studioflow.dashboard.trace", version: 1, request_id: "test-request",
-    scope: "proxy_to_dashboard_loader", loader_complete_ms: null,
+    scope: "proxy_to_dashboard_loader", loader_complete_ms: null, content_complete_ms: 31,
     critical_branch: "administration", parallel_window_ms: 21,
     spans: [
       { stage: "tasks", start_ms: 10, duration_ms: 20, completion_ms: 30, outcome: "resolved" },
