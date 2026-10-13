@@ -31,7 +31,7 @@ export type DashboardData = AdminDashboard | EmployeeDashboard;
 
 async function loadAllDashboardRows<T>(queryPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
   const rows: T[] = [];
-  const pageSize = 500;
+  const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await queryPage(offset, offset + pageSize - 1);
     if (error || !data) throw new Error("Unable to load Dashboard task data.", { cause: error });
@@ -65,17 +65,12 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const { data: visibleProjects, error: visibleProjectsError } = await projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>();
   if (visibleProjectsError || !visibleProjects) throw new Error("Unable to load Dashboard projects.", { cause: visibleProjectsError });
   await refreshProjectTaskSchedules(visibleProjects.map((project) => project.id));
-  const [tasksResult, membersResult] = await Promise.all([
+  const [tasksResult, membersResult, stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
     loadAllDashboardRows((from, to) => supabase.from("tasks")
       .select(`${PROJECT_TASK_PROGRESS_SELECT}, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`)
       .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
       .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
-  ]);
-  if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
-  const now = new Date();
-  const asOf = now.toISOString();
-  const [stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
     supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
     membership.system_role === "admin"
       ? loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
@@ -85,7 +80,10 @@ export async function getDashboard(): Promise<DashboardData | null> {
       ? supabase.from("project_members").select("project_id, user_id").in("project_id", visibleProjects.map((project) => project.id)).eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
   ]);
+  if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
   if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? projectMembersResult.error });
+  const now = new Date();
+  const asOf = now.toISOString();
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
   for (const project of visibleProjects) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurationsResult.data) {

@@ -40,6 +40,26 @@ it("finishes schedule refreshes before reading tasks or workload periods", async
   expect(requests).toContain("task_status_periods");
 });
 
+it("loads supporting data while task pages are pending, after schedule refresh", async () => {
+  let releaseTasks: () => void = () => {};
+  const tasksPending = new Promise<void>((resolve) => { releaseTasks = resolve; });
+  const requests: string[] = [];
+  mocks.createClient.mockResolvedValue(createClient<Database>("http://localhost:54321", "test", {
+    auth: { persistSession: false }, global: { fetch: async (input) => {
+      const table = new URL(String(input)).pathname.split("/").at(-1) ?? "";
+      requests.push(table);
+      if (table === "tasks") await tasksPending;
+      return Response.json(table === "projects" ? [{ id: "project", status: "active" }] : []);
+    } },
+  }));
+  const pending = getDashboard();
+  await vi.waitFor(() => expect(requests).toEqual(expect.arrayContaining([
+    "tasks", "studio_members", "project_task_stage_columns", "task_status_periods", "project_members",
+  ])));
+  releaseTasks();
+  expect((await pending)?.kind).toBe("admin");
+});
+
 function task(index: number, overrides: Partial<DashboardTaskSummary> = {}) {
   return {
     id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
@@ -100,7 +120,7 @@ it("loads tasks and current status periods beyond the Data API cap before calcul
   }
   for (const table of ["tasks", "task_status_periods"]) {
     const pages = requests.filter((request) => request.table === table);
-    expect(pages.map(({ offset, limit }) => [offset, limit])).toEqual([[0, 500], [500, 500], [1000, 500]]);
+    expect(pages.map(({ offset, limit }) => [offset, limit])).toEqual([[0, 1000], [1000, 1000]]);
     expect(pages.every(({ order, studio }) => order === (table === "tasks" ? "id.asc" : "task_id.asc") && studio === "eq.studio")).toBe(true);
   }
 });
