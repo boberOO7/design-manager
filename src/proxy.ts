@@ -1,7 +1,15 @@
 import type { NextRequest } from "next/server";
 import { updateSession } from "./lib/supabase/proxy";
+import { DASHBOARD_TRACE_ID_HEADER, DASHBOARD_TRACE_START_HEADER, isDashboardTraceRequest } from "./lib/dashboard-trace-request";
 
 export async function proxy(request: NextRequest) {
+  // Overwrite client-supplied trace metadata; only ordinary Dashboard GETs are traced.
+  request.headers.delete(DASHBOARD_TRACE_ID_HEADER);
+  request.headers.delete(DASHBOARD_TRACE_START_HEADER);
+  if (process.env.STUDIOFLOW_DASHBOARD_TRACE === "1" && isDashboardTraceRequest(request.nextUrl.pathname, request.method, request.headers)) {
+    request.headers.set(DASHBOARD_TRACE_ID_HEADER, crypto.randomUUID());
+    request.headers.set(DASHBOARD_TRACE_START_HEADER, String(Date.now()));
+  }
   return updateSession(request);
 }
 

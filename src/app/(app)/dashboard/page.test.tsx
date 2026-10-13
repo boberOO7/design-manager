@@ -1,5 +1,7 @@
 import { expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const mocks = vi.hoisted(() => ({ context: vi.fn(), dashboard: vi.fn(), administration: vi.fn(), operations: vi.fn() }));
 vi.mock("@/data/queries/dashboard", () => ({ getDashboard: mocks.dashboard, getDashboardContext: mocks.context }));
 vi.mock("@/data/queries/dashboard-administration", () => ({ getDashboardAdministration: mocks.administration }));

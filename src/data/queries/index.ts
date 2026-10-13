@@ -1,3 +1,4 @@
+import { traceDashboardStage } from "@/lib/dashboard-trace";
 import {
   getAccessibleProjects,
   getDashboardMetrics,
@@ -33,7 +34,7 @@ export function getDataMode(): DataMode {
 /**
  * Server-side profile fetcher - uses real Supabase authentication
  */
-export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => {
+export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => traceDashboardStage("shared.profile", async () => {
   if (getDataMode() === "mock") {
     // In mock mode, still use mock data for backward compatibility
     // but this will be replaced with real auth when Supabase is configured
@@ -45,7 +46,7 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
   // getUser() verifies the session with Supabase Auth instead of trusting JWT
   // claims alone. A deleted Auth user can otherwise retain a locally valid JWT
   // until it expires (for example, after a local database reset).
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { data: userData, error: userError } = await traceDashboardStage("shared.profile.auth", () => supabase.auth.getUser());
   const user = userData.user;
 
   if (userError || !user) {
@@ -53,13 +54,13 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
   }
 
   // Query public.profiles for the row where id equals the authenticated user ID
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await traceDashboardStage("shared.profile.read", () => supabase
     .from("profiles")
     .select(
       "id, full_name, email, avatar_url, birth_date, country_code, city, city_geonames_id, job_title, system_role, is_active, notification_popups_enabled, notification_sound_enabled, created_at, updated_at"
     )
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle());
 
   if (profileError) {
     throw new Error(`Unable to load the authenticated user's profile for user ID: ${user.id}.`, { cause: profileError });
@@ -83,7 +84,7 @@ export const getCurrentUserProfile = cache(async (): Promise<Profile | null> => 
     avatar_url: profile.avatar_url ?? undefined,
     system_role: profile.system_role,
   };
-});
+}));
 
 export function getDashboardData(): DashboardMetrics {
   return getDashboardMetrics();

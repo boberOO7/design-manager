@@ -15,17 +15,27 @@ import { getDashboardDeadlineHref, getEmployeeDashboardMetrics } from "@/lib/das
 import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
+import { after } from "next/server";
+import { getDashboardTrace, traceDashboardStage } from "@/lib/dashboard-trace";
 
 export async function generateMetadata(): Promise<Metadata> { const t = await getTranslations("Dashboard"); return { title: t("metadata") }; }
 
 export default async function DashboardPage() {
-  const [context, t] = await Promise.all([getDashboardContext(), getTranslations("Dashboard")]);
+  if (process.env.STUDIOFLOW_DASHBOARD_TRACE === "1") {
+    const trace = await getDashboardTrace();
+    if (trace) after(() => trace.flush());
+  }
+  return traceDashboardStage("dashboard.loader", loadDashboardPage);
+}
+
+async function loadDashboardPage() {
+  const [context, t] = await Promise.all([getDashboardContext(), traceDashboardStage("translations", () => getTranslations("Dashboard"))]);
   if (!context) return <div className="space-y-8"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState compact title={t("loginRequired")} /></div>;
   // All domains share the verified request context and date; task refreshes stay inside getDashboard.
   const [dashboard, administration, operations] = await Promise.all([
-    getDashboard(),
-    context.membership.system_role === "admin" ? getDashboardAdministration(context.today) : null,
-    context.membership.system_role === "admin" ? getDashboardOperations(context.today) : null,
+    traceDashboardStage("tasks", getDashboard),
+    context.membership.system_role === "admin" ? traceDashboardStage("administration", () => getDashboardAdministration(context.today)) : null,
+    context.membership.system_role === "admin" ? traceDashboardStage("operations", () => getDashboardOperations(context.today)) : null,
   ]);
   if (!dashboard) return <EmptyState compact title={t("loginRequired")} />;
   if (dashboard.kind === "employee") return <Employee dashboard={dashboard} />;

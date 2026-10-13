@@ -1,4 +1,5 @@
 import "server-only";
+import { traceDashboardStage } from "@/lib/dashboard-trace";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { addCalendarDays, zonedWallTimeToIso } from "@/lib/calendar";
@@ -37,7 +38,7 @@ export type DashboardOperations = {
 };
 
 export async function getDashboardOperations(today: string, now = new Date()): Promise<DashboardOperations | null> {
-  const admin = await getActiveStudioAdmin();
+  const admin = await traceDashboardStage("operations.context", getActiveStudioAdmin);
   if (!admin) return null;
   const client = await createClient();
   const nowIso = now.toISOString();
@@ -47,15 +48,15 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     .eq("responsible_admin_id", admin.authenticatedUserId)
     .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
     .not("next_contact_at", "is", null);
-  const [finance, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await Promise.all([
-    getDashboardFinance(client, admin.studio_id),
-    getActiveCrmLeadCount(),
-    leadScope().lt("next_contact_at", nowIso).order("next_contact_at").limit(1),
-    leadScope().gte("next_contact_at", nowIso).lt("next_contact_at", upcomingEndExclusive).order("next_contact_at"),
-    client.from("office_assignments").select("id,title,deadline,priority,status,responsible_id").eq("studio_id", admin.studio_id).overrideTypes<Array<DashboardOfficeAssignment & { responsible_id: string }>, { merge: false }>(),
-    client.from("equipment").select("id,display_name,asset_tag,recurring_maintenance_enabled,next_maintenance_due_date,lifecycle_state").eq("studio_id", admin.studio_id).neq("lifecycle_state", "retired"),
-    client.from("submissions").select("id,type,status").eq("studio_id", admin.studio_id).eq("priority", "urgent").overrideTypes<Array<Pick<SubmissionSummary, "id" | "type" | "status">>, { merge: false }>(),
-  ]);
+  const [finance, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await traceDashboardStage("operations.parallel_reads", () => Promise.all([
+    traceDashboardStage("operations.finance", () => getDashboardFinance(client, admin.studio_id)),
+    traceDashboardStage("operations.crm.active", getActiveCrmLeadCount),
+    traceDashboardStage("operations.crm.overdue", () => leadScope().lt("next_contact_at", nowIso).order("next_contact_at").limit(1)),
+    traceDashboardStage("operations.crm.upcoming", () => leadScope().gte("next_contact_at", nowIso).lt("next_contact_at", upcomingEndExclusive).order("next_contact_at")),
+    traceDashboardStage("operations.office.assignments", () => client.from("office_assignments").select("id,title,deadline,priority,status,responsible_id").eq("studio_id", admin.studio_id).overrideTypes<Array<DashboardOfficeAssignment & { responsible_id: string }>, { merge: false }>()),
+    traceDashboardStage("operations.office.equipment", () => client.from("equipment").select("id,display_name,asset_tag,recurring_maintenance_enabled,next_maintenance_due_date,lifecycle_state").eq("studio_id", admin.studio_id).neq("lifecycle_state", "retired")),
+    traceDashboardStage("operations.office.submissions", () => client.from("submissions").select("id,type,status").eq("studio_id", admin.studio_id).eq("priority", "urgent").overrideTypes<Array<Pick<SubmissionSummary, "id" | "type" | "status">>, { merge: false }>()),
+  ]));
   const queryError = overdueFollowUps.error ?? upcomingFollowUps.error ?? assignmentsResult.error ?? equipmentResult.error ?? urgentSubmissionsResult.error;
   if (queryError) throw new Error("Unable to load Dashboard operational signals.", { cause: queryError });
 
@@ -85,34 +86,34 @@ export async function getDashboardOperations(today: string, now = new Date()): P
 
 async function getDashboardFinance(client: Awaited<ReturnType<typeof createClient>>, studioId: string): Promise<Pick<DashboardOperations, "finance" | "financeUnavailable">> {
   try {
-    const financeSettings = await client.from("finance_settings").select("finalized_at").eq("studio_id", studioId).maybeSingle();
+    const financeSettings = await traceDashboardStage("operations.finance.settings", () => client.from("finance_settings").select("finalized_at").eq("studio_id", studioId).maybeSingle());
     if (financeSettings.error) throw new Error("Unable to load Dashboard Finance settings.", { cause: financeSettings.error });
     if (!financeSettings.data?.finalized_at) return { finance: null, financeUnavailable: false };
 
-    const [incomingOverdue, outgoingOverdue] = await Promise.all([
+    const [incomingOverdue, outgoingOverdue] = await traceDashboardStage("operations.finance.overdue_counts", () => Promise.all([
       client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", studioId).eq("direction", "incoming").or(FINANCE_OVERDUE_DB_FILTER),
       client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", studioId).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
-    ]);
+    ]));
     if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
-    const [overview, displayCurrency] = await Promise.all([getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" }), getFinanceDisplayCurrency()]);
+    const [overview, displayCurrency] = await traceDashboardStage("operations.finance.overview_and_currency", () => Promise.all([traceDashboardStage("operations.finance.overview", () => getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" })), traceDashboardStage("operations.finance.display_currency", getFinanceDisplayCurrency)]));
     if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
-    const vatActuals = await client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
-      .eq("studio_id", studioId).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf);
+    const vatActuals = await traceDashboardStage("operations.finance.vat_actuals", () => client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
+      .eq("studio_id", studioId).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf));
     if (vatActuals.error) throw new Error("Unable to load project VAT actuals.", { cause: vatActuals.error });
-    const displayOverview = await getFinanceDisplayOverview(overview, displayCurrency);
+    const displayOverview = await traceDashboardStage("operations.finance.display_overview", () => getFinanceDisplayOverview(overview, displayCurrency));
     if (!displayOverview) throw new Error("Unable to display Dashboard Finance signals.");
-    const displayUnit = await client.from("finance_currencies").select("minor_units").eq("code", displayCurrency).single();
+    const displayUnit = await traceDashboardStage("operations.finance.display_unit", () => client.from("finance_currencies").select("minor_units").eq("code", displayCurrency).single());
     if (displayUnit.error || !displayUnit.data) throw new Error("Unable to load Dashboard display currency.", { cause: displayUnit.error });
-    const vatAdjustments = await Promise.all((vatActuals.data ?? []).map(async row => ({
+    const vatAdjustments = await traceDashboardStage("operations.finance.vat_fx", () => Promise.all((vatActuals.data ?? []).map(async row => ({
       date: row.financial_date ?? "",
       amount: row.vat_reporting_amount === null || displayCurrency === overview.forecast.currency ? row.vat_reporting_amount : convertFinanceDisplayAmount(
         row.vat_reporting_amount,
         await getFinanceDisplayRate(overview.forecast.currency, displayCurrency, row.financial_date ?? overview.forecast.asOf),
         displayUnit.data.minor_units,
       ),
-    })));
+    }))));
     const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
-    const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", studioId).in("id", projectIds) : null;
+    const projects = projectIds.length ? await traceDashboardStage("operations.finance.projects", () => client.from("projects").select("id,name").eq("studio_id", studioId).in("id", projectIds)) : null;
     if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
     const projectNames = new Map(projects?.data?.map((project) => [project.id, project.name]));
     const upcoming = overview.forecast.items
@@ -133,7 +134,7 @@ async function getDashboardFinance(client: Awaited<ReturnType<typeof createClien
         overdueReceivableCount: incomingOverdue.count ?? 0,
         overdueObligationCount: outgoingOverdue.count ?? 0,
         upcoming,
-        month: financeDashboardMonthSummary({ ...displayOverview, vatAdjustments }),
+        month: await traceDashboardStage("operations.finance.month_summary", () => financeDashboardMonthSummary({ ...displayOverview, vatAdjustments })),
       },
     };
   } catch (cause) {
