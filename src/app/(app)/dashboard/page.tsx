@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { getDashboardAdministration } from "@/data/queries/dashboard-administration";
 import { getDashboardOperations } from "@/data/queries/dashboard-operations";
-import { getDashboard, type EmployeeDashboard } from "@/data/queries/dashboard";
+import { getDashboard, getDashboardContext, type EmployeeDashboard } from "@/data/queries/dashboard";
 import { selectAdminMyWork, selectAdminUpcoming, type AdminUpcomingItem } from "@/lib/dashboard";
 import { getDashboardDeadlineHref, getEmployeeDashboardMetrics } from "@/lib/dashboard-presentation";
 import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
@@ -19,10 +19,16 @@ import type { Metadata } from "next";
 export async function generateMetadata(): Promise<Metadata> { const t = await getTranslations("Dashboard"); return { title: t("metadata") }; }
 
 export default async function DashboardPage() {
-  const [dashboard, t] = await Promise.all([getDashboard(), getTranslations("Dashboard")]);
-  if (!dashboard) return <div className="space-y-8"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState compact title={t("loginRequired")} /></div>;
+  const [context, t] = await Promise.all([getDashboardContext(), getTranslations("Dashboard")]);
+  if (!context) return <div className="space-y-8"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState compact title={t("loginRequired")} /></div>;
+  // All domains share the verified request context and date; task refreshes stay inside getDashboard.
+  const [dashboard, administration, operations] = await Promise.all([
+    getDashboard(),
+    context.membership.system_role === "admin" ? getDashboardAdministration(context.today) : null,
+    context.membership.system_role === "admin" ? getDashboardOperations(context.today) : null,
+  ]);
+  if (!dashboard) return <EmptyState compact title={t("loginRequired")} />;
   if (dashboard.kind === "employee") return <Employee dashboard={dashboard} />;
-  const [administration, operations] = await Promise.all([getDashboardAdministration(), getDashboardOperations(dashboard.today)]);
   return <AdminDashboardView dashboard={dashboard} administration={administration} operations={operations} />;
 }
 

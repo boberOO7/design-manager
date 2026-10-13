@@ -1,8 +1,12 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { financeRateSchema } from "./finance-movements";
 
 const nbuRows = z.array(z.object({ cc: z.string(), exchangedate: z.string(), rate_per_unit: z.number().finite().positive() }));
+
+// React cache scopes this map to the server render, never to another user/request.
+const getRequestRates = cache(() => new Map<string, Promise<string>>());
 
 // NBU's range endpoint returns effective dates and rates per one unit, including weekends.
 // https://bank.gov.ua/admin_uploads/article/Instr_API_KURS_VAL_data_Full_eng.pdf
@@ -16,22 +20,36 @@ export function parseNbuRate(payload: unknown, currency: string, date: string) {
 async function nbuUahRates(currency: string, dates: string[]) {
   if (currency === "UAH") return new Map(dates.map(date => [date, "1"]));
   const code = z.string().regex(/^[A-Z]{3}$/).parse(currency);
+  const rates = getRequestRates();
   const byYear = new Map<string, string[]>();
-  for (const date of dates) {
+  for (const date of new Set(dates)) {
     z.iso.date().parse(date);
+    if (rates.has(`${code}:${date}`)) continue;
     byYear.set(date.slice(0, 4), [...(byYear.get(date.slice(0, 4)) ?? []), date]);
   }
-  const groups = await Promise.all([...byYear.values()].map(async days => {
+  for (const days of byYear.values()) {
     const first = days.reduce((a, b) => a < b ? a : b);
     const last = days.reduce((a, b) => a > b ? a : b);
     const url = new URL("https://bank.gov.ua/NBU_Exchange/exchange_site");
     url.search = new URLSearchParams({ start: first.replaceAll("-", ""), end: last.replaceAll("-", ""), valcode: code.toLowerCase(), sort: "exchangedate", order: "desc", json: "" }).toString();
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-    if (!response.ok) throw new Error("finance_fx_unavailable");
-    const payload: unknown = await response.json();
-    return days.map(date => [date, parseNbuRate(payload, code, date)] as const);
-  }));
-  return new Map(groups.flat());
+    const payload = (async (): Promise<unknown> => {
+      const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+      if (!response.ok) throw new Error("finance_fx_unavailable");
+      return response.json();
+    })();
+    for (const date of days) {
+      const key = `${code}:${date}`;
+      const rate = payload.then(data => parseNbuRate(data, code, date));
+      rates.set(key, rate);
+      // Outages/missing dates remain retryable; never retain a failed or substitute rate.
+      void rate.catch(() => { if (rates.get(key) === rate) rates.delete(key); });
+    }
+  }
+  return new Map(await Promise.all([...new Set(dates)].map(async date => {
+    const rate = await rates.get(`${code}:${date}`);
+    if (!rate) throw new Error("finance_fx_unavailable");
+    return [date, rate] as const;
+  })));
 }
 
 function crossRate(fromUah: string, toUah: string, reportingCurrency: string) {

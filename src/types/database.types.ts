@@ -9652,6 +9652,25 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finance_overview_after_refresh: {
+        Args: {
+          p_fx?: Json
+          p_horizon?: string
+          p_period?: string
+          p_scenario?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
+      get_finance_overview_fx_context: {
+        Args: {
+          p_horizon?: string
+          p_period?: string
+          p_scenario?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
       get_finance_payroll_editability: {
         Args: { p_studio_id: string }
         Returns: {
@@ -9764,6 +9783,15 @@ export type Database = {
       }
       prepare_finance_automatic_labor: {
         Args: { p_studio_id?: string }
+        Returns: Json
+      }
+      prepare_finance_overview_fx_context: {
+        Args: {
+          p_horizon?: string
+          p_period?: string
+          p_scenario?: string
+          p_studio_id: string
+        }
         Returns: Json
       }
       preview_finance_labor_activation: {

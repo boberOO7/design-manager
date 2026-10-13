@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ function planningPeriodBounds(period:FinancePlanningPeriod,today:string) {
   return [start.toISOString().slice(0,10),end.toISOString().slice(0,10)] as const;
 }
 
-export async function getFinanceData() {
+export const getFinanceData = cache(async () => {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const supabase = await createClient();
@@ -35,7 +36,7 @@ export async function getFinanceData() {
     opening_reporting_amount: z.string().nullable().parse(account.opening_reporting_amount),
     opening_fx_rate: z.string().nullable().parse(account.opening_fx_rate),
   })), currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
-}
+});
 
 export async function getFinanceCategories() {
   const admin = await getActiveStudioAdmin();

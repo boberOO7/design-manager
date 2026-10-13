@@ -5,11 +5,11 @@ import type { DashboardTaskSummary } from "@/types/tasks";
 import { isTaskInWorkloadCategory, WORKLOAD_CATEGORIES } from "@/lib/dashboard";
 import { getDashboard } from "./dashboard";
 
-const mocks = vi.hoisted(() => ({ createClient: vi.fn(), createAdminClient: vi.fn(), membership: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createClient: vi.fn(), createAdminClient: vi.fn(), membership: vi.fn(), refresh: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminClient }));
-vi.mock("@/data/mutations/refresh-task-schedules", () => ({ refreshProjectTaskSchedules: vi.fn() }));
+vi.mock("@/data/mutations/refresh-task-schedules", () => ({ refreshProjectTaskSchedules: mocks.refresh }));
 vi.mock("@/data/queries", () => ({ getCurrentUserProfile: async () => ({ id: "member", full_name: "Member", is_active: true }), getMyDashboardProductivity: async () => ({ areaM2: 0 }) }));
 vi.mock("@/data/queries/active-studio-membership", () => ({
   getActiveStudioMembership: mocks.membership,
@@ -18,6 +18,26 @@ vi.mock("@/data/queries/active-studio-membership", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.membership.mockResolvedValue({ studio_id: "studio", authenticatedUserId: "member", system_role: "admin" });
+});
+
+it("finishes schedule refreshes before reading tasks or workload periods", async () => {
+  let release: () => void = () => {};
+  mocks.refresh.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+  const requests: string[] = [];
+  mocks.createClient.mockResolvedValue(createClient<Database>("http://localhost:54321", "test", {
+    auth: { persistSession: false }, global: { fetch: async (input) => {
+      const table = new URL(String(input)).pathname.split("/").at(-1) ?? "";
+      requests.push(table);
+      return Response.json(table === "projects" ? [{ id: "project", status: "active" }] : []);
+    } },
+  }));
+  const pending = getDashboard();
+  await vi.waitFor(() => expect(mocks.refresh).toHaveBeenCalledWith(["project"]));
+  expect(requests).toEqual(["projects"]);
+  release();
+  expect((await pending)?.kind).toBe("admin");
+  expect(requests).toContain("tasks");
+  expect(requests).toContain("task_status_periods");
 });
 
 function task(index: number, overrides: Partial<DashboardTaskSummary> = {}) {

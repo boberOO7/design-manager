@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("./active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/lib/finance-fx", () => ({ resolveFinanceFx: mocks.fx, resolveFinanceFxDates: mocks.datedFx }));
 const today = "2026-09-20";
+const fxContext = { asOf: today, currency: "UAH", requiredCurrencies: ["USD"] };
 const report = {
   forecast: { version: 1, asOf: today, from: "2026-09-01", through: "2027-02-28", cutover: "2026-01-01", currency: "UAH", scenario: "confirmed", horizon: "6", fx: [], cashBase: "0", cashIncomplete: false, comparisons: [], months: [], items: [], issues: [] },
   period: "3", actualFrom: "2026-07-01", upcomingThrough: "2026-10-20", historyIncomplete: false, history: [], projection: [], lowPoint: { date: today, amount: "0" }, flows: [], netFlow: "0", accounts: [], receivables: [], receivableTotal: "0", receivablesIncomplete: true, outgoingTotal: "0", outgoingIncomplete: false, categories: [], requiredCurrencies: ["USD"],
@@ -20,6 +21,45 @@ describe("Overview application boundary", () => {
     mocks.admin.mockResolvedValue(null);
     expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toBeNull();
     expect(mocks.client).not.toHaveBeenCalled(); expect(mocks.fx).not.toHaveBeenCalled();
+  });
+  it("awaits preparation and FX before the read-only report, without another maintenance RPC", async () => {
+    let finishPreparation: () => void = () => {};
+    let finishFx: () => void = () => {};
+    const prepared = new Promise<void>(resolve => { finishPreparation = resolve; });
+    const ratesReady = new Promise<void>(resolve => { finishFx = resolve; });
+    const paths: string[] = [];
+    mocks.fx.mockImplementationOnce(async () => {
+      await ratesReady;
+      return { rate: "40", source: "nbu", effectiveDate: today };
+    });
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch: async input => {
+      const path = new URL(String(input)).pathname; paths.push(path);
+      if (path.endsWith("prepare_finance_overview_fx_context")) { await prepared; return Response.json(fxContext); }
+      return Response.json(report);
+    } } }));
+    const pending = getFinanceOverview(parseFinanceReportParams({}, today));
+    await vi.waitFor(() => expect(paths).toEqual(["/rest/v1/rpc/prepare_finance_overview_fx_context"]));
+    expect(mocks.fx).not.toHaveBeenCalled();
+    finishPreparation();
+    await vi.waitFor(() => expect(mocks.fx).toHaveBeenCalledOnce());
+    expect(paths).toHaveLength(1);
+    finishFx();
+    expect(await pending).toEqual(report);
+    expect(paths).toEqual(["/rest/v1/rpc/prepare_finance_overview_fx_context", "/rest/v1/rpc/get_finance_overview_after_refresh"]);
+  });
+  it.each(["empty", "foreign-base"])("runs the full report once without automatic FX for %s context", async mode => {
+    const context = mode === "empty" ? { ...fxContext, requiredCurrencies: [] } : { ...fxContext, currency: "USD", requiredCurrencies: ["EUR"] };
+    const paths: string[] = [];
+    const bodies: unknown[] = [];
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch: async (input, init) => {
+      const path = new URL(String(input)).pathname; paths.push(path);
+      bodies.push(typeof init?.body === "string" ? JSON.parse(init.body) : null);
+      return Response.json(path.endsWith("prepare_finance_overview_fx_context") ? context : report);
+    } } }));
+    expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toEqual(report);
+    expect(paths.filter(path => path.endsWith("/get_finance_overview_after_refresh"))).toHaveLength(1);
+    expect(bodies[1]).toMatchObject({ p_fx: [] });
+    expect(mocks.fx).not.toHaveBeenCalled();
   });
   it("fetches pre-cutover reporting actuals separately from balance cash effects", async () => {
     const urls: URL[] = [];
@@ -48,15 +88,17 @@ describe("Overview application boundary", () => {
   for (const mode of ["nbu", "unavailable", "manual", "database-error", "invalid-report"]) it(`resolves full report scope using shared FX policy: ${mode}`, async () => {
     if (mode === "unavailable") mocks.fx.mockRejectedValue(new Error("unavailable"));
     const calls: unknown[] = [];
-    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch: async (_input, init) => {
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch: async (input, init) => {
       calls.push(typeof init?.body === "string" ? JSON.parse(init.body) : null);
-      return new Response(JSON.stringify(mode === "database-error" ? { message: "denied" } : mode === "invalid-report" ? {} : report), { status: mode === "database-error" ? 403 : 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(mode === "database-error" ? { message: "denied" } : mode === "invalid-report" ? {} : String(input).endsWith("prepare_finance_overview_fx_context") ? fxContext : report), { status: mode === "database-error" ? 403 : 200, headers: { "Content-Type": "application/json" } });
     } } }));
     const context = parseFinanceReportParams(mode === "manual" ? { fx_USD: "41", horizon: "12", scenario: "planned", period: "year" } : {}, today);
     if (mode === "database-error" || mode === "invalid-report") { await expect(getFinanceOverview(context)).rejects.toThrow(); return; }
     expect((await getFinanceOverview(context))?.receivablesIncomplete).toBe(true);
-    expect(calls).toHaveLength(mode === "unavailable" ? 1 : 2);
-    expect(calls[0]).toMatchObject({ p_studio_id: "studio", p_fx: [] });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({ p_studio_id: "studio" });
+    expect(calls[0]).not.toHaveProperty("p_fx");
+    if (mode === "unavailable") expect(calls[1]).toMatchObject({ p_fx: [] });
     if (mode === "manual") {
       expect(mocks.fx).not.toHaveBeenCalled();
       expect(calls[1]).toEqual({ p_studio_id: "studio", p_horizon: "12", p_scenario: "planned", p_period: "year", p_fx: [{ currency: "USD", rate: "41", source: "manual", effectiveDate: today }] });
@@ -65,10 +107,10 @@ describe("Overview application boundary", () => {
 
   it.each(["initial", "valued"])("retries a gateway reset once during the %s RPC without repeating other work", async (phase) => {
     const bodies: unknown[] = [];
-    const fetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+    const fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
       bodies.push(typeof init?.body === "string" ? JSON.parse(init.body) : null);
       const failed = bodies.length === (phase === "initial" ? 1 : 2);
-      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : report), { status: failed ? 502 : 200 });
+      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : String(input).endsWith("prepare_finance_overview_fx_context") ? fxContext : report), { status: failed ? 502 : 200 });
     });
     mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
     expect(await getFinanceOverview(parseFinanceReportParams({}, today))).toEqual(report);
@@ -80,9 +122,9 @@ describe("Overview application boundary", () => {
 
   it("waits for the upstream to recover after two consecutive gateway failures", async () => {
     vi.useFakeTimers();
-    const fetch = vi.fn(async () => {
+    const fetch = vi.fn(async (input: unknown) => {
       const failed = fetch.mock.calls.length <= 2;
-      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : { ...report, requiredCurrencies: [] }), { status: failed ? 502 : 200 });
+      return new Response(JSON.stringify(failed ? { message: "An invalid response was received from the upstream server" } : String(input).endsWith("prepare_finance_overview_fx_context") ? { ...fxContext, requiredCurrencies: [] } : report), { status: failed ? 502 : 200 });
     });
     mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
     const result = getFinanceOverview(parseFinanceReportParams({}, today));
@@ -94,7 +136,7 @@ describe("Overview application boundary", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1);
     expect(await result).toMatchObject({ forecast: report.forecast });
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(4);
     expect(mocks.fx).not.toHaveBeenCalled();
   });
 
@@ -126,19 +168,19 @@ describe("Overview application boundary", () => {
   });
 
   it.each(["ECONNRESET", "UND_ERR_HEADERS_OVERFLOW", "ABORT_ERR"])("only retries a recognized transient fetch failure: %s", async (code) => {
-    const fetch = vi.fn(async () => {
+    const fetch = vi.fn(async (input: unknown) => {
       if (fetch.mock.calls.length === 1) {
         const cause = Object.assign(new Error(code), { code });
         if (code === "ABORT_ERR") throw Object.assign(new Error("aborted"), { name: "AbortError", code });
         throw new TypeError("fetch failed", { cause });
       }
-      return new Response(JSON.stringify({ ...report, requiredCurrencies: [] }));
+      return new Response(JSON.stringify(String(input).endsWith("prepare_finance_overview_fx_context") ? { ...fxContext, requiredCurrencies: [] } : report));
     });
     mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", { auth: { persistSession: false }, global: { fetch } }));
     const result = getFinanceOverview(parseFinanceReportParams({}, today));
     if (code === "ECONNRESET") {
       expect(await result).toMatchObject({ forecast: report.forecast });
-      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch).toHaveBeenCalledTimes(3);
     } else {
       await expect(result).rejects.toThrow();
       expect(fetch).toHaveBeenCalledOnce();

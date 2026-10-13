@@ -32,7 +32,7 @@ describe("forecast server query", () => {
       const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
       const body: unknown = typeof init?.body === "string" ? JSON.parse(init.body) : null;
       calls.push({ url, body });
-      const data = url.pathname.endsWith("/finance_settings") ? { finalized_at: today, base_currency: "UAH" } : url.pathname.endsWith("/get_finance_overview") ? overview : [];
+      const data = url.pathname.endsWith("/finance_settings") ? { finalized_at: today, base_currency: "UAH" } : url.pathname.endsWith("/prepare_finance_overview_fx_context") ? { asOf: today, currency: "UAH", requiredCurrencies: ["USD"] } : url.pathname.endsWith("/get_finance_overview_after_refresh") ? overview : [];
       return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
     } } });
     mocks.createClient.mockResolvedValue(client);
@@ -40,9 +40,11 @@ describe("forecast server query", () => {
     expect(result?.report).toBe(result?.overview?.forecast);
     expect(result?.report?.issues[0].reason).toBe("missing_fx");
     const rpc = calls.filter(c => c.url.pathname.includes("/rpc/"));
-    expect(rpc).toHaveLength(unavailable ? 1 : 2);
-    expect(rpc[0].body).toEqual({ p_studio_id: "studio", p_horizon: "6", p_scenario: "confirmed", p_period: "3", p_fx: [] });
-    if (!unavailable) expect(rpc[1].body).toMatchObject({ p_fx: [{ currency: "USD", rate: "40", source: "nbu", effectiveDate: today }] });
+    expect(rpc).toHaveLength(2);
+    expect(rpc.filter(c => c.url.pathname.endsWith("/get_finance_overview_after_refresh"))).toHaveLength(1);
+    expect(rpc[0].body).toEqual({ p_studio_id: "studio", p_horizon: "6", p_scenario: "confirmed", p_period: "3" });
+    if (unavailable) expect(rpc[1].body).toMatchObject({ p_fx: [] });
+    else expect(rpc[1].body).toMatchObject({ p_fx: [{ currency: "USD", rate: "40", source: "nbu", effectiveDate: today }] });
     for (const call of calls.filter(c => !c.url.pathname.includes("/rpc/"))) expect(call.url.searchParams.get("studio_id")).toBe("eq.studio");
   });
 });

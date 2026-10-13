@@ -30,12 +30,13 @@ function setup(mode: "success" | "reset" | "sql" | "invalid" | "settings" | "dra
     const url = new URL(String(input));
     const table = url.pathname.split("/").at(-1);
     const headers = new Headers({ "Content-Type": "application/json", "Content-Range": "0-0/1" });
-    if (table === "get_finance_overview" && mode === "reset") return new Response(JSON.stringify({ message: "An invalid response was received from the upstream server" }), { status: 502, headers });
-    if (table === "get_finance_overview" && mode === "sql") return new Response(JSON.stringify({ code: "42P01", message: "relation missing" }), { status: 500, headers });
+    if (table === "get_finance_overview_after_refresh" && mode === "reset") return new Response(JSON.stringify({ message: "An invalid response was received from the upstream server" }), { status: 502, headers });
+    if (table === "get_finance_overview_after_refresh" && mode === "sql") return new Response(JSON.stringify({ code: "42P01", message: "relation missing" }), { status: 500, headers });
     if ((table === "finance_settings" && mode === "settings") || (table === "finance_project_vat_actuals" && mode === "vat") || (table === "crm_leads" && mode === "crm")) return new Response(JSON.stringify({ code: "42501", message: "denied" }), { status: 403, headers });
     if (init?.method === "HEAD") return new Response(null, { headers });
     const body = table === "finance_settings" ? { finalized_at: mode === "draft" ? null : today }
-      : table === "get_finance_overview" ? mode === "invalid" ? {} : report
+      : table === "prepare_finance_overview_fx_context" ? { asOf: today, currency: "UAH", requiredCurrencies: [] }
+      : table === "get_finance_overview_after_refresh" ? mode === "invalid" ? {} : report
       : table === "finance_currencies" ? { minor_units: 2 }
       : table === "finance_project_vat_actuals" ? [{ financial_date: today, vat_reporting_amount: "20.00" }]
       : table === "crm_leads" ? [{ id: "lead", client_name: "Client", next_contact_at: `${today}T09:00:00Z` }]
@@ -60,7 +61,7 @@ it.each(["reset", "sql", "invalid", "settings", "vat"] as const)("preserves non-
     equipment: { overdueCount: 1 },
     submissions: { urgentCount: 1 },
   });
-  const rpcCalls = fetch.mock.calls.filter(([input]) => String(input).includes("get_finance_overview"));
+  const rpcCalls = fetch.mock.calls.filter(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"));
   expect(rpcCalls).toHaveLength(mode === "reset" ? 4 : mode === "settings" ? 0 : 1);
   expect(console.error).toHaveBeenCalledWith("Dashboard Finance data is unavailable.", expect.any(Error));
 });
@@ -72,14 +73,14 @@ it("retains successful Finance calculations and requests the overview only once 
     overdueReceivableCount: 1, overdueObligationCount: 1, upcoming: [],
     month: { currency: "UAH", expectedInflow: "0.0000", profitAndLoss: "80.0000" },
   } });
-  expect(fetch.mock.calls.filter(([input]) => String(input).includes("get_finance_overview"))).toHaveLength(1);
+  expect(fetch.mock.calls.filter(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toHaveLength(1);
   expect(console.error).not.toHaveBeenCalled();
 });
 
 it("distinguishes unfinished Finance setup from unavailable Finance", async () => {
   const fetch = setup("draft");
   expect(await getDashboardOperations(today, now)).toMatchObject({ finance: null, financeUnavailable: false });
-  expect(fetch.mock.calls.some(([input]) => String(input).includes("get_finance_overview"))).toBe(false);
+  expect(fetch.mock.calls.some(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toBe(false);
   expect(console.error).not.toHaveBeenCalled();
 });
 
@@ -93,4 +94,20 @@ it("does not request admin operations for an employee", async () => {
   mocks.admin.mockResolvedValue(null);
   expect(await getDashboardOperations(today, now)).toBeNull();
   expect(mocks.client).not.toHaveBeenCalled();
+});
+
+it("starts Finance while unrelated CRM reads are still pending", async () => {
+  const fetch = setup("success");
+  const original = fetch.getMockImplementation();
+  if (!original) throw new Error("Expected local fetch fixture");
+  let release: () => void = () => {};
+  const crmReady = new Promise<void>(resolve => { release = resolve; });
+  fetch.mockImplementation(async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith("crm_leads")) await crmReady;
+    return original(input, init);
+  });
+  const pending = getDashboardOperations(today, now);
+  await vi.waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).endsWith("/get_finance_overview_after_refresh"))).toBe(true));
+  release();
+  expect(await pending).toMatchObject({ financeUnavailable: false, crm: { activeCount: 3 }, finance: { month: { profitAndLoss: "80.0000" } } });
 });

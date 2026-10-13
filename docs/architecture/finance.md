@@ -607,7 +607,7 @@ recurrence generation job or tax engine is implied.
 
 - Local Forecast, Budget and Forecast history modes share this route; Forecast is
   the default. Horizon/scenario changes apply immediately and retain manual rates.
-  Planning loads `get_finance_overview`, whose embedded canonical forecast supplies
+  Planning uses the shared `getFinanceOverview` loader, whose canonical forecast supplies
   both summaries/chart and monthly detail under one calculation and FX scope.
   Historical flow bars cover the last three calendar months through today; category
   comparison covers the forecast horizon. They retain separate date labels.
@@ -736,6 +736,11 @@ and generation workflow must retain these timing and historical boundaries.
   numeric summaries; it creates no financial sources or alternative timing rules.
   Summary breakdowns use the same RPC result and FX assumptions. Expected-item
   links filter by ID, so pagination cannot hide the selected obligation.
+- Overview and Planning prepare with `prepare_finance_overview_fx_context`, resolve
+  dated FX, then call `get_finance_overview_after_refresh`. Preparation owns the
+  single schedule refresh; `get_finance_overview_fx_context` and final reporting
+  are read-only. The final report uses one statement snapshot and the same shared
+  projection as the retained, self-refreshing `get_finance_overview` RPC.
 - Cash history uses original same-currency openings and frozen foreign opening
   valuations plus all stored reporting cash effects, including transfer legs, at
   daily closing precision. Missing legacy opening valuations make history

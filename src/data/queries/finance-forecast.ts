@@ -1,10 +1,8 @@
 import "server-only";
-import { requestFinanceOverview } from "./finance-overview-rpc";
-import { financeOverviewSchema } from "@/lib/finance-overview";
+import { getFinanceOverview } from "./finance-overview";
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { resolveFinanceFx } from "@/lib/finance-fx";
-import { forecastFxSchema, forecastOptionsSchema, forecastSnapshotSchema, snapshotComparisonSchema, type ForecastFx, type ForecastReport } from "@/lib/finance-forecast";
+import { forecastOptionsSchema, forecastSnapshotSchema, snapshotComparisonSchema, type ForecastFx } from "@/lib/finance-forecast";
 
 export async function getFinanceForecast(options: { horizon?: string; scenario?: string }, year: number, manualFx: ForecastFx = [], snapshotId?: string) {
   const admin = await getActiveStudioAdmin();
@@ -21,16 +19,10 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
   const error = settings.error ?? budget.error ?? history.error ?? snapshots.error ?? saved?.error;
   if (error) throw new Error("Unable to load cash planning.", { cause: error });
   if (!settings.data?.finalized_at) return { report: null, overview: null, budget: budget.data ?? [], history: history.data ?? [], snapshots: snapshots.data ?? [], saved: null };
-  // First calculate without FX: its complete issue list discovers currencies without a Data API row cap.
-  const raw = await requestFinanceOverview(client, { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: [] });
-  if (raw.error) throw new Error("Unable to calculate forecast.", { cause: raw.error });
-  const initial = financeOverviewSchema.parse(raw.data);
-  const fx = await resolveForecastAssumptions(initial.forecast, manualFx, initial.requiredCurrencies);
-  const calculated = fx.length ? await requestFinanceOverview(client, { p_studio_id: admin.studio_id, p_horizon: parsed.horizon, p_scenario: parsed.scenario, p_period: "3", p_fx: fx }) : raw;
-  if (calculated.error) throw new Error("Unable to value forecast.", { cause: calculated.error });
+  const overview = await getFinanceOverview({ options: parsed, period: "3", fx: manualFx, invalidFx: false });
+  if (!overview) return null;
   const compared = saved?.data && saved.data.capture_order !== null ? await client.rpc("compare_finance_forecast_snapshot", { p_studio_id: admin.studio_id, p_snapshot_id: saved.data.id }) : null;
   if (compared?.error) throw new Error("Unable to compare forecast snapshot.", { cause: compared.error });
-  const overview = financeOverviewSchema.parse(calculated.data);
   return {
     report: overview.forecast, overview, budget: budget.data ?? [], history: history.data ?? [], snapshots: snapshots.data ?? [],
     saved: saved?.data ? { ...saved.data, forecast: forecastSnapshotSchema.parse(saved.data.forecast), comparison: compared ? snapshotComparisonSchema.parse(compared.data) : null } : null,
@@ -38,17 +30,4 @@ export async function getFinanceForecast(options: { horizon?: string; scenario?:
 }
 export type FinanceForecastData = NonNullable<Awaited<ReturnType<typeof getFinanceForecast>>>;
 
-export async function resolveForecastAssumptions(initial: Pick<ForecastReport, "asOf" | "currency" | "items" | "issues">, manualFx: ForecastFx = [], extraCurrencies: string[] = []) {
-  const today = initial.asOf;
-  const fx = forecastFxSchema.parse(manualFx).filter(row => row.currency !== initial.currency);
-  const needed = [...new Set([...extraCurrencies, ...initial.items.filter(item => item.reportingAmount === null).map(item => item.currency), ...initial.issues.filter(issue => issue.reason === "missing_fx").map(issue => issue.currency)])];
-  const rates = await Promise.all(needed.filter(currency => !fx.some(row => row.currency === currency)).map(async currency => {
-    if (initial.currency !== "UAH") return null;
-    try {
-      const rate = await resolveFinanceFx(currency, initial.currency, today, "nbu", "");
-      return { currency, rate: rate.rate, source: "nbu" as const, effectiveDate: rate.effectiveDate };
-    } catch { return null; } // Unavailable rates remain explicit report issues; never fall back to zero/old FX.
-  }));
-  fx.push(...rates.filter(rate => rate !== null));
-  return fx;
-}
+export { resolveForecastAssumptions } from "./finance-report-fx";

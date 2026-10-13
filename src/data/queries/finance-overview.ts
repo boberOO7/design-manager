@@ -1,26 +1,27 @@
 import "server-only";
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { resolveForecastAssumptions } from "./finance-forecast";
+import { resolveForecastAssumptions } from "./finance-report-fx";
 import { financeOverviewSchema, type parseFinanceReportParams } from "@/lib/finance-overview";
 import { cache } from "react";
 import { z } from "zod";
 import { resolveFinanceFx, resolveFinanceFxDates } from "@/lib/finance-fx";
 import { projectFinanceDisplayReport } from "@/lib/finance-display-report";
 import type { FinanceDisplayCurrency } from "@/lib/finance-display-currency";
-import { requestFinanceOverview } from "./finance-overview-rpc";
+import { requestFinanceOverviewAfterRefresh, prepareFinanceOverviewFxContext } from "./finance-overview-rpc";
+
+const fxContextSchema = z.object({ asOf: z.iso.date(), currency: z.string(), requiredCurrencies: z.array(z.string()) });
 
 export async function getFinanceOverview(context: ReturnType<typeof parseFinanceReportParams>) {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
   const args = { p_studio_id: admin.studio_id, p_horizon: context.options.horizon, p_scenario: context.options.scenario, p_period: context.period };
-  const raw = await requestFinanceOverview(client, { ...args, p_fx: [] });
-  if (raw.error) throw new Error("Unable to load Finance Overview.", { cause: raw.error });
-  const initial = financeOverviewSchema.parse(raw.data);
-  const fx = await resolveForecastAssumptions(initial.forecast, context.fx, initial.requiredCurrencies);
-  if (!fx.length) return initial;
-  const valued = await requestFinanceOverview(client, { ...args, p_fx: fx });
+  const raw = await prepareFinanceOverviewFxContext(client, args);
+  if (raw.error) throw new Error("Unable to load Finance FX context.", { cause: raw.error });
+  const initial = fxContextSchema.parse(raw.data);
+  const fx = await resolveForecastAssumptions({ ...initial, items: [], issues: [] }, context.fx, initial.requiredCurrencies);
+  const valued = await requestFinanceOverviewAfterRefresh(client, { ...args, p_fx: fx });
   if (valued.error) throw new Error("Unable to value Finance Overview.", { cause: valued.error });
   return financeOverviewSchema.parse(valued.data);
 }

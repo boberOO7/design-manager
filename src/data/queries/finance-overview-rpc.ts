@@ -3,13 +3,28 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
-export async function requestFinanceOverview(
+export async function requestFinanceOverviewAfterRefresh(
   client: Awaited<ReturnType<typeof createClient>>,
-  args: Database["public"]["Functions"]["get_finance_overview"]["Args"],
+  args: Database["public"]["Functions"]["get_finance_overview_after_refresh"]["Args"],
+) {
+  return requestOverviewRpc(client, "get_finance_overview_after_refresh", args);
+}
+
+export async function prepareFinanceOverviewFxContext(
+  client: Awaited<ReturnType<typeof createClient>>,
+  args: Database["public"]["Functions"]["prepare_finance_overview_fx_context"]["Args"],
+) {
+  return requestOverviewRpc(client, "prepare_finance_overview_fx_context", args);
+}
+
+async function requestOverviewRpc(
+  client: Awaited<ReturnType<typeof createClient>>,
+  name: "get_finance_overview_after_refresh" | "prepare_finance_overview_fx_context",
+  args: Database["public"]["Functions"]["get_finance_overview_after_refresh"]["Args"],
 ) {
   const request = async (attempt: number) => {
     const started = performance.now();
-    const response = await client.rpc("get_finance_overview", args);
+    const response = await client.rpc(name, args);
     if (response.error) console.warn("Finance Overview RPC failed.", {
       attempt,
       status: response.status,
@@ -23,7 +38,7 @@ export async function requestFinanceOverview(
   };
 
   let response = await request(1);
-  // Repeating the overview safely reconciles the same automatic occurrences.
+  // Preparation reconciles the same occurrences; reporting retries are read-only.
   // POST RPCs are not retried by the SDK. Give a resetting upstream time to
   // recover, but never retry a PostgreSQL/PostgREST error or invalid JSON.
   for (const [index, delay] of [500, 1000, 2000].entries()) {

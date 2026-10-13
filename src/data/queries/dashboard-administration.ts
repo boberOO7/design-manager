@@ -7,11 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export type DashboardAbsence = Pick<AdministrationRequest, "id" | "employeeName" | "startDate" | "endDate" | "startTime" | "endTime" | "allDay">;
 
-export async function getDashboardAdministration(): Promise<{ pendingCount: number; upcomingAbsences: DashboardAbsence[] } | null> {
+export async function getDashboardAdministration(today = instantToDateOnly(new Date().toISOString())): Promise<{ pendingCount: number; upcomingAbsences: DashboardAbsence[] } | null> {
   const membership = await getActiveStudioAdmin();
   if (!membership) return null;
   const supabase = await createClient();
-  const today = instantToDateOnly(new Date().toISOString());
   const [pending, upcoming] = await Promise.all([
     // Count all visible requests; keep the employee visibility join.
     supabase.from("time_off_requests").select("id, employee:profiles!time_off_requests_user_id_fkey!inner()", { count: "exact", head: true })

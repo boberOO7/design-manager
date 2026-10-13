@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
@@ -48,10 +49,17 @@ function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject
   ].sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title)).slice(0, limitCount);
 }
 
-export async function getDashboard(): Promise<DashboardData | null> {
+export const getDashboardContext = cache(async () => {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
   if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return null;
   if (membership.system_role !== "admin" && membership.system_role !== "employee") throw new Error("Active studio membership has an unsupported role.");
+  return { profile, membership, today: getKyivDateOnly() };
+});
+
+export async function getDashboard(): Promise<DashboardData | null> {
+  const context = await getDashboardContext();
+  if (!context) return null;
+  const { profile, membership, today } = context;
   const supabase = await createClient();
   const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date, status, total_area_m2, include_in_productivity").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", OPERATIONAL_PROJECT_STATUSES);
   const { data: visibleProjects, error: visibleProjectsError } = await projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>();
@@ -67,7 +75,6 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
   const now = new Date();
   const asOf = now.toISOString();
-  const today = getKyivDateOnly(now);
   const [stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
     supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
     membership.system_role === "admin"

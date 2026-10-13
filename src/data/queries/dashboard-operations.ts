@@ -47,8 +47,8 @@ export async function getDashboardOperations(today: string, now = new Date()): P
     .eq("responsible_admin_id", admin.authenticatedUserId)
     .neq("status", CRM_INACTIVE_FOLLOW_UP_LEAD_STATUS)
     .not("next_contact_at", "is", null);
-  const [financeSettings, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await Promise.all([
-    client.from("finance_settings").select("finalized_at").eq("studio_id", admin.studio_id).maybeSingle(),
+  const [finance, activeLeadCount, overdueFollowUps, upcomingFollowUps, assignmentsResult, equipmentResult, urgentSubmissionsResult] = await Promise.all([
+    getDashboardFinance(client, admin.studio_id),
     getActiveCrmLeadCount(),
     leadScope().lt("next_contact_at", nowIso).order("next_contact_at").limit(1),
     leadScope().gte("next_contact_at", nowIso).lt("next_contact_at", upcomingEndExclusive).order("next_contact_at"),
@@ -80,19 +80,24 @@ export async function getDashboardOperations(today: string, now = new Date()): P
       id: item.id, title: item.display_name ?? item.asset_tag, date: item.next_maintenance_due_date,
     }] : []),
   };
+  return { crm, office, equipment, submissions, ...finance };
+}
+
+async function getDashboardFinance(client: Awaited<ReturnType<typeof createClient>>, studioId: string): Promise<Pick<DashboardOperations, "finance" | "financeUnavailable">> {
   try {
+    const financeSettings = await client.from("finance_settings").select("finalized_at").eq("studio_id", studioId).maybeSingle();
     if (financeSettings.error) throw new Error("Unable to load Dashboard Finance settings.", { cause: financeSettings.error });
-    if (!financeSettings.data?.finalized_at) return { crm, finance: null, financeUnavailable: false, office, equipment, submissions };
+    if (!financeSettings.data?.finalized_at) return { finance: null, financeUnavailable: false };
 
     const [incomingOverdue, outgoingOverdue] = await Promise.all([
-      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "incoming").or(FINANCE_OVERDUE_DB_FILTER),
-      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", admin.studio_id).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
+      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", studioId).eq("direction", "incoming").or(FINANCE_OVERDUE_DB_FILTER),
+      client.from("finance_expected_balances").select("id", { count: "exact", head: true }).eq("studio_id", studioId).eq("direction", "outgoing").or(FINANCE_OVERDUE_DB_FILTER),
     ]);
     if (incomingOverdue.error || outgoingOverdue.error) throw new Error("Unable to load Dashboard overdue payments.", { cause: incomingOverdue.error ?? outgoingOverdue.error });
     const [overview, displayCurrency] = await Promise.all([getFinanceOverview({ options: { horizon: "3", scenario: "confirmed" }, fx: [], invalidFx: false, period: "month" }), getFinanceDisplayCurrency()]);
     if (!overview) throw new Error("Unable to load Dashboard Finance signals.");
     const vatActuals = await client.from("finance_project_vat_actuals").select("financial_date,vat_reporting_amount::text")
-      .eq("studio_id", admin.studio_id).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf);
+      .eq("studio_id", studioId).gte("financial_date", `${overview.forecast.asOf.slice(0, 7)}-01`).lte("financial_date", overview.forecast.asOf);
     if (vatActuals.error) throw new Error("Unable to load project VAT actuals.", { cause: vatActuals.error });
     const displayOverview = await getFinanceDisplayOverview(overview, displayCurrency);
     if (!displayOverview) throw new Error("Unable to display Dashboard Finance signals.");
@@ -107,7 +112,7 @@ export async function getDashboardOperations(today: string, now = new Date()): P
       ),
     })));
     const projectIds = [...new Set(overview.forecast.items.flatMap((item) => item.projectId ? [item.projectId] : []))];
-    const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", admin.studio_id).in("id", projectIds) : null;
+    const projects = projectIds.length ? await client.from("projects").select("id,name").eq("studio_id", studioId).in("id", projectIds) : null;
     if (projects?.error) throw new Error("Unable to load Dashboard payment projects.", { cause: projects.error });
     const projectNames = new Map(projects?.data?.map((project) => [project.id, project.name]));
     const upcoming = overview.forecast.items
@@ -123,7 +128,6 @@ export async function getDashboardOperations(today: string, now = new Date()): P
         projectName: item.projectId ? projectNames.get(item.projectId) ?? null : null,
       }));
     return {
-      crm,
       financeUnavailable: false,
       finance: {
         overdueReceivableCount: incomingOverdue.count ?? 0,
@@ -131,10 +135,9 @@ export async function getDashboardOperations(today: string, now = new Date()): P
         upcoming,
         month: financeDashboardMonthSummary({ ...displayOverview, vatAdjustments }),
       },
-      office, equipment, submissions,
     };
   } catch (cause) {
     console.error("Dashboard Finance data is unavailable.", cause);
-    return { crm, finance: null, financeUnavailable: true, office, equipment, submissions };
+    return { finance: null, financeUnavailable: true };
   }
 }
