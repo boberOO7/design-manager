@@ -1,0 +1,32 @@
+import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import context from "./project-context-band.module.css";
+import type { getProjectById } from "@/data/queries/project-by-id";
+import { TASK_STAGES } from "@/lib/task-stages";
+
+function LoadingScope({ children, name, className = "" }: { children: ReactNode; name: string; className?: string }) {
+  const t = useTranslations("Common");
+  return <div role="status" aria-label={t("loading")} data-project-loading={name} className={`instaload-blueprint ${className}`}><span className="sr-only">{t("loading")}</span><div aria-hidden="true">{children}</div></div>;
+}
+
+export function ProjectContextBlueprint({ project }: { project?: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
+  const t = useTranslations("Projects");
+  return <LoadingScope name="context"><section className={context.sheet}>
+    <div className={context.toolbar}><span className="instaload-mark my-2 h-5 w-36" /><span className="instaload-mark size-9" /></div>
+    {project?.status === "paused" && !project.archived_at ? <div className={context.paused}><span className="instaload-mark mt-0.5 size-4 shrink-0" /><div><p className="font-semibold text-transparent">{t("pausedBannerTitle")}</p><p className="mt-0.5 leading-5 text-transparent">{t("pausedBannerDescription")}</p></div></div> : null}
+    <div className={context.identity}><div className={context.heading}>{project ? <span className={`${context.title} instaload-mark max-w-full text-transparent`}>{project.name}</span> : <span className={`${context.title} instaload-mark h-[1.2em] w-72 max-w-full`} />}<span className="instaload-mark h-6 w-32" /></div><div className={context.metadata}><span className="instaload-mark h-5 w-28" /><span className="instaload-mark h-5 w-32" /><span className="instaload-mark h-5 w-24" /></div></div>
+    <div className={context.measurements}>{project?.show_progress !== false ? <div className={context.progress}><div className={context.overall}><span className="instaload-mark h-5 w-24" /><span className={`${context.overallValue} instaload-mark h-[1em] w-20`} /><div className={context.trackWrap}><span className="instaload-mark h-3 w-full" /></div></div><div className={context.stages}>{[0, 1, 2].map(stage => <div key={stage} className={context.stage}><span className="instaload-mark h-5 w-24 max-w-full" /><span className="instaload-mark h-7 w-14" /><div className={context.trackWrap}><span className="instaload-mark h-3 w-full" /></div></div>)}</div></div> : null}<div className={context.taskLine}><span className="instaload-mark h-4 w-72 max-w-full" /></div></div>
+    <div className={context.dates}>{[0, 1, 2, 3, 4].map(item => <div key={item}><span className="instaload-mark h-[18px] w-28 max-w-full" /><span className="instaload-mark mt-[7px] h-[22.5px] w-24 max-w-full" /></div>)}</div>
+  </section></LoadingScope>;
+}
+
+export function ProjectBoardBlueprint() {
+  return <LoadingScope name="board"><div className="mb-4 flex min-h-10 items-center justify-between gap-4"><div className="space-y-1"><span className="instaload-mark h-5 w-28" /><span className="instaload-mark h-5 w-80 max-w-full" /></div><span className="instaload-mark h-9 w-28" /></div><div className="space-y-3">{TASK_STAGES.map((stage, index) => <section key={stage} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]"><div className="flex min-h-12 items-center justify-between gap-2 px-4"><span className="instaload-mark h-5 w-36" /><span className="instaload-mark h-6 w-24" /></div>{index === 0 ? <div className="overflow-x-auto border-t border-t-transparent p-3"><div className="grid gap-4" style={{ gridTemplateColumns: "repeat(5, minmax(12rem, 1fr))" }}>{[0, 1, 2, 3, 4].map(column => <div key={column} className="min-h-72 rounded-xl border border-[var(--ui-border)] p-3"><span className="instaload-mark mb-2 h-11 w-full" /><div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-3"><span className="instaload-mark h-4 w-3/4" /><span className="instaload-mark mt-3 h-3 w-1/2" /></div></div>)}</div></div> : null}</section>)}</div></LoadingScope>;
+}
+
+export function ProjectSectionBlueprint({ view }: { view: "details" | "team" | "activity" | "finance" }) {
+  if (view === "details") return <LoadingScope name={view} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]"><span className="instaload-mark h-7 w-44" /><div className="mt-4 grid gap-5 md:grid-cols-2">{Array.from({ length: 6 }, (_, i) => <div key={i}><span className="instaload-mark h-5 w-24" /><span className="instaload-mark mt-1 h-5 w-36" /></div>)}</div><div className="mt-5 grid gap-5 border-t border-[var(--ui-border)] pt-5 md:grid-cols-2">{[0, 1].map(i => <div key={i}><span className="instaload-mark h-5 w-16" /><div className="mt-3 space-y-4">{[0, 1].map(j => <div key={j}><span className="instaload-mark h-5 w-28" /><span className="instaload-mark mt-1 h-9 w-40" /></div>)}</div></div>)}</div></LoadingScope>;
+  if (view === "finance") return <LoadingScope name={view} className="space-y-4"><div className="grid gap-5 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:grid-cols-4">{[0, 1, 2, 3].map(i => <div key={i}><span className="instaload-mark h-4 w-24" /><span className="instaload-mark mt-2 h-7 w-32" /></div>)}</div><div className="flex h-11 gap-8 border-b border-[var(--ui-border)]">{[0, 1, 2].map(i => <span key={i} className="instaload-mark my-auto h-5 w-24" />)}</div><div className="space-y-4 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5">{[0, 1, 2].map(i => <span key={i} className="instaload-mark h-12 w-full" />)}</div></LoadingScope>;
+  return <LoadingScope name={view} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-6 shadow-[var(--ui-shadow-panel)]"><span className="instaload-mark h-7 w-44" /><span className="instaload-mark mt-1 h-5 w-72 max-w-full" /><div className="mt-5">{[0, 1, 2].map(i => <div key={i} className="flex items-center gap-3 border-b border-[var(--ui-border-subtle)] py-4 last:border-0"><span className="instaload-mark size-10 shrink-0 rounded-full" /><div className="min-w-0 flex-1 space-y-2"><span className="instaload-mark h-5 w-40 max-w-full" /><span className="instaload-mark h-4 w-64 max-w-full" /></div><span className="instaload-mark h-5 w-20" /></div>)}</div></LoadingScope>;
+}
+

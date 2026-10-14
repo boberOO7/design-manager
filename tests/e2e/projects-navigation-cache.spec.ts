@@ -30,27 +30,16 @@ async function login(page: Page, actor = actors[0]) {
 }
 
 async function navigate(page: Page, selector = listLink) {
-  // Start/end in the browser, avoiding Playwright click/locator polling in the timing.
-  return page.evaluate(({ selector, ready }) => new Promise<number>((resolve, reject) => {
-    const link = document.querySelector<HTMLAnchorElement>(selector);
-    if (!link) return reject(new Error(`Missing ${selector}`));
-    const started = performance.now();
-    link.click();
-    function check() {
-      const panel = document.querySelector<HTMLElement>(ready);
-      const search = document.querySelector<HTMLInputElement>('input[type="search"]');
-      if (location.pathname === "/projects" && panel?.getBoundingClientRect().height && search && !search.disabled) return resolve(performance.now() - started);
-      if (performance.now() - started > 15000) return reject(new Error("Projects did not become usable"));
-      requestAnimationFrame(check);
-    }
-    requestAnimationFrame(check);
-  }), { selector, ready });
+  await page.locator(selector).click();
+  await expect(page).toHaveURL(/\/projects(?:\?|$)/);
+  await expect(page.locator(ready)).toBeVisible();
+  await expect(page.getByRole("searchbox")).toBeEnabled();
 }
 
 async function leave(page: Page) {
   await page.locator(`${detailLink}:visible`).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}`));
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Cached navigation pilot");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Cached navigation project");
 }
 
 async function settled(page: Page) {
@@ -61,7 +50,7 @@ async function settled(page: Page) {
 }
 
 test.beforeAll(async () => {
-  await service.from("studios").insert([{ id: studioId, name: "Projects cache pilot" }, { id: otherStudioId, name: "Projects cache other studio" }]).throwOnError();
+  await service.from("studios").insert([{ id: studioId, name: "Projects navigation" }, { id: otherStudioId, name: "Projects cache other studio" }]).throwOnError();
   for (const actor of actors) {
     const created = await service.auth.admin.createUser({ email: actor.email, password: actor.password, email_confirm: true });
     if (created.error) throw created.error;
@@ -69,7 +58,7 @@ test.beforeAll(async () => {
     await service.from("profiles").upsert({ id: actor.id, email: actor.email, full_name: `Cache ${actor.role}`, system_role: actor.role, is_active: true }).throwOnError();
     await service.from("studio_members").insert({ studio_id: studioId, user_id: actor.id, system_role: actor.role, is_active: true }).throwOnError();
   }
-  sql(`insert into projects(id,studio_id,name,status,total_area_m2,project_type,created_by) values (${id(projectId)},${id(studioId)},'Cached navigation pilot','active',100,'private',${id(actors[0].id)});
+  sql(`insert into projects(id,studio_id,name,status,total_area_m2,project_type,created_by) values (${id(projectId)},${id(studioId)},'Cached navigation project','active',100,'private',${id(actors[0].id)});
     insert into project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) values ${actors.map(actor => `(${id(projectId)},${id(actor.id)},'designer',0,current_date)` ).join(",")};
     insert into tasks(id,project_id,title,stage,status,assignee_id,created_by,production_completion,manual_progress_override) values (${id(taskId)},${id(projectId)},'Cache task','stage_1','in_progress',${id(actors[0].id)},${id(actors[0].id)},10,true);`);
 });
@@ -85,61 +74,45 @@ test.afterAll(async () => {
   for (const actor of actors) if (actor.id) await service.auth.admin.deleteUser(actor.id);
 });
 
-test("release navigation uses fresh server data without experimental retention or duplicate checks", async ({ browser }, testInfo) => {
-  test.setTimeout(180000);
-  const samples: Array<{ scenario: string; usableMs: number; freshnessMs: number | null; fresh: boolean; cacheReuse: boolean; prefetchRequests: string[]; requests: string[] }> = [];
-  for (let iteration = 0; iteration < 5; iteration++) {
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`release navigation uses fresh server data without experimental retention or duplicate checks (${reducedMotion})`, async ({ page }) => {
     sql(`update projects set status='active' where id=${id(projectId)}; update tasks set production_completion=10 where id=${id(taskId)};`);
-    const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL, reducedMotion: iteration === 4 ? "reduce" : "no-preference" });
-    const page = await context.newPage();
-    try {
-      await login(page);
-      const requests: string[] = [];
-      page.on("request", request => {
-        if (new URL(request.url()).pathname === "/projects") requests.push(request.headers()["next-action"] ? "access" : request.headers()["next-router-prefetch"] ? "prefetch" : "navigation/refresh");
-      });
-      for (const scenario of ["first", "return", "prefetch", "task mutation", "project mutation"]) {
-        if (scenario !== "first") await leave(page);
-        requests.length = 0;
-        if (scenario === "prefetch") {
-          // Explicit keyboard intent; let the native loading-boundary prefetch finish before navigation.
-          await page.locator(listLink).focus();
-          await page.waitForLoadState("networkidle");
-        }
-        if (scenario === "project mutation") {
-          const response = await page.request.patch(`/api/projects/${projectId}/status`, { data: { status: "paused" } });
-          expect(response.ok()).toBe(true);
-        }
-        if (scenario === "task mutation") {
-          await page.request.patch(`/api/projects/${projectId}/status`, { data: { status: "active" } });
-          const response = await page.request.patch(`/api/tasks/${taskId}/progress`, { data: { production_completion: 70 } });
-          expect(response.ok()).toBe(true);
-        }
-        const prefetchRequests = [...requests];
-        requests.length = 0;
-        const started = Date.now();
-        const usableMs = await navigate(page);
-        if (scenario === "project mutation") await expect(page.locator(`${detailLink}:visible`)).toHaveCount(0);
-        if (scenario === "task mutation") await expect(page.locator(`${ready} [role="progressbar"]`).first()).toHaveAttribute("aria-valuenow", updatedProgress);
-        let fresh = true;
-        if (scenario === "task mutation") fresh = await page.locator(`${ready} [role="progressbar"]`).first().getAttribute("aria-valuenow") === updatedProgress;
-        if (scenario === "project mutation") fresh = await page.locator(`${detailLink}:visible`).count() === 0;
-        const freshnessMs = fresh ? Date.now() - started : null;
-        await settled(page);
-        if (iteration === 4 && scenario !== "project mutation") {
-          await expect(page.locator(ready)).toHaveAttribute("data-instaload-entrance", "ready");
-          expect(await page.locator(`${ready} [data-instaload-arrival]`).first().evaluate(element => getComputedStyle(element).animationName)).toBe("none");
-        }
-        samples.push({ scenario, usableMs: Math.round(usableMs), freshnessMs, fresh, cacheReuse: requests.includes("access"), prefetchRequests, requests: [...requests] });
+    await page.emulateMedia({ reducedMotion });
+    await login(page);
+    const requests: string[] = [];
+    page.on("request", request => {
+      if (new URL(request.url()).pathname === "/projects") requests.push(request.headers()["next-action"] ? "access" : request.headers()["next-router-prefetch"] ? "prefetch" : "navigation/refresh");
+    });
+    for (const scenario of ["first", "return", "prefetch", "task mutation", "project mutation"]) {
+      if (scenario !== "first") await leave(page);
+      requests.length = 0;
+      if (scenario === "prefetch") {
+        await page.locator(listLink).focus();
+        await page.waitForLoadState("networkidle");
+        expect(requests).toEqual([]);
       }
-    } finally { await context.close(); }
-  }
-  await testInfo.attach("release-navigation.json", { body: JSON.stringify(samples, null, 2), contentType: "application/json" });
-  expect(samples.every(sample => sample.fresh)).toBe(true);
-  expect(samples.every(sample => !sample.cacheReuse && sample.requests.length === 1 && sample.requests[0] === "navigation/refresh")).toBe(true);
-  expect(samples.every(sample => sample.prefetchRequests.length === 0)).toBe(true);
-  console.log(JSON.stringify(samples));
-});
+      if (scenario === "project mutation") {
+        const response = await page.request.patch(`/api/projects/${projectId}/status`, { data: { status: "paused" } });
+        expect(response.ok()).toBe(true);
+      }
+      if (scenario === "task mutation") {
+        await page.request.patch(`/api/projects/${projectId}/status`, { data: { status: "active" } });
+        const response = await page.request.patch(`/api/tasks/${taskId}/progress`, { data: { production_completion: 70 } });
+        expect(response.ok()).toBe(true);
+      }
+      requests.length = 0;
+      await navigate(page);
+      if (scenario === "project mutation") await expect(page.locator(`${detailLink}:visible`)).toHaveCount(0);
+      if (scenario === "task mutation") await expect(page.locator(`${ready} [role="progressbar"]`).first()).toHaveAttribute("aria-valuenow", updatedProgress);
+      await settled(page);
+      expect(requests).toEqual(["navigation/refresh"]);
+      if (reducedMotion === "reduce" && scenario !== "project mutation") {
+        await expect(page.locator(ready)).toHaveAttribute("data-instaload-entrance", "ready");
+        expect(await page.locator(`${ready} [data-instaload-arrival]`).first().evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+      }
+    }
+  });
+}
 
 test("default history reuse fails closed across permission, studio and session changes", async ({ page }) => {
   sql(`update projects set status='active' where id=${id(projectId)};`);
@@ -191,13 +164,13 @@ test("filtered returns survive metadata mutations and a role change with the sam
   await leave(page);
   await page.getByRole("button", { name: en.ProjectWorkspace.edit, exact: true }).click();
   const edit = page.getByRole("dialog", { name: en.Projects.editProject });
-  await edit.locator('[name="project_name"]').fill("Cached navigation pilot updated");
+  await edit.locator('[name="project_name"]').fill("Cached navigation project updated");
   await edit.getByRole("button", { name: en.ProjectForm.save, exact: true }).click();
   await expect(edit).toHaveCount(0);
   const back = page.locator('a[href^="/projects?query=Cached"]');
   await back.click();
   await settled(page);
-  await expect(page.locator(ready)).toContainText("Cached navigation pilot updated");
+  await expect(page.locator(ready)).toContainText("Cached navigation project updated");
   await expect(page.getByRole("searchbox")).toHaveValue("Cached");
   await expect(page).toHaveURL(/sort=deadline/);
   await leave(page);
@@ -205,7 +178,7 @@ test("filtered returns survive metadata mutations and a role change with the sam
     sql(`update studio_members set system_role='employee' where studio_id=${id(studioId)} and user_id=${id(actors[0].id)};`);
     await page.goBack();
     await settled(page);
-    await expect(page.locator(ready)).toContainText("Cached navigation pilot updated");
+    await expect(page.locator(ready)).toContainText("Cached navigation project updated");
     await expect(page.getByRole("button", { name: en.Projects.newProject, exact: true })).toHaveCount(0);
     await expect(page.getByRole("searchbox")).toHaveValue("Cached");
   } finally {
@@ -213,42 +186,29 @@ test("filtered returns survive metadata mutations and a role change with the sam
   }
 });
 
-test("cold Projects intent avoids unhelpful speculation and write-producing detail prefetch", async ({ browser }, testInfo) => {
-  test.setTimeout(90000);
+test("cold Projects intent avoids unhelpful speculation and write-producing detail prefetch", async ({ page }) => {
   sql(`update projects set status='active' where id=${id(projectId)};`);
-  const samples: Array<{ usableMs: number; prefetchRequests: number; navigationRequests: number }> = [];
-  for (let iteration = 0; iteration < 5; iteration++) {
-    const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
-    const page = await context.newPage();
-    try {
-      const requests: Array<{ path: string; prefetch: string | undefined }> = [];
-      page.on("request", request => {
-        const path = new URL(request.url()).pathname;
-        if (path === "/projects" || path === `/projects/${projectId}`) requests.push({ path, prefetch: request.headers()["next-router-prefetch"] });
-      });
-      await login(page);
-      expect(requests).toHaveLength(0);
-      await page.locator(listLink).focus();
-      await page.waitForLoadState("networkidle");
-      expect(requests).toHaveLength(0);
-      const prefetchRequests = requests.length;
-      const usableMs = Math.round(await navigate(page));
-      await settled(page);
-      const before = requests.length;
-      await page.locator(`${detailLink}:visible`).hover();
-      await page.waitForLoadState("networkidle");
-      expect(requests).toHaveLength(before);
-      samples.push({ usableMs, prefetchRequests, navigationRequests: before - prefetchRequests });
-    } finally { await context.close(); }
-  }
-  await testInfo.attach("cold-prefetch.json", { body: JSON.stringify(samples, null, 2), contentType: "application/json" });
-  console.log(JSON.stringify({ coldPrefetchSamples: samples }));
+  const requests: string[] = [];
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === "/projects" || path === `/projects/${projectId}`) requests.push(path);
+  });
+  await login(page);
+  expect(requests).toHaveLength(0);
+  await page.locator(listLink).focus();
+  await page.waitForLoadState("networkidle");
+  expect(requests).toHaveLength(0);
+  await navigate(page);
+  await settled(page);
+  const before = requests.length;
+  await page.locator(`${detailLink}:visible`).hover();
+  await page.waitForLoadState("networkidle");
+  expect(requests).toHaveLength(before);
 });
 
-
-test("My Tasks keeps its normal inbox, filters, drawer and review navigation without pilot requests", async ({ page }) => {
+test("My Tasks keeps its normal inbox, filters, drawer and review navigation without Projects scope checks", async ({ page }) => {
   const actor = actors[0];
-  sql(`update projects set status='active', name='Cached navigation pilot' where id=${id(projectId)}; update tasks set status='in_progress', assignee_id=${id(actor.id)} where id=${id(taskId)};`);
+  sql(`update projects set status='active', name='Cached navigation project' where id=${id(projectId)}; update tasks set status='in_progress', assignee_id=${id(actor.id)} where id=${id(taskId)};`);
   await login(page);
   const actions: string[] = [];
   page.on("request", request => { if (new URL(request.url()).pathname === "/my-tasks" && request.headers()["next-action"]) actions.push(request.url()); });
@@ -265,4 +225,74 @@ test("My Tasks keeps its normal inbox, filters, drawer and review navigation wit
   await views.locator('a[href="/my-tasks"]').click(); await expect(search).toBeVisible();
   await page.waitForLoadState("networkidle"); expect(actions).toEqual([]);
   await page.locator(listLink).click(); await settled(page);
+});
+
+test("Project Detail InstaLoad preserves task, stage, view and filter navigation at desktop and small laptop widths", async ({ page }, testInfo) => {
+  sql(`update projects set status='active', name='Cached navigation project' where id=${id(projectId)}; update tasks set status='in_progress', assignee_id=${id(actors[0].id)} where id=${id(taskId)};`);
+  await login(page);
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: width === 1280 ? "reduce" : "no-preference" });
+    await page.goto(`/projects/${projectId}?sort=name&direction=asc&task=${taskId}`);
+    const drawer = page.getByRole("dialog", { name: en.Tasks.taskDetails, exact: true });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole("button", { name: en.Tasks.closeTaskDetails }).click();
+    await expect(drawer).toHaveCount(0);
+    await expect(page.locator('[role="dialog"]').filter({ has: page.locator(`button[aria-label="${en.Tasks.closeTaskDetails}"]`) })).toHaveCount(0);
+    const board = page.locator('[data-instaload-ready="project-board"]');
+    await expect(board).toHaveAttribute("data-instaload-entrance", "ready");
+    await expect(page.locator(`#project-task-${taskId}`)).toBeVisible();
+    await page.locator(`#project-task-${taskId}`).click();
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole("button", { name: en.Tasks.closeTaskDetails }).click();
+    await expect(page.locator('[role="dialog"]').filter({ has: page.locator(`button[aria-label="${en.Tasks.closeTaskDetails}"]`) })).toHaveCount(0);
+    const stageToggle = page.locator('button[aria-controls="project-stage-stage_1"]').first();
+    await stageToggle.click(); await expect(stageToggle).toHaveAttribute("aria-expanded", "false");
+    await stageToggle.click(); await expect(stageToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(`#project-task-${taskId}`)).toBeVisible();
+    expect(await page.locator('[data-instaload-arrival="board"]').evaluate(element => getComputedStyle(element).clipPath)).toBe("none");
+    if (width === 1280) expect(await page.locator('[data-instaload-arrival="board"]').evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`project-detail-${width}.png`), fullPage: true });
+    await stageToggle.click();
+    await expect.poll(() => page.evaluate(key => {
+      const stored: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
+      return typeof stored === "object" && stored !== null && "stage_1" in stored ? stored.stage_1 : undefined;
+    }, `project-task-board:stages:${projectId}:${actors[0].id}`)).toBe(false);
+    const views = page.getByRole("navigation", { name: en.ProjectWorkspace.navigation, exact: true });
+    await views.getByRole("link", { name: en.ProjectWorkspace.details, exact: true }).click();
+    await expect(page.getByRole("heading", { name: en.ProjectWorkspace.projectDetails, exact: true })).toBeVisible();
+    await expect(views.getByRole("link", { name: en.ProjectWorkspace.board, exact: true })).toHaveAttribute("href", `/projects/${projectId}?direction=asc`);
+    await views.getByRole("link", { name: en.ProjectWorkspace.team, exact: true }).click();
+    await expect(page.getByRole("heading", { name: en.ProjectWorkspace.projectTeam, exact: true })).toBeVisible();
+    await views.getByRole("link", { name: en.ProjectWorkspace.activity, exact: true }).click();
+    await expect(page.locator('[data-instaload-ready="project-activity"]')).toBeVisible();
+    await views.getByRole("link", { name: en.ProjectWorkspace.board, exact: true }).click();
+    await expect(stageToggle).toHaveAttribute("aria-expanded", "false");
+    await stageToggle.click();
+    await expect(page.locator(`#project-task-${taskId}`)).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+test("Project Detail InstaLoad preserves employee finance access and archived read-only controls", async ({ page }) => {
+  sql(`update projects set status='active', archived_at=null where id=${id(projectId)};`);
+  await login(page, actors[1]);
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Cached navigation project");
+  const views = page.getByRole("navigation", { name: en.ProjectWorkspace.navigation, exact: true });
+  await expect(views.getByRole("link", { name: en.ProjectWorkspace.finance, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: en.Tasks.addTask, exact: true })).toHaveCount(0);
+  await page.goto(`/projects/${projectId}?view=finance`);
+  await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
+  sql(`update projects set status='archived', archived_at=now() where id=${id(projectId)};`);
+  await login(page);
+  await page.goto(`/projects/${projectId}?task=${taskId}`);
+  await expect(page.getByRole("dialog", { name: en.Tasks.taskDetails, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: en.Tasks.closeTaskDetails }).click();
+  await expect(page.locator('[role="dialog"]').filter({ has: page.locator(`button[aria-label="${en.Tasks.closeTaskDetails}"]`) })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: en.Tasks.addTask, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: en.ProjectWorkspace.restore, exact: true })).toBeVisible();
 });

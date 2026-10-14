@@ -1,5 +1,5 @@
 import "server-only";
-import { traceDashboardStage } from "@/lib/dashboard-trace";
+
 import { cache } from "react";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -50,12 +50,12 @@ function makeDeadlines(tasks: DashboardTaskSummary[], projects: DashboardProject
   ].sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title)).slice(0, limitCount);
 }
 
-export const getDashboardContext = cache(async () => traceDashboardStage("shared.context", async () => {
+export const getDashboardContext = cache(async () => {
   const [profile, membership] = await Promise.all([getCurrentUserProfile(), getActiveStudioMembership()]);
   if (!profile || !profile.is_active || !membership || membership.authenticatedUserId !== profile.id) return null;
   if (membership.system_role !== "admin" && membership.system_role !== "employee") throw new Error("Active studio membership has an unsupported role.");
   return { profile, membership, today: getKyivDateOnly() };
-}));
+});
 
 export async function getDashboard(): Promise<DashboardData | null> {
   const context = await getDashboardContext();
@@ -63,24 +63,24 @@ export async function getDashboard(): Promise<DashboardData | null> {
   const { profile, membership, today } = context;
   const supabase = await createClient();
   const projectQuery = supabase.from("projects").select("id, name, project_code, client_name, due_date, status, total_area_m2, include_in_productivity").eq("studio_id", membership.studio_id).is("archived_at", null).in("status", OPERATIONAL_PROJECT_STATUSES);
-  const { data: visibleProjects, error: visibleProjectsError } = await traceDashboardStage("tasks.projects", () => projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>());
+  const { data: visibleProjects, error: visibleProjectsError } = await projectQuery.overrideTypes<DashboardProjectRow[], { merge: false }>();
   if (visibleProjectsError || !visibleProjects) throw new Error("Unable to load Dashboard projects.", { cause: visibleProjectsError });
-  await traceDashboardStage("tasks.schedule_refresh", () => refreshProjectTaskSchedules(visibleProjects.map((project) => project.id)));
-  const [tasksResult, membersResult, stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await traceDashboardStage("tasks.parallel_reads", () => Promise.all([
-    traceDashboardStage("tasks.rows", () => loadAllDashboardRows((from, to) => supabase.from("tasks")
+  await refreshProjectTaskSchedules(visibleProjects.map((project) => project.id));
+  const [tasksResult, membersResult, stageConfigurationsResult, currentStatusPeriodsResult, projectMembersResult] = await Promise.all([
+    loadAllDashboardRows((from, to) => supabase.from("tasks")
       .select(`${PROJECT_TASK_PROGRESS_SELECT}, title, created_at, collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id)), project:projects!tasks_project_id_fkey!inner(id, name, studio_id, status, archived_at)`)
       .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
-      .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>())),
-    membership.system_role === "admin" ? traceDashboardStage("tasks.members", () => supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>()) : Promise.resolve({ data: [], error: null }),
-    traceDashboardStage("tasks.stage_configuration", () => supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id))),
+      .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
+    membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
+    supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
     membership.system_role === "admin"
-      ? traceDashboardStage("tasks.status_periods", () => loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
-        .eq("studio_id", membership.studio_id).is("exited_at", null).order("task_id").range(from, to)))
+      ? loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
+        .eq("studio_id", membership.studio_id).is("exited_at", null).order("task_id").range(from, to))
       : Promise.resolve({ data: [], error: null }),
     membership.system_role === "admin"
-      ? traceDashboardStage("tasks.project_members", () => supabase.from("project_members").select("project_id, user_id").in("project_id", visibleProjects.map((project) => project.id)).eq("is_active", true))
+      ? supabase.from("project_members").select("project_id, user_id").in("project_id", visibleProjects.map((project) => project.id)).eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
-  ]));
+  ]);
   if (tasksResult.error || membersResult.error || !tasksResult.data || !membersResult.data) throw new Error("Unable to load Dashboard data.", { cause: tasksResult.error ?? membersResult.error });
   if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? projectMembersResult.error });
   const now = new Date();
@@ -101,40 +101,36 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (membership.system_role === "admin") {
     const snapshots = new Map<string, number | null>();
     const snapshotIds = tasks.filter((task) => task.stage === "stage_2" && isOpenTask(task)).map((task) => task.id);
-    await traceDashboardStage("tasks.workload.snapshots", async () => {
-      if (snapshotIds.length) {
-        // Column grants keep accounting snapshots out of caller-context task reads.
-        // This branch has already verified the active profile and admin membership.
-        const admin = createAdminClient();
-        for (let index = 0; index < snapshotIds.length; index += 100) {
-          const result = await admin.from("tasks")
-            .select("id, productivity_area_m2, project:projects!tasks_project_id_fkey!inner(studio_id)")
-            .eq("project.studio_id", membership.studio_id).in("id", snapshotIds.slice(index, index + 100));
-          if (result.error || !result.data) throw new Error("Unable to load admin workload accounting.", { cause: result.error });
-          for (const task of result.data) snapshots.set(task.id, task.productivity_area_m2);
-        }
+    if (snapshotIds.length) {
+      // Column grants keep accounting snapshots out of caller-context task reads.
+      // This branch has already verified the active profile and admin membership.
+      const admin = createAdminClient();
+      for (let index = 0; index < snapshotIds.length; index += 100) {
+        const result = await admin.from("tasks")
+          .select("id, productivity_area_m2, project:projects!tasks_project_id_fkey!inner(studio_id)")
+          .eq("project.studio_id", membership.studio_id).in("id", snapshotIds.slice(index, index + 100));
+        if (result.error || !result.data) throw new Error("Unable to load admin workload accounting.", { cause: result.error });
+        for (const task of result.data) snapshots.set(task.id, task.productivity_area_m2);
       }
+    }
+    const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
+    const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
+    const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
+    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments);
+    const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
+      const period = currentPeriodByTask.get(task.id);
+      return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
     });
-    return traceDashboardStage<AdminDashboard>("tasks.workload.aggregation", () => {
-      const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
-      const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
-      const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-      const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments);
-      const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
-        const period = currentPeriodByTask.get(task.id);
-        return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
-      });
-      const openTasks = tasks.filter(isOpenTask);
-      const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today);
-      return {
-        kind: "admin", profile, asOf, today,
-        metrics: { activeProjects: projects.length, ...selectAdminTaskMetrics(openTasks, today) },
-        attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6),
-        deadlines: makeDeadlines(tasks, projects, today, 30, Number.POSITIVE_INFINITY),
-        workload: getTeamWorkload(membersResult.data.map((member) => member.profile), workloadTasks, today),
-        myTasks,
-      };
-    });
+    const openTasks = tasks.filter(isOpenTask);
+    const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today);
+    return {
+      kind: "admin", profile, asOf, today,
+      metrics: { activeProjects: projects.length, ...selectAdminTaskMetrics(openTasks, today) },
+      attentionProjects: getProjectsRequiringAttention(projects, tasks, today).slice(0, 6),
+      deadlines: makeDeadlines(tasks, projects, today, 30, Number.POSITIVE_INFINITY),
+      workload: getTeamWorkload(membersResult.data.map((member) => member.profile), workloadTasks, today),
+      myTasks,
+    };
   }
   const personalTasks = tasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id));
   const month = getKyivMonthBounds(now);
@@ -146,15 +142,15 @@ export async function getDashboard(): Promise<DashboardData | null> {
     .eq("project.studio_id", membership.studio_id).eq("collaborators.user_id", profile.id).eq("status", "completed")
     .gte("completed_at", month.start).lt("completed_at", month.end);
 
-  const [productivity, assignmentsResult, balanceResult, absencesResult, completedAssigned, completedCollaborating, completedBoth] = await traceDashboardStage("tasks.employee.parallel_reads", () => Promise.all([
-    traceDashboardStage("tasks.employee.productivity", getMyDashboardProductivity),
-    traceDashboardStage("tasks.employee.office", () => supabase.from("office_assignments").select("id,title,deadline,priority,status").eq("studio_id", membership.studio_id).eq("responsible_id", profile.id).overrideTypes<import("@/lib/dashboard").DashboardOfficeAssignment[], { merge: false }>()),
+  const [productivity, assignmentsResult, balanceResult, absencesResult, completedAssigned, completedCollaborating, completedBoth] = await Promise.all([
+    getMyDashboardProductivity(),
+    supabase.from("office_assignments").select("id,title,deadline,priority,status").eq("studio_id", membership.studio_id).eq("responsible_id", profile.id).overrideTypes<import("@/lib/dashboard").DashboardOfficeAssignment[], { merge: false }>(),
     membership.vacationVisibleToEmployees ? supabase.rpc("project_vacation_request", { p_studio_id: membership.studio_id, p_user_id: profile.id, p_start: today, p_end: today }) : Promise.resolve({ data: null, error: null }),
     supabase.from("time_off_requests").select("start_date").eq("studio_id", membership.studio_id).eq("user_id", profile.id).eq("status", "approved").is("cancelled_at", null).gte("end_date", today).order("start_date").limit(1),
     completedScope().eq("assignee_id", profile.id),
     completedWithCollaboration(),
     completedWithCollaboration().eq("assignee_id", profile.id),
-  ]));
+  ]);
   if (!productivity || assignmentsResult.error || balanceResult.error || absencesResult.error || completedAssigned.error || completedCollaborating.error || completedBoth.error) throw new Error("Unable to load employee Dashboard context.", { cause: assignmentsResult.error ?? balanceResult.error ?? absencesResult.error ?? completedAssigned.error ?? completedCollaborating.error ?? completedBoth.error });
   const completedThisMonth = (completedAssigned.count ?? 0) + (completedCollaborating.count ?? 0) - (completedBoth.count ?? 0);
   const myAssignments = (assignmentsResult.data ?? []).filter((assignment) => !isTerminalOfficeAssignmentStatus(assignment.status));

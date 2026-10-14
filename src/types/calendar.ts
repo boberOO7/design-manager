@@ -157,3 +157,11 @@ export type CalendarPageData = {
   timeFormat: CalendarTimeFormat;
   timeZone: string;
 };
+
+export type CalendarCoreData = Omit<CalendarPageData, "projects" | "people">;
+export type CalendarDataStreams = {
+  data: Promise<CalendarCoreData>;
+  preferences: Promise<Pick<CalendarCoreData, "timeFormat" | "timeZone">>;
+  projects: Promise<CalendarProject[]>;
+  people: Promise<CalendarPerson[]>;
+};

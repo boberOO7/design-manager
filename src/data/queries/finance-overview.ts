@@ -1,5 +1,5 @@
 import "server-only";
-import { traceDashboardStage } from "@/lib/dashboard-trace";
+
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { resolveForecastAssumptions } from "./finance-report-fx";
@@ -18,11 +18,11 @@ export async function getFinanceOverview(context: ReturnType<typeof parseFinance
   if (!admin) return null;
   const client = await createClient();
   const args = { p_studio_id: admin.studio_id, p_horizon: context.options.horizon, p_scenario: context.options.scenario, p_period: context.period };
-  const raw = await traceDashboardStage("operations.finance.overview.prepare_fx_rpc", () => prepareFinanceOverviewFxContext(client, args));
+  const raw = await prepareFinanceOverviewFxContext(client, args);
   if (raw.error) throw new Error("Unable to load Finance FX context.", { cause: raw.error });
   const initial = fxContextSchema.parse(raw.data);
-  const fx = await traceDashboardStage("operations.finance.overview.forecast_fx", () => resolveForecastAssumptions({ ...initial, items: [], issues: [] }, context.fx, initial.requiredCurrencies));
-  const valued = await traceDashboardStage("operations.finance.overview.value_rpc", () => requestFinanceOverviewAfterRefresh(client, { ...args, p_fx: fx }));
+  const fx = await resolveForecastAssumptions({ ...initial, items: [], issues: [] }, context.fx, initial.requiredCurrencies);
+  const valued = await requestFinanceOverviewAfterRefresh(client, { ...args, p_fx: fx });
   if (valued.error) throw new Error("Unable to value Finance Overview.", { cause: valued.error });
   return financeOverviewSchema.parse(valued.data);
 }
@@ -42,18 +42,18 @@ export async function getFinanceDisplayOverview(data: NonNullable<Awaited<Return
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const [unit, openings] = await traceDashboardStage("operations.finance.display.context_reads", () => Promise.all([
+  const [unit, openings] = await Promise.all([
     getFinanceDisplayUnit(currency),
     client.from("finance_accounts").select("currency,opening_balance::text,opening_reporting_amount::text").eq("studio_id", admin.studio_id),
-  ]));
+  ]);
   if (openings.error) throw new Error("Unable to load display currency context.", { cause: openings.error });
   const actuals: Array<{ financial_date: string; amount: string | null; category_id: string | null; direction: "incoming" | "outgoing"; nature: "operating" | "financing" | "owner_distribution" }> = [];
   const cashEffects: Array<{ financial_date: string; amount: string | null }> = [];
   for (let offset = 0; ; offset += 1000) {
-    const [actualPage, cashPage] = await traceDashboardStage("operations.finance.display.history_page", () => Promise.all([
+    const [actualPage, cashPage] = await Promise.all([
       client.from("finance_planning_actuals").select("financial_date,amount::text,category_id,direction,nature").eq("studio_id", admin.studio_id).gte("financial_date", data.actualFrom < data.forecast.from ? data.actualFrom : data.forecast.from).lte("financial_date", data.forecast.asOf).order("financial_date").order("posting_order").range(offset, offset + 999),
       client.from("finance_cash_effects").select("financial_date,reporting_amount::text").eq("studio_id", admin.studio_id).gte("financial_date", data.forecast.cutover).lte("financial_date", data.forecast.asOf).order("financial_date").order("id").range(offset, offset + 999),
-    ]));
+    ]);
     if (actualPage.error || cashPage.error || !actualPage.data || !cashPage.data) throw new Error("Unable to load historical Finance valuations.", { cause: actualPage.error ?? cashPage.error });
     actuals.push(...z.array(z.object({ financial_date: z.iso.date(), amount: z.string().nullable(), category_id: z.string().nullable(), direction: z.enum(["incoming", "outgoing"]), nature: z.enum(["operating", "financing", "owner_distribution"]) })).parse(actualPage.data));
     cashEffects.push(...z.array(z.object({ financial_date: z.iso.date(), reporting_amount: z.string().nullable() })).parse(cashPage.data).map(row => ({ financial_date: row.financial_date, amount: row.reporting_amount })));
@@ -64,9 +64,9 @@ export async function getFinanceDisplayOverview(data: NonNullable<Awaited<Return
     return value === null || value === "0" ? [] : [value];
   });
   const dates = new Set([...cashEffects.map(row => row.financial_date), ...actuals.map(row => row.financial_date), ...(openingAmounts.length ? [data.forecast.cutover] : [])]);
-  const [currentRate, datedRates] = await traceDashboardStage("operations.finance.display.fx", () => Promise.all([
+  const [currentRate, datedRates] = await Promise.all([
     getFinanceDisplayRate(data.forecast.currency, currency, data.forecast.asOf),
     resolveFinanceFxDates(data.forecast.currency, currency, [...dates]),
-  ]));
+  ]);
   return projectFinanceDisplayReport(data, currency, unit, currentRate, datedRates, cashEffects, actuals, openingAmounts);
 }

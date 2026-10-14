@@ -1,25 +1,27 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { ProjectContextBand, type ProjectContextProject } from "@/components/projects/project-context-band";
 import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
 import { ProjectStageConfigurationDialog } from "@/components/tasks/project-stage-configuration-dialog";
+import { ProjectBoardBlueprint } from "./project-detail-blueprint";
+import { InstaLoadReady } from "@/components/shared/instaload-motion";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { useProjectLifecycle } from "@/components/projects/project-lifecycle-context";
 import type { ProjectTask } from "@/types/tasks";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import type { ProjectFormAction } from "@/components/projects/project-form";
-import type { ConfiguredProjectStage, ProjectStageColumns, StageSchedulePause } from "@/data/queries/project-stage-columns";
-import { calculateProjectSummary, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import type { ConfiguredProjectStage, ProjectStageConfiguration } from "@/data/queries/project-stage-columns";
+import { calculateProjectSummary, type ProjectProgressSummary, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import type { ProjectTemplate } from "@/lib/project-templates";
 import { useTranslations } from "next-intl";
 
-export function ProjectWorkspace({
-  archiveAction, backHref, calendarTimeSummary, canCreate, canManage, canManageTasks, currentUserId, initialTaskId, isArchived, isProjectReadOnly, members, navigation, project, projectTemplates, restoreAction, stageColumns, stageProgressMethods, schedulePause, stages, includeInProductivity, showProgress, tasks, templates, updateAction,
-}: {
+export type ProjectWorkspaceCore = { tasks: ProjectTask[]; configuration: ProjectStageConfiguration };
+export type ProjectWorkspaceBoardData = ProjectWorkspaceCore & { members: AssignableProjectMember[]; projectTemplates: ProjectTemplate[]; templates: StudioChecklistTemplate[] };
+type WorkspaceProps = {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
-  calendarTimeSummary: string;
+  calendarTimeSummary: ReactNode;
   canCreate: boolean;
   canManage: boolean;
   canManageTasks: boolean;
@@ -27,34 +29,60 @@ export function ProjectWorkspace({
   initialTaskId?: string;
   isArchived: boolean;
   isProjectReadOnly: boolean;
-  members: AssignableProjectMember[];
-  navigation: ReactNode;
-  project: ProjectContextProject;
-  projectTemplates: ProjectTemplate[];
+  projectId: string;
   restoreAction: (formData: FormData) => Promise<void>;
-  stageColumns: ProjectStageColumns;
-  stageProgressMethods: ProjectStageProgressMethods;
-  schedulePause: Record<import("@/lib/task-stages").TaskStage, StageSchedulePause>;
-  stages: ConfiguredProjectStage[];
-  includeInProductivity: boolean;
-  showProgress: boolean;
-  tasks: ProjectTask[];
-  templates: StudioChecklistTemplate[];
   updateAction: ProjectFormAction;
-}) {
-  const [summary, setSummary] = useState(() => calculateProjectSummary(tasks, undefined, stageProgressMethods));
-  const [localStageProgressMethods, setLocalStageProgressMethods] = useState(stageProgressMethods);
-  useEffect(() => { setLocalStageProgressMethods(stageProgressMethods); }, [stageProgressMethods]);
-  const [localStages, setLocalStages] = useState(stages);
-  const [localIncludeInProductivity, setLocalIncludeInProductivity] = useState(includeInProductivity);
-  const [localShowProgress, setLocalShowProgress] = useState(showProgress);
+};
+
+function useWorkspaceState() {
+  const [summary, setSummary] = useState<ProjectProgressSummary | null>(null);
+  const [progressMethods, setProgressMethods] = useState<ProjectStageProgressMethods | null>(null);
+  const [stages, setStages] = useState<ConfiguredProjectStage[] | null>(null);
+  const [includeInProductivity, setIncludeInProductivity] = useState<boolean | null>(null);
+  const [showProgress, setShowProgress] = useState<boolean | null>(null);
+  return { summary, setSummary, progressMethods, setProgressMethods, stages, setStages, includeInProductivity, setIncludeInProductivity, showProgress, setShowProgress };
+}
+type WorkspaceState = ReturnType<typeof useWorkspaceState>;
+
+const WorkspaceContext = createContext<WorkspaceState | null>(null);
+
+function useWorkspace() {
+  const state = useContext(WorkspaceContext);
+  if (!state) throw new Error("Project workspace state is required.");
+  return state;
+}
+
+export function ProjectWorkspace(props: { context: ReactNode; board: ReactNode; navigation: ReactNode; contextFallback: ReactNode }) {
+  // Both streams share the existing optimistic summary/stage state, without remounting the board.
+  const state = useWorkspaceState();
+  return <WorkspaceContext.Provider value={state}>
+    <Suspense fallback={props.contextFallback}>{props.context}</Suspense>
+    {props.navigation}
+    <Suspense fallback={<ProjectBoardBlueprint />}>{props.board}</Suspense>
+  </WorkspaceContext.Provider>;
+}
+
+export function ProjectWorkspaceContext({ data, ...props }: WorkspaceProps & { data: ProjectWorkspaceCore & { project: ProjectContextProject } }) {
+  const state = useWorkspace();
+  const { configuration, project, tasks } = data;
   const [stageConfigurationOpen, setStageConfigurationOpen] = useState(false);
   const stageLabels = useTranslations("TaskStages");
+  const stages = state.stages ?? configuration.stages;
+  const includeInProductivity = state.includeInProductivity ?? configuration.includeInProductivity;
+  const showProgress = state.showProgress ?? configuration.showProgress;
+  return <InstaLoadReady name="project-context" className="instaload-panel">
+    <div data-instaload-arrival="context"><ProjectContextBand archiveAction={props.archiveAction} backHref={props.backHref} calendarTimeSummary={props.calendarTimeSummary} canManage={props.canManage} currentUserId={props.currentUserId} isArchived={props.isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={props.restoreAction} summary={state.summary ?? calculateProjectSummary(tasks, undefined, state.progressMethods ?? configuration.progressMethods)} showProgress={showProgress} stages={stages} updateAction={props.updateAction} /></div>
+    {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={includeInProductivity} showProgress={showProgress} onClose={() => setStageConfigurationOpen(false)} onSaved={(nextStages, nextIncludeInProductivity, nextShowProgress) => { state.setStages(nextStages); state.setIncludeInProductivity(nextIncludeInProductivity); state.setShowProgress(nextShowProgress); setStageConfigurationOpen(false); }} projectId={props.projectId} stageLabels={stageLabels} stages={stages} /> : null}
+  </InstaLoadReady>;
+}
+
+export function ProjectWorkspaceBoard({ data, ...props }: WorkspaceProps & { data: ProjectWorkspaceBoardData }) {
+  const state = useWorkspace();
+  const { configuration, tasks, members, projectTemplates, templates } = data;
   const { status, setStatus } = useProjectLifecycle();
-  return <>
-    <ProjectContextBand archiveAction={archiveAction} backHref={backHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={currentUserId} isArchived={isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={restoreAction} summary={summary} showProgress={localShowProgress} stages={localStages} updateAction={updateAction} />
-    {navigation}
-    <ProjectTaskBoard canCreate={canCreate} canManageTasks={canManageTasks} currentUserId={currentUserId} initialTaskId={initialTaskId} isProjectReadOnly={isProjectReadOnly} members={members} projectId={project.id} projectStatus={status} projectTemplates={projectTemplates} stageColumns={stageColumns} stageProgressMethods={localStageProgressMethods} onStageProgressMethodChange={(stage, method) => setLocalStageProgressMethods((current) => ({ ...current, [stage]: method }))} schedulePause={schedulePause} showProgress={localShowProgress} stages={localStages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onSummaryChange={setSummary} />
-    {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={localIncludeInProductivity} showProgress={localShowProgress} onClose={() => setStageConfigurationOpen(false)} onSaved={(nextStages, nextIncludeInProductivity, nextShowProgress) => { setLocalStages(nextStages); setLocalIncludeInProductivity(nextIncludeInProductivity); setLocalShowProgress(nextShowProgress); setStageConfigurationOpen(false); }} projectId={project.id} stageLabels={stageLabels} stages={localStages} /> : null}
-  </>;
+  const { setProgressMethods } = state;
+  useEffect(() => { setProgressMethods(configuration.progressMethods); }, [configuration.progressMethods, setProgressMethods]);
+  return <InstaLoadReady name="project-board" className="instaload-panel"><div data-instaload-arrival="board">
+    <ProjectTaskBoard canCreate={props.canCreate} canManageTasks={props.canManageTasks} currentUserId={props.currentUserId} initialTaskId={props.initialTaskId} isProjectReadOnly={props.isProjectReadOnly} members={members} projectId={props.projectId} projectStatus={status} projectTemplates={projectTemplates} stageColumns={configuration.columns} stageProgressMethods={state.progressMethods ?? configuration.progressMethods} onStageProgressMethodChange={(stage, method) => setProgressMethods(current => ({ ...(current ?? configuration.progressMethods), [stage]: method }))} schedulePause={configuration.schedulePause} showProgress={state.showProgress ?? configuration.showProgress} stages={state.stages ?? configuration.stages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onSummaryChange={state.setSummary} />
+  </div></InstaLoadReady>;
 }

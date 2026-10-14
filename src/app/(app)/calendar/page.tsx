@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
-import { getCalendarData } from "@/data/queries/calendar";
+import { CalendarStream } from "@/components/calendar/calendar-workspace";
+import { getCalendarStreams } from "@/data/queries/calendar";
 import { getCalendarRange, instantToDateOnly } from "@/lib/calendar";
 import type { CalendarView } from "@/types/calendar";
 import { getTranslations } from "next-intl/server";
@@ -19,10 +19,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const requestedView = typeof params.view === "string" ? params.view : "week";
   const view: CalendarView = requestedView === "month" || requestedView === "week" || requestedView === "agenda" ? requestedView : "week";
   const date = validDate(typeof params.date === "string" ? params.date : undefined);
-  const range = getCalendarRange(view, date);
-  const data = await getCalendarData(range);
-  if (!data) throw new Error("Calendar data is unavailable for the active studio.");
-
+  // Start every read before preparing the correctly zoned shell, as other InstaLoad routes do.
+  const streams = await getCalendarStreams(getCalendarRange(view, date));
+  if (!streams) throw new Error("Calendar data is unavailable for the active studio.");
+  const preferences = await streams.preferences;
   const refreshKey = typeof params.refresh === "string" ? params.refresh : "";
-  return <CalendarWorkspace key={`${view}:${date}:${refreshKey}`} initialData={data} initialView={view} initialDate={date} />;
+  return <CalendarStream key={`${view}:${date}:${refreshKey}`} streams={{ data: streams.data, projects: streams.projects, people: streams.people }} initialView={view} initialDate={date} preferences={preferences} />;
 }

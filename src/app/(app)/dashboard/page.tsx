@@ -18,28 +18,18 @@ import { getDashboardDeadlineHref, getEmployeeDashboardMetrics } from "@/lib/das
 import { getProjectLifecycleBadgeStyle } from "@/lib/semantic-styles";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
-import { after } from "next/server";
-import { getDashboardTrace, traceDashboardStage } from "@/lib/dashboard-trace";
 
 export async function generateMetadata(): Promise<Metadata> { const t = await getTranslations("Dashboard"); return { title: t("metadata") }; }
 
 export default async function DashboardPage() {
-  if (process.env.STUDIOFLOW_DASHBOARD_TRACE === "1") {
-    const trace = await getDashboardTrace();
-    if (trace) after(() => trace.flush());
-  }
-  return traceDashboardStage("dashboard.loader", loadDashboardPage);
-}
-
-async function loadDashboardPage() {
-  const [context, t] = await Promise.all([getDashboardContext(), traceDashboardStage("translations", () => getTranslations("Dashboard"))]);
+  const [context, t] = await Promise.all([getDashboardContext(), getTranslations("Dashboard")]);
   if (!context) return <div className="space-y-8"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState compact title={t("loginRequired")} /></div>;
   // A single task promise owns schedule refresh and the dependent reads for this request.
-  const dashboard = traceDashboardStage("tasks", getDashboard);
+  const dashboard = getDashboard();
   if (context.membership.system_role !== "admin") return <Suspense fallback={<DashboardBlueprint employee />}><EmployeeStream pending={dashboard} /></Suspense>;
-  const administration = traceDashboardStage("administration", () => getDashboardAdministration(context.today));
-  const operations = traceDashboardStage("operations", () => getDashboardOperationalSignals(context.today));
-  const finance = traceDashboardStage("finance", getDashboardFinanceSummary);
+  const administration = getDashboardAdministration(context.today);
+  const operations = getDashboardOperationalSignals(context.today);
+  const finance = getDashboardFinanceSummary();
   return <AdminDashboardView dashboard={dashboard.then(value => value?.kind === "admin" ? value : null)} administration={administration} operations={operations} finance={finance} />;
 }
 

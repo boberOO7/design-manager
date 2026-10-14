@@ -1,5 +1,5 @@
 import "server-only";
-import { traceDashboardStage } from "@/lib/dashboard-trace";
+
 import { cache } from "react";
 import { z } from "zod";
 import { financeRateSchema } from "./finance-movements";
@@ -33,11 +33,11 @@ async function nbuUahRates(currency: string, dates: string[]) {
     const last = days.reduce((a, b) => a > b ? a : b);
     const url = new URL("https://bank.gov.ua/NBU_Exchange/exchange_site");
     url.search = new URLSearchParams({ start: first.replaceAll("-", ""), end: last.replaceAll("-", ""), valcode: code.toLowerCase(), sort: "exchangedate", order: "desc", json: "" }).toString();
-    const payload = traceDashboardStage("operations.finance.fx.nbu_fetch", async (): Promise<unknown> => {
+    const payload = (async (): Promise<unknown> => {
       const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
       if (!response.ok) throw new Error("finance_fx_unavailable");
       return response.json();
-    });
+    })();
     for (const date of days) {
       const key = `${code}:${date}`;
       const rate = payload.then(data => parseNbuRate(data, code, date));

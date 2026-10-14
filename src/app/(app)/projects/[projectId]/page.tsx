@@ -1,3 +1,6 @@
+import { Suspense, type ComponentProps, type ReactNode } from "react";
+import { InstaLoadReady } from "@/components/shared/instaload-motion";
+import { ProjectContextBlueprint, ProjectSectionBlueprint } from "@/components/projects/project-detail-blueprint";
 import Link from "next/link";
 import { ProjectFinanceSection } from "@/components/finance/project-finance-section";
 import { DomainMessages } from "@/i18n/domain-messages";
@@ -8,7 +11,7 @@ import { ProjectCompletionDateForm } from "@/components/projects/project-complet
 import { ProjectActivitySection } from "@/components/projects/project-activity-section";
 import { ProjectLifecycleProvider } from "@/components/projects/project-lifecycle-context";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
-import { ProjectWorkspace } from "@/components/projects/project-workspace";
+import { ProjectWorkspace, ProjectWorkspaceContext, ProjectWorkspaceBoard } from "@/components/projects/project-workspace";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
@@ -53,37 +56,32 @@ function getProjectViewHref(projectId: string, view: ProjectView, filters: Proje
 type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
-  const [{ projectId }, query, t, locale] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale()]);
+  const [{ projectId }, query, t, locale, common] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale(), getTranslations("Common")]);
   const view = getProjectView(query.view);
   const initialTaskId = typeof query.task === "string" ? query.task : undefined;
   const listFilters = getProjectListFilters(query);
   const projectsHref = getProjectListHref(listFilters);
   const [project, adminMembership, profile] = await Promise.all([getProjectById(projectId), getActiveStudioAdmin(), getCurrentUserProfile()]);
   if (!project || !profile) notFound();
-  const localizedProject = {
-    ...project,
-    city: await getLocalizedCityName({ city: project.city, geonamesId: project.city_geonames_id, locale: isAppLocale(locale) ? locale : "en" }),
-  };
-
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
   if (view === "finance" && !canManage) notFound();
-  const [boardTasks, contextTasks, taskAssignees, projectMembers, activity, checklistTemplates, projectTemplates, stageConfiguration, calendarTime] = await Promise.all([
-    view === "board" ? getProjectTasks(project.id) : Promise.resolve([]),
-    view === "board" ? Promise.resolve([]) : getProjectTasksForProgress(project.id),
-    view === "board" && canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]),
-    view === "team" ? getProjectMembers(project.id) : Promise.resolve([]),
-    view === "activity" ? getProjectActivity(project.id) : Promise.resolve([]),
-    view === "board" && canManage ? getStudioChecklistTemplates({ includeArchived: true }) : Promise.resolve([]),
-    view === "board" && canManage ? getStudioProjectTemplates() : Promise.resolve([]),
-    getProjectStageConfiguration(project.id),
-    getProjectCalendarTime(project.id, project.studio_id),
-  ]);
-  const hours = Math.floor(calendarTime.minutes / 60);
-  const minutes = calendarTime.minutes % 60;
-  const duration = [hours && `${hours} ${t("hoursShort")}`, minutes && `${minutes} ${t("minutesShort")}`].filter(Boolean).join(" ") || `0 ${t("minutesShort")}`;
-  const calendarTimeSummary = calendarTime.count ? `${calendarTime.count} · ${duration}` : "0";
-  const assignableStudioMembers = view === "team" && canManage ? await getAssignableStudioMembers(project, projectMembers.map((member) => member.user_id)) : [];
+
+  // Start authorized reads before localization; only the task loader owns schedule refresh.
+  const boardTasks = view === "board" ? getProjectTasks(project.id) : Promise.resolve([]);
+  const tasks = view === "board" ? boardTasks : getProjectTasksForProgress(project.id);
+  const configuration = getProjectStageConfiguration(project.id);
+  const localizedProject = getLocalizedCityName({ city: project.city, geonamesId: project.city_geonames_id, locale: isAppLocale(locale) ? locale : "en" }).then(city => ({ ...project, city }));
+  const calendarTime = getProjectCalendarTime(project.id, project.studio_id);
+  const calendarTimeSummary = <Suspense fallback={<span className="instaload-blueprint inline-block h-[1.5em] w-16 align-bottom" role="status" aria-label={common("loading")}><span aria-hidden="true" className="instaload-mark h-full w-full" /></span>}><CalendarTimeStream pending={calendarTime} /></Suspense>;
+  const taskAssignees = view === "board" && canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]);
+  const checklistTemplates = view === "board" && canManage ? getStudioChecklistTemplates({ includeArchived: true }) : Promise.resolve([]);
+  const projectTemplates = view === "board" && canManage ? getStudioProjectTemplates() : Promise.resolve([]);
+  const projectMembers = view === "team" ? getProjectMembers(project.id) : Promise.resolve([]);
+  const assignableStudioMembers = view === "team" && canManage ? projectMembers.then(members => getAssignableStudioMembers(project, members.map(member => member.user_id))) : Promise.resolve([]);
+  const activity = view === "activity" ? getProjectActivity(project.id) : Promise.resolve([]);
+  // Stream consumers own failures even if another boundary exits before consuming a read.
+  for (const pending of [tasks, configuration, localizedProject, calendarTime, taskAssignees, checklistTemplates, projectTemplates, projectMembers, assignableStudioMembers, activity]) void pending.catch(() => {});
   const archiveAction = archiveProject.bind(null, project.id);
   const restoreAction = restoreProject.bind(null, project.id);
   const updateAction = updateProject.bind(null, project.id);
@@ -91,12 +89,56 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const completionDateAction = updateProjectCompletionDate.bind(null, project.id);
   const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
   if (canManage) navItems.push({ id: "finance", label: t("finance") });
-  const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
+  const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link prefetch={false} key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
-  return <ProjectLifecycleProvider initialStatus={project.status}><div className="space-y-3">{view === "board" ? <ProjectWorkspace archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canCreate={canManage && !isArchived} canManage={canManage} canManageTasks={canManage} currentUserId={profile.id} includeInProductivity={stageConfiguration.includeInProductivity} showProgress={stageConfiguration.showProgress} initialTaskId={initialTaskId} isArchived={isArchived} isProjectReadOnly={isArchived} members={taskAssignees} navigation={navigation} project={localizedProject} projectTemplates={projectTemplates} restoreAction={restoreAction} stageColumns={stageConfiguration.columns} stageProgressMethods={stageConfiguration.progressMethods} schedulePause={stageConfiguration.schedulePause} stages={stageConfiguration.stages} tasks={boardTasks} templates={checklistTemplates} updateAction={updateAction} /> : <><ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={localizedProject} restoreAction={restoreAction} summary={calculateProjectSummary(contextTasks, undefined, stageConfiguration.progressMethods)} showProgress={stageConfiguration.showProgress} stages={stageConfiguration.stages} updateAction={updateAction} />{navigation}{view === "finance" ? <DomainMessages scope="finance"><ProjectFinanceSection projectId={project.id} query={query} /></DomainMessages> : view === "details" ? <ProjectDetails actualStartDateAction={actualStartDateAction} calendarTimeSummary={calendarTimeSummary} canManage={canManage} completionDateAction={completionDateAction} locale={locale} project={localizedProject} /> : view === "team" ? <ProjectTeamSection assignableMembers={assignableStudioMembers} canManage={canManage} members={projectMembers} projectId={project.id} /> : <ProjectActivitySection activity={activity} projectId={project.id} />}</>}</div></ProjectLifecycleProvider>;
+  if (view === "board") {
+    // Share one task/configuration result between context and board, keeping their state together.
+    const core = Promise.all([boardTasks, configuration]).then(([tasks, configuration]) => ({ tasks, configuration }));
+    const context = Promise.all([core, localizedProject]).then(([data, project]) => ({ ...data, project }));
+    const board = Promise.all([core, taskAssignees, checklistTemplates, projectTemplates]).then(([data, members, templates, projectTemplates]) => ({ ...data, members, templates, projectTemplates }));
+    void context.catch(() => {});
+    void board.catch(() => {});
+    const workspaceProps = { archiveAction, backHref: projectsHref, calendarTimeSummary, canCreate: canManage && !isArchived, canManage, canManageTasks: canManage, currentUserId: profile.id, initialTaskId, isArchived, isProjectReadOnly: isArchived, projectId: project.id, restoreAction, updateAction };
+    return <ProjectLifecycleProvider initialStatus={project.status}><div data-project-detail-shell="ready" className="space-y-3"><ProjectWorkspace navigation={navigation} contextFallback={<ProjectContextBlueprint project={project} />} context={<WorkspaceContextStream pending={context} workspaceProps={workspaceProps} />} board={<WorkspaceBoardStream pending={board} workspaceProps={workspaceProps} />} /></div></ProjectLifecycleProvider>;
+  }
+
+  const context = Promise.all([localizedProject, tasks, configuration]).then(([project, tasks, configuration]) => <ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={project} restoreAction={restoreAction} summary={calculateProjectSummary(tasks, undefined, configuration.progressMethods)} showProgress={configuration.showProgress} stages={configuration.stages} updateAction={updateAction} />);
+  const content = view === "finance" ? ProjectFinanceSection({ projectId: project.id, query })
+    : view === "details" ? localizedProject.then(project => ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }))
+    : view === "team" ? Promise.all([projectMembers, assignableStudioMembers]).then(([members, assignableMembers]) => ProjectTeamSection({ assignableMembers, canManage, members, projectId: project.id }))
+    : activity.then(activity => ProjectActivitySection({ activity, projectId: project.id }));
+  void context.catch(() => {});
+  void content.catch(() => {});
+  const section = <Suspense fallback={<ProjectSectionBlueprint view={view} />}><ProjectSectionStream name={`project-${view}`} pending={content} /></Suspense>;
+  return <ProjectLifecycleProvider initialStatus={project.status}><div data-project-detail-shell="ready" className="space-y-3">
+    <Suspense fallback={<ProjectContextBlueprint project={project} />}><ProjectSectionStream name="project-context" pending={context} /></Suspense>
+    {navigation}
+    {view === "finance" ? <DomainMessages scope="finance">{section}</DomainMessages> : section}
+  </div></ProjectLifecycleProvider>;
 }
 
-async function ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }: { actualStartDateAction: ProjectFormAction; calendarTimeSummary: string; canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
+async function WorkspaceContextStream({ pending, workspaceProps }: { pending: Promise<ComponentProps<typeof ProjectWorkspaceContext>["data"]>; workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> }) {
+  return <ProjectWorkspaceContext {...workspaceProps} data={await pending} />;
+}
+
+async function WorkspaceBoardStream({ pending, workspaceProps }: { pending: Promise<ComponentProps<typeof ProjectWorkspaceBoard>["data"]>; workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceBoard>, "data"> }) {
+  return <ProjectWorkspaceBoard {...workspaceProps} data={await pending} />;
+}
+
+async function ProjectSectionStream({ name, pending }: { name: string; pending: Promise<ReactNode> }) {
+  const content = await pending;
+  return <InstaLoadReady name={name} className="instaload-panel"><div data-instaload-arrival={name}>{content}</div></InstaLoadReady>;
+}
+
+async function CalendarTimeStream({ pending }: { pending: ReturnType<typeof getProjectCalendarTime> }) {
+  const [calendarTime, t] = await Promise.all([pending, getTranslations("ProjectWorkspace")]);
+  const hours = Math.floor(calendarTime.minutes / 60);
+  const minutes = calendarTime.minutes % 60;
+  const duration = [hours && `${hours} ${t("hoursShort")}`, minutes && `${minutes} ${t("minutesShort")}`].filter(Boolean).join(" ") || `0 ${t("minutesShort")}`;
+  return <span data-project-calendar-ready>{calendarTime.count ? `${calendarTime.count} · ${duration}` : "0"}</span>;
+}
+
+async function ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }: { actualStartDateAction: ProjectFormAction; calendarTimeSummary: ReactNode; canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
   const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
   const typeLabel = getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes);
   const items = [

@@ -18,6 +18,7 @@ import { getCountryName } from "@/lib/countries";
 import { getProjectTypeDisplayName, isProjectPriority, isProjectTypeKey, type ProjectTypeKey } from "@/lib/validation/project";
 import type { ConfiguredProjectStage } from "@/data/queries/project-stage-columns";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { ReactNode } from "react";
 
 const PROJECT_TYPE_ICONS = { private: House, commercial: Building, horeca: UtensilsCrossed, medical: Cross, other: Shapes } satisfies Record<ProjectTypeKey, LucideIcon>;
 
@@ -42,7 +43,7 @@ export type ProjectContextProject = {
 export function ProjectContextBand({ archiveAction, backHref = "/projects", calendarTimeSummary, canManage, isArchived, onConfigureStages, project, restoreAction, summary, showProgress = true, stages, updateAction }: {
   archiveAction: (formData: FormData) => Promise<void>;
   backHref?: string;
-  calendarTimeSummary: string;
+  calendarTimeSummary: ReactNode;
   canManage: boolean;
   currentUserId: string;
   isArchived: boolean;
@@ -153,7 +154,7 @@ function ProgressSummary({ progress, projectName, stageProgress, stages }: { pro
   </div>;
 }
 
-function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, projectDueDate, siteVisitsLabel, startDate }: { area: number; calendarTimeSummary: string; locale: string; priority: string; paused: boolean; projectDueDate: string | null; siteVisitsLabel: string; startDate: string | null }) {
+function DeadlineSummary({ area, calendarTimeSummary, locale, priority, paused, projectDueDate, siteVisitsLabel, startDate }: { area: number; calendarTimeSummary: ReactNode; locale: string; priority: string; paused: boolean; projectDueDate: string | null; siteVisitsLabel: string; startDate: string | null }) {
   const t = useTranslations("Workspace");
   const projects = useTranslations("Projects");
   const workspace = useTranslations("ProjectWorkspace");

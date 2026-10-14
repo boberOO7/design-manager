@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
 import { Banknote, CakeSlice, CalendarHeart, CalendarOff, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Ellipsis, Filter, MapPin, Pencil, PhoneCall, Repeat2, RotateCcw, Settings2, Trash2, TreePalm, Cross, UserRoundMinus, Video, X, type LucideIcon } from "lucide-react";
@@ -35,7 +35,8 @@ import { getRequiredDayOffMinutes, getWorkMakeupMinutes } from "@/lib/time-off-c
 import { getTimeOffRequestPresentation, timeOffRequestTypeKey, timeOffStatusKey } from "@/lib/time-off-labels";
 import { getCalendarEventDetailConfig, getCalendarEventTypeConfig } from "@/lib/calendar-event-types";
 import { getCalendarInvitationErrorKey } from "@/lib/calendar-invitation-error";
-import type { CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, CalendarTimeFormat, CalendarView, MeetingMode, TimeOffRequestType } from "@/types/calendar";
+import type { CalendarCoreData, CalendarDataStreams, CalendarEventInvitationStatus, CalendarEventType, CalendarFilters, CalendarItem, CalendarPageData, CalendarPerson, CalendarProject, CalendarTimeFormat, CalendarView, MeetingMode, TimeOffRequestType } from "@/types/calendar";
+import { InstaLoadReady } from "@/components/shared/instaload-motion";
 import { Tooltip } from "@/components/ui/tooltip";
 
 const CalendarTimeZoneContext = createContext(APPLICATION_TIME_ZONE);
@@ -133,12 +134,33 @@ function CalendarPill({ item, month = false, mobile = false, onClick, timeFormat
   const title = itemTitle(item);
   const startsAt = timedItemStart(item);
   const accessibleLabel = `${label}: ${!item.allDay && startsAt ? `${formatCalendarTime(startsAt, timeFormat, timeZone)}, ` : ""}${title}`;
-  return <Tooltip content={accessibleLabel}><button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} aria-label={accessibleLabel} className={month ? mobile ? `box-border block min-h-8 w-full appearance-none truncate rounded-md border-l-2 px-2 text-left text-xs font-medium leading-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1 ${itemTone(item)}` : `block min-h-0 w-full appearance-none ${monthItemPresentationClassName} ${itemTone(item)}` : `min-h-10 w-full truncate rounded-md border-l-2 px-2 py-1 text-left text-xs font-medium ${itemTone(item)}`} style={monthStyle}>
+  return <Tooltip content={accessibleLabel}><button data-instaload-arrival={item.key} type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} aria-label={accessibleLabel} className={month ? mobile ? `box-border block min-h-8 w-full appearance-none truncate rounded-md border-l-2 px-2 text-left text-xs font-medium leading-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1 ${itemTone(item)}` : `block min-h-0 w-full appearance-none ${monthItemPresentationClassName} ${itemTone(item)}` : `min-h-10 w-full truncate rounded-md border-l-2 px-2 py-1 text-left text-xs font-medium ${itemTone(item)}`} style={monthStyle}>
     <span className="sr-only">{label}: </span><span className="flex h-full min-w-0 items-center gap-1"><CalendarChipIcon item={item} /><span className="truncate">{!item.allDay && startsAt ? `${formatCalendarTime(startsAt, timeFormat, timeZone)} ` : ""}{title}</span></span>
   </button></Tooltip>;
 }
 
-export function CalendarWorkspace({ initialData, initialView, initialDate }: { initialData: CalendarPageData; initialView: CalendarView; initialDate: string }) {
+/** Consume the server's existing promise without a second Suspense reveal delay. */
+export function CalendarStream({ streams, initialView, initialDate, preferences }: {
+  streams: Pick<CalendarDataStreams, "data" | "projects" | "people">;
+  initialView: CalendarView; initialDate: string;
+  preferences: Pick<CalendarCoreData, "timeFormat" | "timeZone">;
+}) {
+  const [snapshot, setSnapshot] = useState<{ data: CalendarCoreData | null; error: unknown }>({ data: null, error: null });
+  useEffect(() => {
+    let disposed = false;
+    void streams.data.then(
+      (data) => { if (!disposed) setSnapshot({ data, error: null }); },
+      (error: unknown) => { if (!disposed) setSnapshot({ data: null, error }); },
+    );
+    return () => { disposed = true; };
+  }, [streams.data]);
+  if (snapshot.error) throw snapshot.error;
+  return snapshot.data
+    ? <CalendarWorkspace initialData={snapshot.data} initialView={initialView} initialDate={initialDate} projects={streams.projects} people={streams.people} />
+    : <CalendarBlueprint initialView={initialView} initialDate={initialDate} {...preferences} />;
+}
+
+export function CalendarWorkspace({ initialData, initialView, initialDate, projects, people }: { initialData: CalendarCoreData; initialView: CalendarView; initialDate: string } & Pick<CalendarDataStreams, "projects" | "people">) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
   const router = useRouter();
@@ -230,6 +252,46 @@ export function CalendarWorkspace({ initialData, initialView, initialDate }: { i
     else router.push(href);
   }
 
+  return <CalendarTimeZoneContext.Provider value={timeZone}><CalendarShell initialView={initialView} initialDate={initialDate} today={today} navigate={navigate} actions={
+      <div className="flex flex-wrap gap-2 sm:justify-end">
+        <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" onClick={() => openDrawer({ kind: "event-form" })}><CalendarPlus aria-hidden="true" className="size-4" />{t("addEvent")}</Button>
+        <Tooltip content={t("submitAbsenceRequest")}><Button size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline" onClick={() => openDrawer({ kind: "time-off-form" })}><CalendarOff aria-hidden="true" className="size-4" />{t("absence")}</Button></Tooltip>
+        {initialData.isAdmin && initialData.pendingCount > 0 ? <span className="inline-flex items-center rounded-full bg-[var(--ui-violet-surface)] px-3 text-xs font-semibold text-[var(--ui-violet-text)]">{t("pending", { count: initialData.pendingCount })}</span> : null}
+      </div>
+  } filters={
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-0" ariaLabel={t("view")} items={[{ value: "month", label: t("month") }, { value: "week", label: t("week") }, { value: "agenda", label: t("agenda") }]} value={initialView} onValueChange={(view) => navigate({ view })} />
+          <Suspense fallback={<CalendarScopePlaceholder scope="project" />}><CalendarProjectFilter stream={projects} value={filters.projectId} onChange={(projectId) => navigate({}, true, { projectId })} /></Suspense>
+          <Suspense fallback={<CalendarScopePlaceholder scope="person" />}><CalendarPersonFilter stream={people} value={filters.personId} onChange={(personId) => navigate({}, true, { personId })} /></Suspense>
+          <CalendarFilterMenu data={initialData} filters={filters} onChange={(patch) => navigate({}, true, patch)} onReset={() => navigate({}, true, { ...DEFAULT_CALENDAR_FILTERS, salaryPayments: initialData.isAdmin && DEFAULT_CALENDAR_FILTERS.salaryPayments })} />
+          <CalendarActionsMenu triggerRef={settingsTriggerRef} isAdmin={initialData.isAdmin} onOpenSettings={() => setSettingsOpen(true)} onOpenDaysOff={() => openDrawer({ kind: "days-off" })} />
+        </div>
+  } panels={<>
+    {drawer?.kind === "day" ? <DetailPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} title={dateLabel(drawer.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }, locale)} eyebrow={t("dayDetails")} onClose={closeDrawer}>
+      <DayDetails date={drawer.date} items={getDayItems(visibleItems, drawer.date)} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} />
+      <div className="mt-6 flex flex-wrap gap-2"><Button size="sm" onClick={() => openDrawer({ kind: "event-form", date: drawer.date })}>{t("addEventOnDay")}</Button><Button size="sm" variant="outline" onClick={() => openDrawer({ kind: "time-off-form", date: drawer.date })}>{t("requestTimeOff")}</Button></div>
+    </DetailPanel> : null}
+    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen && items.some((item) => item.key === drawer.item.key)} onExited={clearExitedDrawer} item={items.find((item) => item.key === drawer.item.key) ?? drawer.item} data={initialData} projects={projects} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { setItems((current) => { const remaining = removedKey ? removeCalendarItem(current, removedKey) : current; return item ? mergeCalendarItem(remaining, item) : remaining; }, true); if (item) openDrawer({ kind: "item", item }); else closeDrawer(); router.refresh(); }} /> : null}
+    {drawer?.kind === "event-form" ? <Suspense fallback={<CalendarPanelPlaceholder isOpen={isDrawerOpen} onClose={closeDrawer} onExited={clearExitedDrawer} />}><CalendarSupportedData core={initialData} projects={projects} people={people}>{(data) => <EventForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={data} item={drawer.item} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} />}</CalendarSupportedData></Suspense> : null}
+    {drawer?.kind === "time-off-form" ? <TimeOffForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
+    {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current, true); router.refresh(); }} /> : null}
+    {settingsOpen ? <CalendarSettingsDialog isOpen returnFocusRef={settingsTriggerRef} timeFormat={timeFormat} onClose={() => setSettingsOpen(false)} onSaved={(next) => { setTimeFormat(next); setSettingsOpen(false); }} /> : null}
+  </>}>
+    <InstaLoadReady name="calendar-events" className="contents instaload-panel [--instaload-reveal-duration:200ms]">
+      {initialView === "month" ? <MonthView anchor={initialDate} today={today} items={visibleItems} timeFormat={timeFormat} onDay={(date) => openDrawer({ kind: "day", date })} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
+      {initialView === "week" ? <WeekView anchor={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
+      {initialView === "agenda" ? <AgendaView start={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
+    </InstaLoadReady>
+  </CalendarShell></CalendarTimeZoneContext.Provider>;
+}
+
+function CalendarShell({ initialView, initialDate, today, navigate, actions, filters, children, panels, loading = false }: {
+  initialView: CalendarView; initialDate: string; today: string;
+  navigate: (next: { view?: CalendarView; date?: string }) => void;
+  actions: React.ReactNode; filters: React.ReactNode; children: React.ReactNode; panels?: React.ReactNode; loading?: boolean;
+}) {
+  const t = useTranslations("Calendar");
+  const locale = useLocale();
   function movePeriod(direction: -1 | 1) {
     if (initialView === "week") return navigate({ date: addCalendarDays(initialDate, direction * 7) });
     if (initialView === "agenda") return navigate({ date: addCalendarDays(initialDate, direction * 30) });
@@ -242,42 +304,66 @@ export function CalendarWorkspace({ initialData, initialView, initialDate }: { i
     : `${dateLabel(getCalendarRange(initialView, initialDate).start, { month: "short", day: "numeric" }, locale)} – ${dateLabel(getCalendarRange(initialView, initialDate).end, { month: "short", day: "numeric", year: "numeric" }, locale)}`;
   const fillsViewport = initialView !== "agenda";
 
-  return <CalendarTimeZoneContext.Provider value={timeZone}><div className="calendar-viewport min-w-0 space-y-3">
+  return <div className="calendar-viewport min-w-0 space-y-3" data-calendar-loading={loading ? "" : undefined} data-calendar-ready={loading ? undefined : ""}>
     <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <h1 className="text-3xl font-semibold tracking-tight text-[var(--ui-text)]">{t("title")}</h1>
-      <div className="flex flex-wrap gap-2 sm:justify-end">
-        <Button size="sm" className="min-h-11 gap-2 sm:min-h-0" onClick={() => openDrawer({ kind: "event-form" })}><CalendarPlus aria-hidden="true" className="size-4" />{t("addEvent")}</Button>
-        <Tooltip content={t("submitAbsenceRequest")}><Button size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline" onClick={() => openDrawer({ kind: "time-off-form" })}><CalendarOff aria-hidden="true" className="size-4" />{t("absence")}</Button></Tooltip>
-        {initialData.isAdmin && initialData.pendingCount > 0 ? <span className="inline-flex items-center rounded-full bg-[var(--ui-violet-surface)] px-3 text-xs font-semibold text-[var(--ui-violet-text)]">{t("pending", { count: initialData.pendingCount })}</span> : null}
-      </div>
+      {actions}
     </header>
-
     <section className={`${fillsViewport ? "calendar-fill-card " : ""}overflow-hidden rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-sm`}>
       <div className="calendar-toolbar flex flex-col gap-3 border-b border-[var(--ui-border)] p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2"><div className="flex items-center gap-2"><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("previous")} onClick={() => movePeriod(-1)}><ChevronLeft className="size-4" /></Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" onClick={() => navigate({ date: today })}>{t("today")}</Button><Button size="sm" className="min-h-11 sm:min-h-0" variant="outline" aria-label={t("next")} onClick={() => movePeriod(1)}><ChevronRight className="size-4" /></Button></div><h2 className="min-w-0 text-sm font-semibold text-[var(--ui-text)] sm:ml-2 sm:text-base">{periodLabel}</h2></div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SegmentedControl className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-0" ariaLabel={t("view")} items={[{ value: "month", label: t("month") }, { value: "week", label: t("week") }, { value: "agenda", label: t("agenda") }]} value={initialView} onValueChange={(view) => navigate({ view })} />
-          <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-44" aria-label={t("filterProject")} value={filters.projectId} onValueChange={(projectId) => navigate({}, true, { projectId })}><SelectItem value="">{t("allProjects")}</SelectItem>{initialData.projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>
-          <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-40" aria-label={t("filterPerson")} value={filters.personId} onValueChange={(personId) => navigate({}, true, { personId })}><SelectItem value="">{t("allPeople")}</SelectItem>{initialData.people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>
-          <CalendarFilterMenu data={initialData} filters={filters} onChange={(patch) => navigate({}, true, patch)} onReset={() => navigate({}, true, { ...DEFAULT_CALENDAR_FILTERS, salaryPayments: initialData.isAdmin && DEFAULT_CALENDAR_FILTERS.salaryPayments })} />
-          <CalendarActionsMenu triggerRef={settingsTriggerRef} isAdmin={initialData.isAdmin} onOpenSettings={() => setSettingsOpen(true)} onOpenDaysOff={() => openDrawer({ kind: "days-off" })} />
-        </div>
+        {filters}
       </div>
-      {initialView === "month" ? <MonthView anchor={initialDate} today={today} items={visibleItems} timeFormat={timeFormat} onDay={(date) => openDrawer({ kind: "day", date })} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
-      {initialView === "week" ? <WeekView anchor={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
-      {initialView === "agenda" ? <AgendaView start={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
+      {children}
     </section>
+    {panels}
+  </div>;
+}
 
-    {drawer?.kind === "day" ? <DetailPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} title={dateLabel(drawer.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }, locale)} eyebrow={t("dayDetails")} onClose={closeDrawer}>
-      <DayDetails date={drawer.date} items={getDayItems(visibleItems, drawer.date)} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} />
-      <div className="mt-6 flex flex-wrap gap-2"><Button size="sm" onClick={() => openDrawer({ kind: "event-form", date: drawer.date })}>{t("addEventOnDay")}</Button><Button size="sm" variant="outline" onClick={() => openDrawer({ kind: "time-off-form", date: drawer.date })}>{t("requestTimeOff")}</Button></div>
-    </DetailPanel> : null}
-    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen && items.some((item) => item.key === drawer.item.key)} onExited={clearExitedDrawer} item={items.find((item) => item.key === drawer.item.key) ?? drawer.item} data={initialData} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { setItems((current) => { const remaining = removedKey ? removeCalendarItem(current, removedKey) : current; return item ? mergeCalendarItem(remaining, item) : remaining; }, true); if (item) openDrawer({ kind: "item", item }); else closeDrawer(); router.refresh(); }} /> : null}
-    {drawer?.kind === "event-form" ? <EventForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} item={drawer.item} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
-    {drawer?.kind === "time-off-form" ? <TimeOffForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
-    {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current, true); router.refresh(); }} /> : null}
-    {settingsOpen ? <CalendarSettingsDialog isOpen returnFocusRef={settingsTriggerRef} timeFormat={timeFormat} onClose={() => setSettingsOpen(false)} onSaved={(next) => { setTimeFormat(next); setSettingsOpen(false); }} /> : null}
-  </div></CalendarTimeZoneContext.Provider>;
+function CalendarScopePlaceholder({ scope }: { scope: "project" | "person" }) {
+  const t = useTranslations("Calendar");
+  return <Select disabled size="compact" data-calendar-support-loading={scope} className={`min-h-11 w-[min(100%,12rem)] sm:min-h-0 ${scope === "project" ? "sm:w-44" : "sm:w-40"}`} aria-label={t(scope === "project" ? "filterProject" : "filterPerson")} value=""><SelectItem value="">{t(scope === "project" ? "allProjects" : "allPeople")}</SelectItem></Select>;
+}
+
+function CalendarProjectFilter({ stream, value, onChange }: { stream: Promise<CalendarProject[]>; value: string; onChange: (value: string) => void }) {
+  const t = useTranslations("Calendar"); const projects = use(stream);
+  return <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-44" aria-label={t("filterProject")} value={value} onValueChange={onChange}><SelectItem value="">{t("allProjects")}</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>;
+}
+
+function CalendarPersonFilter({ stream, value, onChange }: { stream: Promise<CalendarPerson[]>; value: string; onChange: (value: string) => void }) {
+  const t = useTranslations("Calendar"); const people = use(stream);
+  return <Select size="compact" className="min-h-11 w-[min(100%,12rem)] sm:min-h-0 sm:w-40" aria-label={t("filterPerson")} value={value} onValueChange={onChange}><SelectItem value="">{t("allPeople")}</SelectItem>{people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>;
+}
+
+function CalendarSupportedData({ core, projects, people, children }: { core: CalendarCoreData; children: (data: CalendarPageData) => React.ReactNode } & Pick<CalendarDataStreams, "projects" | "people">) {
+  return children({ ...core, projects: use(projects), people: use(people) });
+}
+
+function CalendarPanelPlaceholder({ isOpen, onClose, onExited }: { isOpen: boolean; onClose: () => void; onExited: () => void }) {
+  const t = useTranslations("Common");
+  return <DetailPanel isOpen={isOpen} onClose={onClose} onExited={onExited} title={t("loading")} eyebrow=""><div aria-busy="true" className="instaload-blueprint space-y-5"><span className="instaload-mark h-11 w-full" /><span className="instaload-mark h-11 w-full" /><span className="instaload-mark h-28 w-full" /></div></DetailPanel>;
+}
+
+export function CalendarBlueprint({ initialView, initialDate, timeFormat, timeZone: initialTimeZone }: { initialView: CalendarView; initialDate: string; timeFormat: CalendarTimeFormat; timeZone: string }) {
+  const t = useTranslations("Calendar");
+  const router = useRouter();
+  const [timeZone, setTimeZone] = useState(initialTimeZone);
+  useEffect(() => { setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || APPLICATION_TIME_ZONE); }, []);
+  function navigate(next: { view?: CalendarView; date?: string }) {
+    const params = new URLSearchParams(window.location.search);
+    for (const key of ["event", "request", "refresh"]) params.delete(key);
+    params.set("view", next.view ?? initialView); params.set("date", next.date ?? initialDate);
+    router.push(`/calendar?${params}`);
+  }
+  return <CalendarTimeZoneContext.Provider value={timeZone}><CalendarShell loading initialView={initialView} initialDate={initialDate} today={instantToDateOnly(new Date().toISOString(), timeZone)} navigate={navigate} actions={
+    <div className="flex flex-wrap gap-2 sm:justify-end"><Button disabled size="sm" className="min-h-11 gap-2 sm:min-h-0"><CalendarPlus aria-hidden="true" className="size-4" />{t("addEvent")}</Button><Button disabled size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline"><CalendarOff aria-hidden="true" className="size-4" />{t("absence")}</Button></div>
+  } filters={
+    <div className="flex flex-wrap items-center gap-2"><SegmentedControl className="w-full sm:w-auto [&_button]:min-h-11 sm:[&_button]:min-h-0" ariaLabel={t("view")} items={[{ value: "month", label: t("month") }, { value: "week", label: t("week") }, { value: "agenda", label: t("agenda") }]} value={initialView} onValueChange={(view) => navigate({ view })} /><CalendarScopePlaceholder scope="project" /><CalendarScopePlaceholder scope="person" /><Button disabled size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline"><Filter aria-hidden="true" className="size-4" />{t("filters")}</Button><Button disabled size="sm" className="min-h-11 w-11 p-0 sm:min-h-0" variant="outline" aria-label={t("moreActions")}><Ellipsis aria-hidden="true" className="size-4" /></Button></div>
+  }>
+    {initialView === "month" ? <MonthView loading anchor={initialDate} today={instantToDateOnly(new Date().toISOString(), timeZone)} items={[]} timeFormat={timeFormat} onDay={() => {}} onItem={() => {}} /> : null}
+    {initialView === "week" ? <WeekView loading anchor={initialDate} items={[]} timeFormat={timeFormat} onItem={() => {}} /> : null}
+    {initialView === "agenda" ? <AgendaView loading start={initialDate} items={[]} timeFormat={timeFormat} onItem={() => {}} /> : null}
+  </CalendarShell></CalendarTimeZoneContext.Provider>;
 }
 
 function CalendarActionsMenu({ isAdmin, onOpenDaysOff, onOpenSettings, triggerRef }: { isAdmin: boolean; onOpenDaysOff: () => void; onOpenSettings: () => void; triggerRef: React.RefObject<HTMLButtonElement | null> }) {
@@ -316,7 +402,7 @@ function CalendarSettingsDialog({ isOpen, onClose, onSaved, returnFocusRef, time
   </Dialog>;
 }
 
-function CalendarFilterMenu({ data, filters, onChange, onReset }: { data: CalendarPageData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void; onReset: () => void }) {
+function CalendarFilterMenu({ data, filters, onChange, onReset }: { data: CalendarCoreData; filters: CalendarFilters; onChange: (patch: Partial<CalendarFilters>) => void; onReset: () => void }) {
   const t = useTranslations("Calendar"); const checks: Array<[keyof Pick<CalendarFilters, "events" | "projectDeadlines" | "taskDeadlines" | "timeOff" | "birthdays" | "teamAnniversaries" | "salaryPayments" | "studioDaysOff">, string]> = [["events", t("events")], ["projectDeadlines", t("projectDeadlines")], ["taskDeadlines", t("taskDeadlines")], ["timeOff", t("teamAvailability")], ["birthdays", t("birthdays")], ["teamAnniversaries", t("teamAnniversaries")], ["studioDaysOff", t("companyDaysOff")]];
   if (data.isAdmin) checks.push(["salaryPayments", t("salaryPayments")]);
   return <Popover.Root><Popover.Trigger asChild><Button size="sm" className="min-h-11 gap-2 sm:min-h-0" variant="outline"><Filter aria-hidden="true" className="size-4" />{t("filters")}</Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} collisionPadding={8} className="z-[80] w-[min(18rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-2 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]">
@@ -326,7 +412,7 @@ function CalendarFilterMenu({ data, filters, onChange, onReset }: { data: Calend
   </Popover.Content></Popover.Portal></Popover.Root>;
 }
 
-function MonthView({ anchor, today, items, onDay, onItem, timeFormat }: { anchor: string; today: string; items: CalendarItem[]; onDay: (date: string) => void; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
+function MonthView({ anchor, today, items, onDay, onItem, timeFormat, loading = false }: { loading?: boolean; anchor: string; today: string; items: CalendarItem[]; onDay: (date: string) => void; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
   const t = useTranslations("Calendar"); const locale = useLocale();
   const itemTitle = useCalendarItemTitle();
   const dates = getMonthGrid(anchor); const month = anchor.slice(0, 7);
@@ -337,7 +423,7 @@ function MonthView({ anchor, today, items, onDay, onItem, timeFormat }: { anchor
   const segmentsByWeek = new Map<number, typeof segments>();
   for (const segment of segments) segmentsByWeek.set(segment.weekIndex, [...(segmentsByWeek.get(segment.weekIndex) ?? []), segment]);
 
-  return <div className="calendar-month-view"><div className="calendar-month-weekdays hidden grid-cols-7 border-b border-[var(--ui-border)] text-center text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)] md:grid">{Array.from({ length: 7 }, (_, index) => dateLabel(addCalendarDays("2024-01-01", index), { weekday: "short" }, locale)).map((day) => <div key={day} className="py-3">{day}</div>)}</div>
+  return <div className="calendar-month-view" aria-busy={loading}><div className="calendar-month-weekdays hidden grid-cols-7 border-b border-[var(--ui-border)] text-center text-xs font-semibold uppercase tracking-wide text-[var(--ui-text-muted)] md:grid">{Array.from({ length: 7 }, (_, index) => dateLabel(addCalendarDays("2024-01-01", index), { weekday: "short" }, locale)).map((day) => <div key={day} className="py-3">{day}</div>)}</div>
     <div className="calendar-month-grid hidden md:block" style={{ gridTemplateRows: `repeat(${desktopWeekCount}, minmax(0, 1fr))` }}>{Array.from({ length: desktopWeekCount }, (_, weekIndex) => {
       const weekDates = dates.slice(weekIndex * 7, weekIndex * 7 + 7);
       const weekSegments = segmentsByWeek.get(weekIndex) ?? [];
@@ -349,17 +435,17 @@ function MonthView({ anchor, today, items, onDay, onItem, timeFormat }: { anchor
           const dateLaneLayout = getMonthDateLaneLayout(weekSegments, date, visibleLaneCount);
           const visibleTimedItems = timedItems.slice(0, Math.max(0, visibleLaneCount - dateLaneLayout.laneCount));
           const overflow = hiddenSpanningItems.size + timedItems.length - visibleTimedItems.length;
-          return <div key={date} className={`calendar-month-day min-h-36 border-b border-r border-[var(--ui-border-subtle)] p-2 text-left align-top hover:bg-[var(--ui-surface-subtle)] ${date.slice(0, 7) !== month ? "bg-[var(--ui-surface-subtle)] text-[var(--ui-text-subtle)]" : ""}`}><button type="button" onClick={() => onDay(date)} aria-label={t("openDate", { date: dateLabel(date, { month: "long", day: "numeric" }, locale) })} className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1 ${date === today ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "hover:bg-[var(--ui-surface-muted)]"}`}>{Number(date.slice(-2))}</button><div className="grid" style={{ marginTop: dateLaneLayout.itemOffset, rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visibleTimedItems.map((item) => <CalendarPill key={item.key} item={item} month timeFormat={timeFormat} onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} aria-label={t("moreEvents", { count: overflow, date: dateLabel(date, { month: "long", day: "numeric" }, locale) })} className="calendar-month-overflow min-h-11 px-2 text-left text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflow} {t("more")}</button> : null}</div></div>;
+          return <div key={date} className={`calendar-month-day min-h-36 border-b border-r border-[var(--ui-border-subtle)] p-2 text-left align-top hover:bg-[var(--ui-surface-subtle)] ${date.slice(0, 7) !== month ? "bg-[var(--ui-surface-subtle)] text-[var(--ui-text-subtle)]" : ""}`}><button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={t("openDate", { date: dateLabel(date, { month: "long", day: "numeric" }, locale) })} className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-1 ${date === today ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "hover:bg-[var(--ui-surface-muted)]"}`}>{Number(date.slice(-2))}</button>{loading ? <div className="instaload-blueprint mt-2"><span className="instaload-mark h-5 w-3/4" /></div> : null}<div className="grid" style={{ marginTop: dateLaneLayout.itemOffset, rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visibleTimedItems.map((item) => <CalendarPill key={item.key} item={item} month timeFormat={timeFormat} onClick={() => onItem(item)} />)}{overflow ? <button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={t("moreEvents", { count: overflow, date: dateLabel(date, { month: "long", day: "numeric" }, locale) })} className="calendar-month-overflow min-h-11 px-2 text-left text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflow} {t("more")}</button> : null}</div></div>;
         })}
         <div className="pointer-events-none absolute inset-x-0 grid grid-cols-7" style={{ top: getMonthItemTop(), gridTemplateRows: `repeat(${laneLayout.laneCount}, ${MONTH_LANE_HEIGHT}px)`, rowGap: MONTH_LANE_GAP }} aria-label={t("allDayItems")}>
-          {weekSegments.filter((segment) => segment.lane < visibleLaneCount).map((segment) => { const geometry = getMonthSegmentGeometry(segment); const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}${segment.continuesBefore ? ", continues from the previous week" : ""}${segment.continuesAfter ? ", continues into the next week" : ""}`} className={`pointer-events-auto ${monthItemPresentationClassName} ${itemTone(segment.item)}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1, height: geometry.height, marginLeft: geometry.leftInset, marginRight: geometry.rightInset, paddingInline: geometry.textPaddingInline, paddingBlock: geometry.verticalPadding, borderLeftWidth: geometry.borderInlineStartWidth, borderTopLeftRadius: geometry.leftRadius, borderBottomLeftRadius: geometry.leftRadius, borderTopRightRadius: geometry.rightRadius, borderBottomRightRadius: geometry.rightRadius }}><span className="flex h-full min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{segment.showLabel ? title : ""}</span></span></button></Tooltip>; })}
+          {weekSegments.filter((segment) => segment.lane < visibleLaneCount).map((segment) => { const geometry = getMonthSegmentGeometry(segment); const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}${segment.continuesBefore ? ", continues from the previous week" : ""}${segment.continuesAfter ? ", continues into the next week" : ""}`} className={`pointer-events-auto ${monthItemPresentationClassName} ${itemTone(segment.item)}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1, height: geometry.height, marginLeft: geometry.leftInset, marginRight: geometry.rightInset, paddingInline: geometry.textPaddingInline, paddingBlock: geometry.verticalPadding, borderLeftWidth: geometry.borderInlineStartWidth, borderTopLeftRadius: geometry.leftRadius, borderBottomLeftRadius: geometry.leftRadius, borderTopRightRadius: geometry.rightRadius, borderBottomRightRadius: geometry.rightRadius }}><span className="flex h-full min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{segment.showLabel ? title : ""}</span></span></button></Tooltip>; })}
         </div>
       </section>;
     })}</div>
-    <div className="divide-y divide-[var(--ui-border-subtle)] md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const { visible, overflow } = getMonthMobileDayItems(items, segments, date); return <div key={date} className="flex w-full gap-3 p-3 text-left sm:gap-4 sm:p-4"><button type="button" onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { weekday: "long", month: "long", day: "numeric" })}`} className="min-h-11 w-12 shrink-0 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="block text-xs font-semibold uppercase text-[var(--ui-text-subtle)]">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text)]"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} mobile month timeFormat={timeFormat} onClick={() => onItem(item)} />)}{overflow ? <button type="button" onClick={() => onDay(date)} aria-label={`Show ${overflow} more events on ${dateLabel(date, { month: "long", day: "numeric" })}`} className="min-h-11 text-left text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflow} more</button> : null}</div></div>; })}</div></div>;
+    <div className="divide-y divide-[var(--ui-border-subtle)] md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const { visible, overflow } = getMonthMobileDayItems(items, segments, date); return <div key={date} className="flex w-full gap-3 p-3 text-left sm:gap-4 sm:p-4"><button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { weekday: "long", month: "long", day: "numeric" })}`} className="min-h-11 w-12 shrink-0 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="block text-xs font-semibold uppercase text-[var(--ui-text-subtle)]">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text)]"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} mobile month timeFormat={timeFormat} onClick={() => onItem(item)} />)}{overflow ? <button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={`Show ${overflow} more events on ${dateLabel(date, { month: "long", day: "numeric" })}`} className="min-h-11 text-left text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflow} more</button> : null}</div></div>; })}</div></div>;
 }
 
-function WeekView({ anchor, items, onItem, timeFormat }: { anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
+function WeekView({ anchor, items, onItem, timeFormat, loading = false }: { loading?: boolean; anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
   const timeZone = useContext(CalendarTimeZoneContext);
   const showUkraineTime = !isKyivTimeZone(timeZone);
   const t = useTranslations("Calendar");
@@ -405,7 +491,7 @@ function WeekView({ anchor, items, onItem, timeFormat }: { anchor: string; items
     if (container) container.scrollTop = getInitialWeekScrollTop() * pixelsPerMinute;
   }, [dates, pixelsPerMinute]);
 
-  return <div className="calendar-week-view relative"><p id="week-scroll-hint" className="border-b border-[var(--ui-border-subtle)] px-3 py-2 text-xs text-[var(--ui-text-muted)] md:hidden">{t("weekScrollHint")}</p><div ref={horizontalScrollRef} aria-describedby="week-scroll-hint" aria-label={t("weeklyCalendar")} className="calendar-week-horizontal overflow-x-auto overscroll-x-contain"><div className="calendar-week-content min-w-[840px] sm:min-w-[900px]">
+  return <div className="calendar-week-view relative" aria-busy={loading}><p id="week-scroll-hint" className="border-b border-[var(--ui-border-subtle)] px-3 py-2 text-xs text-[var(--ui-text-muted)] md:hidden">{t("weekScrollHint")}</p><div ref={horizontalScrollRef} aria-describedby="week-scroll-hint" aria-label={t("weeklyCalendar")} className="calendar-week-horizontal overflow-x-auto overscroll-x-contain"><div className="calendar-week-content min-w-[840px] sm:min-w-[900px]">
     <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"} border-b border-[var(--ui-border)]`}>
       <div className="border-r border-[var(--ui-border)]" />
       {dates.map((date, dayIndex) => <div key={date} className={`border-r border-[var(--ui-border)] px-2 py-3 text-center text-xs font-semibold ${currentTime?.dayIndex === dayIndex ? "bg-[var(--ui-surface-subtle)] text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"}`}><span className="block uppercase tracking-wide">{dateLabel(date, { weekday: "short" }, locale)}</span><span className="mt-1 block text-sm">{dateLabel(date, { month: "short", day: "numeric" }, locale)}</span></div>)}
@@ -413,14 +499,16 @@ function WeekView({ anchor, items, onItem, timeFormat }: { anchor: string; items
     <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"} border-b border-[var(--ui-border)]`}>
       <div className="border-r border-[var(--ui-border)] px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-text-subtle)]">{t("allDay")}</div>
       <div className="relative col-span-7 grid grid-cols-7 gap-y-1 px-1 py-1" style={{ minHeight: allDayLanes * 22 + 8, gridTemplateRows: `repeat(${allDayLanes}, 20px)` }}>
-        {allDaySegments.map((segment) => { const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-md"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-md"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span></button></Tooltip>; })}
+        {loading ? dates.map((date, index) => <div key={date} className="instaload-blueprint" style={{ gridColumn: index + 1 }}><span className="instaload-mark h-5 w-3/4" /></div>) : null}
+        {allDaySegments.map((segment) => { const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-md"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-md"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span></button></Tooltip>; })}
       </div>
     </div>
     <div ref={scrollRef} className="calendar-week-timeline max-h-[36rem] overflow-y-auto">
       <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"}`}>
         <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="border-r border-b border-[var(--ui-border)] pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-subtle)]" style={{ height: 60 * pixelsPerMinute }}>{formatCalendarClockTime(hour, 0, timeFormat)}{showUkraineTime ? <span className="block text-[9px] font-normal text-[var(--ui-text-muted)]">UA {kyivGutterTime(dates[0], hour, timeZone, timeFormat)}</span> : null}</div>)}</div>
         {dates.map((date, dayIndex) => <div key={date} className={`relative border-r border-[var(--ui-border)] ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * pixelsPerMinute, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${60 * pixelsPerMinute - 1}px, var(--ui-calendar-gridline) ${60 * pixelsPerMinute}px)`, backgroundSize: `100% ${60 * pixelsPerMinute}px` }}>
-          {(timedByDate.get(date) ?? []).map((segment) => { const title = itemTitle(segment.item); const timeLabel = segment.item.source === "calendar_event" ? `${formatCalendarTime(segment.item.startsAt, timeFormat, timeZone)}–${formatCalendarTime(segment.item.endsAt, timeFormat, timeZone)}` : segment.item.source === "crm_follow_up" ? formatCalendarTime(segment.item.startsAt, timeFormat, timeZone) : `${formatCalendarWallTime(segment.item.startTime ?? "00:00", timeFormat)}–${formatCalendarWallTime(segment.item.endTime ?? "00:00", timeFormat)}`; return <Tooltip content={title} key={segment.segmentId}><button type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${timeLabel}`} className={`absolute overflow-hidden border-l-2 px-2 py-1 text-left text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] ${itemTone(segment.item)}`} style={{ top: segment.startMinute * pixelsPerMinute, height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute), left: `calc(${(segment.column / segment.columnCount) * 100}% + 2px)`, width: `calc(${100 / segment.columnCount}% - 4px)` }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span><span className="block truncate text-[10px] font-normal opacity-80">{timeLabel}{segment.item.source === "calendar_event" && segment.item.location ? ` · ${segment.item.location}` : ""}</span></button></Tooltip>; })}
+          {loading ? <div className="instaload-blueprint absolute inset-x-2" style={{ top: 9 * 60 * pixelsPerMinute }}><span className="instaload-mark h-12 w-3/4" /></div> : null}
+          {(timedByDate.get(date) ?? []).map((segment) => { const title = itemTitle(segment.item); const timeLabel = segment.item.source === "calendar_event" ? `${formatCalendarTime(segment.item.startsAt, timeFormat, timeZone)}–${formatCalendarTime(segment.item.endsAt, timeFormat, timeZone)}` : segment.item.source === "crm_follow_up" ? formatCalendarTime(segment.item.startsAt, timeFormat, timeZone) : `${formatCalendarWallTime(segment.item.startTime ?? "00:00", timeFormat)}–${formatCalendarWallTime(segment.item.endTime ?? "00:00", timeFormat)}`; return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${timeLabel}`} className={`absolute overflow-hidden border-l-2 px-2 py-1 text-left text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] ${itemTone(segment.item)}`} style={{ top: segment.startMinute * pixelsPerMinute, height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute), left: `calc(${(segment.column / segment.columnCount) * 100}% + 2px)`, width: `calc(${100 / segment.columnCount}% - 4px)` }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span><span className="block truncate text-[10px] font-normal opacity-80">{timeLabel}{segment.item.source === "calendar_event" && segment.item.location ? ` · ${segment.item.location}` : ""}</span></button></Tooltip>; })}
           {currentTime?.dayIndex === dayIndex ? <div className="pointer-events-none absolute z-10 inset-x-0 border-t-2 border-[var(--ui-danger-solid)]" style={{ top: currentTime.minute * pixelsPerMinute }} aria-label={t("currentTime", { time: formatCalendarClockTime(Math.floor(currentTime.minute / 60), currentTime.minute % 60, timeFormat) })}><span className="absolute -left-1 -top-1.5 size-3 rounded-full bg-[var(--ui-danger-surface)]0" /></div> : null}
         </div>)}
       </div>
@@ -428,10 +516,11 @@ function WeekView({ anchor, items, onItem, timeFormat }: { anchor: string; items
   </div></div></div>;
 }
 
-function AgendaView({ start, items, onItem, timeFormat }: { start: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
+function AgendaView({ start, items, onItem, timeFormat, loading = false }: { loading?: boolean; start: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
   const dates = Array.from({ length: 30 }, (_, index) => addCalendarDays(start, index)).filter((date) => items.some((item) => itemOccursOn(item, date)));
+  if (loading) return <div aria-busy="true" className="grid gap-x-8 p-3 sm:p-4 lg:grid-cols-2">{[0, 1].map((index) => <section key={index} className="instaload-blueprint border-b border-[var(--ui-border-subtle)] py-3 sm:py-4"><span className="instaload-mark mb-2 h-5 w-40" /><span className="instaload-mark h-10 w-full" /></section>)}</div>;
   if (!dates.length) return <p className="p-10 text-center text-sm text-[var(--ui-text-muted)]">{t("agendaEmpty")}</p>;
   return <div className="grid gap-x-8 p-3 sm:p-4 lg:grid-cols-2">{dates.map((date) => <section key={date} className="border-b border-[var(--ui-border-subtle)] py-3 sm:py-4"><h3 className="mb-2 text-sm font-semibold text-[var(--ui-text)]">{dateLabel(date, { weekday: "long", month: "long", day: "numeric" }, locale)}</h3><div className="space-y-2">{getDayItems(items, date).map((item) => <CalendarPill key={item.key} item={item} timeFormat={timeFormat} onClick={() => onItem(item)} />)}</div></section>)}</div>;
 }
@@ -449,7 +538,7 @@ function DayDetails({ items, onItem, timeFormat }: { date: string; items: Calend
   return <div className="space-y-2">{items.map((item) => <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide opacity-70"><CalendarChipIcon item={item} size="size-3.5" />{itemTypeLabel(item)}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{timedItemStart(item) ? <p className="mt-1 text-sm">{formatCalendarTime(timedItemStart(item) ?? "", timeFormat, timeZone)}{item.source === "calendar_event" ? `–${formatCalendarTime(item.endsAt, timeFormat, timeZone)}` : ""}</p> : null}</button>)}</div>;
 }
 
-function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated, timeFormat }: { isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarPageData; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void; timeFormat: CalendarTimeFormat }) {
+function ItemPanel({ isOpen, onExited, item, data, projects, onClose, onEdit, onMutated, timeFormat }: { isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarCoreData; projects: Promise<CalendarProject[]>; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void; timeFormat: CalendarTimeFormat }) {
   const timeZone = useContext(CalendarTimeZoneContext);
   const t = useTranslations("Calendar"); const locale = useLocale(); const timeOff = useTranslations("TimeOff"); const status = useTranslations("Status"); const priority = useTranslations("Priority");
   const itemTitle = useCalendarItemTitle();
@@ -472,7 +561,7 @@ function ItemPanel({ isOpen, onExited, item, data, onClose, onEdit, onMutated, t
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={itemTitle(item)} eyebrow={itemEyebrow} item={item} onClose={pending ? () => undefined : onClose}>{error ? <p role="alert" className="mb-4 rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="space-y-6 text-sm">
     <section><h3 className="font-semibold text-[var(--ui-text)]">{t("when")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.source === "calendar_event" ? item.allDay ? `${dateLabel(item.startDate, { month: "long", day: "numeric", year: "numeric" }, locale)}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" }, locale)}` : ""}` : `${formatCalendarDateTime(item.startsAt, locale, timeFormat, timeZone)} – ${formatCalendarDateTime(item.endsAt, locale, timeFormat, timeZone)}` : item.source === "crm_follow_up" ? formatCalendarDateTime(item.startsAt, locale, timeFormat, timeZone) : `${dateLabel(item.startDate, item.source === "birthday" || item.source === "team_anniversary" ? { month: "long", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" })}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" })}` : ""}`}</p></section>
     {item.source === "birthday" || item.source === "team_anniversary" || item.source === "salary_payment" ? <section className="flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4"><UserAvatar decorative imageUrl={item.member.avatarUrl} name={item.member.fullName} size="sm" /><div><h3 className="font-semibold text-[var(--ui-text)]">{item.member.fullName}</h3><p className="text-sm text-[var(--ui-text-secondary)]">{item.source === "team_anniversary" ? t("teamAnniversaryDuration", { count: item.anniversaryYears }) : itemTypeLabel(item)}</p></div></section> : null}
-    {item.source === "calendar_event" ? <><CalendarEventDetails item={item} data={data} pending={pending} onRespond={(inviteId, invitationStatus) => void respondToInvitation(inviteId, invitationStatus)} />{(data.isAdmin || item.organizer.id === data.currentUserId) ? <div className="flex gap-2"><Button disabled={pending} onClick={() => onEdit(item)}>{t("editEvent")}</Button><Button disabled={pending} variant="outline" onClick={() => void cancelEvent()}>{t("cancelEvent")}</Button></div> : null}</> : null}
+    {item.source === "calendar_event" ? <><CalendarEventDetails item={item} data={data} projects={projects} pending={pending} onRespond={(inviteId, invitationStatus) => void respondToInvitation(inviteId, invitationStatus)} />{(data.isAdmin || item.organizer.id === data.currentUserId) ? <div className="flex gap-2"><Button disabled={pending} onClick={() => onEdit(item)}>{t("editEvent")}</Button><Button disabled={pending} variant="outline" onClick={() => void cancelEvent()}>{t("cancelEvent")}</Button></div> : null}</> : null}
     {item.source === "project_deadline" ? <><p className="text-[var(--ui-text-secondary)]">{item.project.clientName ?? t("projectMilestone")} · {status(item.project.status)}</p><ProjectNavigationLink href={`/projects/${item.project.id}`} label={t("openProject")} name={item.project.name} /></> : null}
     {item.source === "task_deadline" ? <><p className="whitespace-pre-wrap text-[var(--ui-text-secondary)]">{item.task.description || t("taskDescription")}</p><dl className="grid grid-cols-2 gap-4"><div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd>{item.task.assigneeName}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd>{status(item.task.status)}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd>{priority(item.task.priority)}</dd></div></dl><ProjectNavigationLink href={`/projects/${item.task.projectId}`} label={t("openTask", { project: item.task.projectName })} name={item.task.projectName} /></> : null}
     {item.source === "crm_follow_up" ? <Button asChild><Link href={`/crm/leads?lead=${item.id}`}><PhoneCall className="size-4" aria-hidden="true" />{t("openLead")}</Link></Button> : null}
@@ -541,19 +630,18 @@ function CalendarPersonDetail({ person }: { person: CalendarPerson }) {
   return <div className="flex min-w-0 items-center gap-3"><UserAvatar decorative imageUrl={person.avatar_url} name={person.full_name} size="sm" /><span className="min-w-0"><span className="block truncate font-medium text-[var(--ui-text)]">{person.full_name}</span>{person.job_title ? <span className="block truncate text-xs text-[var(--ui-text-muted)]">{person.job_title}</span> : null}</span></div>;
 }
 
-function CalendarEventDetails({ item, data, pending, onRespond }: { item: Extract<CalendarItem, { source: "calendar_event" }>; data: CalendarPageData; pending: boolean; onRespond: (inviteId: string, status: "accepted" | "declined") => void }) {
+function CalendarEventDetails({ item, data, projects, pending, onRespond }: { item: Extract<CalendarItem, { source: "calendar_event" }>; data: CalendarCoreData; projects: Promise<CalendarProject[]>; pending: boolean; onRespond: (inviteId: string, status: "accepted" | "declined") => void }) {
   const t = useTranslations("Calendar");
   const notifications = useTranslations("Notifications");
   const locale = useLocale();
   const config = getCalendarEventDetailConfig(item.eventType);
   const sections = new Set(config.sections);
   const currentInvite = item.invitees.find((invitee) => invitee.id === data.currentUserId);
-  const destination = item.project ? projectDestination(data.projects.find((project) => project.id === item.project?.id), locale) : null;
 
   return <>
     {sections.has("project") && item.project ? <section><h3 className="mb-2 font-semibold text-[var(--ui-text)]">{t("project")}</h3><ProjectNavigationLink href={`/projects/${item.project.id}`} label={t("openProject")} name={item.project.name} /></section> : null}
     {item.eventType==="business_trip" && data.isAdmin ? <Link className="inline-flex min-h-11 items-center gap-2 text-sm underline underline-offset-4" href={`/finance/trips?calendar=${item.id}`}><Banknote className="size-4" aria-hidden="true"/>{t("tripFinance")}</Link> : null}
-    {sections.has("destination") ? <section><h3 className="font-semibold text-[var(--ui-text)]">{t("destination")}</h3><p className="mt-2 flex items-center gap-2 text-[var(--ui-text-secondary)]"><MapPin aria-hidden="true" className="size-4 shrink-0" />{destination ?? t("destinationUnavailable")}</p></section> : null}
+    {sections.has("destination") ? <section><h3 className="font-semibold text-[var(--ui-text)]">{t("destination")}</h3><p className="mt-2 flex items-center gap-2 text-[var(--ui-text-secondary)]"><MapPin aria-hidden="true" className="size-4 shrink-0" /><Suspense fallback={<span className="instaload-blueprint"><span className="instaload-mark h-5 w-40" /></span>}><CalendarDestination projects={projects} projectId={item.project?.id} /></Suspense></p></section> : null}
     {sections.has("assignee") && item.assignee ? <section><h3 className="font-semibold text-[var(--ui-text)]">{t(config.assigneeLabel ?? "assignee")}</h3><div className="mt-2"><CalendarPersonDetail person={item.assignee} /></div></section> : null}
     {sections.has("participants") ? <section><h3 className="font-semibold text-[var(--ui-text)]">{t("participants")}</h3>{item.participants.length ? <ul className="mt-2 space-y-2">{item.participants.map((participant) => <li key={participant.id}><CalendarPersonDetail person={participant} /></li>)}</ul> : <p className="mt-2 text-[var(--ui-text-secondary)]">{t("noAttendees")}</p>}</section> : null}
     {sections.has("organizer") ? <section><h3 className="font-semibold text-[var(--ui-text)]">{t(config.organizerLabel ?? "organizer")}</h3><div className="mt-2"><CalendarPersonDetail person={item.organizer} /></div></section> : null}
@@ -566,6 +654,11 @@ function CalendarEventDetails({ item, data, pending, onRespond }: { item: Extrac
     {sections.has("linkedDayOff") && item.compensationDayOff ? <section className="border-t border-[var(--ui-border-subtle)] pt-4"><h3 className="font-semibold text-[var(--ui-text)]">{t("linkedDayOff")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{dateLabel(item.compensationDayOff.startDate, { month: "long", day: "numeric" }, locale)} · {t("contributesHours", { hours: getWorkMakeupMinutes({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay }) / 60 })}</p></section> : null}
     <section><h3 className="font-semibold text-[var(--ui-text)]">{t("details")}</h3><p className="mt-2 whitespace-pre-wrap leading-6 text-[var(--ui-text-secondary)]">{item.description || t("noDescription")}</p></section>
   </>;
+}
+
+function CalendarDestination({ projects, projectId }: { projects: Promise<CalendarProject[]>; projectId?: string }) {
+  const t = useTranslations("Calendar"); const locale = useLocale();
+  return projectDestination(use(projects).find((project) => project.id === projectId), locale) ?? t("destinationUnavailable");
 }
 
 export function InviteePicker({ people, selectedIds, onChange }: { people: CalendarPerson[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
@@ -700,7 +793,7 @@ function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved
   </form></DetailPanel>;
 }
 
-function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarPageData; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "time_off_request_admin" }>) => void }) {
+function TimeOffForm({ isOpen, onExited, data, initialDate, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarCoreData; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "time_off_request_admin" }>) => void }) {
   const t = useTranslations("TimeOff");
   const calendar = useTranslations("Calendar"); const locale = useLocale();
   const date = initialDate ?? data.today; const initial = { requestType: "vacation" as TimeOffRequestType, startDate: date, endDate: date, allDay: true, startTime: "09:00", endTime: "10:00", privateNote: "" }; const [values, setValues] = useState(initial); const [endDateLinked, setEndDateLinked] = useState(true); const [endTimeLinked, setEndTimeLinked] = useState(true); const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
