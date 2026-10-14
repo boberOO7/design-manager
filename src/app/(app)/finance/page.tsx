@@ -15,6 +15,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { parseFinanceReportParams } from "@/lib/finance-overview";
 import { buildFinanceAnalytics, financeAnalyticsPeriod } from "@/lib/finance-analytics";
 import { getKyivDateOnly } from "@/lib/validation/project";
+import { InstaLoadReady } from "@/components/shared/instaload-motion";
+import { FinanceCurrencyLoading, FinanceOverviewLoading, FinanceSectionLoading } from "@/components/finance/finance-overview-loading";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Finance.overview"); return { title: t("title") };
@@ -28,7 +30,7 @@ async function Analytics({ period, today }: { period: ReturnType<typeof parseFin
   try {
     const data = await getFinanceManagement(scope);
     if (!data) return <Unavailable/>;
-    return <FinanceAnalyticsSection data={buildFinanceAnalytics(data, scope.from, scope.to)} currency={data.currency}/>;
+    return <InstaLoadReady key={data.currency.code} name="finance-analytics" className="instaload-panel [--instaload-reveal-duration:200ms]"><div data-instaload-arrival="finance-analytics"><FinanceAnalyticsSection data={buildFinanceAnalytics(data, scope.from, scope.to)} currency={data.currency}/></div></InstaLoadReady>;
   } catch (error) { console.error("Finance analytics unavailable", error); return <Unavailable/>; }
 }
 async function Cash({ context, foundation }: { context: ReturnType<typeof parseFinanceReportParams>; foundation: NonNullable<Awaited<ReturnType<typeof getFinanceData>>> }) {
@@ -37,28 +39,34 @@ async function Cash({ context, foundation }: { context: ReturnType<typeof parseF
     if (!source) return <Unavailable cash/>;
     const data = await getFinanceDisplayOverview(source, currency);
     if (!data) return <Unavailable cash/>;
-    return <FinanceOverviewCash source={source} data={data} currencies={foundation.currencies} invalidFx={context.invalidFx}/>;
+    return <InstaLoadReady key={currency} name="finance-cash" className="instaload-panel [--instaload-reveal-duration:200ms]"><div data-instaload-arrival="finance-cash"><FinanceOverviewCash source={source} data={data} currencies={foundation.currencies} invalidFx={context.invalidFx}/></div></InstaLoadReady>;
   } catch (error) { console.error("Finance cash outlook unavailable", error); return <Unavailable cash/>; }
 }
-async function Loading({ cash = false }: { cash?: boolean }) {
-  const t = await getTranslations("Finance.overview.analytics");
-  return <section aria-busy="true" aria-label={t(cash ? "cashOutlook" : "headline")} className={`space-y-5 ${cash ? "min-h-64 border-t border-[var(--ui-border-subtle)] pt-6" : "min-h-[28rem]"}`}><p className="text-sm text-[var(--ui-text-secondary)]">{t("loading")}</p><div className="h-8 w-1/3 rounded bg-[var(--ui-surface-muted)]"/><div className="h-40 rounded bg-[var(--ui-surface-subtle)]"/></section>;
+async function CurrencyControl() {
+  const currency = await getFinanceDisplayCurrency();
+  return <DisplayCurrencySelect key={currency} value={currency}/>;
 }
-export default async function FinancePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function FinanceContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const foundation = await getFinanceData();
   if (!foundation) redirect("/dashboard");
   const today = getKyivDateOnly();
   if (!foundation.settings?.finalized_at) return <FinanceWorkspace {...foundation} today={today}/>;
   const params = await searchParams, context = parseFinanceReportParams(params, today);
-  const [currency, t] = await Promise.all([getFinanceDisplayCurrency(), getTranslations("Finance.overview")]);
+  const t = await getTranslations("Finance.overview");
+  const scope = financeAnalyticsPeriod(context.period, today);
+  const analyticsAvailable = Boolean(foundation.settings.recognition_start_month && foundation.settings.recognition_start_month <= scope.to);
   const periodHref = (period: string) => {
     const next = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => { if (typeof value === "string") next.set(key, value); });
     next.set("period", period); return `/finance?${next}`;
   };
-  return <div className="w-full min-w-0 space-y-8">
-    <PageHeader title={t("title")} className="flex-wrap" action={<div className="flex flex-wrap items-center gap-3"><nav aria-label={t("actualPeriod")} className="flex flex-wrap gap-1">{(["month", "3", "year"] as const).map(period => <Link key={period} href={periodHref(period)} aria-current={context.period === period ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-3 text-sm transition-colors duration-[180ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none ${context.period === period ? "bg-[var(--ui-surface-muted)] font-medium" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}>{t(`periods.${period}`)}</Link>)}</nav><DisplayCurrencySelect value={currency}/></div>}/>
-    <Suspense key={`analytics-${context.period}-${currency}`} fallback={<Loading/>}><Analytics period={context.period} today={today}/></Suspense>
-    <Suspense key={`cash-${context.period}-${currency}-${context.options.horizon}-${context.options.scenario}`} fallback={<Loading cash/>}><Cash context={context} foundation={foundation}/></Suspense>
+  return <div className="w-full min-w-0 space-y-8" data-finance-shell="ready">
+    <PageHeader title={t("title")} className="flex-wrap" action={<div className="flex flex-wrap items-center gap-3"><nav aria-label={t("actualPeriod")} className="flex flex-wrap gap-1">{(["month", "3", "year"] as const).map(period => <Link key={period} href={periodHref(period)} aria-current={context.period === period ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-3 text-sm transition-colors duration-[180ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none ${context.period === period ? "bg-[var(--ui-surface-muted)] font-medium" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}>{t(`periods.${period}`)}</Link>)}</nav><Suspense fallback={<FinanceCurrencyLoading/>}><CurrencyControl/></Suspense></div>}/>
+    <Suspense key={`analytics-${context.period}`} fallback={<FinanceSectionLoading analyticsAvailable={analyticsAvailable}/>}><Analytics period={context.period} today={today}/></Suspense>
+    <Suspense key={`cash-${context.period}-${context.options.horizon}-${context.options.scenario}`} fallback={<FinanceSectionLoading cash/>}><Cash context={context} foundation={foundation}/></Suspense>
   </div>;
+}
+
+export default function FinancePage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <Suspense fallback={<FinanceOverviewLoading/>}><FinanceContent {...props}/></Suspense>;
 }

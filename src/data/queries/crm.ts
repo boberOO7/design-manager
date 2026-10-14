@@ -42,7 +42,7 @@ export async function getCrmAdmins(): Promise<CrmAdmin[]> {
   return data.map((row) => ({ avatar_url: row.profile.avatar_url, id: row.user_id, name: row.profile.full_name }));
 }
 
-export async function getCrmLeads(): Promise<{ currentUserId: string | null; error: boolean; leads: CrmLead[] }> {
+export async function getCrmLeads(pendingAdmins?: Promise<CrmAdmin[]>): Promise<{ currentUserId: string | null; error: boolean; leads: CrmLead[] }> {
   const context = await getCrmContext();
   if (!context) return { currentUserId: null, error: false, leads: [] };
   const { data, error } = await context.supabase
@@ -54,7 +54,7 @@ export async function getCrmLeads(): Promise<{ currentUserId: string | null; err
     console.error("Unable to load CRM leads", error);
     return { currentUserId: context.membership.authenticatedUserId, error: true, leads: [] };
   }
-  const admins = await getCrmAdmins();
+  const admins = await (pendingAdmins ?? getCrmAdmins());
   const adminNames = new Map(admins.map((admin) => [admin.id, admin]));
   return { currentUserId: context.membership.authenticatedUserId, error: false, leads: data.map((lead) => ({ ...lead, responsibleAdmin: lead.responsible_admin_id ? adminNames.get(lead.responsible_admin_id) ?? null : null })) };
 }

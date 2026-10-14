@@ -12,6 +12,7 @@ import { getReviewTimerSnapshot } from "@/data/queries/review-timers";
 import { PushLifecycle } from "@/components/layout/push-lifecycle";
 import { headers } from "next/headers";
 import { PROJECTS_PREFETCH_HEADER } from "@/lib/projects-prefetch-request";
+import { PageNavigation } from "@/components/layout/page-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppSidebar crmAttentionCount={crmAttentionCount} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} systemRole={studio.system_role} />
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
         <AppHeader crmAttentionCount={crmAttentionCount} joinedAt={studio.joined_at} leaderboardVisibleToEmployees={studio.leaderboardVisibleToEmployees} profile={profile} systemRole={studio.system_role} />
-        <main id="main-content" tabIndex={-1} className="relative flex flex-1 flex-col p-5 outline-none lg:min-h-0 lg:overflow-y-auto lg:p-8">{children}</main>
+        <PageNavigation>{children}</PageNavigation>
       </div>
     </div>
     </ReviewTimerProvider>

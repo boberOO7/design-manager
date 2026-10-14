@@ -141,7 +141,9 @@ describe("CRM leads workspace contract", () => {
 
   it("reuses the Project form for atomic Lead conversion and aligns field values under labels", async () => {
     const workspace = await readFile(workspacePath, "utf8");
-    expect(workspace).toContain("<ProjectForm action={createProjectFromLead.bind(null, lead.id)}");
+    expect(workspace).toContain("<LeadConversionForm projectOptions={projectOptions} action={createProjectFromLead.bind(null, lead.id)}");
+    expect(workspace).toContain("const { members, templates } = use(projectOptions)");
+    expect(workspace).toContain("<ProjectForm {...props} members={members} templates={templates}");
     expect(workspace).toContain("getLeadProjectDefaults(lead, defaultStartDate)");
     expect(workspace).toContain("client_name: lead.client_name");
     expect(workspace).toContain("description: lead.request_description ?? undefined");

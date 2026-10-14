@@ -41,3 +41,13 @@
 
 [data-instaload-entrance="pending"] [data-instaload-arrival] { animation-duration: var(--instaload-reveal-duration, 440ms); }
 .projects-list-motion { --instaload-reveal-duration: 200ms; }
+
+/* Navigation feedback overlays the shell; content never waits for this clock. */
+.page-navigation-feedback { position: fixed; inset: 0 0 auto; z-index: 60; height: 2px; overflow: hidden; pointer-events: none; display: none; }
+.page-navigation-feedback[data-navigation-feedback="pending"] { display: block; background: color-mix(in srgb, var(--ui-action-primary) 12%, transparent); }
+.page-navigation-feedback > span { display: block; width: 30%; height: 100%; background: var(--ui-action-primary); animation: page-navigation-progress 900ms linear infinite; }
+@keyframes page-navigation-progress { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) {
+  .page-navigation-feedback > span { animation: none; width: 100%; }
+}
+:root[data-motion="off"] .page-navigation-feedback > span { animation: none; width: 100%; }
