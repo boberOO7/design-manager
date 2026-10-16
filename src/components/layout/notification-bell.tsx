@@ -159,7 +159,7 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
     } catch { setInvitationError(t("invitationResponseFailed")); } finally { setPending(null); }
   }
   return <>
-    <ShellControl ref={triggerRef} onClick={openNotifications} aria-expanded={open} aria-controls="notifications-drawer" aria-label={t("bellLabel", { count: unread })} className="relative size-11">
+    <ShellControl ref={triggerRef} onClick={openNotifications} aria-expanded={open} aria-controls="notifications-drawer" aria-label={t("bellLabel", { count: unread })} className="header-icon-control relative size-11">
       <Bell size={16} />
       {unread ? <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[var(--ui-action-primary)] px-1 text-center text-[10px] font-bold leading-4 text-[var(--ui-action-primary-text)]">{unread > 99 ? "99+" : unread}</span> : null}
     </ShellControl>

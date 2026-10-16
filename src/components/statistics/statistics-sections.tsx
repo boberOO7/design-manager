@@ -13,6 +13,7 @@ import type { buildWorkStatistics } from "@/lib/work-log";
 import { formatStatisticsDuration } from "@/lib/statistics";
 import { StatisticsChart } from "./statistics-chart";
 import { StatisticsInfo } from "./statistics-info";
+import { WorkTimeReports } from "./work-time-reports";
 import { StatisticsCardHeader as Title, StatisticsMetric as Value, statisticsPanel as panel, statisticsTable as tableClass } from "./statistics-card";
 
 async function presentation() {
@@ -27,24 +28,27 @@ function Comparison({ label, value, total, detail, color, eventType }: { label: 
 
 export async function WorkStatistics({ report }: { report: ReturnType<typeof buildWorkStatistics> }) {
   const { t, number } = await presentation();
-  const series = [
+  const workSeries = [
     { key: "taskMinutes", label: t("taskWork"), color: "var(--ui-text-secondary)" },
     { key: "reviewMinutes", label: t("reviewWork"), color: "var(--ui-success-accent)" },
+    { key: "internalMinutes", label: t("internalWork"), color: "var(--ui-info-text)" },
   ] as const;
-  const workSeries = [...series, { key: "internalMinutes", label: t("internalWork"), color: "var(--ui-info-text)" }] as const;
   const hours = (minutes: number) => formatStatisticsDuration(minutes / 60);
   const durationUnit = t("durationUnit");
-  const largestProject = Math.max(1, ...report.projects.map(project => project.totalMinutes));
+  const summaryMetric = "[&>p:nth-child(2)>span:first-child]:text-2xl [&>p:nth-child(2)>span:first-child]:leading-8";
   return <section data-instaload-arrival="" data-statistics-reveal="0" id="stats-work" className={panel} aria-labelledby="stats-work-title">
     <Title titleId="stats-work-title" title={t("workTitle")} info={t("workDefinition")} />
-    <div className="flex flex-wrap gap-x-10 gap-y-4 p-5" data-testid="work-summary">
-      <Value label={t("trackedWorkTime")} value={hours(report.totals.totalMinutes)} unit={durationUnit} />
-      {workSeries.map(item => <Value key={item.key} label={item.label} value={hours(report.totals[item.key])} unit={durationUnit} />)}
-      <Value label={t("reviewsCompleted")} value={number(report.totals.reviewsCompleted, 0)} />
-      <Value label={t("reviewSessionsCompleted")} value={number(report.totals.reviewSessionsCompleted, 0)} />
+    <div className="grid grid-cols-3 gap-x-4 gap-y-3 px-5 py-4 sm:flex sm:flex-wrap sm:gap-x-8" data-testid="work-summary">
+      <Value className={summaryMetric} label={t("trackedWorkTime")} value={hours(report.totals.totalMinutes)} unit={durationUnit} />
+      <Value className={summaryMetric} label={t("taskWork")} value={hours(report.totals.taskMinutes)} unit={durationUnit} />
+      <Value className={`${summaryMetric} [&>p:nth-child(2)>span:first-child]:text-[var(--ui-success-text)]`} label={t("reviewWork")} value={hours(report.totals.reviewMinutes)} unit={durationUnit} />
+      <Value className={`${summaryMetric} [&>p:nth-child(2)>span:first-child]:text-[var(--ui-info-text)]`} label={t("internalWork")} value={hours(report.totals.internalMinutes)} unit={durationUnit} />
+      <Value className={`${summaryMetric} max-w-44`} label={t("reviewsCompleted")} value={number(report.totals.reviewsCompleted, 0)} />
+      <Value className={`${summaryMetric} max-w-44`} label={t("reviewSessionsCompleted")} value={number(report.totals.reviewSessionsCompleted, 0)} />
     </div>
-    <p className="px-5 pb-4 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workLogNote")}</p>
-    {report.totals.totalMinutes > 0 ? <div id="stats-work-months" className="space-y-3 border-t border-[var(--ui-border)] p-5">
+    <p className="px-5 pb-3 text-xs leading-5 text-[var(--ui-text-muted)]">{t("workLogNote")}</p>
+    {!report.totals.totalMinutes ? <p className="px-5 pb-3 text-xs text-[var(--ui-text-muted)]">{t("noWorkTime")}</p> : null}
+    <WorkTimeReports report={report} monthlyChart={report.totals.totalMinutes > 0 ? <div className="space-y-3">
       <StatisticsChart title={t("workByMonth")} unit={durationUnit} duration compact showData={false} points={report.months.map(month => ({
         month: month.month, value: month.totalMinutes / 60, display: hours(month.totalMinutes),
         segments: workSeries.map(item => ({ key: item.key, label: item.label, color: item.color, value: month[item.key] / 60, display: hours(month[item.key]) })),
@@ -52,43 +56,7 @@ export async function WorkStatistics({ report }: { report: ReturnType<typeof bui
       <ul aria-label={t("workComposition")} className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--ui-text-secondary)]">
         {workSeries.map(item => <li key={item.key} className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />{item.label}</li>)}
       </ul>
-    </div> : <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noWorkTime")}</p>}
-    <div id="stats-work-projects" className="border-t border-[var(--ui-border)]">
-      <div className="flex items-center gap-1 px-5 py-3"><h3 id="stats-work-projects-title" className="text-sm font-semibold text-[var(--ui-text)]">{t("projectWorkTitle")}</h3><StatisticsInfo label={t("projectWorkTitle")}>{t("projectWorkDefinition")}</StatisticsInfo></div>
-      {report.projects.length ? <div className="overflow-x-auto" role="region" aria-labelledby="stats-work-projects-title" tabIndex={0}><table className={tableClass}>
-        <caption className="sr-only">{t("projectWorkTitle")}</caption>
-        <thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr>
-          <th scope="col" className="sticky left-0 z-20 min-w-52 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">{t("project")}</th>
-          {series.map(item => <th key={item.key} scope="col" className="whitespace-nowrap text-right"><span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />{t(item.key === "taskMinutes" ? "loggedTaskHours" : "loggedReviewHours")}</span></th>)}
-          <th scope="col" className="whitespace-nowrap border-l border-[var(--ui-border-subtle)] text-right">{t("total")} · {durationUnit}</th>
-        </tr></thead>
-        <tbody>{report.projects.map(project => <tr key={project.id ?? "unavailable"} data-project-work={project.id ?? "unavailable"} className="group border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-subtle)]">
-          <th scope="row" className="sticky left-0 z-10 border-r border-[var(--ui-border)] bg-[var(--ui-surface)] font-medium text-[var(--ui-text)] transition-colors duration-[180ms] group-hover:bg-[var(--ui-surface-subtle)]">
-            {project.id && project.name ? <Link href={`/projects/${project.id}`} className="block max-w-80 break-words rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{project.name}</Link> : t("unavailableProject")}
-            <div aria-hidden="true" className="mt-2 h-1.5 max-w-80 overflow-hidden rounded bg-[var(--ui-surface-muted)]"><div data-statistics-progress className="flex h-full overflow-hidden rounded" style={{ width: `${project.totalMinutes / largestProject * 100}%` }}>
-              {series.map(item => <span key={item.key} data-segment={item.key} className="h-full" style={{ width: `${project[item.key] / project.totalMinutes * 100}%`, backgroundColor: item.color }} />)}
-            </div></div>
-          </th>
-          {series.map(item => <td key={item.key} className="whitespace-nowrap text-right tabular-nums">{hours(project[item.key])}</td>)}
-          <td className="whitespace-nowrap border-l border-[var(--ui-border-subtle)] text-right font-semibold tabular-nums text-[var(--ui-text)]">{hours(project.totalMinutes)}</td>
-        </tr>)}</tbody>
-      </table></div> : <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noProjectWorkTime")}</p>}
-    </div>
-    <div id="stats-work-people" className="overflow-x-auto border-t border-[var(--ui-border)]" role="region" aria-label={t("workTitle")} tabIndex={0}><table className={tableClass}>
-      <caption className="sr-only">{t("workTitle")}</caption>
-      <thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr>
-        <th scope="col" className="sticky left-0 z-20 min-w-44 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">{t("employee")}</th>
-        <th scope="col" className="whitespace-nowrap text-right">{t("loggedTaskHours")}</th><th scope="col" className="whitespace-nowrap text-right">{t("loggedReviewHours")}</th><th scope="col" className="whitespace-nowrap text-right">{t("loggedInternalHours")}</th>
-        <th scope="col" className="whitespace-nowrap border-l border-[var(--ui-border-subtle)] text-right">{t("total")} · {durationUnit}</th><th scope="col" className="min-w-32 text-right">{t("reviewsCompleted")}</th>
-        <th scope="col" className="min-w-32 text-right">{t("reviewSessionsCompleted")}</th>
-      </tr></thead>
-      <tbody>{report.employees.map(person => <tr key={person.id} className="group border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-subtle)]">
-        <th scope="row" className="sticky left-0 z-10 border-r border-[var(--ui-border)] bg-[var(--ui-surface)] font-medium text-[var(--ui-text)] transition-colors duration-[180ms] group-hover:bg-[var(--ui-surface-subtle)]"><Link href={`/team/${person.id}`} className="flex items-center gap-2.5 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><UserAvatar name={person.name || t("formerEmployee")} size="boardCard" decorative /><span className="min-w-0"><span className="block">{person.name || t("formerEmployee")}</span>{!person.active ? <span className="mt-0.5 block text-[10px] font-normal text-[var(--ui-text-muted)]">{t("inactiveEmployee")}</span> : null}</span></Link></th>
-        {workSeries.map(item => <td key={item.key} className="text-right tabular-nums">{hours(person[item.key])}</td>)}
-        <td className="border-l border-[var(--ui-border-subtle)] text-right font-semibold tabular-nums text-[var(--ui-text)]">{hours(person.totalMinutes)}</td><td className="text-right tabular-nums">{number(person.reviewsCompleted, 0)}</td>
-        <td className="text-right tabular-nums">{number(person.reviewSessionsCompleted, 0)}</td>
-      </tr>)}</tbody>
-    </table></div>
+    </div> : <p className="text-xs text-[var(--ui-text-muted)]">{t("noWorkTime")}</p>} />
   </section>;
 }
 

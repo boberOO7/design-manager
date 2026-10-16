@@ -13,6 +13,7 @@ import { LeadsStatistics, TeamStatistics, CalendarStatistics, WorkStatistics } f
 import { OngoingProjects } from "./ongoing-projects";
 import { StatisticsMotion } from "./statistics-motion";
 import { StatisticsTooltipLink } from "./statistics-tooltip-link";
+import { TeamActivityCalendar } from "./team-activity-calendar";
 
 export async function StatisticsShell({ period, section, range, children }: {
   period: StatisticsPeriod; section: StatisticsSection; range: StatisticsStreams["range"]; children: ReactNode;
@@ -55,6 +56,7 @@ export function StatisticsReportView({ streams, section }: { streams: Statistics
   return <StatisticsShell period={streams.period} section={section} range={streams.range}>
     {section === "leads" ? stream("leads", streams.leads, report => <LeadsStatistics report={report} />, <StatisticsSectionBlueprint section="leads" />)
       : section === "team" ? <>
+        <TeamActivityCalendar today={streams.today} />
         {stream("work", streams.work, report => <WorkStatistics report={report} />, <StatisticsSectionBlueprint section="work" />)}
         {stream("attendance", streams.attendance, report => <TeamStatistics report={report} today={streams.today} />, <StatisticsSectionBlueprint section="attendance" />)}
       </> : section === "calendar" ? stream("calendar", streams.calendar, report => <CalendarStatistics report={report} />, <StatisticsSectionBlueprint section="calendar" />)

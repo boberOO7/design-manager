@@ -404,6 +404,16 @@ body,
   color: var(--ui-action-primary-text);
 }
 
+.header-icon-control:hover {
+  border-color: var(--ui-border);
+  color: var(--ui-text-muted);
+}
+
+:root[data-theme="dark"] .header-icon-control:hover {
+  border-color: var(--ui-text-muted);
+  color: var(--ui-text);
+}
+
 .theme-switch__icon {
   transition: transform 200ms ease-out, opacity 200ms ease-out;
 }

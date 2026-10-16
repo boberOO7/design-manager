@@ -62,6 +62,86 @@ test.afterAll(async () => {
   for (const account of accounts) if (account.id) await service.auth.admin.deleteUser(account.id);
 });
 
+test("profile language switching persists and header hover states work in both themes", async ({ page }) => {
+  await login(page);
+  const header = page.locator("[data-application-header]");
+  const themeButton = header.locator(".header-icon-control").filter({ has: page.locator(".theme-switch__icon") });
+  const bell = header.locator('[aria-controls="notifications-drawer"]');
+  const logout = header.getByRole("button", { name: en.Account.signOut, exact: true });
+  const colors = (button: ReturnType<Page["locator"]>) => button.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const icon = element.querySelector("svg");
+    return { border: style.borderTopColor, icon: icon ? getComputedStyle(icon).color : "", duration: style.transitionDuration };
+  });
+  const brightness = (color: string) => {
+    const channels = color.match(/[\d.]+/g)?.map(Number);
+    if (!channels || channels.length < 3) throw new Error(`Unexpected color: ${color}`);
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  };
+
+  for (const theme of ["light", "dark"]) {
+    if (await page.locator("html").getAttribute("data-theme") !== theme) await themeButton.click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(header.getByRole("button", { name: en.Account.switchToUkrainian })).toHaveCount(0);
+    for (const [name, button] of [["theme", themeButton], ["notifications", bell], ["logout", logout]] as const) {
+      await page.mouse.move(0, 0);
+      await expect.poll(() => button.evaluate((element) => element.matches(":hover"))).toBe(false);
+      // Allow the existing 200ms transition to settle before sampling each endpoint.
+      await page.waitForTimeout(250);
+      const before = await colors(button);
+      await button.hover();
+      await page.waitForTimeout(250);
+      const after = await colors(button);
+      expect(after.border).not.toBe(before.border);
+      expect(after.icon).not.toBe(before.icon);
+      expect(after.duration).toBe("0.2s");
+      if (name !== "logout") {
+        expect(brightness(after.border)).toBeGreaterThan(brightness(before.border));
+        expect(brightness(after.icon)).toBeGreaterThan(brightness(before.icon));
+      }
+      await button.focus();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(button).toBeFocused();
+      expect(await button.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+      await page.screenshot({ path: test.info().outputPath(`${theme}-${name}-hover.png`) });
+    }
+    await bell.click();
+    await expect(page.getByRole("dialog", { name: en.Notifications.title, exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(bell).toBeFocused();
+    await logout.click();
+    await page.getByRole("dialog").getByRole("button", { name: en.Account.cancel, exact: true }).click();
+    await expect(logout).toBeFocused();
+
+    await page.getByRole("button", { name: en.Account.profileSettings, exact: true }).click();
+    let dialog = page.getByRole("dialog", { name: en.Account.profileEditor, exact: true });
+    const language = dialog.getByRole("combobox", { name: en.Account.interfaceLanguage, exact: true });
+    const cityBox = await dialog.locator('[name="profile-city"]').boundingBox();
+    const languageBox = await language.boundingBox();
+    expect(languageBox?.y).toBeGreaterThan((cityBox?.y ?? 0) + (cityBox?.height ?? 0));
+    await language.click();
+    await expect(dialog.getByRole("option")).toHaveCount(2);
+    await dialog.getByRole("option", { name: "Українська", exact: true }).click();
+    dialog = page.getByRole("dialog", { name: uk.Account.profileEditor, exact: true });
+    await expect(dialog.getByRole("combobox", { name: uk.Account.interfaceLanguage, exact: true })).toHaveText("Українська");
+    await expect(dialog.getByRole("button", { name: uk.Account.save, exact: true })).toBeDisabled();
+    expect((await page.context().cookies()).find((cookie) => cookie.name === "studioflow-locale")?.value).toBe("uk");
+    await page.reload();
+    await expect(header.getByRole("button", { name: uk.Account.signOut, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: uk.Account.profileSettings, exact: true }).click();
+    dialog = page.getByRole("dialog", { name: uk.Account.profileEditor, exact: true });
+    await dialog.getByRole("combobox", { name: uk.Account.interfaceLanguage, exact: true }).click();
+    await dialog.getByRole("option", { name: "English", exact: true }).click();
+    dialog = page.getByRole("dialog", { name: en.Account.profileEditor, exact: true });
+    await expect(dialog.getByRole("combobox", { name: en.Account.interfaceLanguage, exact: true })).toHaveText("English");
+    await dialog.getByRole("button", { name: en.Account.cancel, exact: true }).click();
+    await page.reload();
+    await expect(logout).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+  }
+});
+
 test("production shell delivery and first profile interaction", async ({ page }, testInfo) => {
   await login(page);
   const measurements = [];

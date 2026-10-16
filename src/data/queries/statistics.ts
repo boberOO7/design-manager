@@ -7,7 +7,7 @@ import { buildStatistics, statisticsRange, type StatisticsPeriod } from "@/lib/s
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { buildCrmStatistics } from "@/lib/statistics-crm";
 import { buildAttendanceStatistics } from "@/lib/statistics-attendance";
-import { DEFAULT_WORKDAY_MINUTES } from "@/lib/time-off-compensation";
+import { getStatisticsWorkday } from "./statistics-workday";
 import { buildCalendarStatistics, calendarStatisticsAssignments } from "@/lib/statistics-calendar";
 import { buildWorkStatistics, completedReviewCredits, completedReviewSessions } from "@/lib/work-log";
 
@@ -29,16 +29,7 @@ export async function getStatisticsStreams(period: StatisticsPeriod, today = get
   if (!admin) return null;
   const client = await createClient();
   const studio = admin.studio_id;
-  // Match Administration's current normalized workday, including revisions not yet mirrored to studios.
-  const workdayMinutes = Promise.all([
-    client.from("studios").select("standard_workday_minutes").eq("id", studio).single(),
-    client.from("finance_labor_capacity_revisions").select("daily_minutes")
-      .eq("studio_id", studio).is("employee_id", null).lte("effective_from", today)
-      .order("effective_from", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle(),
-  ]).then(([setting, capacity]) => {
-    if (setting.error || capacity.error) throw new Error("Unable to load Statistics workday.", { cause: setting.error ?? capacity.error });
-    return capacity.data?.daily_minutes ?? setting.data?.standard_workday_minutes ?? DEFAULT_WORKDAY_MINUTES;
-  });
+  const workdayMinutes = getStatisticsWorkday(client, studio, today);
   const sources = {
     projects: readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,started_at,completed_at,include_in_productivity,total_area_m2")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),

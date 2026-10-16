@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { CityCombobox } from "@/components/projects/city-combobox";
 import { Select, SelectItem } from "@/components/ui/select";
 import { GoogleCalendarIntegration } from "@/components/layout/google-calendar-integration";
+import { LanguageSelector } from "@/components/layout/language-selector";
 import { getCountryOptions, isCountryCode } from "@/lib/countries";
 import { createClient } from "@/lib/supabase/client";
 import type { ProfileAvatarEditorProps } from "@/components/layout/profile-avatar-editor";
@@ -109,6 +110,7 @@ export function ProfileEditorDialog({ birthDate, city, cityGeoNamesId, countryCo
           <label className="block text-sm font-medium text-[var(--ui-text-secondary)]">{t("city")}
             {isCountryCode(currentCountryCode) ? <CityCombobox className="mt-2" countryCode={currentCountryCode} name="profile-city" onGeoNamesIdChange={setCurrentCityGeoNamesId} onValueChange={(value) => { setCurrentCity(value); setProfileError(null); }} value={currentCity} /> : <p className="mt-2 flex min-h-11 items-center rounded-[var(--ui-radius-control)] border border-dashed border-[var(--ui-border-strong)] px-3 text-sm font-normal text-[var(--ui-text-muted)]">{t("selectCountryFirst")}</p>}
           </label>
+          <LanguageSelector variant="select" />
         </fieldset>
       </section>
       <section aria-labelledby="notification-settings-heading" className="border-t border-[var(--ui-border-subtle)] pt-4">

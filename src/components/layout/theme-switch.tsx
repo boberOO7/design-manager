@@ -77,7 +77,7 @@ export function ThemeSwitch() {
     <Tooltip content={label}><ShellControl
       aria-label={label}
       onClick={toggleTheme}
-      className="group size-11"
+      className="header-icon-control group size-11"
     >
       <span className="relative block size-5 overflow-hidden" aria-hidden="true">
         <Sun

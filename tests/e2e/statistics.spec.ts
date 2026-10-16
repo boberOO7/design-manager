@@ -329,38 +329,58 @@ test("Team work time reconciles summary, chart and people after changing the per
   const verify = async (expected: { summary: string[]; admin: string[]; employee: string[]; projects: string[][] }) => {
     const work = page.locator("#stats-work");
     await expect(work.getByRole("heading", { name: /^Work time/ })).toBeVisible();
-    await expect(page.locator("[data-statistics-motion]")).toHaveAttribute("data-statistics-motion", "complete");
-    await expect(work.locator("#stats-work-people").getByRole("columnheader")).toHaveCount(5);
-    await expect(work.getByRole("columnheader", { name: /Calendar/ })).toHaveCount(0);
+    await expect(page.locator("[data-statistics-motion]").filter({ has: work })).toHaveAttribute("data-statistics-motion", "complete");
+    await expect(work.getByRole("button", { name: "By employee", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(work.locator("#stats-work-projects")).toHaveCount(0);
     await expect(work.locator('[data-segment="calendarMinutes"]')).toHaveCount(0);
     const summary = page.getByTestId("work-summary").locator(":scope > div > p:nth-child(2) > span:first-child");
     await expect(summary).toHaveText(expected.summary);
-    const admin = work.locator("#stats-work-people tbody tr").filter({ hasText: "Statistics admin" }).locator("td");
-    const employee = work.locator("#stats-work-people tbody tr").filter({ hasText: "Statistics employee" }).locator("td");
-    await expect(admin).toHaveText(expected.admin);
-    await expect(employee).toHaveText(expected.employee);
-    const rows = [await admin.allTextContents(), await employee.allTextContents()];
+    const rows = [];
+    for (const [name, values] of [["Statistics admin", expected.admin], ["Statistics employee", expected.employee]] as const) {
+      const row = work.locator("#stats-work-people > ul > li").filter({ hasText: name });
+      const toggle = row.getByRole("button");
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await toggle.click();
+      await expect(row.getByRole("link")).toBeVisible();
+      const metrics = await row.locator("[data-work-metric]").allTextContents();
+      const total = (await row.locator("[data-work-total]").innerText()).split(" ")[0];
+      const actual = [...metrics.slice(0, 3), total, ...metrics.slice(3)];
+      expect(actual).toEqual(values);
+      rows.push(actual);
+      await toggle.click();
+    }
     const summaryValues = await summary.allTextContents();
-    expect(rows.reduce((sum, row) => sum + minutes(row[2]), 0)).toBe(minutes(summaryValues[0]));
-    for (const [column, summaryColumn] of [[0, 1], [1, 2], [3, 3]]) {
-      const parse = column === 3 ? Number : minutes;
+    expect(rows.reduce((sum, row) => sum + minutes(row[3]), 0)).toBe(minutes(summaryValues[0]));
+    for (const [column, summaryColumn] of [[0, 1], [1, 2], [2, 3], [4, 4], [5, 5]]) {
+      const parse = column >= 4 ? Number : minutes;
       expect(rows.reduce((sum, row) => sum + parse(row[column]), 0)).toBe(parse(summaryValues[summaryColumn]));
     }
-    for (const row of rows) expect(minutes(row[0]) + minutes(row[1])).toBe(minutes(row[2]));
-    const projectRows = work.locator("#stats-work-projects tbody tr");
-    await expect(work.locator("#stats-work-projects").getByRole("heading", { name: "Time by project", exact: true })).toBeVisible();
+    for (const row of rows) expect(minutes(row[0]) + minutes(row[1]) + minutes(row[2])).toBe(minutes(row[3]));
+    await work.getByRole("button", { name: "By project", exact: true }).click();
+    await expect(work.locator("#stats-work-people")).toHaveCount(0);
+    const projectRows = work.locator("#stats-work-projects > ul > li");
     await expect(projectRows).toHaveCount(expected.projects.length);
     for (const [index, values] of expected.projects.entries()) {
-      await expect(projectRows.nth(index).locator("td")).toHaveText(values);
+      await expect(projectRows.nth(index).locator("[data-work-metric]")).toHaveText(values.slice(0, 2));
+      await expect(projectRows.nth(index).locator("[data-work-total]")).toHaveText(`${values[2]} h:mm`);
     }
+    await projectRows.first().getByRole("button").click();
+    await expect(projectRows.first().getByRole("link")).toBeVisible();
     await expect(projectRows.first().getByRole("link")).toHaveAttribute("href", `/projects/${projectId}`);
-    const projectValues = await projectRows.evaluateAll(elements => elements.map(row => [...row.querySelectorAll("td")].map(cell => cell.textContent ?? "")));
+    const projectValues = await projectRows.evaluateAll(elements => elements.map(row => [
+      ...Array.from(row.querySelectorAll("[data-work-metric]"), cell => cell.textContent ?? ""),
+      (row.querySelector("[data-work-total]")?.textContent ?? "").split(" ")[0],
+    ]));
     for (const [column, summaryColumn] of [[0, 1], [1, 2], [2, 0]]) {
       expect(projectValues.reduce((sum, row) => sum + minutes(row[column]), 0)).toBe(minutes(summaryValues[summaryColumn]));
     }
     const largestProject = Math.max(...projectValues.map(row => minutes(row[2])));
     const barWidths = await projectRows.locator("[data-statistics-progress]").evaluateAll(elements => elements.map(element => parseFloat(element.style.width)));
     barWidths.forEach((width, index) => expect(width).toBeCloseTo(minutes(projectValues[index][2]) / largestProject * 100));
+    const monthly = work.getByRole("button", { name: "Monthly trend", exact: true });
+    await expect(monthly).toHaveAttribute("aria-expanded", "false");
+    await monthly.click();
+    await expect(work.locator("#stats-work-months")).toBeVisible();
     await settleCharts(page);
     const points = page.locator("#stats-work-months").getByRole("button");
     expect((await points.allTextContents()).reduce((sum, text) => sum + minutes(text), 0)).toBe(minutes(summaryValues[0]));
@@ -371,15 +391,17 @@ test("Team work time reconciles summary, chart and people after changing the per
       return sum + minutes(duration);
     }, 0));
     totals.forEach((total, index) => expect(total).toBe(minutes(summaryValues[index + 1])));
+    await monthly.click();
+    await expect(work.locator("#stats-work-months")).not.toBeVisible();
     await expect(page.locator("#stats-team").getByRole("heading", { name: /^Time off and make-up/ })).toBeVisible();
     const attendance = page.locator("#stats-team tbody tr").filter({ hasText: "Statistics admin" });
     await expect(attendance.locator("td").nth(2)).toContainText("2 cal. days");
     await expect(attendance.locator("td").nth(3)).toHaveText("3:00");
   };
-  await verify({ summary: ["4:02", "3:31", "0:31", "1"], admin: ["1:31", "0:31", "2:02", "1"], employee: ["2:00", "0:00", "2:00", "0"], projects: [["3:31", "0:31", "4:02"]] });
+  await verify({ summary: ["4:02", "3:31", "0:31", "0:00", "1", "0"], admin: ["1:31", "0:31", "0:00", "2:02", "1", "0"], employee: ["2:00", "0:00", "0:00", "2:00", "0", "0"], projects: [["3:31", "0:31", "4:02"]] });
   await page.getByRole("link", { name: "12 months", exact: true }).click();
   await expect(page).toHaveURL(/period=12&section=team/);
-  await verify({ summary: ["6:02", "4:31", "1:31", "2"], admin: ["1:31", "1:31", "3:02", "2"], employee: ["3:00", "0:00", "3:00", "0"], projects: [["3:31", "1:31", "5:02"], ["1:00", "0:00", "1:00"]] });
+  await verify({ summary: ["6:02", "4:31", "1:31", "0:00", "2", "0"], admin: ["1:31", "1:31", "0:00", "3:02", "2", "0"], employee: ["3:00", "0:00", "0:00", "3:00", "0", "0"], projects: [["3:31", "1:31", "5:02"], ["1:00", "0:00", "1:00"]] });
   const screenshot = `${renderDir}/statistics-team-work-time.png`;
   await page.screenshot({ path: screenshot, fullPage: true });
   await testInfo.attach("team-work-time", { path: screenshot, contentType: "image/png" });
@@ -401,7 +423,8 @@ test("Team work time reconciles summary, chart and people after changing the per
   await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://localhost:3000" }]);
   await page.goto("/statistics?period=12&section=team");
   await expect(page.locator("#stats-work").getByRole("heading", { name: /^Робочий час/ })).toBeVisible();
-  await expect(page.locator("#stats-work-projects").getByRole("heading", { name: "Час за проєктами", exact: true })).toBeVisible();
+  await page.locator("#stats-work").getByRole("button", { name: "За проєктами", exact: true }).click();
+  await expect(page.getByRole("region", { name: "За проєктами", exact: true })).toBeVisible();
   await expect(page.locator("#stats-team").getByRole("heading", { name: /^Відсутності та відпрацювання/ })).toBeVisible();
   await expect(page.locator("[data-statistics-motion]")).toHaveAttribute("data-statistics-motion", "complete");
   const mobileScreenshot = `${renderDir}/statistics-team-projects-mobile.png`;
