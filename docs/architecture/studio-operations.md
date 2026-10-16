@@ -31,6 +31,35 @@ member statistics, checklist templates, or bonus configuration. Pending requests
 join the actionable exception strip; approved absences remain a dedicated compact
 section linking back to Calendar. The Administration workspace retains its full model.
 
+## Vacation policy and balances
+
+- Balances are derived in exact twelfths of a day from completed monthly accruals,
+  policy-selected annual boundaries, policy versions and pending/approved inclusive
+  leave.
+  Public balances expose whole days. There is no accrual ledger.
+- Imported opening days already include earlier usage; only later accrual and
+  leave are replayed from the opening date. Missing start dates remain unknown.
+- The versioned year boundary defaults to employee employment anniversaries
+  (opening-date fallback), or calendar-year carryover on January 1.
+  Monthly accrual stays anchored to completed months from the recorded start;
+  midyear hires receive no full-year upfront entitlement. One boundary selector
+  drives balances, request protection and preview checkpoints, using the mode
+  effective on each candidate boundary. Future-only mode switches never introduce
+  retroactive resets. Opening amounts themselves are never rewritten.
+- Policy settings default to future-only changes effective when saved. Explicit
+  recalculation appends a replay policy version for active memberships, overriding
+  earlier accrual/carryover rules from each recorded baseline. Later prospective
+  versions still govern subsequent milestones; pre-recalculation historical dates
+  retain their original rules. Leave requests and earlier policy rows are preserved.
+- The guarded admin preview includes before/after balances, usage, reservations
+  and future reservation shortfalls. Apply locks the studio and existing member/
+  vacation source rows, rejects stale previews, and requires separate confirmation
+  of negative balances. Repeated applies do not duplicate policy versions or accrual.
+  Confirmed deficits survive annual carryover and offset subsequent accrual.
+- Policy preview/save/apply require active admin membership and an active profile.
+  Canonical reads, request projections and reservation enforcement share the replay
+  calculation through `private.vacation_balance_units`.
+
 ## Contractors
 
 Finance may reference a contractor for project bonus **income**. It checks tenant
@@ -235,8 +264,9 @@ submission/office-assignment migrations and RLS tests.
   authoritative revalidation discards that reuse, including after history-only
   writes. History failures and retries stay local to the history panel.
 - Optional recurring maintenance stores an interval and an explicit next due
-  date. Completing regular maintenance advances the due date from the actual
-  completion date; disabling the schedule does not remove history.
+  date and a separate optional responsible active studio administrator, independent
+  of workstation assignment. Completing regular maintenance advances the due date
+  from the actual completion date; disabling the schedule does not remove history.
 - `equipment_service_events` is append-oriented history for regular maintenance,
   repair, and upgrade. Atomic RPCs coordinate the single open service event with
   the equipment `in_service` lifecycle; return explicitly selects Active or Spare.
@@ -299,7 +329,7 @@ messages. They are not activity history.
 | Submission create/assign/status | Active admins, responsible member, or non-anonymous author; Office submission |
 | Office assignment assign/status | Responsible member or creator; Office assignment |
 | CRM Lead follow-up | Responsible administrator; CRM Lead |
-| Equipment maintenance upcoming / overdue | Every active studio administrator; Equipment |
+| Equipment maintenance upcoming / overdue | Responsible active studio administrator, falling back to active admins only when unassigned; Equipment |
 
 Invariants:
 
@@ -326,7 +356,12 @@ Invariants:
   concepts.
 - A protected daily Vercel cron calls the idempotent equipment-maintenance
   notification RPC. Per-cycle due-date markers deduplicate upcoming and overdue
-  thresholds and reset when a new due date is established.
+  thresholds and reset when a new cycle or responsible person is established.
+  Completion, due-date/assignee changes, disablement, and retirement cancel unread
+  reminders and their queued pushes; read history remains. An unavailable assigned
+  administrator does not cause an admin broadcast. Queue claims, pre-send checks,
+  browser previews, and reminder Realtime inserts validate the current source
+  state. Scheduled notification timestamps also delay push delivery.
 - Optional Web Push reuses notification inserts through a session-bound,
   recipient-private subscription table and transactional delivery queue. A
   post-commit pg_net webhook calls the protected server worker for generic OS

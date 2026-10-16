@@ -1,6 +1,6 @@
 import type { Database } from "@/types/database.types";
 import { addCalendarDays, instantToDateOnly, instantToWallInput, zonedWallTimeToIso } from "./calendar";
-import { getWorkMakeupMinutes } from "./time-off-compensation";
+import { DEFAULT_WORKDAY_MINUTES, getWorkMakeupMinutes } from "./time-off-compensation";
 import { parseRecurrenceRule, recurrenceDates } from "./calendar-recurrence";
 import { materializeStatisticsEvents, type StatisticsCalendarEvent } from "./statistics-calendar";
 
@@ -20,7 +20,15 @@ export type AttendanceCounts = {
   boundaryMakeupCount: number;
 };
 export type AttendanceEmployee = AttendanceMember & AttendanceCounts;
-export type AttendanceStatistics = { employees: AttendanceEmployee[]; totals: AttendanceCounts };
+export type AttendanceStatistics = { employees: AttendanceEmployee[]; totals: AttendanceCounts; workdayMinutes: number };
+
+export function getAttendanceLeaveHours(leave: AttendanceLeave[AttendanceCategory], workdayMinutes = DEFAULT_WORKDAY_MINUTES): number {
+  return leave.days * workdayMinutes / 60 + leave.hours;
+}
+
+export function getAttendanceDebtHours(employee: Pick<AttendanceCounts, "elapsedLeave" | "elapsedMakeupHours">, workdayMinutes = DEFAULT_WORKDAY_MINUTES): number {
+  return Math.max(0, getAttendanceLeaveHours(employee.elapsedLeave.day_off, workdayMinutes) - employee.elapsedMakeupHours);
+}
 
 type Interval = [number, number];
 type LeaveIntervals = Record<AttendanceCategory, { days: Interval[]; minutes: Interval[] }>;
@@ -77,6 +85,7 @@ export function buildAttendanceStatistics(
   members: readonly AttendanceMember[],
   range: { from: string; through: string },
   now: string,
+  workdayMinutes = DEFAULT_WORKDAY_MINUTES,
 ): AttendanceStatistics {
   const today = instantToDateOnly(now);
   const tomorrow = addCalendarDays(today, 1);
@@ -145,7 +154,7 @@ export function buildAttendanceStatistics(
     const elapsedEnd = Math.min(end, periodEnd, nowInstant);
     const crossesBoundary = event.all_day && end <= nowInstant && (start < periodStart || end > periodEnd);
     const elapsedMinutes = event.all_day
-      ? (end <= nowInstant && !crossesBoundary ? getWorkMakeupMinutes({ startsAt: event.starts_at, endsAt: event.ends_at, allDay: true }) : 0)
+      ? (end <= nowInstant && !crossesBoundary ? workdayMinutes : 0)
       : (elapsedEnd > elapsedStart ? getWorkMakeupMinutes({ startsAt: new Date(elapsedStart).toISOString(), endsAt: new Date(elapsedEnd).toISOString(), allDay: false }) : 0);
     if (!elapsedMinutes && !crossesBoundary) continue;
     const employee = employeeFor(event.organizer_id);
@@ -159,9 +168,9 @@ export function buildAttendanceStatistics(
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= Math.max(start, nowInstant)) return;
     const employee = employeeFor(event.organizer_id);
     if (employee.plannedMakeupHours === null) return;
-    employee.plannedMakeupHours += getWorkMakeupMinutes({
+    employee.plannedMakeupHours += (event.all_day ? workdayMinutes : getWorkMakeupMinutes({
       startsAt: new Date(Math.max(start, nowInstant)).toISOString(), endsAt: event.ends_at, allDay: event.all_day,
-    }) / 60;
+    })) / 60;
   };
   for (const event of calendarRows) {
     if (event.series_id || event.cancelled_at || !Number.isFinite(Date.parse(event.starts_at))) continue;
@@ -206,5 +215,5 @@ export function buildAttendanceStatistics(
       ? null : totals.plannedMakeupHours + employee.plannedMakeupHours;
     totals.boundaryMakeupCount += employee.boundaryMakeupCount;
   }
-  return { employees: [...employees.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), totals };
+  return { employees: [...employees.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), totals, workdayMinutes };
 }

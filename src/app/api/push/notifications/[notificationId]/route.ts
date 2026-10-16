@@ -21,6 +21,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ noti
   ]);
   if (notification.error || subscription.error) return NextResponse.json({}, { status: 503, headers });
   if (!notification.data || !subscription.data) return NextResponse.json({}, { status: 404, headers });
+  if (notification.data.read_at === null) {
+    const current = await client.rpc("is_notification_deliverable", { p_notification_id: notificationId });
+    if (current.error) return NextResponse.json({}, { status: 503, headers });
+    if (!current.data) return NextResponse.json({}, { status: 404, headers });
+  }
   let calendarContextAllowed = false;
   if (notification.data.entity_type === "calendar_event" && notification.data.entity_id) {
     // Calendar notifications also cover HR/personal events. Only reveal names

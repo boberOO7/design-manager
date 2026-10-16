@@ -210,9 +210,9 @@ export function EquipmentWorkspace({ equipment, floorPlanPlacements, initialView
       : <MaintenanceQueue items={equipment} workstationNames={workstationNames} today={today} onOpen={routing.openItem} />}
 
     <CreateWorkstationDialog key={`create-workstation-${routing.createKind === "workstation"}`} isOpen={routing.createKind === "workstation"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
-    <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
+    <CreateEquipmentDialog key={`create-equipment-${routing.createKind === "equipment"}`} isOpen={routing.createKind === "equipment"} members={members} workstations={workstations} onClose={routing.closeCreate} onCreated={routing.openItem} />
     <WorkstationDrawer key={selectedWorkstation?.id ?? "workstation-closed"} item={selectedWorkstation} allEquipment={equipment} isTopLayer={!selectedEquipment} members={members} workstations={workstations} onClose={routing.closeItem} onOpenEquipment={routing.openEquipment} />
-    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} loadHistory={loadHistory} maintenanceMode={initialView === "maintenance" && !selectedWorkstation} today={today} workstations={workstations} onClose={routing.closeEquipment} />
+    <EquipmentDrawer key={selectedEquipment?.id ?? "equipment-closed"} item={selectedEquipment} members={members} loadHistory={loadHistory} maintenanceMode={initialView === "maintenance" && !selectedWorkstation} today={today} workstations={workstations} onClose={routing.closeEquipment} />
   </div>;
 }
 
@@ -415,13 +415,13 @@ function CreateWorkstationDialog({ isOpen, members, workstations, onClose, onCre
   </Dialog>;
 }
 
-function CreateEquipmentDialog({ isOpen, workstations, onClose, onCreated }: { isOpen: boolean; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
+function CreateEquipmentDialog({ isOpen, members, workstations, onClose, onCreated }: { isOpen: boolean; members: EquipmentMember[]; workstations: WorkstationItem[]; onClose: () => void; onCreated: (id: string) => void }) {
   const t = useTranslations("Equipment");
   const processed = useRef(false);
   const [state, action, pending] = useActionState(createEquipment, initialActionState);
   useEffect(() => { if (state.success && state.id && !processed.current) { processed.current = true; onCreated(state.id); } }, [onCreated, state.id, state.success]);
   return <Dialog className="max-w-2xl" closeDisabled={pending} closeLabel={t("close")} isOpen={isOpen} onRequestClose={(reason) => { if (reason !== "outside" && !pending) onClose(); }} title={t("form.createTitle")}>
-    <form action={action} className="flex min-h-0 flex-col gap-5 overflow-y-auto p-5 sm:p-6"><EquipmentFormFields workstations={workstations} initialType="other" /><ActionError error={state.error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createEquipment")}</Button></div></form>
+    <form action={action} className="flex min-h-0 flex-col gap-5 overflow-y-auto p-5 sm:p-6"><EquipmentFormFields members={members} workstations={workstations} initialType="other" /><ActionError error={state.error} /><div className="flex justify-end gap-3"><Button type="button" variant="outline" size="lg" disabled={pending} onClick={onClose}>{t("cancel")}</Button><Button type="submit" size="lg" disabled={pending}>{pending ? t("actions.creating") : t("actions.createEquipment")}</Button></div></form>
   </Dialog>;
 }
 
@@ -507,7 +507,7 @@ function EquipmentAttachPicker({ candidates, label, locationNames, onAttach, pen
   </PopoverPrimitive.Root>;
 }
 
-function EquipmentDrawer({ item, loadHistory, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; loadHistory: HistoryLoader; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
+function EquipmentDrawer({ item, members, loadHistory, maintenanceMode, today, workstations, onClose }: { item: EquipmentItem | null; members: EquipmentMember[]; loadHistory: HistoryLoader; maintenanceMode: boolean; today: string; workstations: WorkstationItem[]; onClose: () => void }) {
   const t = useTranslations("Equipment");
   const closeRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<EquipmentActionState["error"]>();
@@ -574,23 +574,25 @@ function EquipmentDrawer({ item, loadHistory, maintenanceMode, today, workstatio
     <div className="min-h-0 flex-1 overflow-y-auto">
       <ActionError error={error} />
       {error && retryRef.current ? <Button variant="ghost" onClick={() => retryRef.current?.()}>{t("actions.retry")}</Button> : null}
-      {maintenanceMode ? <><MaintenanceSchedule item={item} pending={pending} run={run} /><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} loadHistory={loadHistory} /></> : <><fieldset aria-busy={pending} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={false} workstations={workstations} onSave={saveField} /></fieldset><EquipmentMaintenanceSummary item={item} today={today} onNavigate={canLeave} onStartService={() => setServiceOpen(true)} /></>}
+      {maintenanceMode ? <><MaintenanceSchedule item={item} members={members} pending={pending} run={run} /><ServicePanel item={item} pending={pending} run={run} today={today} /><HistoryPanel item={item} loadHistory={loadHistory} /></> : <><fieldset aria-busy={pending} className="flex flex-col gap-5 p-5 sm:p-6"><EquipmentFormFields item={item} showMaintenanceFields={false} workstations={workstations} onSave={saveField} /></fieldset><EquipmentMaintenanceSummary item={item} today={today} onNavigate={canLeave} onStartService={() => setServiceOpen(true)} /></>}
     </div>
   </Drawer>
   <Dialog className="max-w-lg" isOpen={serviceOpen} closeDisabled={pending} closeLabel={t("close")} title={t("service.send")} onRequestClose={(reason) => { if (!pending && reason !== "outside") setServiceOpen(false); }}><div className="overflow-y-auto p-5 sm:p-6"><p className="mb-4 text-sm text-[var(--ui-text-muted)]">{item.assetTag}{item.displayName ? ` · ${item.displayName}` : ""}</p><StartServiceForm item={item} pending={pending} today={today} run={(operation) => run(operation, () => setServiceOpen(false))} /><ActionError error={error} /></div></Dialog>
   <Dialog className="max-w-sm" isOpen={codeOpen} closeDisabled={pending} closeLabel={t("close")} title={t("actions.changeCode")} onRequestClose={() => { if (!pending) setCodeOpen(false); }}><form onSubmit={renameCode} className="grid gap-4 p-5 sm:p-6"><FormField as="div" label={t("form.assetTag")}><NumericStepper initialFocus ariaLabel={t("form.assetTagNumber")} decreaseLabel={t("form.decreaseAssetTag")} increaseLabel={t("form.increaseAssetTag")} invalid={error === "duplicate"} prefix={codePrefix} preserveWidth value={codeNumber} onValueChange={(value) => { setCodeNumber(value); if (error === "duplicate") setError(undefined); }} />{error === "duplicate" ? <span role="alert" className="text-sm font-normal text-[var(--ui-danger-text)]">{t("form.codeUnavailable")}</span> : null}<span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("form.codeChangeHint")}</span></FormField><ActionError error={error === "duplicate" ? undefined : error} /><Button type="submit" disabled={pending || !codeNumber}>{t("actions.changeCode")}</Button></form></Dialog></>;
 }
 
-function MaintenanceSchedule({ item, pending, run }: { item: EquipmentItem; pending: boolean; run: (operation: () => Promise<EquipmentActionState>) => void }) {
+function MaintenanceSchedule({ item, members, pending, run }: { item: EquipmentItem; members: EquipmentMember[]; pending: boolean; run: (operation: () => Promise<EquipmentActionState>) => void }) {
   const t = useTranslations("Equipment");
   const locale = useLocale();
   const [enabled, setEnabled] = useState(item.recurringMaintenanceEnabled);
+  const [responsibleId, setResponsibleId] = useState(item.maintenanceResponsibleId ?? "__none");
+  const admins = members.filter((member) => member.systemRole === "admin");
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    run(() => updateEquipmentMaintenance({ equipmentId: item.id, enabled, interval: enabled ? data.get("interval") : null, dueDate: enabled ? data.get("dueDate") : null }));
+    run(() => updateEquipmentMaintenance({ equipmentId: item.id, enabled, responsibleId, interval: enabled ? data.get("interval") : null, dueDate: enabled ? data.get("dueDate") : null }));
   }
-  return <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><h3 className="text-sm font-semibold">{t("maintenance.recurringTitle")}</h3><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-5 accent-[var(--ui-action-primary)]" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />{t("maintenance.enabled")}</label>{enabled ? <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="interval" min={1} max={120} required defaultValue={item.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><DatePicker name="dueDate" aria-label={t("maintenance.nextDueDate")} required defaultValue={item.nextMaintenanceDueDate ?? ""} locale={locale} /></FormField></div> : null}<Button className="justify-self-end" type="submit" disabled={pending}>{t("maintenance.saveSchedule")}</Button></form>;
+  return <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6"><h3 className="text-sm font-semibold">{t("maintenance.recurringTitle")}</h3><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-5 accent-[var(--ui-action-primary)]" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />{t("maintenance.enabled")}</label>{enabled ? <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("maintenance.interval")}><Input type="number" name="interval" min={1} max={120} required defaultValue={item.maintenanceIntervalMonths ?? 12} /></FormField><FormField label={t("maintenance.nextDueDate")}><DatePicker name="dueDate" aria-label={t("maintenance.nextDueDate")} required defaultValue={item.nextMaintenanceDueDate ?? ""} locale={locale} /></FormField></div> : null}<FormField label={t("maintenance.responsible")}><Select disabled={pending} value={responsibleId} onValueChange={setResponsibleId}><SelectItem value="__none">{t("maintenance.unassignedAdmins")}</SelectItem>{item.maintenanceResponsibleId && !admins.some((admin) => admin.id === item.maintenanceResponsibleId) ? <SelectItem value={item.maintenanceResponsibleId} disabled>{t("maintenance.unavailableResponsible")}</SelectItem> : null}{admins.map((admin) => <SelectItem key={admin.id} value={admin.id}>{admin.fullName}</SelectItem>)}</Select></FormField><Button className="justify-self-end" type="submit" disabled={pending}>{t("maintenance.saveSchedule")}</Button></form>;
 }
 
 function EquipmentMaintenanceSummary({ item, today, onStartService, onNavigate }: { item: EquipmentItem; today: string; onStartService: () => void; onNavigate: () => boolean }) {

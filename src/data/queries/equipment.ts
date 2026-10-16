@@ -12,7 +12,7 @@ type EquipmentServiceEventRow = Database["public"]["Tables"]["equipment_service_
 type WorkstationRow = Database["public"]["Tables"]["workstations"]["Row"];
 type FloorPlanPlacementRow = Database["public"]["Tables"]["office_floor_plan_placements"]["Row"];
 
-export type EquipmentMember = { id: string; fullName: string; avatarUrl: string | null };
+export type EquipmentMember = { id: string; fullName: string; avatarUrl: string | null; systemRole: Database["public"]["Tables"]["studio_members"]["Row"]["system_role"] };
 export type EquipmentServiceEvent = {
   id: string;
   eventType: EquipmentServiceEventRow["event_type"];
@@ -24,7 +24,7 @@ export type EquipmentServiceEvent = {
   startedNotes: string | null;
   completionNotes: string | null;
 };
-export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "recurring_maintenance_enabled" | "maintenance_interval_months" | "next_maintenance_due_date" | "maintenance_upcoming_notified_for" | "maintenance_overdue_notified_for" | "created_at" | "updated_at"> & {
+export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" | "workstation_id" | "equipment_type" | "lifecycle_state" | "display_name" | "serial_number" | "asset_tag" | "recurring_maintenance_enabled" | "maintenance_interval_months" | "maintenance_responsible_id" | "next_maintenance_due_date" | "maintenance_upcoming_notified_for" | "maintenance_overdue_notified_for" | "created_at" | "updated_at"> & {
   pcConfiguration: ComputerConfiguration | null;
   studioId: string;
   workstationId: string | null;
@@ -35,6 +35,7 @@ export type EquipmentItem = Omit<EquipmentRow, "pc_configuration" | "studio_id" 
   assetTag: string;
   recurringMaintenanceEnabled: boolean;
   maintenanceIntervalMonths: number | null;
+  maintenanceResponsibleId: string | null;
   nextMaintenanceDueDate: string | null;
   activeService: Pick<EquipmentServiceEvent, "id" | "eventType" | "startedOn"> | null;
   createdAt: string;
@@ -52,7 +53,7 @@ export type WorkstationItem = {
   updatedAt: string;
 };
 
-type MemberRow = { user_id: string; profile: { full_name: string; avatar_url: string | null } };
+type MemberRow = { user_id: string; system_role: EquipmentMember["systemRole"]; profile: { full_name: string; avatar_url: string | null } };
 
 function mapServiceEvent(row: EquipmentServiceEventRow): EquipmentServiceEvent {
   return {
@@ -82,6 +83,7 @@ function mapEquipment(row: EquipmentRow, activeService: EquipmentItem["activeSer
     assetTag: row.asset_tag,
     recurringMaintenanceEnabled: row.recurring_maintenance_enabled,
     maintenanceIntervalMonths: row.maintenance_interval_months,
+    maintenanceResponsibleId: row.maintenance_responsible_id,
     nextMaintenanceDueDate: row.next_maintenance_due_date,
     activeService,
     pcConfiguration: row.pc_configuration === null ? null : computerConfigurationSchema.parse(row.pc_configuration),
@@ -115,13 +117,13 @@ export async function getEquipmentData(admin: ActiveStudioMembership): Promise<{
     supabase.from("workstations").select("*").eq("studio_id", admin.studio_id).order("number"),
     supabase.from("equipment").select("*").eq("studio_id", admin.studio_id).order("display_name", { nullsFirst: false }).order("asset_tag"),
     supabase.from("equipment_service_events").select("id, equipment_id, event_type, started_on").eq("studio_id", admin.studio_id).is("completed_on", null),
-    supabase.from("studio_members").select("user_id, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
+    supabase.from("studio_members").select("user_id, system_role, profile:profiles!studio_members_user_id_fkey!inner(full_name, avatar_url)").eq("studio_id", admin.studio_id).eq("is_active", true).eq("profile.is_active", true).overrideTypes<MemberRow[], { merge: false }>(),
     supabase.from("office_floor_plan_placements").select("*").eq("studio_id", admin.studio_id).order("created_at"),
   ]);
   const failure = workstationsResult.error ?? equipmentResult.error ?? serviceEventsResult.error ?? membersResult.error ?? floorPlanResult.error;
   if (failure) throw new Error("Unable to load equipment inventory.", { cause: failure });
 
-  const members = (membersResult.data ?? []).map((row) => ({ id: row.user_id, fullName: row.profile.full_name, avatarUrl: row.profile.avatar_url })).sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const members = (membersResult.data ?? []).map((row) => ({ id: row.user_id, systemRole: row.system_role, fullName: row.profile.full_name, avatarUrl: row.profile.avatar_url })).sort((a, b) => a.fullName.localeCompare(b.fullName));
   const memberById = new Map(members.map((member) => [member.id, member]));
   const activeServiceByEquipment = new Map((serviceEventsResult.data ?? []).map((row) => [row.equipment_id, {
     id: row.id, eventType: row.event_type, startedOn: row.started_on,

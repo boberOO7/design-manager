@@ -18,7 +18,7 @@ describe("server Web Push delivery", () => {
     vi.stubEnv("WEB_PUSH_VAPID_PRIVATE_KEY", vapid.privateKey);
     vi.stubEnv("WEB_PUSH_VAPID_SUBJECT", "mailto:admin@example.test");
     vi.stubEnv("CRON_SECRET", "cron-secret");
-    mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [job] : null, error: null }));
+    mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [job] : name === "is_notification_deliverable" ? true : null, error: null }));
     mocks.send.mockResolvedValue({ statusCode: 201 });
   });
   it("sends only generic previews and acknowledges the claimed pair", async () => {
@@ -53,10 +53,24 @@ describe("server Web Push delivery", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 0 });
   });
   it("rejects unsafe endpoints and rotated VAPID bindings before sending", async () => {
-    mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [{ ...job, endpoint: "https://127.0.0.1/private" }, { ...job, vapid_public_key: "old-key" }] : null, error: null }));
+    mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [{ ...job, endpoint: "https://127.0.0.1/private" }, { ...job, vapid_public_key: "old-key" }] : name === "is_notification_deliverable" ? true : null, error: null }));
     expect(await deliverWebPush()).toMatchObject({ expired: 2, failureReasons: { invalid_endpoint: 1, vapid_public_key_mismatch: 1 } });
     expect(mocks.send).not.toHaveBeenCalled();
   });
+  it("drops a reminder completed or reassigned after its queue claim", async () => {
+    mocks.rpc.mockImplementation(async name => ({ data: name === "claim_web_push_deliveries" ? [job] : false, error: null }));
+    expect(await deliverWebPush()).toMatchObject({ sent: 0, retry: 0, skipped: 1 });
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 204 });
+  });
+  it("does not send when the current reminder state cannot be verified", async () => {
+    mocks.rpc.mockImplementation(async name => name === "claim_web_push_deliveries"
+      ? { data: [job], error: null } : { data: null, error: { message: "Unavailable" } });
+    await expect(deliverWebPush()).rejects.toThrow();
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("finish_web_push_delivery", expect.anything());
+  });
+
   it("does not claim jobs without configuration", async () => {
     vi.stubEnv("WEB_PUSH_VAPID_PRIVATE_KEY", "");
     await expect(deliverWebPush()).rejects.toThrow("configuration");
@@ -68,6 +82,7 @@ describe("server Web Push delivery", () => {
     const pending = new Promise<{ data: null; error: null }>(resolve => { release = () => resolve({ data: null, error: null }); });
     mocks.rpc.mockImplementation(async (name: string, args?: { p_id?: string }) => {
       if (name === "claim_web_push_deliveries") return { data: [job, other], error: null };
+      if (name === "is_notification_deliverable") return { data: true, error: null };
       if (args?.p_id === job.id) return { data: null, error: { message: "unavailable" } };
       return pending;
     });

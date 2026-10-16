@@ -7,7 +7,7 @@ import { isCrmLeadSourceKey } from "@/lib/validation/crm";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { CrmStatisticsReport } from "@/lib/statistics-crm";
-import { attendanceCategories, type AttendanceStatistics, type AttendanceLeave } from "@/lib/statistics-attendance";
+import { attendanceCategories, getAttendanceDebtHours, getAttendanceLeaveHours, type AttendanceCategory, type AttendanceStatistics, type AttendanceLeave } from "@/lib/statistics-attendance";
 import type { StatisticsCalendarReport } from "@/lib/statistics-calendar";
 import type { buildWorkStatistics } from "@/lib/work-log";
 import { formatStatisticsDuration } from "@/lib/statistics";
@@ -127,19 +127,46 @@ export async function LeadsStatistics({ report }: { report: CrmStatisticsReport 
 }
 
 export async function TeamStatistics({ report, today }: { report: AttendanceStatistics; today: string }) {
-  const { t, number, date } = await presentation();
-  const leave = (value: { days: number; hours: number }) => [value.days ? `${number(value.days)} ${t("calendarDaysShort")}` : "", value.hours ? `${formatStatisticsDuration(value.hours)} ${t("durationUnit")}` : ""].filter(Boolean).join(" + ") || "0";
+  const { t, date } = await presentation();
+  const leave = (value: AttendanceLeave[AttendanceCategory]) => formatStatisticsDuration(getAttendanceLeaveHours(value, report.workdayMinutes));
   const future = (values: AttendanceLeave) => attendanceCategories.filter(category => values[category].days || values[category].hours).map(category => `${t(`absence_${category}`)}: ${leave(values[category])}`).join(" · ");
-  const categories = attendanceCategories.filter(category => category === "vacation" || category === "day_off" || report.employees.some(employee => employee.elapsedLeave[category].days || employee.elapsedLeave[category].hours));
+  const categories: AttendanceCategory[] = [
+    ...attendanceCategories.filter(category => category !== "day_off" && (category === "vacation" || report.employees.some(employee => employee.elapsedLeave[category].days || employee.elapsedLeave[category].hours))),
+    "day_off",
+  ];
   const hasFuture = report.employees.some(employee => future(employee.futureLeave) || employee.plannedMakeupHours !== 0);
   const makeupColor = getCalendarEventTypeConfig("work_makeup").color;
   return <section data-instaload-arrival="" data-statistics-reveal="0" id="stats-team" className={panel}>
     <Title title={t("teamTitle")} info={t("attendanceMethodology")} />
-    <div className="flex flex-wrap gap-x-10 gap-y-4 p-5"><div className="border-l-2 border-[var(--ui-success-accent)] pl-3"><Value label={t("absence_vacation")} value={number(report.totals.elapsedLeave.vacation.days)} unit={t("calendarDaysShort")} /></div><div className="border-l-2 pl-3" style={{ borderColor: makeupColor }}><Value label={t("elapsedMakeup")} value={formatStatisticsDuration(report.totals.boundaryMakeupCount && !report.totals.elapsedMakeupHours ? null : report.totals.elapsedMakeupHours)} unit={t("durationUnit")} /></div></div>
+    <div className="flex flex-wrap gap-x-10 gap-y-4 p-5"><div className="border-l-2 border-[var(--ui-success-accent)] pl-3"><Value label={t("absence_vacation")} value={leave(report.totals.elapsedLeave.vacation)} unit={t("durationUnit")} /></div><div className="border-l-2 pl-3" style={{ borderColor: makeupColor }}><Value label={t("elapsedMakeup")} value={formatStatisticsDuration(report.totals.boundaryMakeupCount && !report.totals.elapsedMakeupHours ? null : report.totals.elapsedMakeupHours)} unit={t("durationUnit")} /></div></div>
     {report.totals.boundaryMakeupCount ? <p className="px-5 pb-4 text-xs leading-5 text-[var(--ui-warning-text)]">{t("boundaryMakeup", { count: report.totals.boundaryMakeupCount })}</p> : null}
-    <div className="overflow-x-auto border-t border-[var(--ui-border)]" role="region" aria-label={t("teamTitle")} tabIndex={0}>
-      <table className={tableClass}><caption className="sr-only">{t("teamTitle")}</caption><thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr><th scope="col" className="sticky left-0 z-20 min-w-44 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">{t("employee")}</th>{categories.map(category => <th key={category} scope="col" className="min-w-28 text-right"><span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--ui-success-accent)]" />{t(`absence_${category}`)}</span></th>)}<th scope="col" className="min-w-32 border-l border-[var(--ui-border-subtle)] text-right text-[var(--ui-calendar-general-text)]"><span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: makeupColor }} />{t("elapsedMakeup")} · {t("durationUnit")}</span></th>{hasFuture ? <th scope="col" className="w-40 min-w-40 border-l border-[var(--ui-border)] text-[var(--ui-text-muted)] sm:w-auto sm:min-w-64">{t("futureCommitments")}<span className="mt-1 block font-normal">{t("asOf", { date: date(today) })}</span></th> : null}</tr></thead>
-        <tbody>{report.employees.map(employee => <tr key={employee.id} className="group border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-subtle)]"><th scope="row" className="sticky left-0 z-10 border-r border-[var(--ui-border)] bg-[var(--ui-surface)] font-medium text-[var(--ui-text)] transition-colors duration-[180ms] group-hover:bg-[var(--ui-surface-subtle)]"><Link href={`/team/${employee.id}`} className="flex items-center gap-2.5 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><UserAvatar name={employee.name || t("formerEmployee")} size="boardCard" decorative /><span className="min-w-0"><span className="block">{employee.name || t("formerEmployee")}</span>{!employee.active ? <span className="mt-0.5 block text-[10px] font-normal text-[var(--ui-text-muted)]">{t("inactiveEmployee")}</span> : null}</span></Link></th>{categories.map(category => <td key={category} className={`whitespace-nowrap text-right tabular-nums ${employee.elapsedLeave[category].days || employee.elapsedLeave[category].hours ? "font-medium text-[var(--ui-success-text)]" : "text-[var(--ui-text-muted)]"}`}>{leave(employee.elapsedLeave[category])}</td>)}<td className={`border-l border-[var(--ui-border-subtle)] text-right tabular-nums ${employee.elapsedMakeupHours ? "font-medium text-[var(--ui-calendar-general-text)]" : "text-[var(--ui-text-muted)]"}`}>{formatStatisticsDuration(employee.boundaryMakeupCount && !employee.elapsedMakeupHours ? null : employee.elapsedMakeupHours)}{employee.boundaryMakeupCount ? <span className="mt-1 block text-[10px] font-normal text-[var(--ui-text-muted)]">{t("unallocatedMakeup", { count: employee.boundaryMakeupCount })}</span> : null}</td>{hasFuture ? <td className="border-l border-[var(--ui-border)] text-[var(--ui-text-muted)]"><p>{future(employee.futureLeave)}</p>{employee.plannedMakeupHours === null ? <p><Link href="/calendar" className="underline underline-offset-2">{t("futureRecurringMakeup")}</Link></p> : employee.plannedMakeupHours ? <p>{t("plannedMakeup")}: {formatStatisticsDuration(employee.plannedMakeupHours)} {t("durationUnit")}</p> : null}{!future(employee.futureLeave) && employee.plannedMakeupHours === 0 ? "—" : null}</td> : null}</tr>)}</tbody>
+    <p className="border-t border-[var(--ui-border)] px-5 py-3 text-xs text-[var(--ui-text-muted)]">{t("attendanceTimeUnit", { workday: formatStatisticsDuration(report.workdayMinutes / 60) })}</p>
+    <div className="overflow-x-auto" role="region" aria-label={t("teamTitle")} tabIndex={0}>
+      <table className={`${tableClass} table-fixed`} style={{ minWidth: `${11 + (categories.length + 2) * 9 + (hasFuture ? 16 : 0)}rem` }}>
+        <caption className="sr-only">{t("teamTitle")}</caption>
+        <colgroup>
+          <col className="w-44" />
+          {categories.map(category => <col key={category} className="w-36" />)}
+          <col className="w-36" /><col className="w-36" />
+          {hasFuture ? <col className="w-64" /> : null}
+        </colgroup>
+        <thead className="bg-[var(--ui-surface-subtle)] text-[var(--ui-text-secondary)]"><tr>
+          <th scope="col" className="sticky left-0 z-20 border-r border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] align-bottom">{t("employee")}</th>
+          {categories.map(category => <th key={category} scope="col" className="text-right align-bottom leading-5">{t(`absence_${category}`)}</th>)}
+          <th scope="col" className="text-right align-bottom leading-5">{t("makeupColumn")}</th>
+          <th scope="col" className="text-right align-bottom leading-5">{t("makeupDebt")}</th>
+          {hasFuture ? <th scope="col" className="border-l border-[var(--ui-border)] align-bottom text-[var(--ui-text-muted)]">{t("futureCommitments")}<span className="mt-1 block font-normal">{t("asOf", { date: date(today) })}</span></th> : null}
+        </tr></thead>
+        <tbody>{report.employees.map(employee => {
+          const debt = getAttendanceDebtHours(employee, report.workdayMinutes);
+          return <tr key={employee.id} className="group border-t border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface-subtle)]">
+            <th scope="row" className="sticky left-0 z-10 border-r border-[var(--ui-border)] bg-[var(--ui-surface)] font-medium text-[var(--ui-text)] transition-colors duration-[180ms] group-hover:bg-[var(--ui-surface-subtle)]"><Link href={`/team/${employee.id}`} className="flex items-center gap-2.5 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><UserAvatar name={employee.name || t("formerEmployee")} size="boardCard" decorative /><span className="min-w-0"><span className="block break-words">{employee.name || t("formerEmployee")}</span>{!employee.active ? <span className="mt-0.5 block text-[10px] font-normal text-[var(--ui-text-muted)]">{t("inactiveEmployee")}</span> : null}</span></Link></th>
+            {categories.map(category => <td key={category} className={`whitespace-nowrap text-right align-top tabular-nums ${employee.elapsedLeave[category].days || employee.elapsedLeave[category].hours ? "font-medium text-[var(--ui-success-text)]" : "text-[var(--ui-text-muted)]"}`}>{leave(employee.elapsedLeave[category])}</td>)}
+            <td className={`whitespace-nowrap text-right align-top tabular-nums ${employee.elapsedMakeupHours ? "font-medium text-[var(--ui-calendar-general-text)]" : "text-[var(--ui-text-muted)]"}`}>{formatStatisticsDuration(employee.boundaryMakeupCount && !employee.elapsedMakeupHours ? null : employee.elapsedMakeupHours)}{employee.boundaryMakeupCount ? <span className="mt-1 block whitespace-normal text-[10px] font-normal text-[var(--ui-text-muted)]">{t("unallocatedMakeup", { count: employee.boundaryMakeupCount })}</span> : null}</td>
+            <td className={`whitespace-nowrap text-right align-top tabular-nums ${debt ? "font-medium text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"}`}>{formatStatisticsDuration(debt)}</td>
+            {hasFuture ? <td className="border-l border-[var(--ui-border)] align-top text-[var(--ui-text-muted)]"><p>{future(employee.futureLeave)}</p>{employee.plannedMakeupHours === null ? <p><Link href="/calendar" className="underline underline-offset-2">{t("futureRecurringMakeup")}</Link></p> : employee.plannedMakeupHours ? <p>{t("plannedMakeup")}: {formatStatisticsDuration(employee.plannedMakeupHours)}</p> : null}{!future(employee.futureLeave) && employee.plannedMakeupHours === 0 ? "—" : null}</td> : null}
+          </tr>;
+        })}</tbody>
       </table>
     </div>
     <div className="flex items-center gap-1 border-t border-[var(--ui-border)] px-5 py-3 text-xs text-[var(--ui-text-muted)]"><Link href="/team" className="underline underline-offset-2">{t("balanceLink")}</Link><StatisticsInfo label={t("employeeProfiles")}><p>{t("attendanceUnits")}</p><p>{t("balanceOmitted")}</p></StatisticsInfo></div>

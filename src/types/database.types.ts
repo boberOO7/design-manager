@@ -863,6 +863,7 @@ export type Database = {
           lifecycle_state: Database["public"]["Enums"]["equipment_lifecycle_state"]
           maintenance_interval_months: number | null
           maintenance_overdue_notified_for: string | null
+          maintenance_responsible_id: string | null
           maintenance_upcoming_notified_for: string | null
           manufacturer: string | null
           model: string | null
@@ -888,6 +889,7 @@ export type Database = {
           lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
           maintenance_interval_months?: number | null
           maintenance_overdue_notified_for?: string | null
+          maintenance_responsible_id?: string | null
           maintenance_upcoming_notified_for?: string | null
           manufacturer?: string | null
           model?: string | null
@@ -913,6 +915,7 @@ export type Database = {
           lifecycle_state?: Database["public"]["Enums"]["equipment_lifecycle_state"]
           maintenance_interval_months?: number | null
           maintenance_overdue_notified_for?: string | null
+          maintenance_responsible_id?: string | null
           maintenance_upcoming_notified_for?: string | null
           manufacturer?: string | null
           model?: string | null
@@ -928,6 +931,13 @@ export type Database = {
           workstation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "equipment_maintenance_responsible_studio_fkey"
+            columns: ["studio_id", "maintenance_responsible_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
           {
             foreignKeyName: "equipment_studio_id_fkey"
             columns: ["studio_id"]
@@ -9731,6 +9741,7 @@ export type Database = {
           annual_days: number
           carry_cap_days: number
           carry_rule: string
+          year_boundary: string
         }[]
       }
       get_vacation_balance: {
@@ -9749,6 +9760,10 @@ export type Database = {
           p_source: string
         }
         Returns: undefined
+      }
+      is_notification_deliverable: {
+        Args: { p_notification_id: string }
+        Returns: boolean
       }
       manage_finance_recurring_group: {
         Args: {
@@ -9798,6 +9813,16 @@ export type Database = {
         Args: { p_input: Json; p_studio_id: string }
         Returns: Json
       }
+      preview_studio_vacation_policy_recalculation: {
+        Args: {
+          p_annual_days: number
+          p_carry_cap_days?: number
+          p_carry_rule: string
+          p_studio_id: string
+          p_year_boundary?: string
+        }
+        Returns: Json
+      }
       process_finance_automatic_labor: {
         Args: {
           p_approve?: boolean
@@ -9821,6 +9846,18 @@ export type Database = {
           exceeds: boolean
           remaining: number
         }[]
+      }
+      recalculate_studio_vacation_policy: {
+        Args: {
+          p_annual_days: number
+          p_carry_cap_days?: number
+          p_carry_rule: string
+          p_confirm_negative?: boolean
+          p_preview_digest?: string
+          p_studio_id: string
+          p_year_boundary?: string
+        }
+        Returns: undefined
       }
       reconcile_finance_labor_cost: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
@@ -10203,6 +10240,7 @@ export type Database = {
           p_carry_cap_days?: number
           p_carry_rule: string
           p_studio_id: string
+          p_year_boundary?: string
         }
         Returns: undefined
       }

@@ -43,7 +43,7 @@ export async function getAdministrationData(): Promise<AdministrationModel | nul
   const recentDecisions = sortRecentDecisions((recentResult.data ?? []).map(mapRequest)).slice(0, 10);
   const members = membersResult.data ?? [];
   const policy = policyResult.data;
-  if (!policy || !["carry_all", "capped", "none"].includes(policy.carry_rule)) throw new Error("Unable to load vacation policy.");
-  const vacationPolicy: VacationPolicy = { annualDays: policy.annual_days, carryRule: policy.carry_rule === "capped" ? "capped" : policy.carry_rule === "none" ? "none" : "carry_all", carryCapDays: policy.carry_cap_days };
+  if (!policy || !["carry_all", "capped", "none"].includes(policy.carry_rule) || !["employee", "calendar"].includes(policy.year_boundary)) throw new Error("Unable to load vacation policy.");
+  const vacationPolicy: VacationPolicy = { annualDays: policy.annual_days, carryRule: policy.carry_rule === "capped" ? "capped" : policy.carry_rule === "none" ? "none" : "carry_all", carryCapDays: policy.carry_cap_days, yearBoundary: policy.year_boundary === "calendar" ? "calendar" : "employee" };
   return { studioId: membership.studio_id, standardWorkdayMinutes: capacityResult.data?.daily_minutes ?? workdayResult.data?.standard_workday_minutes ?? 480, vacationPolicy, vacationVisibleToEmployees: membership.vacationVisibleToEmployees, leaderboardBonusConfig, today, upcomingEnd, pendingRequests, upcomingAbsences, recentDecisions, team: { activeMembers: members.filter((member) => member.is_active).length, administrators: members.filter((member) => member.is_active && member.system_role === "admin").length, inactiveMembers: members.filter((member) => !member.is_active).length } };
 }

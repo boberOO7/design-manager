@@ -47,6 +47,7 @@ export const equipmentInputSchema = z.object({
   notes: optionalText(5000),
   recurringMaintenanceEnabled: z.boolean().optional().default(false),
   maintenanceIntervalMonths: z.preprocess((value) => value ?? null, z.union([z.coerce.number().int().min(1).max(120), z.literal(""), z.null()]).transform((value) => value === "" ? null : value)),
+  maintenanceResponsibleId: nullableUuid.optional(),
   nextMaintenanceDueDate: z.preprocess((value) => value ?? null, optionalDate),
 }).superRefine((value, context) => {
   if (value.pcConfiguration && !isComputerEquipment(value.equipmentType)) context.addIssue({ code: "custom", path: ["pcConfiguration"], message: "computer_configuration" });
@@ -81,6 +82,7 @@ export const equipmentMaintenanceSchema = z.object({
   enabled: z.boolean(),
   interval: z.coerce.number().int().min(1).max(120).nullable(),
   dueDate: z.iso.date().nullable(),
+  responsibleId: nullableUuid.optional(),
 }).refine((value) => !value.enabled || (value.interval !== null && value.dueDate !== null));
 
 export const equipmentDeleteSchema = z.object({ equipmentId: z.string().uuid() });

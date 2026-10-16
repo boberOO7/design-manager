@@ -7,6 +7,7 @@ import { buildStatistics, statisticsRange, type StatisticsPeriod } from "@/lib/s
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { buildCrmStatistics } from "@/lib/statistics-crm";
 import { buildAttendanceStatistics } from "@/lib/statistics-attendance";
+import { DEFAULT_WORKDAY_MINUTES } from "@/lib/time-off-compensation";
 import { buildCalendarStatistics, calendarStatisticsAssignments } from "@/lib/statistics-calendar";
 import { buildWorkStatistics, completedReviewCredits, completedReviewSessions } from "@/lib/work-log";
 
@@ -28,6 +29,16 @@ export async function getStatisticsStreams(period: StatisticsPeriod, today = get
   if (!admin) return null;
   const client = await createClient();
   const studio = admin.studio_id;
+  // Match Administration's current normalized workday, including revisions not yet mirrored to studios.
+  const workdayMinutes = Promise.all([
+    client.from("studios").select("standard_workday_minutes").eq("id", studio).single(),
+    client.from("finance_labor_capacity_revisions").select("daily_minutes")
+      .eq("studio_id", studio).is("employee_id", null).lte("effective_from", today)
+      .order("effective_from", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle(),
+  ]).then(([setting, capacity]) => {
+    if (setting.error || capacity.error) throw new Error("Unable to load Statistics workday.", { cause: setting.error ?? capacity.error });
+    return capacity.data?.daily_minutes ?? setting.data?.standard_workday_minutes ?? DEFAULT_WORKDAY_MINUTES;
+  });
   const sources = {
     projects: readStatisticsPages(offset => client.from("projects").select("id,name,status,archived_at,started_at,completed_at,include_in_productivity,total_area_m2")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
@@ -85,8 +96,8 @@ export async function getStatisticsStreams(period: StatisticsPeriod, today = get
       buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects, reviewSessions)),
     leads: Promise.all([leads, activities, range, tasks, leadHistory]).then(([leads, activities, range, tasks, leadHistory]) =>
       buildCrmStatistics(leads, activities, range, today, tasks, leadHistory)),
-    attendance: Promise.all([timeOff, events, people, range]).then(([timeOff, events, people, range]) =>
-      buildAttendanceStatistics(timeOff, events, people, range, now)),
+    attendance: Promise.all([timeOff, events, people, range, workdayMinutes]).then(([timeOff, events, people, range, workdayMinutes]) =>
+      buildAttendanceStatistics(timeOff, events, people, range, now, workdayMinutes)),
     calendar: Promise.all([events, projects, range, people, invites, participants]).then(([events, projects, range, people, invites, participants]) =>
       buildCalendarStatistics(events, projects, range, now, { members: people, assignments: calendarStatisticsAssignments(events, invites, participants) })),
   };

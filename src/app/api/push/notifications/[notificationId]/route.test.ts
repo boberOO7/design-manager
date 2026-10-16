@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ membership: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({ membership: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/data/queries/active-studio-membership", () => ({ resolveActiveStudioMembership: mocks.membership }));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from }) }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 import { GET } from "./route";
 
 const userId = "65000000-0000-4000-8000-000000000010";
@@ -19,6 +19,7 @@ const request = () => GET(new Request(`https://studio.test/api/push/notification
 describe("authorized Web Push previews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.membership.mockResolvedValue({ status: "ACTIVE_STUDIO", membership: { authenticatedUserId: userId } });
   });
 
@@ -45,6 +46,19 @@ describe("authorized Web Push previews", () => {
       expect(response.status).toBe(404);
       expect(await response.json()).toEqual({});
     }
+  });
+
+  it.each([false, null])("suppresses stale or future reminders at browser display time: %s", async data => {
+    mocks.from.mockReturnValueOnce(query(notification("equipment_maintenance_upcoming"))).mockReturnValueOnce(query({ id: subscriptionId, locale: "en" }));
+    mocks.rpc.mockResolvedValueOnce({ data, error: null });
+    expect((await request()).status).toBe(404);
+    expect(mocks.rpc).toHaveBeenCalledWith("is_notification_deliverable", { p_notification_id: notificationId });
+  });
+
+  it("fails closed if current reminder validation is unavailable", async () => {
+    mocks.from.mockReturnValueOnce(query(notification())).mockReturnValueOnce(query({ id: subscriptionId, locale: "en" }));
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "Unavailable" } });
+    expect((await request()).status).toBe(503);
   });
 
   it.each([

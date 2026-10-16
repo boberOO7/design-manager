@@ -85,6 +85,14 @@ describe("equipment validation", () => {
     expect(equipmentInputSchema.parse({ ...baseEquipment, recurringMaintenanceEnabled: false, maintenanceIntervalMonths: "", nextMaintenanceDueDate: "" })).toMatchObject({ maintenanceIntervalMonths: null, nextMaintenanceDueDate: null });
   });
 
+  it("normalizes the separate maintenance administrator and rejects invalid IDs", () => {
+    const input = { equipmentId: "47000000-0000-4000-8000-000000000201", enabled: true, interval: 6, dueDate: "2026-10-01" };
+    expect(equipmentMaintenanceSchema.parse({ ...input, responsibleId: "__none" }).responsibleId).toBeNull();
+    expect(equipmentMaintenanceSchema.parse({ ...input, responsibleId: input.equipmentId }).responsibleId).toBe(input.equipmentId);
+    expect(equipmentMaintenanceSchema.safeParse({ ...input, responsibleId: "invalid" }).success).toBe(false);
+    expect(equipmentInputSchema.parse({ ...baseEquipment, maintenanceResponsibleId: input.equipmentId }).maintenanceResponsibleId).toBe(input.equipmentId);
+  });
+
   it("validates service completion, cost pairs, and direct history event types", () => {
     const equipmentId = "47000000-0000-4000-8000-000000000201";
     expect(startEquipmentServiceSchema.safeParse({ equipmentId, eventType: "regular_maintenance", startedOn: "2026-09-11", serviceProvider: "", notes: "" }).success).toBe(true);

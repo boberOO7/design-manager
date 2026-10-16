@@ -103,9 +103,13 @@ export function NotificationBell({ initialData, popupsEnabled, soundEnabled, use
     const supabase = createClient();
     const channel = supabase
       .channel(`notifications:${userId}`)
-      .on<NotificationRow>("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${userId}` }, (payload) => {
+      .on<NotificationRow>("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${userId}` }, async (payload) => {
         const item = notificationFromRealtimeRow(payload.new, userId);
         if (!item) return;
+        if (item.notification_type === "crm_lead_follow_up" || item.notification_type.startsWith("equipment_maintenance_")) {
+          const current = await supabase.rpc("is_notification_deliverable", { p_notification_id: item.id });
+          if (current.error || !current.data) return;
+        }
         const delivery = getRealtimeNotificationDelivery(item, sessionStartedAtRef.current, knownIdsRef.current, preferencesRef.current);
         if (!delivery) return;
         knownIdsRef.current.add(item.id);

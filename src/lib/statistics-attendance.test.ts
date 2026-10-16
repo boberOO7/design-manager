@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAttendanceStatistics, type AttendanceMakeupEvent, type AttendanceRequest } from "./statistics-attendance";
+import { buildAttendanceStatistics, getAttendanceDebtHours, getAttendanceLeaveHours, type AttendanceMakeupEvent, type AttendanceRequest } from "./statistics-attendance";
 
 const range = { from: "2026-10-01", through: "2026-10-31" };
 const now = "2026-10-04T09:00:00Z"; // Noon in Kyiv.
@@ -24,6 +24,65 @@ function makeup(overrides: Partial<AttendanceMakeupEvent> = {}): AttendanceMakeu
 }
 
 describe("attendance statistics", () => {
+  it.each([360, 450, 480, 600])("normalizes full and mixed absence values with a %i-minute workday", workdayMinutes => {
+    expect(getAttendanceLeaveHours({ days: 1, hours: 0 }, workdayMinutes)).toBe(workdayMinutes / 60);
+    expect(getAttendanceLeaveHours({ days: 2, hours: 1.25 }, workdayMinutes)).toBe(workdayMinutes / 30 + 1.25);
+    expect(getAttendanceLeaveHours({ days: 0, hours: 1.25 }, workdayMinutes)).toBe(1.25);
+    expect(getAttendanceLeaveHours({ days: 0, hours: 0 }, workdayMinutes)).toBe(0);
+    const employee = buildAttendanceStatistics([], [], members, range, now, workdayMinutes).employees[0];
+    employee.elapsedLeave.day_off = { days: 1, hours: 0.5 };
+    employee.elapsedMakeupHours = 2;
+    expect(getAttendanceDebtHours(employee, workdayMinutes)).toBe(workdayMinutes / 60 - 1.5);
+    employee.elapsedMakeupHours = workdayMinutes / 60 + 1;
+    expect(getAttendanceDebtHours(employee, workdayMinutes)).toBe(0);
+  });
+
+  it("uses the configured day for elapsed and future all-day make-up while retaining timed hours and scope", () => {
+    const result = buildAttendanceStatistics([
+      leave({ request_type: "day_off" }),
+    ], [
+      makeup({ id: "all-day", all_day: true, starts_at: "2026-10-01T21:00:00Z", ends_at: "2026-10-02T21:00:00Z" }),
+      makeup({ id: "future-day", all_day: true, starts_at: "2026-10-04T21:00:00Z", ends_at: "2026-10-05T21:00:00Z" }),
+      makeup({ id: "timed" }),
+    ], members, range, now, 450);
+    expect(result.workdayMinutes).toBe(450);
+    expect(result.employees[0].elapsedLeave.day_off).toEqual({ days: 1, hours: 0 });
+    expect(result.employees[0].elapsedMakeupHours).toBe(9.5);
+    expect(result.employees[0].plannedMakeupHours).toBe(7.5);
+    expect(result.totals.elapsedMakeupHours).toBe(9.5);
+    expect(getAttendanceDebtHours(result.employees[0], result.workdayMinutes)).toBe(0);
+  });
+
+  it.each([
+    { label: "no time off", days: 0, hours: 0, compensated: 0, debt: 0 },
+    { label: "zero compensation", days: 1, hours: 1.5, compensated: 0, debt: 9.5 },
+    { label: "partial compensation", days: 1, hours: 1.5, compensated: 2.25, debt: 7.25 },
+    { label: "full compensation", days: 1, hours: 1.5, compensated: 9.5, debt: 0 },
+    { label: "excess compensation", days: 1, hours: 1.5, compensated: 12, debt: 0 },
+  ])("derives debt in hours for $label", ({ days, hours, compensated, debt }) => {
+    const employee = buildAttendanceStatistics([], [], members, range, now).employees[0];
+    employee.elapsedLeave.day_off = { days, hours };
+    employee.elapsedMakeupHours = compensated;
+    expect(getAttendanceDebtHours(employee)).toBe(debt);
+  });
+
+  it("derives debt from the existing elapsed scope without future plans or other absence categories", () => {
+    const result = buildAttendanceStatistics([
+      leave({ request_type: "day_off", start_date: "2026-09-30", end_date: "2026-10-01" }),
+      leave({ id: "partial", request_type: "day_off", start_date: "2026-10-04", end_date: "2026-10-04", all_day: false, start_time: "11:00", end_time: "13:00" }),
+      leave({ id: "vacation" }),
+      leave({ id: "future", request_type: "day_off", start_date: "2026-10-05", end_date: "2026-10-05" }),
+      leave({ id: "pending", request_type: "day_off", status: "pending", end_date: "2026-10-03" }),
+    ], [
+      makeup(),
+      makeup({ id: "outside", starts_at: "2026-09-29T15:00:00Z", ends_at: "2026-09-29T17:00:00Z" }),
+      makeup({ id: "future", starts_at: "2026-10-05T15:00:00Z", ends_at: "2026-10-05T17:00:00Z" }),
+    ], members, range, now);
+    expect(result.employees[0].elapsedLeave.day_off).toEqual({ days: 1, hours: 1 });
+    expect(result.employees[0].elapsedMakeupHours).toBe(2);
+    expect(getAttendanceDebtHours(result.employees[0])).toBe(7);
+  });
+
   it("clips leave crossing the period and today, counting inclusive calendar days", () => {
     const result = buildAttendanceStatistics([
       leave({ start_date: "2026-09-29", end_date: "2026-10-06" }),

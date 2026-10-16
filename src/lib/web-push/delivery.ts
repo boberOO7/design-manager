@@ -10,6 +10,13 @@ export async function deliverWebPush() {
   const claimed = await admin.rpc("claim_web_push_deliveries", { p_limit: 100 });
   if (claimed.error) throw new Error("Unable to claim Web Push deliveries.");
   const settled = await Promise.allSettled((claimed.data ?? []).map(async job => {
+    const current = await admin.rpc("is_notification_deliverable", { p_notification_id: job.notification_id });
+    if (current.error) throw new Error("Unable to validate Web Push delivery.");
+    if (!current.data) {
+      const cancelled = await admin.rpc("finish_web_push_delivery", { p_id: job.id, p_lease_token: job.lease_token, p_status: 204 });
+      if (cancelled.error) throw new Error("Unable to acknowledge Web Push delivery.");
+      return { outcome: "skipped", reason: "stale_notification" };
+    }
     const { status, reason } = await sendWebPush(job, {
       notificationId: job.notification_id, subscriptionId: job.subscription_id, recipientId: job.user_id,
       // The worker resolves the privacy-filtered preview from this ID only
@@ -28,5 +35,5 @@ export async function deliverWebPush() {
   });
   const failureReasons: Record<string, number> = {};
   for (const result of results) if (result.reason !== "accepted") failureReasons[result.reason] = (failureReasons[result.reason] ?? 0) + 1;
-  return { claimed: results.length, sent: results.filter(x => x.outcome === "sent").length, expired: results.filter(x => x.outcome === "expired").length, retry: results.filter(x => x.outcome === "retry").length, failureReasons };
+  return { claimed: results.length, sent: results.filter(x => x.outcome === "sent").length, expired: results.filter(x => x.outcome === "expired").length, retry: results.filter(x => x.outcome === "retry").length, skipped: results.filter(x => x.outcome === "skipped").length, failureReasons };
 }

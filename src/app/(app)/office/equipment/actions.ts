@@ -49,6 +49,7 @@ function equipmentValues(formData: FormData) {
     storage: formValue(formData, "storage"), notes: formValue(formData, "notes"),
     recurringMaintenanceEnabled: formData.get("recurringMaintenanceEnabled") === "on",
     maintenanceIntervalMonths: formValue(formData, "maintenanceIntervalMonths"),
+    maintenanceResponsibleId: formValue(formData, "maintenanceResponsibleId"),
     nextMaintenanceDueDate: formValue(formData, "nextMaintenanceDueDate"),
   };
 }
@@ -72,6 +73,7 @@ function equipmentPayload(input: EquipmentInput) {
     recurring_maintenance_enabled: input.recurringMaintenanceEnabled,
     maintenance_interval_months: input.recurringMaintenanceEnabled ? input.maintenanceIntervalMonths : null,
     next_maintenance_due_date: input.recurringMaintenanceEnabled ? input.nextMaintenanceDueDate : null,
+    ...(input.maintenanceResponsibleId !== undefined ? { maintenance_responsible_id: input.maintenanceResponsibleId } : {}),
   };
 }
 
@@ -180,9 +182,9 @@ export async function updateEquipmentMaintenance(input: unknown): Promise<Equipm
   if (!admin) return { error: "permission" };
   const parsed = equipmentMaintenanceSchema.safeParse(input);
   if (!parsed.success) return { error: "invalid" };
-  const { equipmentId, enabled, interval, dueDate } = parsed.data;
+  const { equipmentId, enabled, interval, dueDate, responsibleId } = parsed.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("equipment").update({ recurring_maintenance_enabled: enabled, maintenance_interval_months: enabled ? interval : null, next_maintenance_due_date: enabled ? dueDate : null }).eq("id", equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
+  const { data, error } = await supabase.from("equipment").update({ recurring_maintenance_enabled: enabled, maintenance_interval_months: enabled ? interval : null, next_maintenance_due_date: enabled ? dueDate : null, ...(responsibleId !== undefined ? { maintenance_responsible_id: responsibleId } : {}) }).eq("id", equipmentId).eq("studio_id", admin.studio_id).select("id").maybeSingle();
   if (error) return { error: databaseError(error, "update") };
   if (!data) return { error: "notFound" };
   refreshEquipment();
