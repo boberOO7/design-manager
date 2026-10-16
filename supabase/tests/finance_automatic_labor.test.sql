@@ -32,7 +32,7 @@ insert into public.tasks(id,project_id,title,stage,status,priority,assignee_id,c
 (pg_temp.fid(41),pg_temp.fid(31),'B task','stage_1','in_progress','normal',pg_temp.fid(11),pg_temp.fid(10)),
 (pg_temp.fid(42),pg_temp.fid(32),'Internal task','stage_1','in_progress','normal',pg_temp.fid(11),pg_temp.fid(10)),
 (pg_temp.fid(43),pg_temp.fid(33),'Other employee task','stage_1','in_progress','normal',pg_temp.fid(12),pg_temp.fid(10));
--- Test-only historical activation isolates closed periods; public configuration is required to start next month.
+-- Test-only historical activation isolates closed periods; current-date activation is covered in finance_provisional_labor.test.sql.
 insert into public.finance_labor_automation(studio_id,starts_on,internal_project_id,created_by)
 values(pg_temp.fid(1),date '2026-07-01',pg_temp.fid(32),pg_temp.fid(10));
 insert into public.finance_labor_capacity_revisions(studio_id,employee_id,effective_from,daily_minutes,weekdays,created_by)

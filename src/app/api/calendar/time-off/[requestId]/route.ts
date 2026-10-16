@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getNormalizedTimeOffRequest } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 import { deriveTimeOffUpdate, timeOffUpdateFields } from "@/lib/time-off-request";
 import { calendarFieldErrors, timeOffActionSchema } from "@/lib/validation/calendar";
 
@@ -40,6 +41,7 @@ export async function PATCH(request: Request, context: Context) {
       });
       return NextResponse.json({ success: false, formError: "The request could not be approved." }, { status: approvalError?.code === "P0001" ? 400 : 500 });
     }
+    scheduleAutomaticLabor(membership.studio_id);
     const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
     if (!item) return NextResponse.json({ success: true, item: null, removedKey: null, requiresRefresh: true });
     return NextResponse.json({ success: true, item, removedKey: null, approvalCount: approval[0].approval_count, requiredApprovalCount: approval[0].required_approval_count, hasCurrentAdminApproved: true });
@@ -103,6 +105,7 @@ export async function PATCH(request: Request, context: Context) {
     });
     return NextResponse.json({ success: false, formError: "The request could not be updated." }, { status: 400 });
   }
+  if (existing.status === "approved") scheduleAutomaticLabor(membership.studio_id);
   const item = await getNormalizedTimeOffRequest(requestId, membership.authenticatedUserId);
   if (update.status !== "cancelled" && !item) {
     console.error("time_off_requests transition succeeded but reload failed", {

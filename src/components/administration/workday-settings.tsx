@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form-field";
-import { createClient } from "@/lib/supabase/client";
+import { saveStandardWorkday } from "@/app/(app)/admin/actions";
 
-export function WorkdaySettings({ studioId, initialMinutes }: { studioId: string; initialMinutes: number }) {
+export function WorkdaySettings({ initialMinutes }: { initialMinutes: number }) {
   const t = useTranslations("Administration");
   const [hours, setHours] = useState(String(initialMinutes / 60));
   const [saved, setSaved] = useState(initialMinutes);
@@ -19,8 +19,7 @@ export function WorkdaySettings({ studioId, initialMinutes }: { studioId: string
     if (!valid || saving) return;
     setSaving(true); setError(false);
     try {
-      const result = await createClient().rpc("set_standard_workday_minutes", { p_studio_id: studioId, p_minutes: minutes });
-      if (result.error) throw result.error;
+      if (!await saveStandardWorkday(minutes)) { setError(true); return; }
       setSaved(minutes);
     } catch { setError(true); }
     finally { setSaving(false); }

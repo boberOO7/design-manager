@@ -952,12 +952,26 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   Unknown/estimated components are disclosed; later confirmed components add only
   their remaining delta. Consumed terms stay protected even if an earned flag is
   cleared. Reconciliation cancels/replaces economic facts and allocations atomically.
-- `finance_labor_allocation_revisions/items` hold manual management attribution
+- Automatic labor activation defaults to today and accepts any date on or after
+  the management-accounting boundary. Historical changes require a current impact
+  preview that includes recognized/manual history. Completed daily Work Tracking
+  reports accrue provisional project cost against the full month's known payroll
+  cost and scheduled capacity; leave, unused capacity and internal work stay at
+  studio level. Taskless internal minutes normalize daily shares too. Missing
+  reports remain distinct from completed zero-hour days. Project Result shows
+  provisional amounts separately from recognized P&L. Work-log, payroll, capacity,
+  studio day-off and approved-leave changes schedule refresh; the daily worker
+  retries and finalizes closed periods through guarded recognition/allocation.
+  Provisional values never create recognized entries or allocation revisions;
+  finalization replaces provisional presentation. Manual ownership, reviewed
+  history, dated FX and append-only corrections retain their existing guards.
+- `finance_labor_allocation_revisions/items` hold manual or automatic attribution
   of confirmed labor in studio reporting currency, with source, revision, author
   and reason. Exact database caps serialize under the Finance lock. Latest amounts
   affect project cost without adding studio expense; unallocated cost remains in
   studio P&L. All revisions, including cleared/cancelled sources, stay inspectable.
-  Allocations describe estimates, never measured hours or task/area-based shares.
+  Manual allocations describe management estimates; automatic allocations use
+  eligible reported project minutes and expected daily capacity.
 - Existing admin-posted trip `expense` is the sole economic source. Studio cash
   payment, personal expense reimbursement, advance, balance return and settlement
   do not create second costs. New actuals after activation capture automatically;

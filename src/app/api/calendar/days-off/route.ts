@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -27,5 +28,6 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase.from("studio_days_off").insert({ ...value, studio_id: membership.studio_id, created_by: membership.authenticatedUserId }).select("id, date, name, note").single();
   if (error || !data) return NextResponse.json({ success: false, formError: error?.code === "23505" ? "A day off is already configured for this date." : "The day off could not be saved." }, { status: 400 });
+  scheduleAutomaticLabor(membership.studio_id);
   return NextResponse.json({ success: true, dayOff: data }, { status: 201 });
 }

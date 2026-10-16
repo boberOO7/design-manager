@@ -176,6 +176,47 @@ select is((select sum((item->>'amount')::numeric) from jsonb_array_elements(publ
     and item->>'projectId'=pg_temp.pid(30)::text),
   trunc(1000::numeric*(360::numeric*180/420)/((pg_temp.month_start(1)-pg_temp.month_start())*360),2),
   'daily provisional amounts sum exactly to the aggregate per-project amount');
+-- Taskless internal time must normalize the dated values used by Project Result
+-- exactly as it normalizes the whole-period allocation proposal.
+savepoint internal_daily;
+update public.studio_members set system_role='admin' where studio_id=pg_temp.pid(1) and user_id=pg_temp.pid(11);
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.pid(11)::text,true);
+select public.save_daily_work_log(pg_temp.today(),jsonb_build_array(
+  jsonb_build_object('activity_kind','task','task_id',pg_temp.pid(40),'minutes',360),
+  jsonb_build_object('activity_kind','internal','internal_activity_type','team_walkthrough','minutes',360)));
+reset role;
+select is((select (d->>'loggedMinutes')::integer from jsonb_array_elements(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'days') d
+  where d->>'date'=pg_temp.today()::text),720,'daily evidence includes taskless internal minutes');
+select is((select sum((i->>'amount')::numeric) from jsonb_array_elements(private.finance_provisional_labor_values(
+  private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyAllocations') i),
+  trunc(1000::numeric*180/((pg_temp.month_start(1)-pg_temp.month_start())*360),2),
+  'daily project cost leaves the internal half of overtime at studio level');
+select is((select sum((i->>'amount')::numeric) from jsonb_array_elements(private.finance_provisional_labor_values(
+  private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyAllocations') i),
+  (private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'proposedAllocations'->0->>'amount')::numeric,
+  'dated provisional values equal the finalization proposal after an internal-work correction');
+select ok(exists(select 1 from jsonb_array_elements(public.prepare_finance_automatic_labor(pg_temp.pid(1))) c
+  where c->>'obligationId'=pg_temp.pid(21)::text),'corrected internal work is rediscovered for automatic refresh');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.pid(11)::text,true);
+select public.save_daily_work_log(pg_temp.today(),jsonb_build_array(
+  jsonb_build_object('activity_kind','task','task_id',pg_temp.pid(40),'minutes',120),
+  jsonb_build_object('activity_kind','internal','internal_activity_type','team_walkthrough','minutes',120)));
+reset role;
+select is((select sum((i->>'amount')::numeric) from jsonb_array_elements(private.finance_provisional_labor_values(
+  private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyAllocations') i),
+  trunc(1000::numeric*120/((pg_temp.month_start(1)-pg_temp.month_start())*360),2),
+  'an under-capacity report attributes only reported project work without redistributing unused salary');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.pid(11)::text,true);
+select public.save_daily_work_log(pg_temp.today(),jsonb_build_array(
+  jsonb_build_object('activity_kind','internal','internal_activity_type','team_walkthrough','minutes',360)));
+reset role;
+select is(jsonb_array_length(private.finance_provisional_labor_values(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyAllocations'),
+  0,'an internal-only corrected report attributes no project labor');
+rollback to internal_daily;
+
 select set_config('test.foreign_open_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(23))->>'digest',true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
@@ -276,6 +317,12 @@ select is((select fx_rate from public.finance_recognition_entries where studio_i
   'closed recognition ignores the prior provisional FX rate');
 select is((select fx_effective_date from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(24)),
   pg_temp.month_start(-1)-1,'closed recognition uses the service-period end as its FX date');
+-- The first closed month retains its complete denominator but only attributes
+-- a completed day after activation, including taskless internal work in the cap.
+insert into public.work_log_entries(id,studio_id,user_id,work_date,activity_kind,task_id,internal_activity_type,minutes) values
+(pg_temp.pid(56),pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6,'task',pg_temp.pid(40),null,360),
+(pg_temp.pid(57),pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6,'internal',null,'team_walkthrough',360);
+insert into public.work_log_days(studio_id,user_id,work_date) values(pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6);
 select set_config('test.closed_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(22))->>'digest',true);
 insert into public.finance_labor_calculations(studio_id,obligation_id,digest,status,snapshot,created_by,initiated_by)
 select pg_temp.pid(1),pg_temp.pid(22),basis->>'digest','provisional',basis||private.finance_provisional_labor_values(basis),pg_temp.pid(10),'automatic'
@@ -294,6 +341,22 @@ select is((select p->>'status' from jsonb_array_elements(public.get_finance_labo
   where p->>'obligationId'=pg_temp.pid(22)::text),'applied','closed reporting replaces provisional status with recognized attribution');
 select ok((select p->'provisionalAllocations' is null from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
   where p->>'obligationId'=pg_temp.pid(22)::text),'closed periods no longer present provisional project amounts');
+select is((select sum(a.amount) from public.finance_current_labor_allocations a join public.finance_recognition_entries e on e.id=a.entry_id
+  where e.studio_id=pg_temp.pid(1) and e.obligation_id=pg_temp.pid(22)),
+  trunc(1000::numeric*180/((pg_temp.month_start(-1)-pg_temp.month_start(-2))*360),2),
+  'partial first-month finalization allocates only eligible project work against the whole month');
+select set_config('test.finalized_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(22))->>'digest',true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
+select lives_ok($$select public.process_finance_automatic_labor(pg_temp.pid(1),pg_temp.pid(22),
+  current_setting('test.finalized_digest'),null,pg_temp.pid(115),false)$$,
+  'reprocessing closed payroll is idempotent');
+reset role;
+select is((select count(*) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),1::bigint,
+  'a finalization retry does not recognize payroll twice');
+select is((select count(*) from public.finance_labor_allocation_revisions r join public.finance_recognition_entries e on e.id=r.entry_id
+  where e.studio_id=pg_temp.pid(1) and e.obligation_id=pg_temp.pid(22)),1::bigint,
+  'a finalization retry creates no duplicate allocation revision');
 insert into public.finance_report_coverage(studio_id,project_id,month,reviewed_through,revenue_reviewed,direct_costs_reviewed,
   labor_reviewed,overhead_reviewed,revision,reason,created_by)
 values(pg_temp.pid(1),pg_temp.pid(30),pg_temp.month_start(-2),pg_temp.month_start(-1)-1,true,true,true,true,1,'Activation preview protection',pg_temp.pid(10));
@@ -334,6 +397,46 @@ select is((select status from public.finance_labor_calculations where studio_id=
   'pending_review','activation changes do not silently overwrite closed attribution history');
 select is((select sum(amount) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),1000::numeric,
   'protected activation correction leaves existing studio expense unchanged');
+
+-- A preview cannot be applied after ownership, review or schedule evidence changes.
+savepoint preview_state;
+-- Seed the manual owner before preview so a later amount-only revision must
+-- invalidate it even though recognized cost and ownership flags are unchanged.
+select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
+select private.save_finance_labor_allocation_core(pg_temp.pid(1),pg_temp.pid(116),
+  (select id from public.finance_labor_cost_pools where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),
+  jsonb_build_object('revision',(select allocation_revision from public.finance_labor_cost_pools where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),
+    'reason','Existing manual history','items',jsonb_build_array(jsonb_build_object('projectId',pg_temp.pid(30),'amount','5.00'))),
+  pg_temp.pid(10),'manual_management');
+select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,
+  'weekdays',jsonb_build_array(1,2,3,4,5,6,7),'internalProjectId',pg_temp.pid(32),'changeActivation',true)::text,true);
+select set_config('test.preview_digest',public.preview_finance_labor_activation(pg_temp.pid(1),current_setting('test.preview_input')::jsonb)->>'digest',true);
+select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
+-- Model pre-existing manual history; the public RPC forbids taking over an automatic pool.
+select private.save_finance_labor_allocation_core(pg_temp.pid(1),pg_temp.pid(113),
+  (select id from public.finance_labor_cost_pools where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),
+  jsonb_build_object('revision',(select allocation_revision from public.finance_labor_cost_pools where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),
+    'reason','Manual history after preview','items',jsonb_build_array(jsonb_build_object('projectId',pg_temp.pid(30),'amount','10.00'))),
+  pg_temp.pid(10),'manual_management');
+set local role authenticated;
+select throws_like($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(114),
+  current_setting('test.preview_input')::jsonb||jsonb_build_object('previewDigest',current_setting('test.preview_digest')))$$,
+  '%finance_preview_required%','manual allocation changed after preview requires a new historical preview');
+reset role;
+rollback to preview_state;
+select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,
+  'weekdays',jsonb_build_array(1,2,3,4,5,6,7),'internalProjectId',pg_temp.pid(32),'changeActivation',true)::text,true);
+select set_config('test.preview_digest',public.preview_finance_labor_activation(pg_temp.pid(1),current_setting('test.preview_input')::jsonb)->>'digest',true);
+insert into public.studio_days_off(studio_id,date,name,created_by) values(pg_temp.pid(1),pg_temp.today(),'Changed capacity evidence',pg_temp.pid(10));
+select isnt(public.preview_finance_labor_activation(pg_temp.pid(1),current_setting('test.preview_input')::jsonb)->>'digest',
+  current_setting('test.preview_digest'),'a changed studio day off invalidates historical capacity preview');
+rollback to preview_state;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
+select throws_like($$select public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
+  'effectiveFrom',pg_temp.month_start(-4),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7)))$$,
+  '%finance_input_invalid%','historical preview cannot bypass the management-accounting start boundary');
+reset role;
 
 -- Employees cannot read provisional payroll values or activation history.
 set local role authenticated;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
 type Context = { params: Promise<{ dayOffId: string }> };
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -17,6 +18,7 @@ export async function PATCH(request: Request, context: Context) {
   const { dayOffId } = await context.params; const supabase = await createClient();
   const { data, error } = await supabase.from("studio_days_off").update(value).eq("id", dayOffId).eq("studio_id", membership.studio_id).select("id, date, name, note").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, formError: error?.code === "23505" ? "A day off is already configured for this date." : "The day off could not be saved." }, { status: 400 });
+  scheduleAutomaticLabor(membership.studio_id);
   return NextResponse.json({ success: true, dayOff: data });
 }
 
@@ -26,5 +28,6 @@ export async function DELETE(_request: Request, context: Context) {
   const { dayOffId } = await context.params; const supabase = await createClient();
   const { data, error } = await supabase.from("studio_days_off").delete().eq("id", dayOffId).eq("studio_id", membership.studio_id).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, formError: "The day off could not be deleted." }, { status: 400 });
+  scheduleAutomaticLabor(membership.studio_id);
   return NextResponse.json({ success: true, id: data.id });
 }
