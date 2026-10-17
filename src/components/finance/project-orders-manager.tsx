@@ -18,6 +18,7 @@ import { FormField, Input } from "@/components/ui/form-field";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FinanceActionForm } from "./finance-action-form";
 import { ProjectValueBuilder } from "./project-value-builder";
+import { ProjectOrderCurrencyCorrection } from "./project-order-currency-correction";
 
 const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
@@ -26,7 +27,7 @@ type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]
 export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, display, onClose }: Props) {
   const t = useTranslations("Finance"), locale = useLocale();
   const [selectedId, setSelectedId] = useState(initialOrderId ?? ""), [adding, setAdding] = useState(false);
-  const [editor, setEditor] = useState<"pricing" | "proposal" | null>(null), [pending, setPending] = useState(false);
+  const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | null>(null), [pending, setPending] = useState(false);
   const [renaming, setRenaming] = useState(false), [nameValue, setNameValue] = useState(""), [nameError, setNameError] = useState("");
   const nameButton = useRef<HTMLButtonElement>(null), nameForm = useRef<HTMLFormElement>(null);
   const renameInFlight = useRef(false), restoreNameFocus = useRef(false);
@@ -139,6 +140,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
             <Button variant="outline" className="h-auto min-h-11 justify-between gap-2 whitespace-normal px-3 text-left" disabled={pending || order.status === "discarded"} onClick={() => setEditor("pricing")}>{t("project.editAgreement")}<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]"/></Button>
             <Button variant="outline" className="h-auto min-h-11 justify-between gap-2 whitespace-normal px-3 text-left" disabled={pending || (!term && !draft)} onClick={() => setEditor("proposal")}>{t("proposal.action")}<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]"/></Button>
           </div>
+          {order.status === "confirmed" && term ? <Button variant="ghost" size="sm" className="min-h-11 px-0 text-xs text-[var(--ui-text-secondary)]" disabled={pending} onClick={() => setEditor("currency")}>{t("currencyCorrection.action")}</Button> : null}
           {order.status === "draft" ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("orders.draftHelp")}</p> : null}
           {(term?.vat_rate ?? draft?.vatRate) != null || revenueTax ? <dl className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-[var(--ui-text-secondary)]">
             {(term?.vat_rate ?? draft?.vatRate) != null ? <div><dt>{t("builder.vat")} · {term?.vat_rate ?? draft?.vatRate}%</dt><dd className="ui-numeric mt-1 font-medium">{money(term?.vat_amount ?? amounts?.vat)}</dd></div> : null}
@@ -171,7 +173,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
         </>}
       </div>
     </Dialog>
-    {editor === "pricing" && order ? <Dialog isOpen title={`${order.name} · ${t("project.editAgreement")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:!max-w-[70rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectValueBuilder key={`${order.id}-${order.version}`} order={order} project={project} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onPending={setPending}/></div></Dialog> : null}
+    {editor === "pricing" && order ? <Dialog isOpen title={`${order.name} · ${t("project.editAgreement")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:!max-w-[70rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectValueBuilder key={`${order.id}-${order.version}`} order={order} project={project} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onPending={setPending} onCorrectCurrency={() => setEditor("currency")}/></div></Dialog> : null}
+    {editor === "currency" && order && term ? <Dialog isOpen title={`${order.name} · ${t("currencyCorrection.action")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:max-w-[36rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectOrderCurrencyCorrection key={`${order.id}-${order.version}`} project={project} order={order} term={term} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onCancel={() => setEditor(null)} onPending={setPending}/></div></Dialog> : null}
     {editor === "proposal" && order ? <ProposalEditor projectId={project.projectId} orderId={order.id} orderName={order.name} readOnly={order.status === "discarded"} onClose={() => setEditor(null)}/> : null}
   </>;
 }

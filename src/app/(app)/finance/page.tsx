@@ -5,42 +5,61 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getFinanceData } from "@/data/queries/finance";
 import { getFinanceDisplayOverview, getFinanceOverview } from "@/data/queries/finance-overview";
-import { getFinanceManagement } from "@/data/queries/finance-management";
+import { getFinanceOverviewCashAnalysis, getFinanceOverviewPayments } from "@/data/queries/finance-overview-dashboard";
+import { getFinanceOverviewProjectEconomics } from "@/data/queries/finance-overview-economics";
+import { OverviewProjectEconomics } from "@/components/finance/overview-project-economics";
 import { getFinanceDisplayCurrency } from "@/data/queries/finance-display-currency";
 import { FinanceWorkspace } from "@/components/finance/finance-workspace";
 import { FinanceOverviewCash } from "@/components/finance/finance-overview";
-import { FinanceAnalyticsSection } from "@/components/finance/finance-analytics";
 import { DisplayCurrencySelect } from "@/components/finance/display-currency-select";
 import { PageHeader } from "@/components/shared/page-header";
 import { parseFinanceReportParams } from "@/lib/finance-overview";
-import { buildFinanceAnalytics, financeAnalyticsPeriod } from "@/lib/finance-analytics";
+import type { OverviewPayment } from "@/lib/finance-overview-dashboard";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { InstaLoadReady } from "@/components/shared/instaload-motion";
-import { FinanceCurrencyLoading, FinanceOverviewLoading, FinanceSectionLoading } from "@/components/finance/finance-overview-loading";
+import { FinanceCurrencyLoading, FinanceEconomicsLoading, FinanceOverviewLoading, FinanceSectionLoading } from "@/components/finance/finance-overview-loading";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Finance.overview"); return { title: t("title") };
 }
-async function Unavailable({ cash = false }: { cash?: boolean }) {
-  const t = await getTranslations("Finance.overview.analytics");
-  return <section role="status" className="py-6 text-sm text-[var(--ui-text-secondary)]"><p>{t(cash ? "cashFailed" : "analyticsFailed")}</p><Link href={cash ? "/finance/planning" : "/finance/reports"} className="inline-flex min-h-11 items-center underline underline-offset-4">{t(cash ? "forecast" : "report")}</Link></section>;
+async function Unavailable() {
+  const t = await getTranslations("Finance.overview.dashboard");
+  return <section role="status" className="space-y-2 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] p-5 text-sm text-[var(--ui-text-secondary)]"><p>{t("loadFailed")}</p><div className="flex flex-wrap gap-5"><Link href="/finance" className="inline-flex min-h-11 items-center underline underline-offset-4">{t("retry")}</Link><Link href="/finance/movements" className="inline-flex min-h-11 items-center underline underline-offset-4">{t("openMovements")}</Link></div></section>;
 }
-async function Analytics({ period, today }: { period: ReturnType<typeof parseFinanceReportParams>["period"]; today: string }) {
-  const scope = financeAnalyticsPeriod(period, today);
+async function Cash({ context, foundation }: {
+  context: ReturnType<typeof parseFinanceReportParams>; foundation: NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
+}) {
   try {
-    const data = await getFinanceManagement(scope);
+    const [source, displayCurrency] = await Promise.all([getFinanceOverview(context), getFinanceDisplayCurrency()]);
+    if (!source) return <Unavailable/>;
+    const currency = foundation.currencies.find(unit => unit.code === displayCurrency);
+    const base = foundation.currencies.find(unit => unit.code === source.forecast.currency);
+    if (!currency || !base) return <Unavailable/>;
+    const [data, payments, cashAnalysis] = await Promise.all([
+      getFinanceDisplayOverview(source, displayCurrency),
+      getFinanceOverviewPayments(source, currency, base.minor_units).catch((error): OverviewPayment[] | null => {
+        console.error("Finance Overview payments unavailable", error);
+        return null;
+      }),
+      getFinanceOverviewCashAnalysis(source, currency).catch(error => {
+        console.error("Finance Overview monthly cash unavailable", error);
+        return null;
+      }),
+    ]);
     if (!data) return <Unavailable/>;
-    return <InstaLoadReady key={data.currency.code} name="finance-analytics" className="instaload-panel [--instaload-reveal-duration:200ms]"><div data-instaload-arrival="finance-analytics"><FinanceAnalyticsSection data={buildFinanceAnalytics(data, scope.from, scope.to)} currency={data.currency}/></div></InstaLoadReady>;
-  } catch (error) { console.error("Finance analytics unavailable", error); return <Unavailable/>; }
+    return <InstaLoadReady key={displayCurrency} name="finance-cash" className="instaload-panel [--instaload-reveal-duration:200ms]"><div data-instaload-arrival="finance-cash"><FinanceOverviewCash source={source} data={data} payments={payments} monthlyCash={cashAnalysis?.months ?? null} comparison={cashAnalysis?.comparison ?? null} currencies={foundation.currencies}/></div></InstaLoadReady>;
+  } catch (error) { console.error("Finance Overview unavailable", error); return <Unavailable/>; }
 }
-async function Cash({ context, foundation }: { context: ReturnType<typeof parseFinanceReportParams>; foundation: NonNullable<Awaited<ReturnType<typeof getFinanceData>>> }) {
+async function ProjectEconomics() {
+  const t = await getTranslations("Finance.overview.economics");
   try {
-    const [source, currency] = await Promise.all([getFinanceOverview(context), getFinanceDisplayCurrency()]);
-    if (!source) return <Unavailable cash/>;
-    const data = await getFinanceDisplayOverview(source, currency);
-    if (!data) return <Unavailable cash/>;
-    return <InstaLoadReady key={currency} name="finance-cash" className="instaload-panel [--instaload-reveal-duration:200ms]"><div data-instaload-arrival="finance-cash"><FinanceOverviewCash source={source} data={data} currencies={foundation.currencies} invalidFx={context.invalidFx}/></div></InstaLoadReady>;
-  } catch (error) { console.error("Finance cash outlook unavailable", error); return <Unavailable cash/>; }
+    const data = await getFinanceOverviewProjectEconomics();
+    if (!data) throw new Error("Project economics unavailable");
+    return <InstaLoadReady key={data.currency.code} name="finance-economics" className="instaload-panel"><div data-instaload-arrival="finance-economics"><OverviewProjectEconomics data={data}/></div></InstaLoadReady>;
+  } catch (error) {
+    console.error("Finance project economics unavailable", error);
+    return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5"><h2 className="text-lg font-semibold">{t("title")}</h2><p role="status" className="mt-2 text-sm text-[var(--ui-text-secondary)]">{t("failed")}</p></section>;
+  }
 }
 async function CurrencyControl() {
   const currency = await getFinanceDisplayCurrency();
@@ -51,22 +70,16 @@ async function FinanceContent({ searchParams }: { searchParams: Promise<Record<s
   if (!foundation) redirect("/dashboard");
   const today = getKyivDateOnly();
   if (!foundation.settings?.finalized_at) return <FinanceWorkspace {...foundation} today={today}/>;
-  const params = await searchParams, context = parseFinanceReportParams(params, today);
+  const params = await searchParams;
+  // Keep the existing report context for balances and expected-payment diagnostics.
+  const context = parseFinanceReportParams({ ...params, period: params.period ?? "month", horizon: "6" }, today);
   const t = await getTranslations("Finance.overview");
-  const scope = financeAnalyticsPeriod(context.period, today);
-  const analyticsAvailable = Boolean(foundation.settings.recognition_start_month && foundation.settings.recognition_start_month <= scope.to);
-  const periodHref = (period: string) => {
-    const next = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => { if (typeof value === "string") next.set(key, value); });
-    next.set("period", period); return `/finance?${next}`;
-  };
-  return <div className="w-full min-w-0 space-y-8" data-finance-shell="ready">
-    <PageHeader title={t("title")} className="flex-wrap" action={<div className="flex flex-wrap items-center gap-3"><nav aria-label={t("actualPeriod")} className="flex flex-wrap gap-1">{(["month", "3", "year"] as const).map(period => <Link key={period} href={periodHref(period)} aria-current={context.period === period ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-3 text-sm transition-colors duration-[180ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none ${context.period === period ? "bg-[var(--ui-surface-muted)] font-medium" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}>{t(`periods.${period}`)}</Link>)}</nav><Suspense fallback={<FinanceCurrencyLoading/>}><CurrencyControl/></Suspense></div>}/>
-    <Suspense key={`analytics-${context.period}`} fallback={<FinanceSectionLoading analyticsAvailable={analyticsAvailable}/>}><Analytics period={context.period} today={today}/></Suspense>
-    <Suspense key={`cash-${context.period}-${context.options.horizon}-${context.options.scenario}`} fallback={<FinanceSectionLoading cash/>}><Cash context={context} foundation={foundation}/></Suspense>
+  return <div className="w-full min-w-0 space-y-5" data-finance-shell="ready">
+    <PageHeader title={t("title")} className="flex-wrap" action={<Suspense fallback={<FinanceCurrencyLoading/>}><CurrencyControl/></Suspense>}/>
+    <Suspense key={`cash-${context.period}-${context.options.scenario}`} fallback={<FinanceSectionLoading/>}><Cash context={context} foundation={foundation}/></Suspense>
+    <Suspense fallback={<FinanceEconomicsLoading/>}><ProjectEconomics/></Suspense>
   </div>;
 }
-
 export default function FinancePage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   return <Suspense fallback={<FinanceOverviewLoading/>}><FinanceContent {...props}/></Suspense>;
 }

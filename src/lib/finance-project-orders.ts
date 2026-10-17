@@ -9,6 +9,14 @@ export const projectOrderInputSchema = z.object({
 }).refine(value => value.intent === "create" ? Boolean(value.name) : Boolean(value.orderId) && value.version !== undefined)
   .refine(value => value.intent !== "rename" || Boolean(value.name));
 
+export const projectOrderCurrencyCorrectionSchema = z.object({
+  requestId: z.uuid(), projectId: z.uuid(), orderId: z.uuid(), termsId: z.uuid(),
+  version: z.coerce.number().int().nonnegative(), currency: z.string().regex(/^[A-Z]{3}$/),
+  known: z.array(z.object({ id: z.uuid(), version: z.number().int().positive() })),
+  reason: z.string().trim().min(1).max(2000),
+  confirmed: z.literal("on").transform(() => true),
+});
+
 // A draft uses the existing plan contract; its rows are not allocation targets.
 export function parseProjectOrderDraft(value: unknown, projectId: string, orderId: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

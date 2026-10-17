@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { financeCashChartPoints, type FinanceOverview } from "@/lib/finance-overview";
 
 // Number conversion is only for SVG coordinates; all money and cumulative sums come from SQL.
-export function FinanceCashChart({ data, currency, through = data.forecast.through, compact = false }: { data: FinanceOverview; currency: FinanceCurrency; through?: string; compact?: boolean }) {
+export function FinanceCashChart({ data, currency, through = data.forecast.through, compact = false, forecastOnly = false, conditional = false }: { data: FinanceOverview; currency: FinanceCurrency; through?: string; compact?: boolean; forecastOnly?: boolean; conditional?: boolean }) {
   const t = useTranslations("Finance.overview");
   const locale = useLocale();
   const report = data.forecast;
@@ -34,10 +34,10 @@ export function FinanceCashChart({ data, currency, through = data.forecast.throu
   const projectedMinimumIndex = points.findIndex(p => p.kind === "forecast" && p.date === data.lowPoint.date && p.amount === data.lowPoint.amount);
   const activePoint = active && active.amount !== null ? { ...active, amount: active.amount } : null;
   return <div className="space-y-3">
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--ui-text-secondary)]"><span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-0.5 w-5 rounded-full bg-[var(--ui-text-secondary)]" />{t("actual")}{data.historyIncomplete ? ` · ${t("unavailable")}` : ""}</span><span className="inline-flex items-center gap-2 text-[var(--ui-success-text)]"><span aria-hidden="true" className="w-5 border-t-2 border-dashed border-[var(--ui-success-accent)]" />{t("forecast")}</span><span className="font-medium tabular-nums text-[var(--ui-text-muted)]">{report.currency}</span></div>
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--ui-text-secondary)]">{!forecastOnly ? <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-0.5 w-5 rounded-full bg-[var(--ui-text-secondary)]" />{t("actual")}{data.historyIncomplete ? ` · ${t("unavailable")}` : ""}</span> : null}<span className="inline-flex items-center gap-2 text-[var(--ui-success-text)]"><span aria-hidden="true" className="w-5 border-t-2 border-dashed border-[var(--ui-success-accent)]" />{t(conditional ? "dashboard.conditional" : "forecast")}</span><span className="font-medium tabular-nums text-[var(--ui-text-muted)]">{report.currency}</span></div>
     <div ref={container} className="relative">
       {chartSafe ? <svg viewBox={`0 0 ${width} ${plotBottom + 44}`} className="block w-full" role="group" aria-label={t("cashChart")} aria-describedby="cash-chart-description">
-        <desc id="cash-chart-description">{t("chartDescription")}</desc>
+        <desc id="cash-chart-description">{t(forecastOnly ? "dashboard.chartDescription" : "chartDescription")}</desc>
         {[min, (min + max) / 2, max].map((value, i) => <g key={i}><line x1={plotLeft} x2={width - plotRight} y1={y(value)} y2={y(value)} stroke="var(--ui-border)" strokeOpacity="0.78" strokeDasharray={i === 1 ? "3 5" : undefined} /><text x={plotLeft - 12} y={y(value) + 4} textAnchor="end" fontSize="11" fontWeight="500" fill="var(--ui-text-muted)">{new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)}</text></g>)}
         <path d={forecastArea} fill="var(--ui-success-accent)" fillOpacity="0.07" />
         <line x1={x(report.asOf)} x2={x(report.asOf)} y1={plotTop} y2={plotBottom} stroke="var(--ui-border-strong)" strokeWidth="1.5" strokeDasharray="4 5" />

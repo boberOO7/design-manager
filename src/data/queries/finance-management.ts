@@ -15,10 +15,10 @@ import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 const reportSchema = z.object({ asOf: z.iso.date(), recognitionStart: z.iso.date().nullable(), entries: z.array(recognitionEntrySchema),
   coverage: z.array(reportCoverageSchema), projects: z.array(z.object({ id: z.uuid(), name: z.string(), startsOn: z.iso.date().nullable() })),
   sources: z.array(recognitionSourceSchema), labor: laborDataSchema, tripSources: z.array(tripRecognitionSourceSchema), projectReporting: projectReportingSchema });
-export async function getFinanceManagement(params: Record<string, string | string[] | undefined>) {
+export async function getFinanceManagement(params: Record<string, string | string[] | undefined>, options: { refreshAutomaticLabor?: boolean } = {}) {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
-  scheduleAutomaticLabor(admin.studio_id);
+  if (options.refreshAutomaticLabor !== false) scheduleAutomaticLabor(admin.studio_id);
   const client = await createClient();
   const [foundation, displayCurrency, response] = await Promise.all([getFinanceData(), getFinanceDisplayCurrency(), client.rpc("get_finance_management_reporting", { p_studio_id: admin.studio_id })]);
   if (!foundation) return null;

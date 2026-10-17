@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import uk from "../../messages/uk.json";
 import type { Database } from "../../src/types/database.types";
+import { signInLocalTestUser } from "../helpers/auth";
 
 const local = z.object({ EQUIPMENT_TEST_SUPABASE_URL: z.url(), EQUIPMENT_TEST_SERVICE_KEY: z.string() }).parse(process.env);
 if (!["127.0.0.1", "localhost"].includes(new URL(local.EQUIPMENT_TEST_SUPABASE_URL).hostname)) throw new Error("Project orders fixtures require local Supabase");
@@ -431,5 +432,100 @@ test("compact order surfaces preserve inline rename keyboard and blur focus", as
     await expect(manage).toBeFocused();
   }
   expect(history()).toBe(originalHistory);
+  expect(pageErrors).toEqual([]);
+});
+
+test("original contract currency correction preserves unpaid installments and blocks paid history", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  const f = uk.Finance, copy = f.currencyCorrection, orders = f.orders;
+  const correctionId = randomUUID(), correctionProject = `'${correctionId}'`, usdBank = randomUUID(), paymentRequest = randomUUID();
+  const projectName = "296 Currency correction · local fixture";
+  const today = sql("select (now() at time zone 'Europe/Kyiv')::date");
+  await client.auth.admin.updateUserById(admin.id, { user_metadata: { finance_display_currency: "USD" } });
+  sql(`select set_config('request.jwt.claim.sub','${admin.id}',false);
+    insert into public.projects(id,studio_id,name,total_area_m2,start_date,created_by,status)
+      values(${correctionProject},${studio},'${projectName}',100,'${today}','${admin.id}','active');
+    insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by)
+      values('${usdBank}',${studio},'USD receipts','USD',0,'${admin.id}');
+    select public.save_finance_project_plan(${studio},'${randomUUID()}',${correctionProject},jsonb_build_object(
+      'revision',0,'pricingMethod','fixed','amount','8000','currency','UAH','reason','Mistaken currency fixture','known','[]'::jsonb,
+      'items',jsonb_build_array(
+        jsonb_build_object('name','Аванс валюти','amount','2400','percentage','30','dueDate','${today}','expectedDate','${today}'),
+        jsonb_build_object('name','Етап валюти','amount','4000','percentage','50','dueDate',date '${today}'+14,'expectedDate',date '${today}'+14),
+        jsonb_build_object('name','Фінальний платіж валюти','amount','1600','percentage','20','dueDate',date '${today}'+30,'expectedDate',date '${today}'+30))));`);
+  const snapshot = () => JSON.parse(sql(`select jsonb_agg(to_jsonb(e)-array['currency','version','updated_at'] order by e.id)
+    from public.finance_expected_items e join public.finance_project_items i on i.expected_item_id=e.id where i.project_id=${correctionProject}`));
+  const before = snapshot(), pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await signInLocalTestUser(page, admin);
+  await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: new URL(page.url()).origin }]);
+  const href = `/projects/${correctionId}?view=finance`;
+  await page.goto(href);
+  const summary = page.getByRole("region", { name: orders.scope, exact: true });
+  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: new RegExp(orders.defaultName) }).click();
+  await page.getByRole("dialog").getByRole("button", { name: f.project.editAgreement, exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("textbox", { name: f.project.currency, exact: true })).toHaveValue("UAH");
+  await expect(page.getByRole("dialog").getByRole("textbox", { name: f.project.currency, exact: true })).toHaveAttribute("readonly");
+  await page.getByRole("dialog").getByRole("button", { name: copy.action, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText(copy.help);
+  const save = dialog.getByRole("button", { name: copy.save, exact: true });
+  await expect(save).toBeDisabled();
+  await dialog.getByRole("combobox", { name: copy.currency, exact: true }).click();
+  await page.getByRole("option", { name: "USD", exact: true }).click();
+  await expect(dialog).toContainText(/8[\s\u00a0]?000,00\sUAH/);
+  await expect(dialog).toContainText(/8[\s\u00a0]?000,00\sUSD/);
+  await expect(save).toBeDisabled();
+  await dialog.getByRole("textbox", { name: copy.reason, exact: true }).fill("Виправлення помилково обраної початкової валюти договору");
+  await dialog.getByRole("checkbox").check();
+  for (const [label, width, height, theme] of [["desktop",1440,1000,"light"],["laptop",1280,800,"dark"]] as const) {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await dialog.screenshot({ path: testInfo.outputPath(`currency-confirmation-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
+  }
+  await save.click();
+  await expect(dialog.getByRole("heading", { name: orders.defaultName, exact: true })).toBeVisible();
+  await expect(dialog).toContainText(/8[\s\u00a0]?000,00\sUSD/);
+  expect(snapshot()).toEqual(before);
+  expect(sql(`select string_agg(distinct currency,',')||':'||count(*) from public.finance_project_plan_items where project_id=${correctionProject}`)).toBe("USD:3");
+  await page.keyboard.press("Escape");
+  await expect(summary).toContainText(/8[\s\u00a0]?000,00\s*USD/);
+  await expect(page.locator("[data-project-payment]")).toHaveCount(3);
+  await page.goto("/finance");
+  const economics = page.getByTestId("overview-economics");
+  await expect(economics.locator(`[data-economics-point="${correctionId}"]`)).toHaveAccessibleName(/8[\s\u00a0]?000,00/);
+  await expect(economics.getByTestId("economics-highlights")).toContainText(f.overview.economics.marginsUnavailable);
+  for (const [label, width, height, theme] of [["desktop",1440,1000,"light"],["laptop",1280,800,"dark"]] as const) {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    await economics.scrollIntoViewIfNeeded();
+    const highlights = economics.getByTestId("economics-highlights");
+    expect(await highlights.locator(":scope > div").evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await economics.screenshot({ path: testInfo.outputPath(`economics-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
+  }
+  // A normal recorded receipt consumes this order and must block another denomination correction.
+  sql(`select set_config('request.jwt.claim.sub','${admin.id}',false);
+    select public.record_finance_movement(${studio},'${paymentRequest}',jsonb_build_object('kind','incoming','date','${today}',
+      'accountId','${usdBank}','amount','100','categoryId',(select id from public.finance_categories where studio_id=${studio} and default_key='project_payments'),
+      'fx',jsonb_build_object('rate','0.9','source','manual','effectiveDate','${today}')));
+    select public.allocate_finance_payment(${studio},'${randomUUID()}',
+      (select id from public.finance_project_plan_items where project_id=${correctionProject} order by amount limit 1),
+      (select id from public.finance_movements where studio_id=${studio} and request_id='${paymentRequest}'),100);`);
+  await page.goto(href);
+  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await dialog.getByRole("button", { name: new RegExp(orders.defaultName) }).click();
+  await dialog.getByRole("button", { name: copy.action, exact: true }).click();
+  await dialog.getByRole("combobox", { name: copy.currency, exact: true }).click();
+  await page.getByRole("option", { name: "EUR", exact: true }).click();
+  await dialog.getByRole("textbox", { name: copy.reason, exact: true }).fill("Should be blocked by payment history");
+  await dialog.getByRole("checkbox").check();
+  await save.click();
+  await expect(dialog.getByRole("alert")).toHaveText(copy.errors.payments);
+  expect(sql(`select currency='USD' and amount=8000 from public.finance_project_current_terms where project_id=${correctionProject}`)).toBe("t");
   expect(pageErrors).toEqual([]);
 });

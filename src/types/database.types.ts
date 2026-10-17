@@ -9431,6 +9431,15 @@ export type Database = {
         }
         Returns: string
       }
+      correct_finance_project_order_currency: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       create_calendar_event_with_invites: {
         Args: {
           p_all_day: boolean
