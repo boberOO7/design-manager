@@ -1,5 +1,7 @@
 "use client";
 
+import { getStageLabel } from "@/lib/task-stages";
+
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -99,7 +101,7 @@ export function DashboardTaskList({ currentUserId, tasks, items, today }: { curr
           <button type="button" aria-label={`${task.title}. ${t("openTaskDetails")}`} onClick={() => openTaskDrawer(task.id)} className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_max-content] items-center gap-x-3 gap-y-1 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] @2xl:col-span-4 @2xl:grid-cols-[minmax(0,1fr)_10rem_5rem_10rem] @2xl:gap-x-1">
             <span className="min-w-0"><b className="block truncate text-sm font-medium text-[var(--ui-text)]">{task.title}</b><small className="mt-0.5 block truncate text-xs text-[var(--ui-text-muted)]">{task.project.name}{relevantPriority ? ` · ${priority(task.priority)}` : ""}</small></span>
             <Tooltip content={task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}><span className={`ui-numeric min-w-0 truncate whitespace-nowrap text-xs ${overdue ? "font-semibold text-[var(--ui-danger-text)]" : dueToday ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>{overdue ? `${t("overdue")} · ` : ""}{task.due_date ? formatDate(task.due_date, locale) : taskT("noDueDate")}</span></Tooltip>
-            <Tooltip content={stages(task.stage)}><span className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]">{stages(task.stage)}</span></Tooltip>
+            <Tooltip content={getStageLabel(task.stage, stages, task.stageName)}><span className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]">{getStageLabel(task.stage, stages, task.stageName)}</span></Tooltip>
             <span className={`w-fit max-w-full truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeStyle(task.status).className}`}>{status(task.status === "in_progress" ? "inProgress" : task.status)}</span>
           </button>
           <Tooltip content={taskT("goToProject")}><Link href={`/projects/${task.project_id}?task=${task.id}`} aria-label={taskT("goToProject")} onClick={(event) => event.stopPropagation()} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors duration-[180ms] ease-out hover:bg-[var(--ui-surface-muted)] motion-reduce:transition-none hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><FolderKanban className="size-4" aria-hidden="true" /></Link></Tooltip>

@@ -6,6 +6,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectTaskById, getProjectTasks, getTaskForStatusUpdate } from "@/data/queries/tasks";
 import { createClient } from "@/lib/supabase/server";
+import { getProjectTaskStage } from "@/data/queries/project-stage-columns";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskEditMutationResult } from "@/lib/task-status-mutation";
 import { taskBulkPriorityPayloadSchema, taskCompletionDateEditSchema, taskEditSchema } from "@/lib/validation/task";
@@ -164,7 +165,7 @@ export async function bulkUpdateTaskPriorityMutation(projectId: string, input: u
   const { data: project, error: projectError } = await supabase.from("projects")
     .select("studio_id, status, archived_at").eq("id", projectId).maybeSingle();
   if (projectError || !project || project.studio_id !== admin.studio_id
-    || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })) {
+    || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage, stageKind: (await getProjectTaskStage(projectId, parsed.data.stage))?.kind })) {
     return { success: false, formError: "This project stage is read-only or unavailable." } as const;
   }
 

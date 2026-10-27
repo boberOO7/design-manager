@@ -1,4 +1,6 @@
 "use client";
+
+import { getStageLabel } from "@/lib/task-stages";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -216,7 +218,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
         const groupState = session ? "active" : paused ? "paused" : "waiting";
         const open = expanded.includes(key);
         const contentId = `${scopeId}-${index}`;
-        const stage = stageNames[key] ?? stages(items[0].task.stage);
+        const stage = stageNames[key] ?? getStageLabel(items[0].task.stage, stages);
         return <li key={key} data-review-group={key}>
           <div className={`${rowGrid} relative border-t border-[var(--ui-border)] ${session ? "bg-[var(--ui-info-surface)]" : "bg-[var(--ui-surface-subtle)]"}`}>
             <button type="button" data-review-group-toggle aria-expanded={open} aria-controls={contentId} onClick={() => setExpanded(current => open ? current.filter(value => value !== key) : [...current, key])}
@@ -260,14 +262,14 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
     </Drawer> : null}
     {details ? <TaskDetailsDrawer key={details.task.id} task={details.task} currentUserId={currentUserId} members={details.members}
       canManageTasks={details.canManageTasks} isOpen={drawerOpen} onClose={closeDetails} onExited={clearDetails}
-      isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: details.project.status, archivedAt: details.project.archived_at, stage: details.task.stage })}
+      isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: details.project.status, archivedAt: details.project.archived_at, stage: details.task.stage, stageKind: details.task.stageKind })}
       projectStatus={isProjectLifecycleStatus(details.project.status) ? details.project.status : undefined}
       onTaskUpdated={task => setDetails(current => current?.task.id === task.id ? { ...current, task } : current)}
       onTaskDeleted={() => { closeDetails(); router.refresh(); }}
       onProjectStatusUpdated={status => setDetails(current => current ? { ...current, project: { ...current.project, status } } : current)} /> : null}
     <Dialog isOpen={Boolean(rework)} title={rework?.sessionId ? timerText("sendBackGroup") : t("reviewSendBack")} closeLabel={timerText("cancel")} onRequestClose={() => { if (!resolving) setRework(null); }} closeDisabled={resolving} className="max-w-md">
       <form className="space-y-4 p-4" onSubmit={event => { event.preventDefault(); if (rework) void resolve(rework, "rework"); }}>
-        <p className="text-sm font-medium">{rework?.sessionId && rework.rounds[0] ? `${rework.rounds[0].task.project.name} · ${stageNames[`${rework.rounds[0].task.project.id}:${rework.rounds[0].task.stage}`] ?? stages(rework.rounds[0].task.stage)} · ${timerText("reviewCount", { count: rework.rounds.length })}` : rework?.rounds[0]?.task.title}</p>
+        <p className="text-sm font-medium">{rework?.sessionId && rework.rounds[0] ? `${rework.rounds[0].task.project.name} · ${stageNames[`${rework.rounds[0].task.project.id}:${rework.rounds[0].task.stage}`] ?? getStageLabel(rework.rounds[0].task.stage, stages)} · ${timerText("reviewCount", { count: rework.rounds.length })}` : rework?.rounds[0]?.task.title}</p>
         <FormField label={t("reviewFixComment")}><Textarea autoFocus required maxLength={5000} rows={3} value={comment} onChange={event => setComment(event.target.value)} disabled={resolving} /></FormField>
         {error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
         <div className="flex justify-end gap-2"><Button type="button" size="sm" variant="ghost" disabled={resolving} onClick={() => setRework(null)}>{timerText("cancel")}</Button><Button type="submit" size="sm" disabled={resolving || !comment.trim()}>{t("reviewConfirmRework")}</Button></div>

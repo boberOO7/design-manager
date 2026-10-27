@@ -15,9 +15,12 @@ current membership. Active Stage 1/3 area follows the current project and task r
 
 ## Project progress
 
-- Only Stage 1–3 contribute. Stage 4 never contributes to project progress.
-- Stage 1 contributes 20%, Stage 2 contributes 40%, and Stage 3 contributes 40%.
-- Each production stage independently selects Equal, Area, or Weighted task
+- Non-deleted `work` stages contribute through positive integer stage weights;
+  hidden stages still contribute. `additional` stages do not.
+- Initial weights 1/2/2 preserve Stage 1–3 shares of 20/40/40. New work stages
+  default to weight 1. Deletion renormalizes the remaining weights. No work
+  stages means zero overall progress.
+- Each work stage independently selects Equal, Area, or Weighted task
   aggregation through `project_task_stage_columns`.
 - Cancelled tasks are excluded. Empty/zero-weight aggregations resolve to zero.
 - Precision is retained in domain calculations; UI presentation rounds the final
@@ -51,7 +54,14 @@ rows without `voided_at`.
 
 - Stable stage IDs are policy inputs. Labels, display order, visibility, and
   column configuration do not change accounting rules.
-- Stage 1 receives 20% and Stage 3 receives 80% of current project area.
+- Each studio configures Stage 1's share of current project area (default 20%);
+  Stage 3 receives the remainder to 100%. This is independent of project progress
+  weights and uses the original keys, never labels or display order.
+  `studios.productivity_stage_1_percent` is saved through the admin-only
+  `save_productivity_stage_shares` RPC in Leaderboard settings. Saving atomically
+  rebalances existing active credit in every studio project, including completed
+  and archived projects, without changing completion dates or contributors.
+  Busy project rows reject the save for retry rather than partially updating.
   `project_stage_productivity_budgets` stores the current budget and credited total.
 - Stage 2 snapshots the task's `completed_area_m2`.
 - Each stage budget is split equally among all current non-cancelled tasks in
@@ -63,8 +73,8 @@ rows without `voided_at`.
 - Unassigned productivity-bearing completion is allowed only where current
   database rules can safely create no contributor attribution; assigned work
   must resolve to an active project member.
-- Stage 4 completions create a zero-area task-count ledger event and no task
-  productivity-area snapshot.
+- Stage 4 and custom-stage completions create zero-area task-count ledger
+  events. Custom stage kind/weight never changes the legacy m² rules.
 
 ## Leaderboard
 

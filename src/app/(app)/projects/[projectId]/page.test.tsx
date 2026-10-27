@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { Children, isValidElement, type ComponentProps, type ReactNode } from "react";
 import type { ProjectStageConfiguration } from "@/data/queries/project-stage-columns";
-import { TASK_STAGES } from "@/lib/task-stages";
+import { DEFAULT_PROJECT_STAGES } from "@/lib/task-stages";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "@/lib/project-progress";
 import { DEFAULT_STAGE_COLUMN_STATUSES } from "@/lib/tasks";
 
@@ -60,8 +60,8 @@ const configuration: ProjectStageConfiguration = {
   columns: { stage_1: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_2: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_3: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_4: [...DEFAULT_STAGE_COLUMN_STATUSES] },
   progressMethods: DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
   schedulePause: { stage_1: null, stage_2: null, stage_3: null, stage_4: null },
-  stages: TASK_STAGES.map((stage, index) => ({ stage, displayName: null, isEnabled: true, displayOrder: index + 1 })),
-  includeInProductivity: true, showProgress: true,
+  stages: DEFAULT_PROJECT_STAGES.map((stage, index) => ({ ...stage, displayName: null, isEnabled: true, displayOrder: index + 1 })),
+  includeInProductivity: true, showProgress: true, version: 0,
 };
 const route = (query = {}) => Page({ params: Promise.resolve({ projectId: "project" }), searchParams: Promise.resolve(query) });
 beforeEach(() => {

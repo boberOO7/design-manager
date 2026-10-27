@@ -14,6 +14,7 @@ import type { ProjectFormAction } from "@/components/projects/project-form";
 import type { ConfiguredProjectStage, ProjectStageConfiguration } from "@/data/queries/project-stage-columns";
 import { calculateProjectSummary, type ProjectProgressSummary, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import type { ProjectTemplate } from "@/lib/project-templates";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 export type ProjectWorkspaceCore = { tasks: ProjectTask[]; configuration: ProjectStageConfiguration };
@@ -67,12 +68,13 @@ export function ProjectWorkspaceContext({ data, ...props }: WorkspaceProps & { d
   const { configuration, project, tasks } = data;
   const [stageConfigurationOpen, setStageConfigurationOpen] = useState(false);
   const stageLabels = useTranslations("TaskStages");
+  const router = useRouter();
   const stages = state.stages ?? configuration.stages;
   const includeInProductivity = state.includeInProductivity ?? configuration.includeInProductivity;
   const showProgress = state.showProgress ?? configuration.showProgress;
   return <InstaLoadReady name="project-context" className="instaload-panel">
-    <div data-instaload-arrival="context"><ProjectContextBand archiveAction={props.archiveAction} backHref={props.backHref} calendarTimeSummary={props.calendarTimeSummary} canManage={props.canManage} currentUserId={props.currentUserId} isArchived={props.isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={props.restoreAction} summary={state.summary ?? calculateProjectSummary(tasks, undefined, state.progressMethods ?? configuration.progressMethods)} showProgress={showProgress} stages={stages} updateAction={props.updateAction} /></div>
-    {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={includeInProductivity} showProgress={showProgress} onClose={() => setStageConfigurationOpen(false)} onSaved={(nextStages, nextIncludeInProductivity, nextShowProgress) => { state.setStages(nextStages); state.setIncludeInProductivity(nextIncludeInProductivity); state.setShowProgress(nextShowProgress); setStageConfigurationOpen(false); }} projectId={props.projectId} stageLabels={stageLabels} stages={stages} /> : null}
+    <div data-instaload-arrival="context"><ProjectContextBand archiveAction={props.archiveAction} backHref={props.backHref} calendarTimeSummary={props.calendarTimeSummary} canManage={props.canManage} currentUserId={props.currentUserId} isArchived={props.isArchived} onConfigureStages={() => setStageConfigurationOpen(true)} project={project} restoreAction={props.restoreAction} summary={state.summary ?? calculateProjectSummary(tasks, undefined, state.progressMethods ?? configuration.progressMethods, stages)} showProgress={showProgress} stages={stages} updateAction={props.updateAction} /></div>
+    {stageConfigurationOpen ? <ProjectStageConfigurationDialog includeInProductivity={includeInProductivity} showProgress={showProgress} onClose={() => setStageConfigurationOpen(false)} onSaved={() => { state.setSummary(null); state.setStages(null); state.setIncludeInProductivity(null); state.setShowProgress(null); setStageConfigurationOpen(false); router.refresh(); }} projectId={props.projectId} stageLabels={stageLabels} stages={stages} /> : null}
   </InstaLoadReady>;
 }
 
@@ -83,6 +85,6 @@ export function ProjectWorkspaceBoard({ data, ...props }: WorkspaceProps & { dat
   const { setProgressMethods } = state;
   useEffect(() => { setProgressMethods(configuration.progressMethods); }, [configuration.progressMethods, setProgressMethods]);
   return <InstaLoadReady name="project-board" className="instaload-panel"><div data-instaload-arrival="board">
-    <ProjectTaskBoard canCreate={props.canCreate} canManageTasks={props.canManageTasks} currentUserId={props.currentUserId} initialTaskId={props.initialTaskId} isProjectReadOnly={props.isProjectReadOnly} members={members} projectId={props.projectId} projectStatus={status} projectTemplates={projectTemplates} stageColumns={configuration.columns} stageProgressMethods={state.progressMethods ?? configuration.progressMethods} onStageProgressMethodChange={(stage, method) => setProgressMethods(current => ({ ...(current ?? configuration.progressMethods), [stage]: method }))} schedulePause={configuration.schedulePause} showProgress={state.showProgress ?? configuration.showProgress} stages={state.stages ?? configuration.stages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onSummaryChange={state.setSummary} />
+    <ProjectTaskBoard key={`${props.projectId}:${configuration.version}`} canCreate={props.canCreate} canManageTasks={props.canManageTasks} currentUserId={props.currentUserId} initialTaskId={props.initialTaskId} isProjectReadOnly={props.isProjectReadOnly} members={members} projectId={props.projectId} projectStatus={status} projectTemplates={projectTemplates} stageColumns={configuration.columns} stageProgressMethods={state.progressMethods ?? configuration.progressMethods} onStageProgressMethodChange={(stage, method) => setProgressMethods(current => ({ ...(current ?? configuration.progressMethods), [stage]: method }))} schedulePause={configuration.schedulePause} showProgress={state.showProgress ?? configuration.showProgress} stages={state.stages ?? configuration.stages} tasks={tasks} templates={templates} onProjectStatusChange={setStatus} onSummaryChange={state.setSummary} />
   </div></InstaLoadReady>;
 }

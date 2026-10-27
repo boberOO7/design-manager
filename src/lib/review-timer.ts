@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TASK_STAGES } from "./task-stages";
+import { taskStageSchema } from "./task-stages";
 
 export const reviewTimerInputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("start"), sessionId: z.uuid(), roundIds: z.array(z.uuid()).min(1).refine(ids => new Set(ids).size === ids.length) }),
@@ -8,7 +8,7 @@ export const reviewTimerInputSchema = z.discriminatedUnion("action", [
 export const reviewTimerSyncSchema = z.object({ sessionId: z.uuid().nullable(), changed: z.boolean(), studioId: z.uuid().nullable() });
 export const reviewTimerSnapshotSchema = z.object({
   serverNow: z.string(), userId: z.uuid(),
-  activeReview: z.object({ roundId: z.uuid(), projectId: z.uuid(), projectName: z.string(), taskTitle: z.string(), stage: z.enum(TASK_STAGES), stageName: z.string().nullable() }).nullable().optional(),
+  activeReview: z.object({ roundId: z.uuid(), projectId: z.uuid(), projectName: z.string(), taskTitle: z.string(), stage: taskStageSchema, stageName: z.string().nullable() }).nullable().optional(),
   sessions: z.array(z.object({ id: z.uuid(), user_id: z.uuid(), state: z.enum(["active", "paused", "completed"]),
     started_at: z.string(), accounted_at: z.string().nullable(), elapsed_us: z.number().nonnegative(),
     members: z.array(z.object({ round_id: z.uuid(), finished_at: z.string().nullable() })) })),

@@ -70,11 +70,16 @@ export async function getDailyWorkLog(date: string) {
   for (const result of [saved, activities, tasks, rounds, events, statusPeriods]) {
     if (result.error || !result.data) throw new Error("Unable to load daily work log.", { cause: result.error });
   }
-  const taskRows = tasks.data ?? [], reviewRows = rounds.data ?? [];
+  const rawTasks = tasks.data ?? [], reviewRows = rounds.data ?? [];
+  const projectIds = [...new Set(rawTasks.map((task) => task.project_id))];
+  const stageRows = projectIds.length ? await loadAllRows((from, to) => client.from("project_task_stage_columns").select("project_id,stage,kind").in("project_id", projectIds).is("deleted_at", null).order("project_id").order("stage").range(from, to)) : { data: [], error: null };
+  if (stageRows.error) throw new Error("Unable to load work-log stage types.", { cause: stageRows.error });
+  const kinds = new Map((stageRows.data ?? []).map((stage) => [`${stage.project_id}:${stage.stage}`, stage.kind]));
+  const taskRows = rawTasks.map((task) => ({ ...task, stageKind: kinds.get(`${task.project_id}:${task.stage}`) }));
   const participating = new Set(taskRows.filter(task => task.assignee_id === userId || task.collaborators.some(row => row.user_id === userId)).map(task => task.id));
   const activeTasks = taskRows.filter(task => task.status !== "completed" && task.status !== "cancelled"
     && !task.project.archived_at && task.project.status !== "archived"
-    && (task.project.status !== "completed" || task.stage === "stage_4"));
+    && (task.project.status !== "completed" || task.stageKind === "additional"));
   const suggestedReviewIds = new Set(getSuggestedReviewRoundIds(reviewRows, userId, date, activities.data ?? []));
   for (const roundId of Object.keys(logSnapshot.timerSnapshot)) suggestedReviewIds.add(roundId);
   const relevantReviews = reviewRows.filter(round => suggestedReviewIds.has(round.id));

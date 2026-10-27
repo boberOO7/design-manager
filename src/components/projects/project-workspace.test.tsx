@@ -4,8 +4,9 @@ import { expect, it, vi } from "vitest";
 import { use, type ComponentProps } from "react";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "@/lib/project-progress";
 import { DEFAULT_STAGE_COLUMN_STATUSES } from "@/lib/tasks";
-import { TASK_STAGES } from "@/lib/task-stages";
+import { DEFAULT_PROJECT_STAGES } from "@/lib/task-stages";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/components/projects/project-context-band", () => ({ ProjectContextBand: () => <h1>Project identity</h1> }));
 vi.mock("@/components/tasks/project-task-board", () => ({ ProjectTaskBoard: () => <button>Open task</button> }));
@@ -18,8 +19,8 @@ const core: ProjectWorkspaceCore = { tasks: [], configuration: {
   columns: { stage_1: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_2: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_3: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_4: [...DEFAULT_STAGE_COLUMN_STATUSES] },
   progressMethods: DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
   schedulePause: { stage_1: null, stage_2: null, stage_3: null, stage_4: null },
-  stages: TASK_STAGES.map((stage, index) => ({ stage, displayName: null, isEnabled: true, displayOrder: index + 1 })),
-  includeInProductivity: true, showProgress: true,
+  stages: DEFAULT_PROJECT_STAGES.map((stage, index) => ({ ...stage, displayName: null, isEnabled: true, displayOrder: index + 1 })),
+  includeInProductivity: true, showProgress: true, version: 0,
 } };
 const project = { id: "project", name: "Project", project_code: null, project_type: null, project_type_custom: null, city: null, city_geonames_id: null, site_address: null, country_code: "UA", client_name: null, description: null, due_date: null, priority: "normal", start_date: null, total_area_m2: 100 };
 const workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> = { projectId: "project", canCreate: true, canManage: true, canManageTasks: true, currentUserId: "admin", isArchived: false, isProjectReadOnly: false, archiveAction: async () => {}, restoreAction: async () => {}, updateAction: async () => ({}), calendarTimeSummary: <span>0</span> };

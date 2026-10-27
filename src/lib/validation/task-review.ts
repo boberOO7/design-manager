@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { TASK_STAGES } from "@/lib/task-stages";
+import { taskStageSchema } from "@/lib/task-stages";
 
 export const taskReviewCandidatesSchema = z.object({ reviewers: z.array(z.object({ id: z.uuid(), full_name: z.string(), avatar_url: z.string().nullable().optional() })) });
 export const taskReviewerIdsSchema = z.array(z.uuid("Choose valid reviewers")).refine((ids) => new Set(ids).size === ids.length, "Choose unique reviewers");
 export const taskBulkReviewPayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200).refine((ids) => new Set(ids).size === ids.length, "Choose unique tasks"),
   reviewer_ids: taskReviewerIdsSchema,
 }).strict();

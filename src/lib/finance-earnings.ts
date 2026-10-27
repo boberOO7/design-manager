@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { taskStageSchema } from "./task-stages";
 
 const amount = z.string().regex(/^\d+(?:\.\d{1,4})?$/);
 const inputAmount = z.string().trim().regex(/^\d+(?:[.,]\d{1,4})?$/).transform(value => value.replace(",", "."));
 export const earningMilestoneSchema = z.object({
   id: z.uuid(), project_id: z.uuid(), order_id: z.uuid(), terms_id: z.uuid(), title: z.string(),
-  stage: z.enum(["stage_1", "stage_2", "stage_3", "stage_4"]).nullable(), net_amount: amount,
+  stage: taskStageSchema.nullable(), net_amount: amount,
   percentage: amount.nullable(), condition: z.enum(["delivery", "acceptance"]), revision: z.number().int(), currency: z.string(),
   stale: z.boolean(), recognized: z.boolean(), earned: z.string().nullable(), exception: z.string().nullable(),
   events: z.array(z.object({ id: z.uuid(), kind: z.enum(["delivery", "acceptance"]), date: z.iso.date(), actor: z.uuid(), actorName: z.string(), recordedAt: z.string() })),

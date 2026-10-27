@@ -1,3 +1,4 @@
+import type { ProjectStageDefinition } from "./task-stages";
 import { calculateProjectSummary, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, getProjectHealth, type ProjectHealth, type ProjectProgress, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 export const PROJECT_LIST_LIFECYCLE_FILTERS = ["all", "planned", "active", "paused", "completed"] as const;
@@ -32,7 +33,7 @@ export const PROJECT_LIST_SORT_LABEL_KEYS = {
   operational: "operationalPriority", deadline: "deadline", name: "name", health: "health", progress: "progress",
 } as const satisfies Record<ProjectListFilters["sort"], "operationalPriority" | "deadline" | "name" | "health" | "progress">;
 
-export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }> = T & {
+export type PresentedProject<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods; stages?: readonly ProjectStageDefinition[] }> = T & {
   health: ProjectHealth;
   healthReason: string | null;
   progress: ProjectProgress;
@@ -66,9 +67,9 @@ export function getNextProjectListSort(filters: ProjectListFilters, sort: Projec
   return { ...filters, sort, direction: filters.sort === sort ? filters.direction === "asc" ? "desc" : "asc" : defaultSortDirections[sort] };
 }
 
-export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
+export function getPresentedProjects<T extends { tasks: readonly ProjectTaskForProgress[]; status: string; due_date: string | null; stageProgressMethods?: ProjectStageProgressMethods; stages?: readonly ProjectStageDefinition[] }>(projects: readonly T[], today?: string): PresentedProject<T>[] {
   return projects.map((project) => {
-    const { progress } = calculateProjectSummary(project.tasks, today, project.stageProgressMethods ?? DEFAULT_PROJECT_STAGE_PROGRESS_METHODS);
+    const { progress } = calculateProjectSummary(project.tasks, today, project.stageProgressMethods ?? DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, project.stages);
     const health = getProjectHealth({ projectStatus: project.status, projectDueDate: project.due_date, progress, today });
     return { ...project, progress, health: health.health, healthReason: health.reason };
   });

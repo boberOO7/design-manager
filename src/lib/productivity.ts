@@ -1,11 +1,9 @@
 import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
 import type { TaskStage } from "@/lib/task-stages";
 import { isTaskFinished } from "@/lib/tasks";
+import { DEFAULT_PRODUCTIVITY_STAGE_1_PERCENT, getProductivityStageRatios } from "@/lib/productivity-settings";
 
-export const PRODUCTIVITY_STAGE_RATIOS = {
-  stage_1: 0.20,
-  stage_3: 0.80,
-} as const satisfies Partial<Record<TaskStage, number>>;
+export const PRODUCTIVITY_STAGE_RATIOS = getProductivityStageRatios(DEFAULT_PRODUCTIVITY_STAGE_1_PERCENT);
 
 export type ProductivityStageMode = "project_area_ratio" | "task_area" | "none";
 export type TaskCreationProgressField = "area" | "weight" | null;
@@ -38,7 +36,9 @@ export function getProductivityWorkloadAreaByTask(
   tasks: ReadonlyArray<{ id: string; project_id: string; stage: TaskStage; status: string; assignee_id: string | null; completed_area_m2: number | null; productivity_area_m2: number | null }>,
   projects: ReadonlyArray<{ id: string; total_area_m2: number | null; include_in_productivity: boolean }>,
   activeAssignments: ReadonlySet<string>,
+  stageOnePercent = DEFAULT_PRODUCTIVITY_STAGE_1_PERCENT,
 ): Map<string, number> {
+  const ratios = getProductivityStageRatios(stageOnePercent);
   const projectsById = new Map(projects.map((project) => [project.id, project]));
   const eligibleCounts = new Map<string, number>();
   for (const task of tasks) {
@@ -55,7 +55,7 @@ export function getProductivityWorkloadAreaByTask(
     const area = mode === "task_area"
       ? Number(task.productivity_area_m2 ?? task.completed_area_m2 ?? 0)
       : Math.max(0, Number(project.total_area_m2 ?? 0))
-        * (task.stage === "stage_1" ? PRODUCTIVITY_STAGE_RATIOS.stage_1 : PRODUCTIVITY_STAGE_RATIOS.stage_3)
+        * (task.stage === "stage_1" ? ratios.stage_1 : ratios.stage_3)
         / (eligibleCounts.get(`${task.project_id}:${task.stage}`) ?? 1);
     if (area > 0) areas.set(task.id, area);
   }

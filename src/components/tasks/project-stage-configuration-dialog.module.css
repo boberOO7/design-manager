@@ -1,0 +1,150 @@
+.stageGrid {
+  display: grid;
+  grid-template-columns: 1.75rem 1rem minmax(0, 1fr) 2.75rem 3rem 2.25rem;
+  align-items: center;
+  column-gap: 0.375rem;
+}
+
+.columnHeadings {
+  padding-bottom: 0.5rem;
+  color: var(--ui-text-muted);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.row {
+  padding-block: 0.625rem;
+  transition: background-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.handle {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.visibility {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: var(--ui-text);
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+
+.name {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.kind {
+  display: none;
+}
+
+.editableKind {
+  display: block;
+  grid-column: 3 / -1;
+  grid-row: 2;
+  margin-top: 0.5rem;
+}
+
+.weight {
+  grid-column: 4;
+  grid-row: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.weight input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.weight input::-webkit-inner-spin-button,
+.weight input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.progress {
+  grid-column: 5;
+  grid-row: 1;
+  text-align: center;
+}
+
+.actions {
+  grid-column: 6;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.arrowActions {
+  display: none;
+}
+
+.dropTarget {
+  background: var(--ui-surface-muted);
+  box-shadow: inset 0 -2px var(--ui-border-strong);
+}
+
+.dragging {
+  background: var(--ui-surface-muted);
+}
+
+@media (min-width: 768px) {
+  .stageGrid {
+    grid-template-columns: 2rem 1rem minmax(0, 1fr) 10rem 3.75rem 5rem 6.25rem;
+    column-gap: 0.5rem;
+  }
+
+  .kind {
+    display: block;
+    grid-column: 4;
+    grid-row: 1;
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  .weight {
+    grid-column: 5;
+  }
+
+  .progress {
+    grid-column: 6;
+  }
+
+  .actions {
+    grid-column: 7;
+  }
+
+  .arrowActions {
+    display: flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

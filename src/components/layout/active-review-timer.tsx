@@ -1,5 +1,7 @@
 "use client";
 
+import { getStageLabel } from "@/lib/task-stages";
+
 import Link from "next/link";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -40,7 +42,7 @@ function ReviewIsland({ timer, session, review }: {
   const paused = session.state === "paused";
   const controlLabel = t(paused ? "resume" : "pause");
   const ControlIcon = paused ? Play : Pause;
-  const stage = review.stageName ?? stages(review.stage);
+  const stage = review.stageName ?? getStageLabel(review.stage, stages);
   const label = group ? review.projectName : review.taskTitle;
   const fullLabel = `${review.projectName} · ${group ? stage : review.taskTitle}`;
   const seconds = group ? reviewGroupElapsed(timer.snapshot, session, timer.serverNow)

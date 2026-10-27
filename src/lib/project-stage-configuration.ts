@@ -1,15 +1,34 @@
-import { TASK_STAGES, isTaskStage, type TaskStage } from "@/lib/task-stages";
+import { z } from "zod";
+import { taskStageSchema } from "@/lib/task-stages";
 
-export type ProjectStageConfigurationInput = { stage: TaskStage; displayName: string; isEnabled: boolean; displayOrder: number };
+export const projectStageInputSchema = z.object({
+  stage: taskStageSchema,
+  displayName: z.string().trim().min(1).max(80),
+  isEnabled: z.boolean(),
+  displayOrder: z.number().int().positive(),
+  kind: z.enum(["work", "additional"]),
+  progressWeight: z.number().int().positive(),
+});
+export type ProjectStageConfigurationInput = z.infer<typeof projectStageInputSchema>;
+export const stageDeletionInfoSchema = z.array(z.object({ stage: taskStageSchema, taskIds: z.array(z.uuid()), blockReason: z.enum(["started_tasks", "logged_work"]).nullable() }));
+export type StageDeletionInfo = z.infer<typeof stageDeletionInfoSchema>;
+
+export function moveProjectStage(stages: ProjectStageConfigurationInput[], sourceId: string, targetId: string): ProjectStageConfigurationInput[] {
+  const sourceIndex = stages.findIndex((stage) => stage.stage === sourceId);
+  const targetIndex = stages.findIndex((stage) => stage.stage === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return stages;
+  const next = [...stages];
+  const [source] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, source);
+  return next.map((stage, index) => ({ ...stage, displayOrder: index + 1 }));
+}
 
 export function validateProjectStageConfiguration(value: unknown): ProjectStageConfigurationInput[] | null {
-  if (!Array.isArray(value) || value.length !== TASK_STAGES.length) return null;
-  const stages: ProjectStageConfigurationInput[] = [];
-  for (const entry of value) {
-    if (typeof entry !== "object" || entry === null) return null;
-    const item = entry as Record<string, unknown>;
-    if (typeof item.stage !== "string" || !isTaskStage(item.stage) || typeof item.displayName !== "string" || item.displayName.trim().length < 1 || item.displayName.trim().length > 80 || typeof item.isEnabled !== "boolean" || typeof item.displayOrder !== "number" || !Number.isInteger(item.displayOrder) || item.displayOrder < 1 || item.displayOrder > 4) return null;
-    stages.push({ stage: item.stage, displayName: item.displayName.trim(), isEnabled: item.isEnabled, displayOrder: item.displayOrder });
-  }
-  return new Set(stages.map((stage) => stage.stage)).size === TASK_STAGES.length && new Set(stages.map((stage) => stage.displayOrder)).size === TASK_STAGES.length && stages.some((stage) => stage.isEnabled) ? stages : null;
+  const parsed = z.array(projectStageInputSchema).min(1).safeParse(value);
+  if (!parsed.success) return null;
+  const stages = parsed.data;
+  return new Set(stages.map((stage) => stage.stage)).size === stages.length
+    && new Set(stages.map((stage) => stage.displayOrder)).size === stages.length
+    && stages.every((stage) => stage.displayOrder <= stages.length)
+    && stages.some((stage) => stage.isEnabled) ? stages : null;
 }

@@ -42,4 +42,13 @@ describe("stage productivity accounting", () => {
     expect(areas.get("task-area")).toBe(8);
     for (const id of ["first", "third", "cancelled", "excluded", "unassigned"]) expect(areas.has(id)).toBe(false);
   });
+
+  it.each([0, 30, 37.5, 100])("uses the studio's %s%% share for workload without changing task-area or custom-stage accounting", (percent) => {
+    const tasks = (["stage_1", "stage_3", "stage_2", "custom_12345678-1234-1234-1234-123456789abc"] as const).map(stage => ({ id: stage, project_id: "p1", stage, status: "todo", assignee_id: "u1", completed_area_m2: 12, productivity_area_m2: null }));
+    const areas = getProductivityWorkloadAreaByTask(tasks, [{ id: "p1", total_area_m2: 100, include_in_productivity: true }], new Set(["p1:u1"]), percent);
+    expect(areas.get("stage_1") ?? 0).toBe(percent);
+    expect(areas.get("stage_3") ?? 0).toBe(100 - percent);
+    expect(areas.get("stage_2")).toBe(12);
+    expect(areas.has(tasks[3].id)).toBe(false);
+  });
 });

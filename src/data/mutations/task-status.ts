@@ -10,7 +10,7 @@ import { getAssignableProjectMembers } from "@/data/queries/project-members";
 import { getProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { canCompleteAttributedTask, doesTaskCompletionRequireProductivityAttribution } from "@/lib/productivity";
 import { createClient } from "@/lib/supabase/server";
-import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
+import { isTaskStage, taskStageSchema } from "@/lib/task-stages";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import type { TaskStatusMutationResult } from "@/lib/task-status-mutation";
 import { projectTemplateStageApplicationSchema, taskBulkAssignmentPayloadSchema, taskBulkDeadlinePayloadSchema, taskBulkStageAssignmentPayloadSchema, taskBulkStatusMovePayloadSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
@@ -40,7 +40,7 @@ export async function authorizeTaskMutation(taskId: string): Promise<TaskMutatio
   }
 
   if (!task) return { formError: "The task was not found or is not available.", success: false };
-  if (!canWorkOnTaskInProject({ projectStatus: task.project.status, archivedAt: task.project.archived_at, stage: task.stage })) {
+  if (!canWorkOnTaskInProject({ projectStatus: task.project.status, archivedAt: task.project.archived_at, stage: task.stage, stageKind: task.stageKind })) {
     return { formError: "Completed production tasks and archived project tasks are read-only.", success: false };
   }
 
@@ -184,7 +184,7 @@ export async function applyProjectTemplateStageMutation(projectId: string, input
 }
 
 export async function setProjectStageSchedulePausedMutation(projectId: string, input: unknown) {
-  const parsed = z.object({ stage: z.enum(TASK_STAGES), paused: z.boolean(), reason: z.enum(["waiting_for_client", "internal_pause", "other"]).nullable().optional() }).strict().safeParse(input);
+  const parsed = z.object({ stage: taskStageSchema, paused: z.boolean(), reason: z.enum(["waiting_for_client", "internal_pause", "other"]).nullable().optional() }).strict().safeParse(input);
   if (!z.uuid().safeParse(projectId).success || !parsed.success) {
     return { success: false, formError: "Choose a valid stage schedule action." } as const;
   }

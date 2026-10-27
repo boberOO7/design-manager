@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
 import { createClient } from "@/lib/supabase/server";
+import { getProjectStageConfiguration } from "@/data/queries/project-stage-columns";
 import { countOpenLifecycleTasks, getLifecycleCompletedAt, hasProgressedEligibleTasks, isProjectLifecycleStatus, validateLifecycleTransition, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getTodayDateOnly } from "@/lib/project-progress";
 
@@ -26,8 +27,9 @@ export async function updateProjectLifecycleStatus(projectId: string, requestedS
     .eq("project_id", project.id)
     .overrideTypes<Array<{ stage: string; status: string }>, { merge: false }>();
   if (tasksError || !tasks) return { success: false, formError: "The project lifecycle could not be verified. Please try again." };
-  const openTaskCount = countOpenLifecycleTasks(tasks);
-  const transition = validateLifecycleTransition({ from: project.status, to: requestedStatus, openTaskCount, hasProgressedEligibleTasks: hasProgressedEligibleTasks(tasks) });
+  const { stages } = await getProjectStageConfiguration(project.id);
+  const openTaskCount = countOpenLifecycleTasks(tasks, stages);
+  const transition = validateLifecycleTransition({ from: project.status, to: requestedStatus, openTaskCount, hasProgressedEligibleTasks: hasProgressedEligibleTasks(tasks, stages) });
   if (!transition.valid) {
     if (transition.reason === "open_tasks") return { success: false, openTaskCount, formError: `This project still has ${openTaskCount} open ${openTaskCount === 1 ? "task" : "tasks"}. Complete or cancel the remaining tasks before closing the project.` };
     if (transition.reason === "progressed_tasks") return { success: false, formError: "Return to planned is available only while every eligible task is still to do." };

@@ -4,7 +4,7 @@ import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import { isActivityChange, isActivityChanges } from "@/lib/project-activity";
 import { buildCalendarStatistics, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
 import type { Database } from "@/types/database.types";
-import { TASK_STAGES } from "@/lib/task-stages";
+import { taskStageSchema } from "@/lib/task-stages";
 
 type Tables = Database["public"]["Tables"];
 export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">
@@ -31,7 +31,7 @@ export const workLogInputSchema = z.object({
 }).refine(({ entries }) => new Set(entries.map(workLogRowKey)).size === entries.length);
 
 const workLogProjectFields = {
-  projectId: z.uuid().nullable(), stage: z.enum(TASK_STAGES).nullable(), stageName: z.string().nullable(),
+  projectId: z.uuid().nullable(), stage: taskStageSchema.nullable(), stageName: z.string().nullable(),
 };
 const dailyRowSchema = entryFields.extend({
   ...workLogProjectFields,
@@ -189,13 +189,14 @@ export function getSuggestedReviewRoundIds(rounds: SuggestedReviewRound[], userI
 
 export function isTaskWorkPlausible(task: Pick<Tables["tasks"]["Row"], "completed_at" | "stage"> & {
   project: Pick<Tables["projects"]["Row"], "completed_at">;
+  stageKind?: string;
 }, date: string, activityInstant?: string) {
   // Workflow defaults use SQL current_date, while logs use Kyiv days. A real
   // event after Kyiv midnight can still have the preceding UTC completion date.
   const utcDate = activityInstant ? new Date(activityInstant).toISOString().slice(0, 10) : date;
   const effectiveDay = utcDate < date ? utcDate : date;
   return !(task.completed_at && task.completed_at < effectiveDay)
-    && !(task.stage !== "stage_4" && task.project.completed_at && task.project.completed_at < effectiveDay);
+    && !((task.stageKind ? task.stageKind === "work" : task.stage !== "stage_4") && task.project.completed_at && task.project.completed_at < effectiveDay);
 }
 
 /** Count decisions on their own dates, including handoffs in still-open rounds. */

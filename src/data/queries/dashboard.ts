@@ -1,3 +1,4 @@
+import { isTaskStage, type ProjectStageDefinition } from "@/lib/task-stages";
 import "server-only";
 
 import { cache } from "react";
@@ -10,10 +11,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
 import { getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, selectAdminTaskMetrics, selectEmployeeTaskMetrics, selectEmployeeAttentionSummary, sortEmployeeTasks, getEmployeeTasksNeedingAttention, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
-import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods } from "@/lib/project-progress";
+import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { isTaskInReview } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import { getKyivMonthBounds, getProductivityWorkloadAreaByTask } from "@/lib/productivity";
+import { getStudioProductivityStagePercent } from "@/data/queries/productivity-settings";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { isTerminalOfficeAssignmentStatus } from "@/lib/office-assignments";
 import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle";
@@ -72,7 +74,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
       .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
       .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
-    supabase.from("project_task_stage_columns").select("project_id, stage, progress_method").in("project_id", visibleProjects.map((project) => project.id)),
+    loadAllDashboardRows((from, to) => supabase.from("project_task_stage_columns").select("project_id, stage, display_name, progress_method, kind, progress_weight, project:projects!inner(studio_id)").eq("project.studio_id", membership.studio_id).is("deleted_at", null).order("project_id").order("stage").range(from, to)),
     membership.system_role === "admin"
       ? loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
         .eq("studio_id", membership.studio_id).is("exited_at", null).order("task_id").range(from, to))
@@ -85,17 +87,22 @@ export async function getDashboard(): Promise<DashboardData | null> {
   if (stageConfigurationsResult.error || !stageConfigurationsResult.data || currentStatusPeriodsResult.error || !currentStatusPeriodsResult.data || projectMembersResult.error || !projectMembersResult.data) throw new Error("Unable to load Dashboard supporting data.", { cause: stageConfigurationsResult.error ?? currentStatusPeriodsResult.error ?? projectMembersResult.error });
   const now = new Date();
   const asOf = now.toISOString();
+  const stagesByProject = new Map<string, ProjectStageDefinition[]>();
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
   for (const project of visibleProjects) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurationsResult.data) {
-    if (!PROJECT_PROGRESS_STAGES.includes(configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]) || !isStageProgressMethod(configuration.progress_method)) continue;
+    if (!isTaskStage(configuration.stage) || (configuration.kind !== "work" && configuration.kind !== "additional")) throw new Error("Unsupported project stage.");
+    const stages = stagesByProject.get(configuration.project_id) ?? [];
+    stages.push({ stage: configuration.stage, kind: configuration.kind, progressWeight: configuration.progress_weight });
+    stagesByProject.set(configuration.project_id, stages);
     const methods = methodsByProject.get(configuration.project_id);
-    if (methods) methods[configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]] = configuration.progress_method;
+    if (methods && isStageProgressMethod(configuration.progress_method)) methods[configuration.stage] = configuration.progress_method;
   }
-  const projects = visibleProjects.map((project) => ({ ...project, stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
+  const projects = visibleProjects.map((project) => ({ ...project, stages: stagesByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
+  const stageByKey = new Map(stageConfigurationsResult.data.map((stage) => [`${stage.project_id}:${stage.stage}`, stage]));
   const tasks = tasksResult.data.map(({ collaborators, ...task }) => {
     const deadlines = task.deadlines ?? [];
-    return { ...task, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.map((row) => ({ id: row.user_id })) };
+    return { ...task, stageName: stageByKey.get(`${task.project_id}:${task.stage}`)?.display_name, stageKind: stagesByProject.get(task.project_id)?.find((stage) => stage.stage === task.stage)?.kind, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.map((row) => ({ id: row.user_id })) };
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {
@@ -116,7 +123,8 @@ export async function getDashboard(): Promise<DashboardData | null> {
     const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
     const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
     const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments);
+    const stageOnePercent = await getStudioProductivityStagePercent(membership.studio_id);
+    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments, stageOnePercent);
     const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
       const period = currentPeriodByTask.get(task.id);
       return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
@@ -165,5 +173,5 @@ export async function getDashboard(): Promise<DashboardData | null> {
   }, myTasks: sortEmployeeTasks(openPersonalTasks, today), myAssignments,
     needsAttention: getEmployeeTasksNeedingAttention(openPersonalTasks, today).slice(0, 8),
     attention: selectEmployeeAttentionSummary(openPersonalTasks, myAssignments, today),
-    projects: projects.filter((project) => taskByProject.has(project.id)).map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, project.stageProgressMethods); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), deadlines: makeDeadlines(personalTasks, projects.filter((project) => taskByProject.has(project.id)), today) };
+    projects: projects.filter((project) => taskByProject.has(project.id)).map((project) => { const projectTasks = taskByProject.get(project.id) ?? []; const allProjectTasks = tasks.filter((task) => task.project_id === project.id); const dueDates = projectTasks.filter(isOpenTask).flatMap((task) => task.due_date ? [task.due_date] : []); const progress = calculateProjectProgress(allProjectTasks, today, project.stageProgressMethods, project.stages); return { ...project, openTaskCount: projectTasks.filter(isOpenTask).length, inProgressCount: projectTasks.filter((task) => task.status === "in_progress" || isTaskInReview(task.status)).length, nearestDueDate: dueDates.sort()[0] ?? null, progressPercent: progress.progressPercent }; }).sort((left, right) => left.name.localeCompare(right.name)).slice(0, 6), deadlines: makeDeadlines(personalTasks, projects.filter((project) => taskByProject.has(project.id)), today) };
 }

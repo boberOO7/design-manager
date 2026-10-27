@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectTasks } from "@/data/queries/tasks";
+import { getProjectTaskStage } from "@/data/queries/project-stage-columns";
 import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
 import { createClient } from "@/lib/supabase/server";
 import { stageTaskEditSchema } from "@/lib/validation/task";
@@ -16,7 +17,7 @@ export async function saveStageTasks(projectId: string, input: unknown) {
   const { data: project, error: projectError } = await supabase.from("projects")
     .select("studio_id, status, archived_at").eq("id", projectId).maybeSingle();
   if (projectError || !project || project.studio_id !== admin.studio_id
-    || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })) {
+    || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage, stageKind: (await getProjectTaskStage(projectId, parsed.data.stage))?.kind })) {
     return { success: false, error: "unavailable" } as const;
   }
 

@@ -1,3 +1,4 @@
+import { getMyTaskStageNames } from "@/data/queries/tasks";
 import { PageHeader } from "@/components/shared/page-header";
 import { getCurrentUserProfile, getLeaderboardOverviewData } from "@/data/queries";
 import { getKyivPeriodLabel, getKyivPeriodRangeLabel, getLeaderboardMonthRange, getLeaderboardTotals, hasQualifyingProductivity, parseLeaderboardMonthRange, resolveLeaderboardPeriod, type ProductivityLeaderboardEntry } from "@/lib/productivity";
@@ -11,6 +12,7 @@ import { LeaderboardBonusMenu } from "@/components/leaderboard/leaderboard-bonus
 import { LeaderboardRanking } from "@/components/leaderboard/leaderboard-ranking";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
+import { getStudioProductivityStagePercent } from "@/data/queries/productivity-settings";
 import { redirect } from "next/navigation";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,8 +51,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   }
 
   let overview;
+  let stageOnePercent: number;
   try {
-    overview = await getLeaderboardOverviewData(period);
+    [overview, stageOnePercent] = await Promise.all([getLeaderboardOverviewData(period), getStudioProductivityStagePercent(membership.studio_id)]);
   } catch (error) {
     console.error("Unable to load leaderboard overview", error);
     return (
@@ -79,11 +82,20 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     ...entry,
     bonusPercent: getLeaderboardEntryBonusPercent({ rank: entry.rank, completedAreaM2: entry.completed_area_m2, completedTasks: entry.completed_tasks }, overview.bonusConfig),
   }));
-  const stageLabels = { stage_1: stages("stage_1"), stage_2: stages("stage_2"), stage_3: stages("stage_3"), stage_4: stages("stage_4") };
+  const stageLabels: Record<string, string> = { stage_1: stages("stage_1"), stage_2: stages("stage_2"), stage_3: stages("stage_3"), stage_4: stages("stage_4") };
+  const projectIds = [...new Set(Object.values(overview.contributions).flatMap((projects) => projects.map((project) => project.project_id)))];
+  if (projectIds.length) {
+    const names = await getMyTaskStageNames(projectIds);
+    for (const [key, name] of Object.entries(names)) {
+      const stage = key.slice(key.indexOf(":") + 1);
+      if (stage.startsWith("custom_")) stageLabels[stage] = name;
+    }
+  }
+
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
-      <PageHeader className="flex-col items-start sm:flex-row sm:items-center [&>div:last-child]:max-w-full" title={t("productivity")} description={t("description", { period: periodMode === "custom" ? periodLabel : t(periodMode) })} descriptionClassName="min-h-10" action={<div className="flex flex-wrap items-start gap-1 sm:justify-end"><LeaderboardPeriodSwitcher period={period} initialRange={initialRange} locale={locale} />{membership.system_role === "admin" ? <LeaderboardBonusMenu studioId={membership.studio_id} bonusConfig={overview.bonusConfig} leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees} /> : null}</div>} />
+      <PageHeader className="flex-col items-start sm:flex-row sm:items-center [&>div:last-child]:max-w-full" title={t("productivity")} description={t("description", { period: periodMode === "custom" ? periodLabel : t(periodMode) })} descriptionClassName="min-h-10" action={<div className="flex flex-wrap items-start gap-1 sm:justify-end"><LeaderboardPeriodSwitcher period={period} initialRange={initialRange} locale={locale} />{membership.system_role === "admin" ? <LeaderboardBonusMenu stageOnePercent={stageOnePercent} studioId={membership.studio_id} bonusConfig={overview.bonusConfig} leaderboardVisibleToEmployees={membership.leaderboardVisibleToEmployees} /> : null}</div>} />
       <section className="grid overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow-panel)] md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)]">
         <div className="p-5 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ui-text-muted)]">{periodMode === "custom" ? t("customLeader") : t("currentLeader", { period: t(periodMode) })}</p>

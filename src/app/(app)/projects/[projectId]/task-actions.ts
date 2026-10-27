@@ -76,11 +76,11 @@ export async function createProjectTask(
   ) {
     return { formError: "The project was not found or is not available for new tasks." };
   }
-  if (!canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage })) {
+  const stageConfiguration = await getProjectStageConfiguration(project.id);
+  if (!stageConfiguration.stages.some((stage) => stage.stage === parsed.data.stage && stage.isEnabled) || !canWorkOnTaskInProject({ projectStatus: project.status, archivedAt: project.archived_at, stage: parsed.data.stage, stages: stageConfiguration.stages })) {
     return { fieldErrors: { stage: "Only the post-completion stage accepts new tasks after project completion." } };
   }
-  const stageConfiguration = await getProjectStageConfiguration(project.id);
-  if (!stageConfiguration.columns[parsed.data.stage].includes("todo")) {
+  if (!stageConfiguration.columns[parsed.data.stage]?.includes("todo")) {
     return { fieldErrors: { stage: "Choose a stage that allows new Todo tasks." } };
   }
   const projectMembers = (parsed.data.assignee_id === null && parsed.data.collaborator_ids.length === 0)

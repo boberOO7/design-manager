@@ -46,7 +46,7 @@ beforeEach(() => {
       const rows = table === "projects" ? projects
         : table === "tasks" ? tasks.filter((task) => ids.includes(task.project_id))
         : table === "project_members" ? projects.map((project) => ({ project_id: project.id, user_id: "member", profile: { id: "member", full_name: "Member", avatar_url: null } }))
-        : table === "project_task_stage_columns" ? projects.flatMap((project) => ["stage_1", "stage_2", "stage_3", "stage_4"].map((stage) => ({ project_id: project.id, stage, progress_method: stage === "stage_2" ? "area" : stage === "stage_3" ? "weighted" : "equal" }))) : [];
+        : table === "project_task_stage_columns" ? projects.flatMap((project) => ["stage_1", "stage_2", "stage_3", "stage_4"].map((stage) => ({ project_id: project.id, stage, kind: stage === "stage_4" ? "additional" : "work", progress_weight: stage === "stage_2" || stage === "stage_3" ? 2 : 1, progress_method: stage === "stage_2" ? "area" : stage === "stage_3" ? "weighted" : "equal" }))) : [];
       return new Response(JSON.stringify(rows.slice(offset, offset + limit)), { headers: { "Content-Type": "application/json" } });
     } },
   });

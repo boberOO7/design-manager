@@ -30,8 +30,8 @@ import { cn, formatDate, formatDateOnlyDayMonth, formatNumber } from "@/lib/util
 import { getCurrentStatusDuration } from "@/lib/dashboard";
 import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
-import { isTaskStage, TASK_STAGES } from "@/lib/task-stages";
-import type { ProjectStageColumns } from "@/data/queries/project-stage-columns";
+import { getStageLabel, isTaskStage, TASK_STAGES } from "@/lib/task-stages";
+import type { ConfiguredProjectStage, ProjectStageColumns } from "@/data/queries/project-stage-columns";
 import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -93,6 +93,7 @@ export function TaskDetailsDrawer({
   onProjectStatusUpdated,
   projectStatus,
   stageColumns,
+  configuredStages,
   task,
   templates = [],
 }: {
@@ -108,6 +109,7 @@ export function TaskDetailsDrawer({
   onProjectStatusUpdated?: (status: ProjectLifecycleStatus) => void;
   projectStatus?: ProjectLifecycleStatus;
   stageColumns?: ProjectStageColumns;
+  configuredStages?: ConfiguredProjectStage[];
   task: ProjectTask;
   templates?: StudioChecklistTemplate[];
 }) {
@@ -442,7 +444,7 @@ export function TaskDetailsDrawer({
                   </FormField>
                   <FormField label={<TaskFieldLabel label={t("stage")} icon={Layers3} />}>
                     <Select aria-label={t("stage")} value={values.stage} disabled={isSaving || Boolean(task.schedule)} onValueChange={(stage) => { if (isTaskStage(stage)) setValues((current) => ({ ...current, stage })); }}>
-                      {TASK_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stagesT(stage)}</SelectItem>)}
+                      {(configuredStages ?? TASK_STAGES.map((stage) => ({ stage, displayName: null }))).map(({ stage, displayName }) => <SelectItem key={stage} value={stage}>{getStageLabel(stage, stagesT, displayName)}</SelectItem>)}
                     </Select>
                   </FormField>
                   <section aria-labelledby="task-edit-progress" className="contents">
@@ -498,7 +500,7 @@ export function TaskDetailsDrawer({
                 <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 text-sm">
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("assignee")} icon={UserRound} /></dt><dd className="mt-2 flex min-w-0 items-start gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span className="min-w-0 break-words leading-6">{task.assignee.full_name}</span></> : <span className="font-normal text-[var(--ui-text-muted)]">{t("unassigned")}</span>}</dd></div>
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("coAssignees")} icon={Users} /></dt><dd className="mt-2"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
-                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("stage")} icon={Layers3} /></dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{stagesT(task.stage)}</dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("stage")} icon={Layers3} /></dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{getStageLabel(task.stage, stagesT, task.stageName)}</dd></div>
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("priority")} icon={Flag} /></dt><dd className="mt-1.5"><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span></dd></div>
                   {task.schedule ? <div className="col-span-2"><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("schedule")} icon={CalendarDays} /></dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
                     <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })}</p>

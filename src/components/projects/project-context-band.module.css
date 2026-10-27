@@ -25,7 +25,7 @@
 .overallValue, .stageValue { font-variant-numeric: tabular-nums; letter-spacing: -0.045em; line-height: 1; }
 .overallValue { font-size: 46px; font-weight: 500; }
 .overallValue > span { margin-left: 3px; font-size: 24px; color: var(--ui-text-muted); }
-.stages { grid-column: span 3; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; }
+.stages { grid-column: span 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: 28px; }
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; align-content: end; gap: 16px 8px; }
 .stageValue { font-size: 28px; font-weight: 500; }
 .stageValue > span { margin-left: 2px; font-size: 15px; color: var(--ui-text-muted); }

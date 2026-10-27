@@ -5921,11 +5921,14 @@ export type Database = {
       }
       project_task_stage_columns: {
         Row: {
+          deleted_at: string | null
           display_name: string | null
           display_order: number
           enabled_statuses: string[]
           is_enabled: boolean
+          kind: string
           progress_method: string
+          progress_weight: number
           project_id: string
           schedule_anchor_date: string | null
           schedule_pause_reason: string | null
@@ -5934,11 +5937,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          deleted_at?: string | null
           display_name?: string | null
           display_order: number
           enabled_statuses?: string[]
           is_enabled?: boolean
+          kind?: string
           progress_method?: string
+          progress_weight?: number
           project_id: string
           schedule_anchor_date?: string | null
           schedule_pause_reason?: string | null
@@ -5947,11 +5953,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          deleted_at?: string | null
           display_name?: string | null
           display_order?: number
           enabled_statuses?: string[]
           is_enabled?: boolean
+          kind?: string
           progress_method?: string
+          progress_weight?: number
           project_id?: string
           schedule_anchor_date?: string | null
           schedule_pause_reason?: string | null
@@ -6101,6 +6110,7 @@ export type Database = {
           project_type_custom: string | null
           show_progress: boolean
           site_address: string | null
+          stage_configuration_version: number
           start_date: string | null
           started_at: string | null
           status: string
@@ -6128,6 +6138,7 @@ export type Database = {
           project_type_custom?: string | null
           show_progress?: boolean
           site_address?: string | null
+          stage_configuration_version?: number
           start_date?: string | null
           started_at?: string | null
           status?: string
@@ -6155,6 +6166,7 @@ export type Database = {
           project_type_custom?: string | null
           show_progress?: boolean
           site_address?: string | null
+          stage_configuration_version?: number
           start_date?: string | null
           started_at?: string | null
           status?: string
@@ -6509,6 +6521,7 @@ export type Database = {
           leaderboard_visible_to_employees: boolean
           name: string
           phone: string | null
+          productivity_stage_1_percent: number
           standard_workday_minutes: number
           updated_at: string
           vacation_visible_to_employees: boolean
@@ -6524,6 +6537,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name: string
           phone?: string | null
+          productivity_stage_1_percent?: number
           standard_workday_minutes?: number
           updated_at?: string
           vacation_visible_to_employees?: boolean
@@ -6539,6 +6553,7 @@ export type Database = {
           leaderboard_visible_to_employees?: boolean
           name?: string
           phone?: string | null
+          productivity_stage_1_percent?: number
           standard_workday_minutes?: number
           updated_at?: string
           vacation_visible_to_employees?: boolean
@@ -10311,6 +10326,14 @@ export type Database = {
         Args: { p_assignment_id: string }
         Returns: Json
       }
+      get_project_stage_configuration: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      get_project_stage_deletion_info: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       get_studio_member_removal_impact: {
         Args: { p_user_id: string }
         Returns: Json
@@ -10818,6 +10841,10 @@ export type Database = {
         Args: { p_placements: Json; p_studio_id: string }
         Returns: number
       }
+      save_productivity_stage_shares: {
+        Args: { p_stage_1_percent: number; p_studio_id: string }
+        Returns: undefined
+      }
       save_project_template: {
         Args: {
           p_is_active: boolean
@@ -10993,6 +11020,8 @@ export type Database = {
       }
       update_project_stage_configuration: {
         Args: {
+          p_deleted_task_ids: string[]
+          p_expected_version: number
           p_include_in_productivity: boolean
           p_project_id: string
           p_show_progress: boolean

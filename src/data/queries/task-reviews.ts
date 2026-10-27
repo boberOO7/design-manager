@@ -37,6 +37,10 @@ export async function getTaskReviewQueue() {
     return query;
   });
   if (error) throw new Error("Unable to load the review queue.", { cause: error });
-  return (data ?? []).filter((round) => round.task.project.status !== "completed" || round.task.stage === "stage_4");
+  if (!data?.length) return [];
+  const { data: stages, error: stageError } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns").select("project_id,stage,kind").in("project_id", [...new Set(data.map((round) => round.task.project.id))]).is("deleted_at", null).order("project_id").order("stage").range(from, to));
+  if (stageError) throw new Error("Unable to load review stage types.", { cause: stageError });
+  const kindByStage = new Map((stages ?? []).map((stage) => [`${stage.project_id}:${stage.stage}`, stage.kind]));
+  return data.filter((round) => round.task.project.status !== "completed" || kindByStage.get(`${round.task.project.id}:${round.task.stage}`) === "additional");
 }
 export type TaskReviewQueueItem = Awaited<ReturnType<typeof getTaskReviewQueue>>[number];

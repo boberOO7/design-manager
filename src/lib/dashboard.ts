@@ -1,3 +1,4 @@
+import type { ProjectStageDefinition } from "./task-stages";
 import { isTaskFinished, isTaskInReview, isTaskOverdue, isTaskPriority, isTaskStatus } from "./tasks";
 import type { MyTask, DashboardTaskSummary, DashboardWorkloadTask } from "../types/tasks";
 import { canWorkOnTaskInProject, isOperationalProjectStatus, type ProjectLifecycleStatus } from "./project-lifecycle";
@@ -15,6 +16,7 @@ export type DashboardProject = {
   due_date: string | null;
   status: ProjectLifecycleStatus;
   stageProgressMethods: ProjectStageProgressMethods;
+  stages?: ProjectStageDefinition[];
 };
 
 export type DashboardMember = { id: string; full_name: string; job_title: string; avatar_url?: string | null };
@@ -29,12 +31,13 @@ export function isDashboardTask<T extends { project: DashboardTaskSummary["proje
     && isTaskStage(task.stage);
 }
 
-export function isDashboardTaskProjectEligible(task: Pick<DashboardTask, "stage" | "project">): boolean {
+export function isDashboardTaskProjectEligible(task: Pick<DashboardTask, "stage" | "project" | "stageKind">): boolean {
   return isOperationalProjectStatus(task.project.status)
     || (task.project.status === "completed" && canWorkOnTaskInProject({
       projectStatus: task.project.status,
       archivedAt: task.project.archived_at,
       stage: task.stage,
+      stageKind: task.stageKind,
     }));
 }
 
@@ -159,7 +162,7 @@ export function getProjectsRequiringAttention(projects: DashboardProject[], task
       ? Math.round((new Date(`${project.due_date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
       : null;
     const projectTasks = tasks.filter((task) => task.project_id === project.id);
-    const progress = calculateProjectProgress(projectTasks, today, project.stageProgressMethods);
+    const progress = calculateProjectProgress(projectTasks, today, project.stageProgressMethods, project.stages);
     summaries.set(project.id, { ...project, openTaskCount: 0, overdueCount: 0, urgentCount: 0, deadlineDaysAway, progressPercent: progress.progressPercent });
   }
   for (const task of tasks) {

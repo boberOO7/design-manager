@@ -1,5 +1,7 @@
 "use client";
 
+import { getStageLabel } from "@/lib/task-stages";
+
 import Link from "next/link";
 import { ChevronDown, FolderKanban } from "lucide-react";
 import { useRef, useState } from "react";
@@ -74,7 +76,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
       <span data-inbox-deadline className={`ui-numeric shrink-0 text-xs lg:justify-self-end ${item.overdue ? "font-semibold text-[var(--ui-danger-text)]" : item.deadline === today ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>
         {item.overdue ? `${t("overdue")} · ` : null}{item.deadline ? formatDateOnly(item.deadline, locale) : t("noDueDate")}
       </span>
-      {item.kind === "project" ? <Tooltip content={stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}><span data-inbox-stage className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]" tabIndex={0}>{stageNames[`${item.task.project_id}:${item.task.stage}`] ?? stages(item.task.stage)}</span></Tooltip> : <span aria-hidden="true" className="hidden lg:block" />}
+      {item.kind === "project" ? <Tooltip content={stageNames[`${item.task.project_id}:${item.task.stage}`] ?? getStageLabel(item.task.stage, stages, item.task.stageName)}><span data-inbox-stage className="min-w-0 truncate text-xs text-[var(--ui-text-muted)]" tabIndex={0}>{stageNames[`${item.task.project_id}:${item.task.stage}`] ?? getStageLabel(item.task.stage, stages, item.task.stageName)}</span></Tooltip> : <span aria-hidden="true" className="hidden lg:block" />}
       <span data-inbox-status className={`min-w-0 w-fit max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>{itemStatus}</span>
     </span>;
   }
@@ -125,6 +127,6 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
         })}
       </div> : <p className="py-10 text-center text-sm text-[var(--ui-text-muted)]">{t("inboxEmpty")}</p>}
     </div>
-    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: selectedTask.project.status, archivedAt: selectedTask.project.archived_at, stage: selectedTask.stage })} members={[]} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
+    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: selectedTask.project.status, archivedAt: selectedTask.project.archived_at, stage: selectedTask.stage, stageKind: selectedTask.stageKind })} members={[]} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
   </>;
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { isTaskStage, type ProjectStageDefinition } from "@/lib/task-stages";
 import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -6,7 +7,7 @@ import { loadAllRows } from "./all-rows";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { Database } from "@/types/database.types";
-import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, PROJECT_PROGRESS_STAGES, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
+import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -41,6 +42,7 @@ async function getTasksForProgress(supabase: Awaited<ReturnType<typeof createCli
 export type AccessibleProjectWithTasks = ProjectListRow & {
   participants: ProjectListParticipant[];
   stageProgressMethods: ProjectStageProgressMethods;
+  stages: ProjectStageDefinition[];
   tasks: ProjectTaskForProgress[];
 };
 
@@ -79,7 +81,7 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
       .overrideTypes<ProjectListMembershipRow[], { merge: false }>()),
     loadAllRows((from, to) => supabase
       .from("project_task_stage_columns")
-      .select("project_id, stage, progress_method")
+      .select("project_id, stage, progress_method, kind, progress_weight").is("deleted_at", null)
       .in("project_id", ids).order("project_id").order("stage").range(from, to)),
   ]);
   const { data: tasks, error: tasksError } = tasksResult;
@@ -116,12 +118,16 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
   for (const participants of participantsByProject.values()) {
     participants.sort((left, right) => left.full_name.localeCompare(right.full_name));
   }
+  const stagesByProject = new Map<string, ProjectStageDefinition[]>();
   const methodsByProject = new Map<string, ProjectStageProgressMethods>();
   for (const project of projects) methodsByProject.set(project.id, { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS });
   for (const configuration of stageConfigurations) {
-    if (!PROJECT_PROGRESS_STAGES.includes(configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]) || !isStageProgressMethod(configuration.progress_method)) continue;
+    if (!isTaskStage(configuration.stage) || (configuration.kind !== "work" && configuration.kind !== "additional")) throw new Error("Unsupported project stage.");
+    const stages = stagesByProject.get(configuration.project_id) ?? [];
+    stages.push({ stage: configuration.stage, kind: configuration.kind, progressWeight: configuration.progress_weight });
+    stagesByProject.set(configuration.project_id, stages);
     const methods = methodsByProject.get(configuration.project_id);
-    if (methods) methods[configuration.stage as typeof PROJECT_PROGRESS_STAGES[number]] = configuration.progress_method;
+    if (methods && isStageProgressMethod(configuration.progress_method)) methods[configuration.stage] = configuration.progress_method;
   }
-  return { projects: projects.map((project) => ({ ...project, participants: participantsByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS }, tasks: tasksByProject.get(project.id) ?? [] })), error: null };
+  return { projects: projects.map((project) => ({ ...project, stages: stagesByProject.get(project.id) ?? [], participants: participantsByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS }, tasks: tasksByProject.get(project.id) ?? [] })), error: null };
 }

@@ -55,6 +55,16 @@ async function attachCurrentStatusEnteredAt<T extends ProjectTask>(supabase: Awa
 }
 
 async function attachSchedulePredecessors<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
+  if (!tasks.length) return tasks;
+  const { data: stageRows, error: stageError } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns")
+    .select("project_id, stage, kind, display_name").in("project_id", [...new Set(tasks.map((task) => task.project_id))]).is("deleted_at", null).order("project_id").order("stage").range(from, to));
+  if (stageError || !stageRows) throw new Error("Unable to load task stage metadata.", { cause: stageError });
+  const stageByKey = new Map(stageRows.map((row) => [`${row.project_id}:${row.stage}`, row]));
+  tasks = tasks.map((task) => {
+    const stage = stageByKey.get(`${task.project_id}:${task.stage}`);
+    if (!stage || (stage.kind !== "work" && stage.kind !== "additional")) throw new Error("Task project stage is unavailable.");
+    return { ...task, stageKind: stage.kind, stageName: stage.display_name };
+  });
   const scheduledIds = tasks.filter((task) => task.schedule).map((task) => task.id);
   if (!scheduledIds.length) return tasks;
   const { data: dependencies, error } = await supabase.from("task_schedule_dependencies")
@@ -136,9 +146,9 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
 export async function getMyTaskStageNames(projectIds: string[]): Promise<Record<string, string>> {
   if (!projectIds.length) return {};
   const supabase = await createClient();
-  const { data, error } = await supabase.from("project_task_stage_columns")
+  const { data, error } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns")
     .select("project_id, stage, display_name")
-    .in("project_id", projectIds);
+    .in("project_id", projectIds).order("project_id").order("stage").range(from, to));
   if (error) throw new Error("Unable to load personal task stage names.", { cause: error });
   const names: Record<string, string> = {};
   for (const row of data ?? []) if (row.display_name) names[`${row.project_id}:${row.stage}`] = row.display_name;
@@ -191,7 +201,11 @@ export async function getTaskForStatusUpdate(taskId: string) {
     .maybeSingle();
 
   if (error) throw new Error(`Unable to load task ${taskId} for a status update.`, { cause: error });
-  return data;
+  if (!data) return null;
+  const { data: stage, error: stageError } = await supabase.from("project_task_stage_columns").select("kind").eq("project_id", data.project_id).eq("stage", data.stage).is("deleted_at", null).single();
+  if (stageError || (stage?.kind !== "work" && stage?.kind !== "additional")) throw new Error("Task stage is unavailable.", { cause: stageError });
+  const stageKind: NonNullable<ProjectTask["stageKind"]> = stage.kind;
+  return { ...data, stageKind };
 }
 
 export async function getTaskStatusHistory(taskId: string): Promise<TaskStatusPeriod[]> {

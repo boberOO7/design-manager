@@ -1,3 +1,5 @@
+import { DEFAULT_PROJECT_STAGES, type ProjectStageDefinition } from "./task-stages";
+
 export type ProjectHealth = "completed" | "overdue" | "needs_attention" | "deadline_soon" | "on_track";
 export type StageProgressMethod = "equal" | "area" | "weighted";
 
@@ -27,8 +29,7 @@ export type ProjectTaskForProgress = {
   stage?: string;
 };
 
-export const PROJECT_PROGRESS_STAGES = ["stage_1", "stage_2", "stage_3"] as const;
-export type ProjectProgressStage = (typeof PROJECT_PROGRESS_STAGES)[number];
+export type ProjectProgressStage = string;
 export type ProjectStageProgressMethods = Record<ProjectProgressStage, StageProgressMethod>;
 
 export const DEFAULT_PROJECT_STAGE_PROGRESS_METHODS: ProjectStageProgressMethods = {
@@ -37,16 +38,10 @@ export const DEFAULT_PROJECT_STAGE_PROGRESS_METHODS: ProjectStageProgressMethods
   stage_3: "equal",
 };
 
-export const PROJECT_PROGRESS_STAGE_WEIGHTS: Record<ProjectProgressStage, number> = {
-  stage_1: 0.2,
-  stage_2: 0.4,
-  stage_3: 0.4,
-};
-
 export const TASK_PRODUCTION_PROGRESS_CEILING = 70;
 
-export function isProjectProgressStage(stage: string): stage is ProjectProgressStage {
-  return PROJECT_PROGRESS_STAGES.includes(stage as ProjectProgressStage);
+export function isProjectProgressStage(stage: string, stages: readonly ProjectStageDefinition[] = DEFAULT_PROJECT_STAGES): boolean {
+  return stages.some((item) => item.stage === stage && item.kind === "work");
 }
 
 export type StageProgress = {
@@ -138,18 +133,15 @@ function calculateStageTaskProgress<T extends ProjectTaskForProgress>(tasks: rea
 export function calculateStageProgress<T extends ProjectTaskForProgress>(
   tasks: readonly T[],
   methods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
+  stages: readonly ProjectStageDefinition[] = DEFAULT_PROJECT_STAGES,
 ): Record<ProjectProgressStage, StageProgress> {
-  return PROJECT_PROGRESS_STAGES.reduce<Record<ProjectProgressStage, StageProgress>>((progressByStage, stage) => ({
-    ...progressByStage,
-    [stage]: calculateStageTaskProgress(tasks.filter((task) => task.stage === stage), methods[stage]),
-  }), {} as Record<ProjectProgressStage, StageProgress>);
+  return Object.fromEntries(stages.filter((stage) => stage.kind === "work").map(({ stage }) => [stage, calculateStageTaskProgress(tasks.filter((task) => task.stage === stage), methods[stage] ?? "equal")]));
 }
 
-export function calculateOverallProjectProgress(stageProgress: Record<ProjectProgressStage, StageProgress>): number {
-  return PROJECT_PROGRESS_STAGES.reduce(
-    (total, stage) => total + stageProgress[stage].progressPercent * PROJECT_PROGRESS_STAGE_WEIGHTS[stage],
-    0,
-  );
+export function calculateOverallProjectProgress(stageProgress: Record<ProjectProgressStage, StageProgress>, stages: readonly ProjectStageDefinition[] = DEFAULT_PROJECT_STAGES): number {
+  const working = stages.filter((stage) => stage.kind === "work");
+  const totalWeight = working.reduce((total, stage) => total + stage.progressWeight, 0);
+  return totalWeight > 0 ? working.reduce((total, stage) => total + (stageProgress[stage.stage]?.progressPercent ?? 0) * stage.progressWeight, 0) / totalWeight : 0;
 }
 
 function clampPercent(value: number): number {
@@ -215,8 +207,9 @@ export function calculateProjectProgress<T extends ProjectTaskForProgress>(
   tasks: readonly T[],
   today = getTodayDateOnly(),
   stageMethods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
+  stages: readonly ProjectStageDefinition[] = DEFAULT_PROJECT_STAGES,
 ): ProjectProgress {
-  return calculateProjectSummary(tasks, today, stageMethods).progress;
+  return calculateProjectSummary(tasks, today, stageMethods, stages).progress;
 }
 
 /** One task-derived result for task counts, stage progress, and overall progress. */
@@ -224,14 +217,15 @@ export function calculateProjectSummary<T extends ProjectTaskForProgress>(
   tasks: readonly T[],
   today = getTodayDateOnly(),
   stageMethods: ProjectStageProgressMethods = DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
+  stages: readonly ProjectStageDefinition[] = DEFAULT_PROJECT_STAGES,
 ): ProjectProgressSummary {
   const uniqueTasks = getUniqueProjectTasks(tasks);
   const eligible = uniqueTasks.filter(isProgressEligibleTask);
   const open = eligible.filter(isOpenProjectTask);
   const completedTaskCount = eligible.filter((task) => task.status === "completed").length;
   const dueDates = open.flatMap((task) => task.due_date ? [task.due_date] : []);
-  const stageProgress = calculateStageProgress(uniqueTasks, stageMethods);
-  const rawProgressPercent = calculateOverallProjectProgress(stageProgress);
+  const stageProgress = calculateStageProgress(uniqueTasks, stageMethods, stages);
+  const rawProgressPercent = calculateOverallProjectProgress(stageProgress, stages);
 
   const progress: ProjectProgress = {
     eligibleTaskCount: eligible.length,

@@ -1,5 +1,7 @@
 "use client";
 
+import { getStageLabel } from "@/lib/task-stages";
+
 import { ProjectsListLink as Link } from "./projects-list-link";
 import styles from "./project-context-band.module.css";
 import { ArrowLeft, Building, Building2, CalendarClock, CalendarDays, Cross, Flag, House, MapPin, Pause, Ruler, Shapes, SlidersHorizontal, UtensilsCrossed, type LucideIcon } from "lucide-react";
@@ -129,7 +131,7 @@ function ProgressSummary({ progress, projectName, stageProgress, stages }: { pro
   const t = useTranslations("Projects");
   const stageLabels = useTranslations("TaskStages");
   if (progress.eligibleTaskCount === 0) return <div><p className="text-sm font-medium text-[var(--ui-text-secondary)]">{t("progress")}</p><p className="mt-2 text-sm text-[var(--ui-text-muted)]">{t("noTasks")}</p></div>;
-  const visibleStages = Object.entries(stageProgress).filter(([stage]) => stages?.find((item) => item.stage === stage)?.isEnabled ?? true);
+  const visibleStages = Object.entries(stageProgress).filter(([stage]) => stages?.find((item) => item.stage === stage)?.isEnabled ?? true).sort(([left], [right]) => (stages?.find((item) => item.stage === left)?.displayOrder ?? 0) - (stages?.find((item) => item.stage === right)?.displayOrder ?? 0));
   return <div className={styles.progress}>
     <div className={styles.overall}>
       <p className={styles.progressLabel}>{t("progress")}</p>
@@ -140,7 +142,7 @@ function ProgressSummary({ progress, projectName, stageProgress, stages }: { pro
     </div>
     <div className={styles.stages}>
       {visibleStages.map(([stage, value]) => {
-        const label = stages?.find((item) => item.stage === stage)?.displayName ?? stageLabels(stage);
+        const label = stages?.find((item) => item.stage === stage)?.displayName ?? getStageLabel(stage, stageLabels);
         return <div key={stage} className={styles.stage}>
           <p className={styles.progressLabel}>{label}</p>
           <span className={styles.stageValue}>{value.progressPercent}<span>%</span></span>

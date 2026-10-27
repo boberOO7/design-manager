@@ -1,5 +1,7 @@
 "use client";
 
+import { getStageLabel } from "@/lib/task-stages";
+
 import { useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, X } from "lucide-react";
@@ -25,7 +27,7 @@ export function WorkLogGroup({ group, disabled, onChange, onRemove, onAllocate }
   const selected = partial ? group.rows.filter(row => selectedKeys.includes(workLogRowKey(row))) : group.rows;
   const selectedMinutes = selected.reduce((sum, row) => sum + row.minutes, 0);
   const formatTime = (value: number) => `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
-  const stageName = group.stage ? group.stageName ?? stages(group.stage) : null;
+  const stageName = group.stage ? group.stageName ?? getStageLabel(group.stage, stages) : null;
 
   function commit(value: string) {
     if (disabled) return;

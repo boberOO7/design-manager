@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TASK_PRIORITY_VALUES } from "../../types/tasks";
-import { TASK_STAGES } from "@/lib/task-stages";
+import { taskStageSchema } from "@/lib/task-stages";
 import { TASK_MILESTONE_STATUSES } from "@/lib/task-deadlines";
 import { taskReviewerIdsSchema } from "./task-review";
 
@@ -54,7 +54,7 @@ export const taskCreationSchema = z.object({
   assignee_id: optionalAssigneeSchema,
   collaborator_ids: collaboratorIdsSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: optionalProgressWeightSchema,
@@ -72,32 +72,32 @@ export const taskStatusPayloadSchema = z.object({
 }).strict();
 
 export const taskBulkStatusMovePayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   source_statuses: z.array(z.enum(["todo", "in_progress", "internal_review", "review", "completed", "cancelled"])).min(1).max(6),
   target_status: z.enum(["todo", "in_progress", "internal_review", "review", "completed"]),
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
 export const taskBulkStageAssignmentPayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   assignee_id: z.uuid("Choose a valid project member"),
   scope: z.enum(["unassigned", "all"]),
 }).strict();
 
 export const taskBulkAssignmentPayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   assignee_id: z.uuid("Choose a valid project member"),
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
 export const taskBulkPriorityPayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   priority: z.enum(TASK_PRIORITY_VALUES),
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
 }).strict().refine((value) => new Set(value.task_ids).size === value.task_ids.length, "Choose unique tasks");
 
 export const taskBulkDeadlinePayloadSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   target_status: z.enum(TASK_MILESTONE_STATUSES),
   due_date: dateSchema,
   task_ids: z.array(z.uuid("Choose valid tasks")).min(1).max(200),
@@ -106,8 +106,8 @@ export const taskBulkDeadlinePayloadSchema = z.object({
 export const projectTemplateStageApplicationSchema = z.object({
   project_id: z.uuid("Choose a valid project"),
   template_id: z.uuid("Choose a valid project template"),
-  source_stage: z.enum(TASK_STAGES),
-  destination_stage: z.enum(TASK_STAGES),
+  source_stage: z.enum(["stage_1", "stage_2", "stage_3", "stage_4"]),
+  destination_stage: taskStageSchema,
   anchor_date: optionalDateSchema,
 }).strict();
 
@@ -123,7 +123,7 @@ export const taskEditSchema = z.object({
   deadlines: taskDeadlinesSchema.default([]),
   completed_area_m2: optionalCompletedAreaSchema,
   progress_weight: progressWeightSchema,
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   completed_at: optionalDateSchema,
   reviewer_ids: taskReviewerIdsSchema.optional(),
   review_round_id: z.uuid().optional(),
@@ -154,7 +154,7 @@ export const taskStructureSchema = z.object({
 }).strict();
 
 export const stageTaskEditSchema = z.object({
-  stage: z.enum(TASK_STAGES),
+  stage: taskStageSchema,
   updates: z.array(taskStructureSchema.extend({ id: z.uuid(), previous: taskStructureSchema }).strict()),
   creates: z.array(taskStructureSchema.extend({ client_key: z.uuid(), source_task_id: z.uuid().nullable() }).strict()),
   delete_ids: z.array(z.uuid()),

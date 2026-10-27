@@ -9,8 +9,10 @@ progress; qualifying completion drives immutable productivity attribution.
 
 ## Stages and workflow
 
-Stable stages are `stage_1` through `stage_4`. Stage 1–3 are production stages;
-Stage 4 is operationally independent post-completion work.
+Projects own their configured stage list: legacy `stage_1`–`stage_4` keys and
+`custom_<uuid>` keys. Immutable `kind` determines work versus additional behavior;
+initial Stage 1–3 are work and Stage 4 is additional. Templates keep four source
+stages. See [projects.md](projects.md) for configuration and deletion invariants.
 
 | Board column | Stored status | Automatic overall progress |
 | --- | --- | --- |
@@ -33,8 +35,8 @@ change is valid only when its destination is enabled for that task's stage.
   items on their own tasks. Collaborators do not receive assignee mutation rights.
 - Assignees and collaborators selected by an administrator must be active members
   of the same project. Tasks may be unassigned.
-- Archived-project tasks are read-only. On completed projects, Stage 1–3 tasks
-  are read-only while Stage 4 tasks remain creatable and writable.
+- Archived-project tasks are read-only. On completed projects, `work` stage tasks
+  are read-only while `additional` stage tasks remain creatable and writable.
 - Task detail edits and collaborator replacement use one RPC to avoid partial
   membership or assignment state.
 - Bulk status and stage-assignment operations use guarded RPCs and are
@@ -194,7 +196,7 @@ Project aggregation and attribution are described in
   stage-paused tasks do not contribute normal overdue counts. Schedule refresh
   runs before task, project, and Dashboard reads so an overdue unfinished
   predecessor cannot leave downstream current dates in the past. Closed
-  production stages do not refresh after project completion; Stage 4 may.
+  work stages do not refresh after project completion; additional stages may.
 - Administrators pause or resume a stage schedule independently of the project
   lifecycle. Resume shifts unfinished current dates by the paused working days;
   baseline dates remain fixed. Scheduled tasks remain in their applied stage.
