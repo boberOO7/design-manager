@@ -1,11 +1,23 @@
 {
   "version": 1,
   "skills": {
+    "brand": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/brand/SKILL.md",
+      "computedHash": "5c99d65bec448b3dda25049f6437a1d8d8777a705a2c597fbe5516dfeeb0a487"
+    },
     "canvas-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
       "skillPath": "skills/canvas-design/SKILL.md",
       "computedHash": "3fa7ea60170023ad8268bf9fd734ea75dd404279a2ef8ddf5abaa1102ad8e5f4"
+    },
+    "design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "c50a1a77394e988b2593ed97f95ae28b5167eb8a826385b5996d67e398d15b6a"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
@@ -14,10 +26,10 @@
       "computedHash": "6d838b246d0e35d0b53f4f23f98ba7a1dd561937e64f7d0c7553b0928e376c3e"
     },
     "gpt-taste": {
-      "source": "Leonxlnx/taste-skill",
+      "source": "Leonxlnx/taste-skill-classics",
       "sourceType": "github",
       "skillPath": "skills/gpt-tasteskill/SKILL.md",
-      "computedHash": "cc8f0c601d8240a124e1d11634351a2be7b8a72fd807c75e5b6bf7afcd5ddee0"
+      "computedHash": "8b112002eb3a784c9e608877c19092374089174ef4cdee7b4be33cd38c2629c4"
     },
     "gsap-core": {
       "source": "greensock/gsap-skills",
@@ -43,11 +55,17 @@
       "skillPath": "skills/gsap-timeline/SKILL.md",
       "computedHash": "54981c2feec5a9c0d57988aeb32315af32bdeadd261550d5e9db7a7b1f08b487"
     },
+    "slides": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/slides/SKILL.md",
+      "computedHash": "9c012d14e94b734b324f859d64da3b47762b8cdee47515ce83bce4366222f885"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/supabase/SKILL.md",
-      "computedHash": "583344c20e90f3654dbb0632f088d89fd9f1dde8ac85e8a644dd12eee59b1380"
+      "computedHash": "211141fd078b4b3645803868528d54221bc7755d24d5c8af45a366785c151dba"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
