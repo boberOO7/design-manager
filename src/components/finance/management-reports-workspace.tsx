@@ -1,6 +1,12 @@
 "use client";
+import { instantToDateOnly } from "@/lib/calendar";
+import { HistoricalLaborSection } from "./historical-labor-section";
+import { ManagementMonthStatus } from "./management-month-status";
+import { summarizeProvisionalReport } from "@/lib/finance-month-reporting";
+import { ExpenseAutomationDiagnostics } from "./expense-automation-diagnostics";
 
 import Link from "next/link";
+import { earningCoverageIssues } from "@/lib/finance-earnings";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -47,27 +53,41 @@ function monthStarts(from: string, to: string) {
 }
 
 export function ManagementReportsWorkspace({ data }: { data: FinanceManagementData }) {
-  const t = useTranslations("Finance.management"), locale = useLocale(), router = useRouter();
+  const t = useTranslations("Finance.management"), earningsT = useTranslations("Finance.earnings"), locale = useLocale(), router = useRouter();
+  const earningIssues = earningCoverageIssues(data.earnings, data.filters.projectId);
   const recognitionStart = data.settings?.recognition_start_month ?? null;
+  const postingStart = data.settings?.recognition_enabled_at ? instantToDateOnly(data.settings.recognition_enabled_at) : recognitionStart;
   const startMonth = `${data.today.slice(0, 7)}-01`;
   const earliestEntryDate = recognitionStart ?? startMonth;
   const [historyClassification, setHistoryClassification] = useState<(typeof classifications)[number] | null>(null);
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [coverageMonth, setCoverageMonth] = useState(earliestEntryDate.slice(0, 7));
   const projectId = data.filters.projectId ?? null;
-  const periodUnavailable = !recognitionStart || data.filters.to < recognitionStart;
-  const periodPartial = Boolean(recognitionStart && data.filters.from < recognitionStart && data.filters.to >= recognitionStart);
-  const periodEffectiveFrom = recognitionStart && data.filters.from < recognitionStart ? recognitionStart : data.filters.from;
+  const periodUnavailable = false;
+  const periodPartial = false;
+  const periodEffectiveFrom = data.filters.from;
   const periodRows = useMemo(() => (projectId ? data.projectRows : data.amountRows).filter(entry => entry.recognized_on >= periodEffectiveFrom && entry.recognized_on <= data.filters.to && (!projectId || entry.project_id === projectId)), [data.projectRows, data.amountRows, data.filters.to, periodEffectiveFrom, projectId]);
-  const summary = summarizeManagementEntries(periodRows, data.filters.from, data.filters.to, data.currency.minor_units);
+  const preliminary = summarizeProvisionalReport(periodRows, data.provisional, periodEffectiveFrom, data.filters.to, data.currency.minor_units, projectId);
+  const summary = preliminary.combined;
+  const selectedMonths = data.months.filter(month => month.month <= data.filters.to && month.through >= data.filters.from);
+  const confirmed = selectedMonths.length > 0 && selectedMonths.every(month => month.status === "confirmed") && !preliminary.incomplete
+    && managementCoverageIssues(data.coverage, data.filters.from, data.filters.to, projectId).length === 0;
+
+  const provisionalSources = [...new Set(preliminary.sources.map(row => `${row.href}:${row.sourceId}`))].map(sourceId => {
+    const sources = preliminary.sources.filter(row => `${row.href}:${row.sourceId}` === sourceId);
+    const first = sources[0];
+    const total = summarizeManagementEntries(sources, periodEffectiveFrom, data.filters.to, data.currency.minor_units);
+    return { sourceId, label: first.label, href: first.href, known: total.totals[first.classification].known,
+      unknown: sources.some(row => row.display_amount === null) };
+  });
   const comparisonRange = data.filters.compareFrom && data.filters.compareTo ? { from: data.filters.compareFrom, to: data.filters.compareTo } : null;
-  const comparisonUnavailable = Boolean(comparisonRange && (!recognitionStart || comparisonRange.to < recognitionStart));
-  const comparisonPartial = Boolean(comparisonRange && recognitionStart && comparisonRange.from < recognitionStart && comparisonRange.to >= recognitionStart);
-  const comparisonEffectiveFrom = comparisonRange && recognitionStart && comparisonRange.from < recognitionStart ? recognitionStart : comparisonRange?.from;
+  const comparisonUnavailable = false;
+  const comparisonPartial = false;
+  const comparisonEffectiveFrom = comparisonRange?.from;
   const comparisonRows = comparisonRange && !comparisonUnavailable && comparisonEffectiveFrom
     ? summarizeManagementEntries((projectId ? data.projectRows : data.amountRows).filter(entry => entry.recognized_on >= comparisonEffectiveFrom && entry.recognized_on <= comparisonRange.to && (!projectId || entry.project_id === projectId)), comparisonEffectiveFrom, comparisonRange.to, data.currency.minor_units)
     : null;
-  const coverageIssues = periodUnavailable ? [] : managementCoverageIssues(data.coverage, periodEffectiveFrom, data.filters.to, projectId);
+  const coverageIssues = periodUnavailable || !projectId ? [] : managementCoverageIssues(data.coverage, periodEffectiveFrom, data.filters.to, projectId);
   const comparisonCoverageIssues = comparisonRange && !comparisonUnavailable && comparisonEffectiveFrom ? managementCoverageIssues(data.coverage, comparisonEffectiveFrom, comparisonRange.to, projectId) : [];
   const laborIssues = laborSourceIssues(data.labor.sources, periodEffectiveFrom, data.filters.to);
   const missingLaborPeriods = data.labor.missingPeriods.filter(period => period.periodStart <= data.filters.to && period.periodEnd >= periodEffectiveFrom);
@@ -75,11 +95,15 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
   const months = monthStarts(data.filters.from, data.filters.to).map(month => {
     const rawFrom = data.filters.from > month ? data.filters.from : month;
     const through = month === data.filters.to.slice(0, 7) + "-01" ? data.filters.to : new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10);
-    const unavailable = !recognitionStart || through < recognitionStart;
-    const from = recognitionStart && rawFrom < recognitionStart ? recognitionStart : rawFrom;
-    return { month, through, unavailable, partial: Boolean(recognitionStart && rawFrom < recognitionStart && through >= recognitionStart), totals: summarizeManagementEntries(periodRows, from, through, data.currency.minor_units) };
+    const unavailable = false;
+    const from = rawFrom;
+    return { month, through, unavailable, partial: false, totals: summarizeProvisionalReport(periodRows, data.provisional, from, through, data.currency.minor_units, projectId).combined };
   });
   const historyRows = data.history.filter(entry => (!historyClassification || entry.classification === historyClassification) && entry.recognized_on >= data.filters.from && entry.recognized_on <= data.filters.to && (!projectId || entry.project_id === projectId || data.projectRows.some(row => row.project_id === projectId && row.source_entry_id === entry.id)));
+  const sourceLabels = Object.fromEntries([
+    ...data.earnings.orders.map(order => [order.orderId, data.projects.find(project => project.id === order.projectId)?.name ?? order.orderId]),
+    ...(data.labor.employees ?? []).map(employee => [employee.id, employee.name]),
+  ]);
   const selectedProject = data.projects.find(project => project.id === projectId);
   const currency = data.displayCurrency;
   const money = (value: string | null) => value === null ? "—" : `${formatFinanceAmount(value, data.currency, locale, "decimal")} ${currency}`;
@@ -102,13 +126,12 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
 
     <nav aria-label={t("title")} className="flex flex-wrap gap-4 text-sm"><Link href="/finance/reports" aria-current="page" className="font-semibold underline underline-offset-4">{t("title")}</Link><Link href={`/finance/reports?report=projects&from=${data.filters.from}&to=${data.filters.to}`} className="underline underline-offset-4">{t("projectsReport")}</Link></nav>
 
-    {!recognitionStart ? <Panel className={`${panel} space-y-3`}>
-      <div><h2 className="font-semibold">{t("activateTitle")}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("activateHelp")}</p></div>
-      <FinanceActionForm action={saveFinanceManagement} label={t("activate")} onSaved={onSaved}>
-        <input type="hidden" name="intent" value="activation"/>
-        <FormField label={t("recognitionStart")} className="max-w-xs"><DatePicker name="month" monthOnly defaultValue={startMonth} min={startMonth} locale={locale}/></FormField>
-      </FinanceActionForm>
-    </Panel> : <div className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm text-[var(--ui-text-secondary)]">{t("activeSince", { date: date(recognitionStart) })}</div>}
+    <p data-testid="pnl-completeness" role="status" className={`text-sm ${confirmed ? "text-[var(--ui-text-secondary)]" : "text-[var(--ui-warning-text)]"}`}>{t(confirmed ? "sourceConfirmed" : "sourceIncomplete")}</p>
+    <HistoricalLaborSection periods={data.historicalLabor} from={data.filters.from} to={data.filters.to} currency={data.currency} projectId={projectId ?? undefined}
+      recognizedProject={preliminary.recognized.totals.labor.missingFx ? null : preliminary.recognized.totals.labor.known}/>
+    <ExpenseAutomationDiagnostics data={data.expenseAutomation}/>
+
+    {earningIssues.length ? <p role="status" className="text-sm text-[var(--ui-warning-text)]">{earningsT("coverageWarning", { count: earningIssues.length })}</p> : null}
 
     <section aria-label={t("periodSummary")} className="overflow-hidden rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[var(--ui-border-subtle)] px-4 py-3 sm:px-5">
@@ -117,9 +140,9 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
       </div>
       <div className="overflow-x-auto px-4 py-2 sm:px-5">
         <table className="w-full min-w-[34rem] border-collapse text-sm">
-          <thead><tr className="border-b border-[var(--ui-border-subtle)] text-left text-xs text-[var(--ui-text-muted)]"><th className="py-2 pr-3 font-medium">{t("classificationTitle")}</th><th className="px-2 py-2 text-right font-medium">{t("periodAmount")}</th>{comparisonRange ? <th className="px-2 py-2 text-right font-medium">{t("comparisonAmount", { from: date(comparisonRange.from), to: date(comparisonRange.to) })}</th> : null}</tr></thead>
-          <tbody>{classifications.map(key => <tr key={key} className="border-b border-[var(--ui-border-subtle)] last:border-0"><th className="py-2 pr-3 text-left font-medium"><Link href="#fx-history" onClick={() => setHistoryClassification(key)} className="underline decoration-[var(--ui-border)] underline-offset-4">{classificationLabel(key)}</Link></th><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.totals[key].known)}</td>{comparisonRange ? <td className="px-2 py-2 text-right tabular-nums">{comparisonRows ? money(comparisonRows.totals[key].known) : "—"}</td> : null}</tr>)}
-            <tr className="border-t border-[var(--ui-border)] font-semibold"><th className="py-2 pr-3 text-left">{t("knownResult")}</th><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.knownResult)}</td>{comparisonRange ? <td className="px-2 py-2 text-right tabular-nums">{comparisonRows ? money(comparisonRows.knownResult) : "—"}</td> : null}</tr>
+          <thead><tr className="border-b border-[var(--ui-border-subtle)] text-left text-xs text-[var(--ui-text-muted)]"><th className="py-2 pr-3 font-medium">{t("classificationTitle")}</th><th className="px-2 py-2 text-right font-medium">{t("recognizedAmount")}</th><th className="px-2 py-2 text-right font-medium">{t("provisionalAmount")}</th><th className="px-2 py-2 text-right font-medium">{t("preliminaryAmount")}</th>{comparisonRange ? <th className="px-2 py-2 text-right font-medium">{t("comparisonRecognized", { from: date(comparisonRange.from), to: date(comparisonRange.to) })}</th> : null}</tr></thead>
+          <tbody>{classifications.map(key => <tr key={key} className="border-b border-[var(--ui-border-subtle)] last:border-0"><th className="py-2 pr-3 text-left font-medium"><Link href="#fx-history" onClick={() => setHistoryClassification(key)} className="underline decoration-[var(--ui-border)] underline-offset-4">{classificationLabel(key)}</Link></th><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(preliminary.recognized.totals[key].known)}</td><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(preliminary.pending.totals[key].known)}</td><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.totals[key].known)}</td>{comparisonRange ? <td className="px-2 py-2 text-right tabular-nums">{comparisonRows ? money(comparisonRows.totals[key].known) : "—"}</td> : null}</tr>)}
+            <tr className="border-t border-[var(--ui-border)] font-semibold"><th className="py-2 pr-3 text-left">{t("operatingResult")}</th><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(preliminary.recognized.knownResult)}</td><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(preliminary.pending.knownResult)}</td><td className="px-2 py-2 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.knownResult)}</td>{comparisonRange ? <td className="px-2 py-2 text-right tabular-nums">{comparisonRows ? money(comparisonRows.knownResult) : "—"}</td> : null}</tr>
           </tbody>
         </table>
       </div>
@@ -129,7 +152,9 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
       {comparisonPartial ? <p className="px-4 pb-3 text-xs text-[var(--ui-warning-text)] sm:px-5">{t("comparisonPartial", { date: date(recognitionStart ?? "") })}</p> : null}
       {comparisonCoverageIssues.length ? <p className="px-4 pb-3 text-xs text-[var(--ui-warning-text)] sm:px-5">{t("comparisonCoverage", { count: comparisonCoverageIssues.length })}</p> : null}
       {comparisonRows?.missingFx ? <p className="px-4 pb-3 text-xs text-[var(--ui-warning-text)] sm:px-5">{t("comparisonMissingFx", { count: comparisonRows.missingFx })} <Link href="#fx-history" className="underline underline-offset-2">{t("reviewFxAction")}</Link></p> : null}
-      <p className="px-4 pb-3 text-xs text-[var(--ui-text-muted)] sm:px-5">{t("knownResultHelp")}</p>
+      <p className="px-4 pb-3 text-xs text-[var(--ui-text-muted)] sm:px-5">{t("preliminaryHelp")}</p>
+      {preliminary.incomplete ? <p role="status" className="px-4 pb-3 text-xs text-[var(--ui-warning-text)] sm:px-5">{t("preliminaryIncomplete")}</p> : null}
+      {preliminary.sources.length ? <AnimatedDisclosure title={t("provisionalSources")} className="px-4 pb-3 sm:px-5"><ul className="space-y-1 pt-2 text-xs">{provisionalSources.map(row => <li key={row.sourceId}><Link href={row.href} className="underline underline-offset-2">{row.label}</Link> · {money(row.known)}{row.unknown ? ` · ${t("unresolvedAmount")}` : ""}</li>)}</ul></AnimatedDisclosure> : null}
     </section>
 
     <Panel className={`${panel} space-y-3`}>
@@ -164,7 +189,7 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
       <div className="overflow-x-auto">
         <table className="w-full min-w-[46rem] border-collapse text-sm">
           <thead><tr className="border-b border-[var(--ui-border)] text-left text-xs text-[var(--ui-text-secondary)]"><th className="py-2 pr-3 font-medium">{t("month")}</th>{classifications.map(key => <th key={key} className="px-2 py-2 text-right font-medium">{classificationLabel(key)}</th>)}<th className="px-2 py-2 text-right font-medium">{t("knownResult")}</th><th className="py-2 pl-2 text-right font-medium">{t("missingCount")}</th></tr></thead>
-          <tbody>{months.map(row => <tr key={row.month} className="border-b border-[var(--ui-border-subtle)]"><th className="py-3 pr-3 text-left font-medium">{new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${row.month}T00:00:00Z`))}{row.partial ? <span className="mt-1 block text-[10px] font-normal text-[var(--ui-warning-text)]">{t("reportPartialShort")}</span> : null}</th>{classifications.map(key => <td key={key} className="px-2 py-3 text-right tabular-nums">{row.unavailable ? "—" : money(row.totals.totals[key].known)}</td>)}<td className="px-2 py-3 text-right font-semibold tabular-nums">{row.unavailable ? "—" : money(row.totals.knownResult)}</td><td className="py-3 pl-2 text-right tabular-nums">{row.unavailable ? "—" : row.totals.missingFx || "—"}</td></tr>)}</tbody>
+          <tbody>{months.map(row => <tr key={row.month} className="border-b border-[var(--ui-border-subtle)]"><th className="py-3 pr-3 text-left font-medium">{new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${row.month}T00:00:00Z`))}{!projectId && data.months.find(month => month.month === row.month) ? <span className="mt-1 block text-xs font-normal text-[var(--ui-text-secondary)]">{t(`monthClose.status.${data.months.find(month => month.month === row.month)?.status ?? "provisional"}`)}</span> : null}{row.partial ? <span className="mt-1 block text-[10px] font-normal text-[var(--ui-warning-text)]">{t("reportPartialShort")}</span> : null}</th>{classifications.map(key => <td key={key} className="px-2 py-3 text-right tabular-nums">{row.unavailable ? "—" : money(row.totals.totals[key].known)}</td>)}<td className="px-2 py-3 text-right font-semibold tabular-nums">{row.unavailable ? "—" : money(row.totals.knownResult)}</td><td className="py-3 pl-2 text-right tabular-nums">{row.unavailable ? "—" : row.totals.missingFx || "—"}</td></tr>)}</tbody>
           <tfoot><tr className="border-t border-[var(--ui-border)] font-semibold"><th className="py-3 pr-3 text-left">{t("periodTotal")}</th>{classifications.map(key => <td key={key} className="px-2 py-3 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.totals[key].known)}</td>)}<td className="px-2 py-3 text-right tabular-nums">{periodUnavailable ? "—" : money(summary.knownResult)}</td><td className="py-3 pl-2 text-right tabular-nums">{periodUnavailable ? "—" : summary.missingFx || "—"}</td></tr></tfoot>
         </table>
       </div>
@@ -173,16 +198,16 @@ export function ManagementReportsWorkspace({ data }: { data: FinanceManagementDa
 
     <Panel className={`${panel} space-y-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-semibold">{t("sourcesTitle")}</h2><p className="text-xs text-[var(--ui-text-secondary)]">{date(data.filters.from)} – {date(data.filters.to)}{selectedProject ? ` · ${selectedProject.name}` : ""}</p></div>
-      {!recognitionStart ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("activationRequired")}</p> : !getEligibleRecognitionSources(data).length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noSources")}</p> : <AnimatedDisclosure title={t("newRecognition")} className="w-full"><RecognitionForm data={data} onSaved={onSaved}/></AnimatedDisclosure>}
+      {!recognitionStart ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("activationRequired")} <Link href="/finance/accounts#recognition-posting" className="underline underline-offset-4">{t("posting.settings")}</Link></p> : !getEligibleRecognitionSources(data).length ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("noSources")}</p> : <AnimatedDisclosure title={t("newRecognition")} className="w-full"><RecognitionForm data={data} onSaved={onSaved}/></AnimatedDisclosure>}
     </Panel>
 
-    {recognitionStart && recognitionStart <= data.today ? <div id="labor"><ManagementLaborSection data={data.labor} projects={data.projects} currencies={data.currencies} baseCurrency={data.settings?.base_currency ?? "UAH"} from={periodEffectiveFrom} to={data.filters.to} today={data.today}/></div> : null}
+    <div id="labor"><ManagementLaborSection data={data.labor} projects={data.projects} currencies={data.currencies} baseCurrency={data.settings?.base_currency ?? "UAH"} from={periodEffectiveFrom} to={data.filters.to} today={data.today} recognitionStart={postingStart}/></div>
 
     {recognitionStart && recognitionStart <= data.today && pendingTrips.length ? <div id="trip-sources"><ManagementTripSection sources={pendingTrips} currencies={data.currencies} projects={data.projects} onSaved={onSaved}/></div> : null}
 
     <Panel id="coverage" className={`${panel} space-y-3`}>
       <div><h2 className="text-lg font-semibold">{t("coverageTitle")}</h2><p className="mt-1 text-sm text-[var(--ui-text-secondary)]">{t("coverageHelp")}</p></div>
-      {recognitionStart && recognitionStart <= data.today ? <AnimatedDisclosure title={t("reviewCoverageAction")} className="w-full"><CoverageForm data={data} onSaved={onSaved} month={coverageMonth} setMonth={setCoverageMonth} minMonth={recognitionStart.slice(0, 7)} projectId={projectId}/></AnimatedDisclosure> : <p className="text-sm text-[var(--ui-text-secondary)]">{recognitionStart ? t("futureActivationCoverage", { date: date(recognitionStart) }) : t("activationRequired")}</p>}
+      {!projectId ? <div data-testid="month-closing">{data.months.filter(month => month.month <= data.filters.to && month.through >= data.filters.from).map(month => <ManagementMonthStatus key={`${month.month}-${month.digest}-${month.revision}`} month={month} onSaved={onSaved} sourceLabels={sourceLabels} missingDisplayFx={[...data.entries, ...data.provisional].some(entry => entry.recognized_on >= month.month && entry.recognized_on <= month.through && entry.display_amount === null)}/>)}</div> : <AnimatedDisclosure title={t("reviewCoverageAction")} className="w-full"><CoverageForm data={data} onSaved={onSaved} month={coverageMonth} setMonth={setCoverageMonth} minMonth={data.months.at(0)?.month.slice(0, 7) ?? data.filters.from.slice(0, 7)} projectId={projectId}/></AnimatedDisclosure>}
     </Panel>
 
     <Panel id="fx-history" className={`${panel} space-y-3`}>

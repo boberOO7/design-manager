@@ -713,6 +713,11 @@ body,
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Passive tooltips must not block actions in adjacent compact rows. */
+[data-radix-popper-content-wrapper]:has(> .ui-tooltip[data-interactive="false"]) {
+  pointer-events: none;
+}
+
 .ui-tooltip[data-state="delayed-open"],
 .ui-tooltip[data-state="instant-open"] {
   animation: tooltip-enter 160ms ease-out;

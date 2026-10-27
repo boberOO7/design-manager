@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { laborSourceIssues, projectLaborIncomplete, projectProvisionalLabor, unallocatedLaborAmount, type FinanceLaborData, type LaborPool, type LaborSource } from "./finance-labor";
+import { laborCapacityDefaults, laborDataSchema, laborSourceIssues, projectLaborIncomplete, projectProvisionalLabor, unallocatedLaborAmount, type FinanceLaborData, type LaborPool, type LaborSource } from "./finance-labor";
 
 const obligationId = "61000000-0000-4000-8000-000000000001";
 const entryId = "61000000-0000-4000-8000-000000000002";
@@ -139,6 +139,19 @@ describe("provisional project labor display", () => {
     })]), projectId, "2026-10-08", "2026-10-08", "UAH", 2, new Map());
     expect(report).toEqual({ known: "60.00", unknown: 0, asOf: "2026-10-08", periods: 1 });
   });
+  it("includes only the closed unrecognized project delta alongside existing recognized pools", () => {
+    const period = provisional({ status: "pending", asOf: "2026-10-31",
+      source: source({ knownCost: "1000", recognizedCost: "400", remainingCost: "600" }),
+      provisionalAllocations: [{ projectId, amount: "150" }], provisionalRemainder: "450",
+      provisionalDailyAllocations: [{ date: "2026-10-31", projectId, amount: "150" }],
+      pools: [{ id: entryId, available: "400", native: "400", revision: 1, fx: null }],
+    });
+    const input = data([period], [{ projectId, employeeId, periodStart: "2026-10-01", periodEnd: "2026-10-31", kind: "pending_review" }]);
+    expect(projectProvisionalLabor(input, projectId, "2026-10-01", "2026-10-31", "UAH", 2, new Map()))
+      .toEqual({ known: "150.00", unknown: 1, asOf: "2026-10-31", periods: 1 });
+    period.source = source({ knownCost: "1000", recognizedCost: "1000", remainingCost: "0" });
+    expect(projectProvisionalLabor(input, projectId, "2026-10-01", "2026-10-31", "UAH", 2, new Map()).periods).toBe(0);
+  });
 
   it("keeps missing provisional value visible and uses the historical provisional FX date", () => {
     const missing = provisional({ obligationId: "61000000-0000-4000-8000-000000000011", provisionalRemainder: null });
@@ -174,5 +187,29 @@ describe("provisional project labor display", () => {
     });
     expect(projectProvisionalLabor(data([zero]), projectId, "2026-10-01", "2026-10-31", "USD", 2, new Map()))
       .toEqual({ known: "0.00", unknown: 0, asOf: "2026-10-08", periods: 1 });
+  });
+});
+
+describe("dated labor setup defaults", () => {
+  it("accepts optional internal classification and unresolved source review IDs", () => {
+    expect(laborDataSchema.shape.automation.parse({ startsOn: "2026-10-01", internalProjectId: null })).toEqual({ startsOn: "2026-10-01", internalProjectId: null });
+    expect(laborDataSchema.shape.sourceReview.parse({ digest: "a".repeat(32), reviewed: false, cashTermIds: [], unresolvedTermIds: [obligationId], recurring: [] })?.unresolvedTermIds)
+      .toEqual([obligationId]);
+  });
+
+  it("offers current settings without claiming historical evidence", () => {
+    expect(laborCapacityDefaults([], 480, "2026-10-01"))
+      .toEqual({ dailyMinutes: 480, weekdays: [1, 2, 3, 4, 5], effectiveFrom: null });
+  });
+  it("uses effective employee capacity before studio defaults and ignores future revisions", () => {
+    const rows = [
+      { id: entryId, employee_id: null, effective_from: "2026-10-01", daily_minutes: 480, weekdays: [1, 2, 3, 4, 5] },
+      { id: obligationId, employee_id: employeeId, effective_from: "2026-09-01", daily_minutes: 360, weekdays: [1, 2, 3] },
+      { id: employeeId, employee_id: employeeId, effective_from: "2026-11-01", daily_minutes: 240, weekdays: [1] },
+    ];
+    expect(laborCapacityDefaults(rows, 600, "2026-10-21", employeeId))
+      .toEqual({ dailyMinutes: 360, weekdays: [1, 2, 3], effectiveFrom: "2026-09-01" });
+    expect(laborCapacityDefaults(rows, 600, "2026-10-21"))
+      .toEqual({ dailyMinutes: 480, weekdays: [1, 2, 3, 4, 5], effectiveFrom: "2026-10-01" });
   });
 });

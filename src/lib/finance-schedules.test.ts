@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { employeeBonusSchema, financeScheduleValidationError, generateObligationsSchema, payrollCompensationSummary, payrollPayoutDate, shiftFinanceMonth, payrollCostSchema, scheduleInputSchema } from "./finance-schedules";
+import { employeeBonusSchema, financeScheduleValidationError,  payrollCompensationSummary, payrollPayoutDate, shiftFinanceMonth, payrollCostSchema, scheduleInputSchema } from "./finance-schedules";
 import { movementInputSchema } from "./finance-movements";
 const id = "66000000-0000-4000-8000-000000000001";
 const payroll = { requestId:id,revision:0,kind:"payroll",employeeId:id,name:"Salary",amount:"1000",currency:"UAH",categoryId:id,intervalMonths:1,payoutDay:31,paymentMonthOffset:1,effectiveFrom:"2026-01-01",commitment:"agreed",certainty:"fixed",basis:"net",employeePayout:"1000",employerCostStatus:"unknown",reason:"Agreement" };
@@ -81,11 +81,6 @@ describe("Finance schedule input", () => {
       const result = scheduleInputSchema.safeParse({ ...payroll, ...patch });
       expect(result.success ? "valid" : financeScheduleValidationError(result.error.issues)).toBe(error);
     }
-  });
-  it("bounds generation to 12 service months and rejects invalid dates", () => {
-    const input={ requestId:id,scheduleId:id,from:"2026-01-01",through:"2026-12-01" };
-    expect(generateObligationsSchema.safeParse(input).success).toBe(true);
-    for(const through of ["2027-01-01","2025-12-01","2026-02-30","2026-02-02"]) expect(generateObligationsSchema.safeParse({...input,through}).success).toBe(false);
   });
   it("keeps employee bonuses separate with explicit service dates", () => {
     const input={requestId:id,employeeId:id,amount:"100,25",currency:"UAH",periodStart:"2026-01-01",periodEnd:"2026-01-31",dueDate:"2026-02-10",description:"Award"};

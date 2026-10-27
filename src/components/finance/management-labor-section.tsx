@@ -54,22 +54,24 @@ function selectedAllocations(data: FinanceLaborData, entryIds: Set<string>, digi
   return [...totals].map(([projectId, amount]) => ({ projectId, amount: financeAmountText(amount, digits) }));
 }
 
-export function ManagementLaborSection({ data, projects, currencies, baseCurrency, from, to, today }: {
-  data: FinanceLaborData; projects: Project[]; currencies: FinanceCurrency[]; baseCurrency: string; from: string; to: string; today: string;
+export function ManagementLaborSection({ data, projects, currencies, baseCurrency, from, to, today, recognitionStart }: {
+  data: FinanceLaborData; projects: Project[]; currencies: FinanceCurrency[]; baseCurrency: string; from: string; to: string; today: string; recognitionStart: string | null;
 }) {
   const t = useTranslations("Finance.labor"), locale = useLocale(), router = useRouter();
   const automatic = new Set((data.automaticPeriods ?? []).filter(period => !period.manual).map(period => period.obligationId));
-  const sources = data.sources.filter(source => source.periodStart <= to && source.periodEnd >= from && !automatic.has(source.obligationId));
+  const sources = data.sources.filter(source => source.periodStart <= to && source.periodEnd >= from && (!recognitionStart || source.periodEnd >= recognitionStart) && !automatic.has(source.obligationId));
   const pools = data.pools.filter(pool => pool.period_start <= to && pool.period_end >= from && !automatic.has(pool.obligation_id));
-  const issues = laborSourceIssues(data.sources, from, to);
+  const issues = laborSourceIssues(sources, from, to);
   const missingPeriods = data.missingPeriods.filter(period => period.periodStart <= to && period.periodEnd >= from);
   const currency = (code: string) => currencies.find(item => item.code === code);
   const money = (value: string | null, code: string) => displayAmount(value, currency(code), locale, code);
   const date = (value: string) => formatDateOnly(value, locale);
   const refresh = () => router.refresh();
+  const setup = <AutomaticLaborSection data={data} projects={projects} currencies={currencies} baseCurrency={baseCurrency} from={from} to={to} today={today} recognitionStart={recognitionStart}/>;
+  if (!recognitionStart || recognitionStart > today) return setup;
 
   return <section className="space-y-4" aria-label={t("title")}>
-    <AutomaticLaborSection data={data} projects={projects} currencies={currencies} baseCurrency={baseCurrency} from={from} to={to} today={today}/>
+    {setup}
     <div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="text-lg font-semibold">{t("title")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{date(from)} – {date(to)} · {baseCurrency}</p></div></div>
     {issues.length + missingPeriods.length ? <div role="status" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] p-3 text-sm text-[var(--ui-warning-text)]"><p>{t("unknownWarning", { count: issues.length + missingPeriods.length })}</p><ul className="mt-1 list-inside list-disc">{[...new Set(issues.map(issue => `${issue.label} · ${t(`issue.${issue.kind}`)}`))].map(issue => <li key={issue}>{issue}</li>)}</ul>{missingPeriods.length ? <ul className="mt-1 list-inside list-disc">{missingPeriods.map(period => <li key={`${period.scheduleId}-${period.periodStart}`}>{period.label} · {t("missingPeriod", { from: date(period.periodStart), to: date(period.periodEnd) })} <Link href="/finance/schedules" className="underline">{t("openPayroll")}</Link></li>)}</ul> : null}</div> : null}
     <Panel className={`${panel} space-y-3`}>

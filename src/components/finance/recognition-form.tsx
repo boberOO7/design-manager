@@ -1,5 +1,6 @@
 "use client";
 
+import { instantToDateOnly } from "@/lib/calendar";
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceManagementData } from "@/data/queries/finance-management";
@@ -27,7 +28,7 @@ export function RecognitionForm({ data, onSaved, projectId, onPending, projectRe
   projectRevenueOnly?: boolean;
 }) {
   const t = useTranslations("Finance.management"), locale = useLocale();
-  const recognitionStart = data.settings?.recognition_start_month ?? null;
+  const recognitionStart = data.settings?.recognition_enabled_at ? instantToDateOnly(data.settings.recognition_enabled_at) : data.settings?.recognition_start_month ?? null;
   const startMonth = `${data.today.slice(0, 7)}-01`;
   const earliestEntryDate = recognitionStart ?? startMonth;
   const eligibleSources = useMemo(() => getEligibleRecognitionSources(data, { projectId, projectRevenueOnly }),
@@ -84,9 +85,10 @@ export function RecognitionForm({ data, onSaved, projectId, onPending, projectRe
 }
 
 export function getEligibleRecognitionSources(data: FinanceManagementData, options: { projectId?: string; projectRevenueOnly?: boolean } = {}) {
-  const recognitionStart = data.settings?.recognition_start_month ?? null;
+  const recognitionStart = data.settings?.recognition_enabled_at ? instantToDateOnly(data.settings.recognition_enabled_at) : data.settings?.recognition_start_month ?? null;
   const earliestEntryDate = recognitionStart ?? `${data.today.slice(0, 7)}-01`;
-  return data.sources.filter(source => (!recognitionStart || recognitionStart <= data.today)
+  return data.sources.filter(source => !(source.orderId && data.earnings?.milestones.some(milestone => milestone.order_id === source.orderId))
+    && (!recognitionStart || recognitionStart <= data.today)
     && financeAmountUnits(source.remaining, 4) > BigInt(0)
     && (!source.periodEnd || source.periodEnd >= earliestEntryDate)
     && (!source.periodStart || source.periodStart <= data.today)

@@ -26,6 +26,7 @@ import { ProjectSettlementForm, RemainderClosureForm } from "./project-settlemen
 import { saveRemainderAdjustment } from "@/app/(app)/finance/project-payments/actions";
 import { FinanceCategorySelect } from "./category-select";
 import { FinanceCurrencySelect } from "./currency-select";
+import { ExpenseReceiptControl } from "./expense-receipt-control";
 import type { FinanceExpected } from "@/lib/finance-planning";
 import { financeCategoryLabel,financeMovementCategoryLabel,projectPaymentPresentation } from "@/lib/finance-planning";
 import { financeAmountText,financeAmountUnits,formatFinanceAmount,formatFinanceDecimal } from "@/lib/finance";
@@ -252,6 +253,9 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
   const renderItem=(item:FinanceExpected)=>{
     const obligation=obligationFor(item),link=linkFor(item),history=props.history.filter((entry)=>entry.expected_item_id===item.id);
     const tripLink=props.tripLinks.find(entry=>entry.expected_item_id===item.id);
+    const receiptEligible = item.id && item.direction === "outgoing" && item.commitment === "agreed" && item.certainty === "fixed" && !obligation && !tripLink
+      && props.categories.some(category => category.id === item.category_id && category.nature === "operating" && !["salary", "employee_bonus"].includes(category.default_key ?? ""));
+    const receiptControl = receiptEligible ? <ExpenseReceiptControl kind="expected" sourceId={item.id ?? ""} baseCurrency={props.settings?.base_currency ?? "UAH"} today={props.today ?? props.project?.today ?? instantToDateOnly(new Date().toISOString())}/> : null;
     const active=item.commitment!=="cancelled"&&(item.remaining_amount??0)>0,contextPeriod=contextPeriodFor(item);
     const category=categoryLabel(item.category_id);
     const project=link?.project?.name ? projectPaymentPresentation(item.description,link.project.name,t(`movements.kinds.${item.direction}`),link.stream==="expenses"?category:t("planning.projectPayment")) : null;
@@ -290,6 +294,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
         onCloseRemainder={active && item.direction === "incoming" && Number(item.settled_amount) > 0 && props.categories.find(category => category.id === item.category_id)?.nature === "operating" ? () => setClosingRemainderId(item.id) : undefined}
         tripHref={tripLink ? `/finance/trips/${tripLink.trip_id}` : undefined}>
         {props.project.stream === "expenses" ? <p>{category}</p> : null}
+        {receiptControl}
         {note ? <p className="whitespace-pre-wrap">{note}</p> : null}
         {link?.context_label && link.context_label !== title ? <p>{link.context_label}</p> : null}
         {item.expected_payment_date && item.due_date && item.expected_payment_date !== item.due_date ? <p>{t("planning.dueDate")}: {date(item.due_date)} · {t("planning.expectedDate")}: {date(item.expected_payment_date)}</p> : null}
@@ -321,6 +326,7 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
         </dl>}
         </div>
         <div className={props.project?"flex flex-wrap items-center gap-1.5 self-start rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface)] p-1.5":"flex flex-wrap items-center gap-1 self-start rounded-[var(--ui-radius-control)] bg-[var(--ui-surface)] p-2 xl:flex-col xl:items-stretch"}>{active?(props.project?<Button size="sm" className="active:bg-[var(--ui-action-primary-hover)]" onClick={()=>setRecording(item)}>{t("planning.recordPayment")}</Button>:<Button asChild size="sm"><Link href={`/finance/movements?expected=${item.id}`}>{t("planning.recordPayment")}</Link></Button>):null}{tripLink?<Link className={props.project?projectActionClass+" flex h-8 items-center rounded-[var(--ui-radius-control)] px-3 text-xs text-[var(--ui-text-secondary)]":"px-2 py-1.5 text-xs underline"} href={`/finance/trips/${tripLink.trip_id}`}>{t("trips.title")}</Link>:link&&!props.project?<Link className="px-2 py-1.5 text-xs underline" href={`/projects/${link.project_id}?view=finance&stream=${link.stream}`}>{link.project?.name??t("project.open")}</Link>:<Button size="sm" variant="ghost" className={props.project?projectActionClass:undefined} onClick={()=>setEditing(item)}>{t("edit")}</Button>}{active?<Button size="sm" variant="ghost" className={props.project?projectActionClass:undefined} onClick={()=>{setPaymentId("");setMatching(item);}}>{t("planning.match")}</Button>:null}{link&&item.commitment!=="cancelled"?<Button size="sm" variant="ghost" className={props.project?projectDestructiveActionClass:undefined} onClick={()=>setCancelling(item)}>{t("project.cancelExpectation")}</Button>:null}</div>
+        {receiptControl ? <div className="xl:col-span-2">{receiptControl}</div> : null}
         {history.length?<div className={props.project?"border-t border-[var(--ui-border-subtle)] pt-2":"rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-3 xl:col-span-2"}>
           <p className="text-xs font-medium text-[var(--ui-text-secondary)]">{t("planning.history")}</p>
           <ul className="mt-1 space-y-2 text-xs">{history.map((entry)=>{

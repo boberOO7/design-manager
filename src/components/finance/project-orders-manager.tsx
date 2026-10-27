@@ -18,6 +18,7 @@ import { FormField, Input } from "@/components/ui/form-field";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FinanceActionForm } from "./finance-action-form";
 import { ProjectValueBuilder } from "./project-value-builder";
+import { ProjectEarningMilestones } from "./project-earning-milestones";
 import { ProjectOrderCurrencyCorrection } from "./project-order-currency-correction";
 
 const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
@@ -156,6 +157,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
             {draft ? <FinanceActionForm action={saveFinanceProjectOrder} label={t("orders.confirm")} onSaved={() => {}} onPending={setPending} className="space-y-3 border-t border-[var(--ui-border)] pt-4">{orderFields}<input type="hidden" name="intent" value="confirm"/><p className="text-sm">{t("orders.confirmHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.confirmCheck")}</label></FinanceActionForm> : <p className="text-sm text-[var(--ui-text-muted)]">{t("orders.noPlan")}</p>}
             <AnimatedDisclosure title={t("orders.discard")}><FinanceActionForm action={saveFinanceProjectOrder} label={t("orders.discard")} onSaved={() => setSelectedId("")} onPending={setPending} className="space-y-3 pt-3" submitClassName="bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]">{orderFields}<input type="hidden" name="intent" value="discard"/><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.discardHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.discardCheck")}</label></FinanceActionForm></AnimatedDisclosure>
           </> : null}
+          {order.status === "confirmed" && currency ? <ProjectEarningMilestones key={order.id} project={project} orderId={order.id} currency={currency} onPending={setPending}/> : null}
           {term ? <AnimatedDisclosure title={t("project.history")} className="border-t border-[var(--ui-border)] pt-1"><ul className="space-y-3 pb-3 pt-2">{project.termHistory.filter(item => item.order_id === order.id).map(item => {
             const unit = currencies.find(unit => unit.code === item.currency);
             const tax = item.revenue_tax_rate !== null && item.net_amount !== null && unit ? projectRevenueTaxAmounts(String(item.net_amount),String(item.revenue_tax_rate),unit.minor_units) : null;

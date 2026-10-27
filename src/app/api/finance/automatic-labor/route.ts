@@ -12,6 +12,9 @@ export async function GET(request: Request) {
   if (!expected.length || expected.length !== received.length || !timingSafeEqual(expected, received)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-  try { return NextResponse.json(await processAutomaticLabor()); }
+  try {
+    const result = await processAutomaticLabor();
+    return NextResponse.json(result, { status: result.failed ? 500 : 200 });
+  }
   catch { return NextResponse.json({ error: "Automatic labor maintenance failed." }, { status: 500 }); }
 }

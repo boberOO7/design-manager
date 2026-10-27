@@ -38,7 +38,7 @@ async function requestOverviewRpc(
   };
 
   let response = await request(1);
-  // Preparation reconciles the same occurrences; reporting retries are read-only.
+  // Both compatibility RPCs are read-only; occurrence maintenance belongs to the worker.
   // POST RPCs are not retried by the SDK. Give a resetting upstream time to
   // recover, but never retry a PostgreSQL/PostgREST error or invalid JSON.
   for (const [index, delay] of [500, 1000, 2000].entries()) {

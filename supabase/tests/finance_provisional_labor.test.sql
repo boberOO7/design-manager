@@ -12,6 +12,26 @@ select is((private.finance_provisional_labor_values(jsonb_build_object('source',
   'expectedMinutes',0,'accruedFrom',pg_temp.today(),'asOf',pg_temp.today()))->>'provisionalRemainder'),
   '0.00','a genuinely known zero payroll amount stays a known provisional zero despite missing reports');
 
+-- Elapsed salary is independent of Worklog; today still needs submission or leave.
+select is((private.finance_provisional_labor_values(jsonb_build_object(
+  'source',jsonb_build_object('sourceReady',true,'knownCost','1000','recognizedCost','0','remainingCost','1000','basis','net','deductionsStatus','fixed','employerStatus','fixed'),
+  'pools','[]'::jsonb,'manual',false,'issues',jsonb_build_array('missing_reports'),'reportingCurrency','UAH',
+  'proposedAllocations',jsonb_build_array(jsonb_build_object('projectId',pg_temp.pid(30),'amount','100')),'proposedRemainder','900',
+  'shares',jsonb_build_object(pg_temp.pid(30)::text,100),'expectedMinutes',1000,'accruedFrom',pg_temp.today()-2,'asOf',pg_temp.today(),
+  'days',jsonb_build_array(
+    jsonb_build_object('date',pg_temp.today()-3,'submitted',true,'employed',true,'scheduled',200,'absence',0,'entries','[]'::jsonb),
+    jsonb_build_object('date',pg_temp.today()-2,'submitted',true,'employed',true,'scheduled',200,'absence',0,'loggedMinutes',100,
+      'entries',jsonb_build_array(jsonb_build_object('projectId',pg_temp.pid(30),'minutes',100))),
+    jsonb_build_object('date',pg_temp.today()-1,'submitted',false,'employed',true,'scheduled',200,'absence',100,'entries','[]'::jsonb),
+    jsonb_build_object('date',pg_temp.today(),'submitted',false,'employed',true,'scheduled',200,'absence',0,'entries','[]'::jsonb),
+    jsonb_build_object('date',pg_temp.today()+1,'submitted',true,'employed',true,'scheduled',200,'absence',0,'entries','[]'::jsonb)
+  )))->>'provisionalRemainder')::numeric,300::numeric,'elapsed missing reports retain salary; future and unsubmitted current-day capacity are excluded');
+
+-- Setup changes use the same explicit read-only preview as the application.
+create function pg_temp.previewed_capacity(input jsonb) returns jsonb language sql stable as $$
+  select input||jsonb_build_object('previewDigest',public.preview_finance_labor_activation(pg_temp.pid(1),input-'previewDigest')->>'digest')
+$$;
+
 insert into public.studios(id,name) values(pg_temp.pid(1),'Provisional labor test');
 insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values(pg_temp.pid(10),'authenticated','authenticated','provisional-labor-admin@test','{}','{}',now(),now()),
@@ -122,9 +142,9 @@ update public.time_off_requests set status='approved',reviewed_by=pg_temp.pid(10
 -- starts on the first day of this month so the complete monthly denominator exists.
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
-select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(101),jsonb_build_object(
-  'effectiveFrom',pg_temp.today(),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
-  'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true))$$,'initial activation accepts the current date');
+select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(101),pg_temp.previewed_capacity(jsonb_build_object(
+  'effectiveFrom',pg_temp.today(),'capacityFrom',pg_temp.month_start(),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true)))$$,'initial activation accepts the current date');
 reset role;
 select is((select starts_on from public.finance_labor_automation where studio_id=pg_temp.pid(1)),pg_temp.today(),
   'activation defaults to the supplied current date');
@@ -167,10 +187,10 @@ select is(((select p->'provisionalAllocations'->0->>'amount' from jsonb_array_el
   'provisional client allocation is the exact known cost share over the full-month denominator');
 select is(((select (p->>'provisionalRemainder')::numeric from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
   where p->>'obligationId'=pg_temp.pid(21)::text)),
-  1000::numeric
+  trunc(1000::numeric*360/((pg_temp.month_start(1)-pg_temp.month_start())*360),2)
     -trunc(1000::numeric*(360::numeric*180/420)/((pg_temp.month_start(1)-pg_temp.month_start())*360),2)
     -trunc(1000::numeric*(360::numeric*60/420)/((pg_temp.month_start(1)-pg_temp.month_start())*360),2),
-  'provisional remainder preserves the payroll amount after client and internal work');
+  'provisional remainder includes only incurred daily capacity, excluding future and preactivation payroll');
 select is((select sum((item->>'amount')::numeric) from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
   cross join lateral jsonb_array_elements(p->'provisionalDailyAllocations') item where p->>'obligationId'=pg_temp.pid(21)::text
     and item->>'projectId'=pg_temp.pid(30)::text),
@@ -230,12 +250,12 @@ select is((select snapshot->'provisionalFx'->>'effectiveDate' from public.financ
 select is((select count(*) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(23)),0::bigint,
   'open foreign provisional valuation does not recognize payroll expense');
 select set_config('test.capacity_preview',public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
-  'effectiveFrom',pg_temp.today()-1,'employeeId',pg_temp.pid(11),'dailyMinutes',240,
+  'effectiveFrom',pg_temp.today()-1,'employeeId',pg_temp.pid(11),'historicalCapacityConfirmed',true,'dailyMinutes',240,
   'weekdays',jsonb_build_array(1,2,3,4,5,6,7)))->>'digest',true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
 select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(110),jsonb_build_object(
-  'effectiveFrom',pg_temp.today()-1,'employeeId',pg_temp.pid(11),'dailyMinutes',240,
+  'effectiveFrom',pg_temp.today()-1,'employeeId',pg_temp.pid(11),'historicalCapacityConfirmed',true,'dailyMinutes',240,
   'weekdays',jsonb_build_array(1,2,3,4,5,6,7),'previewDigest',current_setting('test.capacity_preview')))$$,
   'a previewed employee capacity change is recorded');
 reset role;
@@ -250,14 +270,14 @@ select is((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
 select throws_like($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(103),jsonb_build_object(
-  'effectiveFrom',pg_temp.today()-4,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.today()-4,'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true))$$,
   '%finance_preview_required%','a backdated activation change requires a current preview digest');
 select set_config('test.provisional_activation_preview',public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
-  'effectiveFrom',pg_temp.today()-4,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.today()-4,'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true))->>'digest',true);
 select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(104),jsonb_build_object(
-  'effectiveFrom',pg_temp.today()-4,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.today()-4,'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true,
   'previewDigest',current_setting('test.provisional_activation_preview')))$$,'a matching activation preview permits the requested date change');
 reset role;
@@ -265,6 +285,12 @@ select ok((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))
   'a missing work report after activation remains visible');
 select ok(not ((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'missingDates') ? (pg_temp.today()-2)::text),
   'approved leave is not a missing report');
+select set_config('test.cost_before_worklog',private.finance_provisional_labor_values(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))::text,true);
+select ok((select (d->>'amount')::numeric>0 from jsonb_array_elements(current_setting('test.cost_before_worklog')::jsonb->'provisionalDailyRemainders') d
+  where d->>'date'=(pg_temp.today()-3)::text) and abs(
+  (select (d->>'amount')::numeric from jsonb_array_elements(current_setting('test.cost_before_worklog')::jsonb->'provisionalDailyRemainders') d where d->>'date'=(pg_temp.today()-3)::text)
+  -(select (d->>'amount')::numeric from jsonb_array_elements(current_setting('test.cost_before_worklog')::jsonb->'provisionalDailyRemainders') d where d->>'date'=(pg_temp.today()-2)::text))<=0.01,
+  'missing Worklog and approved leave both retain studio salary with cumulative minor-unit rounding');
 select is((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->>'completedDays')::integer,2,
   'a zero-hour completed day counts while approved leave is excluded');
 -- Completing a previously missing day changes the proposal but still does not
@@ -278,6 +304,11 @@ reset role;
 select set_config('test.provisional_corrected_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->>'digest',true);
 select ok(not ((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'missingDates') ? (pg_temp.today()-3)::text),
   'corrected work log removes the missing-date exception');
+select is((select sum((d->>'amount')::numeric) from jsonb_array_elements(current_setting('test.cost_before_worklog')::jsonb->'provisionalDailyRemainders') d)
+    +(select sum((d->>'amount')::numeric) from jsonb_array_elements(current_setting('test.cost_before_worklog')::jsonb->'provisionalDailyAllocations') d),
+  (select sum((d->>'amount')::numeric) from jsonb_array_elements(private.finance_provisional_labor_values(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyRemainders') d)
+    +(select sum((d->>'amount')::numeric) from jsonb_array_elements(private.finance_provisional_labor_values(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21)))->'provisionalDailyAllocations') d),
+  'submitting a missing elapsed day reallocates cost without increasing total studio labor');
 select is(((private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'proposedAllocations'->0->>'amount')::numeric),
   trunc(1000::numeric*(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->'shares'->>pg_temp.pid(30)::text)::numeric
     /(private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->>'expectedMinutes')::numeric,2),
@@ -295,10 +326,10 @@ select is((select count(*) from public.finance_recognition_entries where studio_
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
 select set_config('test.closed_activation_preview',public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
-  'effectiveFrom',pg_temp.month_start(-2)+5,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.month_start(-2)+5,'capacityFrom',pg_temp.month_start(-2),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true))->>'digest',true);
 select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(106),jsonb_build_object(
-  'effectiveFrom',pg_temp.month_start(-2)+5,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.month_start(-2)+5,'capacityFrom',pg_temp.month_start(-2),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true,
   'previewDigest',current_setting('test.closed_activation_preview')))$$,'preview activates the closed test period');
 reset role;
@@ -323,6 +354,22 @@ insert into public.work_log_entries(id,studio_id,user_id,work_date,activity_kind
 (pg_temp.pid(56),pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6,'task',pg_temp.pid(40),null,360),
 (pg_temp.pid(57),pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6,'internal',null,'team_walkthrough',360);
 insert into public.work_log_days(studio_id,user_id,work_date) values(pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+6);
+select set_config('test.closed_pending', (select p::text from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
+  where p->>'obligationId'=pg_temp.pid(22)::text),true);
+select is(current_setting('test.closed_pending')::jsonb->>'status','pending','displaying closed provisional cost preserves the worker status');
+select is((current_setting('test.closed_pending')::jsonb->>'provisionalRemainder')::numeric
+  +(select coalesce(sum((a->>'amount')::numeric),0) from jsonb_array_elements(current_setting('test.closed_pending')::jsonb->'provisionalAllocations') a),
+  1000::numeric,'closed pending payroll preserves all supported salary before recognition');
+select is((select sum((a->>'amount')::numeric) from jsonb_array_elements(current_setting('test.closed_pending')::jsonb->'provisionalDailyAllocations') a),
+  trunc(1000::numeric*180/((pg_temp.month_start(-1)-pg_temp.month_start(-2))*360),2),
+  'closed provisional project shares reuse actual Worklog and the internal-work denominator');
+select is((select count(*) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),0::bigint,
+  'reading a closed provisional cost creates no recognition entries');
+savepoint recognition_boundary;
+update public.finance_settings set recognition_start_month=pg_temp.month_start(-1) where studio_id=pg_temp.pid(1);
+select ok((select p->'provisionalRemainder' is null from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
+  where p->>'obligationId'=pg_temp.pid(22)::text),'closed provisional costs cannot bypass the recognition boundary');
+rollback to recognition_boundary;
 select set_config('test.closed_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(22))->>'digest',true);
 insert into public.finance_labor_calculations(studio_id,obligation_id,digest,status,snapshot,created_by,initiated_by)
 select pg_temp.pid(1),pg_temp.pid(22),basis->>'digest','provisional',basis||private.finance_provisional_labor_values(basis),pg_temp.pid(10),'automatic'
@@ -357,11 +404,31 @@ select is((select count(*) from public.finance_recognition_entries where studio_
 select is((select count(*) from public.finance_labor_allocation_revisions r join public.finance_recognition_entries e on e.id=r.entry_id
   where e.studio_id=pg_temp.pid(1) and e.obligation_id=pg_temp.pid(22)),1::bigint,
   'a finalization retry creates no duplicate allocation revision');
+savepoint partial_recognition;
+insert into public.finance_payroll_cost_revisions(studio_id,obligation_id,component,revision,status,amount,reason,created_by)
+values(pg_temp.pid(1),pg_temp.pid(22),'employer_cost',1,'fixed',200,'Confirmed additional historical employer cost',pg_temp.pid(10));
+select set_config('test.partial_period',(select p::text from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
+  where p->>'obligationId'=pg_temp.pid(22)::text),true);
+select is((current_setting('test.partial_period')::jsonb->'source'->>'knownCost')::numeric,1200::numeric,'closed source includes newly known employer cost once');
+select is((current_setting('test.partial_period')::jsonb->>'provisionalRemainder')::numeric
+  +(select coalesce(sum((a->>'amount')::numeric),0) from jsonb_array_elements(current_setting('test.partial_period')::jsonb->'provisionalAllocations') a),
+  200::numeric,'partial recognition leaves only the unrecognized native delta provisional');
+select is((select sum(amount) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),1000::numeric,
+  'reading the unrecognized delta does not change recognized financial records');
+set local role authenticated;
+select lives_ok($$select public.process_finance_automatic_labor(pg_temp.pid(1),pg_temp.pid(22),current_setting('test.partial_period')::jsonb->>'digest',null,pg_temp.pid(116),false)$$,
+  'normal processing recognizes the remaining employer cost');
+reset role;
+select is((select sum(amount) from public.finance_recognition_entries where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),1200::numeric,
+  'recognized plus previously provisional salary is conserved after finalization');
+select ok((select p->'provisionalAllocations' is null from jsonb_array_elements(public.get_finance_labor_reporting(pg_temp.pid(1))->'automaticPeriods') p
+  where p->>'obligationId'=pg_temp.pid(22)::text),'final recognition removes the remaining provisional projection');
+rollback to partial_recognition;
 insert into public.finance_report_coverage(studio_id,project_id,month,reviewed_through,revenue_reviewed,direct_costs_reviewed,
   labor_reviewed,overhead_reviewed,revision,reason,created_by)
 values(pg_temp.pid(1),pg_temp.pid(30),pg_temp.month_start(-2),pg_temp.month_start(-1)-1,true,true,true,true,1,'Activation preview protection',pg_temp.pid(10));
 select set_config('test.earlier_activation_preview',public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
-  'effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.month_start(-2),'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true))::text,true);
 select set_config('test.earlier_activation_digest',current_setting('test.earlier_activation_preview')::jsonb->>'digest',true);
 select is((select (p->>'knownCost')::numeric from jsonb_array_elements(current_setting('test.earlier_activation_preview')::jsonb->'periods') p
@@ -382,7 +449,7 @@ select ok((select (p->>'completedDays')::integer>0 from jsonb_array_elements(cur
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
 select lives_ok($$select public.configure_finance_labor_automation(pg_temp.pid(1),pg_temp.pid(108),jsonb_build_object(
-  'effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
+  'effectiveFrom',pg_temp.month_start(-2),'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7),
   'internalProjectId',pg_temp.pid(32),'internalDesignationConfirmed',true,'changeActivation',true,
   'previewDigest',current_setting('test.earlier_activation_digest')))$$,'a previewed earlier activation is auditable');
 reset role;
@@ -408,7 +475,7 @@ select private.save_finance_labor_allocation_core(pg_temp.pid(1),pg_temp.pid(116
   jsonb_build_object('revision',(select allocation_revision from public.finance_labor_cost_pools where studio_id=pg_temp.pid(1) and obligation_id=pg_temp.pid(22)),
     'reason','Existing manual history','items',jsonb_build_array(jsonb_build_object('projectId',pg_temp.pid(30),'amount','5.00'))),
   pg_temp.pid(10),'manual_management');
-select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,
+select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'historicalCapacityConfirmed',true,'dailyMinutes',360,
   'weekdays',jsonb_build_array(1,2,3,4,5,6,7),'internalProjectId',pg_temp.pid(32),'changeActivation',true)::text,true);
 select set_config('test.preview_digest',public.preview_finance_labor_activation(pg_temp.pid(1),current_setting('test.preview_input')::jsonb)->>'digest',true);
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
@@ -424,7 +491,7 @@ select throws_like($$select public.configure_finance_labor_automation(pg_temp.pi
   '%finance_preview_required%','manual allocation changed after preview requires a new historical preview');
 reset role;
 rollback to preview_state;
-select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'dailyMinutes',360,
+select set_config('test.preview_input',jsonb_build_object('effectiveFrom',pg_temp.month_start(-2),'historicalCapacityConfirmed',true,'dailyMinutes',360,
   'weekdays',jsonb_build_array(1,2,3,4,5,6,7),'internalProjectId',pg_temp.pid(32),'changeActivation',true)::text,true);
 select set_config('test.preview_digest',public.preview_finance_labor_activation(pg_temp.pid(1),current_setting('test.preview_input')::jsonb)->>'digest',true);
 insert into public.studio_days_off(studio_id,date,name,created_by) values(pg_temp.pid(1),pg_temp.today(),'Changed capacity evidence',pg_temp.pid(10));
@@ -433,9 +500,9 @@ select isnt(public.preview_finance_labor_activation(pg_temp.pid(1),current_setti
 rollback to preview_state;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
-select throws_like($$select public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
-  'effectiveFrom',pg_temp.month_start(-4),'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7)))$$,
-  '%finance_input_invalid%','historical preview cannot bypass the management-accounting start boundary');
+select lives_ok($$select public.preview_finance_labor_activation(pg_temp.pid(1),jsonb_build_object(
+  'effectiveFrom',pg_temp.month_start(-4),'historicalCapacityConfirmed',true,'dailyMinutes',360,'weekdays',jsonb_build_array(1,2,3,4,5,6,7)))$$,
+  'historical capacity preview is independent of the recognition posting boundary');
 reset role;
 
 -- Employees cannot read provisional payroll values or activation history.

@@ -31,7 +31,7 @@ export async function concurrentAutomaticLaborRetry(input: {
   return Promise.all([execute(), execute()]);
 }
 
-export async function createAutomaticLaborFixture(options: { periodStart?: string; startsOn?: string } = {}) {
+export async function createAutomaticLaborFixture(options: { periodStart?: string; startsOn?: string; setupPending?: boolean } = {}) {
   const periodStart = z.iso.date().parse(options.periodStart ?? "2026-08-01");
   const startsOn = z.iso.date().parse(options.startsOn ?? "2026-07-01");
   const periodEnd = new Date(Date.UTC(Number(periodStart.slice(0, 4)), Number(periodStart.slice(5, 7)), 0)).toISOString().slice(0, 10);
@@ -104,10 +104,11 @@ export async function createAutomaticLaborFixture(options: { periodStart?: strin
       select set_config('request.jwt.claim.sub',${sqlId(admin.id)}::text,false);
       select public.finalize_finance_setup(${studio});
       update public.finance_settings set recognition_start_month=date '2026-07-01' where studio_id=${studio};
-      insert into public.finance_labor_automation(studio_id,starts_on,internal_project_id,created_by)
+      ${options.setupPending ? '' : `      insert into public.finance_labor_automation(studio_id,starts_on,internal_project_id,created_by)
       values(${studio},date '${startsOn}',${sqlId(internalProjectId)},${sqlId(admin.id)});
       insert into public.finance_labor_capacity_revisions(studio_id,employee_id,effective_from,daily_minutes,weekdays,created_by)
       values(${studio},${sqlId(employee.id)},date '2026-07-01',360,array[1,2,3,4,5],${sqlId(admin.id)});
+`}
       insert into public.finance_schedules(id,studio_id,kind,employee_id,created_by)
       values(${sqlId(scheduleId)},${studio},'payroll',${sqlId(employee.id)},${sqlId(admin.id)});
       insert into public.finance_schedule_terms(id,studio_id,schedule_id,revision,name,amount,currency,category_id,interval_months,payout_day,
@@ -124,6 +125,6 @@ export async function createAutomaticLaborFixture(options: { periodStart?: strin
       values(${sqlId(obligationId)},${studio},${sqlId(scheduleId)},${sqlId(termsId)},'payroll',${sqlId(employee.id)},'Labor employee',date '${periodStart}',date '${periodEnd}',${sqlId(admin.id)});
       insert into public.finance_obligation_items(studio_id,obligation_id,expected_item_id,component)
       select ${studio},${sqlId(obligationId)},result_id,'payout' from public.finance_planning_requests where studio_id=${studio} and request_id=${sqlId(payoutRequestId)};`);
-    return { apiUrl: config.API_URL, serviceRoleKey: config.SERVICE_ROLE_KEY, studioId, projectId, taskId, obligationId, admin, employee, dispose };
+    return { apiUrl: config.API_URL, serviceRoleKey: config.SERVICE_ROLE_KEY, studioId, projectId, internalProjectId, taskId, obligationId, admin, employee, dispose };
   } catch (error) { await dispose(); throw error; }
 }

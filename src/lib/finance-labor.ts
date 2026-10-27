@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { financeAmountText, financeAmountUnits } from "./finance";
 import { convertFinanceDisplayAmount } from "./finance-display-report";
+import { STANDARD_WORKWEEK } from "./workdays";
 
 const decimal = z.string().regex(/^-?\d+(?:\.\d+)?$/);
 const status = z.enum(["unknown", "estimated", "fixed"]);
@@ -29,6 +30,7 @@ export const automaticLaborPeriodSchema = z.object({
   provisionalAllocations: z.array(z.object({ projectId: z.uuid(), amount: decimal })).optional(),
   provisionalDailyAllocations: z.array(z.object({ date: z.iso.date(), projectId: z.uuid(), amount: decimal })).optional(),
   provisionalRemainder: decimal.nullable().optional(),
+  provisionalDailyRemainders: z.array(z.object({ date: z.iso.date(), amount: decimal })).optional(),
   provisionalFx: z.object({ rate: decimal, source: z.string(), effectiveDate: z.iso.date() }).nullable().optional(),
   shares: z.record(z.string(), z.union([decimal, z.number()])),
   proposedAllocations: z.array(z.object({ projectId: z.uuid(), amount: decimal })).optional(), proposedRemainder: decimal.nullable().optional(),
@@ -37,15 +39,31 @@ export const automaticLaborPeriodSchema = z.object({
     fx: z.object({ rate: decimal, source: z.string(), effectiveDate: z.iso.date() }).nullable() })),
 });
 export const laborDataSchema = z.object({ missingPeriods: z.array(laborMissingPeriodSchema).default([]), sources: z.array(laborSourceSchema), pools: z.array(laborPoolSchema), allocations: z.array(laborAllocationSchema),
+  studioDailyMinutes: z.number().int().positive().optional(),
+  sourceReview: z.object({ digest: z.string().regex(/^[a-f0-9]{32}$/), reviewed: z.boolean(), cashTermIds: z.array(z.uuid()), unresolvedTermIds: z.array(z.uuid()).optional(),
+    recurring: z.array(z.object({ termId: z.uuid(), scheduleId: z.uuid(), name: z.string(), category: z.string(), amount: decimal,
+      currency: z.string(), effectiveFrom: z.iso.date(), effectiveThrough: z.iso.date().nullable(), stoppedFrom: z.iso.date().nullable(), hasRecognizedExpense: z.boolean().optional() })),
+  }).optional(),
+  salaryConditions: z.array(z.object({ employeeId: z.uuid(), name: z.string(), termId: z.uuid(), effectiveFrom: z.iso.date(), effectiveThrough: z.iso.date().nullable(),
+    currency: z.string(), amount: decimal, basis: z.enum(["net", "gross"]), payout: decimal.nullable(), deductions: decimal.nullable(),
+    employerCost: decimal.nullable(), employerStatus: status,
+  })).optional(),
   allocationHistory: z.array(z.object({id:z.uuid(),entryId:z.uuid(),revision:z.number().int(),method:z.enum(["manual_management", "automatic_work_tracking"]),reason:z.string(),createdAt:z.string(),createdBy:z.uuid(),
     items:z.array(z.object({projectId:z.uuid(),amount:decimal}))})).default([]),
-  automation: z.object({ startsOn: z.iso.date(), internalProjectId: z.uuid() }).nullable().optional(),
+  automation: z.object({ startsOn: z.iso.date(), internalProjectId: z.uuid().nullable() }).nullable().optional(),
   employees: z.array(z.object({ id: z.uuid(), name: z.string() })).optional(),
   capacity: z.array(z.object({ id: z.uuid(), employee_id: z.uuid().nullable(), effective_from: z.iso.date(), daily_minutes: z.number().int().positive(), weekdays: z.array(z.number().int()) })).optional(),
   automaticPeriods: z.array(automaticLaborPeriodSchema).optional(),
   projectIssues: z.array(z.object({ projectId: z.uuid(), employeeId: z.uuid(), periodStart: z.iso.date(), periodEnd: z.iso.date(), kind: z.string() })).optional(),
 });
 export type FinanceLaborData = z.infer<typeof laborDataSchema>;
+
+/** Current operational settings are suggestions, never historical capacity evidence. */
+export function laborCapacityDefaults(rows: NonNullable<FinanceLaborData["capacity"]>, studioDailyMinutes: number | undefined, date: string, employeeId: string | null = null) {
+  const dated = rows.filter(row => row.effective_from <= date && (row.employee_id === null || row.employee_id === employeeId))
+    .sort((a, b) => Number(b.employee_id !== null) - Number(a.employee_id !== null) || b.effective_from.localeCompare(a.effective_from))[0];
+  return { dailyMinutes: dated?.daily_minutes ?? studioDailyMinutes, weekdays: dated?.weekdays ?? [...STANDARD_WORKWEEK], effectiveFrom: dated?.effective_from ?? null };
+}
 const positive = decimal.refine(v => financeAmountUnits(v, 4) > BigInt(0));
 export const laborConfirmationInputSchema = z.object({
   requestId: z.uuid(), obligationId: z.uuid(), version: laborSourceSchema.shape.version, reason: z.string().trim().min(1).max(2000),
@@ -79,11 +97,18 @@ export function projectLaborIncomplete(data: FinanceLaborData, projectId: string
   return laborSourceIssues(data.sources, from, to).length > 0 || data.missingPeriods.some(period => period.periodStart <= to && period.periodEnd >= from);
 }
 
-/** Provisional amounts never enter recognized project rows or the studio P&L. */
+export function hasProvisionalLabor(period: z.infer<typeof automaticLaborPeriodSchema>) {
+  if (period.manual || !period.asOf) return false;
+  if (period.status === "provisional") return period.pools.length === 0;
+  return ["pending", "pending_review", "exception"].includes(period.status) && period.asOf === period.periodEnd
+    && (!period.source?.sourceReady || financeAmountUnits(period.source.remainingCost, 4) > BigInt(0));
+}
+
+/** Provisional amounts never enter recognized rows; preliminary reports show them separately. */
 export function projectProvisionalLabor(data: FinanceLaborData, projectId: string, from: string, to: string, displayCurrency: string, digits: number, rates: ReadonlyMap<string, string>) {
   let total = BigInt(0), unknown = 0, asOf: string | null = null, periods = 0;
   for (const period of data.automaticPeriods ?? []) {
-    if (period.status !== "provisional" || period.manual || period.pools.length || !period.asOf
+    if (!hasProvisionalLabor(period) || !period.asOf
       || (period.accruedFrom ?? period.periodStart) > to || period.asOf < from || !period.projectIds.includes(projectId)) continue;
     periods++;
     if (!asOf || period.asOf > asOf) asOf = period.asOf;

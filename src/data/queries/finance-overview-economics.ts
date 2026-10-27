@@ -12,7 +12,7 @@ export async function getFinanceOverviewProjectEconomics() {
   if (!admin) return null;
   const client = await createClient();
   const metadata: OverviewProjectMetadata[] = [];
-  const data = await getFinanceManagement({}, { refreshAutomaticLabor: false });
+  const data = await getFinanceManagement({});
   if (!data) return null;
   for (let offset = 0; ; offset += 1000) {
     const page = await client.from("projects").select("id,status,total_area_m2::text").eq("studio_id", admin.studio_id).order("id").range(offset, offset + 999);
@@ -21,5 +21,9 @@ export async function getFinanceOverviewProjectEconomics() {
     if (page.data.length < 1000) break;
   }
   return { currency: data.currency, asOf: data.today,
-    ...buildOverviewProjectEconomics(data.projectProfitability, metadata, data.labor.automation?.internalProjectId ?? null, data.currency.minor_units) };
+    ...buildOverviewProjectEconomics(data.projectProfitability, metadata, data.labor.automation?.internalProjectId ?? null, data.currency.minor_units, {
+      rows: data.projectRows, recorded: [],
+      provisional: data.provisionalLabor, historical: data.historicalProjectLabor, pendingExpenses: data.provisional.filter(row => row.classification === "direct_cost"), recognitionStart: data.settings?.recognition_start_month ?? null,
+      laborConfigured: Boolean(data.labor.automation), today: data.today, coverage: data.coverage,
+    }) };
 }

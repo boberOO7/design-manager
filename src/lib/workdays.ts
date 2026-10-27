@@ -1,6 +1,7 @@
 import { parseDateOnly } from "@/lib/calendar";
 
 export const WORKDAY_KINDS = ["day", "weekend", "studio_day_off", "time_off", "before_joining"] as const;
+export const STANDARD_WORKWEEK: readonly number[] = [1, 2, 3, 4, 5];
 
 /** Shared studio calendar rules; callers supply applicable approved absences. */
 export function getWorkdayKind(date: string, { joinedDate, timeOff = [], studioDaysOff = [] }: {
@@ -12,5 +13,5 @@ export function getWorkdayKind(date: string, { joinedDate, timeOff = [], studioD
   if (studioDaysOff.includes(date)) return "studio_day_off";
   if (timeOff.some(period => period.start_date <= date && period.end_date >= date)) return "time_off";
   const weekday = parseDateOnly(date).getDay();
-  return weekday === 0 || weekday === 6 ? "weekend" : "day";
+  return STANDARD_WORKWEEK.includes(weekday) ? "day" : "weekend";
 }

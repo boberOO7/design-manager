@@ -1,4 +1,5 @@
 "use server";
+import { scheduleAutomaticExpenses } from "@/lib/finance-automatic-expenses";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -94,6 +95,7 @@ export async function saveFinancePlanning(_state:FinanceActionState,form:FormDat
       : error.message==="finance_allocation_incompatible" ? "incompatible" : "save";
     return { status:"error",message:t(`errors.${key}`) };
   }
+  scheduleAutomaticExpenses(admin.studio_id);
   revalidatePath("/finance","layout");
   revalidatePath("/calendar");
   revalidatePath("/projects/[projectId]","page");

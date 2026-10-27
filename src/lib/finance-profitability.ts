@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { summarizeProvisionalReport, type ProvisionalAmount } from "./finance-month-reporting";
+import { earningCoverageIssues, type EarningsReport } from "./finance-earnings";
+import type { historicalLaborSummary } from "./finance-historical-labor";
 import { planningAmount } from "./finance-planning";
 const money = z.string().regex(/^-?\d+(?:\.\d+)?$/);
 export const projectCashSplitItemsSchema = z.array(z.object({ projectId: z.uuid(), amount: planningAmount }));
@@ -106,7 +109,9 @@ export function buildProjectProfitability(input: {
   projects: Array<{ id: string; name: string; startsOn: string | null }>; entries: DisplayEntry[]; projectRows: ManagementAmountRow[];
   labor: FinanceLaborData; coverage: ReportCoverage[]; reporting: ProjectReporting; cash: ReturnType<typeof projectCashDisplayEvents>;
   from: string; to: string; start: string | null; today: string; currency: string; digits: number; baseDigits: number;
-  rates: ReadonlyMap<string, string>; referenceRates: ReadonlyMap<string, string>; pendingTrips?: Array<{projectId:string|null;date:string}>;
+  rates: ReadonlyMap<string, string>; referenceRates: ReadonlyMap<string, string>; pendingTrips?: Array<{projectId:string|null;date:string}>; earnings?: EarningsReport;
+  calculated?: ProvisionalAmount[];
+  historicalLabor?: Array<{ projectId: string; lifetime: ReturnType<typeof historicalLaborSummary> }>;
 }) {
   const { entries, projectRows, digits } = input;
   return input.projects.map(project => {
@@ -135,7 +140,9 @@ export function buildProjectProfitability(input: {
     };
     const estimate = input.reporting.estimates.filter(row => row.project_id === project.id).sort((a, b) => b.revision - a.revision)[0] ?? null;
     const estimateDisplay = estimateDisplayAmounts(estimate, input.currency, input.baseDigits, digits, input.rates);
-    const lifetime = summarize(input.start ?? input.today, input.today);
+    const lifetimeFrom = project.startsOn ?? "1900-01-01";
+    const lifetime = summarize(lifetimeFrom, input.today);
+    const calculated = { period: summarizeProvisionalReport(rows, input.calculated ?? [], input.from, input.to, digits, project.id), lifetime: summarizeProvisionalReport(rows, input.calculated ?? [], lifetimeFrom, input.today, digits, project.id) };
     const costState = input.reporting.costStates.find(state => state.projectId === project.id);
     const estimateStale = Boolean(estimate && (!estimate.source_digest || estimate.source_digest !== costState?.digest || (costState?.latestDate && costState.latestDate > estimate.as_of)));
     const budgetVariance = { direct: estimateDisplay.direct_budget === null ? null : subtract(estimateDisplay.direct_budget, lifetime.directCost, digits),
@@ -150,7 +157,7 @@ export function buildProjectProfitability(input: {
       : finite.length === 1 && !row.order_id;
     const completeRevenue = finite.length > 0 && contracts.length === finite.length
       && designRevenue.every(row => finite.some(contract => belongsTo(row, contract)));
-    const coverageGaps = input.start && input.to >= input.start ? managementCoverageIssues(input.coverage, input.from < input.start ? input.start : input.from, input.to, project.id).length : 0;
+    const coverageGaps = managementCoverageIssues(input.coverage, input.from, input.to, project.id).length;
     const pendingTripCount = (input.pendingTrips ?? []).filter(trip => trip.projectId === project.id && trip.date <= input.today).length;
     const historyIncomplete = !input.start || !project.startsOn || project.startsOn < input.start || input.from < input.start;
     const laborIncomplete = projectLaborIncomplete(input.labor, project.id, input.start ?? input.today, input.today);
@@ -168,14 +175,18 @@ export function buildProjectProfitability(input: {
     const remainingRevenue = completeRevenue && remainingValues.every(value => value !== null)
       ? add(remainingValues.filter((value): value is string => value !== null), digits) : null;
     const targetRevenue = remainingRevenue === null ? null : add([lifetime.revenue, remainingRevenue], digits);
-    const finalResult = completeRevenue && targetRevenue !== null && !estimateStale && estimateDisplay.remaining_direct !== null && estimateDisplay.remaining_labor !== null
+    const earningIssues = input.earnings ? earningCoverageIssues(input.earnings, project.id) : [];
+    const earningIncomplete = earningIssues.length > 0;
+    // Existing manually reviewed history stays valid; configured earning plans must be complete.
+    const historicalPending = input.historicalLabor?.find(row => row.projectId === project.id)?.lifetime.hasUnrecognized ?? false;
+    const finalResult = calculated.lifetime.sources.length === 0 && !historicalPending && !earningIssues.some(order => order.configured) && completeRevenue && targetRevenue !== null && !estimateStale && estimateDisplay.remaining_direct !== null && estimateDisplay.remaining_labor !== null
       && lifetime.missingFx === 0 && pendingTripCount === 0 && !historyIncomplete && !laborIncomplete && coverageGaps === 0
       && input.start !== null && managementCoverageIssues(input.coverage, input.start, input.today, project.id).length === 0
       ? subtract(targetRevenue, add([lifetime.directCost, lifetime.labor, estimateDisplay.remaining_direct, estimateDisplay.remaining_labor], digits), digits) : null;
-    return { projectId: project.id, name: project.name, startsOn: project.startsOn, period: summarize(input.from, input.to), lifetime,
+    return { projectId: project.id, name: project.name, startsOn: project.startsOn, calculated, period: summarize(input.from, input.to), lifetime,
       received: { period: received(input.from, input.to), lifetime: received("1900-01-01", input.today) },
       agreed: { net: agreedNet, gross: agreedValue("gross_amount"), complete: completeRevenue, referenceDate: input.today },
       contracts, matched: input.reporting.matched.filter(row => row.projectId === project.id), estimate, estimateDisplay, estimateStale, budgetVariance,
-      finalMargin: finalResult === null || targetRevenue === null ? null : margin(finalResult, targetRevenue, digits), pendingTripCount, coverageGaps, historyIncomplete, laborIncomplete, periodLaborIncomplete };
+      earningIncomplete, finalMargin: finalResult === null || targetRevenue === null ? null : margin(finalResult, targetRevenue, digits), pendingTripCount, coverageGaps, historyIncomplete, laborIncomplete, periodLaborIncomplete };
   });
 }

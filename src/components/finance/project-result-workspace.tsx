@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { earningCoverageIssues } from "@/lib/finance-earnings";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -15,12 +16,14 @@ import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { EstimateForm } from "./project-profitability-section";
 import { RecognitionForm } from "./recognition-form";
+import { HistoricalLaborSection } from "./historical-labor-section";
 
 const panel = "min-w-0 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5";
 
 export function ProjectResultWorkspace({ data, projectId, period }: { data: FinanceManagementData; projectId: string; period: ProjectProfitPeriod }) {
   const t = useTranslations("Finance.projectResult"), profit = useTranslations("Finance.profitability"), management = useTranslations("Finance.management");
-  const locale = useLocale(), router = useRouter();
+  const locale = useLocale(), router = useRouter(), earningsT = useTranslations("Finance.earnings");
+  const earningIncomplete = earningCoverageIssues(data.earnings, projectId).length > 0;
   const [recognitionOpen, setRecognitionOpen] = useState(false);
   const [estimateOpen, setEstimateOpen] = useState(false);
   const [recognitionPending, setRecognitionPending] = useState(false);
@@ -40,12 +43,12 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
     - financeAmountUnits(provisional.known, data.currency.minor_units), data.currency.minor_units) : null;
   const selectedKnownCosts = period === "all" ? knownCosts : financeAmountText(financeAmountUnits(selected.directCost, data.currency.minor_units) + financeAmountUnits(selected.labor, data.currency.minor_units), data.currency.minor_units);
   const historyIncomplete = period === "all" ? row.historyIncomplete : Boolean(recognitionStart && data.filters.from < recognitionStart);
-  const periodUnavailable = !recognitionActive || Boolean(recognitionStart && data.filters.to < recognitionStart);
+  const periodUnavailable = false;
   const selectedLaborIncomplete = period === "all" ? row.laborIncomplete : row.periodLaborIncomplete;
   const costIncomplete = Boolean(row.coverageGaps || selectedLaborIncomplete || selected.missingFx || row.pendingTripCount);
   const directIncomplete = Boolean(historyIncomplete || row.coverageGaps || selected.missingFx || row.pendingTripCount);
   const laborIncomplete = Boolean(historyIncomplete || row.coverageGaps || selectedLaborIncomplete || selected.missingFx);
-  const resultIncomplete = costIncomplete || historyIncomplete;
+  const resultIncomplete = costIncomplete || historyIncomplete || earningIncomplete;
   const costDisplayIncomplete = costIncomplete || historyIncomplete;
   const displayKnown = (amount: string | null, incomplete: boolean) => {
     if (amount === null || (incomplete && financeAmountUnits(amount, data.currency.minor_units) === BigInt(0))) return t("unknown");
@@ -72,6 +75,7 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
       <Link href={`/finance/reports/export?${exportParams}`} className="inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] px-2 text-sm font-medium text-[var(--ui-text-secondary)] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{profit("exportCsv")}</Link>
     </header>
 
+    {earningIncomplete ? <p role="status" className="text-sm text-[var(--ui-warning-text)]">{earningsT("coverageWarning", { count: earningCoverageIssues(data.earnings, projectId).length })}</p> : null}
     <nav aria-label={t("periodLabel")} className="flex flex-wrap gap-2">
       {(["all", "month", "year", "custom"] as const).map(value => <Link key={value} href={viewHref(value)} scroll={false} aria-current={period === value ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] border px-3 text-sm transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${period === value ? "border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] font-semibold text-[var(--ui-text)]" : "border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}>{t(`period.${value}`)}</Link>)}
     </nav>
@@ -82,11 +86,18 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
       <Button type="submit" variant="outline">{profit("applyFilters")}</Button>
     </form> : null}
 
-    {!recognitionActive ? <div role="status" className={`${panel} space-y-2`}>
-      <h3 className="font-semibold">{t("activationTitle")}</h3>
-      <p className="text-sm text-[var(--ui-text-secondary)]">{recognitionStart ? t("activationFuture", { date: date(recognitionStart) }) : t("activationHelp")}</p>
-      {!recognitionStart ? <Link href="/finance/reports" className="inline-flex min-h-11 items-center font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{management("activate")}</Link> : null}
-    </div> : <>
+    <HistoricalLaborSection periods={data.historicalLabor} from={period === "all" ? data.historicalLabor.at(0)?.periodStart ?? data.filters.from : data.filters.from}
+      to={data.filters.to} currency={data.currency} projectId={projectId} recognizedProject={selected.missingFx ? null : selected.labor}/>
+    <section data-testid="project-calculations" className={`${panel} space-y-3`}>
+      <h3 className="font-semibold">{management("sourceCalculationsTitle")}</h3>
+      <p className="text-xs text-[var(--ui-text-secondary)]">{management("preliminaryHelp")}</p>
+      <dl className="grid gap-3 text-sm sm:grid-cols-3">{(["recognized", "pending", "combined"] as const).map((key, index) => {
+        const totals = (period === "all" ? row.calculated.lifetime : row.calculated.period)[key];
+        return <div key={key}><dt className="text-xs text-[var(--ui-text-secondary)]">{management(["recognizedAmount", "provisionalAmount", "preliminaryAmount"][index])}</dt><dd className="mt-1 font-semibold tabular-nums">{totals.rows.length ? money(totals.knownResult) : t("unknown")}</dd></div>;
+      })}</dl>
+      {row.coverageGaps || (period === "all" ? row.calculated.lifetime : row.calculated.period).incomplete ? <p role="status" className="text-xs text-[var(--ui-warning-text)]">{management("preliminaryIncomplete")}</p> : null}
+    </section>
+    <>
       {periodUnavailable ? <div role="status" className={`${panel} text-sm text-[var(--ui-text-secondary)]`}>{management("reportUnavailable", { date: date(recognitionStart ?? data.today) })}</div> : <>
       {period === "all" && recognitionStart ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("recognizedCoverage", { date: date(recognitionStart) })}</p> : <p className="text-xs text-[var(--ui-text-secondary)]">{date(data.filters.from)} – {date(data.filters.to)}</p>}
       {period === "all" && historyIncomplete ? <div role="status" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] p-3 text-sm text-[var(--ui-warning-text)]">
@@ -99,12 +110,12 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
         <div className="flex flex-wrap items-baseline justify-between gap-2"><div><p className="text-sm text-[var(--ui-text-secondary)]">{resultIncomplete ? t("knownResultLabel") : t("resultShort")}</p><p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{displayKnown(selected.result, resultIncomplete)}</p>{showKnownSuffix(selected.result, resultIncomplete) ? <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{t("knownSubtotalSuffix")}</p> : null}</div>
           <span className="text-sm text-[var(--ui-text-secondary)]">{selected.margin === null || (resultIncomplete && financeAmountUnits(selected.margin, 2) === BigInt(0)) ? t("unknown") : resultIncomplete ? t("knownMarginValue", { value: selected.margin }) : t("marginValue", { value: selected.margin })}</span></div>
         <dl className="grid gap-3 border-t border-[var(--ui-border-subtle)] pt-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-[var(--ui-text-muted)]">{t("recognizedRevenue")}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{displayKnown(selected.revenue, historyIncomplete || selected.missingFx > 0)}</dd></div>
+          <div><dt className="text-xs text-[var(--ui-text-muted)]">{t("recognizedRevenue")}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{displayKnown(selected.revenue, historyIncomplete || selected.missingFx > 0 || earningIncomplete)}</dd></div>
           <div><dt className="text-xs text-[var(--ui-text-muted)]">{costIncomplete ? t("knownCostsPartial") : t("knownCosts")}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{displayKnown(selectedKnownCosts, costDisplayIncomplete)}</dd></div>
         </dl>
         {costIncomplete ? <p role="status" className="text-xs text-[var(--ui-warning-text)]">{t("costsIncomplete")}</p> : null}
-        {showKnownSuffix(selected.revenue, historyIncomplete || selected.missingFx > 0) || showKnownSuffix(selectedKnownCosts, costDisplayIncomplete) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("knownSubtotalSuffix")}</p> : null}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] pt-3"><p className="text-xs text-[var(--ui-text-secondary)]">{t("recognitionActionHelp")}</p><Button type="button" onClick={() => setRecognitionOpen(true)}>{t("recognizeWork")}</Button></div>
+        {showKnownSuffix(selected.revenue, historyIncomplete || selected.missingFx > 0 || earningIncomplete) || showKnownSuffix(selectedKnownCosts, costDisplayIncomplete) ? <p className="text-xs text-[var(--ui-text-muted)]">{t("knownSubtotalSuffix")}</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ui-border-subtle)] pt-3"><p className="text-xs text-[var(--ui-text-secondary)]">{t("recognitionActionHelp")}</p>{recognitionActive ? <Button type="button" onClick={() => setRecognitionOpen(true)}>{t("recognizeWork")}</Button> : null}</div>
       </article>
 
       {provisional && provisional.periods > 0 ? <section className={`${panel} space-y-3`} aria-labelledby="project-provisional-labor-title" data-provisional-labor>
@@ -157,7 +168,7 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
         </div>
       </AnimatedDisclosure>
       </>}
-    </>}
+    </>
 
     <Dialog isOpen={recognitionOpen} closeDisabled={recognitionPending} onRequestClose={() => { if (!recognitionPending) setRecognitionOpen(false); }} title={t("recognizeDialogTitle")} description={t("recognizeDialogHelp")} closeLabel={t("close")}>
       <div className="min-h-0 overflow-y-auto p-4 sm:p-6"><RecognitionForm data={data} projectId={projectId} projectRevenueOnly onPending={setRecognitionPending} onSaved={() => { setRecognitionOpen(false); refresh(); }}/></div>

@@ -1,4 +1,5 @@
 "use server";
+import { scheduleAutomaticExpenses } from "@/lib/finance-automatic-expenses";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -6,8 +7,10 @@ import { isDeepStrictEqual } from "node:util";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
 import { resolveFinanceFx } from "@/lib/finance-fx";
+import { confirmFinanceMonthSchema } from "@/lib/finance-month-reporting";
 import { coverageInputSchema, recognitionInputSchema, recognitionAdjustmentSchema, recognitionSourceSchema } from "@/lib/finance-management";
 import type { FinanceActionState } from "@/lib/finance";
+import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
 export async function saveFinanceManagement(_state: FinanceActionState, form: FormData): Promise<FinanceActionState> {
   const t = await getTranslations("Finance.management");
@@ -22,9 +25,12 @@ export async function saveFinanceManagement(_state: FinanceActionState, form: Fo
   if (!request.success) return fail("invalid");
   let error: { message: string } | null = null;
   if (intent === "activation") {
-    const month = z.iso.date().safeParse(raw.month);
-    if (!month.success) return fail("invalid");
-    ({ error } = await client.rpc("activate_finance_recognition", { p_studio_id: admin.studio_id, p_request_id: request.data, p_month: month.data }));
+    ({ error } = await client.rpc("enable_finance_recognition", { p_studio_id: admin.studio_id, p_request_id: request.data }));
+  } else if (intent === "month") {
+    const parsed = confirmFinanceMonthSchema.safeParse(raw);
+    if (!parsed.success) return fail("invalid");
+    const { requestId, ...input } = parsed.data;
+    ({ error } = await client.rpc("confirm_finance_month", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
   } else if (intent === "coverage") {
     const parsed = coverageInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid");
@@ -77,7 +83,9 @@ export async function saveFinanceManagement(_state: FinanceActionState, form: Fo
       ({ error } = await client.rpc("adjust_finance_recognition", { p_studio_id: admin.studio_id, p_request_id: requestId, p_entry_id: entryId, p_input: { ...input, submission } }));
     }
   }
-  if (error) return fail(error.message.includes("conflict") ? "conflict" : error.message.includes("over_source") ? "overSource" : error.message.includes("locked") ? "locked" : error.message.includes("fx") ? "FX" : "save");
+  if (error) return fail(error.message.includes("month_exceptions") ? "monthExceptions" : error.message.includes("conflict") ? "conflict" : error.message.includes("over_source") ? "overSource" : error.message.includes("locked") ? "locked" : error.message.includes("fx") ? "FX" : "save");
+  scheduleAutomaticLabor(admin.studio_id);
+  scheduleAutomaticExpenses(admin.studio_id);
   revalidatePath("/finance", "layout");
   revalidatePath("/projects/[projectId]", "page");
   return { status: "success" };

@@ -1,10 +1,12 @@
 "use server";
+import { expenseErrorKey, recurringArrangementInputSchema } from "@/lib/finance-expenses";
+import { scheduleAutomaticExpenses } from "@/lib/finance-automatic-expenses";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { createClient } from "@/lib/supabase/server";
-import { employeeBonusSchema, financeScheduleError, financeScheduleValidationError, generateObligationsSchema, payrollCostSchema, removePayrollSchema, scheduleInputSchema, stopScheduleSchema } from "@/lib/finance-schedules";
+import { employeeBonusSchema, financeScheduleError, financeScheduleValidationError,  payrollCostSchema, removePayrollSchema, scheduleInputSchema, stopScheduleSchema } from "@/lib/finance-schedules";
 import type { FinanceActionState } from "@/lib/finance";
 import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 
@@ -13,31 +15,31 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
   const admin = await getActiveStudioAdmin();
   if (!admin) return { status: "error", message: t("planning.errors.forbidden") };
   const raw = Object.fromEntries(form);
-  if (raw.intent === "schedule" && raw.kind === "payroll" && !String(raw.reason ?? "").trim()) raw.reason = t(raw.id ? "schedules.defaultRevisionNote" : "schedules.defaultAgreementNote");
-  if (raw.intent === "schedule" && raw.kind === "recurring" && !String(raw.reason ?? "").trim()) raw.reason = t("schedules.defaultRecurringNote");
+  if (["schedule", "arrangement"].includes(String(raw.intent)) && raw.kind === "payroll" && !String(raw.reason ?? "").trim()) raw.reason = t(raw.id ? "schedules.defaultRevisionNote" : "schedules.defaultAgreementNote");
+  if (["schedule", "arrangement"].includes(String(raw.intent)) && raw.kind === "recurring" && !String(raw.reason ?? "").trim()) raw.reason = t("schedules.defaultRecurringNote");
   if (raw.intent === "bonus" && !String(raw.description ?? "").trim()) raw.description = t("schedules.addBonus");
   const client = await createClient();
   let error: { message: string } | null;
-  if (raw.intent === "schedule") {
+  if (raw.intent === "schedule" || raw.intent === "arrangement") {
     const parsed = scheduleInputSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t(`schedules.errors.${financeScheduleValidationError(parsed.error.issues)}`) };
     const { requestId, ...input } = parsed.data;
+    const arrangement = raw.intent === "arrangement" ? recurringArrangementInputSchema.safeParse({ policy: raw.servicePolicy, serviceStart: raw.serviceStart, projectId: raw.serviceProjectId }) : null;
+    if (arrangement && (!arrangement.success || input.kind !== "recurring")) return { status: "error", message: t("schedules.errors.invalid") };
+    // Reject cached legacy forms rather than silently dropping an explicit service exception.
+    if (raw.intent === "schedule" && ["servicePolicy", "serviceStart", "serviceProjectId", "expenseConfirmed", "expensePolicy", "expenseServiceStart", "expenseProjectId"].some(key => key in raw)) return { status: "error", message: t("schedules.errors.invalid") };
     if (input.kind === "recurring" && !input.name) {
       const { data: category, error: categoryError } = await client.from("finance_categories").select("name").eq("studio_id", admin.studio_id).eq("id", input.categoryId).maybeSingle();
       if (categoryError || !category) return { status: "error", message: t("schedules.errors.invalid") };
       input.name = category.name.slice(0, 120);
     }
-    ({ error } = await client.rpc(input.kind === "recurring" ? "save_finance_recurring_schedule" : "save_finance_schedule", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
+    ({ error } = await client.rpc(input.kind === "recurring" ? "save_finance_recurring_schedule" : "save_finance_schedule", { p_studio_id: admin.studio_id, p_request_id: requestId,
+      p_input: { ...input, ...(arrangement?.success ? { expenseService: { ...arrangement.data, confirmed: true } } : {}) } }));
   } else if (raw.intent === "payrollCost") {
     const parsed = payrollCostSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
     const { requestId, ...input } = parsed.data;
     ({ error } = await client.rpc("complete_finance_payroll_cost", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
-  } else if (raw.intent === "generate") {
-    const parsed = generateObligationsSchema.safeParse(raw);
-    if (!parsed.success) return { status: "error", message: t("schedules.errors.range") };
-    const v = parsed.data;
-    ({ error } = await client.rpc("generate_finance_obligations", { p_studio_id: admin.studio_id, p_request_id: v.requestId, p_schedule_id: v.scheduleId, p_from: v.from, p_through: v.through }));
   } else if (raw.intent === "stop") {
     const parsed = stopScheduleSchema.safeParse(raw);
     if (!parsed.success) return { status: "error", message: t("schedules.errors.invalid") };
@@ -60,12 +62,17 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
     ({ error } = await client.rpc("create_finance_employee_bonus", { p_studio_id: admin.studio_id, p_request_id: requestId, p_input: input }));
   } else return { status: "error", message: t("schedules.errors.invalid") };
   if (error) {
+    if (error.message.startsWith("finance_expense_") || error.message === "finance_recognition_inactive") {
+      const expenseT = await getTranslations("Finance.expenses");
+      return { status: "error", message: expenseT(raw.intent === "arrangement" && error.message === "finance_expense_history_protected" ? "arrangementHistoryProtected" : `errors.${expenseErrorKey(error.message)}`) };
+    }
     const code = financeScheduleError(error.message);
-    return { status: "error", message: t(`schedules.errors.${raw.intent === "schedule" && raw.kind === "payroll" && code === "effectiveDate" ? "payrollEffectiveDate" : code}`) };
+    return { status: "error", message: t(`schedules.errors.${["schedule", "arrangement"].includes(String(raw.intent)) && raw.kind === "payroll" && code === "effectiveDate" ? "payrollEffectiveDate" : code}`) };
   }
   revalidatePath("/finance", "layout");
   revalidatePath("/calendar");
   scheduleAutomaticLabor(admin.studio_id);
+  scheduleAutomaticExpenses(admin.studio_id);
   revalidatePath("/projects/[projectId]", "page");
   return { status: "success" };
 }

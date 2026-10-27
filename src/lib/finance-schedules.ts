@@ -61,8 +61,6 @@ export function payrollCompensationSummary(amount: string, basis: "net" | "gross
 }
 
 // Exact monetary agreement arithmetic and minor-unit precision are enforced in PostgreSQL.
-export const generateObligationsSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart, through: monthStart })
-  .refine((v) => v.through >= v.from && (Number(v.through.slice(0, 4)) - Number(v.from.slice(0, 4))) * 12 + Number(v.through.slice(5, 7)) - Number(v.from.slice(5, 7)) < 12);
 export const removePayrollSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), revision: z.coerce.number().int().min(1) });
 export const stopScheduleSchema = z.object({ requestId: z.uuid(), scheduleId: z.uuid(), from: monthStart });
 export const payrollCostSchema = z.object({

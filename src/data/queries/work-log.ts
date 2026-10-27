@@ -1,6 +1,5 @@
 import "server-only";
 
-import { scheduleAutomaticLabor } from "@/lib/finance-automatic-labor";
 import { reviewTimerSyncSchema } from "@/lib/review-timer";
 
 import { resolveActiveStudioMembership, type ActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -46,7 +45,6 @@ export async function getDailyWorkLog(date: string) {
   const persisted = await client.rpc("get_work_log_timer_snapshot", { p_work_date: date });
   if (persisted.error) throw new Error("Unable to synchronize review time.", { cause: persisted.error });
   const logSnapshot = workLogTimerSnapshotSchema.parse(persisted.data);
-  if (logSnapshot.changed && logSnapshot.studioId) scheduleAutomaticLabor(logSnapshot.studioId);
   const { start, end } = workLogDayBounds(date);
   const [saved, activities, tasks, rounds, events, submission, statusPeriods] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries")
@@ -142,8 +140,7 @@ export async function getWeeklyWorkLog(date: string, now = new Date()) {
   const client = await createClient();
   const sync = await client.rpc("sync_review_timer");
   if (sync.error) throw new Error("Unable to synchronize review time.", { cause: sync.error });
-  const synced = reviewTimerSyncSchema.parse(sync.data);
-  if (synced.changed && synced.studioId) scheduleAutomaticLabor(synced.studioId);
+  reviewTimerSyncSchema.parse(sync.data);
   const start = startOfMondayWeek(date), through = addCalendarDays(start, 6);
   const [entries, submissions, events, eligibility] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries").select("internal_activity_type,activity_kind,task_id,review_round_id,minutes,work_date")

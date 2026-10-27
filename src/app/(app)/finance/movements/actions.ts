@@ -1,4 +1,5 @@
 "use server";
+import { scheduleAutomaticExpenses } from "@/lib/finance-automatic-expenses";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -91,6 +92,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       : error.message === "finance_account_unavailable" ? "errors.archived" : "errors.save";
     return { status: "error", message: t(message) };
   }
+  scheduleAutomaticExpenses(admin.studio_id);
   revalidatePath("/finance", "layout");
   revalidatePath("/projects/[projectId]", "page");
   return { status: "success", message: t("saved") };

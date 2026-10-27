@@ -39,11 +39,11 @@ describe("Finance Overview presentation", () => {
     expect(buildFinanceAnalytics(input({ coverage: [] }), "2026-10-01", today).costs.amount).toBeNull();
     expect(buildFinanceAnalytics(input(), "2026-10-01", today).result).toEqual({ amount: "0.00", incomplete: false });
   });
-  it("leaves pre-activation months unavailable, including a partially covered selection", () => {
+  it("shows source calculations independently of activation while preserving incomplete coverage", () => {
     const result = buildFinanceAnalytics(input({ amountRows: [row("revenue", "100")] }), "2026-08-01", today);
     expect(result.months.map(m => m.result.amount)).toEqual([null, null, "100.00"]);
-    expect(result.result.incomplete).toBe(true); expect(result.effectiveFrom).toBe("2026-10-01");
-    expect(buildFinanceAnalytics(input({ settings: null }), "2026-10-01", today).result.amount).toBeNull();
+    expect(result.result.incomplete).toBe(true); expect(result.effectiveFrom).toBe("2026-08-01");
+    expect(buildFinanceAnalytics(input({ settings: null }), "2026-10-01", today).result.amount).toBe("0.00");
   });
   it("keeps open payroll separate from known-zero extra components", () => {
     const labor = emptyLabor(); labor.sources.push({ obligationId: "id", employeeId: "id", label: "Employee", kind: "payroll", periodStart: "2026-10-01", periodEnd: "2026-10-31", currency: "UAH", knownCost: "100", recognizedCost: "0", remainingCost: "100", deductionsStatus: "fixed", employerStatus: "fixed", basis: "net", version: "0".repeat(32), snapshot: {}, sourceReady: true, canConfirm: false });

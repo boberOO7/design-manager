@@ -10,7 +10,7 @@ export const automaticLaborCandidateSchema = z.object({
 });
 
 // Changed source digests are the durable pending work. The existing daily cron
-// pattern retries outages, while after() only accelerates normal mutations/reads.
+// pattern retries outages, while after() only accelerates authorized business mutations.
 export async function processAutomaticLabor(studioId?: string) {
   const client = createAdminClient();
   const response = await client.rpc("prepare_finance_automatic_labor", studioId ? { p_studio_id: studioId } : {});

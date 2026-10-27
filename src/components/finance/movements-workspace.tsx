@@ -1,4 +1,5 @@
 "use client";
+import { ExpenseReceiptControl } from "./expense-receipt-control";
 
 import { ChevronDown, History, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
@@ -262,6 +263,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         </summary><div className="space-y-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm">
           {title !== category && movement.nature !== "balance" ? <p className="text-[var(--ui-text-secondary)]">{category}</p> : null}
           {context ? <p className="whitespace-pre-wrap break-words text-[var(--ui-text-secondary)]">{context}</p> : null}
+          {!reversed && movement.kind === "outgoing" && movement.nature === "operating" && !movement.context.length && !["salary", "employee_bonus"].includes(props.categories.find(category => category.id === movement.category_id)?.default_key ?? "") ? <ExpenseReceiptControl kind="movement" sourceId={movement.id} baseCurrency={props.settings?.base_currency ?? "UAH"} today={props.today}/> : null}
           <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"><p>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency !== entry.reporting_currency && entry.reporting_amount !== null && entry.fx_source && entry.fx_effective_date ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>{entry.reporting_amount === null && entry.entry_role !== "fee" && !reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setValuing({ movement, currency: entry.currency, reportingCurrency: entry.reporting_currency })}>{t("movements.valueManually")}</Button> : null}</div>)}</div>
           <div className="flex flex-wrap items-center gap-1.5">
             {!reversed && movement.kind !== "reversal" ? <>

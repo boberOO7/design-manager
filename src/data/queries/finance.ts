@@ -1,4 +1,6 @@
+import { expenseAutomationSchema } from "@/lib/finance-expenses";
 import "server-only";
+import { earningsReportSchema } from "@/lib/finance-earnings";
 import { cache } from "react";
 import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
@@ -127,8 +129,6 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
-  const coverage=await client.rpc("ensure_finance_schedule_occurrences",{p_studio_id:admin.studio_id,p_horizon:"12"});
-  if(coverage.error) throw new Error("Unable to maintain Finance schedule coverage.",{ cause:coverage.error });
   let query=projectId
     ? client.from("finance_project_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream",stream)
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
@@ -185,7 +185,7 @@ export async function getFinanceProject(projectId:string) {
   const client=await createClient();
   const nextQuery = () => client.from("finance_project_expected_balances").select("id,description,currency,remaining_amount::text,due_date,expected_payment_date,order_id,order_name").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream","design").eq("commitment","agreed").gt("remaining_amount",0)
     .order("order_is_default",{ascending:false,nullsFirst:false}).order("order_created_at").order("order_id").order("schedule_position",{nullsFirst:false}).order("due_date",{nullsFirst:false}).order("id");
-  const [terms,history,totals,contractors,visits,nextItems,area,designHistory,orders,orderTotals]=await Promise.all([
+  const [terms,history,totals,contractors,visits,nextItems,area,designHistory,orders,orderTotals,earnings,earningStages]=await Promise.all([
     client.from("finance_project_current_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(0,999),
     client.from("finance_project_totals").select("studio_id,project_id,stream,currency,contract_amount::text,scheduled_amount::text,collected_amount::text,closed_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text,contract_net_amount::text,contract_vat_amount::text,contract_gross_amount::text,scheduled_net_amount::text,scheduled_vat_amount::text,collected_net_amount::text,collected_vat_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
@@ -196,8 +196,10 @@ export async function getFinanceProject(projectId:string) {
     client.from("finance_project_items").select("expected_item_id").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream","design").limit(1),
     client.from("finance_project_orders").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("is_default",{ascending:false}).order("created_at").order("id"),
     client.from("finance_project_order_totals").select("order_id,currency,payment_count,has_payment_history,scheduled_net_amount::text,scheduled_vat_amount::text,collected_net_amount::text,collected_vat_amount::text,contract_amount::text,contract_net_amount::text,contract_vat_amount::text,contract_gross_amount::text,scheduled_amount::text,collected_amount::text,closed_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
+    client.rpc("get_finance_project_earnings", { p_studio_id: admin.studio_id, p_project_id: projectId }),
+    client.from("project_task_stage_columns").select("stage,display_name,is_enabled,display_order").eq("project_id",projectId).order("display_order"),
   ]);
-  const error=orders.error??orderTotals.error??terms.error??history.error??totals.error??contractors.error??visits.error??nextItems.error??area.error??designHistory.error;
+  const error=earnings.error??earningStages.error??orders.error??orderTotals.error??terms.error??history.error??totals.error??contractors.error??visits.error??nextItems.error??area.error??designHistory.error;
   if(error) throw new Error("Unable to load Project Finance.",{ cause:error });
   // Historical visit defaults must not depend on a recent-revisions limit.
   const termHistory=history.data??[];
@@ -226,7 +228,7 @@ export async function getFinanceProject(projectId:string) {
     nextCandidates.push(...page.data);
   }
   const nextPayment = nextProjectPayment(nextCandidates, (orders.data ?? []).filter(order => order.status === "confirmed").map(order => order.id));
-  return { projectId,orders:orders.data??[],orderTotals:orderTotals.data??[],nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
+  return { projectId,earnings:earningsReportSchema.parse(earnings.data),earningStages:earningStages.data??[],orders:orders.data??[],orderTotals:orderTotals.data??[],nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
 export async function getFinanceProjectRecordedRates(projectId: string, stream: string) {
   const admin = await getActiveStudioAdmin();
@@ -272,20 +274,19 @@ export async function getFinanceSchedules() {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const coverage = await client.rpc("ensure_finance_schedule_occurrences", { p_studio_id: admin.studio_id, p_horizon: "12" });
-  if (coverage.error) throw new Error("Unable to maintain Finance schedule coverage.", { cause: coverage.error });
-  const [schedules, terms, members, groups, payrollEditability, payrollHistory] = await Promise.all([
+  const [schedules, terms, members, groups, payrollEditability, payrollHistory, expenseReporting] = await Promise.all([
     client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
     client.from("finance_schedule_history").select("*, obligations:finance_obligations!finance_obligations_studio_id_terms_id_schedule_id_fkey(items:finance_obligation_items!finance_obligation_items_studio_id_obligation_id_fkey(expected:finance_expected_balances!finance_obligation_items_studio_id_expected_item_id_fkey(id,expected_payment_date,due_date,remaining_amount,commitment)))").eq("studio_id", admin.studio_id).eq("obligations.kind", "recurring").order("revision", { ascending: false }),
     client.from("studio_members").select("user_id,is_active,joined_at,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
     client.from("finance_recurring_groups").select("*").eq("studio_id", admin.studio_id).order("position").order("id"),
     client.rpc("get_finance_payroll_editability", { p_studio_id: admin.studio_id }),
     client.rpc("get_finance_payroll_historical_terms", { p_studio_id: admin.studio_id }),
+    client.rpc("get_finance_expense_automation_reporting", { p_studio_id: admin.studio_id }),
   ]);
-  const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error ?? payrollHistory.error;
+  const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error ?? payrollHistory.error ?? expenseReporting.error;
   if (error) throw new Error("Unable to load Finance schedules.", { cause: error });
   const today = getKyivDateOnly();
-  return { groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], historicalTermIds: (payrollHistory.data ?? []).map((term) => term.term_id), schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
+  return { expenseAutomation: expenseAutomationSchema.parse(expenseReporting.data), groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], historicalTermIds: (payrollHistory.data ?? []).map((term) => term.term_id), schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
     nextPayment: (terms.data ?? []).filter((term) => term.schedule_id === schedule.id).flatMap((term) => term.obligations).flatMap((obligation) => obligation.items.flatMap(({ expected }) => {
       const date = expected?.expected_payment_date ?? expected?.due_date;
       return expected?.id && date && date >= today && expected.commitment !== "cancelled" && Number(expected.remaining_amount) > 0

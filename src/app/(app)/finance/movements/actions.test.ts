@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { correctionInputSchema, movementInputSchema } from "@/lib/finance-movements";
 const mocks = vi.hoisted(() => ({ admin:vi.fn(), client:vi.fn(), foundation:vi.fn(), rpc:vi.fn(), prior:vi.fn(), expected:vi.fn(), fx:vi.fn(), revalidate:vi.fn() }));
+vi.mock("@/lib/finance-automatic-expenses", () => ({ scheduleAutomaticExpenses: vi.fn() }));
 vi.mock("@/data/queries/active-studio-admin",()=>({ getActiveStudioAdmin:mocks.admin }));
 vi.mock("@/data/queries/finance",()=>({ getFinanceData:mocks.foundation, getFinanceMovementHistory:vi.fn() }));
 vi.mock("@/lib/supabase/server",()=>({ createClient:mocks.client }));

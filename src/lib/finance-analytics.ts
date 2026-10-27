@@ -1,3 +1,4 @@
+import { summarizeProvisionalReport, type ProvisionalAmount } from "./finance-month-reporting";
 import { financeAmountText, financeAmountUnits } from "./finance";
 import { managementCoverageIssues, summarizeManagementEntries } from "./finance-management";
 import { laborSourceIssues, unallocatedLaborAmount, projectLaborIncomplete } from "./finance-labor";
@@ -16,6 +17,7 @@ const metric = (amount: string, incomplete: boolean, available = true): Analytic
   amount: !available || (incomplete && !/[1-9]/.test(amount)) ? null : amount, incomplete,
 });
 type AnalyticsInput = Pick<FinanceManagementData, "amountRows" | "coverage" | "labor" | "projectProfitability" | "today"> & {
+  provisional?: ProvisionalAmount[];
   settings: Pick<NonNullable<FinanceManagementData["settings"]>, "recognition_start_month"> | null;
   currency: Pick<FinanceManagementData["currency"], "minor_units">;
   tripSources: Array<Pick<FinanceManagementData["tripSources"][number], "date" | "projectId">>;
@@ -28,16 +30,17 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
   const start = data.settings?.recognition_start_month ?? null;
   const digits = data.currency.minor_units;
   const summarize = (from: string, to: string) => {
-    const available = Boolean(start && start <= to);
-    const effectiveFrom = start && from < start ? start : from;
-    const historyIncomplete = !available || Boolean(start && from < start);
-    const summary = summarizeManagementEntries(data.amountRows, effectiveFrom, to, digits);
+    const available = true;
+    const effectiveFrom = from;
+    const historyIncomplete = false;
+    const calculated = summarizeProvisionalReport(data.amountRows, data.provisional ?? [], effectiveFrom, to, digits);
+    const summary = calculated.combined;
     const coverage = available ? managementCoverageIssues(data.coverage, effectiveFrom, to, null) : [];
     const laborIncomplete = laborSourceIssues(data.labor.sources, effectiveFrom, to).length > 0
       || data.labor.missingPeriods.some(p => p.periodStart <= to && p.periodEnd >= effectiveFrom);
     const tripIncomplete = data.tripSources.some(trip => trip.date >= effectiveFrom && trip.date <= to);
     const classes = (["revenue", "direct_cost", "labor", "overhead"] as const).map(key => {
-      const incomplete = historyIncomplete || summary.totals[key].missingFx > 0 || coverage.some(c => c.classification === key)
+      const incomplete = historyIncomplete || calculated.incomplete || summary.totals[key].missingFx > 0 || coverage.some(c => c.classification === key)
         || (key === "labor" && laborIncomplete) || (key === "direct_cost" && tripIncomplete);
       return { key, ...metric(summary.totals[key].known, incomplete, available) };
     });
@@ -57,7 +60,7 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
     const last = new Date(cursor.getTime() - 86400000).toISOString().slice(0, 10);
     months.push({ month, ...summarize(from > month ? from : month, to < last ? to : last), current: month.slice(0, 7) === data.today.slice(0, 7) });
   }
-  const summaryStart = start && from < start ? start : from;
+  const summaryStart = from;
   const unallocatedLabor = data.labor.pools.some(pool => {
     const relevant = data.amountRows.some(row => row.source_entry_id === pool.id && row.recognized_on >= summaryStart && row.recognized_on <= to)
       || data.entries.some(entry => entry.related_entry_id === pool.id && entry.recognized_on >= summaryStart && entry.recognized_on <= to);
@@ -69,7 +72,7 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
     // This ranking is a selected-period comparison, not a lifetime/final margin.
     // Reuse coverage/source rules on that period; older unknown history cannot
     // invalidate a reviewed later month. No labor allocation is inferred.
-    const incomplete = !summary.available || Boolean(start && from < start) || projectLaborIncomplete(data.labor, row.projectId, summaryStart, to)
+    const incomplete = !summary.available || projectLaborIncomplete(data.labor, row.projectId, summaryStart, to)
       || managementCoverageIssues(data.coverage, summaryStart, to, row.projectId).length > 0
       || row.period.missingFx > 0 || data.tripSources.some(trip => trip.projectId === row.projectId && trip.date >= summaryStart && trip.date <= to)
       || (data.labor.projectIssues === undefined && unallocatedLabor);
@@ -80,7 +83,7 @@ export function buildFinanceAnalytics(data: AnalyticsInput, from: string, to: st
     const diff = financeAmountUnits(b.result.amount ?? "0", digits) - financeAmountUnits(a.result.amount ?? "0", digits);
     return diff === BigInt(0) ? a.name.localeCompare(b.name) || a.id.localeCompare(b.id) : diff > BigInt(0) ? 1 : -1;
   });
-  return { from, to, start, effectiveFrom: start && from < start ? start : from, ...summary, months, unallocatedLabor,
+  return { from, to, start, effectiveFrom: from, ...summary, months, unallocatedLabor,
     completeProjects, incompleteProjects: projects.filter(row => row.result.incomplete).sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)) };
 }
 export type FinanceAnalytics = ReturnType<typeof buildFinanceAnalytics>;

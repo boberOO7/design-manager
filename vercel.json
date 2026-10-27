@@ -12,6 +12,10 @@
       "schedule": "45 3 * * *"
     },
     {
+      "path": "/api/finance/automatic-expenses",
+      "schedule": "50 3 * * *"
+    },
+    {
       "path": "/api/integrations/google-calendar/reconcile",
       "schedule": "0 3 * * *"
     },

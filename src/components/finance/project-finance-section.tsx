@@ -46,10 +46,9 @@ export async function ProjectFinanceSection({ projectId, query }: { projectId: s
     paid: total.collected_amount, closed: total.closed_amount,
   }] : []);
   const summary = displayUnit && summaryRows.length === contractual.length ? projectContractSummary(summaryRows, displayRates, displayUnit.minor_units) : null;
-  const start = foundation.settings?.recognition_start_month ?? today;
-  const from = period === "all" ? start : period === "month" ? `${today.slice(0, 7)}-01` : period === "year" ? `${today.slice(0, 4)}-01-01` : query.profitFrom;
+  const from = period === "all" ? undefined : period === "month" ? `${today.slice(0, 7)}-01` : period === "year" ? `${today.slice(0, 4)}-01-01` : query.profitFrom;
   const [management, cash] = await Promise.all([
-    tab === "result" ? getFinanceManagement({ report: "projects", project: projectId, from, to: period === "custom" ? query.profitTo : today }) : null,
+    tab === "result" ? getFinanceManagement({ scope: period === "all" ? "lifetime" : undefined, report: "projects", project: projectId, from, to: period === "custom" ? query.profitTo : today }) : null,
     tab === "payments" ? getFinanceProjectCash(projectId) : null,
   ]);
   const display = displayUnit ? { currency: displayUnit, rates: displayRates } : undefined;

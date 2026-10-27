@@ -559,8 +559,10 @@ or notifications containing private data.
   from the revision's effective month. Paydays clamp to month-end; a payment may
   fall in the period's start month or the next month.
 - Saving a rule maintains expected occurrences from the current planning boundary
-  through the twelve-month horizon. Finance planning, Forecast and administrator
-  Calendar reads reconcile the requested supported horizon before reading it.
+  through the twelve-month horizon. The existing automatic-expense worker extends
+  that coverage for every finalized studio, including those without recognition
+  enabled. Planning, Forecast, schedule and administrator Calendar reads never
+  reconcile or create occurrences.
   `finance_obligations` is permanent employee/service-period/source context, and
   `finance_obligation_items` links its components to ordinary expected items.
   Schedule/month and employee/payroll-month uniqueness prevent duplicates across
@@ -731,16 +733,16 @@ and generation workflow must retain these timing and historical boundaries.
   payments, forecast minimum and first canonical negative closing point. Risk absence
   is never confirmed while the forecast has unresolved inputs. Account breakdown,
   cash flow detail and chart data are disclosures. Budget comparison stays in Planning.
-- `get_finance_overview` first calls the canonical forecast/automatic coverage
-  boundary. It projects existing ledger views and that forecast into exact
+- `get_finance_overview` reads the canonical forecast without refreshing coverage.
+  It projects existing ledger views and that forecast into exact
   numeric summaries; it creates no financial sources or alternative timing rules.
   Summary breakdowns use the same RPC result and FX assumptions. Expected-item
   links filter by ID, so pagination cannot hide the selected obligation.
 - Overview and Planning prepare with `prepare_finance_overview_fx_context`, resolve
-  dated FX, then call `get_finance_overview_after_refresh`. Preparation owns the
-  single schedule refresh; `get_finance_overview_fx_context` and final reporting
-  are read-only. The final report uses one statement snapshot and the same shared
-  projection as the retained, self-refreshing `get_finance_overview` RPC.
+  dated FX, then call `get_finance_overview_after_refresh`. Despite their compatibility
+  names, both RPCs are read-only, as are `get_finance_overview_fx_context`,
+  `calculate_finance_forecast` and `get_finance_overview`. Explicit snapshot saves
+  retain their own schedule refresh; report reads never perform that mutation.
 - Cash history uses original same-currency openings and frozen foreign opening
   valuations plus all stored reporting cash effects, including transfer legs, at
   daily closing precision. Missing legacy opening valuations make history
@@ -908,11 +910,39 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
 
 ## Economic recognition and project profitability
 
-- `finance_settings.recognition_start_month` is explicitly activated by an admin
-  for the current/future month, independently of cash cutover and openings.
-  Activation never backfills services, payroll allocations or old trip expenses.
-  Older project lifetime results disclose incomplete economic history. Backfill
-  requires a separate source/period/amount/FX preview and explicit authorization.
+- Confirmed design orders can define `finance_project_earning_milestones`, separately
+  from payment schedules: named deliverable/optional configured stage, net amount
+  or explicitly saved contract share, and delivery/required client acceptance.
+  Admin-confirmed `finance_project_earning_events` preserve actual date, actor and
+  recorded timestamp. Only the configured condition posts revenue through the
+  canonical recognition core; task completion, internal review, advances and
+  payment dates never fulfill it. Definitions freeze on any fulfillment event.
+  Append-only attempts expose inactive/before-boundary accounting, stale terms,
+  manual-history overlap and unresolved FX. Explicit retry never replays a reversed
+  event. Mistaken unposted evidence can be closed with an immutable, reasoned void
+  event; the inactive definition and original event remain, while posted history
+  requires the existing correction/reversal path. Ledger earning ownership follows controlled corrections/reversals;
+  milestone-owned orders reject ordinary manual alternative recognition paths.
+  Contract reductions cannot undercut recognized net revenue. Existing manual
+  history requires controlled reconciliation, never automatic milestone matching.
+  Order details expose earned/unearned net values alongside existing contract/cash
+  information. Reports disclose unconfigured/partial plans and exceptions rather
+  than treating absent recognition as confirmed zero. Configured earning plans
+  must be complete for final profitability; absence of a plan does not invalidate
+  legacy manually reviewed history. No activation or historical backfill is
+  implicit.
+- Calculations, immutable recognition, and completeness are separate. Reports,
+  project results and overview read supported source calculations before posting
+  is enabled; absent evidence remains unknown. `enable_finance_recognition` accepts
+  no accounting date: first enablement records `recognition_enabled_at` and retains
+  the month field for compatibility. Existing active studios keep their original
+  boundary and history. New earning/trip/receipt events must be recorded after
+  enablement and have eligible economic dates; continuous service accrues only
+  from the enablement day. Enabling never drains older events. Day-granular payroll
+  spanning a new mid-month boundary remains calculated; automatic ledger posting
+  begins with an eligible full payroll period. Corrections/reversals remain guarded.
+  Migrations never enable a studio or rewrite financial records.
+
 - `finance_recognition_entries` is an append-only economic book. Guarded RPCs
   confirm completed project services, supervision/contractor income and incurred
   direct/studio expenses from typed tenant-safe source references and snapshots.
@@ -941,6 +971,25 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   confirmed zero. Reports use one stable `get_finance_management_reporting` read
   boundary, shared exact-decimal models, filters/currency/version for UI and CSV.
   Changed sources reject stale CSV with 409 rather than exporting a different report.
+- Management P&L separates recognized book amounts from preliminary incurred costs:
+  eligible daily labor allocations plus dated studio remainder, outstanding configured
+  service-accrual deltas. Pending trip history retains its explicit confirmation
+  flow and exceptions; new trip costs use existing recognition. No payment expectations,
+  budgets or future labor capacity enter this preliminary result. Missing source/FX
+  values remain explicit; provisional amounts never post ledger or allocation rows.
+- Monthly source checks derive managed coverage from earning plans/events, payroll
+  source and work-tracking calculations, recurring occurrence/policy recognition,
+  receipt-backed expenses, trips and historical FX. Empty categories remain manual
+  completeness, never inferred zero. Project final-margin checks remain separate;
+  studio-month approval does not require project completion.
+- `finance_month_confirmations` stores immutable, revisioned source/result snapshots.
+  `confirm_finance_month` uses the Finance settings lock, source digest, revision and
+  request identity; it requires a closed post-activation month, no source exceptions,
+  and one explicit external/manual completeness approval. It also appends studio
+  coverage for existing processing-history protections. Matching approved evidence
+  derives confirmed status automatically; late evidence/valuation/allocation changes
+  require a new approval and retain every previous snapshot. There is no source that
+  independently proves external completeness, so initial month approval stays explicit.
 - Newly saved payroll terms default omitted deductions and employer costs to known
   zero. Net deductions may be intentionally unknown; Gross requires known
   deductions to derive payout. Employer cost can be explicitly unknown in either
@@ -952,9 +1001,17 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   Unknown/estimated components are disclosed; later confirmed components add only
   their remaining delta. Consumed terms stay protected even if an earned flag is
   cleared. Reconciliation cancels/replaces economic facts and allocations atomically.
-- Automatic labor activation defaults to today and accepts any date on or after
-  the management-accounting boundary. Historical changes require a current impact
-  preview that includes recognized/manual history. Completed daily Work Tracking
+- Automatic labor setup defaults to today and uses one settings flow (see the
+  [input and control audit](finance-labor-setup.md)). A current
+  read-only cost preview binds the save to payroll, Worklog, leave, capacity and
+  allocation evidence; it never posts costs or creates revisions. Existing dated
+  capacity is reused without adding a revision. Where historical coverage is
+  missing, the administrator supplies the schedule's effective date, reviews its
+  cost impact and saves; no additional acknowledgement checkbox is required.
+  Current studio duration and the shared Monday–Friday convention prefill a
+  missing schedule, but do not establish its historical effective date. Employee
+  and dated schedule exceptions remain explicit. Historical capacity dates are
+  independent of the forward-only posting boundary. Completed daily Work Tracking
   reports accrue provisional project cost against the full month's known payroll
   cost and scheduled capacity; leave, unused capacity and internal work stay at
   studio level. Taskless internal minutes normalize daily shares too. Missing
@@ -963,8 +1020,103 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   studio day-off and approved-leave changes schedule refresh; the daily worker
   retries and finalizes closed periods through guarded recognition/allocation.
   Provisional values never create recognized entries or allocation revisions;
-  finalization replaces provisional presentation. Manual ownership, reviewed
+  finalization replaces provisional presentation. Report/export loaders and Worklog
+  or review-timer reads never schedule Finance workers. Only authenticated business
+  mutations and cron-secret-protected worker routes trigger processing. Operational
+  timer synchronization can still update Worklog evidence. Manual ownership, reviewed
   history, dated FX and append-only corrections retain their existing guards.
+- Labor setup in Reports reads Finance salary conditions and asks only about
+  unresolved recurring payroll obligations before automation runs. Explicit
+  cash-versus-separate choices protect against duplicate expense recognition;
+  category membership alone cannot prove that a payment is already included in
+  salary cost. Saved decisions are reused while their source evidence matches.
+  Source review and activation-date edits do not create duplicate capacity rows.
+  Approved leave, studio days off and employment dates remain shared
+  calculation inputs; the legacy workday setter remains current/future-only.
+  When an imported membership has no Finance transition events at all, its
+  explicit HR join/removal dates supply the original baseline semantics without
+  writing snapshots. Existing transition history always wins; unknown join dates
+  and gaps in an existing history remain unavailable. Payroll category identities
+  and schedules previously classified as payroll cash determine dependencies;
+  unrelated recurring revisions and category display names preserve review.
+  Source classifications and their term evidence are retained in the existing
+  configuration-request audit. Worklog internal activities automatically remain
+  studio costs. A legacy internal-project exclusion is optional at activation;
+  existing designations are preserved, and project names never infer one.
+  Relevant recurring sources use the same review gate for calculations and new
+  recognition, even before labor automation exists; unrelated services remain
+  independent. Already-recognized separate expenses cannot silently become
+  payroll cash plans, and the setup exposes that history constraint.
+  Payroll-covered payment terms stay in cash planning and cannot create a second
+  recognized expense. Changed payroll evidence requires renewed review; already
+  recognized expenses require an explicit correction before reclassification.
+  Provisional studio cost includes elapsed employed-day capacity even without a
+  Worklog; today's capacity still requires submission or approved absence. Only
+  submitted project time is attributed; the rest stays at studio level. Future
+  and pre-activation capacity remain excluded. Eligible closed pending payroll
+  shows only its unrecognized known-cost delta, separately from recognized costs;
+  reading this projection never posts entries or changes worker status.
+  Missing labor FX supports explicit dated valuation through recalculation.
+- `get_finance_historical_labor_reporting` retains the closed-period read contract;
+  `get_finance_calculated_labor_reporting` reuses its common salary/Worklog/capacity
+  engine for closed and elapsed current periods, without requiring automation.
+  Synthetic missing occurrences never create payables, ledger entries or jobs.
+  Period-correct salary, employment, leave, FX and minor-unit rules remain shared.
+  Missing/ambiguous salary and capacity, incomplete payroll components and project
+  time remain explicit. Known unattributed salary stays at studio level. Only the
+  unrecognized native delta is calculated; existing pools retain their original FX.
+- `get_finance_source_calculations` reads confirmed contractual earning events,
+  service-policy coverage, actual receipts and net trip actuals. It never treats
+  contracts, payment timing, tasks or plans as evidence of earned revenue/receipt.
+  Recognition/correction history owns each source; calculated rows exclude it or
+  subtract its service-period delta. Confirmed source FX is retained; missing dated
+  FX stays unavailable. Reports, CSV and Project Economics use this shared pending
+  source set instead of adding worker previews a second time. Calculated pending
+  sources cannot certify a final project margin.
+- Month completeness is inspectable and explicitly reviewable independently of
+  posting. Digests include source calculations and salary evidence. Only exact,
+  conflict-free evidence can satisfy an unprocessed-source check; unknown inputs,
+  missing FX and external completeness still require resolution/approval. No read
+  or calculation creates a confirmation or an assertion of zero cost.
+
+- Fixed, agreed recurring operating services default to service-period recognition
+  in the payment editor, using existing Phase 3 immutable service policies and workers.
+  Monthly coverage follows the obligation period; payment month offset/day affect
+  only cash timing. Amount, currency, category and future versions come from the
+  schedule. A partial initial month limits eligible service days without shifting
+  later calendar months. Stable annual/quarterly coverage starts at the original
+  schedule service period and rolls by its recurrence; payout day/offset never
+  establish coverage. Explicit contractual starts override that default. Revisions
+  default to the next service cycle. Cadence changes and off-cycle revisions need
+  coverage clarification; unaligned periods cannot accrue automatically.
+  Configuration is independent of ledger activation. New policies store business
+  `coverage_from` separately from posting eligibility; legacy policies retain their
+  original cutoff when coverage was not explicitly established. Calculations can
+  cover confirmed historical service; posting remains forward-only. Existing
+  custom/manual policies and their service anchors are preserved; ordinary
+  revisions reuse them. Protected history and overlapping previous service
+  coverage remain explicit conflicts. Calendar-month accrual retains cumulative
+  service-day truncation; legacy completion policies wait for service end.
+  Explicit event/manual obligations retain delivery-based recognition. Other
+  payment/invoice status alone is not service evidence. Schedule category edits
+  append future revisions; correcting the original protected classification is
+  not supported by the schedule editor.
+
+- Expected/project expenses and eligible standalone outgoing records confirm
+  actual receipt in their original workspace. Immutable receipt evidence owns
+  a canonical net/VAT/gross source at the actual economic date before or after
+  enablement. Source confirmation retains validated FX; only eligible new receipts
+  post recognition. The shared
+  recognition core retains source caps, tenant/category/project guards and FX;
+  payroll-covered obligations and trip-owned sources remain excluded. Recurring
+  policies and receipts block alternative recognition paths. Corrections retain
+  ownership and stop automatic restoration; reviewed periods need explicit admin
+  approval. `/api/finance/automatic-expenses` durably drains service accruals,
+  missing dated valuations, recoverable pending earning events and missed actual
+  trip expenses. Processing rechecks eligibility under the Finance lock, keeps
+  original economic dates and never replays reversed recognition. Permanent
+  earning conflicts retain their admin diagnostics and explicit correction paths.
+  Post-response refresh accelerates source changes.
 - `finance_labor_allocation_revisions/items` hold manual or automatic attribution
   of confirmed labor in studio reporting currency, with source, revision, author
   and reason. Exact database caps serialize under the Finance lock. Latest amounts
@@ -975,7 +1127,8 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
 - Existing admin-posted trip `expense` is the sole economic source. Studio cash
   payment, personal expense reimbursement, advance, balance return and settlement
   do not create second costs. New actuals after activation capture automatically;
-  eligible existing expenses need explicit confirmation. Refunds/corrections use
+  eligible existing expenses reconcile automatically within recognition bounds;
+  reviewed expense periods retain explicit admin confirmation. Refunds/corrections use
   source-owned signed effects and original cost FX; Calendar still owns trip
   dates/participants. Trip balance expectations cannot become generic P&L sources.
 - `finance_project_cash_revisions/items` explicitly attribute incoming operating

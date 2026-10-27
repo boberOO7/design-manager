@@ -204,3 +204,18 @@ describe("project amounts", () => {
       .toMatchObject({ agreed: { complete: false }, finalMargin: null });
   });
 });
+
+
+describe("Earning coverage and historical profitability", () => {
+  it("warns about unconfigured earnings without invalidating manually reviewed history, and blocks incomplete configured plans", () => {
+    const base = profitabilityInput();
+    const original = buildProjectProfitability(base)[0].finalMargin;
+    expect(original).not.toBeNull();
+    const order = { orderId: entry3, projectId: id, currency: "USD", contract: "200.00", configured: false, complete: false, stale: false, earned: "0", unearned: "200", hasRecognition: false };
+    const legacy = buildProjectProfitability({ ...base, earnings: { recognitionStart: base.start, milestones: [], orders: [order] } })[0];
+    expect(legacy.earningIncomplete).toBe(true);
+    expect(legacy.finalMargin).toBe(original);
+    const configured = buildProjectProfitability({ ...base, earnings: { recognitionStart: base.start, milestones: [], orders: [{ ...order, configured: true }] } })[0];
+    expect(configured.finalMargin).toBeNull();
+  });
+});

@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), rpc: vi.fn(), labor: vi.fn() }));
+vi.mock("@/lib/finance-automatic-expenses", () => ({ scheduleAutomaticExpenses: vi.fn() }));
 vi.mock("@/lib/finance-automatic-labor", () => ({ scheduleAutomaticLabor: mocks.labor }));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
@@ -26,13 +27,13 @@ it("keeps bonus notes optional while preserving explicit dates and entered notes
     expect(mocks.rpc).toHaveBeenLastCalledWith("create_finance_employee_bonus", expect.objectContaining({ p_studio_id: "verified", p_input: expect.objectContaining({ description: description || "schedules.addBonus", periodStart: input.periodStart, periodEnd: input.periodEnd, dueDate: input.dueDate }) }));
   }
 });
-it("defaults a new recurring agreement note but still requires a revision reason", async () => {
+it("defaults optional recurring notes consistently for creation and future revisions", async () => {
   const input = { intent: "schedule", kind: "recurring", revision: "0", name: "Rent", amount: "1000", currency: "UAH", categoryId: id, intervalMonths: "1", payoutDay: "5", effectiveFrom: "2026-09-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown", reason: "" };
   expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
   expect(mocks.rpc).toHaveBeenLastCalledWith("save_finance_recurring_schedule", expect.objectContaining({ p_input: expect.objectContaining({ reason: "schedules.defaultRecurringNote", employerCost: "" }) }));
   mocks.rpc.mockClear();
-  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, id, revision: "1" }))).status).toBe("error");
-  expect(mocks.rpc).not.toHaveBeenCalled();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, id, revision: "1" }))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledWith("save_finance_recurring_schedule", expect.objectContaining({ p_input: expect.objectContaining({ id, revision: 1, reason: "schedules.defaultRecurringNote" }) }));
 });
 it("checks verified administration before applying defaults or creating a client", async () => {
   mocks.admin.mockResolvedValue(null);
@@ -100,4 +101,31 @@ it("passes known zero optional components to payroll saves in both salary modes"
     expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
     expect(mocks.rpc).toHaveBeenLastCalledWith("save_finance_schedule", expect.objectContaining({ p_input: expect.objectContaining({ employeeDeductions: "0", employerCost: "0", employerCostStatus: "fixed" }) }));
   }
+});
+
+it("saves secondary arrangements atomically with their schedule, without a client confirmation flag", async () => {
+  const input = { intent: "arrangement", kind: "recurring", revision: "0", name: "Rent", amount: "1000", currency: "UAH", categoryId: id, intervalMonths: "1", payoutDay: "5", paymentMonthOffset: "1", effectiveFrom: "2026-11-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown", servicePolicy: "service_days", serviceStart: "2026-11-15" };
+  expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_finance_recurring_schedule", expect.objectContaining({ p_input: expect.objectContaining({ paymentMonthOffset: 1, expenseService: { confirmed: true, serviceStart: "2026-11-15", policy: "service_days", projectId: "" } }) }));
+  mocks.rpc.mockClear();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, serviceStart: "", servicePolicy: "manual" }))).status).toBe("success");
+  expect(mocks.rpc.mock.calls[0][1].p_input.expenseService).toEqual({ confirmed: true, serviceStart: "", policy: "manual", projectId: "" });
+  mocks.rpc.mockClear();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, servicePolicy: "" }))).status).toBe("error");
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it("ordinary schedule forms neither request nor silently accept legacy service configuration", async () => {
+  const input = { intent: "schedule", kind: "recurring", revision: "0", name: "Subscription", amount: "1000", currency: "UAH", categoryId: id, intervalMonths: "12", payoutDay: "1", effectiveFrom: "2026-09-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown" };
+  expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
+  expect(mocks.rpc.mock.calls[0][1].p_input).not.toHaveProperty("expenseService");
+  mocks.rpc.mockClear();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, expensePolicy: "manual" }))).status).toBe("error");
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+
+it("explains protected arrangement coverage without suggesting a posting approval", async () => {
+  mocks.rpc.mockResolvedValueOnce({ error: { message: "finance_expense_history_protected" } });
+  const input = { intent: "arrangement", kind: "recurring", id, revision: "1", name: "Subscription", amount: "1000", currency: "UAH", categoryId: id, intervalMonths: "12", payoutDay: "1", effectiveFrom: "2027-09-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown", servicePolicy: "service_days", serviceStart: "2026-09-01" };
+  expect(await saveFinanceSchedule({ status: "idle" }, form(input))).toEqual({ status: "error", message: "arrangementHistoryProtected" });
+  expect(mocks.rpc).toHaveBeenCalledTimes(1);
 });

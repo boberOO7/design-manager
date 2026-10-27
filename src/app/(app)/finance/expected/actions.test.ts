@@ -1,5 +1,6 @@
 import { beforeEach,describe,expect,it,vi } from "vitest";
 const mocks=vi.hoisted(()=>({ admin:vi.fn(),client:vi.fn(),rpc:vi.fn(),revalidate:vi.fn() }));
+vi.mock("@/lib/finance-automatic-expenses", () => ({ scheduleAutomaticExpenses: vi.fn() }));
 vi.mock("@/data/queries/active-studio-admin",()=>({ getActiveStudioAdmin:mocks.admin }));
 vi.mock("@/lib/supabase/server",()=>({ createClient:mocks.client }));
 vi.mock("next/cache",()=>({ revalidatePath:mocks.revalidate }));
