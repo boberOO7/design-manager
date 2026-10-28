@@ -49,13 +49,30 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     const account = data.accounts.find((item) => item.id === input.accountId);
     const destination = data.accounts.find((item) => item.id === input.destinationId);
     if (!account) return { status: "error", message: t("errors.invalid") };
-    let fx; let destinationFx; let settlementFx;
+    let fx; let destinationFx; let settlementFx; let payrollFx; let payrollCreditCurrency;
     if (input.expectedItemId && input.autoAllocate) {
       const expected = await client.from("finance_expected_balances").select("currency,remaining_amount").eq("studio_id", admin.studio_id).eq("id", input.expectedItemId).maybeSingle();
       if (expected.error || !expected.data?.currency || !expected.data.remaining_amount || expected.data.remaining_amount <= 0) return { status: "error", message: t("errors.invalid") };
       if (account.currency !== expected.data.currency) {
         try { settlementFx = await resolveFinanceFx(account.currency, expected.data.currency, input.date, input.settlementFxMode, input.settlementManualRate); }
         catch { return { status: "error", message: t("errors.fx") }; }
+      }
+    }
+    if (correcting && "movementId" in input && typeof input.movementId === "string") {
+      const owned = await client.from("finance_payroll_cash").select("credit_currency,credit_rate,credit_source").eq("studio_id", admin.studio_id).eq("movement_id", input.movementId).maybeSingle();
+      if (owned.error) return { status: "error", message: t("errors.save") };
+      if (owned.data) {
+        if (account.currency !== "UAH") return { status: "error", message: t("errors.payrollUahRequired") };
+        payrollCreditCurrency = owned.data.credit_currency;
+        const original = await client.from("finance_movements").select("financial_date").eq("studio_id", admin.studio_id).eq("id", input.movementId).maybeSingle();
+        if (original.error || !original.data) return { status: "error", message: t("errors.save") };
+        try {
+          payrollFx = input.settlementFxMode === "manual" && input.settlementManualRate
+            ? await resolveFinanceFx(payrollCreditCurrency, "UAH", input.date, "manual", input.settlementManualRate)
+            : input.date === original.data.financial_date
+              ? { rate: String(owned.data.credit_rate), source: owned.data.credit_source, effectiveDate: input.date }
+              : await resolveFinanceFx(payrollCreditCurrency, "UAH", input.date, "nbu", "");
+        } catch { return { status: "error", message: t("errors.fx") }; }
       }
     }
     // Cash is authoritative in account currency; a missing reporting quote must
@@ -70,6 +87,7 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
     const payload = {
       kind: input.kind, nature: input.nature, date: input.date, accountId: input.accountId, amount: input.amount,
       category: input.category, categoryId:input.categoryId, description: input.description, allocationIntent:input.allocationIntent, fee: input.fee, fx, settlementFx, submission: input,
+      ...(payrollCreditCurrency ? { payrollFx, payrollCreditCurrency } : {}),
       ...(input.projectReceiptSplits !== undefined ? { projectReceiptSplits: input.projectReceiptSplits } : {}),
       ...(input.projectRefundSplits !== undefined ? { projectRefundSplits: input.projectRefundSplits } : {}),
       ...(input.kind === "transfer" ? { destinationId: input.destinationId, receivedAmount: input.receivedAmount, destinationFx } : {}),
@@ -82,7 +100,8 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       : await client.rpc("record_finance_movement", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input:payload }));
   }
   if (error) {
-    const message = error.message === "finance_request_conflict" ? "errors.conflict"
+    const message = error.message === "finance_payroll_uah_required" ? "errors.payrollUahRequired" : error.message === "finance_payroll_confirmation_required" ? "errors.payrollConfirmationRequired"
+      : error.message === "finance_request_conflict" ? "errors.conflict"
       : error.message === "finance_already_reversed" ? "errors.reversed"
       : error.message === "finance_reverse_refunds_first" ? form.get("intent") === "correct" ? "errors.correctionRefunds" : "errors.refundsFirst"
       : error.message === "finance_refund_exceeds_original" ? "errors.refundAmount"

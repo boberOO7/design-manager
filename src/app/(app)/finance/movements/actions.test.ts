@@ -116,6 +116,20 @@ describe("movement action boundary",()=>{
     expect(mocks.fx).toHaveBeenCalledWith("USD","UAH","2026-08-31","nbu","");
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("correct_finance_movement",expect.objectContaining({p_studio_id:"verified",p_movement_id:id,p_input:expect.objectContaining({amount:"75",date:"2026-08-31"})}));
   });
+  it("preserves employee-owned USD credit and uses an explicit corrected payment-date rate", async () => {
+    const query = (result: { data: unknown; error: null }) => ({ select: () => query(result), eq: () => query(result), maybeSingle: async () => result });
+    mocks.client.mockResolvedValue({
+      from: (table: string) => table === "finance_payroll_cash"
+        ? query({ data: { credit_currency: "USD", credit_rate: 40, credit_source: "manual" }, error: null })
+        : { select: (columns: string) => query({ data: columns === "request_payload" ? null : { financial_date: "2026-09-01" }, error: null }) },
+      rpc: mocks.rpc,
+    });
+    mocks.foundation.mockResolvedValue({ settings: { finalized_at: "2026-09-01", base_currency: "UAH" }, accounts: [{ id, currency: "UAH", archived_at: null }], currencies: [{ code: "UAH", minor_units: 2 }] });
+    mocks.fx.mockImplementation(async (from: string, _to: string, day: string, mode: string, rate: string) => ({ rate: from === "UAH" ? "1" : rate, source: from === "UAH" ? "identity" : mode, effectiveDate: day }));
+    expect((await saveFinanceMovement({ status: "idle" }, form({ intent: "correct", kind: "outgoing", movementId: id, amount: "8000", settlementFxMode: "manual", settlementManualRate: "45" }))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("correct_finance_movement", expect.objectContaining({ p_input: expect.objectContaining({ payrollCreditCurrency: "USD", payrollFx: { rate: "45", source: "manual", effectiveDate: input.date } }) }));
+    expect(mocks.fx).toHaveBeenCalledWith("USD", "UAH", input.date, "manual", "45");
+  });
   it("recovers a correction retry before FX lookup or current account validation",async()=>{
     const patch={intent:"correct",movementId:id};
     mocks.prior.mockResolvedValue({data:{request_payload:{submission:correctionInputSchema.parse({...input,...patch})}},error:null});

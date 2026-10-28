@@ -3176,7 +3176,8 @@
           "forbidden": "Only a studio administrator can preview this change.",
           "invalid": "Check the capacity values and try again.",
           "failed": "The affected periods could not be previewed. Reload the report and try again."
-        }
+        },
+        "pieceworkCalculation": "Salary is determined in the monthly calculation from credited m²."
       }
     },
     "management": {
@@ -4063,7 +4064,8 @@
         "unknown_deductions": "Taxes and withholdings are unknown",
         "ungenerated_period": "A schedule occurrence is missing; retry the forecast or use the recovery action",
         "unscheduled_project": "Contract amount has no payment schedule",
-        "ungenerated_supervision": "Generate this supervision month in Project Finance"
+        "ungenerated_supervision": "Generate this supervision month in Project Finance",
+        "piecework_unforecast": "Piecework pay is not yet determined; future output is excluded from the forecast."
       },
       "fxTitle": "Forecast FX assumptions",
       "fxHelp": "Future FX is unknown. NBU rates effective today are held constant across the horizon for UAH reporting. Manual assumptions override NBU; leave blank to retry NBU. Other reporting currencies require manual rates. Actuals retain their historical valuations. Save a snapshot to preserve these assumptions.",
@@ -4608,7 +4610,9 @@
         "tripCorrection": "This change is incompatible with the linked trip. Correct the expense in the trip workspace; no change was recorded.",
         "opening": "An opening can only move to an account without opening stock or earlier ledger activity.",
         "history": "Unable to load history. Close this window and try again.",
-        "refundAmount": "The refund exceeds the amount still refundable on the original movement."
+        "refundAmount": "The refund exceeds the amount still refundable on the original movement.",
+        "payrollConfirmationRequired": "Confirm monthly payroll before recording a payment.",
+        "payrollUahRequired": "This salary and its advances must be paid from a UAH account."
       }
     },
     "title": "Finance",
@@ -4826,7 +4830,9 @@
         "amount": "Check currency precision and withholdings: take-home compensation is the employee amount; before-taxes compensation is reduced by withholdings.",
         "save": "The schedule could not be saved. Check its status, categories and dates, then retry.",
         "group": "Choose an available group and a name of up to 80 characters.",
-        "groupName": "A group with this name already exists."
+        "groupName": "A group with this name already exists.",
+        "payrollPreviewStale": "Work data changed. Reopen payroll and review the calculation.",
+        "payrollConfirmationRequired": "Confirm monthly payroll before recording a payment."
       },
       "payrollSection": "Compensation",
       "recurringSection": "Recurring payments",
@@ -5065,6 +5071,67 @@
         "manual_attribution": "Existing manual attribution retained",
         "payroll_correction": "Known salary is below recognized labor"
       }
+    },
+    "payrollEarning": {
+      "title": "Salary calculation",
+      "close": "Close",
+      "month": "Salary month",
+      "open": "Review calculation",
+      "payMethod": "Pay calculation",
+      "fixed": "Fixed amount",
+      "perM2": "Per credited m²",
+      "rate": "Rate per m²",
+      "area": "Credited area",
+      "calculated": "Calculated pay",
+      "finalAmount": "Final agreed pay",
+      "adjustment": "Manual adjustment",
+      "reason": "Reason for confirmation or correction",
+      "confirm": "Confirm payroll",
+      "saveCorrection": "Save correction",
+      "confirmed": "Confirmed calculation",
+      "preliminary": "Preliminary calculation based on completed work",
+      "paid": "Paid to employee",
+      "remaining": "Remaining to pay",
+      "overpaid": "Overpayment",
+      "snapshotHelp": "Confirmation saves this calculation. Later work changes require an explicit correction. Recorded payments stay in history.",
+      "sourceChanged": "Work data has changed: currently {area} m², calculated pay {amount}. The confirmed amount is preserved.",
+      "refreshSource": "Use the updated work calculation",
+      "sources": "Completed work",
+      "deletedProject": "Deleted project",
+      "projectWork": "Project contribution",
+      "history": "Accrual history",
+      "revision": "Revision {revision}",
+      "loading": "Loading payroll…",
+      "loadError": "Unable to load payroll. Close and reopen to retry.",
+      "futureUnknown": "Future piecework pay is not yet determined. Only completed work contributes to the amount.",
+      "unit": "m²",
+      "backToCalculation": "Back to salary calculation",
+      "pay": "Pay salary"
+    },
+    "payrollCash": {
+      "advance": "Pay an advance",
+      "recordAdvance": "Record advance payment",
+      "available": "Unused advance: {amount} {currency}",
+      "advanceHelp": "Pay an advance even with 0 m² completed. The salary-currency credit is fixed at the advance payment-date rate and deducted from the next salary.",
+      "paymentHelp": "Apply the advances in the salary currency first. Convert the remaining salary to UAH at the rate on the selected payment date.",
+      "rateSource": "Rate source",
+      "rate": "Rate · UAH per USD",
+      "salaryUah": "Remaining salary in UAH",
+      "advanceUsed": "Apply previous payments",
+      "cashDue": "Transfer now",
+      "cashAmount": "Actual payment · UAH",
+      "pay": "Record payment",
+      "applyAdvance": "Apply advance",
+      "loading": "Calculating payment…",
+      "loadError": "Could not load payments. Please reopen the form and try again.",
+      "quoteError": "Rate unavailable. Enter a manual rate or try again.",
+      "chooseAccount": "Choose account",
+      "noUahAccount": "An active UAH account is required to pay.",
+      "excessHelp": "Enter a smaller amount for a partial payment, or 0 to apply only previous payments. Issue any additional advance separately using “Pay an advance”.",
+      "uahRequired": "This salary and its advances must be paid from a UAH account.",
+      "creditAmount": "Credit towards the next salary: ≈ {amount} {currency}",
+      "correctionHelp": "The original advance rate is preserved for the same date. A new date uses its NBU rate; enter a manual rate to override it.",
+      "advanceNote": "Advance purpose"
     }
   },
   "EmployeeProfile": {

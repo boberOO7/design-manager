@@ -38,7 +38,7 @@ const forecastBaseSchema = z.object({
   })),
   issues: z.array(z.object({
     source: z.enum(["expected", "account", "payroll", "schedule", "project"]), id: z.string(), label: z.string(),
-    reason: z.enum(["undated", "stale_incoming", "missing_fx", "unknown_employer_cost", "unknown_deductions", "ungenerated_period", "unscheduled_project", "ungenerated_supervision"]),
+    reason: z.enum(["undated", "stale_incoming", "missing_fx", "unknown_employer_cost", "unknown_deductions", "ungenerated_period", "unscheduled_project", "ungenerated_supervision", "piecework_unforecast"]),
     currency: z.string(), amount: money.nullable(), date: z.iso.date().nullable(),
   })),
 });

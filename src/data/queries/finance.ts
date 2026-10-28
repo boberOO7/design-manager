@@ -9,6 +9,7 @@ import { getKyivDateOnly } from "@/lib/validation/project";
 import { FINANCE_OVERDUE_DB_FILTER } from "@/lib/finance-planning";
 import { nextProjectPayment } from "@/lib/finance-project-view";
 import { getFinanceMovementContexts } from "./finance-movement-context";
+import type { Database } from "@/types/database.types";
 
 export type FinancePlanningPeriod = "month" | "30days" | "3months" | "6months" | "all";
 
@@ -274,7 +275,8 @@ export async function getFinanceSchedules() {
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const [schedules, terms, members, groups, payrollEditability, payrollHistory, expenseReporting] = await Promise.all([
+  const today = getKyivDateOnly();
+  const [schedules, terms, members, groups, payrollEditability, payrollHistory, expenseReporting, payrollPeriods] = await Promise.all([
     client.from("finance_schedules").select("*").eq("studio_id", admin.studio_id).order("created_at", { ascending: false }),
     client.from("finance_schedule_history").select("*, obligations:finance_obligations!finance_obligations_studio_id_terms_id_schedule_id_fkey(items:finance_obligation_items!finance_obligation_items_studio_id_obligation_id_fkey(expected:finance_expected_balances!finance_obligation_items_studio_id_expected_item_id_fkey(id,expected_payment_date,due_date,remaining_amount,commitment)))").eq("studio_id", admin.studio_id).eq("obligations.kind", "recurring").order("revision", { ascending: false }),
     client.from("studio_members").select("user_id,is_active,joined_at,profile:profiles!studio_members_user_id_fkey(full_name,is_active)").eq("studio_id", admin.studio_id).order("joined_at"),
@@ -282,11 +284,21 @@ export async function getFinanceSchedules() {
     client.rpc("get_finance_payroll_editability", { p_studio_id: admin.studio_id }),
     client.rpc("get_finance_payroll_historical_terms", { p_studio_id: admin.studio_id }),
     client.rpc("get_finance_expense_automation_reporting", { p_studio_id: admin.studio_id }),
+    (async () => {
+      const periods: Pick<Database["public"]["Tables"]["finance_obligations"]["Row"], "id" | "schedule_id" | "period_start">[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await client.from("finance_obligations").select("id,schedule_id,period_start")
+          .eq("studio_id", admin.studio_id).eq("kind", "payroll").lte("period_start", today)
+          .order("period_start", { ascending: false }).order("id").range(offset, offset + 999);
+        if (error) throw new Error("Unable to load payroll periods.", { cause: error });
+        periods.push(...data);
+        if (data.length < 1000) return periods;
+      }
+    })(),
   ]);
   const error = schedules.error ?? terms.error ?? members.error ?? groups.error ?? payrollEditability.error ?? payrollHistory.error ?? expenseReporting.error;
   if (error) throw new Error("Unable to load Finance schedules.", { cause: error });
-  const today = getKyivDateOnly();
-  return { expenseAutomation: expenseAutomationSchema.parse(expenseReporting.data), groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], historicalTermIds: (payrollHistory.data ?? []).map((term) => term.term_id), schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
+  return { payrollPeriods, expenseAutomation: expenseAutomationSchema.parse(expenseReporting.data), groups: groups.data ?? [], payrollEditability: payrollEditability.data ?? [], historicalTermIds: (payrollHistory.data ?? []).map((term) => term.term_id), schedules: (schedules.data ?? []).filter((schedule) => schedule.kind !== "payroll" || !schedule.stopped_from || (terms.data ?? []).some((term) => term.schedule_id === schedule.id && term.effective_from && term.effective_from < (schedule.stopped_from ?? ""))).map((schedule) => ({ ...schedule,
     nextPayment: (terms.data ?? []).filter((term) => term.schedule_id === schedule.id).flatMap((term) => term.obligations).flatMap((obligation) => obligation.items.flatMap(({ expected }) => {
       const date = expected?.expected_payment_date ?? expected?.due_date;
       return expected?.id && date && date >= today && expected.commitment !== "cancelled" && Number(expected.remaining_amount) > 0

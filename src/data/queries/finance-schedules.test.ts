@@ -21,9 +21,36 @@ it("uses maintained open payment dates, excluding cancelled, paid and past items
   const data = await getFinanceSchedules();
   expect(data?.schedules.map((rule) => rule.nextPayment)).toEqual([{ id: "next", date: "2026-10-02" }, null]);
   expect(data?.schedules.map((rule) => rule.id)).toEqual(["rule", "empty"]);
+  expect(data?.payrollPeriods).toEqual([]);
+  const payrollQuery = queries.filter(url => url.pathname.endsWith("/finance_obligations"));
+  expect(payrollQuery).toHaveLength(1);
+  expect(payrollQuery[0].searchParams.get("kind")).toBe("eq.payroll");
+  expect(payrollQuery[0].searchParams.get("period_start")).toBe("lte.2026-09-20");
   expect(queries.some(url => url.pathname.includes("ensure_finance_schedule_occurrences"))).toBe(false);
   for (const url of queries) {
     if (url.pathname.endsWith("/get_finance_payroll_editability") || url.pathname.endsWith("/get_finance_payroll_historical_terms") || url.pathname.endsWith("/get_finance_expense_automation_reporting")) expect(url.searchParams.get("studio_id")).toBeNull();
     else expect(url.searchParams.get("studio_id")).toBe("eq.verified");
+  }
+});
+
+it("loads payroll months for the whole studio without truncating older periods", async () => {
+  const queries: URL[] = [];
+  const rows = Array.from({ length: 1001 }, (_, index) => ({ id: `period-${index}`, schedule_id: index % 2 ? "salary-a" : "salary-b", period_start: "2026-09-01" }));
+  mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test-key", { auth: { persistSession: false }, global: { fetch: async (input) => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+    queries.push(url);
+    const data = url.pathname.endsWith("/get_finance_expense_automation_reporting")
+      ? { projects: [], policies: [], periods: [], candidates: [], missingFx: [] }
+      : url.pathname.endsWith("/finance_obligations") ? rows.slice(Number(url.searchParams.get("offset") ?? 0), Number(url.searchParams.get("offset") ?? 0) + 1000) : [];
+    return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+  } } }));
+  expect((await getFinanceSchedules())?.payrollPeriods).toEqual(rows);
+  const pages = queries.filter(url => url.pathname.endsWith("/finance_obligations"));
+  expect(pages).toHaveLength(2);
+  expect(pages.map(url => url.searchParams.get("offset"))).toEqual(["0", "1000"]);
+  for (const page of pages) {
+    expect(page.searchParams.get("studio_id")).toBe("eq.verified");
+    expect(page.searchParams.get("schedule_id")).toBeNull();
+    expect(page.searchParams.get("order")).toBe("period_start.desc,id.asc");
   }
 });

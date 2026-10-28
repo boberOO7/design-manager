@@ -5,6 +5,15 @@ const id = "66000000-0000-4000-8000-000000000001";
 const payroll = { requestId:id,revision:0,kind:"payroll",employeeId:id,name:"Salary",amount:"1000",currency:"UAH",categoryId:id,intervalMonths:1,payoutDay:31,paymentMonthOffset:1,effectiveFrom:"2026-01-01",commitment:"agreed",certainty:"fixed",basis:"net",employeePayout:"1000",employerCostStatus:"unknown",reason:"Agreement" };
 
 describe("Finance schedule input", () => {
+  it("accepts a separate piecework rate without a fixed salary or employee payout", () => {
+    const piecework = { ...payroll, payMethod: "per_m2", ratePerM2: "100,005", amount: "", employeePayout: "" };
+    expect(scheduleInputSchema.parse(piecework)).toMatchObject({ payMethod: "per_m2", ratePerM2: "100.005", amount: "", employeePayout: "" });
+    for (const patch of [{ amount: "1000" }, { employeePayout: "1000" }, { ratePerM2: "" }, { ratePerM2: "0" }, { kind: "recurring" }]) {
+      expect(scheduleInputSchema.safeParse({ ...piecework, ...patch }).success).toBe(false);
+    }
+    expect(scheduleInputSchema.parse(payroll).payMethod).toBe("fixed");
+    expect(scheduleInputSchema.safeParse({ ...payroll, ratePerM2: "100" }).success).toBe(false);
+  });
   it("summarizes net and gross compensation exactly and distinguishes omitted from explicitly unknown costs", () => {
     expect(payrollCompensationSummary("1000", "net", "100", "50")).toEqual({ employeeReceives: "1000", studioCost: "1150" });
     expect(payrollCompensationSummary("1000", "gross", "100", "50")).toEqual({ employeeReceives: "900", studioCost: "1050" });

@@ -39,3 +39,12 @@ it("keeps the current payroll period and its missing-input repair visible after 
   expect(html).toContain("October payroll");
   expect(html).toContain(en.Finance.labor.auto.issue.missing_capacity);
 });
+
+it("shows piecework as an output-based calculation instead of an unknown fixed salary", () => {
+  const html = render({ ...base, salaryConditions: [{ employeeId: id, name: "Piecework employee", termId: id,
+    effectiveFrom: "2026-10-01", effectiveThrough: null, currency: "USD", amount: null, basis: "net", payout: null,
+    deductions: "0", employerCost: "0", employerStatus: "fixed" }] });
+  expect(html).toContain(en.Finance.payrollEarning.perM2);
+  expect(html).toContain(en.Finance.labor.auto.pieceworkCalculation);
+  expect(html).not.toContain(en.Finance.labor.auto.unknownAmount);
+});

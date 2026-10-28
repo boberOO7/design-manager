@@ -53,3 +53,18 @@ it("ordinary report loads and reloads only read scoped reporting RPCs and never 
   ]);
   expect(mocks.rpc.mock.calls.every(([, args]) => args.p_studio_id === id)).toBe(true);
 });
+
+it("loads reports with piecework conditions without treating an absent monthly amount as zero", async () => {
+  const historicalLabor = { asOf: "2026-10-28", reportingCurrency: "UAH", periods: [] };
+  const condition = { employeeId: id, name: "Piecework employee", termId: id, effectiveFrom: "2026-10-01", effectiveThrough: null,
+    currency: "USD", amount: null, basis: "net", payout: null, deductions: "0", employerCost: "0", employerStatus: "fixed" };
+  const fixed = { ...condition, employeeId: project, termId: project, name: "Fixed employee", currency: "UAH", amount: "15000", payout: "15000" };
+  mocks.rpc.mockResolvedValueOnce({ data: historicalLabor, error: null }).mockResolvedValueOnce({ data: {
+    historicalLabor, asOf: "2026-10-28", recognitionStart: null, months: [], entries: [], coverage: [], projects: [], sources: [],
+    labor: { sources: [], pools: [], allocations: [], salaryConditions: [condition, fixed] }, tripSources: [],
+    projectReporting: { receipts: [], events: [], estimates: [], contracts: [], matched: [] },
+  }, error: null });
+  const report = await getFinanceManagement({});
+  expect(report?.labor.salaryConditions).toEqual([condition, fixed]);
+  expect(mocks.labor).not.toHaveBeenCalled();
+});

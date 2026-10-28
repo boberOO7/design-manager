@@ -93,7 +93,7 @@ export function AutomaticLaborSection({ data, projects, currencies, baseCurrency
 }
 
 function SalaryConditions({ data, money, date, today }: { data: FinanceLaborData; money: (amount: string | null, code: string) => string; date: (value: string) => string; today: string }) {
-  const t = useTranslations("Finance.labor.auto");
+  const t = useTranslations("Finance.labor.auto"), payrollT = useTranslations("Finance.payrollEarning");
   const missing = (data.employees ?? []).filter(employee => !data.salaryConditions?.some(condition => condition.employeeId === employee.id && condition.effectiveFrom <= today && (condition.effectiveThrough === null || condition.effectiveThrough >= today)));
   return <AnimatedDisclosure title={t("salarySetup")} defaultOpen={!data.salaryConditions?.length}>
     <div className="space-y-3 pb-3 text-sm">
@@ -101,9 +101,9 @@ function SalaryConditions({ data, money, date, today }: { data: FinanceLaborData
       <Link href="/finance/schedules" className="inline-flex min-h-11 items-center underline underline-offset-2">{t("openPayroll")}</Link>
       {missing.length ? <p role="status" className="text-[var(--ui-warning-text)]">{t("missingSalary", { names: missing.map(employee => employee.name).join(", ") })}</p> : null}
       <ul className="divide-y divide-[var(--ui-border)]">{data.salaryConditions?.map(condition => <li key={condition.termId} className="space-y-1 py-2">
-        <p className="font-medium">{condition.name} · {money(condition.amount, condition.currency)} · {t(condition.basis)}</p>
+        <p className="font-medium">{condition.name} · {condition.amount === null ? payrollT("perM2") : money(condition.amount, condition.currency)} · {t(condition.basis)}</p>
         <p className="text-xs text-[var(--ui-text-secondary)]">{date(condition.effectiveFrom)}{condition.effectiveThrough ? ` – ${date(condition.effectiveThrough)}` : ""}</p>
-        <p className="text-xs">{t("salaryComponents", { payout: money(condition.payout, condition.currency), deductions: money(condition.deductions, condition.currency), employer: money(condition.employerCost, condition.currency) })}</p>
+        {condition.amount === null ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("pieceworkCalculation")}</p> : <p className="text-xs">{t("salaryComponents", { payout: money(condition.payout, condition.currency), deductions: money(condition.deductions, condition.currency), employer: money(condition.employerCost, condition.currency) })}</p>}
         {(condition.basis === "net" && condition.deductions === null) || condition.employerStatus !== "fixed" ? <p className="text-xs text-[var(--ui-warning-text)]">{t("salaryIncomplete")}</p> : null}
       </li>)}</ul>
       <p className="text-xs text-[var(--ui-text-secondary)]">{t("setupFx")}</p>

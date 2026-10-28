@@ -45,7 +45,8 @@ export const laborDataSchema = z.object({ missingPeriods: z.array(laborMissingPe
       currency: z.string(), effectiveFrom: z.iso.date(), effectiveThrough: z.iso.date().nullable(), stoppedFrom: z.iso.date().nullable(), hasRecognizedExpense: z.boolean().optional() })),
   }).optional(),
   salaryConditions: z.array(z.object({ employeeId: z.uuid(), name: z.string(), termId: z.uuid(), effectiveFrom: z.iso.date(), effectiveThrough: z.iso.date().nullable(),
-    currency: z.string(), amount: decimal, basis: z.enum(["net", "gross"]), payout: decimal.nullable(), deductions: decimal.nullable(),
+    // Piecework terms intentionally have no fixed monthly amount.
+    currency: z.string(), amount: decimal.nullable(), basis: z.enum(["net", "gross"]), payout: decimal.nullable(), deductions: decimal.nullable(),
     employerCost: decimal.nullable(), employerStatus: status,
   })).optional(),
   allocationHistory: z.array(z.object({id:z.uuid(),entryId:z.uuid(),revision:z.number().int(),method:z.enum(["manual_management", "automatic_work_tracking"]),reason:z.string(),createdAt:z.string(),createdBy:z.uuid(),

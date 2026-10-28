@@ -29,6 +29,10 @@ import { projectCashSplitItemsSchema } from "@/lib/finance-profitability";
 import { financeMovementContextLabels } from "@/lib/finance-movement-context";
 import { Tooltip } from "@/components/ui/tooltip";
 
+import { loadFinancePayrollPayment } from "@/app/(app)/finance/schedules/payroll-actions";
+import { PayrollPaymentForm } from "./payroll-payment";
+import type { PayrollPayment } from "@/lib/finance-payroll-earnings";
+
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 
@@ -43,6 +47,25 @@ const storedSplits = (payload: unknown, key: "projectReceiptSplits" | "projectRe
 const splitJson = (rows: SplitRow[]) => JSON.stringify(rows.filter(row => row.projectId && row.amount.trim()).map(row => ({ projectId: row.projectId, amount: row.amount.trim().replace(",", ".") })));
 
 export function EntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
+  const t = useTranslations("Finance.payrollCash");
+  const [context, setContext] = useState<{ itemId: string; value: PayrollPayment | null } | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (expected?.id && !correction && !refund) loadFinancePayrollPayment(expected.id, today).then(value => {
+      if (active) { setContext({ itemId: expected.id ?? "", value }); setError(false); }
+    }).catch(() => { if (active) setError(true); });
+    return () => { active = false; };
+  }, [expected?.id, today, correction, refund]);
+  if (expected?.id && !correction && !refund) {
+    if (error) return <p role="alert">{t("loadError")}</p>;
+    if (context?.itemId !== expected.id) return <p role="status">{t("loading")}</p>;
+    if (context.value) return <PayrollPaymentForm accounts={data.accounts} today={today} itemId={expected.id} initial={context.value} onSaved={onSaved} onPending={onPending} />;
+  }
+  return <MovementEntryForm data={data} today={today} transfer={transfer} refund={refund} correction={correction} expected={expected} projectCash={projectCash} onSaved={onSaved} onPending={onPending} />;
+}
+
+function MovementEntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const active = data.accounts.filter((account) => !account.archived_at);
@@ -52,6 +75,7 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   const balanceCorrection = correction?.nature === "balance";
   const refundCorrection = correction?.kind === "refund";
   const originalPayload = correction?.request_payload;
+  const payrollCorrection = Boolean(correction && originalPayload && typeof originalPayload === "object" && !Array.isArray(originalPayload) && originalPayload.payrollCreditCurrency === "USD");
   const originalAllocationIntent = originalPayload && typeof originalPayload === "object" && !Array.isArray(originalPayload) && originalPayload.allocationIntent === true;
   const expectedCategory=data.categories.find((category)=>category.id===expected?.category_id);
   const expectedDescription=expected?.description??"";
@@ -174,6 +198,7 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
       {currentAmountUnits!==null?<p className="ui-numeric text-xs text-[var(--ui-text-secondary)]">{t("movements.projectCash.unattributed",{amount:financeAmountText(currentAmountUnits>refundTotal?currentAmountUnits-refundTotal:BigInt(0),digits),currency:source?.currency??""})}</p>:null}
       {!refundRowsValid?<p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("movements.projectCash.invalidRefund")}</p>:null}
     </div>:null}
+    {payrollCorrection ? <div className="space-y-2"><p className="text-xs text-[var(--ui-text-secondary)]">{t("payrollCash.correctionHelp")}</p><div className="flex flex-wrap items-end gap-3"><FormField label={t("payrollCash.rateSource")}><Select name="settlementFxMode" size="compact" width="content" aria-label={t("payrollCash.rateSource")} value={settlementMode} onValueChange={value => setSettlementMode(value === "manual" ? "manual" : "nbu")}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select></FormField>{settlementMode === "manual" ? <FormField label={t("payrollCash.rate")}><Input name="settlementManualRate" aria-label={t("payrollCash.rate")} inputMode="decimal" value={settlementRate} onChange={event => setSettlementRate(event.target.value)} required /></FormField> : null}</div></div> : null}
     {expected&&source?.currency!==expected.currency?<div className="space-y-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3">
       <div className="flex flex-wrap items-end gap-2"><span className="pb-2 text-xs font-medium text-[var(--ui-text-secondary)]">{t("movements.settlementSourceLabel")}:</span><Select name="settlementFxMode" aria-label={t("movements.settlementRateLabel")} size="compact" width="content" value={settlementMode} onValueChange={(value)=>{setSettlementMode(value==="manual"?"manual":"nbu");if(!amountEdited)setAmount("");}}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select>
       {settlementMode==="manual"?<FormField label={t("movements.settlementRate",{currency:source?.currency??"",obligation:expected.currency??""})}><Input className="max-w-44" name="settlementManualRate" inputMode="decimal" value={settlementRate} onChange={(event)=>setSettlementRate(event.target.value)} required/></FormField>:null}</div>

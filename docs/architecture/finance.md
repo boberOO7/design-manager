@@ -469,6 +469,43 @@ or notifications containing private data.
 
 ## Employee compensation and recurring studio obligations
 
+- Payroll terms choose `fixed` or `per_m2`. Piecework terms store a separate
+  four-decimal rate and no fixed monthly amount. Rates apply by service month;
+  forward piecework amendments preserve earlier unconfirmed terms as well as
+  consumed history. Active productivity attributions and project inclusion flags
+  provide the same personally credited m² as productivity, grouped in Kyiv time.
+- `finance_payroll_earning_revisions` stores immutable monthly confirmations and
+  corrections: source m²/rate snapshots, calculated pay, manual difference, final
+  net/gross compensation and employee payout. Admin-only preview/confirmation
+  RPCs use source digests, optimistic revisions and existing request idempotency.
+  The latest confirmation supplies both the expected payout and `finance_labor_source`;
+  legacy fixed salaries retain their existing source until explicitly corrected.
+- Unconfirmed piecework uses estimated payments for completed output only. Future
+  amounts remain undetermined and produce forecast coverage diagnostics. Deferred
+  attribution/project-inclusion triggers refresh draft payments after work changes;
+  the existing maintenance worker also reconciles them. Reads never write.
+  Payment requires piecework confirmation. Later source changes stay visible but
+  do not alter confirmed pay without an explicit correction.
+- Monthly corrections can reduce pay below existing settlements, including to
+  zero, through the payroll RPC only. Cash and allocation history stay intact;
+  expected balances expose overpayment separately from nonnegative amounts still
+  payable. There is no automatic carry-forward. Existing refund, movement
+  correction and economic-recognition adjustment workflows remain authoritative.
+  Piecework reporting does not prorate already earned output by elapsed workdays;
+  existing Worklog rules still determine project attribution.
+- `finance_payroll_cash` owns UAH salary payments and explicit advances by employee.
+  USD advances freeze their USD credit at the actual advance-date NBU/manual rate;
+  subsequent salary payments deduct that credit before converting the unpaid USD
+  balance to UAH at their own payment-date rate. `finance_payroll_credit_availability`
+  derives remaining credit from existing cash, refunds and signed allocations.
+  An advance is valid with zero production and carries unused credit forward.
+  Ordinary salary cash stays tied to its obligation: corrections preserve that
+  link, and accrued overpayment never becomes another month's advance implicitly.
+  Guarded preview/payment RPCs check the salary/credit digest under the existing
+  studio lock and preserve original dated allocation FX. Applying credit alone
+  records allocations without inventing a cash movement. The generic movement
+  correction flow also preserves employee ownership and resolves a changed-date
+  advance rate explicitly. Advances do not create a second labor expense.
 - The configuration page stacks full-width compensation and recurring sections.
   Compact salary rows show employee, amount/basis, payout timing and actionable
   attention; only exceptional periods are exposed. Detailed costs and immutable

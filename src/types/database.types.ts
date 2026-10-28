@@ -2907,6 +2907,116 @@ export type Database = {
           },
         ]
       }
+      finance_payroll_cash: {
+        Row: {
+          created_at: string
+          created_by: string
+          credit_amount: number
+          credit_currency: string
+          credit_rate: number
+          credit_source: string
+          employee_id: string
+          movement_id: string
+          obligation_id: string | null
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          credit_amount: number
+          credit_currency: string
+          credit_rate: number
+          credit_source: string
+          employee_id: string
+          movement_id: string
+          obligation_id?: string | null
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          credit_amount?: number
+          credit_currency?: string
+          credit_rate?: number
+          credit_source?: string
+          employee_id?: string
+          movement_id?: string
+          obligation_id?: string | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payroll_cash_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_credit_currency_fkey"
+            columns: ["credit_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+        ]
+      }
       finance_payroll_cost_revisions: {
         Row: {
           amount: number | null
@@ -2961,6 +3071,96 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_payroll_cost_revisions_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
+          },
+        ]
+      }
+      finance_payroll_earning_revisions: {
+        Row: {
+          adjustment_amount: number
+          calculated_amount: number
+          created_at: string
+          created_by: string
+          employee_payout: number
+          final_amount: number
+          id: string
+          obligation_id: string
+          reason: string
+          revision: number
+          schedule_id: string
+          source_digest: string
+          source_snapshot: Json
+          studio_id: string
+          terms_id: string
+        }
+        Insert: {
+          adjustment_amount: number
+          calculated_amount: number
+          created_at?: string
+          created_by: string
+          employee_payout: number
+          final_amount: number
+          id?: string
+          obligation_id: string
+          reason: string
+          revision: number
+          schedule_id: string
+          source_digest: string
+          source_snapshot: Json
+          studio_id: string
+          terms_id: string
+        }
+        Update: {
+          adjustment_amount?: number
+          calculated_amount?: number
+          created_at?: string
+          created_by?: string
+          employee_payout?: number
+          final_amount?: number
+          id?: string
+          obligation_id?: string
+          reason?: string
+          revision?: number
+          schedule_id?: string
+          source_digest?: string
+          source_snapshot?: Json
+          studio_id?: string
+          terms_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payroll_earning_revis_studio_id_terms_id_schedule__fkey"
+            columns: ["studio_id", "terms_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedule_history"
+            referencedColumns: ["studio_id", "id", "schedule_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_earning_revis_studio_id_terms_id_schedule__fkey"
+            columns: ["studio_id", "terms_id", "schedule_id"]
+            isOneToOne: false
+            referencedRelation: "finance_schedule_terms"
+            referencedColumns: ["studio_id", "id", "schedule_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_earning_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_earning_revisions_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_earning_revisions_studio_id_obligation_id_fkey"
             columns: ["studio_id", "obligation_id"]
             isOneToOne: false
             referencedRelation: "finance_payroll_unknown_costs"
@@ -4363,7 +4563,7 @@ export type Database = {
       }
       finance_schedule_terms: {
         Row: {
-          amount: number
+          amount: number | null
           basis: string | null
           category_id: string
           certainty: string
@@ -4380,15 +4580,17 @@ export type Database = {
           id: string
           interval_months: number
           name: string
+          pay_method: string
           payment_month_offset: number
           payout_day: number
+          rate_per_m2: number | null
           reason: string
           revision: number
           schedule_id: string
           studio_id: string
         }
         Insert: {
-          amount: number
+          amount?: number | null
           basis?: string | null
           category_id: string
           certainty: string
@@ -4405,15 +4607,17 @@ export type Database = {
           id?: string
           interval_months: number
           name: string
+          pay_method?: string
           payment_month_offset?: number
           payout_day: number
+          rate_per_m2?: number | null
           reason: string
           revision: number
           schedule_id: string
           studio_id: string
         }
         Update: {
-          amount?: number
+          amount?: number | null
           basis?: string | null
           category_id?: string
           certainty?: string
@@ -4430,8 +4634,10 @@ export type Database = {
           id?: string
           interval_months?: number
           name?: string
+          pay_method?: string
           payment_month_offset?: number
           payout_day?: number
+          rate_per_m2?: number | null
           reason?: string
           revision?: number
           schedule_id?: string
@@ -8208,6 +8414,7 @@ export type Database = {
           is_established: boolean | null
           net_amount: number | null
           outstanding_amount: number | null
+          overpaid_amount: number | null
           payment_state: string | null
           price_basis: string | null
           remaining_amount: number | null
@@ -8578,6 +8785,95 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_settings"
             referencedColumns: ["studio_id"]
+          },
+        ]
+      }
+      finance_payroll_credit_availability: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          credit_amount: number | null
+          credit_available: number | null
+          credit_currency: string | null
+          credit_rate: number | null
+          credit_source: string | null
+          employee_id: string | null
+          financial_date: string | null
+          movement_id: string | null
+          obligation_id: string | null
+          studio_id: string | null
+          unapplied_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payroll_cash_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_credit_currency_fkey"
+            columns: ["credit_currency"]
+            isOneToOne: false
+            referencedRelation: "finance_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_employee_id_fkey"
+            columns: ["studio_id", "employee_id"]
+            isOneToOne: false
+            referencedRelation: "studio_members"
+            referencedColumns: ["studio_id", "user_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "finance_settings"
+            referencedColumns: ["studio_id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_actionable_unapplied"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_current_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_movements"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_movement_id_fkey"
+            columns: ["studio_id", "movement_id"]
+            isOneToOne: true
+            referencedRelation: "finance_payment_availability"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_payroll_cash_studio_id_obligation_id_fkey"
+            columns: ["studio_id", "obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payroll_unknown_costs"
+            referencedColumns: ["studio_id", "obligation_id"]
           },
         ]
       }
@@ -9458,8 +9754,10 @@ export type Database = {
           id: string | null
           interval_months: number | null
           name: string | null
+          pay_method: string | null
           payment_month_offset: number | null
           payout_day: number | null
+          rate_per_m2: number | null
           reason: string | null
           revision: number | null
           schedule_id: string | null
@@ -9954,6 +10252,10 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      confirm_finance_payroll_earning: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
       confirm_finance_trip_recognition: {
         Args: {
           p_entry_id: string
@@ -10268,6 +10570,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finance_payroll_cash: {
+        Args: { p_date?: string; p_schedule_id: string; p_studio_id: string }
+        Returns: Json
+      }
       get_finance_payroll_editability: {
         Args: { p_studio_id: string }
         Returns: {
@@ -10281,6 +10587,19 @@ export type Database = {
         Returns: {
           term_id: string
         }[]
+      }
+      get_finance_payroll_payment: {
+        Args: {
+          p_date: string
+          p_fx?: Json
+          p_item_id: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
+      get_finance_payroll_period: {
+        Args: { p_obligation_id: string; p_studio_id: string }
+        Returns: Json
       }
       get_finance_project_earnings: {
         Args: { p_project_id?: string; p_studio_id: string }
@@ -10523,6 +10842,19 @@ export type Database = {
       }
       record_finance_movement: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      record_finance_payroll_advance: {
+        Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      record_finance_payroll_payment: {
+        Args: {
+          p_input: Json
+          p_item_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
         Returns: string
       }
       record_finance_project_payment: {
