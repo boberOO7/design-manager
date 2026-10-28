@@ -14,7 +14,7 @@ export async function getTeamActivity(month: string, today = getKyivDateOnly()) 
   const client = await createClient();
   const studio = admin.studio_id;
   const { from, until } = activityMonthBounds(month);
-  const [entries, submissions, people, timers, workdayMinutes, timeOff, daysOff] = await Promise.all([
+  const [entries, submissions, people, timers, workdayMinutes, timeOff, daysOff, events] = await Promise.all([
     loadAllRows((first, last) => client.from("work_log_entries")
       .select("id,user_id,work_date,activity_kind,internal_activity_type,minutes,review_round_id,task:tasks!work_log_entries_task_id_fkey(id,title,project_id,project:projects!tasks_project_id_fkey(id,name))")
       .eq("studio_id", studio).gte("work_date", from).lt("work_date", until).order("id").range(first, last)),
@@ -33,12 +33,16 @@ export async function getTeamActivity(month: string, today = getKyivDateOnly()) 
       .lt("start_date", until).gte("end_date", from).order("id").range(first, last)),
     loadAllRows((first, last) => client.from("studio_days_off").select("date")
       .eq("studio_id", studio).gte("date", from).lt("date", until).order("date").range(first, last)),
+    // Recurrence templates and moved/cancelled overrides must be loaded together.
+    loadAllRows((first, last) => client.from("calendar_events")
+      .select("id,title,event_type,starts_at,ends_at,all_day,project_id,organizer_id,assignee_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id,project:projects!calendar_events_project_id_fkey(id,name),invites:calendar_event_invites(event_id,user_id,status),participants:calendar_event_participants(event_id,user_id)")
+      .eq("studio_id", studio).order("id").range(first, last)),
   ]);
-  for (const result of [entries, submissions, people, timers, timeOff, daysOff]) {
+  for (const result of [entries, submissions, people, timers, timeOff, daysOff, events]) {
     if (result.error || !result.data) throw new Error("Unable to load team activity.", { cause: result.error });
   }
   return buildTeamActivity({ month, today, workdayMinutes, entries: entries.data ?? [], submissions: submissions.data ?? [], timers: timers.data ?? [],
     people: (people.data ?? []).map(row => ({ id: row.user_id, name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active,
       avatarUrl: row.profile?.avatar_url ?? null, joinedDate: row.joined_at ? instantToDateOnly(row.joined_at) : null })),
-    timeOff: timeOff.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date) });
+    events: events.data ?? [], timeOff: timeOff.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date) });
 }

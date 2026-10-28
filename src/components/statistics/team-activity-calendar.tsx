@@ -16,8 +16,8 @@ import { StatisticsInfo } from "./statistics-info";
 const dayStateClasses: Record<TeamActivityDayState, string> = {
   missing: "bg-[var(--ui-surface-muted)]",
   under: "bg-[var(--ui-warning-accent)]",
-  target: "bg-[var(--ui-success-accent)]",
-  over: "bg-[var(--ui-info-accent)]",
+  target: "bg-[var(--ui-activity-target)]",
+  over: "bg-[var(--ui-activity-over)]",
   excused: "border border-[var(--ui-border-strong)] bg-transparent",
   worked: "bg-[var(--ui-violet-border)]",
 };
@@ -26,6 +26,7 @@ const activityCategories = [
   { kind: "task", label: "taskWork", color: "var(--ui-text-secondary)" },
   { kind: "review", label: "reviewWork", color: "var(--ui-info-text)" },
   { kind: "internal", label: "internalWork", color: "color-mix(in srgb, var(--ui-violet-text) 75%, var(--ui-text-secondary))" },
+  { kind: "calendar", label: "activityCalendar", color: "var(--ui-success-text)" },
 ] as const;
 
 function ActivityMark({ state, kind, small = false }: { state: TeamActivityDayState; kind?: TeamActivityDay["kind"]; small?: boolean }) {
@@ -144,7 +145,7 @@ function ActivityCell({ day, name, workday, liveAvailable }: { day: TeamActivity
   const running = liveAvailable && day.runningTasks.length > 0;
   const summary = <div className="-mr-2.5 max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain pr-2.5 [scrollbar-gutter:stable]"><p className="font-semibold">{name} · {date}</p><p className="tabular-nums">{total}</p><p>{context}</p><p className="text-[var(--ui-text-muted)]">{target}</p><DailyBreakdown day={day} liveAvailable={liveAvailable} /></div>;
   return <Popover.Root open={open} onOpenChange={setOpen}>
-    <Tooltip content={open ? null : summary} interactive><Popover.Trigger asChild>
+    <Tooltip content={open ? null : summary} interactive contentClassName="w-[30rem] max-w-[min(30rem,var(--radix-tooltip-content-available-width))]"><Popover.Trigger asChild>
       <button type="button" data-activity-date={day.date} data-recorded={day.recorded} data-activity-state={state} data-day-kind={day.kind} data-weekend={day.weekend} aria-label={`${name}, ${date}: ${total} · ${context}${running ? ` · ${t("activityRunning")}` : ""}`}
         className="relative inline-flex size-7 items-center justify-center rounded transition-transform duration-[140ms] ease-[ease-out] hover:z-30 motion-safe:hover:[transform:scale(1.1)] focus-visible:z-30 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] motion-reduce:transition-none 2xl:size-9">
         <ActivityMark state={state} kind={day.kind} />
@@ -152,14 +153,14 @@ function ActivityCell({ day, name, workday, liveAvailable }: { day: TeamActivity
       </button>
     </Popover.Trigger></Tooltip>
     <Popover.Portal><Popover.Content aria-label={`${name} · ${date}`} sideOffset={6} collisionPadding={12}
-      className="ui-tooltip z-[80] max-h-[min(70dvh,28rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-xs leading-5 text-[var(--ui-text-secondary)] shadow-[var(--ui-shadow-popover)]">
+      className="ui-tooltip z-[80] max-h-[min(70dvh,28rem,var(--radix-popover-content-available-height))] w-[30rem] max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-xs leading-5 text-[var(--ui-text-secondary)] shadow-[var(--ui-shadow-popover)]">
       <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-[var(--ui-text)]">{name}</p><p>{date}</p></div><Popover.Close aria-label={t("closeInfo")} className="rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><X className="size-4" aria-hidden="true" /></Popover.Close></div>
       <p className="mt-2 font-semibold tabular-nums text-[var(--ui-text)]">{total}</p><p>{context}</p><p className="text-[var(--ui-text-muted)]">{target}</p><DailyBreakdown day={day} liveAvailable={liveAvailable} />
     </Popover.Content></Popover.Portal>
   </Popover.Root>;
 }
 
-function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvailable: boolean }) {
+export function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvailable: boolean }) {
   const t = useTranslations("Statistics");
   let reviewNumber = 0;
   return <>
@@ -167,14 +168,16 @@ function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvai
       const items = day.items.filter(item => item.activityKind === category.kind);
       if (!items.length) return null;
       const groups = groupTeamActivityItems(items);
-      const minutes = items.reduce((sum, item) => sum + item.minutes, 0);
+      const itemMinutes = items.reduce((sum, item) => sum + item.minutes, 0);
+      const minutes = category.kind === "calendar" ? day.minutes - day.items.filter(item => item.activityKind !== "calendar").reduce((sum, item) => sum + item.minutes, 0) : itemMinutes;
       return <section key={category.kind} aria-label={t(category.label)} data-activity-category={category.kind} className="mt-3 border-t border-[var(--ui-border)] pt-2">
         <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 text-[11px] font-semibold" style={{ color: category.color }}>
           <h3 className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-secondary)]"><span aria-hidden="true" className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />{t(category.label)}</h3>
           <span data-activity-duration className="min-w-[5ch] whitespace-nowrap text-right tabular-nums">{formatStatisticsDuration(minutes / 60)}</span>
         </div>
+        {category.kind === "calendar" && itemMinutes > minutes + 0.001 ? <p className="mb-2 text-[var(--ui-text-muted)]">{t("activityCalendarOverlap")}</p> : null}
         <ul className="space-y-2">{groups.map((group, index) => {
-          if (!group.reviewSessionId) return <li key={index}><ActivityEntry item={group.items[0]} /></li>;
+          if (!group.reviewSessionId) return <li key={index}><ActivityEntry item={group.items[0]} date={day.date} /></li>;
           const projects = [...new Map(group.items.map(item => [item.task?.project_id ?? null, item.task?.project?.name ?? t("unavailableProject")])).values()];
           const taskCount = new Set(group.items.map(item => item.task?.id ?? item.reviewRoundId)).size;
           return <li key={group.reviewSessionId}><details className="group/review" data-review-session={group.reviewSessionId}>
@@ -183,7 +186,7 @@ function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvai
               <span data-activity-duration className="min-w-[5ch] whitespace-nowrap text-right tabular-nums">{formatStatisticsDuration(group.minutes / 60)}</span>
               <span className="col-start-1 pl-[18px] text-[var(--ui-text-muted)]">{t("activityReviewTasks", { count: taskCount })}</span>
             </summary>
-            <ul className="mt-2 space-y-2 pl-[18px]">{group.items.map((item, taskIndex) => <li key={taskIndex}><ActivityEntry item={item} showProject={projects.length > 1} /></li>)}</ul>
+            <ul className="mt-2 space-y-2 pl-[18px]">{group.items.map((item, taskIndex) => <li key={taskIndex}><ActivityEntry item={item} date={day.date} showProject={projects.length > 1} /></li>)}</ul>
           </details></li>;
         })}</ul>
       </section>;
@@ -192,8 +195,17 @@ function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvai
   </>;
 }
 
-function ActivityEntry({ item, showProject = true }: { item: TeamActivityDay["items"][number]; showProject?: boolean }) {
+function ActivityEntry({ item, date, showProject = true }: { item: TeamActivityDay["items"][number]; date: string; showProject?: boolean }) {
   const t = useTranslations("Statistics");
+  if (item.activityKind === "calendar") {
+    const event = item.calendarEvent;
+    return <>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"><span className="min-w-0 break-words text-[var(--ui-text-secondary)]">{event
+        ? <Link className="rounded underline decoration-[var(--ui-border-strong)] underline-offset-2 hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]" href={`/calendar?date=${date}&event=${event.id}`}>{event.title}</Link>
+        : t("activityCalendar")}</span><span data-activity-duration className="min-w-[5ch] whitespace-nowrap text-right tabular-nums">{formatStatisticsDuration(item.minutes / 60)}</span></div>
+      {showProject && event ? <p className="break-words text-[var(--ui-text-muted)]">{event.project?.name ?? t("activityNoProject")}</p> : null}
+    </>;
+  }
   return <>
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"><span className="min-w-0 break-words text-[var(--ui-text-secondary)]">{item.activityKind === "internal" ? t("activityInternalWalkthrough")
       : item.task ? <Link className="rounded underline decoration-[var(--ui-border-strong)] underline-offset-2 hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]" href={`/projects/${item.task.project_id}?task=${item.task.id}`}>{item.task.title}</Link> : t("activityUnavailableTask")}</span><span data-activity-duration className="min-w-[5ch] whitespace-nowrap text-right tabular-nums">{formatStatisticsDuration(item.minutes / 60)}</span></div>

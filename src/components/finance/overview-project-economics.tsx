@@ -73,6 +73,7 @@ export function OverviewProjectEconomics({ data }: { data: EconomicsData }) {
                     <span className="text-right text-xs font-medium tabular-nums" style={{ color: value === null ? "var(--ui-text-muted)" : undefined }}>{money(value)}</span>
                   </span>)}
                 </button>
+                {project.historicalIssues.includes("missing_capacity") ? <p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{historical("issue.missing_capacity")}. <Link href="/finance/reports#labor" className={`${link} underline underline-offset-2`}>{t("configureLabor")}</Link></p> : null}
               </li>)}</ol>
               {safe ? <div aria-hidden="true" className="mt-3 mr-[7.75rem] flex justify-between px-2 text-[10px] tabular-nums text-[var(--ui-text-muted)]">{[min, (min + max) / 2, max].map((value, index) => <span key={index}>{new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value)}</span>)}</div> : null}
               {active ? <div data-testid="economics-tooltip" aria-hidden="true" className="pointer-events-none absolute right-0 top-0 z-10 w-72 max-w-full rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 text-xs shadow-[var(--ui-shadow-popover)]">

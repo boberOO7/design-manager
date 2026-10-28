@@ -122,6 +122,10 @@ rows without `voided_at`.
   attributed by reviewer and round, without task-completion or m² credit.
 - Calendar time retains its existing source and separate statistics. Internal
   activity logging does not create or copy Calendar time.
+- Team Activity includes completed timed Calendar occurrences by their semantic
+  participant roles, with recurrence overrides and Kyiv day boundaries. Concurrent
+  events count once in daily totals; individual event durations remain visible.
+  All-day and work-makeup events do not imply worked hours.
 
 ## Current unresolved boundary
 

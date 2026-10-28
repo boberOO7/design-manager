@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseFinanceReportParams, financeOverviewSchema, financeCashChartPoints } from "./finance-overview";
+import { forecastReportSchema } from "./finance-forecast";
 import en from "../../messages/en.json";
 import uk from "../../messages/uk.json";
 
@@ -33,5 +34,13 @@ describe("Overview report context", () => {
   it("rejects unvalidated RPC values and keeps localization keys complete", () => {
     expect(financeOverviewSchema.safeParse({ forecast: {} }).success).toBe(false);
     expect(Object.keys(uk.Finance.overview)).toEqual(Object.keys(en.Finance.overview));
+  });
+  it("translates every forecast gap reason on the dashboard in both locales", () => {
+    const reasons = [...forecastReportSchema.shape.issues.element.shape.reason.options, "stale_outgoing"];
+    for (const messages of [uk, en]) {
+      for (const reason of reasons) {
+        expect(messages.Finance.overview.dashboard.gaps).toHaveProperty(reason, expect.stringMatching(/\S/));
+      }
+    }
   });
 });

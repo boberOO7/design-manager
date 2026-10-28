@@ -1042,12 +1042,11 @@ Sources: `src/lib/finance-trips.ts`, `src/data/queries/finance-trips.ts`,
   [input and control audit](finance-labor-setup.md)). A current
   read-only cost preview binds the save to payroll, Worklog, leave, capacity and
   allocation evidence; it never posts costs or creates revisions. Existing dated
-  capacity is reused without adding a revision. Where historical coverage is
-  missing, the administrator supplies the schedule's effective date, reviews its
-  cost impact and saves; no additional acknowledgement checkbox is required.
-  Current studio duration and the shared Monday–Friday convention prefill a
-  missing schedule, but do not establish its historical effective date. Employee
-  and dated schedule exceptions remain explicit. Historical capacity dates are
+  capacity is reused without adding a revision. Without an applicable dated
+  revision, calculations use the studio's standard workday and Monday–Friday
+  for every source date, including historical periods; no separate Finance
+  schedule or artificial start date is required. Employee and dated schedule
+  exceptions override that baseline. Historical capacity dates are
   independent of the forward-only posting boundary. Completed daily Work Tracking
   reports accrue provisional project cost against the full month's known payroll
   cost and scheduled capacity; leave, unused capacity and internal work stay at

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { addCalendarDays, instantToDateOnly } from "@/lib/calendar";
+import { addCalendarDays, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
+import { calendarStatisticsAssignments, materializeStatisticsEvents, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
 import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import type { Database } from "@/types/database.types";
 
@@ -7,7 +8,8 @@ type Tables = Database["public"]["Tables"];
 export const teamActivityMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
   .refine(value => z.iso.date().safeParse(`${value}-01`).success);
 const taskSchema = z.object({ id: z.string(), title: z.string(), project_id: z.string(), project: z.object({ id: z.string(), name: z.string() }).nullable() });
-const itemSchema = z.object({ activityKind: z.string(), internalActivityType: z.string().nullable(), task: taskSchema.nullable(), minutes: z.number().nonnegative(), reviewRoundId: z.string().nullable(), reviewSessionId: z.string().nullable() });
+const itemSchema = z.object({ activityKind: z.string(), internalActivityType: z.string().nullable(), task: taskSchema.nullable(), minutes: z.number().nonnegative(), reviewRoundId: z.string().nullable(), reviewSessionId: z.string().nullable(),
+  calendarEvent: z.object({ id: z.string(), title: z.string(), project: z.object({ id: z.string(), name: z.string() }).nullable() }).optional() });
 export const teamActivityReportSchema = z.object({
   month: teamActivityMonthSchema, today: z.iso.date(), workdayMinutes: z.number().positive(),
   people: z.array(z.object({ id: z.string(), name: z.string(), active: z.boolean(), avatarUrl: z.string().nullable(), days: z.array(z.object({
@@ -28,6 +30,11 @@ type ActivityTask = z.infer<typeof taskSchema>;
 export type TeamActivityEntry = Pick<Tables["work_log_entries"]["Row"], "id" | "user_id" | "work_date" | "activity_kind" | "internal_activity_type" | "minutes" | "review_round_id"> & { task: ActivityTask | null };
 export type TeamActivityTimer = Pick<Tables["review_timer_sessions"]["Row"], "id" | "work_session_id" | "user_id" | "state" | "started_at" | "paused_at"> & {
   members: Array<Pick<Tables["review_timer_members"]["Row"], "round_id" | "finished_at"> & { round: { task: ActivityTask | null } | null }>;
+};
+export type TeamActivityEvent = StatisticsCalendarEvent & Pick<Tables["calendar_events"]["Row"], "title" | "assignee_id"> & {
+  project: { id: string; name: string } | null;
+  invites: Array<Pick<Tables["calendar_event_invites"]["Row"], "event_id" | "user_id" | "status">>;
+  participants: Array<Pick<Tables["calendar_event_participants"]["Row"], "event_id" | "user_id">>;
 };
 
 export function groupTeamActivityItems(items: TeamActivityDay["items"]) {
@@ -51,12 +58,14 @@ export function activityMonthBounds(month: string) {
   return { from: `${month}-01`, until: `${shiftActivityMonth(month, 1)}-01` };
 }
 
-export function buildTeamActivity({ month, today, workdayMinutes, people, entries, submissions, timers, timeOff = [], studioDaysOff = [] }: {
+export function buildTeamActivity({ month, today, workdayMinutes, people, entries, submissions, timers, events = [], now = new Date().toISOString(), timeOff = [], studioDaysOff = [] }: {
   month: string; today: string; workdayMinutes: number;
   people: Array<{ id: string; name: string; active: boolean; avatarUrl?: string | null; joinedDate?: string | null }>;
   entries: TeamActivityEntry[];
   submissions: Array<Pick<Tables["work_log_days"]["Row"], "user_id" | "work_date">>;
   timers: TeamActivityTimer[];
+  events?: TeamActivityEvent[];
+  now?: string;
   timeOff?: Array<Pick<Tables["time_off_requests"]["Row"], "user_id" | "start_date" | "end_date">>;
   studioDaysOff?: string[];
 }): TeamActivityReport {
@@ -104,6 +113,43 @@ export function buildTeamActivity({ month, today, workdayMinutes, people, entrie
   for (const submission of submissions) {
     const day = dayFor(submission.user_id, submission.work_date);
     if (day) day.recorded = true;
+  }
+  const participants = new Map<string, Set<string>>();
+  for (const { eventId, personId } of calendarStatisticsAssignments(events, events.flatMap(event => event.invites), events.flatMap(event => event.participants))) {
+    const ids = participants.get(eventId) ?? new Set<string>();
+    ids.add(personId);
+    participants.set(eventId, ids);
+  }
+  const byId = new Map(events.map(event => [event.id, event]));
+  const intervals = new Map<TeamActivityDay, Array<{ start: number; end: number }>>();
+  for (const occurrence of materializeStatisticsEvents(events, { from, through: addCalendarDays(until, -1) })) {
+    // Match Work Tracking: only completed timed events establish worked minutes.
+    if (occurrence.all_day || occurrence.event_type === "work_makeup" || Date.parse(occurrence.ends_at) > Date.parse(now)) continue;
+    const event = byId.get(occurrence.id);
+    if (!event) continue;
+    for (const date of dates) {
+      const start = Math.max(Date.parse(occurrence.starts_at), Date.parse(zonedWallTimeToIso(`${date}T00:00`)));
+      const end = Math.min(Date.parse(occurrence.ends_at), Date.parse(zonedWallTimeToIso(`${addCalendarDays(date, 1)}T00:00`)));
+      if (!(end > start)) continue;
+      for (const userId of participants.get(occurrence.id) ?? []) {
+        const day = dayFor(userId, date);
+        if (!day) continue;
+        day.recorded = true;
+        day.items.push({ activityKind: "calendar", internalActivityType: null, task: null, minutes: (end - start) / 60_000,
+          reviewRoundId: null, reviewSessionId: null, calendarEvent: { id: event.id, title: event.title, project: event.project } });
+        const spans = intervals.get(day) ?? [];
+        spans.push({ start, end });
+        intervals.set(day, spans);
+      }
+    }
+  }
+  // Concurrent invitations cannot multiply a person's working time.
+  for (const [day, spans] of intervals) {
+    let coveredUntil = 0;
+    for (const { start, end } of spans.sort((a, b) => a.start - b.start)) {
+      day.minutes += Math.max(0, end - Math.max(start, coveredUntil)) / 60_000;
+      coveredUntil = Math.max(coveredUntil, end);
+    }
   }
   // Live state is separate from recorded minutes; timer accounting already writes to the work log.
   for (const timer of timers) {

@@ -26,12 +26,12 @@ export async function getFinanceManagement(params: Record<string, string | strin
   const admin = await getActiveStudioAdmin();
   if (!admin) return null;
   const client = await createClient();
-  const [foundation, displayCurrency, context] = await Promise.all([getFinanceData(), getFinanceDisplayCurrency(), client.rpc("get_finance_calculated_labor_reporting", { p_studio_id: admin.studio_id })]);
+  const [foundation, displayCurrency, response] = await Promise.all([getFinanceData(), getFinanceDisplayCurrency(), client.rpc("get_finance_management_reporting", { p_studio_id: admin.studio_id })]);
   if (!foundation) return null;
-  if (context.error) throw new Error("Unable to load historical labor sources.", { cause: context.error });
-  const historicalContext = historicalLaborReportSchema.parse(context.data);
+  if (response.error) throw new Error("Unable to load management report.", { cause: response.error });
+  let report = reportSchema.parse(response.data);
   const historicalFx: Record<string, { rate: string; source: "nbu"; effectiveDate: string }> = {};
-  await Promise.all([...new Map(historicalContext.periods.filter(period => period.currency && period.reportingCurrency && period.currency !== period.reportingCurrency
+  await Promise.all([...new Map(report.historicalLabor.periods.filter(period => period.currency && period.reportingCurrency && period.currency !== period.reportingCurrency
     && !period.fx && period.remainingNative !== null && financeAmountUnits(period.remainingNative, 4) > BigInt(0)).map(period => [`${period.currency}:${period.periodEnd}`, period])).entries()].map(async ([key, period]) => {
     if (!period.currency || !period.reportingCurrency) return;
     try {
@@ -39,9 +39,13 @@ export async function getFinanceManagement(params: Record<string, string | strin
       if (rate) historicalFx[key] = { rate, source: "nbu", effectiveDate: period.periodEnd };
     } catch { /* Historical native cost remains known; unavailable dated FX stays explicit. */ }
   }));
-  const response = await client.rpc("get_finance_management_reporting", { p_studio_id: admin.studio_id, p_historical_fx: historicalFx });
-  if (response.error) throw new Error("Unable to load management report.", { cause: response.error });
-  const report = reportSchema.parse(response.data), today = report.asOf;
+  // Rebuild the complete snapshot only when a newly resolved labor valuation changes it.
+  if (Object.keys(historicalFx).length) {
+    const valued = await client.rpc("get_finance_management_reporting", { p_studio_id: admin.studio_id, p_historical_fx: historicalFx });
+    if (valued.error) throw new Error("Unable to load management report.", { cause: valued.error });
+    report = reportSchema.parse(valued.data);
+  }
+  const today = report.asOf;
   const filters = parseManagementFilters(params, today);
   if (filters.lifetime) {
     const selectedProject = report.projects.find(project => project.id === filters.projectId);

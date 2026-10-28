@@ -1,17 +1,60 @@
 import { describe, expect, it } from "vitest";
-import { activityMonthBounds, buildTeamActivity, getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, teamActivityReportSchema, type TeamActivityEntry, type TeamActivityTimer } from "./team-activity";
+import { activityMonthBounds, buildTeamActivity, getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, teamActivityReportSchema, type TeamActivityEntry, type TeamActivityTimer, type TeamActivityEvent } from "./team-activity";
 
 const task = (id: string) => ({ id, title: `Task ${id}`, project_id: "project", project: { id: "project", name: "Project" } });
 const entry = (id: string, date: string, minutes: number, taskId = "a"): TeamActivityEntry => ({
   id, user_id: "employee", work_date: date, minutes, activity_kind: "task", internal_activity_type: null, review_round_id: null, task: task(taskId),
 });
-function report(entries: TeamActivityEntry[] = [], options: { month?: string; submissions?: Array<{ user_id: string; work_date: string }>; timers?: TeamActivityTimer[] } = {}) {
+function report(entries: TeamActivityEntry[] = [], options: { month?: string; submissions?: Array<{ user_id: string; work_date: string }>; timers?: TeamActivityTimer[]; events?: TeamActivityEvent[]; now?: string } = {}) {
   return buildTeamActivity({ month: "2026-10", today: "2026-10-16", workdayMinutes: 420,
     people: [{ id: "employee", name: "Employee", active: true }, { id: "empty", name: "Empty", active: true }, { id: "inactive", name: "Inactive", active: false }],
-    entries, submissions: [], timers: [], ...options });
+    entries, submissions: [], timers: [], now: "2026-10-16T12:00:00Z", ...options });
 }
 
 describe("team activity calendar", () => {
+  const event = (id: string, changes: Partial<TeamActivityEvent> = {}): TeamActivityEvent => ({
+    id, title: `Meeting ${id}`, event_type: "meeting", starts_at: "2026-10-07T09:00:00Z", ends_at: "2026-10-07T10:00:00Z",
+    all_day: false, organizer_id: "employee", assignee_id: null, project_id: "project", project: task("a").project,
+    cancelled_at: null, recurrence_rule: null, series_id: null, occurrence_start: null, compensates_time_off_request_id: null,
+    invites: [], participants: [], ...changes,
+  });
+
+  it("counts completed project events with logged tasks and counts overlapping events once per person", () => {
+    const first = event("a", { invites: [{ event_id: "a", user_id: "employee", status: "accepted" }] });
+    const events = [first, first, event("b", { starts_at: "2026-10-07T09:30:00Z", ends_at: "2026-10-07T10:30:00Z" })];
+    const day = teamActivityReportSchema.parse(report([entry("work", "2026-10-07", 330)], { events })).people[0].days[6];
+    expect(day).toMatchObject({ recorded: true, minutes: 420 });
+    expect(getTeamActivityDayState(day, 420)).toBe("target");
+    expect(day.items.filter(item => item.activityKind === "calendar")).toMatchObject([
+      { minutes: 60, calendarEvent: { id: "a", title: "Meeting a", project: { id: "project", name: "Project" } } },
+      { minutes: 60, calendarEvent: { id: "b" } },
+    ]);
+  });
+
+  it("uses event roles and excludes declined invites, cancelled, all-day, ongoing and makeup events", () => {
+    const events = [event("declined", { organizer_id: "someone", invites: [{ event_id: "declined", user_id: "employee", status: "declined" }] }),
+      event("cancelled", { cancelled_at: "2026-10-06T10:00:00Z" }), event("all-day", { all_day: true }),
+      event("ongoing", { ends_at: "2026-10-08T09:00:00Z" }), event("makeup", { event_type: "work_makeup" }),
+      event("unassigned", { event_type: "general" }),
+      event("visit", { event_type: "site_visit", organizer_id: "someone", participants: [{ event_id: "visit", user_id: "employee" }] })];
+    const day = report([], { events, now: "2026-10-07T12:00:00Z" }).people[0].days[6];
+    expect(day).toMatchObject({ minutes: 60, recorded: true });
+    expect(day.items.map(item => item.calendarEvent?.id)).toEqual(["visit"]);
+  });
+
+  it("materializes recurrence with moved and cancelled occurrences and clips at Kyiv midnight", () => {
+    const parent = event("root", { recurrence_rule: { frequency: "daily", interval: 1, weekdays: [], endsOn: null, occurrenceCount: 3 } });
+    const events = [parent, event("cancelled", { series_id: "root", occurrence_start: "2026-10-08T09:00:00Z", cancelled_at: "2026-10-07T10:00:00Z" }),
+      event("moved", { series_id: "root", occurrence_start: "2026-10-09T09:00:00Z", starts_at: "2026-10-10T20:30:00Z", ends_at: "2026-10-10T21:30:00Z" })];
+    const days = report([], { events }).people[0].days;
+    expect(days[6].minutes).toBe(60);
+    expect(days[7].recorded).toBe(false);
+    expect(days[8].recorded).toBe(false);
+    expect(days[9].minutes).toBe(30);
+    expect(days[10].minutes).toBe(30);
+    expect(days.reduce((sum, day) => sum + day.minutes, 0)).toBe(120);
+  });
+
   const review = (id: string, roundId: string, minutes: number): TeamActivityEntry => ({
     ...entry(id, "2026-10-03", minutes, roundId), activity_kind: "review", review_round_id: roundId,
   });

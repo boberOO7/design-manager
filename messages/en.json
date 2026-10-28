@@ -3700,7 +3700,8 @@
           "unknown_deductions": "Deductions not specified",
           "ungenerated_period": "Period payments missing",
           "unscheduled_project": "Project receipts not scheduled",
-          "ungenerated_supervision": "Supervision payment missing"
+          "ungenerated_supervision": "Supervision payment missing",
+          "piecework_unforecast": "Piecework pay is not yet determined; future output is excluded from the forecast."
         },
         "forecast": "Cash forecast",
         "forecastHorizon": "Forecast horizon",
@@ -3800,6 +3801,7 @@
         "unavailableReasons": "What prevents final margin",
         "partialValuation": "Some costs lack valuation",
         "partialLabor": "Labor estimate incomplete",
+        "configureLabor": "Set up labor calculations",
         "reasons": {
           "recognitionInactive": "Management recognition is not activated.",
           "history": "Project cost history is incomplete.",
@@ -5462,7 +5464,7 @@
     "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Each resolved reviewer step counts on its approval or rework date, including approvals in an open round. Reviews add no completed tasks or m² credit. The total includes logged task, review and internal work time. Internal work adds no completed tasks or m² credit and is not attributed to a project. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting. Review sessions count shared work once across pause/resume; task review steps count each reviewer’s decisions separately.",
     "reviewSessionsCompleted": "Review sessions completed",
     "activityTitle": "Team activity",
-    "activityDefinition": "Recorded task, review and internal work by Kyiv work date. Solid squares show missing records in muted gray, recorded time below the normalized studio workday (including an explicit 0 hours) in amber, a full workday in green, time above it in blue, and work outside the schedule in violet. Empty weekends and studio days off have light outlines; approved absences without work have a muted fill and dashed outlines. Approved absences (including partial days), studio days off and dates before joining have no target comparison. Active review timers keep a separate cell marker; their unrecorded time is not added to totals. Hover or focus for the exact hours and day context; click for the full task breakdown.",
+    "activityDefinition": "Recorded task, review and internal work plus completed timed calendar events by Kyiv work date. All-day events do not imply worked hours; overlapping events count once. Solid squares show missing records in muted gray, recorded time below the normalized studio workday (including an explicit 0 hours) in amber, a full workday in green, time above it in vivid bright green, and work outside the schedule in violet. Empty weekends and studio days off have light outlines; approved absences without work have a muted fill and dashed outlines. Approved absences (including partial days), studio days off and dates before joining have no target comparison. Active review timers keep a separate cell marker; their unrecorded time is not added to totals. Hover or focus for the exact hours and day context; click for the full task breakdown.",
     "activityMonthNavigation": "Activity month",
     "activityPreviousMonth": "Previous month",
     "activityNextMonth": "Next month",
@@ -5480,6 +5482,9 @@
     "activityNoPeople": "No employees for this month.",
     "activityUnavailableTask": "Unavailable task",
     "activityInternalWalkthrough": "Team walkthrough",
+    "activityCalendar": "Calendar events",
+    "activityCalendarOverlap": "Overlapping events count once in the total.",
+    "activityNoProject": "No project",
     "activityTarget": "Workday · {hours} h",
     "activityNoTarget": "Recorded time is shown without a workday target comparison.",
     "activityState_missing": "No records",

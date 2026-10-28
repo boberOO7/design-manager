@@ -53,6 +53,9 @@ describe("team activity month query", () => {
     expect(calls).toContainEqual({ table: "studio_days_off", field: "date", value: `${month}-01`, op: "gte" });
     expect(calls).toContainEqual({ table: "studio_days_off", field: "date", value: next, op: "lt" });
     expect(calls).toContainEqual({ table: "review_timer_sessions", field: "studio_id", value: "studio", op: "eq" });
+    expect(calls).toContainEqual({ table: "calendar_events", field: "studio_id", value: "studio", op: "eq" });
+    // Range filtering here would lose recurrence roots or moved/cancelled overrides.
+    expect(calls.some(call => call.table === "calendar_events" && call.op !== "eq")).toBe(false);
     expect(calls.some(call => call.table === "review_timer_sessions" && call.field === "state")).toBe(false);
   });
 

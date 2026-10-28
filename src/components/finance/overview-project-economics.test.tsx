@@ -6,11 +6,11 @@ import { OverviewProjectEconomics } from "./overview-project-economics";
 import type { OverviewProjectEconomics as Economics } from "@/lib/finance-overview-economics";
 vi.mock("@/components/statistics/statistics-motion", () => ({ StatisticsMotion: ({ children }: { children: React.ReactNode }) => children }));
 
-it("renders missing costs as zero with the regular bar style without releasing margins", () => {
+it("renders missing costs as zero with the regular bar style and exposes the missing labor schedule", () => {
   const projects = [null, "0.00", "125.00"].map((knownCosts, index) => ({
     id: `project-${index}`, name: `Project ${index}`, contract: "1000.00", costs: knownCosts, knownCosts,
     pendingExpenseCosts: null, missingPendingExpenseFx: 0, pendingExpenseIncomplete: false, recordedCosts: null, recordedCount: 0,
-    provisionalCosts: null, historicalCosts: null, historicalIncomplete: false, historicalIssues: [],
+    provisionalCosts: null, historicalCosts: null, historicalIncomplete: index === 0, historicalIssues: index === 0 ? ["missing_capacity"] : [],
     costsIncomplete: index !== 1, missingRecognizedFx: 0, missingRecordedFx: 0, provisionalIncomplete: false,
     reasons: [], contribution: null, margin: null, area: "100", completed: false,
   }));
@@ -29,4 +29,6 @@ it("renders missing costs as zero with the regular bar style without releasing m
   expect(label(2)).toContain(en.Finance.overview.economics.incompleteShort);
   expect(label(0)).toContain(`${en.Finance.overview.economics.margin}: —`);
   expect(html).not.toContain("border-dashed");
+  expect(html).toContain(en.Finance.historicalLabor.issue.missing_capacity);
+  expect(html).toContain('href="/finance/reports#labor"');
 });

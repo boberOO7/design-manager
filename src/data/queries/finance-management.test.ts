@@ -21,7 +21,7 @@ beforeEach(() => {
     const valued = Boolean(args.p_historical_fx?.["USD:2026-09-30"]);
     const historicalLabor = { asOf: "2026-10-19", reportingCurrency: "UAH", periods: [valued ? { ...source, knownStudioCost: "40000", calculatedCost: "40000", unattributedCost: "30000",
       allocations: [{ projectId: project, amount: "10000" }], fx: { rate: "40", source: "nbu", effectiveDate: "2026-09-30" }, issues: ["missing_reports"] } : source] };
-    return { data: name === "get_finance_calculated_labor_reporting" ? historicalLabor : { historicalLabor, asOf: "2026-10-19", recognitionStart: null,
+    return { data: { historicalLabor, asOf: "2026-10-19", recognitionStart: null,
       months: [], entries: [], coverage: [], projects: [{ id: project, name: "Historical project", startsOn: "2026-09-01" }], sources: [],
       labor: { sources: [], pools: [], allocations: [] }, tripSources: [], projectReporting: { receipts: [], events: [], estimates: [], contracts: [], matched: [] } }, error: null };
   });
@@ -40,6 +40,23 @@ it("retains native cost and specific missing FX coverage without a substitute qu
   const data = await getFinanceManagement({ from: "2026-09-01", to: "2026-09-30" });
   expect(data?.historicalLabor[0]).toMatchObject({ knownNative: "1000", calculatedCost: null });
   expect(data?.historicalProjectLabor[0].period).toMatchObject({ known: null, incomplete: true, issues: ["fx_required", "missing_reports"] });
+  expect(mocks.rpc).toHaveBeenCalledTimes(1);
+});
+
+it.each(["UAH", "USD"])("loads an already valued %s payroll snapshot with one RPC and no FX preflight", async currency => {
+  const period = { ...source, currency, knownStudioCost: "40000", calculatedCost: "40000", unattributedCost: "30000",
+    allocations: [{ projectId: project, amount: "10000" }], issues: [],
+    fx: currency === "UAH" ? null : { rate: "40", source: "nbu", effectiveDate: "2026-09-30" } };
+  mocks.rpc.mockResolvedValue({ data: {
+    historicalLabor: { asOf: "2026-10-19", reportingCurrency: "UAH", periods: [period] }, asOf: "2026-10-19", recognitionStart: null,
+    months: [], entries: [], coverage: [], projects: [{ id: project, name: "Historical project", startsOn: "2026-09-01" }], sources: [],
+    labor: { sources: [], pools: [], allocations: [] }, tripSources: [], projectReporting: { receipts: [], events: [], estimates: [], contracts: [], matched: [] },
+  }, error: null });
+  const report = await getFinanceManagement({});
+  expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  expect(mocks.rpc).toHaveBeenCalledWith("get_finance_management_reporting", { p_studio_id: id });
+  expect(mocks.fx).not.toHaveBeenCalled();
+  expect(report?.historicalProjectLabor[0].lifetime.known).toBe("10000.00");
 });
 
 it("ordinary report loads and reloads only read scoped reporting RPCs and never schedule financial workers", async () => {
@@ -48,8 +65,8 @@ it("ordinary report loads and reloads only read scoped reporting RPCs and never 
   expect(mocks.labor).not.toHaveBeenCalled();
   expect(mocks.expenses).not.toHaveBeenCalled();
   expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
-    "get_finance_calculated_labor_reporting", "get_finance_management_reporting",
-    "get_finance_calculated_labor_reporting", "get_finance_management_reporting",
+    "get_finance_management_reporting", "get_finance_management_reporting",
+    "get_finance_management_reporting", "get_finance_management_reporting",
   ]);
   expect(mocks.rpc.mock.calls.every(([, args]) => args.p_studio_id === id)).toBe(true);
 });
@@ -59,7 +76,7 @@ it("loads reports with piecework conditions without treating an absent monthly a
   const condition = { employeeId: id, name: "Piecework employee", termId: id, effectiveFrom: "2026-10-01", effectiveThrough: null,
     currency: "USD", amount: null, basis: "net", payout: null, deductions: "0", employerCost: "0", employerStatus: "fixed" };
   const fixed = { ...condition, employeeId: project, termId: project, name: "Fixed employee", currency: "UAH", amount: "15000", payout: "15000" };
-  mocks.rpc.mockResolvedValueOnce({ data: historicalLabor, error: null }).mockResolvedValueOnce({ data: {
+  mocks.rpc.mockResolvedValueOnce({ data: {
     historicalLabor, asOf: "2026-10-28", recognitionStart: null, months: [], entries: [], coverage: [], projects: [], sources: [],
     labor: { sources: [], pools: [], allocations: [], salaryConditions: [condition, fixed] }, tripSources: [],
     projectReporting: { receipts: [], events: [], estimates: [], contracts: [], matched: [] },

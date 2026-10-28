@@ -62,6 +62,8 @@
   --ui-success-surface: #d1fae5;
   --ui-success-border: #059669;
   --ui-success-accent: #059669;
+  --ui-activity-target: #15803d;
+  --ui-activity-over: #00a63e;
   --ui-success-text: #065f46;
   --ui-warning-surface: #fef3c7;
   --ui-warning-border: #b27d2a;
@@ -177,6 +179,8 @@
   --ui-success-surface: #064e3b;
   --ui-success-border: #10b981;
   --ui-success-accent: #10b981;
+  --ui-activity-target: #059669;
+  --ui-activity-over: #86ef72;
   --ui-success-text: #6ee7b7;
   --ui-warning-surface: #451f05;
   --ui-warning-border: #d97706;

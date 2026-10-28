@@ -2,13 +2,15 @@
 
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
-export function Tooltip({ children, content, onlyWhenTruncated, openOnClick = false, interactive = false }: {
+export function Tooltip({ children, content, onlyWhenTruncated, openOnClick = false, interactive = false, contentClassName }: {
   children: ReactElement;
   content: ReactNode;
   onlyWhenTruncated?: string;
   openOnClick?: boolean;
   interactive?: boolean;
+  contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [trigger, setTrigger] = useState<HTMLElement | null>(null);
@@ -42,7 +44,7 @@ export function Tooltip({ children, content, onlyWhenTruncated, openOnClick = fa
       <TooltipPrimitive.Portal container={trigger?.closest("dialog") ?? undefined}>
         <TooltipPrimitive.Content ref={contentRef} onBlurCapture={interactive ? event => {
           if (!event.currentTarget.contains(event.relatedTarget) && !trigger?.contains(event.relatedTarget)) setOpen(false);
-        } : undefined} sideOffset={6} collisionPadding={8} data-interactive={interactive} className="ui-tooltip z-[100] max-h-[var(--radix-tooltip-content-available-height)] max-w-[min(20rem,var(--radix-tooltip-content-available-width))] overflow-y-auto whitespace-pre-line break-words rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2.5 py-1.5 text-xs font-normal normal-case leading-5 tracking-normal text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]">
+        } : undefined} sideOffset={6} collisionPadding={8} data-interactive={interactive} className={cn("ui-tooltip z-[100] max-h-[var(--radix-tooltip-content-available-height)] max-w-[min(20rem,var(--radix-tooltip-content-available-width))] overflow-y-auto whitespace-pre-line break-words rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2.5 py-1.5 text-xs font-normal normal-case leading-5 tracking-normal text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)]", contentClassName)}>
           {content}
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>

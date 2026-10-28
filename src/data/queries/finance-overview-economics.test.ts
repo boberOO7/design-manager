@@ -18,6 +18,22 @@ describe("Overview project economics read boundary", () => {
     expect(mocks.client).not.toHaveBeenCalled();
     expect(mocks.management).not.toHaveBeenCalled();
   });
+  it("loads project metadata while the management report is still pending", async () => {
+    let finishReport = () => {};
+    const pendingReport = new Promise<null>(resolve => { finishReport = () => resolve(null); });
+    mocks.management.mockReturnValueOnce(pendingReport);
+    const fetcher = vi.fn(async () => Response.json([]));
+    mocks.client.mockResolvedValue(createClient<Database>("http://127.0.0.1:54321", "test", {
+      auth: { persistSession: false }, global: { fetch: fetcher },
+    }));
+    const pending = getFinanceOverviewProjectEconomics();
+    try {
+      await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    } finally {
+      finishReport();
+    }
+    expect(await pending).toBeNull();
+  });
   it("reuses canonical profitability without triggering labor maintenance and reads tenant-scoped project area", async () => {
     const urls: URL[] = [];
     mocks.management.mockResolvedValue({ projectProfitability: [], currency: { code: "USD", minor_units: 2 }, today: "2026-10-17", labor: { automation: null }, projectRows: [], history: [], provisional: [], provisionalLabor: [], coverage: [] });

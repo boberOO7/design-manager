@@ -26,7 +26,7 @@ the same treatment.
 | Worklog internal activity and minutes | Internal work consumes daily capacity but remains studio cost. | Derive directly; no internal project required. |
 | Studio daily hours | Payroll shares need scheduled capacity, not logged time as the monthly denominator. Current studio setting owns the ordinary duration. | Reuse; editor only for a dated or employee exception. |
 | Monday–Sunday weekday choices | Scheduled days determine the denominator. Dated Finance revisions override the shared Monday–Friday app convention. There is no separate stored studio workweek history. | Prefill existing rules; edit only an exception. |
-| Schedule effective date | Today's setting cannot prove an undocumented historical schedule. | Ask only for missing historical coverage or an intentional dated change; preview before saving. |
+| Schedule effective date | The studio workday and Monday–Friday apply to all source dates without an applicable override. | Ask only for an intentional dated exception; preview before saving. |
 | Schedule employee scope | An individual exception must not change everyone else's denominator. | Show only in the exception editor. |
 | Approved leave and studio holidays | Avoid requiring reports for approved absence; avoid double-counting overlapping absence minutes. | Read existing approved requests and studio days off. |
 | Internal-project selector | Older installations may store studio work as project tasks. An explicit exclusion keeps that project at studio level. | Optional at first activation; preserve saved exclusions. Never infer from a project name. |
@@ -43,7 +43,7 @@ the same treatment.
 | Warning or action | Why it remains, or why it was removed |
 | --- | --- |
 | Missing salary / incomplete components; open payroll | Real missing business information. Missing-salary checks use effective coverage, not merely the existence of a future term. |
-| Missing schedule coverage | Historical denominator is unknown. Present an effective-date repair, not a second ordinary studio schedule setup. |
+| Missing separate Finance schedule | Use the studio workday and Monday–Friday for current and historical source dates; do not block project costs or create capacity history. |
 | Unresolved payroll source; already recognized separate expense | An actual double-counting ambiguity or immutable expense history. Existing separate recognition must be corrected before cash-only reclassification. Unrelated services do not reopen review. |
 | Missing Worklog dates; open Worklog | Actual absent evidence; cannot be replaced by guessed hours. |
 | Outside-schedule work / partial employment | A dated exception affects the normal salary allocation. Preserve review and source detail. |

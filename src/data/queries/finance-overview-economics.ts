@@ -12,14 +12,15 @@ export async function getFinanceOverviewProjectEconomics() {
   if (!admin) return null;
   const client = await createClient();
   const metadata: OverviewProjectMetadata[] = [];
-  const data = await getFinanceManagement({});
+  const [data] = await Promise.all([getFinanceManagement({}), (async () => {
+    for (let offset = 0; ; offset += 1000) {
+      const page = await client.from("projects").select("id,status,total_area_m2::text").eq("studio_id", admin.studio_id).order("id").range(offset, offset + 999);
+      if (page.error || !page.data) throw new Error("Unable to load project economics metadata.", { cause: page.error });
+      metadata.push(...z.array(metadataSchema).parse(page.data).map(project => ({ id: project.id, status: project.status, area: project.total_area_m2 })));
+      if (page.data.length < 1000) break;
+    }
+  })()]);
   if (!data) return null;
-  for (let offset = 0; ; offset += 1000) {
-    const page = await client.from("projects").select("id,status,total_area_m2::text").eq("studio_id", admin.studio_id).order("id").range(offset, offset + 999);
-    if (page.error || !page.data) throw new Error("Unable to load project economics metadata.", { cause: page.error });
-    metadata.push(...z.array(metadataSchema).parse(page.data).map(project => ({ id: project.id, status: project.status, area: project.total_area_m2 })));
-    if (page.data.length < 1000) break;
-  }
   return { currency: data.currency, asOf: data.today,
     ...buildOverviewProjectEconomics(data.projectProfitability, metadata, data.labor.automation?.internalProjectId ?? null, data.currency.minor_units, {
       rows: data.projectRows, recorded: [],

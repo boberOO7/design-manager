@@ -85,6 +85,32 @@ select pg_temp.pid(1),o.obligation_id,r.result_id,'payout' from (values(pg_temp.
   (pg_temp.pid(23),pg_temp.pid(203)),(pg_temp.pid(24),pg_temp.pid(204))) o(obligation_id,request_id)
 join public.finance_planning_requests r on r.studio_id=pg_temp.pid(1) and r.request_id=o.request_id;
 
+create function pg_temp.historical(p_fx jsonb default '{}') returns jsonb language sql stable as $$
+  select public.get_finance_historical_labor_reporting(pg_temp.pid(1),p_fx)
+$$;
+create function pg_temp.period(p_employee integer,p_month integer,p_fx jsonb default '{}') returns jsonb language sql stable as $$
+  select p from jsonb_array_elements(pg_temp.historical(p_fx)->'periods') p
+    where p->>'employeeId'=pg_temp.pid(p_employee)::text and p->>'periodStart'=pg_temp.month_start(p_month)::text
+$$;
+select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
+savepoint studio_baseline;
+update public.studios set standard_workday_minutes=420 where id=pg_temp.pid(1);
+insert into public.work_log_days(studio_id,user_id,work_date)
+select pg_temp.pid(1),pg_temp.pid(11),d::date from generate_series(pg_temp.month_start(-2)::timestamp,(pg_temp.month_start(-1)-1)::timestamp,interval '1 day') d;
+insert into public.work_log_entries(studio_id,user_id,work_date,activity_kind,task_id,minutes)
+select pg_temp.pid(1),pg_temp.pid(11),min(d)::date,'task',pg_temp.pid(40),420
+from generate_series(pg_temp.month_start(-2)::timestamp,(pg_temp.month_start(-1)-1)::timestamp,interval '1 day') d
+where extract(isodow from d) between 1 and 5;
+select ok(not (pg_temp.period(11,-2)->'issues' ? 'missing_capacity'),'a salary and submitted work need no separate Finance capacity setup');
+select is((pg_temp.period(11,-2)->>'expectedMinutes')::numeric,
+  (select count(*)*420 from generate_series(pg_temp.month_start(-2)::timestamp,(pg_temp.month_start(-1)-1)::timestamp,interval '1 day') d
+    where extract(isodow from d) between 1 and 5)::numeric,'the baseline uses the actual studio duration and Monday-Friday');
+select is((pg_temp.period(11,-2)->'allocations'->0->>'amount')::numeric,
+  (select trunc(1300::numeric/count(*),2) from generate_series(pg_temp.month_start(-2)::timestamp,(pg_temp.month_start(-1)-1)::timestamp,interval '1 day') d
+    where extract(isodow from d) between 1 and 5),'submitted project hours accrue salary cost without an artificial activation date');
+select is((select count(*) from public.finance_labor_capacity_revisions where studio_id=pg_temp.pid(1)),0::bigint,'the fallback creates no capacity history');
+rollback to studio_baseline;
+
 -- Historical capacity is explicit; a different current capacity must never leak backwards.
 insert into public.finance_labor_capacity_revisions(studio_id,effective_from,daily_minutes,weekdays,created_by) values
 (pg_temp.pid(1),pg_temp.month_start(-2),480,array[1,2,3,4,5,6,7],pg_temp.pid(10)),
@@ -94,14 +120,6 @@ select pg_temp.pid(1),pg_temp.pid(11),d::date from generate_series(pg_temp.month
 insert into public.work_log_entries(studio_id,user_id,work_date,activity_kind,task_id,internal_activity_type,minutes) values
 (pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+2,'task',pg_temp.pid(40),null,480),
 (pg_temp.pid(1),pg_temp.pid(11),pg_temp.month_start(-2)+2,'internal',null,'team_walkthrough',480);
-create function pg_temp.historical(p_fx jsonb default '{}') returns jsonb language sql stable as $$
-  select public.get_finance_historical_labor_reporting(pg_temp.pid(1),p_fx)
-$$;
-create function pg_temp.period(p_employee integer,p_month integer,p_fx jsonb default '{}') returns jsonb language sql stable as $$
-  select p from jsonb_array_elements(pg_temp.historical(p_fx)->'periods') p
-    where p->>'employeeId'=pg_temp.pid(p_employee)::text and p->>'periodStart'=pg_temp.month_start(p_month)::text
-$$;
-select set_config('request.jwt.claim.sub',pg_temp.pid(10)::text,true);
 select is((select recognition_start_month from public.finance_settings where studio_id=pg_temp.pid(1)),null,'recognition starts inactive');
 select is((select count(*) from public.finance_labor_automation where studio_id=pg_temp.pid(1)),0::bigint,'historical reads need no automation configuration');
 select is((pg_temp.period(11,-2)->>'knownNative')::numeric,1300::numeric,'historical net salary includes fixed deductions and employer costs once');
@@ -113,6 +131,8 @@ select is((pg_temp.period(11,-2)->'allocations'->0->>'amount')::numeric,
   trunc(1300::numeric*240/((pg_temp.month_start(-1)-pg_temp.month_start(-2))*480),2),'project attribution reuses capacity normalization including internal overtime');
 select is((pg_temp.period(11,-2)->>'unattributedCost')::numeric+(pg_temp.period(11,-2)->'allocations'->0->>'amount')::numeric,
   1300::numeric,'internal and unused capacity stay in the studio remainder');
+
+
 
 savepoint missing_worklog;
 delete from public.work_log_days where studio_id=pg_temp.pid(1) and user_id=pg_temp.pid(11) and work_date=pg_temp.month_start(-2)+2;
@@ -169,8 +189,10 @@ insert into public.work_log_days(studio_id,user_id,work_date) values
 (pg_temp.pid(1),pg_temp.pid(16),pg_temp.month_start(-3)+2),(pg_temp.pid(1),pg_temp.pid(16),pg_temp.month_start(-4)+2);
 select is((pg_temp.period(16,-3)->>'knownNative')::numeric,2200::numeric,'gross payroll adds employer cost once without adding deductions again');
 select is((pg_temp.period(16,-3)->>'calculatedCost')::numeric,2200::numeric,'missing historical capacity does not erase known closed salary');
-select ok(pg_temp.period(16,-3)->'issues' ? 'missing_capacity','missing historical capacity is a specific coverage issue');
-select is(jsonb_array_length(pg_temp.period(16,-3)->'allocations'),0,'missing historical capacity never uses the current studio revision');
+select ok(not (pg_temp.period(16,-3)->'issues' ? 'missing_capacity'),'historical salary uses the studio workday before the first dated override');
+select is((pg_temp.period(16,-3)->>'expectedMinutes')::numeric,
+  (select count(*)*480 from generate_series(pg_temp.month_start(-3)::timestamp,(pg_temp.month_start(-2)-1)::timestamp,interval '1 day') d
+    where extract(isodow from d) between 1 and 5)::numeric,'historical baseline never borrows a later dated capacity revision');
 select is(pg_temp.period(16,-4)->>'knownNative',null,'unmatched Worklog cannot fabricate a historical salary');
 select ok(pg_temp.period(16,-4)->'issues' ? 'missing_salary','unmatched submitted Worklog exposes its missing salary input');
 select is((select count(*) from public.finance_obligations where studio_id=pg_temp.pid(1)),4::bigint,'term-only calculations still create no occurrences');
