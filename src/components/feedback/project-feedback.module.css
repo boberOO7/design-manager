@@ -1,0 +1,8 @@
+.response::details-content {
+  block-size: 0;
+  overflow: hidden;
+  interpolate-size: allow-keywords;
+  transition: block-size 180ms ease-out, content-visibility 180ms allow-discrete;
+}
+.response[open]::details-content { block-size: auto; }
+@media (prefers-reduced-motion: reduce) { .response::details-content { transition: none; } }

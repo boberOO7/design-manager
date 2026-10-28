@@ -1,3 +1,5 @@
+import { ProjectFeedback } from "@/components/feedback/project-feedback";
+import { getProjectFeedback } from "@/data/queries/feedback";
 import { Suspense, type ComponentProps, type ReactNode } from "react";
 import { InstaLoadReady } from "@/components/shared/instaload-motion";
 import { ProjectContextBlueprint, ProjectSectionBlueprint } from "@/components/projects/project-detail-blueprint";
@@ -40,10 +42,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("board") };
 }
 
-type ProjectView = "board" | "details" | "team" | "activity" | "finance";
+type ProjectView = "board" | "details" | "team" | "activity" | "finance" | "feedback";
 
 function getProjectView(value: string | string[] | undefined): ProjectView {
-  return value === "details" || value === "team" || value === "activity" || value === "finance" ? value : "board";
+  return value === "details" || value === "team" || value === "activity" || value === "finance" || value === "feedback" ? value : "board";
 }
 
 function getProjectViewHref(projectId: string, view: ProjectView, filters: ProjectListFilters): string {
@@ -53,7 +55,7 @@ function getProjectViewHref(projectId: string, view: ProjectView, filters: Proje
   return `/projects/${projectId}${params.size ? `?${params}` : ""}`;
 }
 
-type ProjectPageSearchParams = Partial<Record<"view" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
+type ProjectPageSearchParams = Partial<Record<"view" | "feedbackPage" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
   const [{ projectId }, query, t, locale, common] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale(), getTranslations("Common")]);
@@ -65,7 +67,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   if (!project || !profile) notFound();
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
-  if (view === "finance" && !canManage) notFound();
+  if ((view === "finance" || view === "feedback") && !canManage) notFound();
 
   // Start authorized reads before localization; only the task loader owns schedule refresh.
   const boardTasks = view === "board" ? getProjectTasks(project.id) : Promise.resolve([]);
@@ -88,7 +90,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const actualStartDateAction = updateProjectActualStartDate.bind(null, project.id);
   const completionDateAction = updateProjectCompletionDate.bind(null, project.id);
   const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
-  if (canManage) navItems.push({ id: "finance", label: t("finance") });
+  if (canManage) navItems.push({ id: "finance", label: t("finance") }, { id: "feedback", label: t("feedback") });
   const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link prefetch={false} key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
 
   if (view === "board") {
@@ -103,7 +105,9 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   }
 
   const context = Promise.all([localizedProject, tasks, configuration]).then(([project, tasks, configuration]) => <ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={project} restoreAction={restoreAction} summary={calculateProjectSummary(tasks, undefined, configuration.progressMethods, configuration.stages)} showProgress={configuration.showProgress} stages={configuration.stages} updateAction={updateAction} />);
-  const content = view === "finance" ? ProjectFinanceSection({ projectId: project.id, query })
+  const feedbackPage = typeof query.feedbackPage === "string" && /^[1-9]\d{0,5}$/.test(query.feedbackPage) ? Number(query.feedbackPage) : 1;
+  const content = view === "feedback" ? getProjectFeedback(project.id, feedbackPage).then(data => <DomainMessages scope="feedback"><ProjectFeedback projectId={project.id} page={feedbackPage} {...data} /></DomainMessages>)
+    : view === "finance" ? ProjectFinanceSection({ projectId: project.id, query })
     : view === "details" ? localizedProject.then(project => ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }))
     : view === "team" ? Promise.all([projectMembers, assignableStudioMembers]).then(([members, assignableMembers]) => ProjectTeamSection({ assignableMembers, canManage, members, projectId: project.id }))
     : activity.then(activity => ProjectActivitySection({ activity, projectId: project.id }));

@@ -6,7 +6,7 @@ import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "@/lib/project-progress";
 import { DEFAULT_STAGE_COLUMN_STATUSES } from "@/lib/tasks";
 
 vi.mock("server-only", () => ({}));
-const mocks = vi.hoisted(() => ({ project: vi.fn(), admin: vi.fn(), profile: vi.fn(), city: vi.fn(), tasks: vi.fn(), progress: vi.fn(), configuration: vi.fn(), calendar: vi.fn(), assignees: vi.fn(), members: vi.fn(), assignables: vi.fn(), checklists: vi.fn(), templates: vi.fn(), activity: vi.fn(), finance: vi.fn() }));
+const mocks = vi.hoisted(() => ({ project: vi.fn(), admin: vi.fn(), profile: vi.fn(), city: vi.fn(), tasks: vi.fn(), progress: vi.fn(), configuration: vi.fn(), calendar: vi.fn(), assignees: vi.fn(), members: vi.fn(), assignables: vi.fn(), checklists: vi.fn(), templates: vi.fn(), activity: vi.fn(), feedback: vi.fn(), finance: vi.fn() }));
 vi.mock("@/data/queries/project-by-id", () => ({ getProjectById: mocks.project }));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/data/queries", () => ({ getCurrentUserProfile: mocks.profile }));
@@ -18,6 +18,7 @@ vi.mock("@/data/queries/project-calendar-time", () => ({ getProjectCalendarTime:
 vi.mock("@/data/queries/project-members", () => ({ getAssignableProjectMembers: mocks.assignees, getProjectMembers: mocks.members, getAssignableStudioMembers: mocks.assignables }));
 vi.mock("@/data/queries/checklist-templates", () => ({ getStudioChecklistTemplates: mocks.checklists }));
 vi.mock("@/data/queries/project-templates", () => ({ getStudioProjectTemplates: mocks.templates }));
+vi.mock("@/data/queries/feedback", () => ({ getProjectFeedback: mocks.feedback }));
 vi.mock("@/data/queries/project-activity", () => ({ getProjectActivity: mocks.activity }));
 vi.mock("@/components/finance/project-finance-section", () => ({ ProjectFinanceSection: mocks.finance }));
 vi.mock("./actions", () => ({ archiveProject: vi.fn(), restoreProject: vi.fn(), updateProject: vi.fn(), updateProjectActualStartDate: vi.fn(), updateProjectCompletionDate: vi.fn() }));
@@ -75,6 +76,7 @@ beforeEach(() => {
   mocks.configuration.mockResolvedValue(configuration);
   mocks.calendar.mockResolvedValue({ count: 0, minutes: 0 });
   for (const mock of [mocks.assignees, mocks.members, mocks.assignables, mocks.checklists, mocks.templates, mocks.activity]) mock.mockResolvedValue([]);
+  mocks.feedback.mockResolvedValue({ invitations: [], hasNext: false });
   mocks.finance.mockResolvedValue(<section>Finance</section>);
 });
 
@@ -150,4 +152,20 @@ it.each(["details", "activity", "finance"])("starts %s without waiting for conte
   expect(await pendingSection(page, `project-${view}`)).toBeTruthy();
   expect(mocks.progress).toHaveBeenCalledOnce();
   expect(mocks.tasks).not.toHaveBeenCalled();
+});
+
+it("loads feedback only for an administrator explicitly opening that view", async () => {
+  await route();
+  expect(mocks.feedback).not.toHaveBeenCalled();
+  const result = await route({ view: "feedback", feedbackPage: "2" });
+  await pendingSection(result, "project-feedback");
+  expect(mocks.feedback).toHaveBeenCalledExactlyOnceWith("project", 2);
+  expect(mocks.tasks).toHaveBeenCalledTimes(1);
+});
+it("rejects feedback before starting private reads for employees or another studio admin", async () => {
+  for (const membership of [null, { studio_id: "other-studio" }]) {
+    mocks.admin.mockResolvedValue(membership);
+    await expect(route({ view: "feedback" })).rejects.toThrow("NOT_FOUND");
+  }
+  expect(mocks.feedback).not.toHaveBeenCalled();
 });

@@ -8,7 +8,10 @@ not employee salary records. Sources are paged independently, without queries
 per project or person or Finance occurrence maintenance.
 
 The URL preserves shared `period=3|6|12|year|all` and
-`section=overview|leads|team|calendar`. Periods end on today's Kyiv date;
+`section=overview|leads|team|calendar|feedback`. Feedback embeds the client survey
+analytics with its own date/project filters and does not load Statistics streams;
+its domain contract is in [projects.md](projects.md#client-feedback). The other
+sections use the shared period selector. Periods end on today's Kyiv date;
 all-history starts at the earliest retained source date across the sections.
 Current cohort outcomes and future attendance commitments are labelled
 separately. Definitions live in `src/lib/statistics*.ts`, with colocated tests.

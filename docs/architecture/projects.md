@@ -160,6 +160,70 @@ writable for collections. Operational lifecycle changes do not settle, cancel,
 or stop financial arrangements. Financially referenced projects cannot be deleted.
 Finance private amendments never enter the ordinary project activity feed.
 
+## Client feedback
+
+The admin-only `view=feedback` tab creates/copies/revokes invitations and reads
+responses, including for completed or archived projects. The Feedback tab at
+`/statistics?section=feedback` shows studio averages, monthly response counts/ratings
+and NPS (% 9–10 minus % 0–6). Its date/project filters remain independent of the
+other Statistics periods. `/feedback` redirects here, preserving its filters.
+`/admin/client-survey` edits the current published studio questionnaire. Save
+appends an immutable `feedback_template_versions` row and atomically advances the
+published pointer; Cancel discards local edits. There is no separate draft UI or
+publish step. The existing `feedback_templates` revision/pointer row and guarded
+save RPC remain the storage contract; reads use the published config, so older
+unpublished drafts never become the active questionnaire. Revision checks reject
+concurrent edits. First use creates the original questionnaire. Each invitation
+captures its published version; existing links/answers never change on save.
+
+Questionnaire appearance keeps an optional `background` enum in the immutable
+config: `original` (also the legacy missing-field default), `slate`, `tinted`, or
+`paper`. Arbitrary background colours are rejected by both Zod and the database
+validator. Accent stays a HEX colour; new background palettes derive readable
+foreground shades from it, and the tinted preset follows the accent. No history
+backfill or changes to existing invitations are needed.
+
+The five standard IDs remain `satisfaction`, `communication`, `timeliness`,
+`expectations` (1–5), and `recommendation` (0–10). Wording, order and visibility
+can change; visible standard metrics are required. Hidden metrics remain NULL,
+so averages and NPS use only actual answers. Additional UUID questions support
+text, 1–5 ratings and single choice; requiredness/options are checked against the
+invitation's snapshot. Additional analytics are separated by publication and
+question ID, even if an ID is reused with different wording/type/options.
+
+Analytics use admin RLS and a caller-context aggregate RPC. Date/project filters
+select invitations created in the inclusive Kyiv date range; response rate is
+answered/all invitations in that cohort (including expired/revoked), while monthly
+trends use Kyiv response dates. NPS is (% 9–10 minus % 0–6), with 7–8 passive and
+missing recommendation excluded from its denominator. `/survey/preview` verifies
+admin membership, renders the real form in same-origin desktop/mobile iframes,
+accepts validated local edits from its parent and never submits a response.
+No stage questionnaires or automated invitations.
+
+`project_feedback` owns both invitation and immutable response. Composite project/
+studio identity prevents cross-tenant links; active admin/profile RLS and guarded
+create/revoke RPCs protect results and writes. Random 256-bit bearer tokens are
+readable only through admin RLS (so links can be copied again). Treat them as
+secrets. `/survey/[token]` exposes only the invitation version’s public questionnaire,
+snapshotted studio name, existing branding and invitation availability,
+never project/client details or answers. Copied `/f/[token]` links encode the same
+256-bit secret as 43 base64url characters and rewrite to the survey; legacy hex
+links remain valid. New date-only invitations expire at the midnight after the
+selected day in the application Kyiv timezone. It uses the existing shared SPACE logo
+and stored studio name; studios currently have no configurable logo field.
+
+Public submission passes same-origin, bounded-body, schema and honeypot checks
+before a service-only RPC atomically locks and consumes an unrevoked/unexpired
+token and stores its response. The original RPC signature remains compatible
+with already-loaded legacy forms. Published versions and submitted responses
+are protected from updates by triggers. Replays/concurrent submissions cannot overwrite it.
+Spam cannot create extra response rows: only admins mint invitations and each
+accepts one response. No external anti-bot service, Realtime or background job.
+
+Canonical paths: `src/components/feedback/`, `src/data/queries/feedback.ts`,
+`src/app/api/feedback/`, `src/app/api/projects/[projectId]/feedback/`,
+`supabase/migrations/*feedback*.sql`.
+
 ## Canonical sources
 
 - `src/app/(app)/projects/`

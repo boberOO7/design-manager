@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive } from "./navigation";
 
 describe("application navigation", () => {
+  it("keeps feedback within Statistics instead of a separate navigation item", () => {
+    expect(getNavigationItems("admin").map(item => item.href)).not.toContain("/feedback");
+    expect(getNavigationItems("admin").map(item => item.href)).toContain("/statistics");
+  });
   it("exposes Statistics only to administrators", () => {
     expect(getNavigationItems("admin").some(item => item.href === "/statistics")).toBe(true);
     expect(getNavigationItems("employee").some(item => item.href === "/statistics")).toBe(false);

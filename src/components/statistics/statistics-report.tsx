@@ -16,24 +16,24 @@ import { StatisticsTooltipLink } from "./statistics-tooltip-link";
 import { TeamActivityCalendar } from "./team-activity-calendar";
 
 export async function StatisticsShell({ period, section, range, children }: {
-  period: StatisticsPeriod; section: StatisticsSection; range: StatisticsStreams["range"]; children: ReactNode;
+  period: StatisticsPeriod; section: StatisticsSection; range?: StatisticsStreams["range"]; children: ReactNode;
 }) {
   const t = await getTranslations("Statistics");
   return <div className="w-full min-w-0 space-y-4" data-testid="statistics-report">
     <PageHeader title={t("title")} description={t("description")} className="flex-col items-start gap-3 lg:flex-row lg:items-end" action={
-      <Suspense fallback={<div aria-hidden="true" className="instaload-blueprint h-[34px] w-56"><span className="instaload-mark mt-1 h-3 w-full" /><span className="instaload-mark mt-2 h-3 w-24" /></div>}><StatisticsRange pending={range} /></Suspense>} />
+      range ? <Suspense fallback={<div aria-hidden="true" className="instaload-blueprint h-[34px] w-56"><span className="instaload-mark mt-1 h-3 w-full" /><span className="instaload-mark mt-2 h-3 w-24" /></div>}><StatisticsRange pending={range} /></Suspense> : undefined} />
 
     <div className="flex flex-wrap items-center justify-between gap-3">
-    <nav aria-label={t("sections")} className="grid w-full grid-cols-4 gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:flex sm:w-fit">
-      {statisticsSections.map(item => <Link key={item} href={`/statistics?period=${period}&section=${item}`} scroll={false} aria-current={section === item ? "page" : undefined} className="flex min-h-11 items-center justify-center rounded-[var(--ui-radius-control)] px-2 text-xs font-medium sm:px-4 sm:text-sm text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] aria-[current=page]:shadow-[var(--ui-shadow-panel)]">{t(`section_${item}`)}</Link>)}
+    <nav aria-label={t("sections")} className="flex w-full flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:w-fit">
+      {statisticsSections.map(item => <Link key={item} href={`/statistics?period=${period}&section=${item}`} scroll={false} aria-current={section === item ? "page" : undefined} className="flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-[var(--ui-radius-control)] px-2 text-xs font-medium sm:flex-none sm:px-4 sm:text-sm text-[var(--ui-text-secondary)] transition-colors duration-[180ms] hover:bg-[var(--ui-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] aria-[current=page]:bg-[var(--ui-surface)] aria-[current=page]:text-[var(--ui-text)] aria-[current=page]:shadow-[var(--ui-shadow-panel)]">{t(`section_${item}`)}</Link>)}
     </nav>
-    <nav aria-label={t("period")} className="flex max-w-full flex-wrap gap-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-1">
+    {section !== "feedback" ? <nav aria-label={t("period")} className="flex max-w-full flex-wrap gap-1 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] p-1">
       {statisticsPeriods.map(item => <Link key={item} href={`/statistics?period=${item}&section=${section}`} scroll={false} aria-current={period === item ? "page" : undefined}
         className={`rounded-[calc(var(--ui-radius-control)-2px)] px-2.5 py-2 text-xs font-medium transition-colors duration-[180ms] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] sm:px-3 ${period === item ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-strong)]"}`}>{t(`period${item}`)}</Link>)}
-    </nav>
+    </nav> : null}
     </div>
     <div key={`${section}:${period}`} className="min-w-0 space-y-4">{children}
-      <details className="text-xs text-[var(--ui-text-muted)]"><summary className="w-fit cursor-pointer rounded py-2 font-medium transition-colors duration-[180ms] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{t("definitions")}</summary><dl className="mt-2 divide-y divide-[var(--ui-border)] rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] px-4 leading-5">{["history", section].map(key => <div key={key} className="grid gap-1 py-3 sm:grid-cols-[10rem_1fr]"><dt className="font-medium text-[var(--ui-text-secondary)]">{t(`method_${key}_label`)}</dt><dd>{t(`method_${key}`)}</dd></div>)}</dl></details>
+      {section !== "feedback" ? <details className="text-xs text-[var(--ui-text-muted)]"><summary className="w-fit cursor-pointer rounded py-2 font-medium transition-colors duration-[180ms] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{t("definitions")}</summary><dl className="mt-2 divide-y divide-[var(--ui-border)] rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] px-4 leading-5">{["history", section].map(key => <div key={key} className="grid gap-1 py-3 sm:grid-cols-[10rem_1fr]"><dt className="font-medium text-[var(--ui-text-secondary)]">{t(`method_${key}_label`)}</dt><dd>{t(`method_${key}`)}</dd></div>)}</dl></details> : null}
     </div>
   </div>;
 }
@@ -50,7 +50,7 @@ async function StatisticsRange({ pending }: { pending: StatisticsStreams["range"
   return <div className="flex items-center gap-2.5 text-xs text-[var(--ui-text-muted)]"><CalendarDays className="size-4 shrink-0" aria-hidden="true" /><div><p className="font-medium tabular-nums text-[var(--ui-text-secondary)]">{date(range.from)} — {date(range.through)}</p><p className="mt-0.5">{t("partialMonth")}</p></div></div>;
 }
 
-export function StatisticsReportView({ streams, section }: { streams: StatisticsStreams; section: StatisticsSection }) {
+export function StatisticsReportView({ streams, section }: { streams: StatisticsStreams; section: Exclude<StatisticsSection, "feedback"> }) {
   const stream = <T,>(name: string, pending: Promise<T>, render: (report: T) => ReactNode, fallback: ReactNode) =>
     <Suspense fallback={fallback}><StatisticsStream name={name} pending={pending} section={section} period={streams.period} render={render} /></Suspense>;
   return <StatisticsShell period={streams.period} section={section} range={streams.range}>

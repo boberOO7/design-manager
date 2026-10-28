@@ -1,0 +1,135 @@
+.page {
+  --survey-accent: #e3ca9c;
+  --survey-glow: 227, 202, 156;
+  --survey-clay: #c39d8d;
+  --survey-ivory: #e5d6b9;
+  --survey-tick-lit: #f2d7a3;
+  --survey-hover: #ecdbba;
+  --survey-pressed: #d6ba88;
+  --survey-on-accent: var(--survey-bg);
+  color-scheme: dark;
+  min-height: 100dvh;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--survey-bg);
+  color: var(--survey-text);
+}
+.page[data-custom-appearance="true"] {
+  --survey-tick-lit: color-mix(in srgb, var(--survey-accent) 75%, white);
+  --survey-clay: var(--survey-muted);
+  --survey-ivory: color-mix(in srgb, var(--survey-accent) 45%, white);
+  --survey-hover: color-mix(in srgb, var(--survey-accent) 78%, white);
+  --survey-pressed: color-mix(in srgb, var(--survey-accent) 86%, black);
+}
+.container { width: min(100% - 40px, 720px); margin-inline: auto; padding: 28px 0 max(28px, env(safe-area-inset-bottom)); }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--survey-line); }
+.brand > div { color: var(--survey-text); }
+.studio { margin-top: 12px; max-width: 24ch; overflow-wrap: anywhere; font-size: 12px; font-weight: 400; color: var(--survey-muted); }
+.headerLabel, .eyebrow { font-size: 11px; line-height: 1.6; letter-spacing: .12em; text-transform: uppercase; color: var(--survey-muted); }
+.headerLabel { max-width: 19ch; text-align: right; }
+.intro { padding: 42px 0 30px; }
+.page h1 { max-width: 17ch; font-size: clamp(38px, 5.2vw, 62px); line-height: 1.08; letter-spacing: -.04em; font-weight: 400; text-wrap: balance; }
+.lead { max-width: 45ch; margin-top: 24px; font-size: 15px; line-height: 1.8; color: var(--survey-muted); }
+.privacy { display: flex; align-items: flex-start; gap: 8px; max-width: 46ch; margin-top: 18px; font-size: 12px; line-height: 1.7; color: var(--survey-muted); }
+.privacy svg { flex-shrink: 0; margin-top: 3px; color: var(--survey-accent-ink); }
+.progress { position: sticky; top: 0; z-index: 3; padding-block: 18px; background: var(--survey-bg); }
+.progressLabel { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; font-size: 12px; color: var(--survey-muted); }
+.progressLabel [role="status"] { color: var(--survey-accent-ink); font-variant-numeric: tabular-nums; }
+.track { height: 1px; overflow: hidden; background: var(--survey-line); }
+.track span { display: block; width: 100%; height: 100%; background: var(--survey-accent-ink); transform-origin: left; transition: transform 200ms ease-out; }
+.fields { min-width: 0; border: 0; padding: 0; }
+.question { min-width: 0; padding: 34px 0 38px; border: 0; border-bottom: 1px solid var(--survey-line); scroll-margin-top: 90px; }
+.question legend { float: left; width: 100%; max-width: 36ch; padding: 0; font-size: 20px; line-height: 1.45; letter-spacing: -.025em; font-weight: 400; text-wrap: pretty; }
+.ratingControl { clear: both; width: 100%; padding-top: 22px; }
+.scaleReadout { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 16px; }
+.scaleState { color: var(--survey-muted); font-size: 12px; line-height: 1.5; }
+.scaleState[data-selected="true"] { color: var(--survey-accent-ink); }
+.scaleState > span:first-child { display: inline-block; }
+.scaleValue { display: flex; flex-shrink: 0; align-items: baseline; gap: 8px; font-family: var(--font-geist-mono), monospace; font-size: 28px; font-weight: 300; line-height: 1.2; letter-spacing: -.04em; color: var(--survey-accent-ink); font-variant-numeric: tabular-nums; }
+.scaleValue > span { font-family: var(--font-geist-sans), sans-serif; font-size: 12px; letter-spacing: 0; color: var(--survey-muted); }
+.scale { position: relative; height: 94px; margin-top: 4px; cursor: pointer; touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+.scaleRail { position: absolute; top: 36px; inset-inline: min(22px, calc(100% / (var(--scale-count) * 2))); height: 2px; pointer-events: none; }
+.minorTicks { position: absolute; inset-inline: -1.5px; top: 50%; transform: translateY(-50%); display: flex; justify-content: space-between; }
+.minorTicks i { flex: 0 0 3px; height: 3px; border-radius: 50%; background: var(--survey-tick); transform: scale(1); transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, box-shadow 160ms ease; }
+.minorTicks i[data-passed="true"] { background: var(--survey-tick-lit); transform: scale(1.3); box-shadow: 0 0 4px rgba(var(--survey-glow), .3); }
+.minorTicks i[data-major="true"] { visibility: hidden; }
+/* Moving a full-width track creates horizontal overflow at the right-hand end. */
+.markerTrack { position: absolute; top: 0; bottom: 0; width: 0; z-index: 2; }
+/* An open ring lets the scale remain visible while the handle moves. */
+.marker {
+  position: absolute; top: -13px; left: -14px; width: 28px; height: 28px;
+  border: 2px solid var(--survey-accent-ink);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 7px rgba(var(--survey-glow), .28), 0 0 20px rgba(var(--survey-glow), .13);
+  transition: box-shadow 180ms ease;
+}
+.scale[data-dragging="true"] .marker { box-shadow: 0 0 9px rgba(var(--survey-glow), .4), 0 0 24px rgba(var(--survey-glow), .2); }
+.scale[data-dragging="true"] { cursor: grabbing; }
+.scale[data-dragging="true"] .option, .scale[data-dragging="true"] input { cursor: grabbing; }
+.scaleOptions { position: relative; display: flex; justify-content: space-between; height: 100%; }
+.option { position: relative; display: block; flex: 0 0 min(44px, calc(100% / var(--scale-count))); min-width: 0; cursor: pointer; }
+.option input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; margin: 0; scroll-margin-block: 90px; }
+.tick { position: absolute; top: 25px; left: calc(50% - 1px); width: 2px; height: 24px; background: var(--survey-tick); pointer-events: none; transform-origin: center; transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease; }
+/* During a gesture/snap the shared position already supplies each animation frame. */
+.scale[data-moving="true"] .tick { transition: background-color 160ms ease; }
+.optionNumber { position: absolute; top: 62px; left: 0; width: 100%; text-align: center; font-family: var(--font-geist-mono), monospace; font-size: 14px; line-height: 1.5; color: var(--survey-number); pointer-events: none; transition: color 180ms ease-out; }
+.option[data-passed="true"] .tick { background: var(--survey-accent-ink); }
+.option[data-passed="true"] .optionNumber { color: var(--survey-accent-ink); }
+.option[data-active="true"] .optionNumber { font-weight: 600; }
+.option:has(input:focus-visible) { outline: 1px solid var(--survey-accent-ink); outline-offset: -1px; border-radius: 4px; }
+.scale:has(input:disabled), .option:has(input:disabled), .option input:disabled { cursor: wait; }
+.endpoints { display: flex; justify-content: space-between; gap: 28px; margin-top: 0; color: var(--survey-muted); font-size: 12px; line-height: 1.6; }
+.endpoints span { max-width: 45%; color: var(--survey-clay); }
+.endpoints span:last-child { text-align: right; color: var(--survey-ivory); }
+.comments { padding: 38px 0 32px; }
+.commentsHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.commentsHeading h2 { font-size: 26px; letter-spacing: -.035em; font-weight: 400; }
+.commentsHeading > span { color: var(--survey-muted); font-size: 12px; line-height: 1.7; }
+.textField { display: grid; gap: 12px; margin-top: 28px; font-size: 14px; line-height: 1.6; }
+.textField textarea { width: 100%; min-height: 108px; field-sizing: content; resize: none; overflow: hidden; border: 1px solid var(--survey-line); border-radius: 4px; padding: 16px; background: var(--survey-surface); color: var(--survey-text); caret-color: var(--survey-accent-ink); font: inherit; font-size: 16px; line-height: 1.7; transition: border-color 180ms ease-out; }
+.textField textarea:focus-visible { outline: 2px solid var(--survey-accent-ink); outline-offset: -1px; border-color: var(--survey-accent-ink); }
+.textField textarea::placeholder { color: var(--survey-muted); }
+.submit { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; min-height: 58px; padding: 18px 22px; border: 1px solid var(--survey-accent); border-radius: 4px; font-size: 14px; font-weight: 500; background: var(--survey-accent); color: var(--survey-on-accent); cursor: pointer; transition: background-color 180ms ease-out, box-shadow 180ms ease-out; }
+.submit:active:enabled { background: var(--survey-pressed); }
+.submit:focus-visible { outline: 2px solid var(--survey-accent-ink); outline-offset: 4px; }
+.submit:disabled { cursor: wait; }
+.page[data-survey-preview="true"] .submit:disabled { cursor: default; }
+.submitHint { margin-top: 16px; text-align: center; font-size: 12px; line-height: 1.7; color: var(--survey-muted); }
+.honeypot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.error { margin-bottom: 20px; padding: 14px; border: 1px solid #9d6c62; border-radius: 4px; color: #f2b6a9; font-size: 14px; }
+.footer { padding-top: 48px; text-align: center; font-size: 11px; line-height: 1.8; letter-spacing: .1em; text-transform: uppercase; color: var(--survey-muted); }
+.ending { padding: 64px 0 80px; outline: none; animation: arrive 200ms ease-out; }
+.ending h1 { margin-top: 18px; }
+.seal { width: 72px; height: 72px; display: grid; place-items: center; border: 1px solid var(--survey-line); border-radius: 50%; margin-bottom: 36px; color: var(--survey-accent-ink); box-shadow: 0 0 24px rgba(var(--survey-glow), .06); }
+.signature { display: flex; align-items: center; gap: 16px; margin-top: 36px; font-size: 12px; line-height: 1.7; color: var(--survey-muted); }
+.signature > span { width: 32px; height: 1px; flex-shrink: 0; background: var(--survey-accent-ink); }
+.page ::selection { background: var(--survey-accent); color: var(--survey-on-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .submit:enabled:hover:not(:active) { background: var(--survey-hover); box-shadow: 0 0 24px rgba(var(--survey-glow), .08); }
+  .textField textarea:enabled:hover:not(:focus-visible) { border-color: var(--survey-rule); }
+}
+@keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 640px) {
+  .container { width: min(100% - 96px, 720px); padding-top: 42px; }
+  .intro { padding: 56px 0 32px; }
+  .lead { font-size: 16px; }
+  .question { padding-block: 40px; }
+  .question legend { font-size: 24px; }
+  .scaleState { font-size: 13px; }
+  .scaleValue { font-size: 32px; }
+}
+@media (max-width: 479px) {
+  .minorTicks { inset-inline: -1px; }
+  .minorTicks i { flex-basis: 2px; height: 2px; }
+  .minorTicks i:nth-child(even) { visibility: hidden; }
+  .ratingControl[data-feedback-scale="recommendation"] .marker { width: 20px; height: 20px; top: -9px; left: -10px; }
+}
+@media (prefers-reduced-motion: reduce) { .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+.optional { font-size: 12px; color: var(--survey-muted); }
+.choiceOptions { clear: both; display: grid; gap: 12px; padding-top: 24px; }
+.choiceOptions label { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--survey-line); border-radius: 4px; cursor: pointer; font-size: 16px; }
+.choiceOptions input { accent-color: var(--survey-accent-ink); width: 18px; height: 18px; }
+
+.page[data-background="paper"] { --survey-tick-lit: var(--survey-accent-ink); }

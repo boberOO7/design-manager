@@ -229,7 +229,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
         setHighlightedValue(selectedIsEnabled ? selectedValue : getNextSelectValue(itemModels, undefined, "first"));
       }
     }}>
-      <Tooltip content={open ? undefined : selectedText || undefined}><PopoverPrimitive.Trigger asChild>
+      <Tooltip content={open ? undefined : selectedText || undefined} onlyWhenTruncated="[data-select-label]"><PopoverPrimitive.Trigger asChild>
         <button
           ref={setTriggerRef}
           type="button"
@@ -258,7 +258,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function Select(
           onKeyDown={handleKeyDown}
         >
           <span className={cn("grid min-w-0", variant === "secondary" ? "" : "pl-3 pr-2")}>
-            <span className="col-start-1 row-start-1 min-w-0 truncate">{selectedItem ? selectedLabel : placeholder}</span>
+            <span data-select-label className="col-start-1 row-start-1 min-w-0 truncate">{selectedItem ? selectedLabel : placeholder}</span>
             {width === "content" ? <span aria-hidden="true" className="invisible col-start-1 row-start-1 grid max-w-64">
               {items.map((item) => <span key={item.props.value} className="col-start-1 row-start-1 whitespace-nowrap">{item.props.textValue ?? getNodeText(item.props.children)}</span>)}
             </span> : null}

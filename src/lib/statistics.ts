@@ -8,7 +8,7 @@ export type StatisticsTask = Pick<Tables["tasks"]["Row"], "id" | "project_id" | 
 export type StatisticsActivity = Pick<Tables["project_activity"]["Row"], "project_id" | "changes" | "created_at">;
 export const statisticsPeriods = ["3", "6", "12", "year", "all"] as const;
 export type StatisticsPeriod = typeof statisticsPeriods[number];
-export const statisticsSections = ["overview", "leads", "team", "calendar"] as const;
+export const statisticsSections = ["overview", "leads", "team", "calendar", "feedback"] as const;
 export type StatisticsSection = typeof statisticsSections[number];
 export function parseStatisticsSection(value: string | string[] | undefined): StatisticsSection {
   return statisticsSections.find(section => section === value) ?? "overview";

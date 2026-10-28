@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       calendar_event_attendees: {
@@ -1167,6 +1192,90 @@ export type Database = {
             foreignKeyName: "equipment_service_events_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_template_versions: {
+        Row: {
+          config: Json
+          id: string
+          published_at: string
+          published_by: string | null
+          studio_id: string
+          studio_name: string
+          version: number
+        }
+        Insert: {
+          config: Json
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          studio_id: string
+          studio_name: string
+          version: number
+        }
+        Update: {
+          config?: Json
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          studio_id?: string
+          studio_name?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_template_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_template_versions_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_templates: {
+        Row: {
+          draft: Json
+          published_version_id: string
+          revision: number
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          draft: Json
+          published_version_id: string
+          revision?: number
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          draft?: Json
+          published_version_id?: string
+          revision?: number
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_templates_published_version_id_studio_id_fkey"
+            columns: ["published_version_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_template_versions"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "feedback_templates_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: true
             referencedRelation: "studios"
             referencedColumns: ["id"]
           },
@@ -6036,6 +6145,98 @@ export type Database = {
           },
         ]
       }
+      project_feedback: {
+        Row: {
+          additional_answers: Json
+          communication: number | null
+          created_at: string
+          created_by: string
+          expectations: number | null
+          expires_at: string
+          id: string
+          improvements: string | null
+          project_id: string
+          recommendation: number | null
+          revoked_at: string | null
+          satisfaction: number | null
+          strengths: string | null
+          studio_id: string
+          submitted_at: string | null
+          template_version_id: string
+          timeliness: number | null
+          token: string
+        }
+        Insert: {
+          additional_answers?: Json
+          communication?: number | null
+          created_at?: string
+          created_by: string
+          expectations?: number | null
+          expires_at: string
+          id?: string
+          improvements?: string | null
+          project_id: string
+          recommendation?: number | null
+          revoked_at?: string | null
+          satisfaction?: number | null
+          strengths?: string | null
+          studio_id: string
+          submitted_at?: string | null
+          template_version_id: string
+          timeliness?: number | null
+          token?: string
+        }
+        Update: {
+          additional_answers?: Json
+          communication?: number | null
+          created_at?: string
+          created_by?: string
+          expectations?: number | null
+          expires_at?: string
+          id?: string
+          improvements?: string | null
+          project_id?: string
+          recommendation?: number | null
+          revoked_at?: string | null
+          satisfaction?: number | null
+          strengths?: string | null
+          studio_id?: string
+          submitted_at?: string | null
+          template_version_id?: string
+          timeliness?: number | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_feedback_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_feedback_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "project_feedback_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_feedback_template_version_id_studio_id_fkey"
+            columns: ["template_version_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_template_versions"
+            referencedColumns: ["id", "studio_id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           assigned_area_m2: number
@@ -10361,6 +10562,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_project_feedback: {
+        Args: { p_expires_at: string; p_project_id: string }
+        Returns: string
+      }
       create_project_from_template: {
         Args: {
           p_project: Json
@@ -10489,6 +10694,15 @@ export type Database = {
           start_time: string
           user_id: string
         }[]
+      }
+      get_feedback_analytics: {
+        Args: {
+          p_from?: string
+          p_project_id?: string
+          p_studio_id: string
+          p_to?: string
+        }
+        Returns: Json
       }
       get_finance_calculated_labor_reporting: {
         Args: { p_fx?: Json; p_studio_id: string }
@@ -10652,6 +10866,19 @@ export type Database = {
       get_project_stage_deletion_info: {
         Args: { p_project_id: string }
         Returns: Json
+      }
+      get_studio_feedback_summary: {
+        Args: { p_studio_id: string }
+        Returns: {
+          communication: number
+          expectations: number
+          nps: number
+          period: string
+          recommendation: number
+          responses: number
+          satisfaction: number
+          timeliness: number
+        }[]
       }
       get_studio_member_removal_impact: {
         Args: { p_user_id: string }
@@ -10981,6 +11208,10 @@ export type Database = {
         }
         Returns: string
       }
+      revoke_project_feedback: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       save_checklist_template: {
         Args: {
           p_name: string
@@ -10993,6 +11224,15 @@ export type Database = {
       save_daily_work_log: {
         Args: { p_entries: Json; p_timer_snapshot?: Json; p_work_date: string }
         Returns: undefined
+      }
+      save_feedback_template: {
+        Args: {
+          p_config: Json
+          p_publish?: boolean
+          p_revision: number
+          p_studio_id: string
+        }
+        Returns: number
       }
       save_finance_account: {
         Args: {
@@ -11292,6 +11532,23 @@ export type Database = {
           p_studio_id: string
         }
         Returns: string
+      }
+      submit_project_feedback: {
+        Args: {
+          p_communication: number
+          p_expectations: number
+          p_improvements: string
+          p_recommendation: number
+          p_satisfaction: number
+          p_strengths: string
+          p_timeliness: number
+          p_token: string
+        }
+        Returns: boolean
+      }
+      submit_versioned_feedback: {
+        Args: { p_answers: Json; p_token: string }
+        Returns: boolean
       }
       sync_review_timer: { Args: never; Returns: Json }
       transition_office_assignment: {
@@ -11653,6 +11910,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       calendar_event_invitation_status: ["pending", "accepted", "declined"],

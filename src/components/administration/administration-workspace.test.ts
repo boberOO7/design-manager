@@ -15,7 +15,7 @@ describe("Administration workspace presentation", () => {
     expect(workspace).toContain("timeOff(typeKey(request.requestType))");
     expect(workspace).toContain("formatAdministrationDateRange(request, locale)");
     expect(workspace).toContain('administration("reason")');
-    expect(workspace).toContain("statusStyle.label");
+    expect(workspace).toContain("timeOff(request.status)");
     expect(workspace).toContain('timeOff("viewDetails")');
     expect(workspace).toContain('timeOff("approve")');
     expect(workspace).toContain('timeOff("reject")');
@@ -25,7 +25,7 @@ describe("Administration workspace presentation", () => {
   });
 
   it("keeps an empty pending queue compact while rendering the supporting sections", () => {
-    expect(workspace).toContain('title={t("noRequests")}');
+    expect(workspace).toContain('{t("noRequests")}');
     expect(workspace).toContain('availability("upcoming")');
     expect(workspace).toContain('t("recentDecisions")');
     expect(workspace).not.toContain("ChecklistTemplateManager");
@@ -39,7 +39,7 @@ describe("Administration workspace presentation", () => {
   it("uses shared semantic badges for decisions while keeping reviewer attribution separate", () => {
     const decisionRow = workspace.slice(workspace.indexOf("function DecisionRow"), workspace.indexOf("function RequestDrawer"));
     expect(decisionRow).toContain("getTimeOffStatusBadgeStyle(request.status)");
-    expect(decisionRow).toContain("statusStyle.label");
+    expect(decisionRow).toContain("timeOff(request.status)");
     expect(decisionRow).toContain('administration("reviewedBy"');
     expect(decisionRow).toContain("request.reviewerName");
     expect(decisionRow).not.toContain("Outcome:");
@@ -48,6 +48,6 @@ describe("Administration workspace presentation", () => {
   it("keeps current availability distinct with the shared approved-status marker", () => {
     const availabilityRow = workspace.slice(workspace.indexOf("function AvailabilityRow"), workspace.indexOf("function DecisionRow"));
     expect(availabilityRow).toContain("getTimeOffStatusBadgeStyle(request.status)");
-    expect(workspace).toContain("border-[var(--ui-success-border)]");
+    expect(availabilityRow).toContain("statusStyle.className");
   });
 });

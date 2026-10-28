@@ -25,9 +25,9 @@ export function WorkdaySettings({ initialMinutes }: { initialMinutes: number }) 
     finally { setSaving(false); }
   }
   return <section aria-labelledby="workday-settings-heading" className="space-y-3">
-    <h2 id="workday-settings-heading" className="flex items-center gap-2 text-base font-semibold"><Clock3 aria-hidden className="size-4 text-[var(--ui-text-secondary)]" />{t("standardWorkday")}</h2>
-    <div className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-sm text-[var(--ui-text-secondary)]">{t("workdayHours")}<Input type="number" min="0" step="any" className="w-24" value={hours} disabled={saving} onChange={event => setHours(event.target.value)} /></label>
-      <Button type="button" size="sm" disabled={!valid || minutes === saved || saving} onClick={() => void save()}>{saving ? t("vacationSaving") : t("vacationSave")}</Button>
+    <h3 id="workday-settings-heading" className="flex items-center gap-2 text-base font-semibold"><Clock3 aria-hidden className="size-4 text-[var(--ui-text-secondary)]" />{t("standardWorkday")}</h3>
+    <div className="flex flex-wrap items-end justify-between gap-3"><label className="grid gap-1 text-sm text-[var(--ui-text-secondary)]">{t("workdayHours")}<Input type="number" min="0" step="any" className="h-11 w-24 sm:h-9" value={hours} disabled={saving} onChange={event => setHours(event.target.value)} /></label>
+      <Button type="button" size="compact" className="min-h-11 sm:min-h-9" disabled={!valid || minutes === saved || saving} onClick={() => void save()}>{saving ? t("vacationSaving") : t("vacationSave")}</Button>
     </div>
     {error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{t("workdaySaveFailed")}</p> : null}
   </section>;

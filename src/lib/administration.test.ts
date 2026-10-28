@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAdministrationDecision, canReceiveAdministrationModel, getRequiredTimeOffApprovalCount, getUpcomingEndDate, isUpcomingAbsence, sortPendingRequests, sortRecentDecisions, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
+import { applyAdministrationDecision, formatAdministrationDateRange, canReceiveAdministrationModel, getRequiredTimeOffApprovalCount, getUpcomingEndDate, isUpcomingAbsence, sortPendingRequests, sortRecentDecisions, type AdministrationModel, type AdministrationRequest } from "@/lib/administration";
 
 function request(overrides: Partial<AdministrationRequest> = {}): AdministrationRequest {
   return { id: "r1", employeeName: "Avery", employeeRole: "Designer", requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", startTime: null, endTime: null, allDay: true, privateNote: null, reviewNote: null, status: "pending", createdAt: "2026-07-20T09:00:00.000Z", reviewedAt: null, cancelledAt: null, reviewerName: null, approvalCount: 0, requiredApprovalCount: 2, hasCurrentAdminApproved: false, ...overrides };
@@ -7,6 +7,11 @@ function request(overrides: Partial<AdministrationRequest> = {}): Administration
 function model(): AdministrationModel { return { studioId: "studio", standardWorkdayMinutes: 480, vacationPolicy: { annualDays: 24, carryRule: "carry_all", carryCapDays: null, yearBoundary: "employee" }, vacationVisibleToEmployees: true, leaderboardBonusConfig: { enabled: true, rules: [{ place: 1, bonusPercent: 15 }] }, today: "2026-07-28", upcomingEnd: getUpcomingEndDate("2026-07-28"), pendingRequests: [request()], upcomingAbsences: [], recentDecisions: [], team: { activeMembers: 4, administrators: 1, inactiveMembers: 2 } }; }
 
 describe("Administration time-off logic", () => {
+  it("formats partial-day times without database seconds", () => {
+    const partial = request({ allDay: false, startTime: "09:00:00", endTime: "13:15:00" });
+    expect(formatAdministrationDateRange(partial, "uk")).toContain("09:00–13:15");
+    expect(formatAdministrationDateRange(request(), "uk")).not.toContain(" · ");
+  });
   it("sorts only pending requests oldest first", () => {
     expect(sortPendingRequests([request({ id: "new", createdAt: "2026-07-21T00:00:00Z" }), request({ id: "reviewed", status: "approved" }), request({ id: "old", createdAt: "2026-07-19T00:00:00Z" })]).map((item) => item.id)).toEqual(["old", "new"]);
   });

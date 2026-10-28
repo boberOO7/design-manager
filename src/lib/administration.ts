@@ -94,5 +94,5 @@ export function applyAdministrationDecision(model: AdministrationModel, request:
 export function formatAdministrationDateRange(request: Pick<AdministrationRequest, "startDate" | "endDate" | "startTime" | "endTime" | "allDay">, locale = "en"): string {
   const date = (value: string) => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }).format(parseDateOnly(value));
   const range = request.startDate === request.endDate ? date(request.startDate) : `${date(request.startDate)} – ${date(request.endDate)}`;
-  return request.allDay ? range : `${range} · ${request.startTime}–${request.endTime}`;
+  return request.allDay ? range : `${range} · ${request.startTime?.slice(0, 5)}–${request.endTime?.slice(0, 5)}`;
 }
