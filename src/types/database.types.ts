@@ -6147,63 +6147,36 @@ export type Database = {
       }
       project_feedback: {
         Row: {
-          additional_answers: Json
-          communication: number | null
           created_at: string
           created_by: string
-          expectations: number | null
           expires_at: string
           id: string
-          improvements: string | null
           project_id: string
-          recommendation: number | null
           revoked_at: string | null
-          satisfaction: number | null
-          strengths: string | null
           studio_id: string
-          submitted_at: string | null
           template_version_id: string
-          timeliness: number | null
           token: string
         }
         Insert: {
-          additional_answers?: Json
-          communication?: number | null
           created_at?: string
           created_by: string
-          expectations?: number | null
           expires_at: string
           id?: string
-          improvements?: string | null
           project_id: string
-          recommendation?: number | null
           revoked_at?: string | null
-          satisfaction?: number | null
-          strengths?: string | null
           studio_id: string
-          submitted_at?: string | null
           template_version_id: string
-          timeliness?: number | null
           token?: string
         }
         Update: {
-          additional_answers?: Json
-          communication?: number | null
           created_at?: string
           created_by?: string
-          expectations?: number | null
           expires_at?: string
           id?: string
-          improvements?: string | null
           project_id?: string
-          recommendation?: number | null
           revoked_at?: string | null
-          satisfaction?: number | null
-          strengths?: string | null
           studio_id?: string
-          submitted_at?: string | null
           template_version_id?: string
-          timeliness?: number | null
           token?: string
         }
         Relationships: [
@@ -6234,6 +6207,56 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "feedback_template_versions"
             referencedColumns: ["id", "studio_id"]
+          },
+        ]
+      }
+      project_feedback_responses: {
+        Row: {
+          additional_answers: Json
+          communication: number | null
+          expectations: number | null
+          id: string
+          improvements: string | null
+          invitation_id: string
+          recommendation: number | null
+          satisfaction: number | null
+          strengths: string | null
+          submitted_at: string
+          timeliness: number | null
+        }
+        Insert: {
+          additional_answers?: Json
+          communication?: number | null
+          expectations?: number | null
+          id?: string
+          improvements?: string | null
+          invitation_id: string
+          recommendation?: number | null
+          satisfaction?: number | null
+          strengths?: string | null
+          submitted_at?: string
+          timeliness?: number | null
+        }
+        Update: {
+          additional_answers?: Json
+          communication?: number | null
+          expectations?: number | null
+          id?: string
+          improvements?: string | null
+          invitation_id?: string
+          recommendation?: number | null
+          satisfaction?: number | null
+          strengths?: string | null
+          submitted_at?: string
+          timeliness?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_feedback_responses_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "project_feedback"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -11532,6 +11555,10 @@ export type Database = {
           p_studio_id: string
         }
         Returns: string
+      }
+      submit_feedback_with_cooldown: {
+        Args: { p_answers: Json; p_source_hash: string; p_token: string }
+        Returns: boolean
       }
       submit_project_feedback: {
         Args: {

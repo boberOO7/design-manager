@@ -92,7 +92,7 @@ export async function recordFinancePayrollAdvance(_state: FinanceActionState, fo
   const payrollFx = await resolveFinanceFx(terms.data.currency, "UAH", input.date, input.mode, input.manualRate).catch(() => null);
   if (!payrollFx) return { status: "error", message: t("movements.errors.fx") };
   const fx = await resolveFinanceFx("UAH", foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null);
-  const { error } = await client.rpc("record_finance_payroll_advance", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: { ...input, fx, payrollFx, submission: input } });
+  const { error } = await client.rpc("record_finance_payroll_advance", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: { ...input, note: input.note || t("payrollCash.advanceDescription"), fx, payrollFx, submission: input } });
   return payrollCashResult(error?.message ?? null, t);
 }
 
@@ -114,7 +114,12 @@ export async function recordFinancePayrollPayment(_state: FinanceActionState, fo
   const foundation = await getFinanceData();
   if (!foundation?.settings?.finalized_at) return { status: "error", message: t("movements.errors.setup") };
   const fx = await resolveFinanceFx("UAH", foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null);
-  const { error } = await client.rpc("record_finance_payroll_payment", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_item_id: input.itemId, p_input: { ...input, payrollFx, fx, submission: input } });
+  const { error } = await client.rpc("record_finance_payroll_payment", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_item_id: input.itemId, p_input: { ...input, ...(input.earningDigest ? { earningReason: t("payrollEarning.defaultReason") } : {}), payrollFx, fx, submission: input } });
+  if (!error && input.earningDigest) {
+    revalidatePath("/calendar");
+    revalidatePath("/statistics");
+    scheduleAutomaticLabor(admin.studio_id);
+  }
   return payrollCashResult(error?.message ?? null, t);
 }
 

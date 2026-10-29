@@ -61,10 +61,9 @@ select throws_like($$select public.submit_versioned_feedback((select token from 
 select throws_like($$select public.submit_versioned_feedback((select token from published),(select answers || '{"studio_id":"spoof"}' from response))$$,'%feedback_invalid_response%','unknown answer IDs rejected');
 select throws_like($$select public.submit_versioned_feedback((select token from published),jsonb_set((select answers from response),'{95000000-0000-0000-0000-000000000031}','""'))$$,'%feedback_invalid_response%','empty numeric answer cannot poison analytics');
 select ok(public.submit_versioned_feedback((select token from published),(select answers from response)),'snapshot validates and saves custom answers');
-select is(public.submit_versioned_feedback((select token from published),(select answers from response)),false,'versioned response remains one-time');
 select ok(public.submit_project_feedback((select token from original),1,2,3,4,6,'Original response',''),'already-issued legacy form still submits');
 set local role authenticated;
-select is((select additional_answers->>'95000000-0000-0000-0000-000000000030' from public.project_feedback where id=(select id from published)),'Careful handover','custom response readable by owner admin');
+select is((select additional_answers->>'95000000-0000-0000-0000-000000000030' from public.project_feedback_responses where invitation_id=(select id from published)),'Careful handover','custom response readable by owner admin');
 select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'summary'->0->>'responses')::int,2,'received count');
 select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->>'invitations')::int,3,'response-rate denominator includes pending invitation');
 select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'summary'->0->>'nps')::numeric,0::numeric,'NPS 9 promoter and 6 detractor');
@@ -84,7 +83,7 @@ select ok(public.submit_versioned_feedback((select token from third),(select jso
 set local role authenticated;
 select is(jsonb_array_length(public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'additional'),6,'custom metrics separated by publication even when ID reused');
 select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'summary'->0->>'nps')::numeric,0::numeric,'NPS includes passive in denominator');
-select is((select strengths from public.project_feedback where id=(select id from original)),'Original response','old response preserved after repeated publication');
+select is((select strengths from public.project_feedback_responses where invitation_id=(select id from original)),'Original response','old response preserved after repeated publication');
 select is(public.save_feedback_template('95000000-0000-0000-0000-000000000001',jsonb_set((select config from draft),'{questions,4,visible}','false'),3,true),4,'hide NPS without changing its identity or scale');
 select lives_ok($$select public.create_project_feedback('95000000-0000-0000-0000-000000000020',now()+interval '1 day')$$,'invitation without NPS');
 set local role postgres;
@@ -94,16 +93,16 @@ set local role service_role;
 select throws_like($$select public.submit_versioned_feedback((select token from hidden),(select answers from response))$$,'%feedback_invalid_response%','hidden metrics cannot be injected');
 select ok(public.submit_versioned_feedback((select token from hidden),(select answers-'recommendation' from response)),'hidden NPS stored as missing, never zero');
 set local role postgres;
-select throws_like($$update public.project_feedback set satisfaction=2 where id=(select id from original)$$,'%feedback_response_immutable%','database protects old submitted answers from mutation');
-select throws_like($$update public.project_feedback set template_version_id=(select template_version_id from third join public.project_feedback using(id)) where id=(select id from original)$$,'%feedback_response_immutable%','database protects response version');
+select throws_like($$update public.project_feedback_responses set satisfaction=2 where invitation_id=(select id from original)$$,'%feedback_response_immutable%','database protects old submitted answers from mutation');
+select throws_like($$update public.project_feedback set template_version_id=(select template_version_id from third join public.project_feedback using(id)) where id=(select id from original)$$,'%feedback_invitation_immutable%','database protects response version');
 select throws_like($$insert into public.project_feedback(studio_id,project_id,created_by,expires_at,template_version_id) values ('95000000-0000-0000-0000-000000000002','95000000-0000-0000-0000-000000000021','95000000-0000-0000-0000-000000000012',now()+interval '1 day',(select template_version_id from original))$$,'%project_feedback_template_version_id_studio_id_fkey%','composite FK blocks foreign studio template substitution');
 set local role authenticated;
-select is((select recommendation from public.project_feedback where token=(select token from hidden)),null::smallint,'missing NPS is SQL NULL');
+select is((select recommendation from public.project_feedback_responses where invitation_id=(select id from public.project_feedback where token=(select token from hidden))),null::smallint,'missing NPS is SQL NULL');
 -- Known NPS boundaries: 0,6 detractors; 7,8 passives; 9,10 promoters.
 set local role postgres;
 insert into public.project_feedback(studio_id,project_id,created_by,expires_at,template_version_id)
 select '95000000-0000-0000-0000-000000000001','95000000-0000-0000-0000-000000000020','95000000-0000-0000-0000-000000000010',now()+interval '1 day',(select template_version_id from original) from generate_series(1,3);
-select public.submit_project_feedback(token,5,5,5,5,case row_number() over(order by id) when 1 then 0 when 2 then 7 else 10 end,'','') from public.project_feedback where studio_id='95000000-0000-0000-0000-000000000001' and submitted_at is null and template_version_id=(select template_version_id from original);
+select public.submit_project_feedback(token,5,5,5,5,case row_number() over(order by id) when 1 then 0 when 2 then 7 else 10 end,'','') from public.project_feedback where studio_id='95000000-0000-0000-0000-000000000001' and not exists(select 1 from public.project_feedback_responses r where r.invitation_id=project_feedback.id) and template_version_id=(select template_version_id from original);
 set local role authenticated;
 select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'summary'->0->>'nps')::numeric,round(100.0*(3-2)/7,20),'NPS boundaries and denominator exclude missing NPS');
 select set_config('request.jwt.claim.sub','95000000-0000-0000-0000-000000000011',true);
@@ -121,5 +120,13 @@ select throws_like($$select * from public.feedback_templates$$,'%permission deni
 select throws_like($$select * from public.feedback_template_versions$$,'%permission denied%','anonymous cannot enumerate publications');
 select throws_like($$select public.submit_versioned_feedback(repeat('a',64),'{}')$$,'%permission denied%','anonymous cannot invoke submission RPC');
 select throws_like($$select public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')$$,'%permission denied%','anonymous cannot read analytics');
+set local role service_role;
+select ok(public.submit_versioned_feedback((select token from published),(select answers from response)),'same versioned link accepts another client');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','95000000-0000-0000-0000-000000000010',true);
+select is((select count(*)::int from public.project_feedback_responses where invitation_id=(select id from published)),2,'both custom responses retained');
+select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'summary'->0->>'responses')::int,9,'analytics counts every response including shared links');
+select is((public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->>'answeredInvitations')::int,8,'response rate counts each answered invitation only once');
+select is((select value->'distribution'->>'Online' from jsonb_array_elements(public.get_feedback_analytics('95000000-0000-0000-0000-000000000001')->'additional') where value->>'version'='2' and value->'question'->>'type'='choice'),'2','choice distribution counts both clients');
 select * from finish();
 rollback;

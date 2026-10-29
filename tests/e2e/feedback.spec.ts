@@ -102,7 +102,7 @@ test("admin creates and copies invitation; anonymous desktop client responds; re
   await page.goto(`/projects/${projectId}?view=feedback`);
   await expect(page.getByRole("heading", { name: "Feedback", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create invitation" }).click();
-  await expect(page.getByText("Awaiting response", { exact: true })).toBeVisible();
+  await expect(page.getByText("Accepting responses", { exact: true })).toBeVisible();
   await expect(page.locator("[data-time-picker-control]")).toHaveCount(0);
   // Clipboard permission is browser-local; no external writes are involved.
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -159,11 +159,11 @@ test("admin creates and copies invitation; anonymous desktop client responds; re
   await client.getByRole("button", { name: "Share your experience", exact: true }).click();
   await expect(client.getByRole("heading", { name: "Thank you for being open." })).toBeVisible();
   await client.reload();
-  await expect(client.getByRole("heading", { name: "Your feedback is already with us." })).toBeVisible();
+  await expect(client.getByRole("heading", { name: "Good design starts with a conversation." })).toBeVisible();
   expect(consoleErrors.filter(message => /FORMATTING_ERROR|MISSING_MESSAGE|Hydration|hydration/i.test(message))).toEqual([]);
   await context.close();
   await page.reload();
-  await expect(page.getByText("Response received", { exact: true })).toBeVisible();
+  await expect(page.getByText("Accepting responses", { exact: true })).toBeVisible();
   await page.locator("summary").filter({ hasText: "View response" }).click();
   await expect(page.getByText("Thoughtful design", { exact: true })).toBeVisible();
   await page.goto("/statistics?section=feedback");
@@ -251,7 +251,7 @@ test("mobile Ukrainian survey, touch drag, vertical scroll, keyboard and reduced
   } finally { await context.close(); }
 });
 
-test("server rejects invalid data, spam trap, foreign origin, expired/revoked links and concurrent replay", async ({ page }) => {
+test("server rejects invalid data, spam trap, foreign origin, expired/revoked links and accepts concurrent client responses", async ({ page }) => {
   const invite = await invitation();
   const post = (data: object, origin = "http://localhost:3000", token = invite.token) => page.request.post(`/api/feedback/${token}`, { data, headers: { origin } });
   expect((await post({ ...responseBody, projectId: randomUUID() })).status()).toBe(400);
@@ -261,9 +261,9 @@ test("server rejects invalid data, spam trap, foreign origin, expired/revoked li
   expect((await post(responseBody, "https://foreign.example")).status()).toBe(403);
   expect((await post(responseBody, "http://localhost:3000", "invalid")).status()).toBe(410);
   const results = await Promise.all([post(responseBody), post({ ...responseBody, satisfaction: 1 })]);
-  expect(results.map(result => result.status()).sort()).toEqual([200, 410]);
-  const { data } = await service.from("project_feedback").select("id,submitted_at").eq("id", invite.id).single().throwOnError();
-  expect(data.submitted_at).toBeTruthy();
+  expect(results.map(result => result.status()).sort()).toEqual([200, 200]);
+  const { data } = await service.from("project_feedback_responses").select("satisfaction").eq("invitation_id", invite.id).throwOnError();
+  expect(data.map(response => response.satisfaction).sort()).toEqual([1, responseBody.satisfaction].sort());
   for (const kind of ["expired", "revoked"] as const) {
     const link = await invitation();
     await service.from("project_feedback").update(kind === "expired" ? { expires_at: new Date(Date.now() - 1000).toISOString() } : { revoked_at: new Date().toISOString() }).eq("id", link.id).throwOnError();

@@ -484,7 +484,12 @@ or notifications containing private data.
   amounts remain undetermined and produce forecast coverage diagnostics. Deferred
   attribution/project-inclusion triggers refresh draft payments after work changes;
   the existing maintenance worker also reconciles them. Reads never write.
-  Payment requires piecework confirmation. Later source changes stay visible but
+  `record_finance_payroll_payment` accepts an optional reviewed `earningDigest`:
+  it validates the pre-payment quote, confirms the unchanged calculated piecework
+  amount, and settles cash/advances in one transaction. Financial preview changes
+  or payment errors roll back confirmation too; retries reuse the original payment
+  request. Standalone confirmation remains available for explicit corrections.
+  Later source changes stay visible but
   do not alter confirmed pay without an explicit correction.
 - Monthly corrections can reduce pay below existing settlements, including to
   zero, through the payroll RPC only. Cash and allocation history stay intact;

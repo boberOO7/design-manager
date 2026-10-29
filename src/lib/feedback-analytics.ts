@@ -3,6 +3,7 @@ import { feedbackTemplateSchema } from "./feedback-template";
 
 export const feedbackAnalyticsSchema = z.object({
   invitations: z.number(),
+  answeredInvitations: z.number(),
   summary: z.array(z.object({
     period: z.string().nullable(), responses: z.number(),
     satisfaction: z.number().nullable(), communication: z.number().nullable(),

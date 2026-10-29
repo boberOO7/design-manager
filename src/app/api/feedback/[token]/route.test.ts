@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ client: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: vi.fn(), rpc: vi.fn(), sourceHash: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.client }));
+vi.mock("@/lib/feedback-rate-limit", () => ({ getFeedbackSourceHash: mocks.sourceHash }));
 import { POST } from "./route";
 const token = "a".repeat(64);
 const body = { satisfaction: 5, communication: 4, timeliness: 3, expectations: 5, recommendation: 0, strengths: " Thoughtful ", improvements: "", website: "" };
@@ -9,7 +10,7 @@ function post(value: unknown = body, options: { token?: string; origin?: string;
     method: "POST", headers: { origin: options.origin ?? "https://studio.example", "content-type": options.contentType ?? "application/json" }, body: options.raw ?? JSON.stringify(value),
   }), { params: Promise.resolve({ token: options.token ?? token }) });
 }
-beforeEach(() => { vi.clearAllMocks(); mocks.client.mockReturnValue({ rpc: mocks.rpc }); mocks.rpc.mockResolvedValue({ data: true, error: null }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.sourceHash.mockReturnValue("b".repeat(64)); mocks.client.mockReturnValue({ rpc: mocks.rpc }); mocks.rpc.mockResolvedValue({ data: true, error: null }); });
 describe("public feedback trust boundary", () => {
   it.each([
     [{ ...body, satisfaction: 0 }, {}], [{ ...body, recommendation: 11 }, {}],
@@ -37,12 +38,12 @@ describe("public feedback trust boundary", () => {
     const response = await post();
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("submit_project_feedback", {
-      p_token: token, p_satisfaction: 5, p_communication: 4, p_timeliness: 3,
-      p_expectations: 5, p_recommendation: 0, p_strengths: "Thoughtful", p_improvements: "",
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("submit_feedback_with_cooldown", {
+      p_token: token, p_source_hash: "b".repeat(64),
+      p_answers: { satisfaction: 5, communication: 4, timeliness: 3, expectations: 5, recommendation: 0, strengths: "Thoughtful", improvements: "" },
     });
   });
-  it("handles invalid, used, expired and revoked capabilities without exposing internal state", async () => {
+  it("handles invalid, expired and revoked capabilities without exposing internal state", async () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
     const response = await post();
     expect(response.status).toBe(410);
@@ -60,7 +61,7 @@ it("submits versioned answers without accepting client-supplied version or tenan
   const { website, ...answers } = body;
   const response = await post({ answers, website });
   expect(response.status).toBe(200);
-  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("submit_versioned_feedback", { p_token: token, p_answers: { ...answers, strengths: "Thoughtful" } });
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("submit_feedback_with_cooldown", { p_token: token, p_source_hash: "b".repeat(64), p_answers: { ...answers, strengths: "Thoughtful" } });
   mocks.client.mockClear();
   expect((await post({ answers, website, versionId: "forged" })).status).toBe(400);
   expect(mocks.client).not.toHaveBeenCalled();
@@ -71,4 +72,19 @@ it("maps invitation-specific answer validation to a safe client error", async ()
   const response = await post({ answers, website });
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({ error: "invalid" });
+});
+
+it("returns an actionable cooldown without disclosing internal database details", async () => {
+  mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "feedback_rate_limited", details: "243" } });
+  const response = await post();
+  expect(response.status).toBe(429);
+  expect(response.headers.get("Retry-After")).toBe("243");
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(await response.json()).toEqual({ error: "rate_limited" });
+});
+it.each([undefined, "", "private detail", "-1", "0", "301", "1.5"])("bounds malformed cooldown details: %s", async details => {
+  mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "feedback_rate_limited", details } });
+  const response = await post();
+  expect(response.status).toBe(429);
+  expect(response.headers.get("Retry-After")).toBe("300");
 });

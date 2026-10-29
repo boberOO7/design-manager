@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import { feedbackStatus, getFeedbackSurveyPath, resolveFeedbackLinkToken, getFeedbackExpiryAt } from "./feedback";
 describe("feedback invitation status", () => {
   const now = Date.parse("2026-10-28T12:00:00Z");
-  const invitation = { submitted_at: null, revoked_at: null, expires_at: "2026-10-29T12:00:00Z" };
-  it("keeps a submitted response answered after expiry", () => expect(feedbackStatus({ ...invitation, expires_at: "2026-10-01T12:00:00Z", submitted_at: "2026-09-30T12:00:00Z" }, now)).toBe("answered"));
+  const invitation = { revoked_at: null, expires_at: "2026-10-29T12:00:00Z" };
   it("treats the expiry instant as expired", () => expect(feedbackStatus({ ...invitation, expires_at: new Date(now).toISOString() }, now)).toBe("expired"));
   it("shows revocation regardless of expiry", () => expect(feedbackStatus({ ...invitation, revoked_at: new Date(now).toISOString() }, now)).toBe("revoked"));
-  it("shows a valid invitation as pending", () => expect(feedbackStatus(invitation, now)).toBe("pending"));
+  it("shows a valid invitation as active", () => expect(feedbackStatus(invitation, now)).toBe("active"));
 });
 
 describe("compact feedback links", () => {

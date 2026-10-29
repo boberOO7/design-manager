@@ -4,6 +4,7 @@ import { getFinanceData,getFinancePlanning,type FinancePlanningPeriod } from "@/
 import { FinanceExpectedWorkspace } from "@/components/finance/expected-workspace";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { parseFinanceExpectedStatus } from "@/lib/finance-planning";
+import { resolveFinanceFx } from "@/lib/finance-fx";
 export default async function FinanceExpectedPage({ searchParams }: { searchParams:Promise<{ page?:string; credits?:string; filter?:string; period?:string; item?:string; attention?:string; status?:string }> }) {
   const params=await searchParams;
   const positivePage=(value?:string)=>Number.isSafeInteger(Number(value))&&Number(value)>0?Math.min(Number(value),100000):1;
@@ -16,5 +17,7 @@ export default async function FinanceExpectedPage({ searchParams }: { searchPara
   const itemId=z.uuid().optional().catch(undefined).parse(params.item);
   const [foundation,planning]=await Promise.all([getFinanceData(),getFinancePlanning(page,creditPage,filter,undefined,"design",period,today,itemId,attention,status)]);
   if(!foundation||!planning) redirect("/dashboard");
-  return <FinanceExpectedWorkspace {...foundation} {...planning} page={page} creditPage={creditPage} filter={filter} period={period} today={today} itemId={itemId} attention={attention} status={status}/>;
+  const hasUsdPayroll = planning.obligations.some(link => link.obligation.kind === "payroll" && link.component === "payout" && planning.items.some(item => item.id === link.expected_item_id && item.currency === "USD" && item.commitment !== "cancelled" && (item.remaining_amount ?? 0) > 0));
+  const payrollFx = hasUsdPayroll ? await resolveFinanceFx("USD", "UAH", today, "nbu", "").catch(() => null) : null;
+  return <FinanceExpectedWorkspace {...foundation} {...planning} payrollUsdRate={payrollFx?.rate} page={page} creditPage={creditPage} filter={filter} period={period} today={today} itemId={itemId} attention={attention} status={status}/>;
 }

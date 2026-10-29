@@ -9,7 +9,7 @@ import { ArchitecturalScale } from "./architectural-scale";
 import { defaultFeedbackTemplate, isBuiltinQuestion, type FeedbackTemplate, type FeedbackAnswers } from "@/lib/feedback-template";
 import styles from "./client-survey.module.css";
 
-type SurveyState = "ready" | "unavailable" | "answered" | "success";
+type SurveyState = "ready" | "unavailable" | "success";
 
 function resizeComment(element: HTMLTextAreaElement | null) {
   if (!element || CSS.supports("field-sizing", "content")) return;
@@ -57,6 +57,12 @@ export function ClientSurvey({ token, studioName, initialState, template = defau
         body: JSON.stringify({ answers, website: form.get("website") }),
       });
       if (response.status === 410) { setState("unavailable"); window.scrollTo({ top: 0 }); return; }
+      if (response.status === 429) {
+        const remaining = Number(response.headers.get("Retry-After"));
+        setError(t("rateLimited", { seconds: Number.isInteger(remaining) && remaining > 0 && remaining <= 300 ? remaining : 300 }));
+        requestAnimationFrame(() => errorRef.current?.focus());
+        return;
+      }
       if (!response.ok) { setError(t("submitError")); requestAnimationFrame(() => errorRef.current?.focus()); return; }
       setState("success");
       window.scrollTo({ top: 0 });
@@ -93,10 +99,10 @@ export function ClientSurvey({ token, studioName, initialState, template = defau
           </fieldset>
         </form>
       </> : <section className={styles.ending} tabIndex={-1} ref={node => { if (node && state !== initialState) node.focus(); }}>
-        <div className={styles.seal}>{state === "success" || state === "answered" ? <Check size={32} strokeWidth={1.3} aria-hidden /> : <LockKeyhole size={28} strokeWidth={1.3} aria-hidden />}</div>
+        <div className={styles.seal}>{state === "success" ? <Check size={32} strokeWidth={1.3} aria-hidden /> : <LockKeyhole size={28} strokeWidth={1.3} aria-hidden />}</div>
         <p className={styles.eyebrow}>{studioName || "StudioFlow"}</p>
-        <h1>{t(state === "success" ? "thankYouTitle" : state === "answered" ? "alreadyAnsweredTitle" : "unavailableTitle")}</h1>
-        <p className={styles.lead}>{state === "success" && template.thankYou ? template.thankYou : t(state === "success" ? "thankYouDescription" : state === "answered" ? "alreadyAnsweredDescription" : "unavailableDescription")}</p>
+        <h1>{t(state === "success" ? "thankYouTitle" : "unavailableTitle")}</h1>
+        <p className={styles.lead}>{state === "success" && template.thankYou ? template.thankYou : t(state === "success" ? "thankYouDescription" : "unavailableDescription")}</p>
         <div className={styles.signature}><span />{t(state === "unavailable" ? "contactStudio" : "warmRegards")}</div>
       </section>}
       <footer className={styles.footer}>{t("poweredBy")}</footer>

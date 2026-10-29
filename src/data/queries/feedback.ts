@@ -8,9 +8,11 @@ export async function getProjectFeedback(projectId: string, page: number) {
   const admin = await getActiveStudioAdmin();
   if (!admin) return { invitations: [], hasNext: false };
   const client = await createClient();
-  const { data, error } = await client.from("project_feedback").select("*,version:feedback_template_versions!inner(config,version)")
+  const { data, error } = await client.from("project_feedback").select("*,version:feedback_template_versions!inner(config,version),responses:project_feedback_responses(*)")
     .eq("studio_id", admin.studio_id).eq("project_id", projectId)
-    .order("created_at", { ascending: false }).order("id").range((page - 1) * 20, page * 20);
+    .order("created_at", { ascending: false }).order("id")
+    .order("submitted_at", { referencedTable: "responses", ascending: false })
+    .order("id", { referencedTable: "responses" }).range((page - 1) * 20, page * 20);
   if (error) throw new Error("Unable to load project feedback", { cause: error });
   return { invitations: (data ?? []).slice(0, 20), hasNext: (data?.length ?? 0) > 20 };
 }

@@ -4296,6 +4296,8 @@
       "fixedSummary": "Fixed project value"
     },
     "planning": {
+      "additionalOptions": "Additional options",
+      "createAction": "Create",
       "projectPayment": "Project payment",
       "title": "Expected payments",
       "description": "Plan payments and match them with actual money movements.",
@@ -4352,6 +4354,11 @@
         "completedCurrent": "Completed this month",
         "future": "Future",
         "earlier": "Earlier and completed"
+      },
+      "monthSections": {
+        "current": "Current month",
+        "upcoming": "Upcoming months",
+        "past": "Previous months"
       },
       "futureGroup": "{month} · {count, plural, one {# payment} other {# payments}}",
       "unscheduledGroup": "No payment date",
@@ -5079,6 +5086,7 @@
       }
     },
     "payrollEarning": {
+      "calculation": "Calculation",
       "title": "Salary calculation",
       "close": "Close",
       "month": "Salary month",
@@ -5091,11 +5099,11 @@
       "calculated": "Calculated pay",
       "finalAmount": "Final agreed pay",
       "adjustment": "Manual adjustment",
-      "reason": "Reason for confirmation or correction",
+      "reason": "Earnings note",
       "confirm": "Confirm payroll",
       "saveCorrection": "Save correction",
-      "confirmed": "Confirmed calculation",
-      "preliminary": "Preliminary calculation based on completed work",
+      "confirmed": "Confirmed",
+      "preliminary": "Preliminary calculation",
       "paid": "Paid to employee",
       "remaining": "Remaining to pay",
       "overpaid": "Overpayment",
@@ -5111,10 +5119,22 @@
       "loadError": "Unable to load payroll. Close and reopen to retry.",
       "futureUnknown": "Future piecework pay is not yet determined. Only completed work contributes to the amount.",
       "unit": "m²",
+      "defaultReason": "Agreed based on the salary calculation",
+      "correctionReason": "Reason for changing the amount",
+      "confirmationHelp": "Saves the agreed salary. Money leaves the account only when you record a payment.",
+      "toPayment": "To payment",
       "backToCalculation": "Back to salary calculation",
       "pay": "Pay salary"
     },
     "payrollCash": {
+      "changeDate": "Expected payment date",
+      "paymentDescription": "Salary payment",
+      "amountLimit": "The remaining payment is {amount}. Record an advance separately.",
+      "positiveAmount": "Enter an amount above 0. There are no unused advances to apply.",
+      "invalidAmount": "Enter an amount with no more than two decimal places.",
+      "paidInUah": "Payable in UAH",
+      "conversionDetails": "Conversion details",
+      "expectedUahHelp": "NBU rate on {date}. Advances are applied when paying.",
       "advance": "Pay an advance",
       "recordAdvance": "Record advance payment",
       "available": "Unused advance: {amount} {currency}",
@@ -5125,7 +5145,7 @@
       "salaryUah": "Remaining salary in UAH",
       "advanceUsed": "Apply previous payments",
       "cashDue": "Transfer now",
-      "cashAmount": "Actual payment · UAH",
+      "cashAmount": "Payment amount · UAH",
       "pay": "Record payment",
       "applyAdvance": "Apply advance",
       "loading": "Calculating payment…",
@@ -5137,7 +5157,7 @@
       "uahRequired": "This salary and its advances must be paid from a UAH account.",
       "creditAmount": "Credit towards the next salary: ≈ {amount} {currency}",
       "correctionHelp": "The original advance rate is preserved for the same date. A new date uses its NBU rate; enter a manual rate to override it.",
-      "advanceNote": "Advance purpose"
+      "advanceDescription": "Salary advance"
     }
   },
   "EmployeeProfile": {
@@ -5620,7 +5640,7 @@
     "expiresAt": "Link valid until",
     "createLink": "Create invitation",
     "saving": "Saving…",
-    "linkPrivacy": "One link, one response. Share it privately with your client.",
+    "linkPrivacy": "Share the same link privately with everyone involved in the project. Each response is saved separately.",
     "saveError": "Could not save the invitation. Please try again.",
     "invalidExpiry": "Choose today or a future date.",
     "copyLink": "Copy link",
@@ -5633,8 +5653,7 @@
     "expiresOn": "Valid until {date}",
     "answeredAt": "Received {date}",
     "status": {
-      "pending": "Awaiting response",
-      "answered": "Response received",
+      "active": "Accepting responses",
       "expired": "Expired",
       "revoked": "Revoked"
     },
@@ -5691,13 +5710,12 @@
     "submit": "Share your experience",
     "sending": "Sending…",
     "submitHint": "You can change any rating before sending.",
+    "rateLimited": "Two responses have just been sent from your network using this link. Please wait {seconds} seconds before trying again. Your answers are still on this page.",
     "submitError": "We could not send your response. Your ratings are still on this page — please try again.",
     "thankYouTitle": "Thank you for being open.",
     "thankYouDescription": "Your feedback is now with the studio. We value your trust and every thought that helps us create a better experience.",
-    "alreadyAnsweredTitle": "Your feedback is already with us.",
-    "alreadyAnsweredDescription": "Thank you for sharing your thoughts. Your response has been saved and this link has already been used.",
     "unavailableTitle": "This link is no longer available.",
-    "unavailableDescription": "It may have expired, been revoked, or already received a response.",
+    "unavailableDescription": "It may have expired or been revoked.",
     "contactStudio": "Please contact the studio for a new invitation.",
     "warmRegards": "With thanks, the studio team",
     "poweredBy": "Thoughtfully made with StudioFlow",
@@ -5729,8 +5747,8 @@
     "dynamicProgress": "{count} of {total} rated",
     "required": "Required",
     "previewOnly": "Preview — responses disabled",
-    "responseRate": "Response rate",
-    "responseRateHint": "{responses} responses / {invitations} invitations",
+    "responseRate": "Invitations with responses",
+    "responseRateHint": "{responses} invitations with responses / {invitations} invitations",
     "additionalResults": "Additional questions",
     "additionalResultsHint": "Results are kept separate for each question and published version.",
     "answeredCount": "{count} responses",
@@ -5741,7 +5759,7 @@
     "allProjects": "All projects",
     "applyFilters": "Apply filters",
     "resetFilters": "Reset",
-    "periodHint": "Period filters invitation creation dates in Kyiv time. Counts and ratings include responses to those invitations, including expired or revoked invitations in the response-rate denominator. Monthly trends use response dates.",
+    "periodHint": "Period filters invitation creation dates in Kyiv time. Counts and ratings include all responses to those invitations. The response rate counts invitations with at least one response; its denominator includes expired and revoked invitations. Monthly trends use response dates.",
     "invalidFilters": "Check the dates: the start must not be after the end. Filters were reset.",
     "editor": {
       "title": "Client questionnaire",

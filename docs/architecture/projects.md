@@ -193,15 +193,18 @@ question ID, even if an ID is reused with different wording/type/options.
 
 Analytics use admin RLS and a caller-context aggregate RPC. Date/project filters
 select invitations created in the inclusive Kyiv date range; response rate is
-answered/all invitations in that cohort (including expired/revoked), while monthly
+invitations with at least one response/all invitations in that cohort (including
+expired/revoked). Counts and averages include every response, while monthly
 trends use Kyiv response dates. NPS is (% 9–10 minus % 0–6), with 7–8 passive and
 missing recommendation excluded from its denominator. `/survey/preview` verifies
 admin membership, renders the real form in same-origin desktop/mobile iframes,
 accepts validated local edits from its parent and never submits a response.
 No stage questionnaires or automated invitations.
 
-`project_feedback` owns both invitation and immutable response. Composite project/
-studio identity prevents cross-tenant links; active admin/profile RLS and guarded
+`project_feedback` owns reusable invitations; `project_feedback_responses` stores
+separate immutable submissions linked to an invitation. Existing answers are
+preserved when separating storage. Composite project/studio identity prevents
+cross-tenant links; active admin/profile RLS and guarded
 create/revoke RPCs protect results and writes. Random 256-bit bearer tokens are
 readable only through admin RLS (so links can be copied again). Treat them as
 secrets. `/survey/[token]` exposes only the invitation version’s public questionnaire,
@@ -213,12 +216,29 @@ selected day in the application Kyiv timezone. It uses the existing shared SPACE
 and stored studio name; studios currently have no configurable logo field.
 
 Public submission passes same-origin, bounded-body, schema and honeypot checks
-before a service-only RPC atomically locks and consumes an unrevoked/unexpired
-token and stores its response. The original RPC signature remains compatible
+before a service-only RPC atomically locks an unrevoked/unexpired invitation
+and inserts a response. A URL accepts multiple submissions until expiry or
+revocation, including concurrent submissions. Revocation stops new submissions
+without changing existing responses. The original RPC signature remains compatible
 with already-loaded legacy forms. Published versions and submitted responses
-are protected from updates by triggers. Replays/concurrent submissions cannot overwrite it.
-Spam cannot create extra response rows: only admins mint invitations and each
-accepts one response. No external anti-bot service, Realtime or background job.
+are protected from updates by triggers. Public respondents cannot read other
+answers. Responses are anonymous; the shared bearer link does not identify or
+deduplicate individual clients.
+
+The public API uses service-only `submit_feedback_with_cooldown`: per invitation
+and source, two successful responses may arrive immediately, then a five-minute
+cooldown runs from the second response. Five idle minutes restore the two-response
+burst. Invalid answers and blocked retries consume no places or extend the pause.
+The invitation lock serializes checks and writes across server instances.
+`private.feedback_submission_limits` stores only a link-scoped HMAC of the source
+and its counter/timestamp; no raw IPs, responses or hashes are exposed publicly.
+On Vercel the source is the platform-overwritten `x-vercel-forwarded-for` header;
+outside Vercel or with a missing/invalid header the link uses a shared fallback
+bucket rather than trusting caller-provided IP headers. The API returns 429 with
+`Retry-After`; the form preserves its inputs and explains the wait. This limits
+feedback spam, not traffic reaching the application/database; infrastructure
+DDoS mitigation remains a hosting concern. No external anti-bot service, Realtime
+or background job.
 
 Canonical paths: `src/components/feedback/`, `src/data/queries/feedback.ts`,
 `src/app/api/feedback/`, `src/app/api/projects/[projectId]/feedback/`,

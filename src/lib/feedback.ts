@@ -37,11 +37,10 @@ export const feedbackResponseSchema = z.strictObject({
   improvements: z.string().trim().max(2000),
   website: z.literal(""),
 });
-export type FeedbackInvitation = Database["public"]["Tables"]["project_feedback"]["Row"] & { version?: { config: Json; version: number } };
+export type FeedbackInvitation = Database["public"]["Tables"]["project_feedback"]["Row"] & { version?: { config: Json; version: number }; responses: Database["public"]["Tables"]["project_feedback_responses"]["Row"][] };
 export type FeedbackSummary = Database["public"]["Functions"]["get_studio_feedback_summary"]["Returns"][number];
-export function feedbackStatus(invitation: Pick<FeedbackInvitation, "submitted_at" | "revoked_at" | "expires_at">, now = Date.now()) {
-  if (invitation.submitted_at) return "answered";
+export function feedbackStatus(invitation: Pick<FeedbackInvitation, "revoked_at" | "expires_at">, now = Date.now()) {
   if (invitation.revoked_at) return "revoked";
   if (Date.parse(invitation.expires_at) <= now) return "expired";
-  return "pending";
+  return "active";
 }

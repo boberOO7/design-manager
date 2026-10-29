@@ -35,10 +35,11 @@ const cashAmount = z.string().trim().regex(/^\d{1,10}(?:[.,]\d{1,2})?$/).transfo
 export const payrollCashInputSchema = z.object({
   requestId: z.uuid(), scheduleId: z.uuid(), currency: z.enum(["UAH", "USD"]), accountId: z.uuid(), date: z.iso.date(),
   mode: z.enum(["nbu", "manual"]).default("nbu"), manualRate: z.string().default(""),
-  amount: cashAmount.refine(value => Number(value) > 0), note: z.string().trim().min(1).max(2000),
+  amount: cashAmount.refine(value => Number(value) > 0), note: z.string().trim().max(2000).default(""),
 });
 export const payrollPaymentInputSchema = z.object({
   requestId: z.uuid(), itemId: z.uuid(), accountId: z.union([z.uuid(), z.literal("")]), date: z.iso.date(), amount: cashAmount,
   digest: z.string().regex(/^[a-f0-9]{32}$/), mode: z.enum(["nbu", "manual"]), manualRate: z.string().default(""),
   note: z.string().trim().max(2000),
+  earningDigest: z.string().regex(/^[a-f0-9]{32}$/).optional(),
 });

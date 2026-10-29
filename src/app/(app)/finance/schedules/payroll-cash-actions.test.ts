@@ -34,6 +34,22 @@ it("does not post an advance without the USD settlement quote", async () => {
   expect(await recordFinancePayrollAdvance({ status: "idle" }, form(input))).toEqual({ status: "error", message: "movements.errors.fx" });
   expect(mocks.rpc).not.toHaveBeenCalled();
 });
+it.each([undefined, "   "])("records an advance without a purpose (%s) using an automatic description", async (note) => {
+  const data = form(input);
+  if (note === undefined) data.delete("note"); else data.set("note", note);
+  expect((await recordFinancePayrollAdvance({ status: "idle" }, data)).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledWith("record_finance_payroll_advance", expect.objectContaining({ p_input: expect.objectContaining({
+    note: "payrollCash.advanceDescription", submission: expect.objectContaining({ note: "" }),
+  }) }));
+});
+it("recovers an advance retry without a purpose before recalculating FX", async () => {
+  const data = form(input); data.delete("note");
+  const original = payrollCashInputSchema.parse(Object.fromEntries(data));
+  mocks.prior.mockResolvedValue({ data: { payload: { operation: "payroll_advance", input: { note: "Аванс зарплати", submission: original } } }, error: null });
+  mocks.fx.mockRejectedValue(new Error("outage"));
+  expect((await recordFinancePayrollAdvance({ status: "idle" }, data)).status).toBe("success");
+  expect(mocks.fx).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+});
 it("allows applying an advance with zero new cash while quoting the salary payment date", async () => {
   expect((await recordFinancePayrollPayment({ status: "idle" }, form(payment))).status).toBe("success");
   expect(mocks.rpc).toHaveBeenCalledWith("record_finance_payroll_payment", expect.objectContaining({ p_item_id: id, p_input: expect.objectContaining({ amount: "0", digest: payment.digest, payrollFx: { rate: "50", source: "manual", effectiveDate: date } }) }));
@@ -60,4 +76,21 @@ it("denies unauthorized cash and payment actions before opening a client", async
   expect((await recordFinancePayrollAdvance({ status: "idle" }, form(input))).status).toBe("error");
   expect((await recordFinancePayrollPayment({ status: "idle" }, form(payment))).status).toBe("error");
   expect(mocks.client).not.toHaveBeenCalled();
+});
+
+it("passes the reviewed earning digest into the atomic payment RPC", async () => {
+  const earningDigest = "b".repeat(32);
+  expect((await recordFinancePayrollPayment({ status: "idle" }, form({ ...payment, earningDigest }))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledWith("record_finance_payroll_payment", expect.objectContaining({ p_input: expect.objectContaining({
+    earningDigest, earningReason: "payrollEarning.defaultReason", submission: expect.objectContaining({ earningDigest }),
+  }) }));
+  expect(mocks.rpc).not.toHaveBeenCalledWith("confirm_finance_payroll_earning", expect.anything());
+});
+it("recovers an atomic payment retry without repeating FX or confirmation", async () => {
+  const input = { ...payment, earningDigest: "b".repeat(32) };
+  mocks.prior.mockResolvedValue({ data: { payload: { operation: "payroll_payment", input: { submission: payrollPaymentInputSchema.parse(input) } } }, error: null });
+  mocks.fx.mockRejectedValue(new Error("outage"));
+  expect((await recordFinancePayrollPayment({ status: "idle" }, form(input))).status).toBe("success");
+  expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.fx).not.toHaveBeenCalled();
+  expect((await recordFinancePayrollPayment({ status: "idle" }, form({ ...input, earningDigest: "c".repeat(32) }))).status).toBe("error");
 });

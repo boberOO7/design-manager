@@ -307,7 +307,8 @@ export function FinanceSchedulesWorkspace(data: Data) {
     const name = payroll ? data.members.find((member) => member.user_id === schedule.employee_id)?.profile.full_name ?? storedName : generatedNames.includes(storedName) ? categoryDisplay : storedName;
     const owner = category?.nature === "owner_distribution";
     return <article key={schedule.id} role={payroll ? undefined : "button"} tabIndex={payroll ? undefined : 0} aria-label={payroll ? undefined : `${name} · ${t(payroll ? "schedules.history" : "schedules.recurringHistory")}`} aria-expanded={payroll ? undefined : open} aria-controls={payroll ? undefined : `rule-details-${schedule.id}`} data-selected={selected.includes(schedule.id) || undefined} onClick={(event) => {
-      if (!(event.target instanceof Element) || event.target.closest("button, a, input, label, select, textarea, details, summary, [id^='rule-details-']")) return;
+      // Portaled dialogs belong to the row in React, but their clicks must not toggle it.
+      if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target) || event.target.closest("button, a, input, label, select, textarea, details, summary, [id^='rule-details-']")) return;
       if (!payroll && (event.ctrlKey || event.metaKey)) { event.preventDefault(); selectRule(schedule.id); return; }
       toggle(schedule.id);
     }} onKeyDown={(event) => {
