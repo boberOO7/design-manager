@@ -2,7 +2,8 @@
 
 ## Boundary
 
-Tasks are project-owned work items. A task has one stable project stage, one
+Tasks are project-owned work items. A task belongs to a work direction through
+one stable project stage and has one
 workflow status, an optional assignee, optional collaborators, milestone
 deadlines, and an optional weighted checklist. Current task state drives project
 progress; qualifying completion drives immutable productivity attribution.
@@ -10,7 +11,9 @@ progress; qualifying completion drives immutable productivity attribution.
 ## Stages and workflow
 
 Projects own their configured stage list: legacy `stage_1`–`stage_4` keys and
-`custom_<uuid>` keys. Immutable `kind` determines work versus additional behavior;
+`custom_<uuid>` keys. Each stage owns a direction and a semantic productivity role.
+Stage keys remain unique across the project, preserving task/review/schedule APIs.
+Immutable `kind` determines work versus additional behavior;
 initial Stage 1–3 are work and Stage 4 is additional. Templates keep four source
 stages. See [projects.md](projects.md) for configuration and deletion invariants.
 
@@ -27,6 +30,16 @@ encountered, but the normal task UI does not expose task cancellation.
 
 Each project stage may expose only a configured subset of columns. A status
 change is valid only when its destination is enabled for that task's stage.
+A completed direction makes its work-stage tasks read-only independently of the
+parent project's status. Additional work retains the project's existing exception.
+Task queries carry direction status for status authorization and drawer controls;
+a DB trigger covers inserts, edits, deletes, templates and bulk writes.
+
+Area-progress allocation is bounded by the direction's actual area. Credited work
+cannot move to a different direction/accounting role; unstarted stages can be
+organized between directions. Task lists/drawers include direction context when
+the project has several directions. Recompletion restores the original credited
+date and contributor rather than moving earned output to a later month.
 
 ## Authorization and mutation invariants
 

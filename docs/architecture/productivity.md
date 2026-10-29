@@ -7,11 +7,12 @@
 | Task progress | Current | How far the task has moved through production and review. |
 | Stage/project progress | Derived current state | Aggregation of eligible task progress. |
 | Project health | Derived current state | Operational risk from lifecycle, deadlines, overdue work, and priority. |
-| Productivity attribution | Append-oriented ledger with voiding | Completion identity/date history and current Stage 1/3 area credit. |
+| Productivity attribution | Frozen completion snapshot with voiding | Earned conditional area, contributor and reporting date. |
 | Leaderboard | Derived projection | Period view over active eligible attribution rows plus configured bonuses. |
 
 Completion identity and date come from attribution history, not `updated_at` or
-current membership. Active Stage 1/3 area follows the current project and task roster.
+current membership. Ordinary scope, coefficient, roster and studio-share changes
+never rewrite earned credit.
 
 ## Project progress
 
@@ -34,47 +35,52 @@ See [tasks.md](tasks.md) for task-level progress rules.
 `productivity_attributions` is append-oriented audit history. Active totals use
 rows without `voided_at`.
 
-- A qualifying completion transition creates an attribution row. Contributor and
-  completion date are snapshots; active Stage 1/3 area is rebalanced in place.
+- A qualifying completion transition creates an attribution row. Area, direction,
+  accounting role, source area/coefficient, contributor and completion date are
+  snapshots. Migration only adds context to prior rows without changing their
+  earned amount, contributor or date.
 - An administrator correction to a completed task's authoritative
   `tasks.completed_at` date updates the active attribution timestamp in place so
   period reporting follows the corrected Kyiv calendar date. It does not change
-  contributor or stage snapshots; Stage 1/3 area follows the current roster.
-- Reopening voids the active row. Recompletion creates one fresh row and does not
-  double count.
+  contributor, stage or area snapshots. This explicit correction remains distinct
+  from ordinary metadata/scope edits.
+- Reopening voids the active row. Recompletion reactivates the same latest task
+  snapshot, retaining its owner and original Kyiv completion date in both task
+  and ledger. It neither duplicates credit nor shifts earned area between months.
 - Contributor ID, name, and professional title are snapshots. They are not
   foreign keys whose later deletion or membership change rewrites history.
-- Task and project deletion do not erase completed-work history. Deleting a Stage
-  1/3 task removes its area share, while its completion event remains countable.
+- Task and project deletion do not erase completed-work history or release earned
+  production allowance. Reusing a historical task UUID in another project is rejected.
   Studio deletion is the tenant-wide deletion boundary.
 - Whole-project fallback credit is legacy audit history and no longer created.
   Stage-accounting backfill voids fallback rows from active totals.
 
 ## Stage accounting
 
-- Stable stage IDs are policy inputs. Labels, display order, visibility, and
-  column configuration do not change accounting rules.
-- Each studio configures Stage 1's share of current project area (default 20%);
-  Stage 3 receives the remainder to 100%. This is independent of project progress
-  weights and uses the original keys, never labels or display order.
-  `studios.productivity_stage_1_percent` is saved through the admin-only
-  `save_productivity_stage_shares` RPC in Leaderboard settings. Saving atomically
-  rebalances existing active credit in every studio project, including completed
-  and archived projects, without changing completion dates or contributors.
-  Busy project rows reject the save for retry rather than partially updating.
-  `project_stage_productivity_budgets` stores the current budget and credited total.
-- Stage 2 snapshots the task's `completed_area_m2`.
-- Each stage budget is split equally among all current non-cancelled tasks in
-  that stage, including unfinished and unassigned tasks. Adding, moving,
-  cancelling, or deleting a task, or editing project area, deterministically
-  rebalances active completed-task credit. A rounding remainder stays within
-  the stage, so total stage shares equal its budget. Legacy Stage 1/3
-  `tasks.productivity_area_m2` values are ignored; active ledger area is authoritative.
+- Direction equivalent area = actual area × positive, finite complexity factor.
+  Coefficients are not constrained by a direction name/type. Zero-area legacy or
+  internal projects retain zero scope. New directions require positive area.
+- Stage `productivity_role` is `initial`, `final`, `visualization`, or `none`.
+  Legacy keys retain their original roles; custom stages have explicit roles.
+  Labels, display order, visibility and progress weights do not define credit.
+- Interior methodology remains: `initial` receives the studio's configured share
+  (default 20%), `final` the remainder, and visualization task areas are credited
+  separately. All use their direction's coefficient. There is deliberately no
+  combined cap that consumes visualization credit from design work.
+- Multiple stages with the same direction/role share one allowance. On first
+  completion, remaining allowance after latest historical task snapshots
+  (including reopened/deleted tasks) is divided equally among current noncancelled
+  tasks without history. Earned snapshots stay fixed; changed scope/share/roster
+  affects only the remainder, floored at zero if old credit exceeds the new scope.
+- `visualization` snapshots task `completed_area_m2` × direction coefficient;
+  `none` records count-only completion. No whole-project/direction completion
+  creates additional area. `project_stage_productivity_budgets` and
+  `tasks.productivity_area_m2` remain legacy data, not current allocation inputs.
 - Unassigned productivity-bearing completion is allowed only where current
   database rules can safely create no contributor attribution; assigned work
   must resolve to an active project member.
-- Stage 4 and custom-stage completions create zero-area task-count ledger
-  events. Custom stage kind/weight never changes the legacy m² rules.
+- The admin-only `get_direction_productivity_workload` RPC projects the same
+  remaining allowance and frozen reopen snapshots for Dashboard workload.
 
 ## Leaderboard
 

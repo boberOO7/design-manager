@@ -1,20 +1,22 @@
 "use client";
 import { useActionState,useCallback,useState,type ReactNode,type Ref } from "react";
 import { useTranslations } from "next-intl";
+import { useProjectWorkspaceNavigation } from "@/components/projects/project-workspace-navigation";
 import { Button } from "@/components/ui/button";
 import type { FinanceActionState } from "@/lib/finance";
 
-export function FinanceActionForm({ children,action,onSaved,onPending,onResult,label,cancelLabel,onCancel,secondaryAction,submitClassName,actionsClassName,className,fieldsetClassName,disabled=false,formRef,hideActions=false,showMessage=true }: {
+export function FinanceActionForm({ children,action,onSaved,onPending,onResult,label,cancelLabel,onCancel,secondaryAction,submitClassName,actionsClassName,className,fieldsetClassName,disabled=false,formRef,hideActions=false,showMessage=true,refreshWorkspaceOnSave=false }: {
   children:ReactNode; action:(previous:FinanceActionState,form:FormData)=>Promise<FinanceActionState>;
   onSaved:(result:FinanceActionState)=>void; onPending?:(pending:boolean)=>void; label:string;
   onResult?:(result:FinanceActionState)=>void; cancelLabel?:string; onCancel?:()=>void; secondaryAction?:ReactNode; submitClassName?:string; actionsClassName?:string; className?:string; fieldsetClassName?:string; disabled?:boolean;
-  formRef?:Ref<HTMLFormElement>; hideActions?:boolean; showMessage?:boolean;
+  formRef?:Ref<HTMLFormElement>; hideActions?:boolean; showMessage?:boolean; refreshWorkspaceOnSave?:boolean;
 }) {
   const t=useTranslations("Finance");
+  const navigation=useProjectWorkspaceNavigation();
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [state,submit,pending]=useActionState(async(previous:FinanceActionState,form:FormData):Promise<FinanceActionState>=>{
     onPending?.(true);
-    try { const result=await action(previous,form); onResult?.(result); if(result.status==="success") { setRequestId(crypto.randomUUID());onSaved(result); } return result; }
+    try { const result=await action(previous,form); onResult?.(result); if(result.status==="success") { navigation?.invalidate();setRequestId(crypto.randomUUID());onSaved(result);if(refreshWorkspaceOnSave)navigation?.refresh(); } return result; }
     catch { const result:FinanceActionState={ status:"error",message:t("movements.errors.save") }; onResult?.(result); return result; }
     finally { onPending?.(false); }
   },{ status:"idle" });

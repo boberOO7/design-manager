@@ -2,20 +2,22 @@ import { APPLICATION_TIME_ZONE, zonedWallTimeToIso } from "@/lib/calendar";
 import type { TaskStage } from "@/lib/task-stages";
 import { isTaskFinished } from "@/lib/tasks";
 import { DEFAULT_PRODUCTIVITY_STAGE_1_PERCENT, getProductivityStageRatios } from "@/lib/productivity-settings";
+import { getStageProductivityRole, type ProductivityRole } from "@/lib/work-directions";
 
 export const PRODUCTIVITY_STAGE_RATIOS = getProductivityStageRatios(DEFAULT_PRODUCTIVITY_STAGE_1_PERCENT);
 
 export type ProductivityStageMode = "project_area_ratio" | "task_area" | "none";
 export type TaskCreationProgressField = "area" | "weight" | null;
 
-export function getProductivityStageMode(stage: TaskStage): ProductivityStageMode {
-  if (stage === "stage_2") return "task_area";
-  return stage in PRODUCTIVITY_STAGE_RATIOS ? "project_area_ratio" : "none";
+export function getProductivityStageMode(stage: TaskStage, productivityRole?: ProductivityRole): ProductivityStageMode {
+  const role = getStageProductivityRole(stage, productivityRole);
+  if (role === "visualization") return "task_area";
+  return role === "initial" || role === "final" ? "project_area_ratio" : "none";
 }
 
 /** Maps the canonical productivity stage mode to the one editable task value. */
-export function getTaskCreationProgressField(stage: TaskStage): TaskCreationProgressField {
-  const mode = getProductivityStageMode(stage);
+export function getTaskCreationProgressField(stage: TaskStage, productivityRole?: ProductivityRole): TaskCreationProgressField {
+  const mode = getProductivityStageMode(stage, productivityRole);
   if (mode === "task_area") return "area";
   if (mode === "project_area_ratio") return "weight";
   return null;
@@ -25,8 +27,9 @@ export function doesTaskCompletionRequireProductivityAttribution(input: {
   stage: TaskStage;
   completedAreaM2: number | null | undefined;
   projectAreaM2: number | null | undefined;
+  productivityRole?: ProductivityRole;
 }): boolean {
-  const mode = getProductivityStageMode(input.stage);
+  const mode = getProductivityStageMode(input.stage, input.productivityRole);
   if (mode === "task_area") return Number(input.completedAreaM2 ?? 0) > 0;
   if (mode === "project_area_ratio") return Number(input.projectAreaM2 ?? 0) > 0;
   return false;

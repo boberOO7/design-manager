@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { taskStageSchema } from "@/lib/task-stages";
+import { productivityRoleSchema } from "@/lib/work-directions";
 
 export const projectStageInputSchema = z.object({
   stage: taskStageSchema,
@@ -8,6 +9,8 @@ export const projectStageInputSchema = z.object({
   displayOrder: z.number().int().positive(),
   kind: z.enum(["work", "additional"]),
   progressWeight: z.number().int().positive(),
+  directionId: z.uuid().optional(),
+  productivityRole: productivityRoleSchema.optional(),
 });
 export type ProjectStageConfigurationInput = z.infer<typeof projectStageInputSchema>;
 export const stageDeletionInfoSchema = z.array(z.object({ stage: taskStageSchema, taskIds: z.array(z.uuid()), blockReason: z.enum(["started_tasks", "logged_work"]).nullable() }));

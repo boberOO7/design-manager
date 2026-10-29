@@ -40,7 +40,7 @@ export async function authorizeTaskMutation(taskId: string): Promise<TaskMutatio
   }
 
   if (!task) return { formError: "The task was not found or is not available.", success: false };
-  if (!canWorkOnTaskInProject({ projectStatus: task.project.status, archivedAt: task.project.archived_at, stage: task.stage, stageKind: task.stageKind })) {
+  if ((task.directionStatus === "completed" && task.stageKind === "work") || !canWorkOnTaskInProject({ projectStatus: task.project.status, archivedAt: task.project.archived_at, stage: task.stage, stageKind: task.stageKind })) {
     return { formError: "Completed production tasks and archived project tasks are read-only.", success: false };
   }
 
@@ -74,7 +74,8 @@ export async function updateTaskStatusMutation(
       requiresProductivityAttribution: doesTaskCompletionRequireProductivityAttribution({
         stage: authorization.task.stage,
         completedAreaM2: authorization.task.completed_area_m2,
-        projectAreaM2: authorization.task.project.total_area_m2,
+        projectAreaM2: authorization.task.directionAreaM2,
+        productivityRole: authorization.task.productivityRole,
       }),
       assigneeId: authorization.task.assignee_id,
       isActiveProjectMember,

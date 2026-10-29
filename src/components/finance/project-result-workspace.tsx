@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { earningCoverageIssues } from "@/lib/finance-earnings";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceManagementData } from "@/data/queries/finance-management";

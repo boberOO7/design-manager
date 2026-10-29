@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ProjectWorkspaceLink as Link } from "./project-workspace-navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ProjectActivity } from "@/data/queries/project-activity";

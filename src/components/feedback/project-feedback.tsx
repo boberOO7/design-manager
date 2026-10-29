@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { ProjectWorkspaceLink as Link, useProjectWorkspaceNavigation } from "@/components/projects/project-workspace-navigation";
 import styles from "./project-feedback.module.css";
 import { Check, Copy, MessageSquare, Plus, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -21,6 +21,7 @@ export function ProjectFeedback({ projectId, invitations, hasNext, page }: { pro
   const t = useTranslations("Feedback");
   const locale = useLocale();
   const router = useRouter();
+  const navigation = useProjectWorkspaceNavigation();
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +35,8 @@ export function ProjectFeedback({ projectId, invitations, hasNext, page }: { pro
       try {
         const response = await fetch(`/api/projects/${projectId}/feedback`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         if (!response.ok) { setError(t("saveError")); return; }
-        if (method === "POST" && page !== 1) router.push(`/projects/${projectId}?view=feedback`);
-        router.refresh();
+        if (navigation) navigation.refresh(method === "POST" && page !== 1 ? `/projects/${projectId}?view=feedback&workDirection=all` : undefined);
+        else { if (method === "POST" && page !== 1) router.push(`/projects/${projectId}?view=feedback`); router.refresh(); }
       } catch { setError(t("saveError")); }
     });
   };

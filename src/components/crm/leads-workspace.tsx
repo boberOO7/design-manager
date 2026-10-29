@@ -11,6 +11,7 @@ import { createProjectFromLead } from "@/app/(app)/projects/new/actions";
 import { CrmActionForm } from "@/components/crm/action-form";
 import { AdminField, NotesField, TextField } from "@/components/crm/crm-fields";
 import { CityCombobox } from "@/components/projects/city-combobox";
+import type { DirectionPreset } from "@/lib/work-directions";
 import type { ProjectFormDefaults } from "@/components/projects/project-form";
 import { LazyProjectForm as ProjectForm } from "@/components/projects/lazy-project-form";
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
@@ -39,7 +40,7 @@ function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement)
   return interactiveTarget !== null && interactiveTarget !== row;
 }
 
-export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initialAttentionOnly = false, initialLeadId, leads, projectOptions }: { admins: CrmAdmin[]; currentUserId: string | null; defaultStartDate: string; initialAttentionOnly?: boolean; initialLeadId?: string; leads: CrmLead[]; projectOptions: Promise<{ members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }> }) {
+export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initialAttentionOnly = false, initialLeadId, leads, projectOptions }: { admins: CrmAdmin[]; currentUserId: string | null; defaultStartDate: string; initialAttentionOnly?: boolean; initialLeadId?: string; leads: CrmLead[]; projectOptions: Promise<{ members: ActiveStudioAssignee[]; templates: ProjectTemplate[]; presets: DirectionPreset[] }> }) {
   const t = useTranslations("Crm");
   const common = useTranslations("Common");
   const locale = useLocale();
@@ -142,7 +143,7 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
         ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><LeadStatusPill status={item.status} label={t(`leadStatus.${item.status}`)} /></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3"><FollowUpTime value={item.next_contact_at} locale={locale} /></td><td className="px-4 py-3 text-right"><LeadProjectAction lead={item} onConvert={openConversion} presentation="table" /></td></tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" || attentionOnly ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" || attentionOnly ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
-    <Dialog isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
+    <Dialog className={view === "convert" ? "max-w-[62rem]" : undefined} isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
       {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <Suspense fallback={<p role="status" className="p-6 text-sm text-[var(--ui-text-muted)]">{common("loading")}</p>}><LeadConversionForm projectOptions={projectOptions} action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} /></Suspense> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => setOpenLead(null)}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
     {lead && followUpMode ? <LeadFollowUpDialog defaultStartDate={defaultStartDate} lead={lead} mode={followUpMode} onClose={() => setFollowUpMode(null)} onSave={(followUp) => changeFollowUp("schedule", followUp)} /> : null}
@@ -150,8 +151,8 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
 }
 
 function LeadConversionForm({ projectOptions, ...props }: { projectOptions: ComponentProps<typeof LeadsWorkspace>["projectOptions"] } & Omit<ComponentProps<typeof ProjectForm>, "members" | "templates">) {
-  const { members, templates } = use(projectOptions);
-  return <ProjectForm {...props} members={members} templates={templates} />;
+  const { members, templates, presets } = use(projectOptions);
+  return <ProjectForm {...props} members={members} templates={templates} presets={presets} />;
 }
 
 function LeadFormFields({ admins, defaultStartDate, lead, state }: { admins: CrmAdmin[]; defaultStartDate: string; lead: CrmLead | null; state: CrmActionState }) {

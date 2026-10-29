@@ -3,7 +3,7 @@
 ## Boundary
 
 A project is the tenant-scoped container for delivery work. It owns membership,
-task stages, tasks, deadlines, progress configuration, lifecycle state, and
+work directions, tasks, progress configuration, lifecycle state, and
 activity history. Project health is derived and must not be confused with
 lifecycle or progress.
 
@@ -13,7 +13,9 @@ lifecycle or progress.
 | --- | --- |
 | `projects` | Identity, client/location metadata, area, priority, lifecycle, dates, productivity inclusion. |
 | `project_members` | Active employee assignment to a project. |
-| `project_task_stage_columns` | Per-project stage labels/order/visibility, allowed workflow columns, stage kind/weight, and task-progress method. |
+| `project_work_directions` | Production scope, optional kind, independent lifecycle, actual area, coefficient, dates and display order. |
+| `studio_direction_presets` | Admin-owned starting coefficient, optional recommended range and task-template mapping per direction kind. |
+| `project_task_stage_columns` | Project-unique stage identity, owning direction, productivity role, labels/order/visibility, workflow columns and progress configuration. |
 | `project_templates`, `project_template_tasks` | Reusable project/task creation structure and defaults. |
 | `project_activity` | Immutable, safe, project-scoped change feed. |
 | `tasks` and related tables | Delivery work; see [tasks.md](tasks.md). |
@@ -54,6 +56,11 @@ Invariants:
 
 - Project creation is a modal on `/projects`; `/projects/new` is a compatibility
   redirect. Editing and CRM Lead conversion reuse the shared project form.
+- The shared creation form exposes Interior plus optional additional directions,
+  each with its own template. `create_project_from_template` accepts these in
+  `p_project.directions` and delegates to the guarded direction RPC within the same
+  transaction. Extra directions inherit the project's initial dates; their areas
+  and coefficients remain independent. Failure rolls back the entire creation.
 - A Project may be linked to at most one CRM Lead. Lead conversion extends the
   normal template-aware creation RPC so Project creation, Lead linking, and the
   Lead's Won transition either all succeed or all roll back.
@@ -72,6 +79,61 @@ Invariants:
   seven-day deadline window.
 
 ## Membership, templates, and stages
+
+- Hierarchy is Project → Work direction → Stage → Task. Tasks derive their
+  direction through their project-owned stage; there is no independently mutable
+  task direction ID. Membership remains project-wide; project and direction lifecycle are separate.
+- New projects start with a localized Interior direction and the studio Interior
+  coefficient (initially 1). Existing unknown directions retain their names and
+  null kind. Standard names stay null/localized unless explicitly edited.
+- Every project has one default direction. A single direction keeps
+  the existing board and project area editor; its area synchronizes both ways
+  with `projects.total_area_m2`. With multiple directions, project/object area
+  stays separate and is never the sum of façade, interior and landscape areas.
+- `save_project_work_direction` serializes admin CRUD/reordering with the project
+  configuration version. Only empty nondefault directions without commercial or
+  earned history may be removed. Started/logged stages keep their direction and
+  accounting role. Archived/completed production remains protected.
+- New directions receive custom stage keys and can apply an existing four-lane
+  template atomically. Populated templates create only populated lanes; empty
+  creation retains the standard four-stage starting structure. Applying another
+  template stage later uses the existing append workflow.
+- `get_project_stage_configuration` returns directions, semantic stage roles,
+  studio design shares and configuration version together. The canonical
+  `resolveProjectWorkspace` resolves `workDirection` for the header, Board,
+  Details and Finance, including task ownership and legacy project-wide URLs.
+  Multiple-direction projects open the project overview; a single direction
+  opens its board directly. Direction links preserve Details/Finance context and
+  use normal browser history. Visited surfaces are retained in component memory
+  for the current project/user/role/locale. Board data serves every direction and
+  Details; the board stays mounted through overview and shared-section visits.
+  Finance cache keys include direction and every financial query parameter;
+  feedback includes its page. First visits still use authorized server rendering.
+  Server responses replace stale snapshots; project data revision changes clear
+  other surfaces. Successful mutations must invalidate this memory even when a
+  navigation interrupts revalidation. Use the workspace-aware refresh hook for
+  project mutation callbacks: local History URLs need `router.replace` to reconcile
+  Next's server route tree; an aligned route uses `router.refresh`. Financial forms
+  invalidate on success, with explicit refresh opt-in for forms that stay in the
+  project. Task API updates retain their optimistic board and invalidate dependent
+  sections. No cross-project, persistent, or shared authorization/data cache exists.
+  Team, Activity and Feedback live once in the shared project header.
+- The shared header owns the direction switcher. Many-direction collections fold
+  while keeping the selected direction visible; there is no second board filter.
+  Each direction uses existing stage/task progress. The project overview presents
+  task counts rather than averaging direction percentages or areas.
+- Direction states are planned/active/paused/completed. Work can activate a
+  planned direction; explicit completion requires no open work-stage tasks and
+  does not complete the parent project. A DB task-write guard closes production
+  in completed directions; additional stages and explicit completion-date
+  corrections retain the existing exceptions. Project archive/completion still
+  bounds operational edits. Paused directions leave personal task and Dashboard queues, following project
+  pause semantics, without rewriting task schedules or earned history.
+- `/projects/templates?tab=directions` edits studio presets. Direction kind,
+  object type and task template are independent. Templates may be selected across
+  object types within the same studio. Presets seed new forms only; existing
+  directions/tasks are never regenerated. Recommended ranges are soft guidance,
+  and exact positive coefficients outside them remain valid.
 
 - Administrators assign only active members of the same studio.
 - New project memberships receive a server-owned assignment date, database
@@ -152,17 +214,19 @@ refresh the router. No experimental page-cache configuration is enabled.
 
 ## Project Finance
 
-Administrators have a `view=finance` tab alongside Board, Details, Team and
-Activity. Finance owns agreements, flexible expected payments, supervision and
-contractor bonus income; see [finance.md](finance.md). It never depends on
-production stages or copies the CRM lead budget. Completion/archive keeps Finance
+Administrators have project-wide and direction-scoped `view=finance` workspaces.
+Finance owns agreements, flexible expected payments, supervision and
+contractor bonus income; see [finance.md](finance.md). Orders associate with one
+or several directions, while production credit, contractual amounts and cash
+remain independent. Optional earning milestones refer to stages within the
+order's linked directions. Finance never copies the CRM lead budget. Completion/archive keeps Finance
 writable for collections. Operational lifecycle changes do not settle, cancel,
 or stop financial arrangements. Financially referenced projects cannot be deleted.
 Finance private amendments never enter the ordinary project activity feed.
 
 ## Client feedback
 
-The admin-only `view=feedback` tab creates/copies/revokes invitations and reads
+The admin-only shared-header `view=feedback` link creates/copies/revokes invitations and reads
 responses, including for completed or archived projects. The Feedback tab at
 `/statistics?section=feedback` shows studio averages, monthly response counts/ratings
 and NPS (% 9–10 minus % 0–6). Its date/project filters remain independent of the
@@ -248,6 +312,8 @@ Canonical paths: `src/components/feedback/`, `src/data/queries/feedback.ts`,
 
 - `src/app/(app)/projects/`
 - `src/components/projects/`
+- `src/lib/work-directions.ts`, project `direction-actions.ts`, and
+  `src/components/projects/project-work-directions.tsx`
 - `src/data/queries/project-by-id.ts`
 - `src/data/queries/project-members.ts`
 - `src/data/queries/project-stage-columns.ts`

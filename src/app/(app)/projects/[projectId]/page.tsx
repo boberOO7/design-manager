@@ -1,19 +1,25 @@
+import { createHash } from "node:crypto";
+import { ProjectNavigationProgress } from "@/components/projects/project-navigation-progress";
+import { Activity, MessageSquare, Users } from "lucide-react";
+import headerStyles from "@/components/projects/project-context-band.module.css";
 import { ProjectFeedback } from "@/components/feedback/project-feedback";
 import { getProjectFeedback } from "@/data/queries/feedback";
 import { Suspense, type ComponentProps, type ReactNode } from "react";
 import { InstaLoadReady } from "@/components/shared/instaload-motion";
 import { ProjectContextBlueprint, ProjectSectionBlueprint } from "@/components/projects/project-detail-blueprint";
-import Link from "next/link";
 import { ProjectFinanceSection } from "@/components/finance/project-finance-section";
 import { DomainMessages } from "@/i18n/domain-messages";
 import { notFound } from "next/navigation";
-import { ProjectContextBand } from "@/components/projects/project-context-band";
+import { ProjectWorkspaceNavigation, ProjectWorkspaceLink } from "@/components/projects/project-workspace-navigation";
+import { getStudioDirectionPresets } from "@/data/queries/work-direction-presets";
+import { projectWorkspaceHref, projectWorkspaceSurfaceKey, resolveProjectWorkspace, type ProjectWorkspaceView } from "@/lib/project-workspace-navigation";
+
 import { ProjectActualStartDateForm } from "@/components/projects/project-actual-start-date-form";
 import { ProjectCompletionDateForm } from "@/components/projects/project-completion-date-form";
 import { ProjectActivitySection } from "@/components/projects/project-activity-section";
 import { ProjectLifecycleProvider } from "@/components/projects/project-lifecycle-context";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
-import { ProjectWorkspace, ProjectWorkspaceContext, ProjectWorkspaceBoard } from "@/components/projects/project-workspace";
+import { ProjectWorkspace, ProjectWorkspaceContext, ProjectWorkspaceBoard, ProjectWorkspaceDetails } from "@/components/projects/project-workspace";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getProjectById } from "@/data/queries/project-by-id";
@@ -30,8 +36,7 @@ import { isAppLocale } from "@/i18n/config";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getCountryName } from "@/lib/countries";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
-import { getProjectListFilters, getProjectListHref, type ProjectListFilters } from "@/lib/project-list-presentation";
-import { calculateProjectSummary } from "@/lib/project-progress";
+import { getProjectListFilters, getProjectListHref } from "@/lib/project-list-presentation";
 import type { ProjectFormAction } from "@/components/projects/project-form";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -42,83 +47,56 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("board") };
 }
 
-type ProjectView = "board" | "details" | "team" | "activity" | "finance" | "feedback";
-
-function getProjectView(value: string | string[] | undefined): ProjectView {
-  return value === "details" || value === "team" || value === "activity" || value === "finance" || value === "feedback" ? value : "board";
-}
-
-function getProjectViewHref(projectId: string, view: ProjectView, filters: ProjectListFilters): string {
-  const listHref = getProjectListHref(filters);
-  const params = new URLSearchParams(listHref.includes("?") ? listHref.split("?")[1] : "");
-  if (view !== "board") params.set("view", view);
-  return `/projects/${projectId}${params.size ? `?${params}` : ""}`;
-}
-
-type ProjectPageSearchParams = Partial<Record<"view" | "feedbackPage" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
+type ProjectPageSearchParams = Partial<Record<"view" | "workDirection" | "feedbackPage" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
   const [{ projectId }, query, t, locale, common] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale(), getTranslations("Common")]);
-  const view = getProjectView(query.view);
+  const renderedSearch = new URLSearchParams(Object.entries(query).flatMap(([key, value]) => typeof value === "string" ? [[key, value]] : value?.map(item => [key, item]) ?? []));
+  renderedSearch.sort();
   const initialTaskId = typeof query.task === "string" ? query.task : undefined;
-  const listFilters = getProjectListFilters(query);
-  const projectsHref = getProjectListHref(listFilters);
+  const projectsHref = getProjectListHref(getProjectListFilters(query));
   const [project, adminMembership, profile] = await Promise.all([getProjectById(projectId), getActiveStudioAdmin(), getCurrentUserProfile()]);
   if (!project || !profile) notFound();
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
-  if ((view === "finance" || view === "feedback") && !canManage) notFound();
-
-  // Start authorized reads before localization; only the task loader owns schedule refresh.
-  const boardTasks = view === "board" ? getProjectTasks(project.id) : Promise.resolve([]);
-  const tasks = view === "board" ? boardTasks : getProjectTasksForProgress(project.id);
-  const configuration = getProjectStageConfiguration(project.id);
+  if ((query.view === "finance" || query.view === "feedback") && !canManage) notFound();
+  const [configuration, progressTasks] = await Promise.all([getProjectStageConfiguration(project.id), getProjectTasksForProgress(project.id)]);
+  const { view, directionId } = resolveProjectWorkspace({ view: query.view, workDirection: query.workDirection, taskId: initialTaskId, directions: configuration.directions ?? [], tasks: progressTasks, stages: configuration.stages });
+  const selectedDirection = configuration.directions?.find(direction => direction.id === directionId);
   const localizedProject = getLocalizedCityName({ city: project.city, geonamesId: project.city_geonames_id, locale: isAppLocale(locale) ? locale : "en" }).then(city => ({ ...project, city }));
+  const projectTemplates = canManage ? getStudioProjectTemplates() : Promise.resolve([]);
+  const presets = canManage ? getStudioDirectionPresets() : Promise.resolve([]);
   const calendarTime = getProjectCalendarTime(project.id, project.studio_id);
+  for (const pending of [localizedProject, projectTemplates, presets, calendarTime]) void pending.catch(() => {});
   const calendarTimeSummary = <Suspense fallback={<span className="instaload-blueprint inline-block h-[1.5em] w-16 align-bottom" role="status" aria-label={common("loading")}><span aria-hidden="true" className="instaload-mark h-full w-full" /></span>}><CalendarTimeStream pending={calendarTime} /></Suspense>;
-  const taskAssignees = view === "board" && canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]);
-  const checklistTemplates = view === "board" && canManage ? getStudioChecklistTemplates({ includeArchived: true }) : Promise.resolve([]);
-  const projectTemplates = view === "board" && canManage ? getStudioProjectTemplates() : Promise.resolve([]);
-  const projectMembers = view === "team" ? getProjectMembers(project.id) : Promise.resolve([]);
-  const assignableStudioMembers = view === "team" && canManage ? projectMembers.then(members => getAssignableStudioMembers(project, members.map(member => member.user_id))) : Promise.resolve([]);
-  const activity = view === "activity" ? getProjectActivity(project.id) : Promise.resolve([]);
-  // Stream consumers own failures even if another boundary exits before consuming a read.
-  for (const pending of [tasks, configuration, localizedProject, calendarTime, taskAssignees, checklistTemplates, projectTemplates, projectMembers, assignableStudioMembers, activity]) void pending.catch(() => {});
-  const archiveAction = archiveProject.bind(null, project.id);
-  const restoreAction = restoreProject.bind(null, project.id);
-  const updateAction = updateProject.bind(null, project.id);
-  const actualStartDateAction = updateProjectActualStartDate.bind(null, project.id);
-  const completionDateAction = updateProjectCompletionDate.bind(null, project.id);
-  const navItems: Array<{ id: ProjectView; label: string }> = [{ id: "board", label: t("board") }, { id: "details", label: t("details") }, { id: "team", label: t("team") }, { id: "activity", label: t("activity") }];
-  if (canManage) navItems.push({ id: "finance", label: t("finance") }, { id: "feedback", label: t("feedback") });
-  const navigation = <nav aria-label={t("navigation")} className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]">{navItems.map((item) => <Link prefetch={false} key={item.id} href={getProjectViewHref(project.id, item.id, listFilters)} aria-current={view === item.id ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-[calc(var(--ui-radius-control)-2px)] px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${view === item.id ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)]"}`}>{item.label}</Link>)}</nav>;
-
-  if (view === "board") {
-    // Share one task/configuration result between context and board, keeping their state together.
-    const core = Promise.all([boardTasks, configuration]).then(([tasks, configuration]) => ({ tasks, configuration }));
-    const context = Promise.all([core, localizedProject]).then(([data, project]) => ({ ...data, project }));
-    const board = Promise.all([core, taskAssignees, checklistTemplates, projectTemplates]).then(([data, members, templates, projectTemplates]) => ({ ...data, members, templates, projectTemplates }));
-    void context.catch(() => {});
-    void board.catch(() => {});
-    const workspaceProps = { archiveAction, backHref: projectsHref, calendarTimeSummary, canCreate: canManage && !isArchived, canManage, canManageTasks: canManage, currentUserId: profile.id, initialTaskId, isArchived, isProjectReadOnly: isArchived, projectId: project.id, restoreAction, updateAction };
-    return <ProjectLifecycleProvider initialStatus={project.status}><div data-project-detail-shell="ready" className="space-y-3"><ProjectWorkspace navigation={navigation} contextFallback={<ProjectContextBlueprint project={project} />} context={<WorkspaceContextStream pending={context} workspaceProps={workspaceProps} />} board={<WorkspaceBoardStream pending={board} workspaceProps={workspaceProps} />} /></div></ProjectLifecycleProvider>;
-  }
-
-  const context = Promise.all([localizedProject, tasks, configuration]).then(([project, tasks, configuration]) => <ProjectContextBand archiveAction={archiveAction} backHref={projectsHref} calendarTimeSummary={calendarTimeSummary} canManage={canManage} currentUserId={profile.id} isArchived={isArchived} project={project} restoreAction={restoreAction} summary={calculateProjectSummary(tasks, undefined, configuration.progressMethods, configuration.stages)} showProgress={configuration.showProgress} stages={configuration.stages} updateAction={updateAction} />);
-  const feedbackPage = typeof query.feedbackPage === "string" && /^[1-9]\d{0,5}$/.test(query.feedbackPage) ? Number(query.feedbackPage) : 1;
-  const content = view === "feedback" ? getProjectFeedback(project.id, feedbackPage).then(data => <DomainMessages scope="feedback"><ProjectFeedback projectId={project.id} page={feedbackPage} {...data} /></DomainMessages>)
-    : view === "finance" ? ProjectFinanceSection({ projectId: project.id, query })
-    : view === "details" ? localizedProject.then(project => ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }))
-    : view === "team" ? Promise.all([projectMembers, assignableStudioMembers]).then(([members, assignableMembers]) => ProjectTeamSection({ assignableMembers, canManage, members, projectId: project.id }))
-    : activity.then(activity => ProjectActivitySection({ activity, projectId: project.id }));
+  const href = (nextView: ProjectWorkspaceView, nextDirection: string | null = directionId) => projectWorkspaceHref(project.id, nextView, nextDirection, projectsHref);
+  const projectNavigation = <nav aria-label={t("projectNavigation")} className={headerStyles.projectActions}>{([{ id: "team", label: t("team"), icon: Users }, { id: "activity", label: t("activity"), icon: Activity }, ...(canManage ? [{ id: "feedback", label: t("feedback"), icon: MessageSquare }] : [])]).map(item => <ProjectWorkspaceLink key={item.id} href={href(item.id === "team" ? "team" : item.id === "activity" ? "activity" : "feedback", null)} workspaceView={item.id === "team" ? "team" : item.id === "activity" ? "activity" : "feedback"} className={headerStyles.projectAction}><item.icon aria-hidden="true"/><span>{item.label}</span><ProjectNavigationProgress/></ProjectWorkspaceLink>)}</nav>;
+  const workspaceProps = { archiveAction: archiveProject.bind(null, project.id), backHref: projectsHref, calendarTimeSummary, projectNavigation, canCreate: canManage && !isArchived, canManage, canManageTasks: canManage, currentUserId: profile.id, initialTaskId, selectedDirectionId: directionId, view, isArchived, isProjectReadOnly: isArchived, projectId: project.id, restoreAction: restoreProject.bind(null, project.id), updateAction: updateProject.bind(null, project.id) };
+  const context = Promise.all([localizedProject, projectTemplates, presets]).then(([project, projectTemplates, presets]) => ({ project, projectTemplates, presets, tasks: progressTasks, configuration }));
   void context.catch(() => {});
-  void content.catch(() => {});
-  const section = <Suspense fallback={<ProjectSectionBlueprint view={view} />}><ProjectSectionStream name={`project-${view}`} pending={content} /></Suspense>;
-  return <ProjectLifecycleProvider initialStatus={project.status}><div data-project-detail-shell="ready" className="space-y-3">
-    <Suspense fallback={<ProjectContextBlueprint project={project} />}><ProjectSectionStream name="project-context" pending={context} /></Suspense>
-    {navigation}
-    {view === "finance" ? <DomainMessages scope="finance">{section}</DomainMessages> : section}
-  </div></ProjectLifecycleProvider>;
+  // Overview shares data already read for the header; retain it alongside the board.
+  const overviewPending = localizedProject.then(project => ProjectDetails({ actualStartDateAction: updateProjectActualStartDate.bind(null, project.id), calendarTimeSummary, canManage, completionDateAction: updateProjectCompletionDate.bind(null, project.id), locale, project }));
+  void overviewPending?.catch(() => {});
+  const overview = overviewPending ? <Suspense fallback={<ProjectSectionBlueprint view="details"/>}><ProjectSectionStream name="project-overview" pending={overviewPending}/></Suspense> : undefined;
+  let content: ReactNode;
+  if (view === "overview") content = null;
+  else if (view === "board") {
+    const board = Promise.all([getProjectTasks(project.id), canManage ? getAssignableProjectMembers(project.id, project.studio_id) : Promise.resolve([]), canManage ? getStudioChecklistTemplates({ includeArchived: true }) : Promise.resolve([]), projectTemplates, presets]).then(([tasks, members, templates, projectTemplates, presets]) => ({ tasks, configuration, members, templates, projectTemplates, presets }));
+    void board.catch(() => {});
+    content = <WorkspaceBoardStream pending={board} workspaceProps={workspaceProps} />;
+  } else {
+    const feedbackPage = typeof query.feedbackPage === "string" && /^[1-9]\d{0,5}$/.test(query.feedbackPage) ? Number(query.feedbackPage) : 1;
+    const pending = view === "feedback" ? getProjectFeedback(project.id, feedbackPage).then(data => <DomainMessages scope="feedback"><ProjectFeedback projectId={project.id} page={feedbackPage} {...data} /></DomainMessages>)
+      : view === "finance" ? ProjectFinanceSection({ projectId: project.id, query, directionId, projectHref: href("finance", null) })
+      : view === "details" && selectedDirection ? Promise.all([projectTemplates, presets]).then(([templates, presets]) => <ProjectWorkspaceDetails {...workspaceProps} data={{ configuration, tasks: progressTasks, projectTemplates: templates, presets }}/>)
+      : view === "team" ? getProjectMembers(project.id).then(async members => ProjectTeamSection({ assignableMembers: canManage ? await getAssignableStudioMembers(project, members.map(member => member.user_id)) : [], canManage, members, projectId: project.id }))
+      : view === "activity" ? getProjectActivity(project.id).then(activity => ProjectActivitySection({ activity, projectId: project.id }))
+      : localizedProject.then(project => ProjectDetails({ actualStartDateAction: updateProjectActualStartDate.bind(null, project.id), calendarTimeSummary, canManage, completionDateAction: updateProjectCompletionDate.bind(null, project.id), locale, project }));
+    void pending.catch(() => {});
+    content = <Suspense fallback={<ProjectSectionBlueprint view={view} />}><ProjectSectionStream name={`project-${view}`} pending={pending} /></Suspense>;
+    if (view === "finance") content = <DomainMessages scope="finance">{content}</DomainMessages>;
+  }
+  return <ProjectLifecycleProvider key={`${project.id}:${isArchived}`} initialStatus={project.status}><ProjectWorkspaceNavigation key={`${project.id}:${profile.id}:${canManage}:${locale}`} projectId={project.id} snapshot={{ search: renderedSearch.toString(), key: projectWorkspaceSurfaceKey({ view, directionId }, query), revision: createHash("sha256").update(JSON.stringify([project, configuration, progressTasks])).digest("hex"), content, overview }} input={{ directions: configuration.directions ?? [], stages: configuration.stages, tasks: progressTasks }}><ProjectWorkspace key={project.id} overview={overview} contextFallback={<ProjectContextBlueprint project={project} />} context={<WorkspaceContextStream pending={context} workspaceProps={workspaceProps}/>} board={content}/></ProjectWorkspaceNavigation></ProjectLifecycleProvider>;
 }
 
 async function WorkspaceContextStream({ pending, workspaceProps }: { pending: Promise<ComponentProps<typeof ProjectWorkspaceContext>["data"]>; workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> }) {
@@ -131,7 +109,7 @@ async function WorkspaceBoardStream({ pending, workspaceProps }: { pending: Prom
 
 async function ProjectSectionStream({ name, pending }: { name: string; pending: Promise<ReactNode> }) {
   const content = await pending;
-  return <InstaLoadReady name={name} className="instaload-panel"><div data-instaload-arrival={name}>{content}</div></InstaLoadReady>;
+  return <InstaLoadReady name={name} className="instaload-panel"><div>{content}</div></InstaLoadReady>;
 }
 
 async function CalendarTimeStream({ pending }: { pending: ReturnType<typeof getProjectCalendarTime> }) {
@@ -143,18 +121,19 @@ async function CalendarTimeStream({ pending }: { pending: ReturnType<typeof getP
 }
 
 async function ProjectDetails({ actualStartDateAction, calendarTimeSummary, canManage, completionDateAction, locale, project }: { actualStartDateAction: ProjectFormAction; calendarTimeSummary: ReactNode; canManage: boolean; completionDateAction: ProjectFormAction; locale: string; project: NonNullable<Awaited<ReturnType<typeof getProjectById>>> }) {
-  const [t, form, projectTypes] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes")]);
+  const [t, form, projectTypes, priorities] = await Promise.all([getTranslations("ProjectWorkspace"), getTranslations("ProjectForm"), getTranslations("ProjectTypes"), getTranslations("Priority")]);
   const typeLabel = getProjectTypeDisplayName(project.project_type, project.project_type_custom, projectTypes);
   const items = [
     { label: form("projectType"), value: typeLabel },
     { label: form("clientName"), value: project.client_name },
     { label: form("country"), value: getCountryName(project.country_code, locale) },
     { label: form("city"), value: project.city },
-    { label: form("totalArea"), value: `${formatNumber(project.total_area_m2, locale)} m²` },
+    { label: t("directions.objectArea"), value: `${formatNumber(project.total_area_m2, locale)} m²` },
     { label: t("siteVisits"), value: calendarTimeSummary },
+    { label: form("priority"), value: priorities(project.priority) },
   ];
   return <section className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-5 shadow-[var(--ui-shadow-panel)]">
-    <h2 className="text-lg font-semibold text-[var(--ui-text)]">{t("projectDetails")}</h2>
+    <h2 className="text-base font-semibold text-[var(--ui-text)]">{t("directions.projectOverview")}</h2>
     <dl className="mt-4 grid gap-5 text-sm md:grid-cols-2">
       {items.map((item) => <div key={item.label}><dt className="text-[var(--ui-text-muted)]">{item.label}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{item.value ?? t("notAvailable")}</dd></div>)}
       {project.archived_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("archiveDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(project.archived_at, locale)}</dd></div> : null}

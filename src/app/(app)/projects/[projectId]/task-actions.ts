@@ -95,7 +95,7 @@ export async function createProjectTask(
     };
   }
 
-  const progressField = getTaskCreationProgressField(parsed.data.stage);
+  const progressField = getTaskCreationProgressField(parsed.data.stage, stageConfiguration.stages.find(stage => stage.stage === parsed.data.stage)?.productivityRole);
   const task = {
     project_id: project.id,
     checklist_template_id: parsed.data.checklist_template_id,

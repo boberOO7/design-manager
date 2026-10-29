@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { OpenWorkReassignment, type MemberRemovalImpact, isMemberRemovalImpact } from "@/components/team/open-work-reassignment";
 import { createClient } from "@/lib/supabase/client";
+import { useProjectWorkspaceNavigation } from "./project-workspace-navigation";
 import { useActionState, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -19,9 +20,10 @@ export function RemoveProjectMemberButton({ assignmentId, memberName, projectId,
   const [allowUnassigned, setAllowUnassigned] = useState(false);
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const action = removeProjectMember.bind(null, projectId);
+  const navigation = useProjectWorkspaceNavigation();
   const [state, formAction, pending] = useActionState<ProjectMemberActionState, FormData>(async (previousState, formData) => {
     const result = await action(previousState, formData);
-    if (result.success === "removed") setDialogOpen(false);
+    if (result.success === "removed") { setDialogOpen(false); navigation?.refresh(); }
     return result;
   }, {});
   const tasks = impact?.projects.flatMap((project) => project.tasks) ?? [];

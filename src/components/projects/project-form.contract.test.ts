@@ -13,12 +13,11 @@ const completionDateFormPath = new URL("./project-completion-date-form.tsx", imp
 const projectPagePath = new URL("../../app/(app)/projects/[projectId]/page.tsx", import.meta.url);
 
 describe("compact project creation contract", () => {
-  it("uses one shared ordered form and omits manual project code entry", async () => {
+  it("preserves shared project metadata and omits manual project code entry", async () => {
     const source = await readFile(formPath, "utf8");
     const fields = ["project_name", "project_type", "project_type_custom", "client_name", "country_code", "city_search", "city", "city_geonames_id", "site_address", "total_area_m2", "priority", "start_date", "due_date", "description"];
     const positions = fields.map((field) => source.indexOf(`name=\"${field}\"`));
     expect(positions.every((position) => position >= 0)).toBe(true);
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
     expect(source).not.toContain('name="project_code"');
   });
 

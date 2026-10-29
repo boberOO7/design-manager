@@ -3016,6 +3016,42 @@ export type Database = {
           },
         ]
       }
+      finance_order_work_directions: {
+        Row: {
+          direction_id: string
+          order_id: string
+          project_id: string
+          studio_id: string
+        }
+        Insert: {
+          direction_id: string
+          order_id: string
+          project_id: string
+          studio_id: string
+        }
+        Update: {
+          direction_id?: string
+          order_id?: string
+          project_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_order_work_directions_studio_id_direction_id_proje_fkey"
+            columns: ["studio_id", "direction_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "project_work_directions"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+          {
+            foreignKeyName: "finance_order_work_directions_studio_id_order_id_project_i_fkey"
+            columns: ["studio_id", "order_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "finance_project_orders"
+            referencedColumns: ["studio_id", "id", "project_id"]
+          },
+        ]
+      }
       finance_payroll_cash: {
         Row: {
           created_at: string
@@ -5927,8 +5963,12 @@ export type Database = {
           contributor_name: string
           created_at: string
           credited_area_m2: number
+          direction_id: string | null
           id: string
+          productivity_role: string | null
           project_id: string
+          source_area_m2: number | null
+          source_coefficient: number | null
           source_type: string
           studio_id: string
           task_id: string | null
@@ -5942,8 +5982,12 @@ export type Database = {
           contributor_name: string
           created_at?: string
           credited_area_m2: number
+          direction_id?: string | null
           id?: string
+          productivity_role?: string | null
           project_id: string
+          source_area_m2?: number | null
+          source_coefficient?: number | null
           source_type: string
           studio_id: string
           task_id?: string | null
@@ -5957,8 +6001,12 @@ export type Database = {
           contributor_name?: string
           created_at?: string
           credited_area_m2?: number
+          direction_id?: string | null
           id?: string
+          productivity_role?: string | null
           project_id?: string
+          source_area_m2?: number | null
+          source_coefficient?: number | null
           source_type?: string
           studio_id?: string
           task_id?: string | null
@@ -6352,11 +6400,13 @@ export type Database = {
       project_task_stage_columns: {
         Row: {
           deleted_at: string | null
+          direction_id: string | null
           display_name: string | null
           display_order: number
           enabled_statuses: string[]
           is_enabled: boolean
           kind: string
+          productivity_role: string
           progress_method: string
           progress_weight: number
           project_id: string
@@ -6368,11 +6418,13 @@ export type Database = {
         }
         Insert: {
           deleted_at?: string | null
+          direction_id?: string | null
           display_name?: string | null
           display_order: number
           enabled_statuses?: string[]
           is_enabled?: boolean
           kind?: string
+          productivity_role?: string
           progress_method?: string
           progress_weight?: number
           project_id: string
@@ -6384,11 +6436,13 @@ export type Database = {
         }
         Update: {
           deleted_at?: string | null
+          direction_id?: string | null
           display_name?: string | null
           display_order?: number
           enabled_statuses?: string[]
           is_enabled?: boolean
           kind?: string
+          productivity_role?: string
           progress_method?: string
           progress_weight?: number
           project_id?: string
@@ -6399,6 +6453,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_task_stage_columns_project_id_direction_id_fkey"
+            columns: ["project_id", "direction_id"]
+            isOneToOne: false
+            referencedRelation: "project_work_directions"
+            referencedColumns: ["project_id", "id"]
+          },
           {
             foreignKeyName: "project_task_stage_columns_project_id_fkey"
             columns: ["project_id"]
@@ -6516,6 +6577,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "studios"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_work_directions: {
+        Row: {
+          area_m2: number
+          complexity_coefficient: number
+          created_at: string
+          display_order: number
+          due_date: string | null
+          id: string
+          is_default: boolean
+          kind: string | null
+          name: string | null
+          project_id: string
+          start_date: string | null
+          status: string
+          studio_id: string
+        }
+        Insert: {
+          area_m2: number
+          complexity_coefficient?: number
+          created_at?: string
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          is_default?: boolean
+          kind?: string | null
+          name?: string | null
+          project_id: string
+          start_date?: string | null
+          status?: string
+          studio_id: string
+        }
+        Update: {
+          area_m2?: number
+          complexity_coefficient?: number
+          created_at?: string
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          is_default?: boolean
+          kind?: string | null
+          name?: string | null
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_work_directions_project_id_studio_id_fkey"
+            columns: ["project_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "studio_id"]
           },
         ]
       }
@@ -6875,6 +6992,51 @@ export type Database = {
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_direction_presets: {
+        Row: {
+          coefficient: number
+          kind: string
+          recommended_max: number | null
+          recommended_min: number | null
+          studio_id: string
+          template_id: string | null
+          version: number
+        }
+        Insert: {
+          coefficient?: number
+          kind: string
+          recommended_max?: number | null
+          recommended_min?: number | null
+          studio_id: string
+          template_id?: string | null
+          version?: number
+        }
+        Update: {
+          coefficient?: number
+          kind?: string
+          recommended_max?: number | null
+          recommended_min?: number | null
+          studio_id?: string
+          template_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_direction_presets_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_direction_presets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -10571,6 +10733,15 @@ export type Database = {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      create_finance_direction_order: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       create_finance_employee_bonus: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
         Returns: string
@@ -10716,6 +10887,13 @@ export type Database = {
           start_date: string
           start_time: string
           user_id: string
+        }[]
+      }
+      get_direction_productivity_workload: {
+        Args: { p_project_ids: string[] }
+        Returns: {
+          area_m2: number
+          task_id: string
         }[]
       }
       get_feedback_analytics: {
@@ -11324,6 +11502,15 @@ export type Database = {
         }
         Returns: string
       }
+      save_finance_order_directions: {
+        Args: {
+          p_direction_ids: string[]
+          p_expected_version: number
+          p_order_id: string
+          p_project_id: string
+        }
+        Returns: undefined
+      }
       save_finance_project_cash_split: {
         Args: {
           p_input: Json
@@ -11452,6 +11639,14 @@ export type Database = {
         }
         Returns: string
       }
+      save_project_work_direction: {
+        Args: {
+          p_expected_version: number
+          p_input: Json
+          p_project_id: string
+        }
+        Returns: string
+      }
       save_stage_task_structure: {
         Args: {
           p_creates: Json
@@ -11472,6 +11667,10 @@ export type Database = {
           p_studio_id: string
           p_website: string
         }
+        Returns: undefined
+      }
+      save_studio_direction_preset: {
+        Args: { p_input: Json; p_studio_id: string }
         Returns: undefined
       }
       save_studio_vacation_policy: {
@@ -11514,6 +11713,15 @@ export type Database = {
           p_project_id: string
           p_reason?: string
           p_stage: string
+        }
+        Returns: undefined
+      }
+      set_project_work_direction_status: {
+        Args: {
+          p_direction_id: string
+          p_expected_version: number
+          p_project_id: string
+          p_status: string
         }
         Returns: undefined
       }

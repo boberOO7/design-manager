@@ -8,6 +8,8 @@ import { normalizeTaskCollaborators, type TaskCollaboratorRelation } from "@/lib
 import { isTaskFinished, isTaskOverdue } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { MyTask, ProjectTask, TaskSchedule, TaskStatusPeriod } from "@/types/tasks";
+import { getTranslations } from "next-intl/server";
+import { productivityRoleSchema } from "@/lib/work-directions";
 
 const TASK_SELECT = "id, project_id, checklist_template_id, stage, stage_position, title, description, status, priority, assignee_id, requires_review, reviewer_id, reviewer:profiles!tasks_reviewer_id_fkey(id, full_name, job_title, avatar_url), reviewers:task_reviewers(task_id, reviewer_id, position, reviewer:profiles!task_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), review_rounds:task_review_rounds(id, task_id, project_id, round_number, reviewer_id, submitted_at, completed_at, result, rework_comment, reviewers:task_review_round_reviewers(round_id, reviewer_id, position, approved_at, reviewer:profiles!task_review_round_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(id, full_name, job_title, avatar_url)), due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
 
@@ -57,13 +59,18 @@ async function attachCurrentStatusEnteredAt<T extends ProjectTask>(supabase: Awa
 async function attachSchedulePredecessors<T extends ProjectTask>(supabase: Awaited<ReturnType<typeof createClient>>, tasks: T[]): Promise<T[]> {
   if (!tasks.length) return tasks;
   const { data: stageRows, error: stageError } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns")
-    .select("project_id, stage, kind, display_name").in("project_id", [...new Set(tasks.map((task) => task.project_id))]).is("deleted_at", null).order("project_id").order("stage").range(from, to));
+    .select("project_id, stage, kind, display_name, direction_id, direction:project_work_directions(name,kind,status)").in("project_id", [...new Set(tasks.map((task) => task.project_id))]).is("deleted_at", null).order("project_id").order("stage").range(from, to));
   if (stageError || !stageRows) throw new Error("Unable to load task stage metadata.", { cause: stageError });
   const stageByKey = new Map(stageRows.map((row) => [`${row.project_id}:${row.stage}`, row]));
+  const directionSets = new Map<string, Set<string>>();
+  for (const row of stageRows) if (row.direction_id) directionSets.set(row.project_id, (directionSets.get(row.project_id) ?? new Set()).add(row.direction_id));
+  const [stageLabels, directionLabels] = await Promise.all([getTranslations("TaskStages"), getTranslations("ProjectWorkspace.directions")]);
   tasks = tasks.map((task) => {
     const stage = stageByKey.get(`${task.project_id}:${task.stage}`);
     if (!stage || (stage.kind !== "work" && stage.kind !== "additional")) throw new Error("Task project stage is unavailable.");
-    return { ...task, stageKind: stage.kind, stageName: stage.display_name };
+    const directionName = stage.direction?.name ?? directionLabels(stage.direction?.kind ? `kinds.${stage.direction.kind}` : "defaultName");
+    const stageName = stage.display_name ?? (task.stage.startsWith("custom_") ? task.stage : stageLabels(task.stage));
+    return { ...task, stageKind: stage.kind, directionStatus: stage.direction?.status, directionName, stageName: (directionSets.get(task.project_id)?.size ?? 0) > 1 ? `${directionName} · ${stageName}` : stage.display_name };
   });
   const scheduledIds = tasks.filter((task) => task.schedule).map((task) => task.id);
   if (!scheduledIds.length) return tasks;
@@ -147,11 +154,18 @@ export async function getMyTaskStageNames(projectIds: string[]): Promise<Record<
   if (!projectIds.length) return {};
   const supabase = await createClient();
   const { data, error } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns")
-    .select("project_id, stage, display_name")
+    .select("project_id, stage, display_name, direction_id, direction:project_work_directions(name,kind,status)")
     .in("project_id", projectIds).order("project_id").order("stage").range(from, to));
   if (error) throw new Error("Unable to load personal task stage names.", { cause: error });
   const names: Record<string, string> = {};
-  for (const row of data ?? []) if (row.display_name) names[`${row.project_id}:${row.stage}`] = row.display_name;
+  const directionSets = new Map<string, Set<string>>();
+  for (const row of data ?? []) if (row.direction_id) directionSets.set(row.project_id, (directionSets.get(row.project_id) ?? new Set()).add(row.direction_id));
+  const [stages, directions] = await Promise.all([getTranslations("TaskStages"), getTranslations("ProjectWorkspace.directions")]);
+  for (const row of data ?? []) {
+    const stageName = row.display_name ?? (row.stage.startsWith("custom_") ? row.stage : stages(row.stage));
+    if ((directionSets.get(row.project_id)?.size ?? 0) > 1) names[`${row.project_id}:${row.stage}`] = `${row.direction?.name ?? directions(row.direction?.kind ? `kinds.${row.direction.kind}` : "defaultName")} · ${stageName}`;
+    else if (row.display_name) names[`${row.project_id}:${row.stage}`] = row.display_name;
+  }
   return names;
 }
 
@@ -179,7 +193,7 @@ export async function getMyTasks(): Promise<MyTask[]> {
     throw new Error("Unable to load tasks assigned to the current user.", { cause: error });
   }
 
-  return (await attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, data.map(normalizeMyTask)))).sort((left, right) => {
+  return (await attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, data.map(normalizeMyTask)))).filter(task => task.directionStatus !== "paused").sort((left, right) => {
     const leftRank = isTaskFinished(left.status) ? 2 : isTaskOverdue(left) ? 0 : 1;
     const rightRank = isTaskFinished(right.status) ? 2 : isTaskOverdue(right) ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;
@@ -202,10 +216,10 @@ export async function getTaskForStatusUpdate(taskId: string) {
 
   if (error) throw new Error(`Unable to load task ${taskId} for a status update.`, { cause: error });
   if (!data) return null;
-  const { data: stage, error: stageError } = await supabase.from("project_task_stage_columns").select("kind").eq("project_id", data.project_id).eq("stage", data.stage).is("deleted_at", null).single();
+  const { data: stage, error: stageError } = await supabase.from("project_task_stage_columns").select("kind,productivity_role,direction:project_work_directions(area_m2,status)").eq("project_id", data.project_id).eq("stage", data.stage).is("deleted_at", null).single();
   if (stageError || (stage?.kind !== "work" && stage?.kind !== "additional")) throw new Error("Task stage is unavailable.", { cause: stageError });
   const stageKind: NonNullable<ProjectTask["stageKind"]> = stage.kind;
-  return { ...data, stageKind };
+  return { ...data, stageKind, directionStatus: stage.direction?.status, productivityRole: productivityRoleSchema.parse(stage.productivity_role), directionAreaM2: stage.direction?.area_m2 ?? data.project.total_area_m2 };
 }
 
 export async function getTaskStatusHistory(taskId: string): Promise<TaskStatusPeriod[]> {

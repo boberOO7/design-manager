@@ -37,7 +37,7 @@ function deferred<T>() {
 }
 function inspectWorkspace(props: ComponentProps<typeof ProjectWorkspace>) {
   if (!isValidElement<{ pending: Promise<ComponentProps<typeof ProjectWorkspaceContext>["data"]> }>(props.context) || !isValidElement<{ pending: Promise<ComponentProps<typeof ProjectWorkspaceBoard>["data"]>; workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceBoard>, "data"> }>(props.board)) throw new Error("Workspace streams missing");
-  return { ...props.board.props.workspaceProps, navigation: props.navigation, context: props.context.props.pending, board: props.board.props.pending };
+  return { ...props.board.props.workspaceProps, overview: props.overview, context: props.context.props.pending, board: props.board.props.pending };
 }
 function workspace(node: ReactNode): ReturnType<typeof inspectWorkspace> {
   if (isValidElement<ComponentProps<typeof ProjectWorkspace>>(node) && node.type === ProjectWorkspace) return inspectWorkspace(node.props);
@@ -87,7 +87,8 @@ it("returns the board shell while tasks, city and calendar are delayed; shares e
   mocks.calendar.mockReturnValue(calendar.promise);
   const props = workspace(await route({ task: "task-id", lifecycle: "all" }));
   expect(props.initialTaskId).toBe("task-id");
-  expect(props.navigation).toBeTruthy();
+  expect(props.projectNavigation).toBeTruthy();
+  expect(props.overview).toBeTruthy();
   expect(mocks.tasks).toHaveBeenCalledExactlyOnceWith("project");
   expect(mocks.progress).not.toHaveBeenCalled();
   expect(mocks.configuration).toHaveBeenCalledOnce();

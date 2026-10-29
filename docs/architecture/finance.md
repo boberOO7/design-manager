@@ -19,6 +19,23 @@ proposal revisions and commercial confirmation.
 
 ## Project commercial orders
 
+- `finance_order_work_directions` associates orders with one or several same-project
+  directions; a direction can have several orders. Composite tenant/project FKs,
+  finance-admin RLS and guarded RPCs protect links. Default/legacy orders link to
+  the default direction; `create_finance_direction_order` creates the selected
+  association atomically and preserves existing request idempotency.
+- Associations provide scope, never amounts: totals still aggregate canonical
+  orders once. Commercial area/pricing snapshots, cash and production area ×
+  coefficient remain separate. A sole linked direction may seed a new pricing
+  form's actual area without changing existing contractual snapshots. Shared-order
+  profitability stays project/order-level; no automatic allocation is invented.
+- Direction Finance shows linked orders with create/attach actions. Shared orders
+  display full order amounts with the other linked directions; no direction
+  revenue/profit total is inferred from those amounts. Project Finance retains
+  unique-order totals and all project cash, expenses and result reporting.
+- Earning milestone stages must belong to linked directions. Link edits cannot
+  orphan active milestones. Completion of production tasks never creates cash or
+  client acceptance. Stage tombstones retain financial history labels.
 - Orders are stable studio/Project identities; design terms remain immutable,
   order-scoped revisions. Supervision, other income, expenses, trips, labor and
   profitability remain Project-level. Existing agreement history belongs to the

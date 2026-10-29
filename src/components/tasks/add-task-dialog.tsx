@@ -18,6 +18,7 @@ import { type TaskDeadlineInput } from "@/lib/task-deadlines";
 import { cloneChecklistTemplateStages, getChecklistTemplateWeight, isChecklistTemplateDraftCustomized, type ChecklistTemplateStage, type StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import { getTaskCreationProgressField } from "@/lib/productivity";
+import type { ProductivityRole } from "@/lib/work-directions";
 
 export type AddTaskDialogHandle = {
   open: (stage?: TaskStage) => void;
@@ -26,6 +27,7 @@ export type AddTaskDialogHandle = {
 export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   allowedStages?: readonly TaskStage[];
   stageNames?: Record<string, string>;
+  productivityRoles?: Record<string, ProductivityRole | undefined>;
   members: AssignableProjectMember[];
   defaultStage?: TaskStage;
   projectId: string;
@@ -33,6 +35,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
 }>(function AddTaskDialog({
   allowedStages = TASK_STAGES,
   stageNames = {},
+  productivityRoles = {},
   members,
   defaultStage = "stage_1",
   projectId,
@@ -65,7 +68,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
   const [deadlines, setDeadlines] = useState<TaskDeadlineInput[]>([]);
   const [completedAreaM2, setCompletedAreaM2] = useState("");
   const [progressWeight, setProgressWeight] = useState("1");
-  const progressField = getTaskCreationProgressField(selectedStage);
+  const progressField = getTaskCreationProgressField(selectedStage, productivityRoles[selectedStage]);
   const selectedTemplate = templates.find((template) => template.id === templateId);
   const isCustomized = templateId !== "" && isChecklistTemplateDraftCustomized(selectedTemplate, checklistItems);
   const totalWeight = getChecklistTemplateWeight({ stages: checklistItems });
@@ -132,7 +135,7 @@ export const AddTaskDialog = forwardRef<AddTaskDialogHandle, {
               </Select>
             </FormField>
             <FormField label={t("stage")} error={state.fieldErrors?.stage ? validation("correctFields") : undefined}>
-              <Select aria-readonly={isStageLocked || undefined} name={isStageLocked ? undefined : "stage"} value={selectedStage} disabled={isPending || isStageLocked} onValueChange={(stage) => { if (isTaskStage(stage) && availableStages.includes(stage)) { setSelectedStage(stage); const nextProgressField = getTaskCreationProgressField(stage); setCompletedAreaM2(""); setProgressWeight(nextProgressField === "weight" ? "1" : ""); } }}>
+              <Select aria-readonly={isStageLocked || undefined} name={isStageLocked ? undefined : "stage"} value={selectedStage} disabled={isPending || isStageLocked} onValueChange={(stage) => { if (isTaskStage(stage) && availableStages.includes(stage)) { setSelectedStage(stage); const nextProgressField = getTaskCreationProgressField(stage, productivityRoles[stage]); setCompletedAreaM2(""); setProgressWeight(nextProgressField === "weight" ? "1" : ""); } }}>
                 {availableStages.map((stage) => <SelectItem key={stage} value={stage}>{getStageLabel(stage, stages, stageNames[stage])}</SelectItem>)}
               </Select>
               {isStageLocked ? <input type="hidden" name="stage" value={selectedStage} /> : null}

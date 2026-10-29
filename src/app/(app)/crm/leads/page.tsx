@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getCrmAdmins, getCrmLeads } from "@/data/queries/crm";
 import { getActiveStudioAssignees } from "@/data/queries/project-members";
 import { getStudioProjectTemplates } from "@/data/queries/project-templates";
+import { getStudioDirectionPresets } from "@/data/queries/work-direction-presets";
 import { getKyivDateOnly } from "@/lib/validation/project";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function CrmLeadsPage({ searchParams }: { searchParams: Promise<{ attention?: string | string[]; lead?: string | string[] }> }) {
   const pendingAdmins = getCrmAdmins();
   const pending = Promise.all([getCrmLeads(pendingAdmins), pendingAdmins]);
-  const projectOptions = Promise.all([getActiveStudioAssignees(), getStudioProjectTemplates()]).then(([members, templates]) => ({ members, templates }));
+  const projectOptions = Promise.all([getActiveStudioAssignees(), getStudioProjectTemplates(), getStudioDirectionPresets()]).then(([members, templates, presets]) => ({ members, templates, presets }));
   void pending.catch(() => {});
   void projectOptions.catch(() => {});
   const [[result, admins], params, t] = await Promise.all([pending, searchParams, getTranslations("Crm")]);

@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentUserProfile } from "@/data/queries";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getActiveStudioAssignees } from "@/data/queries/project-members";
+import { getStudioDirectionPresets } from "@/data/queries/work-direction-presets";
 import { getStudioProjectTemplates } from "@/data/queries/project-templates";
 import { getAccessibleProjectsWithTasks } from "@/data/queries/project-progress";
 import { getProjectsNavigationScope } from "@/data/queries/projects-navigation";
@@ -47,8 +48,8 @@ export default async function ProjectsPage() {
 }
 
 async function CreationAction() {
-  const [templates, members] = await Promise.all([getStudioProjectTemplates(), getActiveStudioAssignees()]);
-  return <ProjectCreationModal defaultStartDate={getKyivDateOnly()} members={members} templates={templates} />;
+  const [templates, members, presets] = await Promise.all([getStudioProjectTemplates(), getActiveStudioAssignees(), getStudioDirectionPresets()]);
+  return <ProjectCreationModal defaultStartDate={getKyivDateOnly()} members={members} templates={templates} presets={presets} />;
 }
 
 async function ProjectsStream({ pending }: { pending: ReturnType<typeof getAccessibleProjectsWithTasks> }) {

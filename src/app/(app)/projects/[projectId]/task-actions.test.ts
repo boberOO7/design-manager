@@ -33,7 +33,7 @@ describe("project task creation progress contract", () => {
     const createAction = source.slice(source.indexOf("export async function createProjectTask"), source.indexOf("export async function updateTaskStatus"));
 
     expect(createAction).toContain("getProjectStageConfiguration(project.id)");
-    expect(createAction).toContain("getTaskCreationProgressField(parsed.data.stage)");
+    expect(createAction).toContain("getTaskCreationProgressField(parsed.data.stage, stageConfiguration.stages.find(stage => stage.stage === parsed.data.stage)?.productivityRole)");
     expect(createAction).toContain('progressField === "area" ? { completed_area_m2: parsed.data.completed_area_m2 ?? null } : {}');
     expect(createAction).toContain('progressField === "weight" ? { progress_weight: parsed.data.progress_weight ?? 1 } : {}');
   });

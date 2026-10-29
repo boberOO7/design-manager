@@ -6,16 +6,18 @@ import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "@/lib/project-progress";
 import { DEFAULT_STAGE_COLUMN_STATUSES } from "@/lib/tasks";
 import { DEFAULT_PROJECT_STAGES } from "@/lib/task-stages";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/components/projects/project-context-band", () => ({ ProjectContextBand: () => <h1>Project identity</h1> }));
 vi.mock("@/components/tasks/project-task-board", () => ({ ProjectTaskBoard: () => <button>Open task</button> }));
 vi.mock("@/components/tasks/project-stage-configuration-dialog", () => ({ ProjectStageConfigurationDialog: () => null }));
+vi.mock("./project-work-directions", () => ({ ProjectWorkDirections: () => null }));
+vi.mock("./work-direction-details", () => ({ WorkDirectionDetails: () => null }));
 vi.mock("@/components/projects/project-lifecycle-context", () => ({ useProjectLifecycle: () => ({ status: "active", setStatus: vi.fn() }) }));
 import { ProjectContextBlueprint } from "./project-detail-blueprint";
 import { ProjectWorkspace, ProjectWorkspaceContext, ProjectWorkspaceBoard, type ProjectWorkspaceCore, type ProjectWorkspaceBoardData } from "./project-workspace";
 
-const core: ProjectWorkspaceCore = { tasks: [], configuration: {
+const core: ProjectWorkspaceCore & { tasks: ProjectWorkspaceBoardData["tasks"] } = { tasks: [], configuration: {
   columns: { stage_1: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_2: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_3: [...DEFAULT_STAGE_COLUMN_STATUSES], stage_4: [...DEFAULT_STAGE_COLUMN_STATUSES] },
   progressMethods: DEFAULT_PROJECT_STAGE_PROGRESS_METHODS,
   schedulePause: { stage_1: null, stage_2: null, stage_3: null, stage_4: null },
@@ -24,7 +26,7 @@ const core: ProjectWorkspaceCore = { tasks: [], configuration: {
 } };
 const project = { id: "project", name: "Project", project_code: null, project_type: null, project_type_custom: null, city: null, city_geonames_id: null, site_address: null, country_code: "UA", client_name: null, description: null, due_date: null, priority: "normal", start_date: null, total_area_m2: 100 };
 const workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> = { projectId: "project", canCreate: true, canManage: true, canManageTasks: true, currentUserId: "admin", isArchived: false, isProjectReadOnly: false, archiveAction: async () => {}, restoreAction: async () => {}, updateAction: async () => ({}), calendarTimeSummary: <span>0</span> };
-const props: ComponentProps<typeof ProjectWorkspace> = { contextFallback: <ProjectContextBlueprint />, navigation: <nav><a href="/projects/project?view=details">Details</a></nav>, context: <ProjectWorkspaceContext {...workspaceProps} data={{ ...core, project }} />, board: <ProjectWorkspaceBoard {...workspaceProps} data={{ ...core, members: [], templates: [], projectTemplates: [] }} /> };
+const props: ComponentProps<typeof ProjectWorkspace> = { contextFallback: <ProjectContextBlueprint />, context: <ProjectWorkspaceContext {...workspaceProps} data={{ ...core, project }} />, board: <ProjectWorkspaceBoard {...workspaceProps} data={{ ...core, members: [], templates: [], projectTemplates: [] }} /> };
 function PendingContext({ pending }: { pending: Promise<ProjectWorkspaceCore & { project: typeof project }> }) {
   return <ProjectWorkspaceContext {...workspaceProps} data={use(pending)} />;
 }
@@ -61,7 +63,6 @@ it("renders the real shell immediately and streams context while the board remai
     await waitFor(() => result.html().includes("data-project-loading"));
     expect(result.html()).toContain('data-project-loading="context"');
     expect(result.html()).toContain('data-project-loading="board"');
-    expect(result.html()).toContain('<nav><a href="/projects/project?view=details">Details</a></nav>');
     expect(result.html()).not.toContain('data-instaload-ready="project-board"');
     releaseContext({ ...core, project });
     await waitFor(() => result.html().includes('data-instaload-ready="project-context"'));

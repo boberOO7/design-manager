@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ProductivityLeaderboardEntry, ProductivityProjectContribution } from "@/lib/productivity";
-import type { TaskStage } from "@/lib/task-stages";
 
 type RankedEntry = ProductivityLeaderboardEntry & { bonusPercent: number };
 
@@ -14,11 +13,11 @@ export function LeaderboardRanking({ entries, contributions, locale, monthlyBonu
   contributions: Record<string, ProductivityProjectContribution[]>;
   locale: string;
   monthlyBonusesApply: boolean;
-  stageLabels: Record<TaskStage, string>;
+  stageLabels: Record<string, string>;
 }) {
   const t = useTranslations("Leaderboard");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-  const formatArea = (value: number) => `${value.toLocaleString(locale, { maximumFractionDigits: 2 })} m²`;
+  const formatArea = (value: number) => `${value.toLocaleString(locale, { maximumFractionDigits: 2 })} ${t("areaUnit")}`;
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Kyiv" }).format(new Date(value));
 
   return <ol className="divide-y divide-[var(--ui-border)]">{entries.map((entry) => {
@@ -40,7 +39,7 @@ export function LeaderboardRanking({ entries, contributions, locale, monthlyBonu
         <div className="overflow-hidden"><div className="max-h-[calc(min(28rem,55vh)_+_25px)] overscroll-y-contain overflow-y-auto border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)]">
           <div className="px-4 py-3 sm:px-5">{groups.length ? <div className="space-y-2">{groups.map((group) => <section key={group.project_id} aria-label={group.project_name ?? t("unavailableProject")}>
             <h3 className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] px-3 py-2 text-xs font-semibold text-[var(--ui-text-secondary)]"><span className="min-w-0 truncate">{group.project_name ?? t("unavailableProject")}</span><span className="ui-numeric shrink-0 text-[var(--ui-text)]">{formatArea(group.completed_area_m2)}</span></h3>
-            <ul className="px-1 py-1">{group.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-4 px-2 py-1.5 text-sm"><div className="min-w-0"><p className="break-words text-[var(--ui-text-secondary)]">{record.source_type === "project_fallback" ? t("projectCredit") : record.task_title ?? t("unavailableTask")}</p><p className="mt-0.5 text-xs text-[var(--ui-text-muted)]">{record.task_stage ? `${stageLabels[record.task_stage]} · ` : ""}{formatDate(record.completed_at)}</p></div><span className="ui-numeric shrink-0 font-medium text-[var(--ui-text)]">+{formatArea(record.credited_area_m2)}</span></li>)}</ul>
+            <ul className="px-1 py-1">{group.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-4 px-2 py-1.5 text-sm"><div className="min-w-0"><p className="break-words text-[var(--ui-text-secondary)]">{record.source_type === "project_fallback" ? t("projectCredit") : record.task_title ?? t("unavailableTask")}</p><p className="mt-0.5 text-xs text-[var(--ui-text-muted)]">{record.task_stage ? `${stageLabels[`${group.project_id}:${record.task_stage}`] ?? stageLabels[record.task_stage] ?? ""} · ` : ""}{formatDate(record.completed_at)}</p></div><span className="ui-numeric shrink-0 font-medium text-[var(--ui-text)]">+{formatArea(record.credited_area_m2)}</span></li>)}</ul>
           </section>)}</div> : <p className="text-sm text-[var(--ui-text-muted)]">{t("noAreaContributions")}</p>}</div>
         </div></div>
       </div>

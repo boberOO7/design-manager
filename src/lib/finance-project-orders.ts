@@ -6,6 +6,7 @@ export const projectOrderInputSchema = z.object({
   intent: z.enum(["create", "saveDraft", "rename", "confirm", "discard"]),
   orderId: z.uuid().optional(), version: z.coerce.number().int().nonnegative().optional(),
   name: z.string().trim().min(1).max(2000).optional(), plan: z.unknown().optional(),
+  directionIds: z.array(z.uuid()).min(1).optional(),
 }).refine(value => value.intent === "create" ? Boolean(value.name) : Boolean(value.orderId) && value.version !== undefined)
   .refine(value => value.intent !== "rename" || Boolean(value.name));
 

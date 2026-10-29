@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { useTranslations } from "next-intl";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
 import type { ProjectFormAction, ProjectFormDefaults } from "@/components/projects/project-form";

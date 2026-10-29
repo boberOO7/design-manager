@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { ProjectWorkspaceLink as Link, useProjectWorkspaceNavigation } from "@/components/projects/project-workspace-navigation";
 import { ArrowUpRight, ChevronRight, History, Info } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ function TermsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => v
   const [vatRate, setVatRate] = useState<string | null>(current?.vat_rate == null ? null : String(current.vat_rate));
   const [priceBasis, setPriceBasis] = useState<"net" | "gross" | null>(current?.price_basis === "net" || current?.price_basis === "gross" ? current.price_basis : null);
   const [from, setFrom] = useState(current ? "" : `${data.today.slice(0, 7)}-01`), [through, setThrough] = useState("");
-  return <FinanceActionForm action={saveFinanceProject} label={t("planning.save")} onSaved={onSaved} onPending={onPending}>
+  return <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProject} label={t("planning.save")} onSaved={onSaved} onPending={onPending}>
     <input type="hidden" name="intent" value="terms"/><input type="hidden" name="projectId" value={data.project.projectId}/><input type="hidden" name="stream" value="supervision"/><input type="hidden" name="revision" value={current?.revision ?? 0}/><input type="hidden" name="vatRate" value={vatRate ?? ""}/><input type="hidden" name="priceBasis" value={priceBasis ?? ""}/>
     <FormField label={t("project.arrangement")}><Select name="mode" aria-label={t("project.arrangement")} value={mode} onValueChange={setMode}>{["monthly", "per_visit", "custom", "stopped"].map((v) => <SelectItem key={v} value={v}>{t(`project.modes.${v}`)}</SelectItem>)}</Select></FormField>
     <div className="grid gap-4 sm:grid-cols-2">
@@ -59,7 +59,7 @@ function TermsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => v
 function MonthsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => void; onPending: (v: boolean) => void }) {
   const t = useTranslations("Finance");
   const [from, setFrom] = useState(data.today.slice(0, 7)), [through, setThrough] = useState(data.today.slice(0, 7));
-  return <FinanceActionForm action={saveFinanceProject} label={t("project.generate")} onSaved={onSaved} onPending={onPending}>
+  return <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProject} label={t("project.generate")} onSaved={onSaved} onPending={onPending}>
     <input type="hidden" name="intent" value="months"/><input type="hidden" name="projectId" value={data.project.projectId}/>
     <input type="hidden" name="from" value={`${from}-01`}/><input type="hidden" name="through" value={`${through}-01`}/>
     <div className="grid gap-4 sm:grid-cols-2"><FormField label={t("project.fromMonth")}><Input type="month" value={from} onChange={(e) => setFrom(e.target.value)} required/></FormField><FormField label={t("project.throughMonth")}><Input type="month" value={through} onChange={(e) => setThrough(e.target.value)} required/></FormField></div>
@@ -69,6 +69,7 @@ function MonthsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => 
 
 export function ProjectFinanceWorkspace(props: Props) {
   const router = useRouter();
+  const navigation = useProjectWorkspaceNavigation();
   const t = useTranslations("Finance"), locale = useLocale();
   const [manager, setManager] = useState<string | null>(null);
   const [editor, setEditor] = useState<"supervision" | "months" | null>(null), [historyOpen, setHistoryOpen] = useState(false), [pending, setPending] = useState(false);
@@ -97,9 +98,9 @@ export function ProjectFinanceWorkspace(props: Props) {
   const next = props.project.nextPayment;
   const completion = props.summary && Number(props.summary.gross) > 0
     ? Math.min(100, Math.max(0, (1 - Number(props.summary.remaining) / Number(props.summary.gross)) * 100)) : null;
-  const pricePerArea = props.summary && Number(props.project.area) > 0
+  const pricePerArea = props.project.directions.length <= 1 && props.summary && Number(props.project.area) > 0
     ? Number(props.summary.gross) / Number(props.project.area) : null;
-  const incomeSelector = <div className="flex w-full min-w-0 flex-wrap items-center gap-3 sm:w-auto sm:flex-nowrap"><h2 className="shrink-0 text-base font-semibold sm:text-lg">{t("planning.filtersList.incoming")}</h2><Select aria-label={t("orders.category")} variant="secondary" width="content" contentMinWidth="natural" className="w-full min-w-[min(17rem,100%)] sm:w-fit" value={props.stream} onValueChange={stream => router.push(href("payments", stream), { scroll: false })}>{projectStreams.filter(stream => stream !== "expenses").map(stream => <SelectItem key={stream} value={stream}>{t(stream === "design" ? "orders.contractual" : `project.streams.${stream}`)}</SelectItem>)}</Select></div>;
+  const incomeSelector = <div className="flex w-full min-w-0 flex-wrap items-center gap-3 sm:w-auto sm:flex-nowrap"><h2 className="shrink-0 text-base font-semibold sm:text-lg">{t("planning.filtersList.incoming")}</h2><Select aria-label={t("orders.category")} variant="secondary" width="content" contentMinWidth="natural" className="w-full min-w-[min(17rem,100%)] sm:w-fit" value={props.stream} onValueChange={stream => { const target = href("payments", stream); if (!navigation?.navigate(target)) router.push(target, { scroll: false }); }}>{projectStreams.filter(stream => stream !== "expenses").map(stream => <SelectItem key={stream} value={stream}>{t(stream === "design" ? "orders.contractual" : `project.streams.${stream}`)}</SelectItem>)}</Select></div>;
   const incomeActions = props.tab === "payments" && props.stream === "supervision" ? <><Button size="compact" variant="outline" onClick={() => setEditor("supervision")}>{t("project.editSupervision")}</Button>{props.project.termHistory.some(term => term.mode === "monthly") ? <Button size="compact" variant="ghost" onClick={() => setEditor("months")}>{t("project.generate")}</Button> : null}{supervision ? <Button size="compact" variant="ghost" onClick={() => setHistoryOpen(true)}><History aria-hidden="true" className="size-4"/>{t("project.history")}</Button> : null}</> : undefined;
   const incomeDetails = props.tab === "payments" && props.stream !== "design" && ((props.stream === "supervision" && supervision) || props.project.totals.some(total => total.stream === props.stream)) ? <AnimatedDisclosure title={t("projectWorkspace.categoryDetails")}><div className="space-y-3 pb-2 text-sm text-[var(--ui-text-secondary)]">{supervision && props.stream === "supervision" ? <><p>{t(`project.modes.${supervision.mode}`)} · {supervision.effective_from ? formatDateOnly(supervision.effective_from,locale) : "—"} — {supervision.effective_through ? formatDateOnly(supervision.effective_through,locale) : t("project.openEnded")}</p>{supervision.vat_rate !== null && supervision.amount !== null ? <p className="text-xs">{t("project.vatBreakdown", { net: displayMoney(supervision.net_amount,supervision.currency),vat:displayMoney(supervision.vat_amount,supervision.currency),gross:displayMoney(supervision.gross_amount,supervision.currency) })}</p> : null}</> : null}{props.project.totals.filter(total => total.stream === props.stream).map(total => <dl key={total.currency} className="flex flex-wrap gap-x-8 gap-y-3">{([["collected", total.collected_amount], ["outstanding", total.outstanding_amount], ["planned", total.planned_amount]] as const).map(([label,value])=><div key={label}><dt className="text-xs">{t(`project.${label}`)}</dt><dd className="ui-numeric mt-1 font-medium">{displayMoney(value,total.currency)}</dd></div>)}</dl>)}</div></AnimatedDisclosure> : null;
   return <div className="w-full min-w-0 space-y-4" data-project-finance>

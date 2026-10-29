@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
+import { useProjectWorkspaceNavigation } from "./project-workspace-navigation";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export function AddProjectMemberForm({
   assignableMembers: AssignableStudioMember[];
   projectId: string;
 }) {
+  const navigation = useProjectWorkspaceNavigation();
   const t = useTranslations("ProjectWorkspace");
   const roles = useTranslations("Roles");
   const [open, setOpen] = useState(false);
@@ -27,7 +29,7 @@ export function AddProjectMemberForm({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = useActionState<ProjectMemberActionState, FormData>(
-    addProjectMembers.bind(null, projectId),
+    async (previous, data) => { const result = await addProjectMembers(projectId, previous, data); if (result.success === "added") navigation?.refresh(); return result; },
     {},
   );
 

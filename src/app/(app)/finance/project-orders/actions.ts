@@ -12,7 +12,10 @@ export async function saveFinanceProjectOrder(_previous: FinanceActionState, for
   const t = await getTranslations("Finance.orders");
   const admin = await getActiveStudioAdmin();
   if (!admin) return { status: "error", message: t("errors.forbidden") };
-  const parsed = projectOrderInputSchema.safeParse(Object.fromEntries(form));
+  let directionIds: unknown;
+  try { directionIds = form.has("directionIds") ? JSON.parse(String(form.get("directionIds"))) : undefined; }
+  catch { return { status: "error", message: t("errors.invalid") }; }
+  const parsed = projectOrderInputSchema.safeParse({ ...Object.fromEntries(form), ...(directionIds !== undefined ? { directionIds } : {}) });
   if (!parsed.success) return { status: "error", message: t("errors.invalid") };
   const { requestId, projectId, ...input } = parsed.data;
   if (input.intent === "saveDraft") {
@@ -24,7 +27,7 @@ export async function saveFinanceProjectOrder(_previous: FinanceActionState, for
     input.plan = payload;
   }
   const client = await createClient();
-  const { data, error } = await client.rpc("save_finance_project_order", {
+  const { data, error } = await client.rpc(input.intent === "create" && input.directionIds ? "create_finance_direction_order" : "save_finance_project_order", {
     p_studio_id: admin.studio_id, p_request_id: requestId, p_project_id: projectId,
     p_input: z.json().parse(input),
   });

@@ -6,9 +6,10 @@ import { useTranslations } from "next-intl";
 import { createProject } from "@/app/(app)/projects/new/actions";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
+import type { DirectionPreset } from "@/lib/work-directions";
 import type { ProjectTemplate } from "@/lib/project-templates";
 
-export function ProjectCreationModal({ defaultStartDate, members, templates }: { defaultStartDate: string; members: ActiveStudioAssignee[]; templates: ProjectTemplate[] }) {
+export function ProjectCreationModal({ defaultStartDate, members, templates, presets }: { defaultStartDate: string; members: ActiveStudioAssignee[]; templates: ProjectTemplate[]; presets?: DirectionPreset[] }) {
   const t = useTranslations("Projects");
   const formMessages = useTranslations("ProjectForm");
   const router = useRouter();
@@ -23,6 +24,7 @@ export function ProjectCreationModal({ defaultStartDate, members, templates }: {
     onSuccess={(projectId) => router.push(`/projects/${projectId}`)}
     title={t("newProject")}
     templates={templates}
+    presets={presets}
     triggerLabel={t("newProject")}
     triggerLeadingIcon={<Plus className="size-4" aria-hidden="true" />}
   />;

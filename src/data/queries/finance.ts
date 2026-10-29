@@ -186,7 +186,7 @@ export async function getFinanceProject(projectId:string) {
   const client=await createClient();
   const nextQuery = () => client.from("finance_project_expected_balances").select("id,description,currency,remaining_amount::text,due_date,expected_payment_date,order_id,order_name").eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream","design").eq("commitment","agreed").gt("remaining_amount",0)
     .order("order_is_default",{ascending:false,nullsFirst:false}).order("order_created_at").order("order_id").order("schedule_position",{nullsFirst:false}).order("due_date",{nullsFirst:false}).order("id");
-  const [terms,history,totals,contractors,visits,nextItems,area,designHistory,orders,orderTotals,earnings,earningStages]=await Promise.all([
+  const [terms,history,totals,contractors,visits,nextItems,area,designHistory,orders,orderTotals,earnings,earningStages,directions,directionLinks,directionVersion]=await Promise.all([
     client.from("finance_project_current_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.from("finance_project_terms").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("created_at",{ ascending:false }).order("id").range(0,999),
     client.from("finance_project_totals").select("studio_id,project_id,stream,currency,contract_amount::text,scheduled_amount::text,collected_amount::text,closed_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text,contract_net_amount::text,contract_vat_amount::text,contract_gross_amount::text,scheduled_net_amount::text,scheduled_vat_amount::text,collected_net_amount::text,collected_vat_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
@@ -198,9 +198,12 @@ export async function getFinanceProject(projectId:string) {
     client.from("finance_project_orders").select("*").eq("studio_id",admin.studio_id).eq("project_id",projectId).order("is_default",{ascending:false}).order("created_at").order("id"),
     client.from("finance_project_order_totals").select("order_id,currency,payment_count,has_payment_history,scheduled_net_amount::text,scheduled_vat_amount::text,collected_net_amount::text,collected_vat_amount::text,contract_amount::text,contract_net_amount::text,contract_vat_amount::text,contract_gross_amount::text,scheduled_amount::text,collected_amount::text,closed_amount::text,outstanding_amount::text,planned_amount::text,unscheduled_amount::text").eq("studio_id",admin.studio_id).eq("project_id",projectId),
     client.rpc("get_finance_project_earnings", { p_studio_id: admin.studio_id, p_project_id: projectId }),
-    client.from("project_task_stage_columns").select("stage,display_name,is_enabled,display_order").eq("project_id",projectId).order("display_order"),
+    client.from("project_task_stage_columns").select("stage,display_name,is_enabled,display_order,direction_id").eq("project_id",projectId).is("deleted_at",null).order("display_order"),
+    client.from("project_work_directions").select("*").eq("project_id",projectId).order("display_order").order("id"),
+    client.from("finance_order_work_directions").select("order_id,direction_id").eq("studio_id",admin.studio_id).eq("project_id",projectId),
+    client.from("projects").select("stage_configuration_version").eq("id",projectId).single(),
   ]);
-  const error=earnings.error??earningStages.error??orders.error??orderTotals.error??terms.error??history.error??totals.error??contractors.error??visits.error??nextItems.error??area.error??designHistory.error;
+  const error=directions.error??directionLinks.error??directionVersion.error??earnings.error??earningStages.error??orders.error??orderTotals.error??terms.error??history.error??totals.error??contractors.error??visits.error??nextItems.error??area.error??designHistory.error;
   if(error) throw new Error("Unable to load Project Finance.",{ cause:error });
   // Historical visit defaults must not depend on a recent-revisions limit.
   const termHistory=history.data??[];
@@ -229,7 +232,7 @@ export async function getFinanceProject(projectId:string) {
     nextCandidates.push(...page.data);
   }
   const nextPayment = nextProjectPayment(nextCandidates, (orders.data ?? []).filter(order => order.status === "confirmed").map(order => order.id));
-  return { projectId,earnings:earningsReportSchema.parse(earnings.data),earningStages:earningStages.data??[],orders:orders.data??[],orderTotals:orderTotals.data??[],nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
+  return { projectId,directions:directions.data??[],directionLinks:directionLinks.data??[],directionVersion:directionVersion.data?.stage_configuration_version??0,earnings:earningsReportSchema.parse(earnings.data),earningStages:earningStages.data??[],orders:orders.data??[],orderTotals:orderTotals.data??[],nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
 export async function getFinanceProjectRecordedRates(projectId: string, stream: string) {
   const admin = await getActiveStudioAdmin();

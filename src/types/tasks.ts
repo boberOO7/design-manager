@@ -64,6 +64,8 @@ export type ProjectTask = Pick<
   stage: TaskStage;
   stageKind?: ProjectStageDefinition["kind"];
   stageName?: string | null;
+  directionName?: string | null;
+  directionStatus?: string;
   completed_area_m2: TaskRow["completed_area_m2"];
   stage_position?: TaskRow["stage_position"];
   currentStatusEnteredAt?: string | null;
@@ -78,7 +80,7 @@ export type MyTask = ProjectTask & {
 };
 
 /** Dashboard calculations/list data; full drawer fields are loaded only on open. */
-export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | "stageKind" | "stageName" | "title" | "status" | "priority" | "assignee_id" | "due_date" | "created_at" | "completed_area_m2" | "manual_progress_override" | "production_completion" | "progress_weight" | "project"> & {
+export type DashboardTaskSummary = Pick<MyTask, "id" | "project_id" | "stage" | "stageKind" | "stageName" | "directionStatus" | "title" | "status" | "priority" | "assignee_id" | "due_date" | "created_at" | "completed_area_m2" | "manual_progress_override" | "production_completion" | "progress_weight" | "project"> & {
   checklist_items: Pick<TaskChecklistItem, "id" | "is_completed" | "is_not_needed" | "weight">[];
   collaborators: Pick<TaskCollaborator, "id">[];
   deadlines?: Pick<TaskDeadline, "id" | "target_status" | "due_date">[];

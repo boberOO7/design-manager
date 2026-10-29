@@ -671,9 +671,12 @@ export function ProjectTaskBoard({
   schedulePause,
   showProgress = true,
   stages,
+  visibleStages,
+  taskStageOptions,
   tasks,
   templates,
   onSummaryChange,
+  onTasksChange,
   onProjectStatusChange,
 }: {
   canCreate: boolean;
@@ -691,9 +694,12 @@ export function ProjectTaskBoard({
   schedulePause: Record<TaskStage, StageSchedulePause>;
   showProgress?: boolean;
   stages: ConfiguredProjectStage[];
+  visibleStages?: TaskStage[];
+  taskStageOptions?: ConfiguredProjectStage[];
   tasks: ProjectTask[];
   templates: StudioChecklistTemplate[];
   onSummaryChange: (summary: ProjectProgressSummary) => void;
+  onTasksChange?: (tasks: ProjectTask[]) => void;
   onProjectStatusChange?: (status: ProjectLifecycleStatus) => void;
 }) {
   const t = useTranslations("Tasks");
@@ -712,6 +718,7 @@ export function ProjectTaskBoard({
   const boardActions = locale === "uk" ? "Дії дошки" : "Board actions";
   const compactTaskCards = locale === "uk" ? "Компактні картки" : "Compact task cards";
   const [localTasks, setLocalTasks] = useState(tasks);
+  useEffect(() => { onTasksChange?.(localTasks); }, [localTasks, onTasksChange]);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [activeBulkDrag, setActiveBulkDrag] = useState<BulkDragSource | null>(null);
@@ -721,7 +728,7 @@ export function ProjectTaskBoard({
   const [boardError, setBoardError] = useState<{ id: number; message: string } | null>(null);
   const boardErrorIdRef = useRef(0);
   const [stageHeaderVariant, setStageHeaderVariant] = useState<"hairline" | "wash">("hairline");
-  const [expandedStages, setExpandedStages] = useState<Record<string, boolean>>(() => Object.fromEntries(stages.map((stage, index) => [stage.stage, index === 0])));
+  const [expandedStages, setExpandedStages] = useState<Record<string, boolean>>(() => Object.fromEntries(stages.map(stage => [stage.stage, stage.stage === (visibleStages?.[0] ?? stages[0]?.stage)])));
   const [stageLayoutReady, setStageLayoutReady] = useState(false);
   const [localStageColumns, setLocalStageColumns] = useState(stageColumns);
   const [localSchedulePause, setLocalSchedulePause] = useState(schedulePause);
@@ -743,7 +750,7 @@ export function ProjectTaskBoard({
   const suppressCardOpenRef = useRef(false);
   const suppressSelectionClearRef = useRef(false);
   const addTaskDialogRef = useRef<AddTaskDialogHandle>(null);
-  const taskCreationStages = getTaskCreationStagesForProject({ projectStatus, stages: stages.filter((stage) => stage.isEnabled) });
+  const taskCreationStages = getTaskCreationStagesForProject({ projectStatus, stages: stages.filter((stage) => stage.isEnabled && (!visibleStages || visibleStages.includes(stage.stage))) });
   const defaultTaskCreationStage = taskCreationStages[0];
   const stageLayoutKey = `project-task-board:stages:${projectId}:${currentUserId}`;
   const compactCardsKey = `project-task-board:compact-cards:${currentUserId}`;
@@ -770,6 +777,13 @@ export function ProjectTaskBoard({
     }
     window.queueMicrotask(() => setStageLayoutReady(true));
   }, [stageLayoutKey, stages]);
+
+  const firstVisibleStage = visibleStages?.[0];
+  useEffect(() => {
+    if (firstVisibleStage) setExpandedStages(current => current[firstVisibleStage] ? current : { ...current, [firstVisibleStage]: true });
+    setTaskSelection({ stage: null, taskIds: [] });
+    setTaskContextMenu(null);
+  }, [firstVisibleStage]);
 
   useEffect(() => {
     if (!stageLayoutReady) return;
@@ -1362,14 +1376,14 @@ export function ProjectTaskBoard({
     <section aria-labelledby="project-board-heading">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{t("board")}</h2>
-          <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p>
+          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{visibleStages ? t("directionBoard") : t("board")}</h2>
+          {!visibleStages ? <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {process.env.NODE_ENV === "development" ? <div role="group" aria-label={locale === "uk" ? "Порівняння прогресу етапів" : "Compare stage progress"} className={styles.variantSwitch}>
             {(["hairline", "wash"] as const).map((variant) => <button key={variant} type="button" aria-pressed={stageHeaderVariant === variant} onClick={() => setStageHeaderVariant(variant)} className={styles.variantOption}>{variant === "hairline" ? "Hairline" : "Wash"}</button>)}
           </div> : null}
-          {canCreate && defaultTaskCreationStage ? <AddTaskDialog ref={addTaskDialogRef} allowedStages={taskCreationStages} stageNames={Object.fromEntries(stages.map((stage) => [stage.stage, stageName(stage.stage)]))} defaultStage={defaultTaskCreationStage} members={members} projectId={projectId} templates={templates} /> : null}
+          {canCreate && defaultTaskCreationStage ? <AddTaskDialog ref={addTaskDialogRef} allowedStages={taskCreationStages} productivityRoles={Object.fromEntries(stages.map(stage => [stage.stage, stage.productivityRole]))} stageNames={Object.fromEntries(stages.map((stage) => [stage.stage, stageName(stage.stage)]))} defaultStage={defaultTaskCreationStage} members={members} projectId={projectId} templates={templates} /> : null}
           <Popover.Root>
             <Popover.Trigger asChild>
               <button type="button" className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={boardActions}>
@@ -1390,8 +1404,8 @@ export function ProjectTaskBoard({
       {boardError ? <ActionErrorToast key={boardError.id} message={boardError.message} dismissLabel={t("dismissActionError")} onDismiss={() => setBoardError(null)} /> : null}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
       <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="space-y-3">
-          {stages.filter((item) => item.isEnabled).map(({ stage }) => {
+        <div key={visibleStages?.join(":") ?? "all"} className="space-y-3">
+          {stages.filter((item) => item.isEnabled && (!visibleStages || visibleStages.includes(item.stage))).map(({ stage }) => {
             const isStageReadOnly = isProjectReadOnly || (projectStatus === "completed" && isWorkingStage(stage));
             const canCreateInStage = canCreate && taskCreationStages.includes(stage);
             const canApplyTemplate = canCreateInStage && !localSchedulePause[stage] && localStageColumns[stage].includes("todo");
@@ -1528,7 +1542,7 @@ export function ProjectTaskBoard({
         onTaskDeleted={removeLocalTask}
         onProjectStatusUpdated={onProjectStatusChange}
         onTaskUpdated={updateLocalTask}
-        configuredStages={stages.filter((stage) => stage.isEnabled)}
+        configuredStages={(taskStageOptions ?? stages).filter((stage) => stage.isEnabled)}
         stageColumns={localStageColumns}
         task={selectedTask}
         templates={templates}

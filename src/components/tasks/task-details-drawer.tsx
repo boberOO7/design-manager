@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, Check, ChevronDown, CircleMinus, CircleX, Clock3, Ellipsis, Flag, Layers3, Minus, Pencil, RotateCcw, Ruler, SlidersHorizontal, Trash2, UserRound, Users, X } from "lucide-react";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { deleteProjectTask } from "@/app/(app)/projects/[projectId]/task-actions";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -83,7 +83,7 @@ function makeFormValues(task: ProjectTask): {
 export function TaskDetailsDrawer({
   canManageTasks,
   currentUserId,
-  isProjectReadOnly,
+  isProjectReadOnly: projectReadOnly,
   isOpen,
   members,
   onClose,
@@ -113,6 +113,7 @@ export function TaskDetailsDrawer({
   task: ProjectTask;
   templates?: StudioChecklistTemplate[];
 }) {
+  const isProjectReadOnly = projectReadOnly || (task.directionStatus === "completed" && task.stageKind === "work");
   const router = useRouter();
   const t = useTranslations("Tasks");
   const checklistT = useTranslations("Checklists");

@@ -12,10 +12,10 @@ import { calculateProjectSummary } from "@/lib/project-progress";
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
 describe("project progress visibility", () => {
-  it("renders progress and Calendar time in the project summary", () => {
+  it("keeps common project identity above the direction workspace", () => {
     const props = {
       archiveAction: async () => {},
-      calendarTimeSummary: "1 · 2 hr 30 min",
+
       canManage: false,
       currentUserId: "member",
       isArchived: false,
@@ -31,37 +31,24 @@ describe("project progress visibility", () => {
         production_completion: 100, progress_weight: 1, checklist_items: [] }]),
       updateAction: async (state: Parameters<React.ComponentProps<typeof ProjectContextBand>["updateAction"]>[0]) => state,
     };
-    const render = (showProgress: boolean, locale = "en", dueDate: string | null = null) => renderToStaticMarkup(createElement(NextIntlClientProvider, {
+    const render = (locale = "en", dueDate: string | null = null) => renderToStaticMarkup(createElement(NextIntlClientProvider, {
       locale, messages: locale === "uk" ? uk : en,
       children: createElement(ProjectLifecycleProvider, { initialStatus: "active",
-        children: createElement(ProjectContextBand, { ...props, project: { ...props.project, due_date: dueDate }, showProgress }) }),
+        children: createElement(ProjectContextBand, { ...props, project: { ...props.project, due_date: dueDate }, directionsContent: createElement("nav", { "aria-label": "Directions" }, "Interior · 120 m²") }) }),
     }));
-    expect(render(true).match(/role="progressbar"/g)).toHaveLength(4);
-    expect(render(true)).toContain("Site visits");
-    expect(render(true)).toContain("1 · 2 hr 30 min");
-    expect(render(false)).not.toContain('role="progressbar"');
-    const localized = render(true, "uk", "2000-01-01");
+    expect(render()).toContain('aria-label="Directions"');
+    expect(render()).toContain("Interior · 120 m²");
+    expect(render()).not.toContain('role="progressbar"');
+    const localized = render("uk", "2000-01-01");
     expect(localized).toContain("Активний");
     expect(localized).toContain("Прострочено");
     expect(localized).not.toContain("Дедлайн проєкту минув");
-    expect(localized).toContain("Звичайний");
     expect(localized).not.toMatch(/Overdue|Normal|Project deadline passed|Дедлайн наступного завдання/);
   });
 
-  it("defaults to visible and hides summary and board indicators when disabled", async () => {
-    const [query, page, workspace, board, dialog] = await Promise.all([
-      read("../../data/queries/project-stage-columns.ts"),
-      read("../../app/(app)/projects/[projectId]/page.tsx"),
-      read("./project-workspace.tsx"),
-      read("../tasks/project-task-board.tsx"),
-      read("../tasks/project-stage-configuration-dialog.tsx"),
-    ]);
-    expect(query).toContain("showProgress: project?.show_progress ?? true");
-    expect(page).toContain("showProgress={stageConfiguration.showProgress}");
-    expect(workspace).toContain("showProgress={localShowProgress}");
-    expect(workspace).toContain("setLocalShowProgress(nextShowProgress)");
+  it("keeps the progress preference on the direction collection and board", async () => {
+    const [directions, board] = await Promise.all([read("./project-work-directions.tsx"), read("../tasks/project-task-board.tsx")]);
+    expect(directions).toContain("configuration.showProgress");
     expect(board).toContain("{showProgress && progress ?");
-    expect(dialog).toContain("show_progress: progressVisible");
-    expect(dialog).toContain('t("showProgress")');
   });
 });

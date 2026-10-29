@@ -13,7 +13,7 @@ export const messageScopes = {
   projects: ["Projects", "ProjectForm", "ProjectTypes", "ProjectWorkspace", "Workspace", "StageConfiguration", "StageTaskEditor", "BoardTaskCard", "ProjectTemplates", "Team", "Calendar", ...taskMessages],
   tasks: ["OfficeAssignments", ...taskMessages],
   calendar: ["Calendar", "TimeOff", "Status", "Priority"],
-  crm: ["Crm", "ProjectForm", "ProjectTypes", "Priority", "Roles"],
+  crm: ["Crm", "ProjectWorkspace", "ProjectForm", "ProjectTypes", "Priority", "Roles"],
   finance: ["Finance"],
   feedback: ["Feedback"],
   statistics: ["Statistics"],

@@ -8,6 +8,7 @@ import { Dialog, type DialogCloseReason } from "@/components/ui/dialog";
 import { getProjectDialogCloseIntent } from "@/lib/project-dialog";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
 import type { ProjectTemplate } from "@/lib/project-templates";
+import type { DirectionPreset } from "@/lib/work-directions";
 import { Tooltip } from "@/components/ui/tooltip";
 
 export function ProjectFormModal({
@@ -26,6 +27,7 @@ export function ProjectFormModal({
   triggerVariant,
   members = [],
   templates = [],
+  presets,
 }: {
   action: ProjectFormAction;
   closeLabel: string;
@@ -42,6 +44,7 @@ export function ProjectFormModal({
   triggerVariant?: ButtonProps["variant"];
   members?: ActiveStudioAssignee[];
   templates?: ProjectTemplate[];
+  presets?: DirectionPreset[];
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -62,7 +65,8 @@ export function ProjectFormModal({
     <Dialog
       closeDisabled={isPending}
       closeLabel={closeLabel}
-      description={description}
+      description={mode === "create" ? undefined : description}
+      className={mode === "create" ? "max-w-[62rem]" : undefined}
       isOpen={isOpen}
       onRequestClose={requestClose}
       returnFocusRef={triggerRef}
@@ -84,6 +88,7 @@ export function ProjectFormModal({
           onSuccess(projectId);
         }}
         templates={templates}
+        presets={presets}
       />
     </Dialog>
   </>;

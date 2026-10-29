@@ -31,7 +31,8 @@ export function isDashboardTask<T extends { project: DashboardTaskSummary["proje
     && isTaskStage(task.stage);
 }
 
-export function isDashboardTaskProjectEligible(task: Pick<DashboardTask, "stage" | "project" | "stageKind">): boolean {
+export function isDashboardTaskProjectEligible(task: Pick<DashboardTask, "stage" | "project" | "stageKind" | "directionStatus">): boolean {
+  if (task.directionStatus === "paused" || (task.directionStatus === "completed" && task.stageKind === "work")) return false;
   return isOperationalProjectStatus(task.project.status)
     || (task.project.status === "completed" && canWorkOnTaskInProject({
       projectStatus: task.project.status,

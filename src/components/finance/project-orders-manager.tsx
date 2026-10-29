@@ -20,19 +20,25 @@ import { FinanceActionForm } from "./finance-action-form";
 import { ProjectValueBuilder } from "./project-value-builder";
 import { ProjectEarningMilestones } from "./project-earning-milestones";
 import { ProjectOrderCurrencyCorrection } from "./project-order-currency-correction";
+import { OrderWorkDirections } from "./order-work-directions";
+import { Select, SelectItem } from "@/components/ui/select";
+import { useSearchParams } from "next/navigation";
 
 const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
-type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
+type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; initiallyAdding?: boolean; scopeDirectionId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
 
-export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, display, onClose }: Props) {
+export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, initiallyAdding = false, scopeDirectionId, display, onClose }: Props) {
   const t = useTranslations("Finance"), locale = useLocale();
-  const [selectedId, setSelectedId] = useState(initialOrderId ?? ""), [adding, setAdding] = useState(false);
+  const query = useSearchParams();
+  const [newDirection, setNewDirection] = useState(() => scopeDirectionId ?? (project.directions.some(direction => direction.id === query.get("workDirection")) ? query.get("workDirection") ?? "" : project.directions[0]?.id ?? ""));
+  const [selectedId, setSelectedId] = useState(initialOrderId ?? ""), [adding, setAdding] = useState(initiallyAdding);
   const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | null>(null), [pending, setPending] = useState(false);
   const [renaming, setRenaming] = useState(false), [nameValue, setNameValue] = useState(""), [nameError, setNameError] = useState("");
   const nameButton = useRef<HTMLButtonElement>(null), nameForm = useRef<HTMLFormElement>(null);
   const renameInFlight = useRef(false), restoreNameFocus = useRef(false);
   const nameErrorId = useId();
+  const visibleOrders = scopeDirectionId ? project.orders.filter(order => project.directionLinks.some(link => link.order_id === order.id && link.direction_id === scopeDirectionId)) : project.orders;
   const order = project.orders.find(item => item.id === selectedId);
   const term = project.terms.find(item => item.order_id === order?.id && item.stream === "design");
   const draft = order ? parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) : null;
@@ -105,7 +111,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
       {order ? <header className="flex shrink-0 items-start gap-1 px-3 pb-3 pt-3 sm:px-4">
         <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t("orders.back")} disabled={pending} onClick={() => { setRenaming(false); setNameError(""); setSelectedId(""); }}><ArrowLeft aria-hidden="true" className="size-4"/></Button>
         <div className="min-w-0 flex-1">
-          {renaming ? <FinanceActionForm key={order.id} action={saveFinanceProjectOrder} label={t("orders.rename")} hideActions showMessage={false} formRef={nameForm} className="space-y-1" fieldsetClassName="min-w-0" onPending={value => { renameInFlight.current = value; setPending(value); }} onResult={result => { setNameError(result.status === "error" ? result.message ?? t("orders.errors.save") : ""); }} onSaved={() => setRenaming(false)}>
+          {renaming ? <FinanceActionForm refreshWorkspaceOnSave key={order.id} action={saveFinanceProjectOrder} label={t("orders.rename")} hideActions showMessage={false} formRef={nameForm} className="space-y-1" fieldsetClassName="min-w-0" onPending={value => { renameInFlight.current = value; setPending(value); }} onResult={result => { setNameError(result.status === "error" ? result.message ?? t("orders.errors.save") : ""); }} onSaved={() => setRenaming(false)}>
             {orderFields}<input type="hidden" name="intent" value="rename"/>
             <div className="relative"><Input name="name" value={nameValue} aria-label={t("orders.name")} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? nameErrorId : undefined} required maxLength={2000} className="h-11 pr-8 text-lg font-semibold" onChange={event => { setNameValue(event.target.value); setNameError(""); }} onBlur={() => submitRename(false)} onKeyDown={event => {
               if (event.nativeEvent.isComposing) return;
@@ -121,11 +127,14 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
       </header> : null}
       <div className={`min-h-0 overflow-y-auto overscroll-contain ${order ? "space-y-4 px-4 pb-2 sm:px-6" : adding ? "space-y-3 p-4 pt-3" : "space-y-2 p-2"}`}>
         {adding ? <Button variant="ghost" size="sm" onClick={() => setAdding(false)} disabled={pending}><ArrowLeft aria-hidden="true" className="mr-2 size-4"/>{t("orders.back")}</Button> : null}
-        {adding ? <FinanceActionForm action={saveFinanceProjectOrder} label={t("orders.create")} onPending={setPending} onSaved={result => { setAdding(false); setSelectedId(result.id ?? ""); }}>
+        {adding ? <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.create")} onPending={setPending} onSaved={result => { setAdding(false); setSelectedId(result.id ?? ""); }}>
           <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="intent" value="create"/>
+          {newDirection ? <input type="hidden" name="directionIds" value={JSON.stringify([newDirection])}/> : null}
+          {project.directions.length > 1 ? <FormField as="div" label={t("orders.workDirections")}><Select aria-label={t("orders.workDirections")} value={newDirection} onValueChange={setNewDirection}>{project.directions.map(direction => <SelectItem key={direction.id} value={direction.id}>{direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")}</SelectItem>)}</Select></FormField> : null}
           <FormField label={t("orders.name")}><Input name="name" defaultValue={project.orders.length ? "" : t("orders.defaultName")} required maxLength={2000}/></FormField>
           <p className="text-sm text-[var(--ui-text-secondary)]">{t("orders.draftHelp")}</p>
         </FinanceActionForm> : order ? <>
+          <OrderWorkDirections key={`directions-${order.id}`} project={project} orderId={order.id} onPending={setPending}/>
           <div className="grid grid-cols-2 items-end gap-x-5 gap-y-4 py-1 sm:grid-cols-[1.2fr_1fr_1.15fr]">
             <div className="col-span-2 min-w-0 sm:col-span-1">
               <p className="ui-numeric break-words text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{money(term?.gross_amount ?? amounts?.gross)}</p>
@@ -154,8 +163,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
           {totals && Number(totals.closed_amount) > 0 ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.closed")}: {money(totals.closed_amount)}</p> : null}
           {totals && (Number(totals.scheduled_vat_amount) > 0 || Number(totals.collected_vat_amount) > 0) ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("project.historicalVatBreakdown", { scheduledNet: money(totals.scheduled_net_amount), scheduledVat: money(totals.scheduled_vat_amount), collectedNet: money(totals.collected_net_amount), collectedVat: money(totals.collected_vat_amount) })}</p> : null}
           {order.status === "draft" ? <>
-            {draft ? <FinanceActionForm action={saveFinanceProjectOrder} label={t("orders.confirm")} onSaved={() => {}} onPending={setPending} className="space-y-3 border-t border-[var(--ui-border)] pt-4">{orderFields}<input type="hidden" name="intent" value="confirm"/><p className="text-sm">{t("orders.confirmHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.confirmCheck")}</label></FinanceActionForm> : <p className="text-sm text-[var(--ui-text-muted)]">{t("orders.noPlan")}</p>}
-            <AnimatedDisclosure title={t("orders.discard")}><FinanceActionForm action={saveFinanceProjectOrder} label={t("orders.discard")} onSaved={() => setSelectedId("")} onPending={setPending} className="space-y-3 pt-3" submitClassName="bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]">{orderFields}<input type="hidden" name="intent" value="discard"/><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.discardHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.discardCheck")}</label></FinanceActionForm></AnimatedDisclosure>
+            {draft ? <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.confirm")} onSaved={() => {}} onPending={setPending} className="space-y-3 border-t border-[var(--ui-border)] pt-4">{orderFields}<input type="hidden" name="intent" value="confirm"/><p className="text-sm">{t("orders.confirmHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.confirmCheck")}</label></FinanceActionForm> : <p className="text-sm text-[var(--ui-text-muted)]">{t("orders.noPlan")}</p>}
+            <AnimatedDisclosure title={t("orders.discard")}><FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.discard")} onSaved={() => setSelectedId("")} onPending={setPending} className="space-y-3 pt-3" submitClassName="bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]">{orderFields}<input type="hidden" name="intent" value="discard"/><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.discardHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.discardCheck")}</label></FinanceActionForm></AnimatedDisclosure>
           </> : null}
           {order.status === "confirmed" && currency ? <ProjectEarningMilestones key={order.id} project={project} orderId={order.id} currency={currency} onPending={setPending}/> : null}
           {term ? <AnimatedDisclosure title={t("project.history")} className="border-t border-[var(--ui-border)] pt-1"><ul className="space-y-3 pb-3 pt-2">{project.termHistory.filter(item => item.order_id === order.id).map(item => {
@@ -170,8 +179,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
               <p>{formatDateOnly(item.created_at.slice(0,10),locale)} · {item.reason}</p></li>;
           })}</ul></AnimatedDisclosure> : null}
         </> : <>
-          {project.orders.some(item => item.status !== "discarded") ? <ul className="divide-y divide-[var(--ui-border-subtle)]">{project.orders.filter(item => item.status !== "discarded").map(renderOrder)}</ul> : <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.empty")}</p>}
-          {project.orders.some(item => item.status === "discarded") ? <AnimatedDisclosure title={t("orders.history")}><ul>{project.orders.filter(item => item.status === "discarded").map(renderOrder)}</ul></AnimatedDisclosure> : null}
+          {visibleOrders.some(item => item.status !== "discarded") ? <ul className="divide-y divide-[var(--ui-border-subtle)]">{visibleOrders.filter(item => item.status !== "discarded").map(renderOrder)}</ul> : <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.empty")}</p>}
+          {visibleOrders.some(item => item.status === "discarded") ? <AnimatedDisclosure title={t("orders.history")}><ul>{visibleOrders.filter(item => item.status === "discarded").map(renderOrder)}</ul></AnimatedDisclosure> : null}
         </>}
       </div>
     </Dialog>

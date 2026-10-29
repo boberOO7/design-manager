@@ -21,7 +21,7 @@ export function ProjectOrderCurrencyCorrection({ project, order, term, currencie
     return amount === null || !unit ? "—" : formatFinanceAmount(amount, unit, locale);
   };
   const known = project.planItems.filter(item => item.order_id === order.id).map(item => ({ id: item.id, version: item.version }));
-  return <FinanceActionForm action={correctFinanceProjectOrderCurrency} label={t("save")} cancelLabel={t("cancel")} onCancel={onCancel} onSaved={onSaved} onPending={onPending} disabled={currency === term.currency || !confirmed} className="p-4 sm:p-6">
+  return <FinanceActionForm refreshWorkspaceOnSave action={correctFinanceProjectOrderCurrency} label={t("save")} cancelLabel={t("cancel")} onCancel={onCancel} onSaved={onSaved} onPending={onPending} disabled={currency === term.currency || !confirmed} className="p-4 sm:p-6">
     <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="orderId" value={order.id}/>
     <input type="hidden" name="version" value={order.version}/><input type="hidden" name="termsId" value={term.id ?? ""}/><input type="hidden" name="known" value={JSON.stringify(known)}/>
     <p className="text-sm leading-6 text-[var(--ui-text-secondary)]">{t("help")}</p>

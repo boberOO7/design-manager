@@ -1,21 +1,20 @@
-import { isTaskStage, type ProjectStageDefinition } from "@/lib/task-stages";
+import { getStageLabel, isTaskStage, type ProjectStageDefinition } from "@/lib/task-stages";
 import "server-only";
 
 import { cache } from "react";
+import { getTranslations } from "next-intl/server";
 
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { canAccessLeaderboard } from "@/lib/leaderboard-access";
 import { getCurrentUserProfile, getMyDashboardProductivity } from "@/data/queries";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { PROJECT_TASK_PROGRESS_SELECT } from "@/data/queries/project-progress";
 import { getProjectsRequiringAttention, getTeamWorkload, isDashboardTask, isDashboardTaskProjectEligible, isOpenTask, selectAdminTaskMetrics, selectEmployeeTaskMetrics, selectEmployeeAttentionSummary, sortEmployeeTasks, getEmployeeTasksNeedingAttention, type DashboardMember, type DashboardProject } from "@/lib/dashboard";
 import { calculateProjectProgress, DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, type ProjectStageProgressMethods } from "@/lib/project-progress";
 import { isTaskInReview } from "@/lib/tasks";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
-import { getKyivMonthBounds, getProductivityWorkloadAreaByTask } from "@/lib/productivity";
-import { getStudioProductivityStagePercent } from "@/data/queries/productivity-settings";
+import { getKyivMonthBounds } from "@/lib/productivity";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { isTerminalOfficeAssignmentStatus } from "@/lib/office-assignments";
 import { OPERATIONAL_PROJECT_STATUSES } from "@/lib/project-lifecycle";
@@ -74,7 +73,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
       .eq("project.studio_id", membership.studio_id).is("project.archived_at", null).neq("project.status", "paused").neq("project.status", "archived")
       .order("id").range(from, to).overrideTypes<DashboardTaskRow[], { merge: false }>()),
     membership.system_role === "admin" ? supabase.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id, full_name, job_title, avatar_url, is_active)").eq("studio_id", membership.studio_id).eq("is_active", true).overrideTypes<Array<{ profile: DashboardMember & { is_active: boolean } }>, { merge: false }>() : Promise.resolve({ data: [], error: null }),
-    loadAllDashboardRows((from, to) => supabase.from("project_task_stage_columns").select("project_id, stage, display_name, progress_method, kind, progress_weight, project:projects!inner(studio_id)").eq("project.studio_id", membership.studio_id).is("deleted_at", null).order("project_id").order("stage").range(from, to)),
+    loadAllDashboardRows((from, to) => supabase.from("project_task_stage_columns").select("project_id, stage, display_name, progress_method, kind, progress_weight, direction_id, direction:project_work_directions(name,kind,status), project:projects!inner(studio_id)").eq("project.studio_id", membership.studio_id).is("deleted_at", null).order("project_id").order("stage").range(from, to)),
     membership.system_role === "admin"
       ? loadAllDashboardRows((from, to) => supabase.from("task_status_periods").select("task_id, status, entered_at")
         .eq("studio_id", membership.studio_id).is("exited_at", null).order("task_id").range(from, to))
@@ -100,34 +99,27 @@ export async function getDashboard(): Promise<DashboardData | null> {
   }
   const projects = visibleProjects.map((project) => ({ ...project, stages: stagesByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } }));
   const stageByKey = new Map(stageConfigurationsResult.data.map((stage) => [`${stage.project_id}:${stage.stage}`, stage]));
+  const [directionLabels, stageLabels] = await Promise.all([getTranslations("ProjectWorkspace.directions"), getTranslations("TaskStages")]);
+  const directionsByProject = new Map<string, Set<string>>();
+  for (const stage of stageConfigurationsResult.data) if (stage.direction_id) directionsByProject.set(stage.project_id, (directionsByProject.get(stage.project_id) ?? new Set()).add(stage.direction_id));
   const tasks = tasksResult.data.map(({ collaborators, ...task }) => {
     const deadlines = task.deadlines ?? [];
-    return { ...task, stageName: stageByKey.get(`${task.project_id}:${task.stage}`)?.display_name, stageKind: stagesByProject.get(task.project_id)?.find((stage) => stage.stage === task.stage)?.kind, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.map((row) => ({ id: row.user_id })) };
+    const stage = stageByKey.get(`${task.project_id}:${task.stage}`);
+    const name = stage?.direction?.name ?? directionLabels(stage?.direction?.kind ? `kinds.${stage.direction.kind}` : "defaultName");
+    const stageName = (directionsByProject.get(task.project_id)?.size ?? 0) > 1 ? `${name} · ${getStageLabel(task.stage, stageLabels, stage?.display_name)}` : stage?.display_name;
+    return { ...task, stageName, directionStatus: stage?.direction?.status, stageKind: stagesByProject.get(task.project_id)?.find((stage) => stage.stage === task.stage)?.kind, deadlines, due_date: getActiveTaskDeadline({ status: task.status, deadlines })?.due_date ?? null, collaborators: collaborators.map((row) => ({ id: row.user_id })) };
   }).filter(isDashboardTaskProjectEligible);
   if (!tasks.every(isDashboardTask)) throw new Error("Dashboard received unsupported task data.");
   if (membership.system_role === "admin") {
-    const snapshots = new Map<string, number | null>();
-    const snapshotIds = tasks.filter((task) => task.stage === "stage_2" && isOpenTask(task)).map((task) => task.id);
-    if (snapshotIds.length) {
-      // Column grants keep accounting snapshots out of caller-context task reads.
-      // This branch has already verified the active profile and admin membership.
-      const admin = createAdminClient();
-      for (let index = 0; index < snapshotIds.length; index += 100) {
-        const result = await admin.from("tasks")
-          .select("id, productivity_area_m2, project:projects!tasks_project_id_fkey!inner(studio_id)")
-          .eq("project.studio_id", membership.studio_id).in("id", snapshotIds.slice(index, index + 100));
-        if (result.error || !result.data) throw new Error("Unable to load admin workload accounting.", { cause: result.error });
-        for (const task of result.data) snapshots.set(task.id, task.productivity_area_m2);
-      }
-    }
+    const workload = await supabase.rpc("get_direction_productivity_workload", { p_project_ids: visibleProjects.map(project => project.id) });
+    if (workload.error) throw new Error("Unable to load direction workload accounting.", { cause: workload.error });
+    const workloadAreaByTask = new Map((workload.data ?? []).map(row => [row.task_id, row.area_m2]));
     const currentPeriodByTask = new Map(currentStatusPeriodsResult.data.map((period) => [period.task_id, period]));
     const activeMemberIds = new Set(membersResult.data.filter((member) => member.profile.is_active).map((member) => member.profile.id));
     const activeAssignments = new Set(projectMembersResult.data.filter((member) => activeMemberIds.has(member.user_id)).map((member) => `${member.project_id}:${member.user_id}`));
-    const stageOnePercent = await getStudioProductivityStagePercent(membership.studio_id);
-    const workloadAreaByTask = getProductivityWorkloadAreaByTask(tasks.map((task) => ({ ...task, productivity_area_m2: snapshots.get(task.id) ?? null })), visibleProjects, activeAssignments, stageOnePercent);
     const workloadTasks: DashboardWorkloadTask[] = tasks.map((task) => {
       const period = currentPeriodByTask.get(task.id);
-      return { ...task, workloadAreaM2: workloadAreaByTask.get(task.id) ?? 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
+      return { ...task, workloadAreaM2: task.assignee_id && activeAssignments.has(`${task.project_id}:${task.assignee_id}`) ? workloadAreaByTask.get(task.id) ?? 0 : 0, currentStatusEnteredAt: period?.status === task.status ? period.entered_at : null };
     });
     const openTasks = tasks.filter(isOpenTask);
     const myTasks = sortEmployeeTasks(openTasks.filter((task) => task.assignee_id === profile.id || task.collaborators.some((collaborator) => collaborator.id === profile.id)), today);

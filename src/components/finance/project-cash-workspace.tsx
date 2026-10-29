@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ReceiptText } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
 import type { FinanceCurrency } from "@/lib/finance";

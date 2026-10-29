@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { PROJECT_TEMPLATE_STAGES, isProjectTemplateStage } from "@/lib/project-templates";
+import { parseCreationDirections } from "@/lib/project-creation-directions";
 import {
   createProjectSchema,
   getProjectFormInput,
@@ -18,7 +20,10 @@ export async function createProject(
   _previousState: ProjectFormActionState,
   formData: FormData,
 ): Promise<ProjectFormActionState> {
-  return createProjectRecord(null, formData);
+  const result = await createProjectRecord(null, formData);
+  // List revalidation can replace the modal before its client success effect runs.
+  if (result.projectId) redirect(`/projects/${result.projectId}`);
+  return result;
 }
 
 export async function createProjectFromLead(
@@ -52,6 +57,10 @@ async function createProjectRecord(
   const project = parsed.data;
   const stageAssignees = getStageAssignees(formData);
   if (!stageAssignees) return { formError: t("validation.stageAssigneesInvalid") };
+  const directions = parseCreationDirections(formData.get("directions"));
+  if (!directions.success) return { formError: t("directionsInvalid") };
+  const stages = await getTranslations("TaskStages");
+  const stageNames = Object.fromEntries(PROJECT_TEMPLATE_STAGES.map(stage => [stage, stages(stage)]));
   const { data, error: insertError } = await supabase.rpc("create_project_from_template", {
     p_project: {
       studio_id: membership.studio_id,
@@ -68,6 +77,7 @@ async function createProjectRecord(
       priority: project.priority,
       start_date: project.start_date || null,
       due_date: project.due_date || null,
+      directions: directions.data.map(direction => ({ ...direction, stageNames })),
       ...(sourceLeadId ? { source_lead_id: sourceLeadId } : {}),
     },
     p_stage_assignees: stageAssignees,

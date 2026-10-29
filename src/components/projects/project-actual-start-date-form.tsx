@@ -1,5 +1,6 @@
 "use client";
 
+import { useProjectWorkspaceNavigation } from "./project-workspace-navigation";
 import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,8 @@ function ActualStartPicker({ startedAt, disabled, error, label, locale }: { star
 export function ProjectActualStartDateForm({ action, startedAt, locale }: { action: ProjectFormAction; startedAt: string | null; locale: string }) {
   const t = useTranslations("ProjectWorkspace");
   const form = useTranslations("ProjectForm");
-  const [state, formAction, isPending] = useActionState(action, {});
+  const navigation = useProjectWorkspaceNavigation();
+  const [state, formAction, isPending] = useActionState(async (previous: Awaited<ReturnType<ProjectFormAction>>, data: FormData) => { const result = await action(previous, data); if (result.startedAt !== undefined) navigation?.refresh(); return result; }, {});
   const error = state.fieldErrors?.started_at ?? state.formError;
   const confirmedStartedAt = state.startedAt !== undefined ? state.startedAt : startedAt;
 

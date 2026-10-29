@@ -2,7 +2,7 @@
 
 import { Check, MoreHorizontal, Pause, Play, RotateCcw } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useTranslations } from "next-intl";
 import styles from "./project-context-band.module.css";

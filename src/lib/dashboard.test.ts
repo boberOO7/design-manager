@@ -21,6 +21,9 @@ describe("dashboard calculations", () => {
   });
 
   it("includes only post-completion work from completed projects and keeps paused or archived work excluded", () => {
+    expect(isDashboardTaskProjectEligible(task({ directionStatus: "paused" }))).toBe(false);
+    expect(isDashboardTaskProjectEligible(task({ directionStatus: "completed", stageKind: "work" }))).toBe(false);
+    expect(isDashboardTaskProjectEligible(task({ directionStatus: "completed", stageKind: "additional" }))).toBe(true);
     expect(isDashboardTaskProjectEligible(task({ stage: "stage_4", project: { id: "p1", name: "Alpha", status: "completed", archived_at: null } }))).toBe(true);
     expect(isDashboardTaskProjectEligible(task({ stage: "stage_3", project: { id: "p1", name: "Alpha", status: "completed", archived_at: null } }))).toBe(false);
     expect(isDashboardTaskProjectEligible(task({ stage: "stage_4", project: { id: "p1", name: "Alpha", status: "paused", archived_at: null } }))).toBe(false);

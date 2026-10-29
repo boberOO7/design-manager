@@ -1,5 +1,6 @@
 "use client";
 
+import { useProjectWorkspaceNavigation } from "./project-workspace-navigation";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -14,7 +15,8 @@ function CompletionDatePicker({ completedAt, disabled, error, label, locale }: {
 export function ProjectCompletionDateForm({ action, completedAt, locale }: { action: ProjectFormAction; completedAt: string; locale: string }) {
   const t = useTranslations("ProjectWorkspace");
   const form = useTranslations("ProjectForm");
-  const [state, formAction, isPending] = useActionState(action, {});
+  const navigation = useProjectWorkspaceNavigation();
+  const [state, formAction, isPending] = useActionState(async (previous: Awaited<ReturnType<ProjectFormAction>>, data: FormData) => { const result = await action(previous, data); if (result.completedAt !== undefined) navigation?.refresh(); return result; }, {});
   const error = state.fieldErrors?.completed_at ?? state.formError;
   const confirmedCompletedAt = state.completedAt ?? completedAt;
 

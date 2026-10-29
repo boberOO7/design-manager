@@ -72,7 +72,7 @@ export async function updateProjectStageConfiguration(projectId: string, stages:
   const project = await getProjectById(projectId);
   if (!admin || !project || admin.studio_id !== project.studio_id) return { success: false as const, errorCode: "not_admin", formError: "Only active studio administrators can configure project stages." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("update_project_stage_configuration", { p_project_id: projectId, p_stages: parsed.map((stage) => ({ stage: stage.stage, display_name: stage.displayName, is_enabled: stage.isEnabled, display_order: stage.displayOrder, kind: stage.kind, progress_weight: stage.progressWeight })), p_expected_version: expectedVersion, p_deleted_task_ids: deletion.data, p_include_in_productivity: includeInProductivity, p_show_progress: showProgress });
+  const { error } = await supabase.rpc("update_project_stage_configuration", { p_project_id: projectId, p_stages: parsed.map((stage) => ({ stage: stage.stage, display_name: stage.displayName, is_enabled: stage.isEnabled, display_order: stage.displayOrder, kind: stage.kind, progress_weight: stage.progressWeight, ...(stage.directionId ? { direction_id: stage.directionId } : {}), ...(stage.productivityRole ? { productivity_role: stage.productivityRole } : {}) })), p_expected_version: expectedVersion, p_deleted_task_ids: deletion.data, p_include_in_productivity: includeInProductivity, p_show_progress: showProgress });
   if (error) {
     const known = ["version_conflict", "tasks_changed", "started_tasks", "logged_work", "active_tasks", "minimum_stage", "read_only"];
     const errorCode = known.find((code) => error.message.includes(`stage_${code}`)) ?? (error.code === "23503" ? "logged_work" : "save_failed");

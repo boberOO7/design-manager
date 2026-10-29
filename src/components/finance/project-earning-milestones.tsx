@@ -2,7 +2,7 @@
 import { getStageLabel } from "@/lib/task-stages";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinanceProjectData } from "@/data/queries/finance";
 import type { FinanceCurrency } from "@/lib/finance";
@@ -59,11 +59,12 @@ function MilestoneForm({ project, orderId, milestone, onSaved, onPending }: Omit
   const [condition, setCondition] = useState(milestone?.condition ?? "delivery");
   const [mode, setMode] = useState(milestone?.percentage ? "share" : "net"), [value, setValue] = useState(milestone?.percentage ?? milestone?.net_amount ?? "");
   const payments = project.planItems.filter(item => item.order_id === orderId && item.net_amount !== null);
+  const directionIds = new Set(project.directionLinks.filter(link => link.order_id === orderId).map(link => link.direction_id));
   return <FinanceActionForm action={saveEarningMilestone} label={t("save")} onSaved={onSaved} onPending={onPending} className="space-y-3 pt-3" fieldsetClassName="space-y-3">
     <Fields projectId={project.projectId} orderId={orderId} milestone={milestone}/>
     {!milestone && payments.length ? <FormField label={t("copyPayment")}><Select value="" onValueChange={id => { const payment = payments.find(item => item.id === id); if (payment) { setTitle(payment.description ?? ""); setMode("net"); setValue(payment.net_amount ?? ""); } }}><SelectItem value="">{t("copyHelp")}</SelectItem>{payments.map(payment => <SelectItem key={payment.id} value={payment.id ?? ""}>{payment.description}</SelectItem>)}</Select></FormField> : null}
     <FormField label={t("deliverable")}><Input name="title" value={title} onChange={event => setTitle(event.target.value)} maxLength={2000} required/></FormField>
-    <div className="grid gap-3 sm:grid-cols-2"><FormField label={t("stage")}><input type="hidden" name="stage" value={stage}/><Select value={stage} onValueChange={setStage}><SelectItem value="">{t("customDeliverable")}</SelectItem>{project.earningStages.filter(item => item.is_enabled).map(item => <SelectItem key={item.stage} value={item.stage}>{item.display_name ?? getStageLabel(item.stage, stageT)}</SelectItem>)}</Select></FormField>
+    <div className="grid gap-3 sm:grid-cols-2"><FormField label={t("stage")}><input type="hidden" name="stage" value={stage}/><Select value={stage} onValueChange={setStage}><SelectItem value="">{t("customDeliverable")}</SelectItem>{project.earningStages.filter(item => item.is_enabled && item.direction_id && directionIds.has(item.direction_id)).map(item => <SelectItem key={item.stage} value={item.stage}>{project.directions.length > 1 ? `${project.directions.find(direction => direction.id === item.direction_id)?.name ?? t("mainDirection")} · ` : ""}{item.display_name ?? getStageLabel(item.stage, stageT)}</SelectItem>)}</Select></FormField>
       <FormField label={t("condition")}><input type="hidden" name="condition" value={condition}/><Select value={condition} onValueChange={next => { if (next === "delivery" || next === "acceptance") setCondition(next); }}><SelectItem value="delivery">{t("onDelivery")}</SelectItem><SelectItem value="acceptance">{t("onAcceptance")}</SelectItem></Select></FormField></div>
     <div className="grid grid-cols-2 gap-3"><FormField label={t("allocation")}><Select value={mode} onValueChange={next => { setMode(next); setValue(""); }}><SelectItem value="net">{t("netAmount")}</SelectItem><SelectItem value="share">{t("share")}</SelectItem></Select></FormField><FormField label={mode === "share" ? t("share") : t("netAmount")}><Input name={mode === "share" ? "percentage" : "netAmount"} value={value} onChange={event => setValue(event.target.value)} inputMode="decimal" required/></FormField></div>
   </FinanceActionForm>;

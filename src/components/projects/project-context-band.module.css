@@ -7,13 +7,15 @@
   box-shadow: var(--ui-shadow-panel);
 }
 
-.toolbar, .identity, .measurements, .dates { padding-inline: 28px; }
+.toolbar, .identity, .measurements, .dates { padding-inline: 20px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding-top: 8px; }
-.identity { padding-block: 2px 16px; }
+.identity { padding-block: 2px 14px; }
 .heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
-.title { min-width: 0; font-size: clamp(26px, 2.3cqi, 32px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; overflow-wrap: anywhere; }
+.title { min-width: 0; font-size: clamp(22px, 2.3cqi, 28px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; overflow-wrap: anywhere; }
 .statuses { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .lifecycle { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-text-secondary); font-size: 12px; }
+.identityFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-top: 6px; }
+.identityFooter .metadata { margin-top: 0; }
 .metadata { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 13px; line-height: 1.5; }
 .metadata > div { min-width: 0; }
 .metadata dd { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
@@ -50,7 +52,7 @@
   .overallValue { font-size: 38px; }
 }
 @container (max-width: 700px) {
-  .toolbar, .identity, .measurements, .dates { padding-inline: 20px; }
+  .toolbar, .identity, .measurements, .dates { padding-inline: 16px; }
   .identity { padding-block: 4px 16px; }
   .progress { grid-template-columns: 1fr; gap: 24px; }
   .overall .trackWrap { margin-top: 2px; }
@@ -61,10 +63,13 @@
   .heading { column-gap: 16px; }
   .metadata { column-gap: 16px; }
   .paused { margin-inline: 20px; }
+  .toolbar { flex-wrap: nowrap; column-gap: 4px; }
+  .toolbar > div { min-width: 0; flex-wrap: nowrap; justify-content: flex-end; gap: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sheet *, .sheet *::before { transition: none; }
 }
+@container (max-width: 300px) { .toolbar > div { flex-wrap: wrap; } }
 
 .actions { display: flex; align-items: center; gap: 4px; }
 .iconAction { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; cursor: pointer; border-radius: var(--ui-radius-control); color: var(--ui-text-secondary); transition: background-color 180ms ease, color 180ms ease; }
@@ -79,3 +84,18 @@
 .menuAction svg { flex-shrink: 0; }
 .archiveAction { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ui-border); }
 @media (prefers-reduced-motion: reduce) { .iconAction, .menuAction { transition: none; } .actionMenu[data-state="open"] { animation: none; } }
+
+.projectActions { display: flex; align-items: stretch; gap: 6px; }
+.projectAction { position: relative; display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 7px 11px; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-control); background: var(--ui-surface-subtle); color: var(--ui-text-secondary); font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease; }
+.projectAction > svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--ui-text-muted); }
+.projectAction:hover { border-color: var(--ui-text-muted); background: var(--ui-surface-muted); color: var(--ui-text); }
+.projectAction[aria-current="page"] { border-color: var(--ui-action-primary); background: var(--ui-action-primary); color: var(--ui-action-primary-text); }
+.projectAction[aria-current="page"] > svg { color: inherit; }
+.projectAction:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+@container (max-width: 600px) {
+  .projectActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; margin-top: 4px; }
+  .projectActions:has(> :nth-child(3)) { grid-template-columns: 1fr 1fr 1.55fr; }
+  .projectAction { min-width: 0; min-height: 52px; flex-direction: column; gap: 4px; padding: 7px 4px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .projectAction { transition: none; } }
+:global(html[data-motion="off"]) .projectAction { transition: none; }
