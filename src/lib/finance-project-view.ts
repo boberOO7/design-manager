@@ -23,6 +23,31 @@ export function projectOrderPaymentProgress(total: Pick<FinanceProjectData["orde
 
 export type ProjectFinanceDisplay = { currency: FinanceCurrency; rates: Record<string, string | null> };
 
+// Localize the former built-in label without renaming stored financial records.
+export function projectAgreementName(name: string, defaultName: string) {
+  return ["Основне замовлення", "Main order"].includes(name) ? defaultName : name;
+}
+
+export function projectPricingArea(project: { directions: readonly Pick<FinanceProjectData["directions"][number], "id" | "area_m2">[]; area: FinanceProjectData["area"] }, directionIds: readonly string[]) {
+  if (directionIds.length === 1) return project.directions.find(direction => direction.id === directionIds[0])?.area_m2 ?? null;
+  return project.directions.length <= 1 ? project.area : null;
+}
+
+// Shared agreements remain visible, but never enter a direction's own totals.
+export function scopeProjectFinance<T extends Pick<FinanceProjectData, "orders" | "directionLinks" | "orderTotals" | "totals">>(project: T, directionId: string, currencies: readonly FinanceCurrency[]) {
+  const linked = new Set(project.directionLinks.filter(link => link.direction_id === directionId).map(link => link.order_id));
+  const own = new Set([...linked].filter(id => project.directionLinks.filter(link => link.order_id === id).length === 1));
+  const orderTotals = project.orderTotals.filter(total => total.order_id !== null && linked.has(total.order_id));
+  const totals = project.totals.filter(total => total.stream === "design" && orderTotals.some(order => order.order_id !== null && own.has(order.order_id) && order.currency === total.currency)).map(total => {
+    const rows = orderTotals.filter(row => row.order_id !== null && own.has(row.order_id) && row.currency === total.currency);
+    const digits = currencies.find(currency => currency.code === total.currency)?.minor_units;
+    if (digits === undefined) throw new Error("Unknown agreement currency");
+    const sum = (key: "contract_amount" | "contract_net_amount" | "contract_vat_amount" | "contract_gross_amount" | "scheduled_amount" | "collected_amount" | "closed_amount" | "outstanding_amount" | "planned_amount" | "unscheduled_amount" | "scheduled_net_amount" | "scheduled_vat_amount" | "collected_net_amount" | "collected_vat_amount") => financeAmountText(rows.reduce((value, row) => value + financeAmountUnits(row[key] ?? "0", digits), BigInt(0)), digits);
+    return { ...total, contract_amount: sum("contract_amount"), contract_net_amount: sum("contract_net_amount"), contract_vat_amount: sum("contract_vat_amount"), contract_gross_amount: sum("contract_gross_amount"), scheduled_amount: sum("scheduled_amount"), collected_amount: sum("collected_amount"), closed_amount: sum("closed_amount"), outstanding_amount: sum("outstanding_amount"), planned_amount: sum("planned_amount"), unscheduled_amount: sum("unscheduled_amount"), scheduled_net_amount: sum("scheduled_net_amount"), scheduled_vat_amount: sum("scheduled_vat_amount"), collected_net_amount: sum("collected_net_amount"), collected_vat_amount: sum("collected_vat_amount") };
+  });
+  return { ...project, orders: project.orders.filter(order => linked.has(order.id)), orderTotals, totals };
+}
+
 // Current presentation valuation only; contractual and settlement values stay native.
 export function formatProjectFinanceMoney(amount: string | number | null | undefined, native: FinanceCurrency | undefined, display: ProjectFinanceDisplay | undefined, locale: string): string {
   if (amount == null || !native) return "—";

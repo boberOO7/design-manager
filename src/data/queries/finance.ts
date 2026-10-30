@@ -116,7 +116,7 @@ export async function getFinanceExpectedReturnHref(id:string) {
   const client=await createClient();
   const { data,error }=await client.from("finance_project_items").select("project_id,stream").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
   if(error) throw new Error("Unable to load payment context.",{ cause:error });
-  if (data) return `/projects/${data.project_id}?view=finance&stream=${data.stream}&item=${id}`;
+  if (data) return `/projects/${data.project_id}?view=finance&workDirection=all&stream=${data.stream}&item=${id}`;
   const trip = await client.from("finance_trip_balances").select("trip_id").eq("studio_id",admin.studio_id).eq("expected_item_id",id).maybeSingle();
   if (trip.error) throw new Error("Unable to load trip payment context.",{cause:trip.error});
   if (trip.data) return `/finance/trips/${trip.data.trip_id}`;
@@ -126,13 +126,14 @@ export async function getFinanceExpectedReturnHref(id:string) {
   return `/finance/expected?item=${id}`;
 }
 
-export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string,attention?:"overdue",status?:"overdue"|"cancelled") {
+export async function getFinancePlanning(page:number,creditPage:number,filter:string,projectId?:string,stream="design",period:FinancePlanningPeriod="all",today=getKyivDateOnly(),itemId?:string,attention?:"overdue",status?:"overdue"|"cancelled",orderIds?:readonly string[]) {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
   let query=projectId
     ? client.from("finance_project_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id).eq("project_id",projectId).eq("stream",stream)
     : client.from("finance_expected_balances").select("*",{ count:"exact" }).eq("studio_id",admin.studio_id);
+  if(projectId && orderIds) query=query.in("order_id", [...orderIds]);
   if(filter==="receivables" || filter==="obligations") query=query.eq("direction",filter==="receivables" ? "incoming" : "outgoing").gt("outstanding_amount",0);
   if(filter==="incoming" || filter==="outgoing") query=query.eq("direction",filter);
   if(status==="cancelled" || filter==="cancelled") query=query.eq("commitment","cancelled");
@@ -151,7 +152,8 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
       : client.from("finance_expected_balances").select("*").eq("studio_id",admin.studio_id).eq("id",itemId).maybeSingle()) : Promise.resolve(null),
   ]);
   if(items.error || payments.error || credits.error || selected?.error) throw new Error("Unable to load Finance planning.",{ cause:items.error??payments.error??credits.error??selected?.error });
-  const visibleItems=selected?.data&&!items.data?.some((item)=>item.id===selected.data?.id)?[selected.data,...(items.data??[])]:items.data??[];
+  const selectedItem = selected?.data && (!orderIds || ("order_id" in selected.data && typeof selected.data.order_id === "string" && orderIds.includes(selected.data.order_id))) ? selected.data : null;
+  const visibleItems=selectedItem&&!items.data?.some((item)=>item.id===selectedItem.id)?[selectedItem,...(items.data??[])]:items.data??[];
   const ids=visibleItems.flatMap((item) => item.id ? [item.id] : []);
   const history=ids.length ? await client.from("finance_allocations").select("*, movement:finance_movements!finance_allocations_studio_id_movement_id_fkey(financial_date,category)")
     .eq("studio_id",admin.studio_id).in("expected_item_id",ids).order("created_at",{ ascending:false }).limit(500) : null;
@@ -180,7 +182,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
 }
 export type FinancePlanningData=NonNullable<Awaited<ReturnType<typeof getFinancePlanning>>>;
 
-export async function getFinanceProject(projectId:string) {
+export async function getFinanceProject(projectId:string,directionId?:string) {
   const admin=await getActiveStudioAdmin();
   if(!admin) return null;
   const client=await createClient();
@@ -231,7 +233,7 @@ export async function getFinanceProject(projectId:string) {
     if (page.error) throw new Error("Unable to load outstanding project payments.",{cause:page.error});
     nextCandidates.push(...page.data);
   }
-  const nextPayment = nextProjectPayment(nextCandidates, (orders.data ?? []).filter(order => order.status === "confirmed").map(order => order.id));
+  const nextPayment = nextProjectPayment(nextCandidates, (orders.data ?? []).filter(order => order.status === "confirmed" && (!directionId || directionLinks.data?.some(link => link.order_id === order.id && link.direction_id === directionId))).map(order => order.id));
   return { projectId,directions:directions.data??[],directionLinks:directionLinks.data??[],directionVersion:directionVersion.data?.stage_configuration_version??0,earnings:earningsReportSchema.parse(earnings.data),earningStages:earningStages.data??[],orders:orders.data??[],orderTotals:orderTotals.data??[],nextPayment,hasDesignHistory:Boolean(designHistory.data?.length),area:area.data?.total_area_m2??null,planItems,planRevisions:planRevisions.data,terms:terms.data??[],termHistory,totals:projectTotals,contractors:contractors.data??[],visits:visits.data??[] };
 }
 export async function getFinanceProjectRecordedRates(projectId: string, stream: string) {

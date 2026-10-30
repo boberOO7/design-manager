@@ -68,12 +68,12 @@ test("value builder preserves protected payments and native-currency area histor
  sql(`insert into finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values('${dollar}','${studioId}','Dollar bank','USD',0,'${actors[0].id}');`);
  await page.goto('/login');await page.locator('input[type="email"]').fill(actors[0].email);await page.locator('input[type="password"]').fill(actors[0].password);await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/dashboard/);
  await page.setViewportSize({width:1920,height:1080});
- const href=`/projects/${projectId}?view=finance`;
+ const href=`/projects/${projectId}?view=finance&workDirection=all`;
  await page.goto(href);await expect(page.getByText(t.planning.secondaryFilters,{exact:true})).toHaveCount(0);
  const dialog=page.getByRole('dialog');
  const orderName=t.orders.defaultName;
- async function openOrderDetails(copy=t) {
-  await page.getByRole('region',{name:copy.orders.scope,exact:true}).getByRole('button',{name:copy.orders.manage.replace('{count}','1'),exact:true}).click();
+ async function openOrderDetails(copy=t,count="1") {
+  await page.getByRole('region',{name:copy.orders.scope,exact:true}).getByRole('button',{name:copy.orders.manage.replace('{count}',count),exact:true}).click();
   await dialog.getByRole('button').filter({has:page.getByText(orderName,{exact:true})}).click();
  }
  async function openBuilder(copy=t) {await openOrderDetails(copy);await dialog.getByRole('button',{name:copy.project.editAgreement,exact:true}).click();}
@@ -81,11 +81,11 @@ test("value builder preserves protected payments and native-currency area histor
   await expect(dialog.getByRole('button',{name:copy.project.editAgreement,exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:copy.movements.close,exact:true}).click();await expect(dialog).toHaveCount(0);
  }
- await page.getByRole('region',{name:t.orders.scope,exact:true}).getByRole('button',{name:t.orders.manage.replace('{count}','0'),exact:true}).click();
- await dialog.getByRole('button',{name:t.orders.add,exact:true}).click();await dialog.getByLabel(t.orders.name,{exact:true}).fill(orderName);
- await dialog.getByRole('button',{name:t.orders.create,exact:true}).click();await expect(dialog.getByText(t.orders.draftHelp,{exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:p.editAgreement,exact:true}).click();
+ await page.getByRole('region',{name:t.orders.scope,exact:true}).getByRole('button',{name:t.agreements.create,exact:true}).click();
+ await dialog.getByRole('button',{name:t.agreements.scope,exact:true}).click();
+ await dialog.getByLabel(t.agreements.optionalName,{exact:true}).fill(orderName);
  await expect(dialog.getByRole('button',{name:b.perAreaShort,exact:true})).toHaveAttribute('aria-pressed','true');
+ await dialog.getByRole('button',{name:t.agreements.priceDetails,exact:true}).click();
  await expect(dialog.getByRole('combobox',{name:b.strategy,exact:true})).toHaveCount(0);
  await expect(dialog.getByLabel(p.reason,{exact:true})).toHaveCount(0);
  await dialog.getByRole('button',{name:b.fixedShort,exact:true}).click();
@@ -149,6 +149,7 @@ test("value builder preserves protected payments and native-currency area histor
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.dueDate,{exact:true}).click();await page.getByRole('button',{name:'Today',exact:true}).click();
  await dialog.locator('[data-plan-row]').first().getByLabel(t.planning.expectedDate,{exact:true}).click();await page.getByRole('gridcell',{name:'23',exact:true}).click();
  await dialog.getByRole('button',{name:t.orders.saveDraft,exact:true}).click();
+ await expect(dialog).toHaveCount(0);await openOrderDetails(t,"0");
  await expect(dialog.getByRole('checkbox',{name:t.orders.confirmCheck,exact:true})).toBeVisible();
  expect(sql(`select count(*) from finance_project_terms where project_id='${projectId}'`)).toBe('0');
  expect(sql(`select count(*) from finance_project_items where project_id='${projectId}'`)).toBe('0');

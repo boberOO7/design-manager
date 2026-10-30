@@ -29,10 +29,21 @@ proposal revisions and commercial confirmation.
   coefficient remain separate. A sole linked direction may seed a new pricing
   form's actual area without changing existing contractual snapshots. Shared-order
   profitability stays project/order-level; no automatic allocation is invented.
-- Direction Finance shows linked orders with create/attach actions. Shared orders
-  display full order amounts with the other linked directions; no direction
-  revenue/profit total is inferred from those amounts. Project Finance retains
-  unique-order totals and all project cash, expenses and result reporting.
+- Direction Finance uses the same terms/payment workspace as Project Finance.
+  Its summary includes only exclusively linked confirmed orders; linked shared
+  orders retain full, explicitly non-allocated schedules below it. Query scoping
+  happens before pagination. Direction tabs retain context; expenses and result
+  link to project-level reporting without inventing direction cost/profit shares.
+- The UI calls orders agreements. New terms open the price/schedule builder before
+  persisting an order. `create_finance_direction_order` accepts a complete plan and
+  optional `confirm: true`, atomically composing existing order creation and
+  confirmation with unchanged request idempotency. Drafts/proposals stay available.
+  Project Finance retains unique-order totals, a direction/shared-agreement overview,
+  all income streams, related bank receipts, explicit project cash attribution,
+  expenses and result reporting. Full related receipts are listed without treating
+  them as attributed project totals; explicit attribution remains a separate measure.
+  Area pricing defaults and mismatch actions use a sole linked direction's area;
+  a multi-direction agreement requires its own commercial area.
 - Earning milestone stages must belong to linked directions. Link edits cannot
   orphan active milestones. Completion of production tasks never creates cash or
   client acceptance. Stage tombstones retain financial history labels.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextProjectPayment, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
+import { nextProjectPayment, scopeProjectFinance, projectPricingArea, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
 
 describe("next contractual payment across confirmed orders", () => {
   const item = (id: string, order_id: string, expected_payment_date: string | null, due_date: string | null = null) => ({ id, order_id, expected_payment_date, due_date });
@@ -92,5 +92,45 @@ describe("project order display summary", () => {
   });
   it("retains precision and an overpaid balance", () => {
     expect(projectContractSummary([{currency:"KWD",gross:"1.001",paid:"1.003",closed:"0"}], {KWD:"1"}, 3)).toEqual({gross:"1.001",paid:"1.003",remaining:"-0.002"});
+  });
+});
+
+describe("direction financial scope", () => {
+  const currencies = [{ code: "UAH", minor_units: 2 }, { code: "USD", minor_units: 2 }];
+  const order = (id: string) => ({ id, name: id, studio_id: "studio", project_id: "project", is_default: false, status: "confirmed" as const, draft_plan: null, version: 1, created_by: "actor", updated_by: "actor", created_at: "2026-10-01", updated_at: "2026-10-01", confirmed_at: "2026-10-01", discarded_at: null });
+  const amounts = (amount: string, paid: string, currency = "UAH") => ({ studio_id: "studio", project_id: "project", stream: "design", currency, contract_amount: amount, contract_net_amount: amount, contract_vat_amount: "0", contract_gross_amount: amount, scheduled_amount: amount, collected_amount: paid, closed_amount: "0", outstanding_amount: projectAgreementRemaining(amount, paid, 2) ?? "0", planned_amount: "0", unscheduled_amount: "0", scheduled_net_amount: amount, scheduled_vat_amount: "0", collected_net_amount: paid, collected_vat_amount: "0" });
+  const project = {
+    orders: [order("own"), order("extra"), order("shared"), order("other")],
+    directionLinks: [{ order_id: "own", direction_id: "interior" }, { order_id: "extra", direction_id: "interior" }, { order_id: "shared", direction_id: "interior" }, { order_id: "shared", direction_id: "facade" }, { order_id: "other", direction_id: "facade" }],
+    orderTotals: [{ ...amounts("1000", "150"), order_id: "own", payment_count: 2, has_payment_history: true }, { ...amounts("200", "37.50", "USD"), order_id: "extra", payment_count: 2, has_payment_history: true }, { ...amounts("3000", "1200"), order_id: "shared", payment_count: 2, has_payment_history: true }, { ...amounts("500", "0"), order_id: "other", payment_count: 1, has_payment_history: true }],
+    totals: [amounts("4500", "1350"), amounts("200", "37.50", "USD")],
+  };
+
+  it("keeps shared schedules visible while counting only exclusive agreements in direction totals", () => {
+    const scope = scopeProjectFinance(project, "interior", currencies);
+    expect(scope.orders.map(order => order.id)).toEqual(["own", "extra", "shared"]);
+    expect(scope.totals.map(total => [total.currency, total.contract_gross_amount, total.collected_amount])).toEqual([["UAH", "1000.00", "150.00"], ["USD", "200.00", "37.50"]]);
+    expect(scope.orderTotals.find(total => total.order_id === "shared")?.contract_gross_amount).toBe("3000");
+  });
+
+  it("does not mutate or reconstruct consolidated totals when directions change", () => {
+    const before = structuredClone(project);
+    scopeProjectFinance(project, "interior", currencies);
+    scopeProjectFinance(project, "facade", currencies);
+    expect(project).toEqual(before);
+    expect(scopeProjectFinance(project, "facade", currencies).totals[0].contract_gross_amount).toBe("500.00");
+  });
+
+  it("does not present a shared-only direction as owning the entire agreement", () => {
+    const sharedOnly = { ...project, directionLinks: project.directionLinks.filter(link => link.order_id === "shared") };
+    expect(scopeProjectFinance(sharedOnly, "interior", currencies).totals).toEqual([]);
+    expect(scopeProjectFinance(sharedOnly, "interior", currencies).orders.map(order => order.id)).toEqual(["shared"]);
+  });
+
+  it("uses direction area for pricing and requires explicit area for a shared multi-direction scope", () => {
+    const source = { area: 120, directions: [{ id: "interior", area_m2: 120 }, { id: "facade", area_m2: 300 }] };
+    expect(projectPricingArea(source, ["facade"])).toBe(300);
+    expect(projectPricingArea(source, ["interior", "facade"])).toBeNull();
+    expect(projectPricingArea(source, ["unknown"])).toBeNull();
   });
 });

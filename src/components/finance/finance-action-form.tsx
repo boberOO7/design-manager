@@ -38,7 +38,7 @@ export function FinanceActionForm({ children,action,onSaved,onPending,onResult,l
   const submitButton = <Button type="submit" disabled={pending||disabled} className={submitClassName}>{pending?t("movements.saving"):label}</Button>;
   return <form ref={attachForm} action={submit} autoComplete="off" onSubmit={(event)=>event.stopPropagation()} className={className??"space-y-4"}>
     <input type="hidden" name="requestId" value={requestId}/>
-    <fieldset disabled={pending} className={fieldsetClassName??"min-w-0 space-y-4"}>{children}{hideActions?null:onCancel&&cancelLabel?<div className={actionsClassName??"flex justify-end gap-2"}><Button type="button" variant="outline" onClick={onCancel}>{cancelLabel}</Button>{submitButton}</div>:secondaryAction?<div className={actionsClassName??"flex flex-wrap items-center gap-2"}>{submitButton}{secondaryAction}</div>:submitButton}</fieldset>
+    <fieldset disabled={pending} className={fieldsetClassName??"min-w-0 space-y-4"}>{children}{hideActions?null:onCancel&&cancelLabel?<div className={actionsClassName??"flex justify-end gap-2"}><Button type="button" variant="outline" onClick={onCancel}>{cancelLabel}</Button>{secondaryAction}{submitButton}</div>:secondaryAction?<div className={actionsClassName??"flex flex-wrap items-center gap-2"}>{submitButton}{secondaryAction}</div>:submitButton}</fieldset>
     {showMessage&&state.message?<p role="alert" className="text-sm text-[var(--ui-danger-text)]">{state.message}</p>:null}
   </form>;
 }

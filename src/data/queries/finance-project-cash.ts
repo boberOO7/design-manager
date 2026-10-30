@@ -27,7 +27,25 @@ export async function getFinanceProjectCash(projectId?: string) {
     settlementIds.push(...page.data.flatMap(row => row.movement_id ? [row.movement_id] : []));
     if (page.data.length < 1000) break;
   }
-  return { receipts: reporting.receipts, events: reporting.events, cashHistory: reporting.cashHistory, actionableIds: actionableIds.flatMap(item => item.id ? [item.id] : []), nativeUnapplied: Object.fromEntries(actionableIds.flatMap(item => item.id ? [[item.id, item.unapplied_amount]] : [])), settlementIds, projects: projects.data ?? [] };
+  // Receipt context also includes explicit matches made outside the project payment form.
+  if (projectId) {
+    const expectedIds: string[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await client.from("finance_project_items").select("expected_item_id").eq("studio_id", admin.studio_id).eq("project_id", projectId).neq("stream", "expenses").order("expected_item_id").range(offset, offset + 999);
+      if (page.error) throw new Error("Unable to load project receipt links.");
+      expectedIds.push(...page.data.map(item => item.expected_item_id));
+      if (page.data.length < 1000) break;
+    }
+    for (let start = 0; start < expectedIds.length; start += 100) {
+      for (let offset = 0; ; offset += 1000) {
+        const page = await client.from("finance_allocations").select("id,movement_id").eq("studio_id", admin.studio_id).in("expected_item_id", expectedIds.slice(start, start + 100)).order("id").range(offset, offset + 999);
+        if (page.error) throw new Error("Unable to load project matched receipts.");
+        settlementIds.push(...page.data.map(allocation => allocation.movement_id));
+        if (page.data.length < 1000) break;
+      }
+    }
+  }
+  return { receipts: reporting.receipts, events: reporting.events, cashHistory: reporting.cashHistory, actionableIds: actionableIds.flatMap(item => item.id ? [item.id] : []), nativeUnapplied: Object.fromEntries(actionableIds.flatMap(item => item.id ? [[item.id, item.unapplied_amount]] : [])), settlementIds: [...new Set(settlementIds)], projects: projects.data ?? [] };
 }
 
 export type FinanceProjectCash = NonNullable<Awaited<ReturnType<typeof getFinanceProjectCash>>>;

@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "./instaload.css";
 
+/* On compact layouts the document, rather than main, owns vertical scrolling. */
+@media (max-width: 1023px) {
+  html:has([data-project-detail-shell]), body:has([data-project-detail-shell]) { scrollbar-gutter: stable; }
+}
+
 :root {
   /* Quiet architectural operations system: warm neutral, compact, high-contrast. */
   --background: #f8f5ef;

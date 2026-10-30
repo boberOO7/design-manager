@@ -56,7 +56,7 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
   };
   const showKnownSuffix = (amount: string | null, incomplete: boolean) => Boolean(amount !== null && incomplete && financeAmountUnits(amount, data.currency.minor_units) !== BigInt(0));
   const basePath = `/projects/${projectId}`;
-  const viewHref = (next: ProjectProfitPeriod) => `${basePath}?view=finance&financeTab=result&profitPeriod=${next}`;
+  const viewHref = (next: ProjectProfitPeriod) => `${basePath}?view=finance&workDirection=all&financeTab=result&profitPeriod=${next}`;
   const exportParams = new URLSearchParams({ report: "projects", from: data.filters.from, to: data.filters.to, version: data.version, project: projectId });
   const historyParams = new URLSearchParams({ project: projectId, from: data.filters.from, to: data.filters.to });
   const refresh = () => router.refresh();
@@ -80,7 +80,7 @@ export function ProjectResultWorkspace({ data, projectId, period }: { data: Fina
       {(["all", "month", "year", "custom"] as const).map(value => <Link key={value} href={viewHref(value)} scroll={false} aria-current={period === value ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[var(--ui-radius-control)] border px-3 text-sm transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${period === value ? "border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] font-semibold text-[var(--ui-text)]" : "border-[var(--ui-border-subtle)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-subtle)]"}`}>{t(`period.${value}`)}</Link>)}
     </nav>
     {period === "custom" ? <form method="get" action={basePath} className={`${panel} grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end`}>
-      <input type="hidden" name="view" value="finance"/><input type="hidden" name="financeTab" value="result"/><input type="hidden" name="profitPeriod" value="custom"/>
+      <input type="hidden" name="view" value="finance"/><input type="hidden" name="workDirection" value="all"/><input type="hidden" name="financeTab" value="result"/><input type="hidden" name="profitPeriod" value="custom"/>
       <FormField label={profit("from")}><DatePicker name="profitFrom" defaultValue={data.filters.from} locale={locale}/></FormField>
       <FormField label={profit("to")}><DatePicker name="profitTo" defaultValue={data.filters.to} locale={locale}/></FormField>
       <Button type="submit" variant="outline">{profit("applyFilters")}</Button>

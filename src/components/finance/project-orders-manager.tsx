@@ -14,26 +14,28 @@ import { formatDateOnly } from "@/lib/utils";
 import { orderPaymentStateClass } from "./order-payment-progress";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { FormField, Input } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/form-field";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FinanceActionForm } from "./finance-action-form";
 import { ProjectValueBuilder } from "./project-value-builder";
 import { ProjectEarningMilestones } from "./project-earning-milestones";
 import { ProjectOrderCurrencyCorrection } from "./project-order-currency-correction";
 import { OrderWorkDirections } from "./order-work-directions";
-import { Select, SelectItem } from "@/components/ui/select";
+import type { FinanceActionState } from "@/lib/finance";
+import { projectAgreementName, projectPricingArea } from "@/lib/finance-project-view";
 import { useSearchParams } from "next/navigation";
 
 const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
-type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; initiallyAdding?: boolean; scopeDirectionId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
+type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; initiallyAdding?: boolean; initialEditor?: "pricing" | "proposal"; scopeDirectionId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
 
-export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, initiallyAdding = false, scopeDirectionId, display, onClose }: Props) {
+export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, initiallyAdding = false, initialEditor, scopeDirectionId, display, onClose }: Props) {
   const t = useTranslations("Finance"), locale = useLocale();
+  const agreementName = (name: string) => projectAgreementName(name, t("orders.defaultName"));
   const query = useSearchParams();
-  const [newDirection, setNewDirection] = useState(() => scopeDirectionId ?? (project.directions.some(direction => direction.id === query.get("workDirection")) ? query.get("workDirection") ?? "" : project.directions[0]?.id ?? ""));
+  const [newDirection] = useState(() => scopeDirectionId ?? (project.directions.some(direction => direction.id === query.get("workDirection")) ? query.get("workDirection") ?? "" : project.directions[0]?.id ?? ""));
   const [selectedId, setSelectedId] = useState(initialOrderId ?? ""), [adding, setAdding] = useState(initiallyAdding);
-  const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | null>(null), [pending, setPending] = useState(false);
+  const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | null>(initiallyAdding ? "pricing" : initialEditor ?? null), [pending, setPending] = useState(false);
   const [renaming, setRenaming] = useState(false), [nameValue, setNameValue] = useState(""), [nameError, setNameError] = useState("");
   const nameButton = useRef<HTMLButtonElement>(null), nameForm = useRef<HTMLFormElement>(null);
   const renameInFlight = useRef(false), restoreNameFocus = useRef(false);
@@ -50,6 +52,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
   const money = (value: string | number | null | undefined, code = currency?.code) => formatProjectFinanceMoney(value, currencies.find(unit => unit.code === code), display, locale);
   const totals = project.orderTotals.find(item => item.order_id === order?.id);
   const paymentProgress = projectOrderPaymentProgress(totals, currency?.minor_units ?? 2);
+  const sourceArea = order ? projectPricingArea(project, project.directionLinks.filter(link => link.order_id === order.id).map(link => link.direction_id)) : null;
   const pricing = project.planRevisions.find(item => item.terms_id === term?.id);
   const discount = draft && currency ? projectDiscountAmounts(draft.amount, draft.discountType, draft.discountValue, currency.minor_units) : null;
   const amounts = draft && currency && discount ? projectVatAmounts(discount.agreed, draft.vatRate, draft.priceBasis, currency.minor_units) : null;
@@ -92,6 +95,12 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
     onClose();
   }
 
+  function finishEditor(result?: FinanceActionState) {
+    if (adding && result?.id) setSelectedId(result.id);
+    setEditor(null); setAdding(false);
+    if (initiallyAdding || initialEditor) onClose();
+  }
+
   function renderOrder(item: FinanceProjectData["orders"][number]) {
     const current = project.terms.find(term => term.order_id === item.id && term.stream === "design");
     const plan = parseProjectOrderDraft(item.draft_plan, project.projectId, item.id);
@@ -100,14 +109,14 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
     const orderTotal = project.orderTotals.find(total => total.order_id === item.id);
     const payment = projectOrderPaymentProgress(orderTotal, currencies.find(currency => currency.code === orderTotal?.currency)?.minor_units ?? 2);
     return <li key={item.id}><button type="button" onClick={() => setSelectedId(item.id)} className="group grid min-h-14 w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_1rem] items-center gap-x-3 rounded-[var(--ui-radius-control)] px-2 py-2.5 text-left transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] active:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none">
-      <span className="min-w-0"><span className="block break-words text-sm font-medium">{item.name}</span><span className="mt-0.5 block text-xs text-[var(--ui-text-secondary)]">{item.status === "confirmed" ? <span className={orderPaymentStateClass(payment.state)}>{t(`orders.paymentStates.${payment.state}`)}</span> : t(`orders.status.${item.status}`)} · {t("orders.paymentCountCompact", { count: project.orderTotals.find(total => total.order_id === item.id)?.payment_count ?? plan?.items.length ?? 0 })}</span></span>
+      <span className="min-w-0"><span className="block break-words text-sm font-medium">{agreementName(item.name)}</span><span className="mt-0.5 block text-xs text-[var(--ui-text-secondary)]">{item.status === "confirmed" ? <span className={orderPaymentStateClass(payment.state)}>{t(`orders.paymentStates.${payment.state}`)}</span> : t(`orders.status.${item.status}`)} · {t("orders.paymentCountCompact", { count: project.orderTotals.find(total => total.order_id === item.id)?.payment_count ?? plan?.items.length ?? 0 })}</span></span>
       <span className="ui-numeric shrink-0 self-start whitespace-nowrap pt-0.5 text-right text-sm font-medium">{money(current?.gross_amount ?? draftGross, current?.currency ?? plan?.currency)}{display && (current?.currency ?? plan?.currency) !== display.currency.code ? <span className="mt-1 block text-xs font-normal text-[var(--ui-text-muted)]">{nativeMoney(current?.gross_amount ?? draftGross, current?.currency ?? plan?.currency)}</span> : null}</span>
       <ChevronRight aria-hidden="true" className="size-4 text-[var(--ui-text-muted)] transition-colors duration-200 group-hover:text-[var(--ui-text)] motion-reduce:transition-none"/>
     </button></li>;
   }
 
   return <>
-    <Dialog isOpen={editor === null} onRequestClose={closeManager} closeDisabled={pending} title={order ? undefined : t("orders.title")} ariaLabel={order?.name} hideHeader={Boolean(order)} closeLabel={t("movements.close")} className={`h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem] ${order ? "" : "[&>header]:items-center [&>header]:gap-2 [&>header]:px-4 [&>header]:py-2"}`} headerActions={!order && !adding ? <Button variant="ghost" size="sm" onClick={() => setAdding(true)} className="min-h-11 gap-1 px-1 text-xs sm:px-2 sm:text-sm"><Plus aria-hidden="true" className="size-4"/>{t("orders.add")}</Button> : undefined}>
+    <Dialog isOpen={editor === null} onRequestClose={closeManager} closeDisabled={pending} title={order ? undefined : t("orders.title")} ariaLabel={order ? agreementName(order.name) : undefined} hideHeader={Boolean(order)} closeLabel={t("movements.close")} className={`h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem] ${order ? "" : "[&>header]:items-center [&>header]:gap-2 [&>header]:px-4 [&>header]:py-2"}`} headerActions={!order && !adding ? <Button variant="ghost" size="sm" onClick={() => { setAdding(true); setEditor("pricing"); }} className="min-h-11 gap-1 px-1 text-xs sm:px-2 sm:text-sm"><Plus aria-hidden="true" className="size-4"/>{t("orders.add")}</Button> : undefined}>
       {order ? <header className="flex shrink-0 items-start gap-1 px-3 pb-3 pt-3 sm:px-4">
         <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t("orders.back")} disabled={pending} onClick={() => { setRenaming(false); setNameError(""); setSelectedId(""); }}><ArrowLeft aria-hidden="true" className="size-4"/></Button>
         <div className="min-w-0 flex-1">
@@ -120,20 +129,13 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
             }}/>{pending ? <LoaderCircle aria-hidden="true" className="absolute right-2 top-3.5 size-4 animate-spin motion-reduce:animate-none"/> : null}</div>
             {nameError ? <p id={nameErrorId} role="alert" className="text-xs text-[var(--ui-danger-text)]">{nameError}</p> : null}
             {pending ? <span role="status" className="sr-only">{t("movements.saving")}</span> : null}
-          </FinanceActionForm> : <h2 aria-label={order.name} className="text-lg font-semibold text-[var(--ui-text)]">{order.status === "discarded" ? <span className="block py-2 break-words">{order.name}</span> : <button ref={nameButton} type="button" aria-label={t("orders.editName")} disabled={pending} onClick={() => { setNameValue(order.name); setNameError(""); setRenaming(true); }} className="group flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[var(--ui-radius-control)] px-1 text-left transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait motion-reduce:transition-none"><span className="min-w-0 break-words">{order.name}</span><Pencil aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-muted)] group-hover:text-[var(--ui-text-secondary)]"/></button>}</h2>}
+          </FinanceActionForm> : <h2 aria-label={agreementName(order.name)} className="text-lg font-semibold text-[var(--ui-text)]">{order.status === "discarded" ? <span className="block py-2 break-words">{agreementName(order.name)}</span> : <button ref={nameButton} type="button" aria-label={t("orders.editName")} disabled={pending} onClick={() => { setNameValue(order.name); setNameError(""); setRenaming(true); }} className="group flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[var(--ui-radius-control)] px-1 text-left transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:cursor-wait motion-reduce:transition-none"><span className="min-w-0 break-words">{agreementName(order.name)}</span><Pencil aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-muted)] group-hover:text-[var(--ui-text-secondary)]"/></button>}</h2>}
           <p className="px-1 text-xs text-[var(--ui-text-secondary)]">{order.status === "confirmed" ? <span className={orderPaymentStateClass(paymentProgress.state)}>{t(`orders.paymentStates.${paymentProgress.state}`)} · {t("orders.paymentCountCompact", { count: totals?.payment_count ?? 0 })}</span> : t(`orders.status.${order.status}`)}</p>
         </div>
         <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t("movements.close")} aria-disabled={pending} onClick={() => closeManager("explicit")}><X aria-hidden="true" className="size-5"/></Button>
       </header> : null}
       <div className={`min-h-0 overflow-y-auto overscroll-contain ${order ? "space-y-4 px-4 pb-2 sm:px-6" : adding ? "space-y-3 p-4 pt-3" : "space-y-2 p-2"}`}>
-        {adding ? <Button variant="ghost" size="sm" onClick={() => setAdding(false)} disabled={pending}><ArrowLeft aria-hidden="true" className="mr-2 size-4"/>{t("orders.back")}</Button> : null}
-        {adding ? <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.create")} onPending={setPending} onSaved={result => { setAdding(false); setSelectedId(result.id ?? ""); }}>
-          <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="intent" value="create"/>
-          {newDirection ? <input type="hidden" name="directionIds" value={JSON.stringify([newDirection])}/> : null}
-          {project.directions.length > 1 ? <FormField as="div" label={t("orders.workDirections")}><Select aria-label={t("orders.workDirections")} value={newDirection} onValueChange={setNewDirection}>{project.directions.map(direction => <SelectItem key={direction.id} value={direction.id}>{direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")}</SelectItem>)}</Select></FormField> : null}
-          <FormField label={t("orders.name")}><Input name="name" defaultValue={project.orders.length ? "" : t("orders.defaultName")} required maxLength={2000}/></FormField>
-          <p className="text-sm text-[var(--ui-text-secondary)]">{t("orders.draftHelp")}</p>
-        </FinanceActionForm> : order ? <>
+        {order ? <>
           <OrderWorkDirections key={`directions-${order.id}`} project={project} orderId={order.id} onPending={setPending}/>
           <div className="grid grid-cols-2 items-end gap-x-5 gap-y-4 py-1 sm:grid-cols-[1.2fr_1fr_1.15fr]">
             <div className="col-span-2 min-w-0 sm:col-span-1">
@@ -158,7 +160,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
           </dl> : null}
           {Number(term?.discount_amount ?? discount?.discount ?? 0) > 0 ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("builder.discountWithPercent", { percent: discount?.percentage ?? projectDiscountAmounts(String(term?.amount), term?.discount_type === "fixed" ? "fixed" : "percentage", String(term?.discount_value), currency?.minor_units ?? 2).percentage })} · −{money(term?.discount_amount ?? discount?.discount)}</p> : null}
           {pricing?.pricing_method === "area" || draft?.pricingMethod === "area" ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("builder.areaSummary", { area: pricing?.area_snapshot ?? draft?.area ?? "", rate: `${pricing?.rate_per_m2 ?? draft?.rate ?? ""} ${currency?.code ?? ""}` })}</p> : null}
-          {pricing?.pricing_method === "area" && project.area !== null && Number(pricing.area_snapshot) !== project.area ? <p className="text-xs text-[var(--ui-warning-text)]">{t("builder.areaChanged", { saved: pricing.area_snapshot ?? 0, current: project.area })}</p> : null}
+          {pricing?.pricing_method === "area" && sourceArea !== null && Number(pricing.area_snapshot) !== Number(sourceArea) ? <p className="text-xs text-[var(--ui-warning-text)]">{t("builder.areaChanged", { saved: pricing.area_snapshot ?? 0, current: sourceArea })}</p> : null}
           {totals && Number(totals.unscheduled_amount) > 0 ? <p className="text-sm text-[var(--ui-warning-text)]">{t("project.unscheduledAction", { amount: money(totals.unscheduled_amount) })}</p> : null}
           {totals && Number(totals.closed_amount) > 0 ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.closed")}: {money(totals.closed_amount)}</p> : null}
           {totals && (Number(totals.scheduled_vat_amount) > 0 || Number(totals.collected_vat_amount) > 0) ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("project.historicalVatBreakdown", { scheduledNet: money(totals.scheduled_net_amount), scheduledVat: money(totals.scheduled_vat_amount), collectedNet: money(totals.collected_net_amount), collectedVat: money(totals.collected_vat_amount) })}</p> : null}
@@ -184,8 +186,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
         </>}
       </div>
     </Dialog>
-    {editor === "pricing" && order ? <Dialog isOpen title={`${order.name} · ${t("project.editAgreement")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:!max-w-[70rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectValueBuilder key={`${order.id}-${order.version}`} order={order} project={project} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onPending={setPending} onCorrectCurrency={() => setEditor("currency")}/></div></Dialog> : null}
-    {editor === "currency" && order && term ? <Dialog isOpen title={`${order.name} · ${t("currencyCorrection.action")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:max-w-[36rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectOrderCurrencyCorrection key={`${order.id}-${order.version}`} project={project} order={order} term={term} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onCancel={() => setEditor(null)} onPending={setPending}/></div></Dialog> : null}
-    {editor === "proposal" && order ? <ProposalEditor projectId={project.projectId} orderId={order.id} orderName={order.name} readOnly={order.status === "discarded"} onClose={() => setEditor(null)}/> : null}
+    {editor === "pricing" && (order || adding) ? <Dialog isOpen title={order ? `${agreementName(order.name)} · ${t("project.editAgreement")}` : t("agreements.create")} closeLabel={t("movements.close")} onRequestClose={() => finishEditor()} closeDisabled={pending} className="sm:!max-w-[70rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectValueBuilder key={order ? `${order.id}-${order.version}` : "new"} order={order} scopeDirectionId={newDirection} project={project} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={finishEditor} onPending={setPending} onCorrectCurrency={() => setEditor("currency")}/></div></Dialog> : null}
+    {editor === "currency" && order && term ? <Dialog isOpen title={`${agreementName(order.name)} · ${t("currencyCorrection.action")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:max-w-[36rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectOrderCurrencyCorrection key={`${order.id}-${order.version}`} project={project} order={order} term={term} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onCancel={() => setEditor(null)} onPending={setPending}/></div></Dialog> : null}
+    {editor === "proposal" && order ? <ProposalEditor projectId={project.projectId} orderId={order.id} orderName={agreementName(order.name)} readOnly={order.status === "discarded"} onClose={finishEditor}/> : null}
   </>;
 }

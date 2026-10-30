@@ -61,7 +61,8 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const canManage = adminMembership?.studio_id === project.studio_id;
   if ((query.view === "finance" || query.view === "feedback") && !canManage) notFound();
   const [configuration, progressTasks] = await Promise.all([getProjectStageConfiguration(project.id), getProjectTasksForProgress(project.id)]);
-  const { view, directionId } = resolveProjectWorkspace({ view: query.view, workDirection: query.workDirection, taskId: initialTaskId, directions: configuration.directions ?? [], tasks: progressTasks, stages: configuration.stages });
+  const legacyProjectFinance = query.view === "finance" && query.workDirection === undefined && (query.financeTab !== undefined || query.profitFrom !== undefined || query.profitTo !== undefined || (typeof query.stream === "string" && query.stream !== "design"));
+  const { view, directionId } = resolveProjectWorkspace({ view: query.view, workDirection: legacyProjectFinance ? "all" : query.workDirection, taskId: initialTaskId, directions: configuration.directions ?? [], tasks: progressTasks, stages: configuration.stages });
   const selectedDirection = configuration.directions?.find(direction => direction.id === directionId);
   const localizedProject = getLocalizedCityName({ city: project.city, geonamesId: project.city_geonames_id, locale: isAppLocale(locale) ? locale : "en" }).then(city => ({ ...project, city }));
   const projectTemplates = canManage ? getStudioProjectTemplates() : Promise.resolve([]);

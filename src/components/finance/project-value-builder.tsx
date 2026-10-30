@@ -15,10 +15,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { AnimatedFormContent } from "@/components/ui/animated-form-content";
+import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
+import { projectPricingArea } from "@/lib/finance-project-view";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCurrencySelect } from "./currency-select";
-import { formatFinanceAmount, type FinanceCurrency } from "@/lib/finance";
+import { formatFinanceAmount, type FinanceCurrency, type FinanceActionState } from "@/lib/finance";
 import { projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectClientPaymentSchedule, projectGrossToBasis, projectScheduleVatAmounts, projectMoneyText, projectMoneyUnits, projectPaymentTemplates, projectPaymentDefaultKey, projectReferenceValue, projectRevenueTaxAmounts, projectVatAmounts, type ProjectPlanInput, type ProjectDiscountType } from "@/lib/finance-project-plan";
 import { cn } from "@/lib/utils";
 import type { FinanceProjectData } from "@/data/queries/finance";
@@ -133,14 +134,16 @@ function PaymentRow({ amount, copy, index, locale, money, onMove, onRemove, onUp
   </li>;
 }
 
-export function ProjectValueBuilder({ project, order, currencies, reportingCurrency, onSaved, onPending, onCorrectCurrency }: {
-  project: FinanceProjectData; order: FinanceProjectData["orders"][number]; currencies: FinanceCurrency[]; reportingCurrency: string;
-  onSaved: () => void; onPending: (pending: boolean) => void; onCorrectCurrency: () => void;
+export function ProjectValueBuilder({ project, order, scopeDirectionId, currencies, reportingCurrency, onSaved, onPending, onCorrectCurrency }: {
+  project: FinanceProjectData; order?: FinanceProjectData["orders"][number]; scopeDirectionId?: string; currencies: FinanceCurrency[]; reportingCurrency: string;
+  onSaved: (result?: FinanceActionState) => void; onPending: (pending: boolean) => void; onCorrectCurrency: () => void;
 }) {
   const t = useTranslations("Finance"), locale = useLocale();
-  const current = project.terms.find((item) => item.stream === "design" && item.order_id === order.id);
-  const draft = order.status === "draft" ? parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) : null;
-  const planItems = project.planItems.filter(item => item.order_id === order.id);
+  const current = order ? project.terms.find((item) => item.stream === "design" && item.order_id === order.id) : undefined;
+  const draft = order?.status === "draft" ? parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) : null;
+  const planItems = order ? project.planItems.filter(item => item.order_id === order.id) : [];
+  const [newDirectionIds, setNewDirectionIds] = useState([scopeDirectionId ?? project.directions[0]?.id].filter((id): id is string => Boolean(id)));
+  const [agreementName, setAgreementName] = useState("");
   const pricing = project.planRevisions.find((item) => item.terms_id === current?.id);
   const protectedItems = planItems.filter((item) => item.has_settlement_history);
   const [method, setMethod] = useState<"fixed" | "area">(draft?.pricingMethod ?? (pricing?.pricing_method === "area" ? "area" : current ? "fixed" : "area"));
@@ -157,12 +160,15 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
   const [vatRate, setVatRate] = useState<string | null>(draft ? draft.vatRate : current?.vat_rate == null ? null : String(current.vat_rate));
   const [priceBasis, setPriceBasis] = useState<"net" | "gross" | null>(draft ? draft.priceBasis : current?.price_basis === "net" || current?.price_basis === "gross" ? current.price_basis : null);
   const [revenueTaxRate, setRevenueTaxRate] = useState<string | null>(draft ? draft.revenueTaxRate : current?.revenue_tax_rate == null ? null : String(current.revenue_tax_rate));
-  const linkedDirections = project.directionLinks.filter(link => link.order_id === order.id);
-  const directionArea = linkedDirections.length === 1 ? project.directions.find(direction => direction.id === linkedDirections[0].direction_id)?.area_m2 : null;
-  const [area, setArea] = useState(String(draft?.area ?? pricing?.area_snapshot ?? directionArea ?? project.area ?? ""));
+  const directionIds = order ? project.directionLinks.filter(link => link.order_id === order.id).map(link => link.direction_id) : newDirectionIds;
+  const directionNames = project.directions.filter(direction => directionIds.includes(direction.id)).map(direction => direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")).join(" + ");
+  const relatedCount = project.orders.filter(item => item.status !== "discarded" && project.directionLinks.some(link => link.order_id === item.id && newDirectionIds.includes(link.direction_id))).length;
+  const defaultAgreementName = relatedCount ? t("agreements.additionalName", { name: directionNames, number: relatedCount + 1 }) : directionNames;
+  const sourceArea = projectPricingArea(project, directionIds);
+  const [area, setArea] = useState(String(draft?.area ?? pricing?.area_snapshot ?? sourceArea ?? ""));
   const [rate, setRate] = useState(String(draft?.rate ?? pricing?.rate_per_m2 ?? ""));
   const [strategy, setStrategy] = useState(current || draft ? "manual" : "redistribute");
-  const [allowUnscheduled, setAllowUnscheduled] = useState(draft?.allowUnscheduled ?? (Number(project.orderTotals.find(item => item.order_id === order.id)?.unscheduled_amount ?? 0) > 0));
+  const [allowUnscheduled, setAllowUnscheduled] = useState(draft?.allowUnscheduled ?? (Number(project.orderTotals.find(item => item.order_id === order?.id)?.unscheduled_amount ?? 0) > 0));
   const [reserve, setReserve] = useState("0");
   const [addGuidance, setAddGuidance] = useState(false);
 
@@ -260,7 +266,7 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
     if (reference && currency !== "UAH") referenceAmount = projectReferenceValue(total, reference.rate, digits);
   } catch { error = t("builder.invalidPreview"); }
 
-  const payload = { projectId: project.projectId, orderId: order.id, revision: current?.revision ?? 0, pricingMethod: method, amount: total, discountType, discountValue, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, draftKey: row.key, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.expectedDate })) };
+  const payload = { projectId: project.projectId, orderId: order?.id, revision: current?.revision ?? 0, pricingMethod: method, amount: total, discountType, discountValue, vatRate, priceBasis, revenueTaxRate, currency, area, rate, allowUnscheduled, protectedNotes, known: planItems.map((item) => ({ id: item.id, version: item.version, protected: item.has_settlement_history })), items: rows.map((row, index) => ({ id: row.id, draftKey: row.key, name: row.name, clientNote: row.clientNote, percentage: strategy === "redistribute" ? row.percentage : "", amount: basisAmounts[index] ?? "", dueDate: row.dueDate, expectedDate: row.expectedDate })) };
 
   function changeDiscount(type: ProjectDiscountType, value: string) {
     const nextValue = type === "none" ? "0" : value.trim() || "0";
@@ -311,7 +317,7 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
     setAddGuidance(fullyAllocated); setRows((old) => [...old, { ...freshRow(old.length, old.length + 1, percentage), name: t("builder.paymentNumber", { number: protectedItems.length + old.length + 1 }) }]);
   }
 
-  const differentArea = pricing?.pricing_method === "area" && project.area !== null && Number(pricing.area_snapshot) !== Number(project.area);
+  const differentArea = pricing?.pricing_method === "area" && sourceArea !== null && Number(pricing.area_snapshot) !== Number(sourceArea);
   const showAreaMismatch = differentArea && Number(area) === Number(pricing?.area_snapshot);
   const percentageKey = rows.map((row) => row.percentage).join("/");
   const selectedTemplate = strategy === "redistribute" && projectPaymentTemplates.some((template) => template.join("/") === percentageKey) ? percentageKey : "custom";
@@ -320,7 +326,7 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
   const referencePending = referenceApplicable && referenceState.currency !== currency;
   const referenceFailed = referenceApplicable && referenceState.currency === currency && referenceState.failed;
   const referenceLine = referenceApplicable ? <div aria-live="polite" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-normal text-[var(--ui-text-secondary)]">{referenceAmount && reference && reporting ? <span>{t("builder.reference", { amount: formatFinanceAmount(referenceAmount, reporting, locale), date: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(reference.effectiveDate)), rate: new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(Number(reference.rate)), currency })}</span> : referencePending ? <span>{t("builder.referenceLoading")}</span> : referenceFailed ? <><span>{t("builder.referenceUnavailable", { currency })}</span><button type="button" className="inline-flex min-h-9 items-center gap-1 rounded px-2 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" onClick={() => { setReferenceState({ currency: "", failed: false, value: null }); setReferenceAttempt((attempt) => attempt + 1); }}><RefreshCw className="size-3.5" aria-hidden="true"/>{t("builder.referenceRetry")}</button></> : null}</div> : null;
-  const currencyField = order.status === "confirmed" ? <FormField label={t("builder.currencyShort")}><Input aria-label={t("project.currency")} value={currency} readOnly className={pricingControl}/></FormField> : <FormField label={t("builder.currencyShort")}><FinanceCurrencySelect name="currency" aria-label={t("project.currency")} className={pricingControl} size="compact" currencies={currencies} reportingCurrency={reportingCurrency} value={currency} onValueChange={setCurrency}/></FormField>;
+  const currencyField = order?.status === "confirmed" ? <FormField label={t("builder.currencyShort")}><Input aria-label={t("project.currency")} value={currency} readOnly className={pricingControl}/></FormField> : <FormField label={t("builder.currencyShort")}><FinanceCurrencySelect name="currency" aria-label={t("project.currency")} className={pricingControl} size="compact" currencies={currencies} reportingCurrency={reportingCurrency} value={currency} onValueChange={setCurrency}/></FormField>;
   const vatControls = <FinanceVatControls hidePreview quietChoices amount={agreedAmount} vatRate={vatRate} priceBasis={priceBasis} digits={digits} money={money} onRateChange={(rate) => { setVatRate(rate); if (rate !== null && !priceBasis) setPriceBasis("net"); else if (rate === null) setPriceBasis(null); }} onBasisChange={setPriceBasis} labels={{ vat: t("builder.vat"), rate: t("builder.vatRate"), custom: t("builder.vatOther"), none: t("builder.vatNone"), basis: t("builder.priceBasis"), net: t("builder.netShort"), gross: t("builder.grossShort"), customRate: t("builder.customRate") }}/>;
   const discountControls = <div className="space-y-2" data-project-discount>
     <div className="grid items-center gap-x-3 gap-y-1.5 sm:grid-cols-[18rem_9rem] sm:grid-rows-[auto_auto]"><RateChips className="sm:row-span-2 sm:grid-rows-subgrid sm:items-center" quiet label={t("builder.discount")} value={discountType} choices={[{ value: "none", label: t("builder.discountNone") }, { value: "percentage", label: "%" }, { value: "fixed", label: t("builder.discountFixed") }]} onChange={type => { if (type === "none" || type === "percentage" || type === "fixed") changeDiscount(type, discountInput); }}/>
@@ -341,9 +347,30 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
   const allocationTone = overAmount !== zeroMoney ? "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]" : remainder !== zeroMoney ? "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]" : "text-[var(--ui-success-text)]";
   const rowCopy: RowCopy = { actions: t("builder.paymentActions"), amount: t("movements.amount"), expectedPlaceholder: t("builder.expectedDateFallback"), drag: "", dueDate: t("planning.dueDate"), expectedDate: t("planning.expectedDate"), moveDown: t("builder.moveDown"), moveUp: t("builder.moveUp"), name: t("builder.paymentName"), percentage: t("builder.percentage"), remove: t("builder.remove") };
 
-  return <FinanceActionForm refreshWorkspaceOnSave action={async (state, form) => { form.set("plan", JSON.stringify({ ...payload, reason: current ? form.get("reason") : t("builder.initialReason") })); if (order.status === "draft") { form.set("intent", "saveDraft"); form.set("projectId", project.projectId); form.set("orderId", order.id); form.set("version", String(order.version)); return saveFinanceProjectOrder(state, form); } return saveFinanceProject(state, form); }} label={t(order.status === "draft" ? "orders.saveDraft" : current ? "builder.saveRevision" : "planning.save")} cancelLabel={t("planning.cancel")} onCancel={onSaved} disabled={!valid} onSaved={onSaved} onPending={onPending} className="min-w-0 [&_label>span]:text-xs" fieldsetClassName="min-w-0" actionsClassName="sticky bottom-0 z-20 flex justify-end gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-6">
+  return <FinanceActionForm refreshWorkspaceOnSave action={async (state, form) => { form.set("plan", JSON.stringify({ ...payload, reason: current ? form.get("reason") : t("builder.initialReason") }));
+    if (!order) {
+      form.set("intent", "create"); form.set("projectId", project.projectId);
+      form.set("directionIds", JSON.stringify(newDirectionIds));
+      form.set("name", agreementName.trim() || defaultAgreementName);
+      form.set("confirm", String(form.get("agreementState") !== "draft"));
+      return saveFinanceProjectOrder(state, form);
+    }
+    if (order.status === "draft") { form.set("intent", "saveDraft"); form.set("projectId", project.projectId); form.set("orderId", order.id); form.set("version", String(order.version)); return saveFinanceProjectOrder(state, form); } return saveFinanceProject(state, form); }} label={t(!order ? "agreements.confirm" : order.status === "draft" ? "orders.saveDraft" : current ? "builder.saveRevision" : "planning.save")} cancelLabel={t("planning.cancel")} onCancel={onSaved} disabled={!valid || (!order && !newDirectionIds.length)} secondaryAction={!order ? <Button type="submit" name="agreementState" value="draft" variant="outline" disabled={!valid || !newDirectionIds.length}>{t("orders.saveDraft")}</Button> : undefined} onSaved={onSaved} onPending={onPending} className="min-w-0 [&_label>span]:text-xs" fieldsetClassName="min-w-0" actionsClassName="sticky bottom-0 z-20 flex flex-wrap justify-end gap-2 border-t border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-3 sm:px-6">
     <input type="hidden" name="intent" value="plan"/>
     <div className="space-y-4 px-4 py-5 sm:px-6">
+      {!order ? <AnimatedDisclosure title={t("agreements.scope")}>
+        <div className="space-y-3 pb-3">
+          <div className="flex flex-wrap gap-2">{project.directions.map(direction => <label key={direction.id} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-3 text-sm"><input type="checkbox" checked={newDirectionIds.includes(direction.id)} onChange={event => {
+            const next = event.target.checked ? [...newDirectionIds, direction.id] : newDirectionIds.filter(id => id !== direction.id);
+            if (area === String(sourceArea ?? "")) setArea(String(projectPricingArea(project, next) ?? ""));
+            setNewDirectionIds(next);
+          }}/>{direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")}</label>)}</div>
+          {!relatedCount ? <FormField label={t("agreements.optionalName")}><Input value={agreementName} placeholder={defaultAgreementName} onChange={event => setAgreementName(event.target.value)} maxLength={2000}/></FormField> : null}
+          {newDirectionIds.length > 1 ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("agreements.sharedCreation")}</p> : null}
+        </div>
+      </AnimatedDisclosure> : null}
+      {!order && relatedCount > 0 ? <FormField label={t("agreements.optionalName")}><Input value={agreementName} placeholder={defaultAgreementName} onChange={event => setAgreementName(event.target.value)} maxLength={2000}/></FormField> : null}
+      {order && directionIds.length > 1 ? <p className="text-xs leading-5 text-[var(--ui-text-secondary)]">{t("agreements.sharedScope", { names: project.directions.filter(direction => directionIds.includes(direction.id)).map(direction => direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")).join(", ") })}. {t("agreements.sharedCreation")}</p> : null}
       <h3 id="project-value-heading" className="text-sm font-semibold text-[var(--ui-text)]">{t("builder.pricing")}</h3>
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-6" data-pricing-layout>
         <div className="min-w-0 space-y-4" data-pricing-controls>
@@ -352,12 +379,12 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
             <div aria-hidden={method !== "area"} inert={method !== "area"} className={cn("col-start-1 row-start-1 transition-[opacity,visibility] duration-200 ease-out motion-reduce:transition-none", method === "area" ? "opacity-100" : "invisible opacity-0")}><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5.5rem] gap-3 sm:grid-cols-[8rem_8rem_6rem] sm:items-end"><FormField label={t("builder.areaShort")}><DecimalInput aria-label={t("builder.area")} value={area} onChange={(event) => setArea(event.target.value)} required={method === "area"} className={pricingControl}/></FormField><FormField label={t("builder.rateShort")}><DecimalInput aria-label={t("builder.rate")} value={rate} onChange={(event) => setRate(event.target.value)} required={method === "area"} className={pricingControl}/></FormField>{currencyField}</div></div>
             <div aria-hidden={method !== "fixed"} inert={method !== "fixed"} className={cn("col-start-1 row-start-1 transition-[opacity,visibility] duration-200 ease-out motion-reduce:transition-none", method === "fixed" ? "opacity-100" : "invisible opacity-0")}><div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-3 sm:grid-cols-[minmax(0,16rem)_6rem] sm:items-end"><FormField label={t("project.contract")}><DecimalInput aria-label={t("project.contract")} value={value} onChange={(event) => setValue(event.target.value)} required={method === "fixed"} className={pricingControl}/></FormField>{currencyField}</div></div>
           </div>
-          {order.status === "confirmed" && current ? <Button type="button" variant="ghost" size="sm" className="min-h-11 px-0 text-xs text-[var(--ui-text-secondary)]" onClick={onCorrectCurrency}>{t("currencyCorrection.action")}</Button> : null}
-          {discountControls}<div className="space-y-4">{vatControls}{revenueTaxControls}</div>
+          {order?.status === "confirmed" && current ? <Button type="button" variant="ghost" size="sm" className="min-h-11 px-0 text-xs text-[var(--ui-text-secondary)]" onClick={onCorrectCurrency}>{t("currencyCorrection.action")}</Button> : null}
+          <AnimatedDisclosure title={t("agreements.priceDetails")} defaultOpen={discountType !== "none" || vatRate !== null || revenueTaxRate !== null}><div className="space-y-4 pb-2">{discountControls}{vatControls}{revenueTaxControls}</div></AnimatedDisclosure>
         </div>
         {priceSummary}
       </div>
-      <AnimatedFormContent isOpen={showAreaMismatch}><div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--ui-radius-control)] bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]"><p>{t("builder.areaChanged", { saved: pricing?.area_snapshot ?? 0, current: project.area ?? 0 })}</p><Button type="button" variant="ghost" className="min-h-11 sm:min-h-9" onClick={() => setArea(String(project.area))}>{t("builder.useCurrentArea")}</Button></div></AnimatedFormContent>
+      <AnimatedFormContent isOpen={showAreaMismatch}><div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--ui-radius-control)] bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]"><p>{t("builder.areaChanged", { saved: pricing?.area_snapshot ?? 0, current: sourceArea ?? 0 })}</p><Button type="button" variant="ghost" className="min-h-11 sm:min-h-9" onClick={() => setArea(String(sourceArea))}>{t("builder.useCurrentArea")}</Button></div></AnimatedFormContent>
     </div>
     <section className="space-y-3 border-t border-[var(--ui-border)] px-4 py-4 sm:px-6" aria-labelledby="payment-schedule-heading">
       <h3 id="payment-schedule-heading" className="text-sm font-semibold text-[var(--ui-text)]">{t("builder.schedule")}</h3>
@@ -375,6 +402,7 @@ export function ProjectValueBuilder({ project, order, currencies, reportingCurre
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm lg:grid-cols-5" aria-live="polite">{([[vatRate === null ? "project.contract" : "project.clientTotal", totalGross], [vatRate === null ? "project.collected" : "project.collectedGross", collected], ["builder.protectedValue", protectedValue], ["builder.newSchedule", scheduled], [vatRate === null ? "project.unscheduled" : "project.unscheduledGross", remainder]] as const).map(([key, amount]) => <div key={key} className="min-w-0"><dt className="text-xs text-[var(--ui-text-muted)]">{t(key)}</dt><dd className="ui-numeric mt-1 break-words font-medium text-[var(--ui-text)]">{amount ? money(amount) : "—"}</dd></div>)}</dl>
       <AnimatedFormContent isOpen={hasRemainder || allowUnscheduled}><div className="grid gap-2 pt-1 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end"><label className="flex min-h-11 items-center gap-2 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={allowUnscheduled} onChange={(event) => setAllowUnscheduled(event.target.checked)}/>{t("builder.allowUnscheduled")}</label><AnimatedFormContent isOpen={allowUnscheduled && strategy === "redistribute"}><FormField label={t("project.unscheduled")}><DecimalInput value={reserve} onChange={(event) => setReserve(event.target.value)} className={compactControl}/></FormField></AnimatedFormContent></div></AnimatedFormContent>
       <AnimatedFormContent isOpen={Boolean(error)}><p role="status" className="rounded-[var(--ui-radius-control)] bg-[var(--ui-warning-surface)] px-3 py-2 text-sm text-[var(--ui-warning-text)]">{error}</p></AnimatedFormContent>
+      {!order ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("agreements.confirmHelp")}</p> : null}
       {current ? <FormField label={t("project.reason")} className="pt-2"><Textarea name="reason" required maxLength={2000} rows={1} className="resize-none overflow-hidden" ref={element=>{if(element){element.style.height="auto";element.style.height=`${element.scrollHeight}px`;}}} onInput={event=>{event.currentTarget.style.height="auto";event.currentTarget.style.height=`${event.currentTarget.scrollHeight}px`;}}/></FormField> : <input type="hidden" name="reason" value={t("builder.initialReason")}/>}
     </section>
   </FinanceActionForm>;

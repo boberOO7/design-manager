@@ -174,11 +174,6 @@
 :global(html[data-motion="off"]) .directionMenu { animation: none; }
 :global(html[data-motion="off"]) .directionOption { transition: none; }
 
-/* On compact layouts the document, rather than main, owns vertical scrolling. */
-@media (max-width: 1023px) {
-  :global(html:has([data-project-detail-shell])), :global(body:has([data-project-detail-shell])) { scrollbar-gutter: stable; }
-}
-
 .collectionFooter { display: flex; align-items: center; gap: 16px; margin: 12px -20px 0; padding-inline: 20px; }
 .workspaceTabs { position: relative; display: flex; flex-shrink: 0; min-width: 0; gap: 24px; align-self: stretch; }
 .workspaceTab { position: relative; display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 6px; padding: 12px 0; font-size: 14px; font-weight: 600; line-height: 1.4; white-space: nowrap; color: var(--ui-text-secondary); transition: color 160ms ease; }

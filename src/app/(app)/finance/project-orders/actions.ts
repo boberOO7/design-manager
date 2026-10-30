@@ -18,14 +18,15 @@ export async function saveFinanceProjectOrder(_previous: FinanceActionState, for
   const parsed = projectOrderInputSchema.safeParse({ ...Object.fromEntries(form), ...(directionIds !== undefined ? { directionIds } : {}) });
   if (!parsed.success) return { status: "error", message: t("errors.invalid") };
   const { requestId, projectId, ...input } = parsed.data;
-  if (input.intent === "saveDraft") {
+  if (input.intent === "saveDraft" || (input.intent === "create" && form.has("plan"))) {
     let draft: unknown;
     try { draft = JSON.parse(String(form.get("plan"))); } catch { return { status: "error", message: t("errors.invalid") }; }
-    const plan = input.orderId ? parseProjectOrderDraft(draft, projectId, input.orderId) : null;
+    const plan = parseProjectOrderDraft(draft, projectId, input.orderId ?? requestId);
     if (!plan) return { status: "error", message: t("errors.invalid") };
     const { requestId: _request, projectId: _project, orderId: _order, ...payload } = plan;
     input.plan = payload;
   }
+  if (input.intent === "create" && (!input.directionIds || !input.plan)) return { status: "error", message: t("errors.invalid") };
   const client = await createClient();
   const { data, error } = await client.rpc(input.intent === "create" && input.directionIds ? "create_finance_direction_order" : "save_finance_project_order", {
     p_studio_id: admin.studio_id, p_request_id: requestId, p_project_id: projectId,
