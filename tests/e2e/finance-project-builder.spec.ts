@@ -73,15 +73,19 @@ test("value builder preserves protected payments and native-currency area histor
  const dialog=page.getByRole('dialog');
  const orderName=t.orders.defaultName;
  async function openOrderDetails(copy=t,count="1") {
-  await page.getByRole('region',{name:copy.orders.scope,exact:true}).getByRole('button',{name:copy.orders.manage.replace('{count}',count),exact:true}).click();
-  await dialog.getByRole('button').filter({has:page.getByText(orderName,{exact:true})}).click();
+  if(count==='0') {
+   await page.getByRole('button',{name:copy.agreements.draftsArchive,exact:true}).click();
+   await dialog.getByRole('button').filter({has:page.getByText(orderName,{exact:true})}).click();
+  } else {
+   await page.locator('[data-order-group]').first().getByRole('button',{name:copy.orders.details,exact:true}).click();
+  }
  }
  async function openBuilder(copy=t) {await openOrderDetails(copy);await dialog.getByRole('button',{name:copy.project.editAgreement,exact:true}).click();}
  async function closeOrderDetails(copy=t) {
   await expect(dialog.getByRole('button',{name:copy.project.editAgreement,exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:copy.movements.close,exact:true}).click();await expect(dialog).toHaveCount(0);
  }
- await page.getByRole('region',{name:t.orders.scope,exact:true}).getByRole('button',{name:t.agreements.create,exact:true}).click();
+ await page.locator('[data-project-finance]').getByRole('button',{name:t.agreements.create,exact:true}).click();
  await dialog.getByRole('button',{name:t.agreements.scope,exact:true}).click();
  await dialog.getByLabel(t.agreements.optionalName,{exact:true}).fill(orderName);
  await expect(dialog.getByRole('button',{name:b.perAreaShort,exact:true})).toHaveAttribute('aria-pressed','true');

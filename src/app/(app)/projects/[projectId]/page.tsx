@@ -6,7 +6,7 @@ import { ProjectFeedback } from "@/components/feedback/project-feedback";
 import { getProjectFeedback } from "@/data/queries/feedback";
 import { Suspense, type ComponentProps, type ReactNode } from "react";
 import { InstaLoadReady } from "@/components/shared/instaload-motion";
-import { ProjectContextBlueprint, ProjectSectionBlueprint } from "@/components/projects/project-detail-blueprint";
+import { ProjectContextBlueprint } from "@/components/projects/project-detail-blueprint";
 import { ProjectFinanceSection } from "@/components/finance/project-finance-section";
 import { DomainMessages } from "@/i18n/domain-messages";
 import { notFound } from "next/navigation";
@@ -50,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
 type ProjectPageSearchParams = Partial<Record<"view" | "workDirection" | "feedbackPage" | "task" | "lifecycle" | "health" | "priority" | "sort" | "direction" | "stream" | "page" | "credits" | "filter" | "profitFrom" | "profitTo" | "financeTab" | "profitPeriod" | "item", string | string[]>>;
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<ProjectPageSearchParams> }) {
-  const [{ projectId }, query, t, locale, common] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale(), getTranslations("Common")]);
+  const [{ projectId }, query, t, locale, common, financeLabels] = await Promise.all([params, searchParams, getTranslations("ProjectWorkspace"), getLocale(), getTranslations("Common"), getTranslations("Finance.projectWorkspace")]);
   const renderedSearch = new URLSearchParams(Object.entries(query).flatMap(([key, value]) => typeof value === "string" ? [[key, value]] : value?.map(item => [key, item]) ?? []));
   renderedSearch.sort();
   const initialTaskId = typeof query.task === "string" ? query.task : undefined;
@@ -60,15 +60,15 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const isArchived = project.status === "archived" || project.archived_at !== null;
   const canManage = adminMembership?.studio_id === project.studio_id;
   if ((query.view === "finance" || query.view === "feedback") && !canManage) notFound();
-  const [configuration, progressTasks] = await Promise.all([getProjectStageConfiguration(project.id), getProjectTasksForProgress(project.id)]);
-  const legacyProjectFinance = query.view === "finance" && query.workDirection === undefined && (query.financeTab !== undefined || query.profitFrom !== undefined || query.profitTo !== undefined || (typeof query.stream === "string" && query.stream !== "design"));
-  const { view, directionId } = resolveProjectWorkspace({ view: query.view, workDirection: legacyProjectFinance ? "all" : query.workDirection, taskId: initialTaskId, directions: configuration.directions ?? [], tasks: progressTasks, stages: configuration.stages });
-  const selectedDirection = configuration.directions?.find(direction => direction.id === directionId);
   const localizedProject = getLocalizedCityName({ city: project.city, geonamesId: project.city_geonames_id, locale: isAppLocale(locale) ? locale : "en" }).then(city => ({ ...project, city }));
   const projectTemplates = canManage ? getStudioProjectTemplates() : Promise.resolve([]);
   const presets = canManage ? getStudioDirectionPresets() : Promise.resolve([]);
   const calendarTime = getProjectCalendarTime(project.id, project.studio_id);
   for (const pending of [localizedProject, projectTemplates, presets, calendarTime]) void pending.catch(() => {});
+  const [configuration, progressTasks] = await Promise.all([getProjectStageConfiguration(project.id), getProjectTasksForProgress(project.id)]);
+  const legacyProjectFinance = query.view === "finance" && query.workDirection === undefined && (query.financeTab !== undefined || query.profitFrom !== undefined || query.profitTo !== undefined || (typeof query.stream === "string" && query.stream !== "design"));
+  const { view, directionId } = resolveProjectWorkspace({ view: query.view, workDirection: legacyProjectFinance ? "all" : query.workDirection, taskId: initialTaskId, directions: configuration.directions ?? [], tasks: progressTasks, stages: configuration.stages });
+  const selectedDirection = configuration.directions?.find(direction => direction.id === directionId);
   const calendarTimeSummary = <Suspense fallback={<span className="instaload-blueprint inline-block h-[1.5em] w-16 align-bottom" role="status" aria-label={common("loading")}><span aria-hidden="true" className="instaload-mark h-full w-full" /></span>}><CalendarTimeStream pending={calendarTime} /></Suspense>;
   const href = (nextView: ProjectWorkspaceView, nextDirection: string | null = directionId) => projectWorkspaceHref(project.id, nextView, nextDirection, projectsHref);
   const projectNavigation = <nav aria-label={t("projectNavigation")} className={headerStyles.projectActions}>{([{ id: "team", label: t("team"), icon: Users }, { id: "activity", label: t("activity"), icon: Activity }, ...(canManage ? [{ id: "feedback", label: t("feedback"), icon: MessageSquare }] : [])]).map(item => <ProjectWorkspaceLink key={item.id} href={href(item.id === "team" ? "team" : item.id === "activity" ? "activity" : "feedback", null)} workspaceView={item.id === "team" ? "team" : item.id === "activity" ? "activity" : "feedback"} className={headerStyles.projectAction}><item.icon aria-hidden="true"/><span>{item.label}</span><ProjectNavigationProgress/></ProjectWorkspaceLink>)}</nav>;
@@ -78,7 +78,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   // Overview shares data already read for the header; retain it alongside the board.
   const overviewPending = localizedProject.then(project => ProjectDetails({ actualStartDateAction: updateProjectActualStartDate.bind(null, project.id), calendarTimeSummary, canManage, completionDateAction: updateProjectCompletionDate.bind(null, project.id), locale, project }));
   void overviewPending?.catch(() => {});
-  const overview = overviewPending ? <Suspense fallback={<ProjectSectionBlueprint view="details"/>}><ProjectSectionStream name="project-overview" pending={overviewPending}/></Suspense> : undefined;
+  const overview = <ProjectSectionStream name="project-overview" pending={overviewPending}/>;
   let content: ReactNode;
   if (view === "overview") content = null;
   else if (view === "board") {
@@ -94,10 +94,11 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
       : view === "activity" ? getProjectActivity(project.id).then(activity => ProjectActivitySection({ activity, projectId: project.id }))
       : localizedProject.then(project => ProjectDetails({ actualStartDateAction: updateProjectActualStartDate.bind(null, project.id), calendarTimeSummary, canManage, completionDateAction: updateProjectCompletionDate.bind(null, project.id), locale, project }));
     void pending.catch(() => {});
-    content = <Suspense fallback={<ProjectSectionBlueprint view={view} />}><ProjectSectionStream name={`project-${view}`} pending={pending} /></Suspense>;
+    // ProjectWorkspace owns the fallback across both the request and streamed data.
+    content = <ProjectSectionStream name={`project-${view}`} pending={pending} />;
     if (view === "finance") content = <DomainMessages scope="finance">{content}</DomainMessages>;
   }
-  return <ProjectLifecycleProvider key={`${project.id}:${isArchived}`} initialStatus={project.status}><ProjectWorkspaceNavigation key={`${project.id}:${profile.id}:${canManage}:${locale}`} projectId={project.id} snapshot={{ search: renderedSearch.toString(), key: projectWorkspaceSurfaceKey({ view, directionId }, query), revision: createHash("sha256").update(JSON.stringify([project, configuration, progressTasks])).digest("hex"), content, overview }} input={{ directions: configuration.directions ?? [], stages: configuration.stages, tasks: progressTasks }}><ProjectWorkspace key={project.id} overview={overview} contextFallback={<ProjectContextBlueprint project={project} />} context={<WorkspaceContextStream pending={context} workspaceProps={workspaceProps}/>} board={content}/></ProjectWorkspaceNavigation></ProjectLifecycleProvider>;
+  return <ProjectLifecycleProvider key={`${project.id}:${isArchived}`} initialStatus={project.status}><ProjectWorkspaceNavigation key={`${project.id}:${profile.id}:${canManage}:${locale}`} projectId={project.id} snapshot={{ search: renderedSearch.toString(), key: projectWorkspaceSurfaceKey({ view, directionId }, query), revision: createHash("sha256").update(JSON.stringify([project, configuration, progressTasks])).digest("hex"), content, overview }} input={{ directions: configuration.directions ?? [], stages: configuration.stages, tasks: progressTasks }}><ProjectWorkspace key={project.id} configuration={configuration} financeNavigation={{ label: financeLabels("navigation"), tabs: { payments: financeLabels("tabs.payments"), expenses: financeLabels("tabs.expenses"), result: financeLabels("tabs.result") } }} overview={overview} contextFallback={<ProjectContextBlueprint project={project} backHref={projectsHref} configuration={configuration} canManage={canManage} />} context={<WorkspaceContextStream pending={context} workspaceProps={workspaceProps}/>} board={content}/></ProjectWorkspaceNavigation></ProjectLifecycleProvider>;
 }
 
 async function WorkspaceContextStream({ pending, workspaceProps }: { pending: Promise<ComponentProps<typeof ProjectWorkspaceContext>["data"]>; workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> }) {

@@ -3,65 +3,40 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import styles from "./work-directions.module.css";
 
-// Animate layout only for navigation. Ordinary board edits/accordions retain
-// their own transitions, and the mounted board is never cloned or remounted.
+// Reserve scroll space during navigation without clipping or hiding ready content.
 export function ProjectWorkspaceMotion({ children, motionKey }: { children: ReactNode; motionKey: string }) {
   const surface = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null);
   const previousKey = useRef(motionKey), height = useRef<number | null>(null);
-  const animation = useRef<Animation | null>(null);
   const resize = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     const outer = surface.current, inner = content.current;
     if (!outer || !inner) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let keyboard = false;
-    const disabled = () => keyboard || reduced.matches || document.documentElement.dataset.motion === "off";
-    const finish = () => {
-      animation.current?.cancel();
-      animation.current = null;
-      outer.style.removeProperty("height");
-      delete outer.dataset.resizing;
-      height.current = inner.getBoundingClientRect().height;
-    };
+    let waitingForContent = false;
     const measure = () => {
-      const next = inner.getBoundingClientRect().height;
-      const from = animation.current ? outer.getBoundingClientRect().height : height.current ?? next;
-      animation.current?.cancel();
-      height.current = next;
-      if (disabled() || Math.abs(next - from) < 1) { finish(); return; }
-      outer.style.height = `${next}px`;
-      outer.dataset.resizing = "true";
-      const tween = outer.animate([{ height: `${from}px` }, { height: `${next}px` }], {
-        duration: 220, easing: "cubic-bezier(0.23, 1, 0.32, 1)",
-      });
-      animation.current = tween;
-      tween.onfinish = finish;
+      const loading = Array.from(inner.querySelectorAll<HTMLElement>("[data-project-loading]")).some(element => element.getClientRects().length > 0);
+      waitingForContent = loading;
+      if (loading) {
+        outer.style.minHeight = `${height.current ?? inner.getBoundingClientRect().height}px`;
+      } else {
+        outer.style.removeProperty("min-height");
+        height.current = inner.getBoundingClientRect().height;
+      }
     };
     height.current = inner.getBoundingClientRect().height;
     resize.current = measure;
     const observer = new ResizeObserver(() => {
-      const next = inner.getBoundingClientRect().height;
-      if (next === height.current) return;
-      // Streaming or responsive content may change the destination mid-transition.
-      if (animation.current) measure(); else height.current = next;
+      if (waitingForContent) measure();
+      else height.current = inner.getBoundingClientRect().height;
     });
     observer.observe(inner);
-    const onKeyboard = () => { keyboard = true; finish(); };
-    const onPointer = () => { keyboard = false; };
-    const onPreference = () => { if (disabled()) finish(); };
-    const preferences = new MutationObserver(onPreference);
-    preferences.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
-    reduced.addEventListener("change", onPreference);
-    document.addEventListener("keydown", onKeyboard, true);
-    document.addEventListener("pointerdown", onPointer, true);
+    // A fallback can be replaced by content of the same height.
+    const arrivals = new MutationObserver(() => { if (waitingForContent) measure(); });
+    arrivals.observe(inner, { childList: true, subtree: true });
     return () => {
       resize.current = null;
-      observer.disconnect(); preferences.disconnect();
-      reduced.removeEventListener("change", onPreference);
-      document.removeEventListener("keydown", onKeyboard, true);
-      document.removeEventListener("pointerdown", onPointer, true);
-      finish();
+      observer.disconnect(); arrivals.disconnect();
+      outer.style.removeProperty("min-height");
     };
   }, []);
 

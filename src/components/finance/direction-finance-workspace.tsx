@@ -7,20 +7,17 @@ import { saveOrderDirections } from "@/app/(app)/projects/[projectId]/direction-
 import { useProjectWorkspaceNavigation } from "@/components/projects/project-workspace-navigation";
 import type { FinanceProjectData } from "@/data/queries/finance";
 import { projectAgreementName } from "@/lib/finance-project-view";
-import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 
-export function DirectionFinanceActions({ project, directionId, onCreate }: { project: FinanceProjectData; directionId: string; onCreate: () => void }) {
+export function DirectionFinanceActions({ project, directionId }: { project: FinanceProjectData; directionId: string }) {
   const t = useTranslations("Finance"), navigation = useProjectWorkspaceNavigation();
   const [attaching, setAttaching] = useState(false), [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const available = project.orders.filter(order => order.status !== "discarded" && !project.directionLinks.some(link => link.order_id === order.id && link.direction_id === directionId));
-  return <AnimatedDisclosure title={t("agreements.more")}>
-    <div className="flex flex-wrap gap-2 pb-2">
-      <Button type="button" size="compact" variant="outline" onClick={onCreate}><Plus aria-hidden="true" className="size-3.5"/>{t("agreements.add")}</Button>
-      {available.length ? <Button type="button" size="compact" variant="ghost" onClick={() => setAttaching(true)}><Link2 aria-hidden="true" className="size-3.5"/>{t("directionWorkspace.attach")}</Button> : null}
-    </div>
+  if (!available.length) return null;
+  return <>
+    <Button type="button" size="compact" variant="ghost" className="gap-1.5" onClick={() => setAttaching(true)}><Link2 aria-hidden="true" className="size-3.5"/>{t("directionWorkspace.attach")}</Button>
     {attaching ? <Dialog isOpen title={t("directionWorkspace.attach")} closeLabel={t("movements.close")} closeDisabled={pending} onRequestClose={() => setAttaching(false)} className="h-auto max-h-[calc(100dvh-1rem)] max-w-md">
       <div className="min-h-0 space-y-2 overflow-y-auto p-3">
         <p className="px-3 text-xs leading-5 text-[var(--ui-text-secondary)]">{t("agreements.attachHelp")}</p>
@@ -36,5 +33,5 @@ export function DirectionFinanceActions({ project, directionId, onCreate }: { pr
         {error ? <p role="alert" className="p-3 text-xs text-[var(--ui-danger-text)]">{error}</p> : null}
       </div>
     </Dialog> : null}
-  </AnimatedDisclosure>;
+  </>;
 }

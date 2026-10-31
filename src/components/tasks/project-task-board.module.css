@@ -11,3 +11,27 @@
 .variantOption[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-text); box-shadow: var(--ui-shadow-panel); }
 .variantOption:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .stageHairline, .stageProgressFill, .stageRailMarker, .stageWash, .variantOption { transition: none; } }
+
+.stageMenu { z-index: 50; width: 304px; max-width: calc(100vw - 24px); max-height: var(--radix-popover-content-available-height); overflow-y: auto; padding: 6px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-panel); background: var(--ui-surface); box-shadow: var(--ui-shadow-popover); }
+.stageMenuActions { display: grid; gap: 2px; }
+.stageMenuActions button { display: flex; width: 100%; min-height: 36px; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--ui-radius-control); color: var(--ui-text); text-align: left; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 180ms ease, color 180ms ease; }
+.stageMenuActions button:hover { background: var(--ui-surface-muted); }
+.stageMenuActions button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+.stageMenuActions button:disabled { cursor: wait; opacity: .6; }
+.stageMenuActions svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ui-text-muted); }
+.stageMenuActions p { padding: 6px 10px 2px; color: var(--ui-text-muted); font-size: 12px; }
+.stageMenuActions .stageMenuSecondary { padding-left: 18px; color: var(--ui-text-secondary); font-weight: 400; }
+.progressMethods { display: grid; min-width: 0; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ui-border-subtle); }
+.progressMethods legend { display: flex; float: left; width: 100%; align-items: center; justify-content: space-between; padding: 2px 10px 6px; font-size: 12px; font-weight: 500; color: var(--ui-text-muted); }
+.progressMethodOption { display: flex; min-height: 58px; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid transparent; border-radius: var(--ui-radius-control); cursor: pointer; transition: background-color 180ms ease, border-color 180ms ease; }
+.progressMethodOption:hover { background: var(--ui-surface-muted); }
+.progressMethodOption:has(input:checked) { border-color: color-mix(in srgb, var(--ui-info-text) 20%, transparent); background: var(--ui-info-surface); }
+.progressMethodOption:has(input:focus-visible) { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+.progressMethods[aria-disabled="true"] .progressMethodOption { cursor: wait; }
+.progressMethodIcon { width: 17px; height: 17px; flex-shrink: 0; color: var(--ui-text-muted); transition: color 180ms ease; }
+.progressMethodOption:has(input:checked) .progressMethodIcon { color: var(--ui-info-text); }
+.progressMethodName { display: block; font-size: 13px; font-weight: 500; color: var(--ui-text); }
+.progressMethodDescription { display: block; margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--ui-text-secondary); }
+.progressMethodOption input { appearance: none; width: 16px; height: 16px; flex-shrink: 0; border: 1px solid var(--ui-border-strong); border-radius: 50%; background: var(--ui-surface); outline: none; transition: border-color 180ms ease, border-width 180ms ease; }
+.progressMethodOption input:checked { border: 5px solid var(--ui-info-text); }
+@media (prefers-reduced-motion: reduce) { .stageMenuActions button, .progressMethodOption, .progressMethodIcon, .progressMethodOption input { transition: none; } }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Database } from "@/types/database.types";
+import { templateStageProgressMethodsSchema } from "@/lib/project-templates";
 import type { TaskStage } from "@/lib/task-stages";
 
 export const productivityRoleSchema = z.enum(["initial", "visualization", "final", "none"]);
@@ -17,6 +18,7 @@ export const directionPresetInputSchema = z.object({
   recommendedMin: z.number().finite().positive().nullable(),
   recommendedMax: z.number().finite().positive().nullable(),
   templateId: z.uuid().nullable(),
+  stageProgressMethods: templateStageProgressMethodsSchema.optional(),
   version: z.number().int().nonnegative(),
 }).refine(value => (value.recommendedMin === null && value.recommendedMax === null)
   || (value.recommendedMin !== null && value.recommendedMax !== null && value.recommendedMin < value.recommendedMax));

@@ -327,7 +327,6 @@ test("direction workspaces preserve context, money and navigation on notebook an
 
   await navigation.getByRole("link", { name: en.ProjectWorkspace.finance, exact: true }).click();
   await expect(page.locator(`[data-direction-finance="${direction.id}"]`)).toBeVisible();
-  await page.getByRole("button", { name: en.Finance.agreements.more, exact: true }).click();
   await page.getByRole("button", { name: finance.attach, exact: true }).click();
   await page.getByRole("dialog", { name: finance.attach, exact: true }).getByRole("button", { name: en.Finance.orders.defaultName }).click();
   await expect(page.locator("[data-order-group]")).toHaveCount(1);
@@ -347,8 +346,7 @@ test("direction workspaces preserve context, money and navigation on notebook an
   await expect(page.locator(`[data-direction-finance="${interior}"]`)).toBeVisible();
   await switchDirection(direction.id);
   await expect(page.locator(`[data-direction-finance="${direction.id}"]`)).toBeVisible();
-  await page.getByRole("button", { name: en.Finance.agreements.more, exact: true }).click();
-  await page.getByRole("button", { name: en.Finance.agreements.add, exact: true }).click();
+  await page.getByRole("button", { name: en.Finance.orders.add, exact: true }).click();
   const financeEditor = page.getByRole("dialog", { name: en.Finance.agreements.create, exact: true });
   await financeEditor.getByRole("textbox", { name: en.Finance.agreements.optionalName, exact: true }).fill("Facade package");
   await financeEditor.getByRole("button", { name: en.Finance.builder.fixedShort, exact: true }).click();

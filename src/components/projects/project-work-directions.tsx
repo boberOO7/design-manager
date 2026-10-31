@@ -85,9 +85,9 @@ export function ProjectWorkDirections({ projectId, configuration, tasks, selecte
   }
   function taskCounts(summary: ReturnType<typeof calculateProjectSummary>, paused: boolean) {
     return <div className={styles.taskCounts} data-direction-task-counts>
-      <span>{projects("openCount", { count: summary.progress.openTaskCount })}</span>
-      <span>{projects("completedCount", { count: summary.progress.completedTaskCount })}</span>
-      {!paused ? <span data-overdue={summary.progress.overdueTaskCount > 0}>{projects("overdueCount", { count: summary.progress.overdueTaskCount })}</span> : null}
+      <span data-count="open">{projects("openCount", { count: summary.progress.openTaskCount })}</span>
+      <span data-count="completed">{projects("completedCount", { count: summary.progress.completedTaskCount })}</span>
+      {!paused ? <span data-count="overdue" data-overdue={summary.progress.overdueTaskCount > 0}>{projects("overdueCount", { count: summary.progress.overdueTaskCount })}</span> : null}
     </div>;
   }
   function track(label: string, percent: number) {

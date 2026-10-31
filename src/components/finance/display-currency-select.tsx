@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
 import { useTranslations } from "next-intl";
 import { Select, SelectItem } from "@/components/ui/select";
 import { financeDisplayCurrencySchema, type FinanceDisplayCurrency } from "@/lib/finance-display-currency";

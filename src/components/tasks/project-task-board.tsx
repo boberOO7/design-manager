@@ -12,7 +12,8 @@ import {
 } from "@dnd-kit/react";
 import * as Popover from "@radix-ui/react-popover";
 import styles from "./project-task-board.module.css";
-import { ArrowLeft, CalendarClock, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, Info, LoaderCircle, Plus, ShieldCheck, Signal, UserPlus, X } from "lucide-react";
+import { directionWorkspaceHeaderClass, directionWorkspaceHeadingClass } from "@/components/projects/direction-workspace-layout";
+import { ArrowLeft, CalendarClock, Clock3, Columns3, Equal, Layers, ListTodo, MessageCircle, MoreHorizontal, Pause, Play, Ruler, Scale, Check, ChevronDown, Ellipsis, FolderInput, GripVertical, Info, LoaderCircle, Plus, ShieldCheck, Signal, UserPlus, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AddTaskDialog, type AddTaskDialogHandle } from "@/components/tasks/add-task-dialog";
@@ -711,10 +712,13 @@ export function ProjectTaskBoard({
   const isWorkingStage = (stage: string) => isProjectProgressStage(stage, stages);
   const locale = useLocale();
   const configureColumns = locale === "uk" ? "Налаштувати стовпці" : "Configure columns";
-  const progressMethodLabel = locale === "uk" ? "Метод прогресу" : "Progress method";
-  const progressMethodOptions: Array<{ value: StageProgressMethod; label: string }> = locale === "uk"
-    ? [{ value: "equal", label: "Рівний" }, { value: "area", label: "За площею" }, { value: "weighted", label: "Зважений" }]
-    : [{ value: "equal", label: "Equal" }, { value: "area", label: "Area" }, { value: "weighted", label: "Weighted" }];
+  const progressMethodsT = useTranslations("Tasks.stageProgressMethods");
+  const progressMethodLabel = progressMethodsT("title");
+  const progressMethodOptions = [
+    { value: "equal", icon: Equal },
+    { value: "area", icon: Ruler },
+    { value: "weighted", icon: Scale },
+  ] satisfies Array<{ value: StageProgressMethod; icon: typeof Equal }>;
   const boardActions = locale === "uk" ? "Дії дошки" : "Board actions";
   const compactTaskCards = locale === "uk" ? "Компактні картки" : "Compact task cards";
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -1374,9 +1378,9 @@ export function ProjectTaskBoard({
 
   return (
     <section aria-labelledby="project-board-heading">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+      <div className={cn("mb-4", visibleStages ? directionWorkspaceHeaderClass : "flex flex-wrap items-center justify-between gap-4")}>
         <div>
-          <h2 id="project-board-heading" className="font-semibold text-[var(--ui-text)]">{visibleStages ? t("directionBoard") : t("board")}</h2>
+          <h2 id="project-board-heading" className={visibleStages ? directionWorkspaceHeadingClass : "font-semibold text-[var(--ui-text)]"}>{visibleStages ? t("directionBoard") : t("board")}</h2>
           {!visibleStages ? <p className="text-sm text-[var(--ui-text-muted)]">{t("boardInstructions")}</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1448,7 +1452,32 @@ export function ProjectTaskBoard({
                   {canCreateInStage ? <Tooltip content={t("addTask")}><button type="button" onClick={() => addTaskDialogRef.current?.open(stage)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={t("addTask")}>
                     <Plus className="size-4" aria-hidden="true" />
                   </button></Tooltip> : null}
-                  {canManageTasks && !isStageReadOnly ? <Popover.Root><Tooltip content={configureColumns}><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger></Tooltip><Popover.Portal><Popover.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" disabled={pendingTaskIds.size > 0} onClick={() => setEditingStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] disabled:opacity-60">{stageEditorT("title")}</button>{canApplyTemplate ? <button type="button" onClick={() => setTemplateStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{projectTemplatesT("applyStageAction")}</button> : null}{localSchedulePause[stage] ? <><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("schedulePausedSince", { date: formatDateOnly(localSchedulePause[stage].startedOn, locale) })}</p><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, false)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("resumeSchedule")}</button></> : hasStageSchedule ? <><button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t("pauseSchedule")}</button><p className="px-3 py-1 text-xs text-[var(--ui-text-muted)]">{t("pauseReasonOptional")}</p>{(["waiting_for_client", "internal_pause", "other"] as const).map((reason) => <button key={reason} type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true, reason)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] disabled:opacity-60">{t(reason === "waiting_for_client" ? "schedulePauseReasonClient" : reason === "internal_pause" ? "schedulePauseReasonInternal" : "schedulePauseReasonOther")}</button>)}</> : null}<button type="button" onClick={() => setSettingsStage(stage)} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{configureColumns}</button>{isWorkingStage(stage) ? <div className="mt-1 border-t border-[var(--ui-border-subtle)] pt-1"><p className="px-3 py-1.5 text-xs font-medium text-[var(--ui-text-muted)]">{progressMethodLabel}</p>{progressMethodOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={stageProgressMethods[stage] === option.value} disabled={savingProgressMethodStage === stage} onClick={() => void updateStageProgressMethod(stage, option.value)} className={cn("flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]", stageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)]", savingProgressMethodStage === stage && "cursor-wait opacity-60")}><Check className={cn("size-4 shrink-0", stageProgressMethods[stage] === option.value ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />{option.label}</button>)}</div> : null}</Popover.Content></Popover.Portal></Popover.Root> : null}
+                  {canManageTasks && !isStageReadOnly ? <Popover.Root>
+                    <Tooltip content={configureColumns}><Popover.Trigger asChild><button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]" aria-label={configureColumns}><Ellipsis className="size-4" aria-hidden="true" /></button></Popover.Trigger></Tooltip>
+                    <Popover.Portal><Popover.Content align="end" sideOffset={8} collisionPadding={12} className={styles.stageMenu} aria-label={stageName(stage)}>
+                      <div className={styles.stageMenuActions}>
+                        <button type="button" disabled={pendingTaskIds.size > 0} onClick={() => setEditingStage(stage)}><ListTodo aria-hidden="true"/>{stageEditorT("title")}</button>
+                        {canApplyTemplate ? <button type="button" onClick={() => setTemplateStage(stage)}><Layers aria-hidden="true"/>{projectTemplatesT("applyStageAction")}</button> : null}
+                        {localSchedulePause[stage] ? <>
+                          <p>{t("schedulePausedSince", { date: formatDateOnly(localSchedulePause[stage].startedOn, locale) })}</p>
+                          <button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, false)}><Play aria-hidden="true"/>{t("resumeSchedule")}</button>
+                        </> : hasStageSchedule ? <>
+                          <button type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true)}><Pause aria-hidden="true"/>{t("pauseSchedule")}</button>
+                          <p>{t("pauseReasonOptional")}</p>
+                          {([{ reason: "waiting_for_client", icon: MessageCircle, label: "schedulePauseReasonClient" }, { reason: "internal_pause", icon: Clock3, label: "schedulePauseReasonInternal" }, { reason: "other", icon: MoreHorizontal, label: "schedulePauseReasonOther" }] as const).map(({ reason, icon: Icon, label }) => <button key={reason} type="button" disabled={savingScheduleStage === stage} onClick={() => void setStageSchedulePaused(stage, true, reason)} className={styles.stageMenuSecondary}><Icon aria-hidden="true"/>{t(label)}</button>)}
+                        </> : null}
+                        <button type="button" onClick={() => setSettingsStage(stage)}><Columns3 aria-hidden="true"/>{configureColumns}</button>
+                      </div>
+                      {isWorkingStage(stage) ? <fieldset className={styles.progressMethods} aria-disabled={savingProgressMethodStage !== null} aria-busy={savingProgressMethodStage === stage}>
+                        <legend>{progressMethodLabel}{savingProgressMethodStage === stage ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true"/> : null}</legend>
+                        {progressMethodOptions.map(({ value, icon: Icon }) => <label key={value} className={styles.progressMethodOption}>
+                          <Icon className={styles.progressMethodIcon} aria-hidden="true"/>
+                          <span className="min-w-0 flex-1"><span className={styles.progressMethodName}>{progressMethodsT(`${value}.label`)}</span><span className={styles.progressMethodDescription} id={`progress-${stage}-${value}-description`}>{progressMethodsT(`${value}.description`)}</span></span>
+                          <input type="radio" name={`progress-method-${stage}`} value={value} aria-label={progressMethodsT(`${value}.label`)} aria-describedby={`progress-${stage}-${value}-description`} checked={(stageProgressMethods[stage] ?? "equal") === value} onChange={() => void updateStageProgressMethod(stage, value)}/>
+                        </label>)}
+                      </fieldset> : null}
+                    </Popover.Content></Popover.Portal>
+                  </Popover.Root> : null}
                   <button
                     type="button"
                     aria-controls={`project-stage-${stage}`}

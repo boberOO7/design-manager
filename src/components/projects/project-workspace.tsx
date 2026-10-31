@@ -1,5 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { ProjectFinanceTabs } from "@/components/finance/project-finance-tabs";
+import { projectFinanceTab, type ProjectFinanceTab } from "@/lib/finance-project-view";
 import { Suspense, createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ProjectContextBand, type ProjectContextProject } from "@/components/projects/project-context-band";
 import { ProjectTaskBoard } from "@/components/tasks/project-task-board";
@@ -74,23 +77,30 @@ function useWorkspace() {
   return state;
 }
 
-export function ProjectWorkspace(props: { context: ReactNode; board: ReactNode; overview?: ReactNode; contextFallback: ReactNode }) {
+export function ProjectWorkspace(props: { context: ReactNode; board: ReactNode; overview?: ReactNode; contextFallback: ReactNode; configuration?: ProjectStageConfiguration; financeNavigation?: { label: string; tabs: Record<ProjectFinanceTab, string> } }) {
   // Both streams share the existing optimistic summary/stage state, without remounting the board.
   const state = useWorkspaceState();
   const navigation = useProjectWorkspaceNavigation();
-  const contentFallback = navigation?.view === "board" ? <ProjectBoardBlueprint /> : <ProjectSectionBlueprint view={navigation?.view === "overview" ? "details" : navigation?.view ?? "details"}/>;
+  const search = useSearchParams();
+  const financeTab = projectFinanceTab(search.get("financeTab") ?? (search.has("profitFrom") || search.has("profitTo") ? "result" : undefined), search.get("stream"));
+  // Reuse only a still-valid finance surface in this direction. Its workspace
+  // keeps the summary and replaces the old body with the requested tab's loader.
+  const financeFallback = navigation?.view === "finance" ? Object.entries(navigation.surfaces).reverse().find(([key]) => key.startsWith(`finance:${navigation.directionId ?? "all"}:`))?.[1] : undefined;
+  const boardFallback = <ProjectBoardBlueprint configuration={props.configuration} directionId={navigation?.directionId}/>;
+  const financeNavigation = navigation && props.financeNavigation ? <ProjectFinanceTabs projectId={navigation.projectId} directionId={navigation.directionId} tab={financeTab} stream={search.get("stream") ?? "design"} labels={props.financeNavigation}/> : undefined;
+  const contentFallback = navigation?.view === "board" ? boardFallback : <ProjectSectionBlueprint financeNavigation={financeNavigation} stream={search.get("stream") ?? "design"} financeTab={financeTab} direction={Boolean(navigation?.directionId)} view={navigation?.view === "overview" ? "details" : navigation?.view ?? "details"}/>;
   const { setNavigating } = state;
   useEffect(() => { setNavigating(false); }, [navigation?.view, navigation?.directionId, setNavigating]);
   return <ProjectNavigationPendingContext.Provider value={state.setLinkPending}><WorkspaceContext.Provider value={state}>
     <Suspense fallback={props.contextFallback}>{props.context}</Suspense>
-    <div inert={state.navigating} aria-busy={state.navigating} className={styles.content}>
-      <ProjectWorkspaceMotion motionKey={`${navigation?.view}:${navigation?.directionId}`}>
+    <div aria-busy={state.navigating} className={styles.content}>
+      <ProjectWorkspaceMotion motionKey={`${navigation?.activeSurface}:${navigation?.directionId}`}>
       {navigation ? <>
-        {"board" in navigation.surfaces ? <div hidden={navigation.activeSurface !== "board"}><Suspense fallback={<ProjectBoardBlueprint />}>{navigation.surfaces.board}</Suspense></div> : null}
+        {"board" in navigation.surfaces ? <div hidden={navigation.activeSurface !== "board"}><Suspense fallback={boardFallback}>{navigation.surfaces.board}</Suspense></div> : null}
         <div key={navigation.activeSurface === "board" ? "other" : navigation.activeSurface} hidden={navigation.activeSurface === "board" && "board" in navigation.surfaces}>
-          <Suspense fallback={contentFallback}>{!(navigation.activeSurface in navigation.surfaces) ? contentFallback : navigation.activeSurface !== "board" ? navigation.surfaces[navigation.activeSurface] : null}</Suspense>
+          <Suspense fallback={contentFallback}>{!(navigation.activeSurface in navigation.surfaces) ? financeFallback ?? contentFallback : navigation.activeSurface !== "board" ? navigation.surfaces[navigation.activeSurface] : null}</Suspense>
         </div>
-      </> : <Suspense fallback={<ProjectBoardBlueprint />}>{props.board}</Suspense>}
+      </> : <Suspense fallback={boardFallback}>{props.board}</Suspense>}
       </ProjectWorkspaceMotion>
     </div>
   </WorkspaceContext.Provider></ProjectNavigationPendingContext.Provider>;

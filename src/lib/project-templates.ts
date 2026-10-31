@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ProjectTypeKey } from "@/lib/validation/project";
 
 export const PROJECT_TEMPLATE_STAGES = ["stage_1", "stage_2", "stage_3", "stage_4"] as const;
@@ -25,6 +26,13 @@ export type ProjectTemplateTask = {
   dependsOnIds: string[];
 };
 
+export const templateStageProgressMethodsSchema = z.object({
+  stage_1: z.enum(["equal", "area", "weighted"]).optional(),
+  stage_2: z.enum(["equal", "area", "weighted"]).optional(),
+  stage_3: z.enum(["equal", "area", "weighted"]).optional(),
+}).strict();
+export type TemplateStageProgressMethods = z.infer<typeof templateStageProgressMethodsSchema>;
+
 export type ProjectTemplate = {
   id: string;
   name: string;
@@ -32,6 +40,7 @@ export type ProjectTemplate = {
   isActive: boolean;
   isDefault: boolean;
   tasks: ProjectTemplateTask[];
+  stageProgressMethods?: TemplateStageProgressMethods;
 };
 
 export function createProjectTemplateCopy(template: ProjectTemplate, name: string): Omit<ProjectTemplate, "id"> & { id: null } {

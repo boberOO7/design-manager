@@ -23,6 +23,12 @@ never rewrite earned credit.
   stages means zero overall progress.
 - Each work stage independently selects Equal, Area, or Weighted task
   aggregation through `project_task_stage_columns`.
+- New standard Interior stages copy Equal/Area/Equal from the studio direction
+  preset. A selected task template supplies its own `stage_progress_methods`,
+  with Equal for missing entries; without a task template, the direction preset
+  supplies them. Arbitrary stages default to Equal. These are creation snapshots:
+  template/preset edits and applying more template tasks never replace existing
+  stage methods or administrator overrides. Additional-stage semantics stay unchanged.
 - Cancelled tasks are excluded. Empty/zero-weight aggregations resolve to zero.
 - Precision is retained in domain calculations; UI presentation rounds the final
   values.

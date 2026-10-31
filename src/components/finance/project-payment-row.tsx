@@ -1,4 +1,5 @@
 "use client";
+import { projectPaymentGridClass } from "./project-finance-layout";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -20,7 +21,7 @@ export function ProjectPaymentRow({ id, title, date, amount, status, statusClass
   useEffect(() => { setExpanded(open); }, [open]);
   const actionClass = "flex min-h-11 w-full items-center rounded-[var(--ui-radius-control)] px-3 text-left text-sm text-[var(--ui-text-secondary)] hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]";
   return <article id={`expected-${id}`} data-project-payment data-selected={open || undefined} tabIndex={-1} className={`@container min-w-0 rounded-[var(--ui-radius-control)] border bg-[var(--ui-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${open ? "border-[var(--ui-border-strong)] ring-1 ring-[var(--ui-border-strong)]" : "border-[var(--ui-border-subtle)]"}`}>
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 p-3 @min-[64rem]:grid-cols-[minmax(9rem,1fr)_10.5rem_minmax(0,1fr)_9.25rem_11rem_9.25rem] @min-[64rem]:px-4">
+    <div className={projectPaymentGridClass}>
       <div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--ui-text)]">{title}</h3><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{date}</p></div>
       <div className="col-span-2 col-start-1 row-start-2 grid min-w-0 grid-cols-[10.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 @min-[64rem]:contents">
         <span className={`inline-flex items-center gap-1 justify-self-start rounded-md px-2 py-0.5 text-xs font-medium leading-5 @min-[64rem]:col-start-2 @min-[64rem]:row-start-1 ${statusClass}`}>{completed === "paid" ? <Check aria-hidden="true" className="size-3"/> : completed === "closed" ? <CheckCheck aria-hidden="true" className="size-3"/> : null}{status}</span>

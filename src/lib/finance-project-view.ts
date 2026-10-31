@@ -2,6 +2,7 @@ import { financeAmountText, financeAmountUnits, formatFinanceAmount, type Financ
 import { convertFinanceDisplayAmount } from "./finance-display-report";
 import type { Database } from "@/types/database.types";
 import type { FinanceProjectData } from "@/data/queries/finance";
+import { projectStreams } from "./finance-projects";
 
 export function nextProjectPayment<T extends Pick<Database["public"]["Views"]["finance_project_expected_balances"]["Row"], "order_id" | "expected_payment_date" | "due_date">>(items: readonly T[], confirmedOrderIds: readonly string[]): T | null {
   const confirmed = new Set(confirmedOrderIds);
@@ -74,6 +75,12 @@ export type ProjectProfitPeriod = "all" | "month" | "year" | "custom";
 
 export function projectFinanceTab(tab: unknown, stream: unknown): ProjectFinanceTab {
   return tab === "payments" || tab === "expenses" || tab === "result" ? tab : stream === "expenses" ? "expenses" : "payments";
+}
+
+export function resolveProjectFinanceView(query: Partial<Record<"financeTab" | "stream" | "profitFrom" | "profitTo", string | string[]>>, directionId?: string | null) {
+  const tab = projectFinanceTab(query.financeTab ?? (query.profitFrom || query.profitTo ? "result" : undefined), query.stream);
+  const stream = directionId ? "design" : tab === "expenses" ? "expenses" : projectStreams.find(value => value !== "expenses" && value === query.stream) ?? "design";
+  return { tab, stream };
 }
 
 export function projectProfitPeriod(period: unknown, from: unknown, to: unknown): ProjectProfitPeriod {

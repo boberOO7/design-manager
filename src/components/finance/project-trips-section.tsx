@@ -10,10 +10,11 @@ export async function ProjectTripsSection({ projectId, currency, display }: { pr
   const [trips, t, locale] = await Promise.all([getFinanceTrips(projectId), getTranslations("Finance.trips"), getLocale()]);
   if (!trips) return null;
   const total = sumTripMoney(trips.map(v => v.actual_amount ?? "0"), currency.minor_units);
-  return <section className="mt-3 inline-flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-sm">
-    <h2 className="font-semibold">{t("title")}</h2>
-    <span className="text-xs text-[var(--ui-text-muted)]">{t("projectCount", { count: trips.length })}</span>
-    <span className="text-xs text-[var(--ui-text-muted)]">{t("projectTotal")} <strong className="ui-numeric ml-1 font-semibold text-[var(--ui-text)]">{formatProjectFinanceMoney(total, currency, display, locale)}</strong>{display && currency.code !== display.currency.code ? <span className="ml-2">{formatFinanceAmount(total, currency, locale)}</span> : null}</span>
-    <Button asChild size="sm" variant="outline"><Link href={`/finance/trips?project=${projectId}`}>{t("openTrips")}</Link></Button>
+  return <section className="flex w-full flex-wrap items-center justify-between gap-x-8 gap-y-4 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] px-4 py-4 text-sm sm:px-5">
+    <div><h2 className="font-semibold">{t("title")}</h2><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t("projectCount", { count: trips.length })}</p></div>
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div><p className="text-xs text-[var(--ui-text-secondary)]">{t("projectTotal")}</p><p className="ui-numeric mt-1 font-semibold">{formatProjectFinanceMoney(total, currency, display, locale)}{display && currency.code !== display.currency.code ? <span className="ml-2 text-xs font-normal text-[var(--ui-text-muted)]">{formatFinanceAmount(total, currency, locale)}</span> : null}</p></div>
+      <Button asChild size="sm" variant="outline"><Link href={`/finance/trips?project=${projectId}`}>{t("openTrips")}</Link></Button>
+    </div>
   </section>;
 }

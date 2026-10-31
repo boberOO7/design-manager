@@ -1,10 +1,17 @@
 import { PassThrough } from "node:stream";
 import { renderToPipeableStream } from "react-dom/server";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { use, type ComponentProps } from "react";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS } from "@/lib/project-progress";
 import { DEFAULT_STAGE_COLUMN_STATUSES } from "@/lib/tasks";
 import { DEFAULT_PROJECT_STAGES } from "@/lib/task-stages";
+
+const mocks = vi.hoisted(() => ({ navigation: vi.fn() }));
+vi.mock("./project-workspace-navigation", async importOriginal => ({
+  ...await importOriginal<typeof import("./project-workspace-navigation")>(),
+  useProjectWorkspaceNavigation: mocks.navigation,
+}));
+beforeEach(() => { mocks.navigation.mockReturnValue(null); });
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
@@ -26,7 +33,7 @@ const core: ProjectWorkspaceCore & { tasks: ProjectWorkspaceBoardData["tasks"] }
 } };
 const project = { id: "project", name: "Project", project_code: null, project_type: null, project_type_custom: null, city: null, city_geonames_id: null, site_address: null, country_code: "UA", client_name: null, description: null, due_date: null, priority: "normal", start_date: null, total_area_m2: 100 };
 const workspaceProps: Omit<ComponentProps<typeof ProjectWorkspaceContext>, "data"> = { projectId: "project", canCreate: true, canManage: true, canManageTasks: true, currentUserId: "admin", isArchived: false, isProjectReadOnly: false, archiveAction: async () => {}, restoreAction: async () => {}, updateAction: async () => ({}), calendarTimeSummary: <span>0</span> };
-const props: ComponentProps<typeof ProjectWorkspace> = { contextFallback: <ProjectContextBlueprint />, context: <ProjectWorkspaceContext {...workspaceProps} data={{ ...core, project }} />, board: <ProjectWorkspaceBoard {...workspaceProps} data={{ ...core, members: [], templates: [], projectTemplates: [] }} /> };
+const props: ComponentProps<typeof ProjectWorkspace> = { financeNavigation: { label: "Finance navigation", tabs: { payments: "Payments", expenses: "Expenses", result: "Result" } }, contextFallback: <ProjectContextBlueprint />, context: <ProjectWorkspaceContext {...workspaceProps} data={{ ...core, project }} />, board: <ProjectWorkspaceBoard {...workspaceProps} data={{ ...core, members: [], templates: [], projectTemplates: [] }} /> };
 function PendingContext({ pending }: { pending: Promise<ProjectWorkspaceCore & { project: typeof project }> }) {
   return <ProjectWorkspaceContext {...workspaceProps} data={use(pending)} />;
 }
@@ -62,6 +69,7 @@ it("renders the real shell immediately and streams context while the board remai
   try {
     await waitFor(() => result.html().includes("data-project-loading"));
     expect(result.html()).toContain('data-project-loading="context"');
+    expect(result.html()).toContain('href="/projects"');
     expect(result.html()).toContain('data-project-loading="board"');
     expect(result.html()).not.toContain('data-instaload-ready="project-board"');
     releaseContext({ ...core, project });
@@ -83,4 +91,60 @@ it("streams already-ready content once without an extra reveal scope", async () 
     expect(result.html().match(/data-instaload-ready="project-board"/g)).toHaveLength(1);
     expect(result.errors).toEqual([]);
   } finally { result.close(); }
+});
+
+it("uses the same finance placeholder before the response and while its content streams", async () => {
+  let release!: (content: string) => void;
+  const pending = new Promise<string>(resolve => { release = resolve; });
+  function Finance() { return <section>{use(pending)}</section>; }
+  const selection = { projectId: "project", view: "finance", directionId: null, activeSurface: "finance:all" };
+  mocks.navigation.mockReturnValue({ ...selection, surfaces: {} });
+  const missing = await rendered(props);
+  mocks.navigation.mockReturnValue({ ...selection, surfaces: { "finance:all": <Finance /> } });
+  const streaming = await rendered(props);
+  try {
+    for (const result of [missing, streaming]) {
+      // React may also serialize a hidden staging copy after the visible shell.
+      expect(result.html().split('<div hidden')[0].match(/data-project-loading="finance"/g)).toHaveLength(1);
+      expect(result.html()).not.toContain('data-project-loading="board"');
+      // The request and the streamed fallback both retain usable navigation.
+      expect(result.html()).toContain('aria-label="Finance navigation"');
+      expect(result.html()).toContain('href="/projects/project?view=finance&amp;workDirection=all&amp;financeTab=expenses"');
+      expect(result.html()).not.toContain('inert=""');
+      expect(result.html()).not.toContain('<div aria-hidden="true" class="space-y-4">');
+    }
+    const placeholder = (html: string) => {
+      const start = html.indexOf('<div data-project-loading="finance"');
+      expect(start).toBeGreaterThan(-1);
+      return html.slice(start, html.indexOf('<!--/$-->', start));
+    };
+    expect(placeholder(streaming.html())).toBe(placeholder(missing.html()));
+    release("Finance ready");
+    await waitFor(() => streaming.html().includes("Finance ready"));
+    expect(streaming.errors).toEqual([]);
+  } finally { missing.close(); streaming.close(); }
+});
+
+it("reuses a valid finance surface only within the selected direction while the next tab loads", async () => {
+  mocks.navigation.mockReturnValue({ view: "finance", directionId: "interior", activeSurface: "finance:interior:financeTab=expenses", surfaces: {
+    "finance:interior:financeTab=payments": <section>Interior finance shell</section>,
+    "finance:facade:financeTab=payments": <section>Facade finance shell</section>,
+  } });
+  const result = await rendered(props);
+  try {
+    expect(result.html()).toContain("Interior finance shell");
+    expect(result.html()).not.toContain("Facade finance shell");
+    expect(result.html()).not.toContain('data-project-loading="finance"');
+  } finally { result.close(); }
+});
+
+it("uses a fresh placeholder when only another direction is cached or finance has been invalidated", async () => {
+  for (const surfaces of [{ "finance:facade:financeTab=payments": <section>Facade finance shell</section> }, {}]) {
+    mocks.navigation.mockReturnValue({ view: "finance", directionId: "interior", activeSurface: "finance:interior:financeTab=payments", surfaces });
+    const result = await rendered(props);
+    try {
+      expect(result.html()).not.toContain("Facade finance shell");
+      expect(result.html()).toContain('data-project-loading="finance"');
+    } finally { result.close(); }
+  }
 });

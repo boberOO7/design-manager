@@ -27,9 +27,9 @@ import { useSearchParams } from "next/navigation";
 
 const ProposalEditor = dynamic(() => import("./proposal/editor"), { ssr: false });
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
-type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; initiallyAdding?: boolean; initialEditor?: "pricing" | "proposal"; scopeDirectionId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
+type Props = { project: FinanceProjectData; currencies: Foundation["currencies"]; reportingCurrency: string; initialOrderId?: string; initiallyAdding?: boolean; initialEditor?: "pricing" | "proposal"; historyOnly?: boolean; scopeDirectionId?: string; display?: ProjectFinanceDisplay; onClose: () => void };
 
-export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, initiallyAdding = false, initialEditor, scopeDirectionId, display, onClose }: Props) {
+export function ProjectOrdersManager({ project, currencies, reportingCurrency, initialOrderId, initiallyAdding = false, initialEditor, historyOnly = false, scopeDirectionId, display, onClose }: Props) {
   const t = useTranslations("Finance"), locale = useLocale();
   const agreementName = (name: string) => projectAgreementName(name, t("orders.defaultName"));
   const query = useSearchParams();
@@ -40,7 +40,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
   const nameButton = useRef<HTMLButtonElement>(null), nameForm = useRef<HTMLFormElement>(null);
   const renameInFlight = useRef(false), restoreNameFocus = useRef(false);
   const nameErrorId = useId();
-  const visibleOrders = scopeDirectionId ? project.orders.filter(order => project.directionLinks.some(link => link.order_id === order.id && link.direction_id === scopeDirectionId)) : project.orders;
+  const scopedOrders = scopeDirectionId ? project.orders.filter(order => project.directionLinks.some(link => link.order_id === order.id && link.direction_id === scopeDirectionId)) : project.orders;
+  const visibleOrders = historyOnly ? scopedOrders.filter(order => order.status !== "confirmed") : scopedOrders;
   const order = project.orders.find(item => item.id === selectedId);
   const term = project.terms.find(item => item.order_id === order?.id && item.stream === "design");
   const draft = order ? parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) : null;
@@ -116,9 +117,9 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
   }
 
   return <>
-    <Dialog isOpen={editor === null} onRequestClose={closeManager} closeDisabled={pending} title={order ? undefined : t("orders.title")} ariaLabel={order ? agreementName(order.name) : undefined} hideHeader={Boolean(order)} closeLabel={t("movements.close")} className={`h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem] ${order ? "" : "[&>header]:items-center [&>header]:gap-2 [&>header]:px-4 [&>header]:py-2"}`} headerActions={!order && !adding ? <Button variant="ghost" size="sm" onClick={() => { setAdding(true); setEditor("pricing"); }} className="min-h-11 gap-1 px-1 text-xs sm:px-2 sm:text-sm"><Plus aria-hidden="true" className="size-4"/>{t("orders.add")}</Button> : undefined}>
+    <Dialog isOpen={editor === null} onRequestClose={closeManager} closeDisabled={pending} title={order ? undefined : t(historyOnly ? "agreements.draftsArchive" : "orders.title")} ariaLabel={order ? agreementName(order.name) : undefined} hideHeader={Boolean(order)} closeLabel={t("movements.close")} className={`h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem] ${order ? "" : "[&>header]:items-center [&>header]:gap-2 [&>header]:px-4 [&>header]:py-2"}`} headerActions={!order && !adding && !historyOnly ? <Button variant="ghost" size="sm" onClick={() => { setAdding(true); setEditor("pricing"); }} className="min-h-11 gap-1 px-1 text-xs sm:px-2 sm:text-sm"><Plus aria-hidden="true" className="size-4"/>{t("orders.add")}</Button> : undefined}>
       {order ? <header className="flex shrink-0 items-start gap-1 px-3 pb-3 pt-3 sm:px-4">
-        <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t("orders.back")} disabled={pending} onClick={() => { setRenaming(false); setNameError(""); setSelectedId(""); }}><ArrowLeft aria-hidden="true" className="size-4"/></Button>
+        <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t(historyOnly ? "agreements.draftsArchive" : "orders.back")} disabled={pending} onClick={() => { setRenaming(false); setNameError(""); setSelectedId(""); }}><ArrowLeft aria-hidden="true" className="size-4"/></Button>
         <div className="min-w-0 flex-1">
           {renaming ? <FinanceActionForm refreshWorkspaceOnSave key={order.id} action={saveFinanceProjectOrder} label={t("orders.rename")} hideActions showMessage={false} formRef={nameForm} className="space-y-1" fieldsetClassName="min-w-0" onPending={value => { renameInFlight.current = value; setPending(value); }} onResult={result => { setNameError(result.status === "error" ? result.message ?? t("orders.errors.save") : ""); }} onSaved={() => setRenaming(false)}>
             {orderFields}<input type="hidden" name="intent" value="rename"/>
@@ -181,8 +182,8 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
               <p>{formatDateOnly(item.created_at.slice(0,10),locale)} · {item.reason}</p></li>;
           })}</ul></AnimatedDisclosure> : null}
         </> : <>
-          {visibleOrders.some(item => item.status !== "discarded") ? <ul className="divide-y divide-[var(--ui-border-subtle)]">{visibleOrders.filter(item => item.status !== "discarded").map(renderOrder)}</ul> : <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.empty")}</p>}
-          {visibleOrders.some(item => item.status === "discarded") ? <AnimatedDisclosure title={t("orders.history")}><ul>{visibleOrders.filter(item => item.status === "discarded").map(renderOrder)}</ul></AnimatedDisclosure> : null}
+          {visibleOrders.some(item => item.status !== "discarded") ? <ul className="divide-y divide-[var(--ui-border-subtle)]">{visibleOrders.filter(item => item.status !== "discarded").map(renderOrder)}</ul> : !visibleOrders.length ? <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.empty")}</p> : null}
+          {visibleOrders.some(item => item.status === "discarded") ? <AnimatedDisclosure title={t("orders.history")} defaultOpen={historyOnly}><ul>{visibleOrders.filter(item => item.status === "discarded").map(renderOrder)}</ul></AnimatedDisclosure> : null}
         </>}
       </div>
     </Dialog>

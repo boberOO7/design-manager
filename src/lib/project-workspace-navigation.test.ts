@@ -31,9 +31,32 @@ it("keeps finance scopes and data filters separate while reusing board task link
   const base = projectWorkspaceSurfaceKey(finance, {});
   expect(projectWorkspaceSurfaceKey({ ...finance, directionId: "facade" }, {})).not.toBe(base);
   expect(projectWorkspaceSurfaceKey({ ...finance, directionId: null }, {})).not.toBe(base);
-  for (const key of ["financeTab", "stream", "page", "credits", "filter", "profitPeriod", "profitFrom", "profitTo", "item"]) {
+  expect(projectWorkspaceSurfaceKey(finance, { financeTab: "expenses" })).not.toBe(base);
+  // A direction always uses design; invalid tabs/streams resolve as the server does.
+  expect(projectWorkspaceSurfaceKey(finance, { stream: "supervision" })).toBe(base);
+  for (const key of ["page", "credits", "filter", "profitPeriod", "profitFrom", "profitTo", "item"]) {
     expect(projectWorkspaceSurfaceKey(finance, { [key]: "different" })).not.toBe(base);
   }
   expect(projectWorkspaceSurfaceKey({ view: "board", directionId: "interior" }, { task: "task", priority: "high" })).toBe("board");
   expect(projectWorkspaceSurfaceKey({ view: "feedback", directionId: null }, { feedbackPage: "2" })).toBe("feedback:2");
+});
+
+it("reuses the first finance visit when returning from expenses via an explicit payments link", () => {
+  for (const directionId of [null, "interior"]) {
+    const selection = { view: "finance" as const, directionId };
+    const firstVisit = projectWorkspaceSurfaceKey(selection, {});
+    const expenses = projectWorkspaceSurfaceKey(selection, { financeTab: "expenses" });
+    const returnVisit = projectWorkspaceSurfaceKey(selection, { financeTab: "payments", stream: "design" });
+    expect(returnVisit).toBe(firstVisit);
+    expect(expenses).not.toBe(firstVisit);
+  }
+});
+
+it("keeps legacy expense links canonical without merging other income streams or report periods", () => {
+  const selection = { view: "finance" as const, directionId: null };
+  expect(projectWorkspaceSurfaceKey(selection, { stream: "expenses" })).toBe(projectWorkspaceSurfaceKey(selection, { financeTab: "expenses" }));
+  expect(projectWorkspaceSurfaceKey(selection, { stream: "supervision" })).not.toBe(projectWorkspaceSurfaceKey(selection, {}));
+  const range = { profitFrom: "2026-10-01", profitTo: "2026-10-31" };
+  expect(projectWorkspaceSurfaceKey(selection, range)).toBe(projectWorkspaceSurfaceKey(selection, { ...range, financeTab: "result" }));
+  expect(projectWorkspaceSurfaceKey(selection, { ...range, financeTab: "payments" })).not.toBe(projectWorkspaceSurfaceKey(selection, range));
 });

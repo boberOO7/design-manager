@@ -3,7 +3,7 @@ import { parseMotionPreference } from "@/lib/motion";
 
 const entryAnimations = new Set(["dashboard-row-enter", "dashboard-value-enter"]);
 
-/** Read the server-painted aperture so hydration never starts a second reveal. */
+/** Continue the server-painted whole-block motion without hiding its content. */
 export function readInstaLoadEntry(element: HTMLElement, target = element) {
   const animation = target.getAnimations().find((animation): animation is CSSAnimation => animation instanceof CSSAnimation && entryAnimations.has(animation.animationName));
   const elapsed = typeof animation?.currentTime === "number" ? animation.currentTime : 0;
@@ -12,21 +12,14 @@ export function readInstaLoadEntry(element: HTMLElement, target = element) {
   const box = target.getBoundingClientRect();
   if (!remaining || !box.height || box.bottom <= 0 || box.top >= window.innerHeight) return null;
   const style = getComputedStyle(target);
-  return { element, target, clip: style.clipPath, y: new DOMMatrixReadOnly(style.transform).m42, remaining };
+  return { element, target, y: new DOMMatrixReadOnly(style.transform).m42, remaining };
 }
 
 export function continueInstaLoadEntries(sequence: gsap.core.Timeline, entries: NonNullable<ReturnType<typeof readInstaLoadEntry>>[], start = 0) {
-  entries.forEach(({ element, target, clip, y, remaining }, index) => {
-    const at = start + Math.min(0.1, index * 0.025);
-    sequence.fromTo(target, { clipPath: clip, y }, {
-      clipPath: "inset(0% 0% 0% 0%)", y: 0, duration: remaining,
-      ease: target === element ? "power3.out" : "back.out(1.05)", clearProps: "clipPath,transform",
-    }, at);
-    const icons = element.querySelectorAll<HTMLElement>("[data-dashboard-icon], [data-instaload-icon]");
-    if (icons.length) sequence.fromTo(icons, { scale: 0.82, rotation: -10 }, {
-      scale: 1, rotation: 0, duration: Math.min(0.46, remaining + 0.08),
-      ease: "elastic.out(0.6,0.5)", clearProps: "transform",
-    }, at);
+  entries.forEach(({ target, y, remaining }) => {
+    sequence.fromTo(target, { y }, {
+      y: 0, duration: remaining, ease: "power2.out", clearProps: "transform",
+    }, start);
   });
 }
 

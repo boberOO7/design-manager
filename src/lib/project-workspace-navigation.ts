@@ -1,4 +1,5 @@
 import type { ProjectWorkDirection } from "./work-directions";
+import { resolveProjectFinanceView } from "./finance-project-view";
 
 export type ProjectWorkspaceView = "overview" | "board" | "details" | "team" | "activity" | "finance" | "feedback";
 const projectViews = new Set(["overview", "team", "activity", "feedback"]);
@@ -9,8 +10,10 @@ export function projectWorkspaceSurfaceKey(selection: { view: ProjectWorkspaceVi
   if (selection.view === "feedback") return `feedback:${query.feedbackPage ?? "1"}`;
   if (selection.view !== "finance") return selection.view;
   const params = new URLSearchParams();
+  const { tab, stream } = resolveProjectFinanceView(query, selection.directionId);
   for (const key of ["stream", "page", "credits", "filter", "profitFrom", "profitTo", "financeTab", "profitPeriod", "item"]) {
-    const value = query[key];
+    // The first/default visit and explicit tab links represent the same data.
+    const value = key === "financeTab" ? tab : key === "stream" ? stream : query[key];
     if (typeof value === "string") params.set(key, value);
     else value?.forEach(item => params.append(key, item));
   }

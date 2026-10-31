@@ -799,6 +799,22 @@
     "saved": "Stage task changes saved."
   },
   "Tasks": {
+    "stageProgressMethods": {
+      "title": "Progress method",
+      "templateHelp": "Applies to new stages. Existing settings are preserved.",
+      "equal": {
+        "label": "Equal",
+        "description": "Every task has the same weight."
+      },
+      "area": {
+        "label": "Area",
+        "description": "Tasks are weighted by their area."
+      },
+      "weighted": {
+        "label": "Weighted",
+        "description": "Uses the weight assigned to each task."
+      }
+    },
     "dismissActionError": "Dismiss message",
     "actionErrors": {
       "reviewActive": "This task is being reviewed. Approve it or send it back for rework from task details first.",
@@ -1023,7 +1039,7 @@
     "deleteFailed": "The task could not be deleted. Please try again.",
     "reviewChangeReviewers": "Change reviewers",
     "reviewReassignmentHelp": "Approved steps stay unchanged. Replacing the current reviewer safely stops and records their timer.",
-    "directionBoard": "Direction board"
+    "directionBoard": "Stages and tasks"
   },
   "Workspace": {
     "backToProjects": "Projects",
@@ -1063,6 +1079,7 @@
       "add": "Add work direction",
       "addShort": "Add direction",
       "edit": "Edit direction",
+      "detailsTitle": "Direction settings",
       "name": "Name",
       "namePlaceholder": "Interior, façade, landscape…",
       "area": "Actual area",
@@ -2870,7 +2887,7 @@
       "history": "History",
       "categoryTotals": "Category totals",
       "categoryDetails": "Category details",
-      "cashActions": "Receipts",
+      "cashActions": "Received funds",
       "add": "Add",
       "agreementScope": "Under the main agreement",
       "value": "Project value",
@@ -2888,22 +2905,23 @@
       "actionsFor": "Actions for {name}",
       "settlementDetails": "Payment details",
       "projectCashAttention": "{count, plural, one {# project receipt is not fully matched to payments} other {# project receipts are not fully matched to payments}}",
-      "reviewCash": "Review receipts",
-      "assignCash": "Assign received money",
+      "reviewCash": "Received funds",
+      "assignCash": "Attribute to a project",
       "close": "Close",
-      "cashDistinction": "Assigning money to a project does not settle an expected payment. Match it to a payment to update the agreement balance.",
+      "cashDistinction": "This allocation identifies which project the funds belong to. Use “Apply to a payment” to settle a scheduled payment.",
       "backToCash": "Back to receipts",
-      "cashAvailable": "Not matched to payments",
+      "cashAvailable": "Received, net of refunds",
       "studioCashPool": "Studio receipts",
       "projectCash": "Project receipts",
       "findStudioCash": "Find a studio receipt",
       "studioCashHelp": "These are studio-wide cash candidates. They do not form part of this project’s balance until explicitly assigned or matched.",
       "noProjectCash": "No receipts assigned to this project. Find a studio receipt to assign it.",
-      "matchCash": "Match to a payment",
+      "matchCash": "Apply to a payment",
       "choosePayment": "Choose a payment",
       "matchCategoryHelp": "Choose an unpaid payment in this project to match this receipt.",
       "matchCategoryHint": "Payments from all categories with the same currency and activity type are available.",
-      "listOptions": "List options"
+      "listOptions": "List options",
+      "cashUnmatched": "Not yet applied to payments: {amount}"
     },
     "projectResult": {
       "estimateFxDetails": "Historical exchange rate details",
@@ -4312,6 +4330,8 @@
       "addContractorBonus": "Add bonus",
       "addOtherIncome": "Add income",
       "addExpense": "Add expense",
+      "emptyExpensesTitle": "No project expenses yet",
+      "emptyExpensesHelp": "Project expenses and their payment status will appear here.",
       "recordExpense": "Record expense payment"
     },
     "builder": {
@@ -4587,7 +4607,9 @@
         "locked": "Currency, direction and reporting nature are fixed once an item has settlement history.",
         "belowSettled": "The expected amount cannot be less than the amount already settled.",
         "incompatible": "Choose an active item and a payment with matching currency, direction and reporting nature."
-      }
+      },
+      "undatedSummary": "{count, plural, one {# payment without a date} other {# payments without a date}}",
+      "partialSummary": "{count, plural, one {# partially paid payment} other {# partially paid payments}}"
     },
     "movements": {
       "projectCash": {
@@ -5039,7 +5061,7 @@
       "defaultName": "Main agreement",
       "defaultBadge": "Main agreement",
       "back": "All agreements",
-      "details": "Details",
+      "details": "Terms",
       "empty": "No commercial agreements yet.",
       "create": "Create draft",
       "saveDraft": "Save draft",
@@ -5326,7 +5348,8 @@
       "attributedCash": "Explicitly attributed to this project",
       "notAttributed": "Attribution not set",
       "noReceipts": "No related receipts yet.",
-      "priceDetails": "Discount and taxes"
+      "priceDetails": "Discount and taxes",
+      "draftsArchive": "Drafts and archive"
     }
   },
   "EmployeeProfile": {

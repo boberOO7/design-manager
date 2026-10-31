@@ -18,13 +18,11 @@ describe("stage configuration controls", () => {
     const source = await readFile(boardPath, "utf8");
 
     expect(source).toContain("progressMethodLabel");
-    expect(source).toContain('label: "Рівний"');
-    expect(source).toContain('label: "За площею"');
-    expect(source).toContain('label: "Зважений"');
+    expect(source).toContain('useTranslations("Tasks.stageProgressMethods")');
     expect(source).toContain('JSON.stringify({ progress_method: method })');
-    expect(source).toContain("setLocalStageProgressMethods");
+    expect(source).toContain("onStageProgressMethodChange(stage, result.progressMethod)");
     expect(source).toContain("setLocalStageColumns");
-    expect(source).toContain('role="menuitemradio"');
+    expect(source).toContain('type="radio"');
   });
 
   it("allows the existing persistence layer to update columns or a progress method independently", async () => {

@@ -110,7 +110,9 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   await expect(page.locator("#project-payments [data-selected]")).toBeFocused();
   await page.goto(projectHref);
 
-  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await page.locator("[data-order-group]").first().getByRole("button", { name: orders.details, exact: true }).click();
+
+  await page.getByRole("dialog").getByRole("button", { name: orders.back, exact: true }).click();
   let dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("button", { name: /Інтер’єр/ })).toBeVisible();
   await dialog.getByRole("button", { name: orders.add, exact: true }).click();
@@ -192,7 +194,9 @@ test("orders own proposals and schedules, and automatic receipts stay within the
   await expect(summary).toContainText(/6[\s\u00a0]?000/);
   await expect(page.locator("[data-order-group]")).toHaveCount(1);
 
-  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await page.locator("[data-order-group]").first().getByRole("button", { name: orders.details, exact: true }).click();
+
+  await page.getByRole("dialog").getByRole("button", { name: orders.back, exact: true }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: new RegExp("Фасад") }).click();
   await dialog.getByLabel(orders.confirmCheck, { exact: true }).check();
@@ -381,8 +385,9 @@ test("compact order surfaces preserve inline rename keyboard and blur focus", as
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await summary.getByText(orders.value, { exact: true }).click();
     await summary.screenshot({ path: testInfo.outputPath(`summary-${label}.png`), style: "nextjs-portal { visibility: hidden; }" });
-    const manage = summary.getByRole("button", { name: orders.manage.replace("{count}", "2"), exact: true });
+    const manage = page.locator("[data-order-group]").first().getByRole("button", { name: orders.details, exact: true });
     await manage.click();
+    await page.getByRole("dialog").getByRole("button", { name: orders.back, exact: true }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.locator("header").getByRole("button", { name: orders.add, exact: true })).toBeVisible();
     await expect(dialog.getByText(orders.status.draft, { exact: false })).toBeVisible();
@@ -460,7 +465,8 @@ test("original contract currency correction preserves unpaid installments and bl
   const href = `/projects/${correctionId}?view=finance`;
   await page.goto(href);
   const summary = page.getByRole("region", { name: orders.scope, exact: true });
-  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await page.locator("[data-order-group]").first().getByRole("button", { name: orders.details, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: orders.back, exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: new RegExp(orders.defaultName) }).click();
   await page.getByRole("dialog").getByRole("button", { name: f.project.editAgreement, exact: true }).click();
   await expect(page.getByRole("dialog").getByRole("textbox", { name: f.project.currency, exact: true })).toHaveValue("UAH");
@@ -515,7 +521,8 @@ test("original contract currency correction preserves unpaid installments and bl
       (select id from public.finance_project_plan_items where project_id=${correctionProject} order by amount limit 1),
       (select id from public.finance_movements where studio_id=${studio} and request_id='${paymentRequest}'),100);`);
   await page.goto(href);
-  await summary.getByRole("button", { name: orders.manage.replace("{count}", "1"), exact: true }).click();
+  await page.locator("[data-order-group]").first().getByRole("button", { name: orders.details, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: orders.back, exact: true }).click();
   await dialog.getByRole("button", { name: new RegExp(orders.defaultName) }).click();
   await dialog.getByRole("button", { name: copy.action, exact: true }).click();
   await dialog.getByRole("combobox", { name: copy.currency, exact: true }).click();

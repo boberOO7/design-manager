@@ -86,7 +86,8 @@ test("direction terms create, settle and share without changing consolidated mon
   await expect(workspace.locator("[data-project-payment]").first()).toContainText(f.planning.states.partial);
   await expect.poll(() => sql(`select collected_amount from public.finance_project_totals where project_id='${project}' and stream='design'`)).toBe("100.00");
 
-  await workspace.getByRole("button", { name: f.project.editAgreement, exact: true }).click();
+  await workspace.locator("[data-order-group]").first().getByRole("button", { name: f.orders.details, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: f.project.editAgreement, exact: true }).click();
   editor = page.getByRole("dialog");
   await editor.getByRole("button", { name: f.builder.perAreaShort, exact: true }).click();
   await expect(editor.getByLabel(f.builder.area, { exact: true })).toHaveValue("300");
@@ -96,11 +97,12 @@ test("direction terms create, settle and share without changing consolidated mon
   await editor.getByRole("button", { name: "100%", exact: true }).click();
   await editor.getByLabel(f.project.reason, { exact: true }).fill("Клієнт погодив розширення обсягу");
   await editor.getByRole("button", { name: f.builder.saveRevision, exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: f.project.editAgreement, exact: true })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: f.movements.close, exact: true }).click();
   await expect(editor).toHaveCount(0);
   expect(sql(`select count(*) from public.finance_project_terms where project_id='${project}'`)).toBe("2");
 
-  await workspace.getByRole("button", { name: f.agreements.more, exact: true }).click();
-  await workspace.getByRole("button", { name: f.agreements.add, exact: true }).click();
+  await workspace.getByRole("button", { name: f.orders.add, exact: true }).click();
   editor = page.getByRole("dialog", { name: f.agreements.create, exact: true });
   await setPrice(editor, "200");
   await editor.getByRole("button", { name: f.agreements.confirm, exact: true }).click();
@@ -110,7 +112,6 @@ test("direction terms create, settle and share without changing consolidated mon
 
   // Link the first agreement to a second direction through the real UI.
   await page.goto(href(interior));
-  await workspace.getByRole("button", { name: f.agreements.more, exact: true }).click();
   await workspace.getByRole("button", { name: f.directionWorkspace.attach, exact: true }).click();
   const attaching = page.getByRole("dialog", { name: f.directionWorkspace.attach, exact: true });
   await attaching.getByRole("button", { name: "Фасад", exact: true }).click();
@@ -120,17 +121,16 @@ test("direction terms create, settle and share without changing consolidated mon
   expect(sql(`select contract_gross_amount||':'||collected_amount from public.finance_project_totals where project_id='${project}' and stream='design'`)).toBe("1400.00:100.00");
 
   await page.goto(href(facade));
-  await workspace.getByRole("button", { name: f.agreements.more, exact: true }).click();
-  await workspace.getByRole("button", { name: f.agreements.add, exact: true }).click();
+  await workspace.getByRole("button", { name: f.orders.add, exact: true }).click();
   editor = page.getByRole("dialog", { name: f.agreements.create, exact: true });
   await setPrice(editor, "50");
   await editor.getByLabel(f.agreements.optionalName, { exact: true }).fill("Ескіз · чернетка");
   await editor.getByRole("button", { name: f.orders.saveDraft, exact: true }).click();
   await expect(editor).toHaveCount(0);
-  await expect(workspace.getByRole("button", { name: f.orders.draftCount.replace("{count}", "1"), exact: true })).toBeVisible();
+  await expect(workspace.getByRole("button", { name: f.agreements.draftsArchive, exact: true })).toBeVisible();
   expect(sql(`select count(*) from public.finance_project_items where project_id='${project}' and stream='design'`)).toBe("4");
   expect(sql(`select contract_gross_amount||':'||collected_amount from public.finance_project_totals where project_id='${project}' and stream='design'`)).toBe("1400.00:100.00");
-  await workspace.getByRole("button", { name: f.orders.draftCount.replace("{count}", "1"), exact: true }).click();
+  await workspace.getByRole("button", { name: f.agreements.draftsArchive, exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /Ескіз · чернетка/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: f.proposal.action, exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText(f.proposal.orderDraft);
@@ -138,10 +138,19 @@ test("direction terms create, settle and share without changing consolidated mon
   await page.getByRole("dialog").getByRole("button", { name: f.movements.close, exact: true }).click();
 
   await page.goto(href("all"));
-  await expect(page.locator("[data-shared-agreement]")).toHaveCount(1);
-  await page.getByRole("button", { name: f.agreements.cashAndObligations, exact: true }).click();
-  await expect(page.getByText(f.agreements.actualCash, { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: f.agreements.actualCash, exact: true }).locator("..")).toContainText(/100,00\s*UAH/);
+  await expect(page.locator("[data-project-finance-overview]")).toHaveCount(0);
+  await expect(workspace.locator("[data-order-group]")).toHaveCount(2);
+  await expect(workspace.getByRole("button", { name: f.orders.manage.replace("{count}", "2"), exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: f.agreements.cashAndObligations, exact: true })).toHaveCount(0);
+  await expect(workspace.locator("#expected-attention")).toContainText("4 платежі без зазначеної дати");
+  await expect(workspace.locator("#expected-attention svg")).not.toHaveClass(/text-\[var\(--ui-danger-text\)\]/);
+  await workspace.getByRole("button", { name: f.projectWorkspace.cashActions, exact: true }).click();
+  const receivedFunds = page.getByRole("dialog", { name: f.projectWorkspace.cashActions, exact: true });
+  await expect(receivedFunds).toContainText(/100,00\s*UAH/);
+  await expect(receivedFunds.getByText(f.projectWorkspace.cashDistinction, { exact: true })).toHaveCount(0);
+  await receivedFunds.getByRole("button", { name: f.projectWorkspace.assignCash, exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText(f.projectWorkspace.cashDistinction);
+  await page.getByRole("dialog").getByRole("button", { name: f.projectWorkspace.close, exact: true }).click();
   await page.screenshot({ path: "/tmp/studioflow-project-finance-agreements.png", fullPage: true, animations: "disabled" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(href(facade));

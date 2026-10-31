@@ -129,7 +129,10 @@
 .overallMetric .progress { clip-path: inset(4px 0 round 2px); }
 .stageMetric .progress { mask-image: linear-gradient(#000, #000), repeating-linear-gradient(to right, #000 0 1px, transparent 1px 10%); mask-size: 100% 2px, 100% 100%; mask-position: center; mask-repeat: no-repeat; }
 .taskCounts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ui-text-secondary); }
-.taskCounts [data-overdue="true"] { color: var(--ui-danger-text); }
+.taskCounts [data-count] { padding: 3px 7px; border-radius: 5px; background: var(--ui-surface-muted); }
+.taskCounts [data-count="open"] { color: var(--ui-info-text); background: var(--ui-info-surface); }
+.taskCounts [data-count="completed"] { color: var(--ui-success-text); background: var(--ui-success-surface); }
+.taskCounts [data-overdue="true"] { color: var(--ui-danger-text); background: var(--ui-danger-surface); }
 .singleOverview { position: relative; display: flex; align-items: center; min-width: 0; padding-block: 2px; }
 .singleEntry { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: space-between; gap: 16px 32px; padding: 8px 56px 8px 10px; margin-left: -10px; border-radius: var(--ui-radius-control); transition: background-color 180ms ease; }
 .singleOverview .directionActions { position: absolute; right: 0; top: 12px; }
@@ -207,5 +210,4 @@
 :global(html[data-motion="off"]) :is(.workspaceTab, .workspaceIndicator, .overviewLink) { transition: none; }
 
 .resizingSurface { min-width: 0; }
-.resizingSurface[data-resizing="true"] { overflow: clip; overflow-anchor: none; }
 .measuredSurface { display: flow-root; min-width: 0; }
