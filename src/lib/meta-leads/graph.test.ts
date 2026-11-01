@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { fetchMetaLead, listMetaIds } from "./graph";
+import { fetchMetaLead, fetchMetaFormsPage, fetchMetaPreviewPage, listMetaIds } from "./graph";
 
 function configure() {
   vi.stubEnv("META_GRAPH_API_VERSION", "v25.0"); vi.stubEnv("META_PAGE_ACCESS_TOKEN", "secret-page-token"); vi.stubEnv("META_APP_SECRET", "app-secret");
@@ -9,6 +9,22 @@ function configure() {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("Meta Graph client", () => {
+  it("paginates form metadata with an explicit version and preserves unknown lifetime counts", async () => {
+    const fetcher=configure();vi.stubEnv("META_GRAPH_API_VERSION","v26.0");vi.stubGlobal("fetch",fetcher);
+    fetcher.mockResolvedValueOnce(Response.json({data:[{id:"10",name:"Fixture",status:"ACTIVE",leads_count:null}],paging:{next:"https://untrusted.test/",cursors:{after:"cursor"}}}))
+      .mockResolvedValueOnce(Response.json({data:[{id:"20",leads_count:0}]}));
+    expect(await fetchMetaFormsPage("123")).toMatchObject({data:[{id:"10",leads_count:null}],next:"cursor"});
+    expect(await fetchMetaFormsPage("123","cursor")).toMatchObject({data:[{id:"20",leads_count:0}],next:null});
+    expect(String(fetcher.mock.calls[1][0])).toContain("graph.facebook.com/v26.0/123/leadgen_forms?");
+    expect(new URL(String(fetcher.mock.calls[1][0])).searchParams.get("after")).toBe("cursor");
+  });
+  it("rejects unusable or repeating preview cursors without following provider URLs", async () => {
+    const fetcher=configure();vi.stubGlobal("fetch",fetcher);
+    fetcher.mockResolvedValueOnce(Response.json({data:[],paging:{next:"next"}}));
+    await expect(fetchMetaPreviewPage("10")).rejects.toThrow("invalid_graph_cursor");
+    fetcher.mockResolvedValueOnce(Response.json({data:[],paging:{next:"next",cursors:{after:"cursor"}}}));
+    await expect(fetchMetaPreviewPage("10","cursor")).rejects.toThrow("invalid_graph_cursor");
+  });
   it("fetches full answers with server bearer auth, explicit version, timeout and appsecret proof", async () => {
     const fetcher = configure(); vi.stubGlobal("fetch", fetcher);
     fetcher.mockResolvedValue(Response.json({ id: "456", field_data: [], created_time: "2026-10-31T12:00:00Z", campaign_id: "333", custom_disclaimer_responses: [{ checkbox_key: "consent", is_checked: "1" }] }));

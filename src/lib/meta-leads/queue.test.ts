@@ -12,7 +12,7 @@ import { enqueueMetaLeads, processMetaLeadQueue } from "./queue";
 
 const studioId = "51000000-0000-4000-8000-000000000001";
 const job: Database["public"]["Tables"]["meta_lead_jobs"]["Row"] = {
-  page_id: "123", leadgen_id: "456", studio_id: studioId, form_id: "789", ad_id: null, submitted_at: null, payload: null,
+  page_id: "123", leadgen_id: "456", studio_id: studioId, form_id: "789", ad_id: null, submitted_at: null, payload: null, completed_at: null,
   crm_lead_id: null, status: "processing", attempts: 1, available_at: "2026-10-31T12:00:00Z", locked_at: "2026-10-31T12:00:00Z",
   lease_token: "51000000-0000-4000-8000-000000000009", last_error: null, created_at: "2026-10-31T12:00:00Z", updated_at: "2026-10-31T12:00:00Z",
 };
@@ -29,7 +29,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("durable Meta worker orchestration", () => {
   it("enqueues with only the configured page and studio, passing explicit retry only for operator repair", async () => {
     await enqueueMetaLeads([{ leadgen_id: "456" }]);
-    expect(mocks.rpc).toHaveBeenLastCalledWith("enqueue_meta_lead_jobs", { p_page_id: "123", p_studio_id: studioId, p_events: [{ leadgen_id: "456" }], p_retry_failed: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("enqueue_meta_lead_jobs", { p_page_id: "123", p_studio_id: studioId, p_events: [{ leadgen_id: "456" }], p_retry_failed: false, p_manual: false });
     await enqueueMetaLeads([{ leadgen_id: "456" }], true);
     expect(mocks.rpc.mock.calls[1][1].p_retry_failed).toBe(true);
   });

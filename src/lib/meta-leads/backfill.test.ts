@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ enqueue: vi.fn() }));
+vi.mock("@/lib/supabase/admin-client", () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [{ form_id: "10" }, { form_id: "20" }], error: null }) }) }) }) }) }) }));
 vi.mock("./queue", () => ({ enqueueMetaLeads: mocks.enqueue }));
 import { backfillMetaLeads } from "./backfill";
 
@@ -16,7 +17,7 @@ it("walks paginated forms and leads, resuming repeatable history through the com
   fetcher.mockImplementation(async input => {
     const url = new URL(String(input));
     if (url.pathname.endsWith("/123/leadgen_forms")) return Response.json(url.searchParams.has("after")
-      ? { data: [{ id: "20" }] }
+      ? { data: [{ id: "20" }, { id: "30" }] }
       : { data: [{ id: "10" }], paging: { next: "next", cursors: { after: "forms-next" } } });
     if (url.pathname.endsWith("/10/leads")) return Response.json(url.searchParams.has("after")
       ? { data: [{ id: "102" }] }
@@ -26,6 +27,6 @@ it("walks paginated forms and leads, resuming repeatable history through the com
   });
   expect(await backfillMetaLeads()).toEqual({ forms: 2, scanned: 3, enqueued: 3 });
   expect(await backfillMetaLeads(true)).toEqual({ forms: 2, scanned: 3, enqueued: 0 });
-  expect(mocks.enqueue).toHaveBeenCalledWith([{ leadgen_id: "102", form_id: "10" }], false);
-  expect(mocks.enqueue).toHaveBeenLastCalledWith([{ leadgen_id: "201", form_id: "20" }], true);
+  expect(mocks.enqueue).toHaveBeenCalledWith([{ leadgen_id: "102", form_id: "10" }], false, true);
+  expect(mocks.enqueue).toHaveBeenLastCalledWith([{ leadgen_id: "201", form_id: "20" }], true, true);
 });

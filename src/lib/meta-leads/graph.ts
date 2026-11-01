@@ -3,27 +3,12 @@ import "server-only";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { getMetaGraphConfig, metaId } from "./config";
+import { metaLeadSchema, metaFormSchema } from "./contracts";
+export { metaLeadSchema, type MetaLead } from "./contracts";
 
 export class MetaLeadError extends Error {
   constructor(readonly code: string, readonly retryable = true) { super(code); }
 }
-
-export const metaLeadSchema = z.object({
-  id: metaId,
-  created_time: z.string().optional(),
-  form_id: metaId.optional(),
-  ad_id: metaId.optional(),
-  ad_name: z.string().optional(),
-  adset_id: metaId.optional(),
-  adset_name: z.string().optional(),
-  campaign_id: metaId.optional(),
-  campaign_name: z.string().optional(),
-  platform: z.string().optional(),
-  is_organic: z.boolean().optional(),
-  custom_disclaimer_responses: z.array(z.object({ checkbox_key: z.string(), is_checked: z.union([z.string(), z.boolean()]) })).optional(),
-  field_data: z.array(z.object({ name: z.string(), values: z.array(z.string()) })),
-});
-export type MetaLead = z.infer<typeof metaLeadSchema>;
 
 async function graphRequest(path: string, parameters: Record<string, string>) {
   const { version, token, appSecret } = getMetaGraphConfig();
@@ -46,13 +31,36 @@ async function graphRequest(path: string, parameters: Record<string, string>) {
   }
 }
 
-export async function fetchMetaLead(leadgenId: string): Promise<MetaLead> {
+export async function fetchMetaLead(leadgenId: string) {
   metaId.parse(leadgenId);
   const parsed = metaLeadSchema.safeParse(await graphRequest(leadgenId, {
     fields: "id,created_time,form_id,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,field_data,platform,is_organic,custom_disclaimer_responses",
   }));
   if (!parsed.success || parsed.data.id !== leadgenId) throw new MetaLeadError("invalid_graph_lead");
   return parsed.data;
+}
+
+const leadFields = "id,created_time,form_id,field_data,platform";
+async function fetchGraphPage<T extends z.ZodType>(ownerId: string, edge: string, fields: string, item: T, after?: string) {
+  metaId.parse(ownerId);
+  const parsed = z.object({ data: z.array(item), paging: z.object({ cursors: z.object({ after: z.string().optional() }).optional(), next: z.string().optional() }).optional() })
+    .safeParse(await graphRequest(`${ownerId}/${edge}`, { fields, limit: "50", ...(after ? { after } : {}) }));
+  if (!parsed.success) throw new MetaLeadError("invalid_graph_page");
+  const next = parsed.data.paging?.next ? parsed.data.paging.cursors?.after : null;
+  if (next === after || (parsed.data.paging?.next && !next)) throw new MetaLeadError("invalid_graph_cursor");
+  return { data: parsed.data.data, next: next ?? null };
+}
+
+export function fetchMetaFormsPage(pageId: string, after?: string) {
+  return fetchGraphPage(pageId, "leadgen_forms", "id,name,status,created_time,leads_count", metaFormSchema, after);
+}
+
+export function fetchMetaPreviewPage(formId: string, after?: string) {
+  return fetchGraphPage(formId, "leads", leadFields, metaLeadSchema, after);
+}
+
+export function fetchMetaAvailabilityPage(formId: string, after?: string) {
+  return fetchGraphPage(formId, "leads", "id,created_time", z.object({ id: metaId, created_time: z.string().optional() }), after);
 }
 
 export async function* listMetaIds(ownerId: string, edge: "leadgen_forms" | "leads") {

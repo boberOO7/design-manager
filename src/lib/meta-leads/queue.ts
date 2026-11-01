@@ -9,11 +9,11 @@ import { mapMetaLead, metaSubmittedAt } from "./mapping";
 export type MetaLeadEvent = { leadgen_id: string; form_id?: string; ad_id?: string; submitted_at?: string };
 type Job = Database["public"]["Tables"]["meta_lead_jobs"]["Row"];
 
-export async function enqueueMetaLeads(events: MetaLeadEvent[], retryFailed = false) {
+export async function enqueueMetaLeads(events: MetaLeadEvent[], retryFailed = false, manual = false) {
   const target = getMetaLeadTarget();
   if (!events.length) return 0;
   const { data, error } = await createAdminClient().rpc("enqueue_meta_lead_jobs", {
-    p_page_id: target.pageId, p_studio_id: target.studioId, p_events: events, p_retry_failed: retryFailed,
+    p_page_id: target.pageId, p_studio_id: target.studioId, p_events: events, p_retry_failed: retryFailed, p_manual: manual,
   });
   if (error) throw new MetaLeadError("meta_enqueue_failed");
   return data;
@@ -49,10 +49,10 @@ async function processJob(job: Job) {
   }
 }
 
-export async function processMetaLeadQueue() {
+export async function processMetaLeadQueue(leadgenIds?: string[]) {
   const { pageId, studioId } = getMetaLeadTarget();
   getMetaGraphConfig();
-  const { data, error } = await createAdminClient().rpc("claim_meta_lead_jobs", { p_page_id: pageId, p_studio_id: studioId, p_limit: 5 });
+  const { data, error } = await createAdminClient().rpc("claim_meta_lead_jobs", { p_page_id: pageId, p_studio_id: studioId, p_limit: 5, ...(leadgenIds ? { p_leadgen_ids: leadgenIds } : {}) });
   if (error) throw new MetaLeadError("meta_claim_failed");
   const outcomes = await Promise.all((data ?? []).map(processJob));
   return {

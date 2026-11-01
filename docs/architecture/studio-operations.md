@@ -115,6 +115,16 @@ migrations/tests.
 - Lead source choices persist stable canonical keys for built-in options while
   custom `Other` values remain free text, so labels can stay localized without
   losing older arbitrary source values.
+- Meta Leads management lives under `/crm/leads/meta` for the configured studio's
+  administrators. Server-side Graph reads provide previews without persisting
+  answers. `meta_lead_forms` stores explicit Page/studio-scoped sync approval;
+  unknown forms default off. Disabling blocks queued and leased jobs at the
+  database boundary; enabling never resumes historical work automatically.
+  Selected UI imports and CLI backfill reuse the durable Meta queue and atomic
+  CRM completion. Explicit exclusions retain minimal `skipped` tombstones, and
+  completed jobs remain deduplication tombstones after CRM deletion. Management
+  diagnostics describe Graph access and queue state, not webhook delivery or
+  Meta App publication.
 - A Lead that is neither lost nor invalid can create one Project through the
   shared Project form. The existing Project/template RPC locks the Lead, creates
   the Project and template work, links both records, and marks the Lead Won in

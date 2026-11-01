@@ -5760,11 +5760,59 @@ export type Database = {
           },
         ]
       }
+      meta_lead_forms: {
+        Row: {
+          discovered_at: string
+          form_id: string
+          lifetime_leads_count: number | null
+          meta_created_at: string | null
+          meta_status: string | null
+          name: string | null
+          page_id: string
+          studio_id: string
+          sync_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          discovered_at?: string
+          form_id: string
+          lifetime_leads_count?: number | null
+          meta_created_at?: string | null
+          meta_status?: string | null
+          name?: string | null
+          page_id: string
+          studio_id: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          discovered_at?: string
+          form_id?: string
+          lifetime_leads_count?: number | null
+          meta_created_at?: string | null
+          meta_status?: string | null
+          name?: string | null
+          page_id?: string
+          studio_id?: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_forms_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_lead_jobs: {
         Row: {
           ad_id: string | null
           attempts: number
           available_at: string
+          completed_at: string | null
           created_at: string
           crm_lead_id: string | null
           form_id: string | null
@@ -5783,6 +5831,7 @@ export type Database = {
           ad_id?: string | null
           attempts?: number
           available_at?: string
+          completed_at?: string | null
           created_at?: string
           crm_lead_id?: string | null
           form_id?: string | null
@@ -5801,6 +5850,7 @@ export type Database = {
           ad_id?: string | null
           attempts?: number
           available_at?: string
+          completed_at?: string | null
           created_at?: string
           crm_lead_id?: string | null
           form_id?: string | null
@@ -10647,11 +10697,17 @@ export type Database = {
         }
       }
       claim_meta_lead_jobs: {
-        Args: { p_limit?: number; p_page_id: string; p_studio_id: string }
+        Args: {
+          p_leadgen_ids?: string[]
+          p_limit?: number
+          p_page_id: string
+          p_studio_id: string
+        }
         Returns: {
           ad_id: string | null
           attempts: number
           available_at: string
+          completed_at: string | null
           created_at: string
           crm_lead_id: string | null
           form_id: string | null
@@ -10935,6 +10991,7 @@ export type Database = {
       enqueue_meta_lead_jobs: {
         Args: {
           p_events: Json
+          p_manual?: boolean
           p_page_id: string
           p_retry_failed?: boolean
           p_studio_id: string
@@ -11183,6 +11240,10 @@ export type Database = {
       }
       get_finance_trip_recognition_sources: {
         Args: { p_studio_id: string }
+        Returns: Json
+      }
+      get_meta_lead_management_summary: {
+        Args: { p_page_id: string; p_studio_id: string }
         Returns: Json
       }
       get_personal_task_ids: {
@@ -11447,6 +11508,10 @@ export type Database = {
       }
       refresh_project_task_schedules: {
         Args: { p_project_ids: string[] }
+        Returns: undefined
+      }
+      register_meta_lead_forms: {
+        Args: { p_forms: Json; p_page_id: string; p_studio_id: string }
         Returns: undefined
       }
       register_web_push_subscription: {
@@ -11842,6 +11907,16 @@ export type Database = {
       set_leaderboard_employee_visibility: {
         Args: { p_studio_id: string; p_visible: boolean }
         Returns: undefined
+      }
+      set_meta_lead_exclusion: {
+        Args: {
+          p_excluded: boolean
+          p_form_id: string
+          p_leadgen_id: string
+          p_page_id: string
+          p_studio_id: string
+        }
+        Returns: boolean
       }
       set_project_stage_schedule_paused: {
         Args: {

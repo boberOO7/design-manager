@@ -20,7 +20,9 @@ select ok((select relrowsecurity from pg_class where oid='public.meta_lead_jobs'
 select ok(not has_table_privilege('anon','public.meta_lead_jobs','SELECT'), 'anonymous cannot read answers');
 select ok(not has_table_privilege('authenticated','public.meta_lead_jobs','INSERT'), 'browser cannot inject events');
 select ok(not has_function_privilege('authenticated','public.complete_meta_lead_job(text,text,uuid,uuid,jsonb)','EXECUTE'), 'browser cannot invoke privileged CRM completion');
-select ok(not has_function_privilege('anon','public.enqueue_meta_lead_jobs(text,uuid,jsonb,boolean)','EXECUTE'), 'anonymous cannot enqueue');
+select ok(not has_function_privilege('anon','public.enqueue_meta_lead_jobs(text,uuid,jsonb,boolean,boolean)','EXECUTE'), 'anonymous cannot enqueue');
+
+insert into public.meta_lead_forms(page_id,form_id,studio_id,sync_enabled) values('123','789','53000000-0000-4000-8000-000000000001',true);
 
 set local role service_role;
 select is(public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"456","form_id":"789"},{"leadgen_id":"456"}]'),1,'batch duplicate creates one persistent job');
@@ -62,7 +64,7 @@ select is((select count(*)::integer from public.crm_lead_history where studio_id
 set local role service_role;
 select is(public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"456"}]',true),0,'repeatable backfill preserves completed lead');
 
-select public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"457"},{"leadgen_id":"458"}]');
+select public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"457","form_id":"789"},{"leadgen_id":"458","form_id":"789"}]');
 delete from meta_claims;
 insert into meta_claims select * from public.claim_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001');
 update public.meta_lead_jobs set payload=jsonb_build_object('id',leadgen_id), submitted_at='2026-10-31T10:00:00Z'
@@ -75,7 +77,7 @@ select public.fail_meta_lead_job(page_id,leadgen_id,studio_id,lease_token,'missi
 select is((select status from public.meta_lead_jobs where page_id='123' and leadgen_id='458'),'failed','missing required data is held for repair');
 select public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"458"}]');
 select is((select status from public.meta_lead_jobs where page_id='123' and leadgen_id='458'),'failed','webhook duplicate does not reset failed jobs');
-select public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"458"}]',true);
+select public.enqueue_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001','[{"leadgen_id":"458"}]',true,true);
 select ok((select status='pending' and attempts=0 from public.meta_lead_jobs where page_id='123' and leadgen_id='458'),'operator backfill explicitly retries repaired jobs');
 delete from meta_claims;
 insert into meta_claims select * from public.claim_meta_lead_jobs('123','53000000-0000-4000-8000-000000000001');

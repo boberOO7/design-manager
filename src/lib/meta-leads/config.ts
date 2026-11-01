@@ -2,7 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
-export const metaId = z.string().regex(/^[0-9]+$/).max(100);
+import { metaId } from "./contracts";
+export { metaId } from "./contracts";
 
 export function getMetaLeadTarget() {
   const result = z.object({ pageId: metaId, studioId: z.uuid() }).safeParse({
