@@ -5615,6 +5615,78 @@ export type Database = {
           },
         ]
       }
+      meta_lead_jobs: {
+        Row: {
+          ad_id: string | null
+          attempts: number
+          available_at: string
+          created_at: string
+          crm_lead_id: string | null
+          form_id: string | null
+          last_error: string | null
+          leadgen_id: string
+          lease_token: string | null
+          locked_at: string | null
+          page_id: string
+          payload: Json | null
+          status: string
+          studio_id: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_id?: string | null
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          crm_lead_id?: string | null
+          form_id?: string | null
+          last_error?: string | null
+          leadgen_id: string
+          lease_token?: string | null
+          locked_at?: string | null
+          page_id: string
+          payload?: Json | null
+          status?: string
+          studio_id: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_id?: string | null
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          crm_lead_id?: string | null
+          form_id?: string | null
+          last_error?: string | null
+          leadgen_id?: string
+          lease_token?: string | null
+          locked_at?: string | null
+          page_id?: string
+          payload?: Json | null
+          status?: string
+          studio_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_jobs_crm_lead_id_studio_id_fkey"
+            columns: ["crm_lead_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "meta_lead_jobs_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -10182,6 +10254,33 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_meta_lead_jobs: {
+        Args: { p_limit?: number; p_page_id: string; p_studio_id: string }
+        Returns: {
+          ad_id: string | null
+          attempts: number
+          available_at: string
+          created_at: string
+          crm_lead_id: string | null
+          form_id: string | null
+          last_error: string | null
+          leadgen_id: string
+          lease_token: string | null
+          locked_at: string | null
+          page_id: string
+          payload: Json | null
+          status: string
+          studio_id: string
+          submitted_at: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_lead_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_web_push_deliveries: {
         Args: { p_limit?: number }
         Returns: {
@@ -10228,6 +10327,16 @@ export type Database = {
       }
       complete_finance_payroll_cost: {
         Args: { p_input: Json; p_request_id: string; p_studio_id: string }
+        Returns: string
+      }
+      complete_meta_lead_job: {
+        Args: {
+          p_lead: Json
+          p_leadgen_id: string
+          p_lease_token: string
+          p_page_id: string
+          p_studio_id: string
+        }
         Returns: string
       }
       complete_web_push_dispatch: {
@@ -10418,9 +10527,29 @@ export type Database = {
         Args: { p_request_id: string; p_studio_id: string }
         Returns: string
       }
+      enqueue_meta_lead_jobs: {
+        Args: {
+          p_events: Json
+          p_page_id: string
+          p_retry_failed?: boolean
+          p_studio_id: string
+        }
+        Returns: number
+      }
       ensure_finance_schedule_occurrences: {
         Args: { p_horizon?: string; p_studio_id: string }
         Returns: number
+      }
+      fail_meta_lead_job: {
+        Args: {
+          p_error: string
+          p_leadgen_id: string
+          p_lease_token: string
+          p_page_id: string
+          p_retry: boolean
+          p_studio_id: string
+        }
+        Returns: undefined
       }
       finalize_finance_setup: {
         Args: { p_studio_id: string }

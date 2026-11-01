@@ -1,0 +1,50 @@
+import "server-only";
+
+import { z } from "zod";
+import { instantToDateOnly } from "@/lib/calendar";
+import { isCountryCode } from "@/lib/countries";
+import { crmLeadSchema } from "@/lib/validation/crm";
+import { normalizePhoneForCountry, normalizeUkrainianPhone, shouldFormatAsUkrainianPhone } from "@/lib/ukrainian-phone";
+import { MetaLeadError, type MetaLead } from "./graph";
+
+// Meta need not collect a country. Keep it unknown rather than using the manual
+// form's required country selection or inventing a country from the phone.
+const importedLeadSchema = z.object({ ...crmLeadSchema.shape, country_code: z.union([z.literal(""), crmLeadSchema.shape.country_code]) }).superRefine((value, context) => {
+  if (value.phone && shouldFormatAsUkrainianPhone(value.phone, value.country_code, true) && !normalizeUkrainianPhone(value.phone)) {
+    context.addIssue({ code: "custom", path: ["phone"], message: "Invalid Ukrainian phone number" });
+  }
+});
+
+export function metaSubmittedAt(lead: MetaLead): string {
+  // Missing timestamps must not turn a historical inquiry into today's inquiry.
+  const parsed = z.iso.datetime({ offset: true }).safeParse(lead.created_time?.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
+  if (!parsed.success) {
+    throw new MetaLeadError("missing_or_invalid_created_time", false);
+  }
+  return new Date(parsed.data).toISOString();
+}
+
+export function mapMetaLead(lead: MetaLead) {
+  const answer = (name: string) => lead.field_data.find(field => field.name === name)?.values[0]?.trim() ?? "";
+  const clientName = answer("full_name") || [answer("first_name"), answer("last_name")].filter(Boolean).join(" ");
+  if (!clientName) throw new MetaLeadError("missing_client_name", false);
+  const country = answer("country").toUpperCase();
+  const source = lead.platform === "ig" ? "instagram" : lead.platform === "fb" ? "Facebook Lead Ads" : "Meta Lead Ads";
+  const parsed = importedLeadSchema.safeParse({
+    client_name: clientName, company: answer("company_name"), email: answer("email"), phone: answer("phone_number"),
+    city: answer("city"), site_address: answer("street_address"), country_code: isCountryCode(country) ? country : "",
+    source: source === "instagram" ? "instagram" : "other", source_custom: source,
+    budget_amount: "", first_contact_date: instantToDateOnly(metaSubmittedAt(lead)),
+    // The complete structured answers stay in the private inbox, including any
+    // content exceeding the existing CRM notes limit.
+    internal_notes: lead.field_data.map(field => `${field.name}: ${field.values.join(", ")}`).join("\n").slice(0, 10000),
+  });
+  if (!parsed.success) throw new MetaLeadError("invalid_crm_fields", false);
+  const value = parsed.data;
+  return {
+    client_name: value.client_name, company: value.company || null, email: value.email || null,
+    phone: normalizePhoneForCountry(value.phone, value.country_code) || null,
+    city: value.city || null, site_address: value.site_address || null, country_code: value.country_code || null,
+    source, internal_notes: value.internal_notes || null,
+  };
+}
