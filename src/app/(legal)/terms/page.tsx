@@ -17,6 +17,7 @@ export default async function TermsPage() {
       title={t("title")}
       lastUpdatedLabel={t("lastUpdatedLabel")}
       lastUpdatedDate={t("lastUpdatedDate")}
+      lastUpdatedDateTime={t("lastUpdatedDateTime")}
       introduction={t("introduction")}
       sections={[
         { title: t("acceptance.title"), paragraphs: [t("acceptance.body")] },
@@ -26,7 +27,16 @@ export default async function TermsPage() {
         { title: t("permitted.title"), paragraphs: [t("permitted.body")] },
         { title: t("misuse.title"), paragraphs: [t("misuse.body")] },
         { title: t("content.title"), paragraphs: [t("content.body")] },
-        { title: t("integrations.title"), paragraphs: [t("integrations.bodyOne"), t("integrations.bodyTwo")] },
+        {
+          title: t("integrations.title"),
+          paragraphs: [
+            t("integrations.bodyOne"),
+            t("integrations.bodyTwo"),
+            t.rich("integrations.metaLeadAds", {
+              privacy: (chunks) => <a className={legalLinkClassName} href="/privacy">{chunks}</a>,
+            }),
+          ],
+        },
         { title: t("availability.title"), paragraphs: [t("availability.body")] },
         { title: t("liability.title"), paragraphs: [t("liability.body")] },
         { title: t("termination.title"), paragraphs: [t("termination.body")] },

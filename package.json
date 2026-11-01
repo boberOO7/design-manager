@@ -13,7 +13,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "catalog:import": "tsx scripts/sync-equipment-catalog.ts"
+    "catalog:import": "tsx scripts/sync-equipment-catalog.ts",
+    "meta:backfill": "node --conditions=react-server --env-file=.env.local --import tsx scripts/backfill-meta-leads.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
@@ -38,6 +39,7 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.82.0",
     "saxes": "6.0.0",
+    "server-only": "0.0.1",
     "tailwind-merge": "^3.6.0",
     "web-push": "3.6.7",
     "zod": "^4.4.3"

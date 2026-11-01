@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 type LegalSection = {
+  id?: string;
   title: string;
   paragraphs: ReactNode[];
 };
@@ -9,6 +10,7 @@ type LegalDocumentProps = {
   title: string;
   lastUpdatedLabel: string;
   lastUpdatedDate: string;
+  lastUpdatedDateTime: string;
   introduction: ReactNode;
   sections: LegalSection[];
 };
@@ -20,6 +22,7 @@ export function LegalDocument({
   title,
   lastUpdatedLabel,
   lastUpdatedDate,
+  lastUpdatedDateTime,
   introduction,
   sections,
 }: LegalDocumentProps) {
@@ -30,14 +33,14 @@ export function LegalDocument({
           {title}
         </h1>
         <p className="mt-3 text-sm text-[var(--ui-text-muted)]">
-          {lastUpdatedLabel}: <time dateTime="2026-09-02">{lastUpdatedDate}</time>
+          {lastUpdatedLabel}: <time dateTime={lastUpdatedDateTime}>{lastUpdatedDate}</time>
         </p>
         <div className="mt-6 text-lg leading-8 text-[var(--ui-text-muted)]">{introduction}</div>
       </header>
 
       <div className="mt-10 space-y-10">
         {sections.map((section) => (
-          <section key={section.title}>
+          <section id={section.id} key={section.title}>
             <h2 className="text-xl font-semibold tracking-[-0.0125em] text-[var(--ui-text)]">
               {section.title}
             </h2>

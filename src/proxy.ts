@@ -3,6 +3,10 @@ import { updateSession } from "./lib/supabase/proxy";
 import { isProjectsPrefetchRequest, PROJECTS_PREFETCH_HEADER } from "./lib/projects-prefetch-request";
 
 export async function proxy(request: NextRequest) {
+  // Meta authenticates with its raw-body signature; cron uses its own bearer.
+  if (["/api/integrations/meta-leads/webhook", "/api/integrations/meta-leads/worker"].includes(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
   request.headers.delete(PROJECTS_PREFETCH_HEADER);
   if (isProjectsPrefetchRequest(request.nextUrl.pathname, request.method, request.headers)) {
     request.headers.set(PROJECTS_PREFETCH_HEADER, "1");

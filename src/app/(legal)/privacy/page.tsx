@@ -4,7 +4,7 @@ import { LegalDocument, legalLinkClassName } from "@/components/legal/legal-docu
 
 export const metadata: Metadata = {
   title: "Privacy Policy | StudioFlow",
-  description: "How StudioFlow collects, uses, stores, and protects account, workspace, and Google Calendar integration data.",
+  description: "How StudioFlow handles account, workspace, Google Calendar and Meta Lead Ads data, including access and deletion requests.",
   alternates: { canonical: "https://studio-flow.space/privacy" },
   robots: { index: true, follow: true },
 };
@@ -17,6 +17,7 @@ export default async function PrivacyPage() {
       title={t("title")}
       lastUpdatedLabel={t("lastUpdatedLabel")}
       lastUpdatedDate={t("lastUpdatedDate")}
+      lastUpdatedDateTime={t("lastUpdatedDateTime")}
       introduction={t("introduction")}
       sections={[
         {
@@ -30,6 +31,16 @@ export default async function PrivacyPage() {
         {
           title: t("workspaceData.title"),
           paragraphs: [t("workspaceData.body")],
+        },
+        {
+          title: t("metaLeadAds.title"),
+          paragraphs: [
+            t("metaLeadAds.bodyOne"),
+            t("metaLeadAds.bodyTwo"),
+            t.rich("metaLeadAds.bodyThree", {
+              deletion: (chunks) => <a className={legalLinkClassName} href="#data-deletion">{chunks}</a>,
+            }),
+          ],
         },
         {
           title: t("googleAccess.title"),
@@ -67,6 +78,17 @@ export default async function PrivacyPage() {
         {
           title: t("retention.title"),
           paragraphs: [t("retention.body")],
+        },
+        {
+          id: "data-deletion",
+          title: t("dataDeletion.title"),
+          paragraphs: [
+            t.rich("dataDeletion.bodyOne", {
+              email: (chunks) => <a className={legalLinkClassName} href="mailto:studioflow.notifications@gmail.com">{chunks}</a>,
+            }),
+            t("dataDeletion.bodyTwo"),
+            t("dataDeletion.bodyThree"),
+          ],
         },
         {
           title: t("security.title"),

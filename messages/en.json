@@ -2621,8 +2621,9 @@
     "privacy": {
       "title": "Privacy Policy",
       "lastUpdatedLabel": "Last updated",
-      "lastUpdatedDate": "September 2, 2026",
-      "introduction": "This policy explains how StudioFlow handles information when invited teams use the service, including when a user connects Google Calendar.",
+      "lastUpdatedDate": "November 1, 2026",
+      "lastUpdatedDateTime": "2026-11-01",
+      "introduction": "This policy explains how StudioFlow handles information when invited teams use the service, including Google Calendar connections and inquiries submitted through Meta Lead Ads.",
       "service": {
         "title": "What StudioFlow is",
         "body": "StudioFlow is an evolving internal and team-management product for organizing studio work, including projects, tasks, calendars, people, and related operations. It is currently used in a closed production-test stage."
@@ -2634,6 +2635,12 @@
       "workspaceData": {
         "title": "Information entered in StudioFlow",
         "body": "StudioFlow stores the project, task, calendar event, team, leave, contractor, and other operational information that authorized users enter into the service. This information is used to provide the workspace features and is visible according to the access controls within the relevant studio."
+      },
+      "metaLeadAds": {
+        "title": "Meta Lead Ads (Facebook and Instagram)",
+        "bodyOne": "When a studio enables the integration, the Meta app “StudioFlow” receives inquiries submitted through Facebook or Instagram Instant Forms using Meta Webhooks and the Graph API. Depending on the form, the data includes a name, phone number, email address and other answers, submission date and time, and technical lead, form, Page and advertising identifiers. StudioFlow stores the answers and available attribution data and transfers the inquiry to that studio’s CRM.",
+        "bodyTwo": "The studio receiving your inquiry determines how to respond and use it for the services you requested. StudioFlow provides the technical processing needed to receive, record and deliver the inquiry reliably. CRM leads are available to active administrators of the relevant studio. Server-side integration records are also accessible to authorized infrastructure operators for service operation and support.",
+        "bodyThree": "This processing uses Vercel to run the application and Supabase to store CRM and integration records. Instructions for requesting access to or deletion of your data are in the <deletion>data access and deletion section</deletion>."
       },
       "googleAccess": {
         "title": "Google Calendar data we access",
@@ -2659,7 +2666,13 @@
       },
       "retention": {
         "title": "Data retention and deletion",
-        "body": "We retain account and workspace data while it is needed to operate the relevant account or studio, and retain integration data while the connection is active. You may ask us about access to or deletion of your information. Some records may remain for a reasonable period in backups or where needed for security, dispute resolution, or legal obligations."
+        "body": "We retain account and workspace data while it is needed to operate the relevant account or studio, and retain Google Calendar connection data while the connection is active. You may ask us about access to or deletion of your information. Some records may remain for a reasonable period in backups or where needed for security, dispute resolution, or legal obligations."
+      },
+      "dataDeletion": {
+        "title": "Data access and deletion requests",
+        "bodyOne": "To request access to or deletion of personal data held by StudioFlow, including Meta Lead Ads data, email <email>studioflow.notifications@gmail.com</email>. Identify the studio you contacted, the approximate submission date and the email address or phone number you used in the form, and explain whether you are requesting access or deletion.",
+        "bodyTwo": "We may ask for information needed to verify that the request concerns your data and coordinate with the relevant studio. We will explain the records concerned, any additional steps needed and any applicable limitations. These instructions cover data held by StudioFlow; data held separately by Meta or the studio outside StudioFlow is handled through those parties.",
+        "bodyThree": "Deleting a CRM lead or disabling the integration does not automatically erase all Meta data. Submitted answers and technical identifiers remain in restricted integration records, including records for inquiries that could not be imported. There is currently no automatic complete-erasure workflow; these records require separate review when handling a deletion request."
       },
       "security": {
         "title": "Security",
@@ -2681,7 +2694,8 @@
     "terms": {
       "title": "Terms of Service",
       "lastUpdatedLabel": "Last updated",
-      "lastUpdatedDate": "September 2, 2026",
+      "lastUpdatedDate": "November 1, 2026",
+      "lastUpdatedDateTime": "2026-11-01",
       "introduction": "These terms set out the practical rules for using StudioFlow during its closed production-test and evolving beta stage.",
       "acceptance": {
         "title": "Acceptance of these terms",
@@ -2714,7 +2728,8 @@
       "integrations": {
         "title": "Third-party integrations",
         "bodyOne": "Optional integrations, including Google Calendar, are also governed by the relevant third party’s terms and policies. When you connect an integration, you authorize StudioFlow to take the actions described in the product and Privacy Policy on your behalf.",
-        "bodyTwo": "The current Google Calendar integration synchronizes StudioFlow events one way into a secondary calendar created by StudioFlow. Third-party services can change, interrupt, or revoke access, and StudioFlow cannot guarantee their availability or behavior."
+        "bodyTwo": "The current Google Calendar integration synchronizes StudioFlow events one way into a secondary calendar created by StudioFlow. Third-party services can change, interrupt, or revoke access, and StudioFlow cannot guarantee their availability or behavior.",
+        "metaLeadAds": "For Meta Lead Ads, the Meta app “StudioFlow” technically receives and transfers Instant Form inquiries to the relevant studio’s CRM within the permissions granted. The studio is responsible for the lawful collection and use of these inquiries, including the required notices and permissions. StudioFlow provides technical processing as described in the <privacy>Privacy Policy</privacy>."
       },
       "availability": {
         "title": "Availability and service changes",
