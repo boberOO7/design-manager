@@ -1280,7 +1280,23 @@
       "projectTemplatesTab": "Проєктів",
       "checklistsTab": "Чеклістів",
       "objectArea": "Площа об’єкта",
-      "order": "Порядок напрямів"
+      "order": "Порядок напрямів",
+      "components": {
+        "title": "Додаткові складові ({count})",
+        "total": "Загальна умовна площа",
+        "add": "Додати складову",
+        "primaryArea": "Основна площа",
+        "primaryCoefficient": "Коефіцієнт основної площі",
+        "position": "Додаткова складова {number}",
+        "name": "Назва складової",
+        "area": "Фактична площа, м²",
+        "coefficient": "Коефіцієнт",
+        "equivalent": "Умовна площа",
+        "positionName": "Назва додаткової складової {number}",
+        "positionArea": "Площа додаткової складової {number}",
+        "positionCoefficient": "Коефіцієнт додаткової складової {number}",
+        "remove": "Видалити додаткову складову {number}"
+      }
     },
     "areaValue": "{area} м²",
     "deadlinePassed": "Дедлайн проєкту минув",
@@ -3644,6 +3660,7 @@
       }
     },
     "proposal": {
+      "showPercentages": "Відображати відсотки",
       "stageNotes": "Описи етапів",
       "stageNote": "Опис етапу: {name}",
       "stageNotePlaceholder": "Короткий опис (необов’язково)",
@@ -4554,7 +4571,23 @@
       "saveRevision": "Зберегти редакцію",
       "initialReason": "Початкова домовленість щодо проєкту",
       "areaSummary": "{area} м² × {rate} /м²",
-      "fixedSummary": "Фіксована вартість проєкту"
+      "fixedSummary": "Фіксована вартість проєкту",
+      "components": {
+        "add": "Додати складову",
+        "defaultName": "Проєктування",
+        "name": "Назва складової",
+        "actualArea": "Фактична площа, м²",
+        "coefficient": "Коефіцієнт",
+        "sharedRate": "Спільний тариф",
+        "amount": "Вартість",
+        "position": "Складова {number}",
+        "positionName": "Назва складової {number}",
+        "positionArea": "Фактична площа складової {number}",
+        "positionCoefficient": "Коефіцієнт складової {number}",
+        "positionAmount": "Вартість складової {number}",
+        "remove": "Видалити складову {number}",
+        "scopeHelp": "Щоб змінити метрики задач, редагуйте складові в напрямі. Тут зміни стосуються лише вартості домовленості."
+      }
     },
     "planning": {
       "additionalOptions": "Додаткові умови",

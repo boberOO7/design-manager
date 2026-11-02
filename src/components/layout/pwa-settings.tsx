@@ -81,7 +81,7 @@ export function SystemNotificationSettings({ userId }: { userId: string }) {
       </div>
       <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={t(state === "enabled" ? "pushDisableLabel" : "pushEnableLabel")} aria-busy={busy} disabled={busy || testing || state === "blocked" || state === "unsupported" || (!configured && state !== "enabled")} onClick={() => void toggle()}>{state === "enabled" ? t("pushDisable") : t("pushEnable")}</Button>
     </div>
-    {state === "enabled" ? <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 px-0 text-xs" disabled={busy || testing} aria-busy={testing} onClick={() => void sendTest()}>{t(testing ? "pushTestSending" : "pushTestSend")}</Button> : null}
+    {state === "enabled" ? <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 text-xs" disabled={busy || testing} aria-busy={testing} onClick={() => void sendTest()}>{t(testing ? "pushTestSending" : "pushTestSend")}</Button> : null}
     {testFeedback ? <p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]" role="status">{t(testFeedback)}</p> : null}
     {state === "blocked" ? <p className="mt-2 text-xs leading-5 text-[var(--ui-text-muted)]">{t("pushBlockedHelp")}</p> : null}
     {!configured ? <p className="mt-2 text-xs text-[var(--ui-text-muted)]">{t("pushNotConfigured")}</p> : null}
@@ -98,7 +98,7 @@ export function InstallStudioFlow() {
   const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
   const help = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "installIos" : /edg/i.test(ua) ? "installEdge" : /firefox/i.test(ua) ? /android/i.test(ua) ? "installFirefoxAndroid" : "installFirefox" : /safari/i.test(ua) && !/chrome|chromium/i.test(ua) ? "installSafari" : /android/i.test(ua) ? "installChromeAndroid" : "installChrome";
   return <Popover.Root modal open={instructions} onOpenChange={open => { if (!open || (!install && !busy)) setInstructions(open); }}>
-    <Popover.Trigger asChild><Button type="button" variant="ghost" size="sm" className="gap-2 px-0 text-sm text-[var(--ui-text-secondary)]" disabled={busy} onClick={async () => {
+    <Popover.Trigger asChild><Button type="button" variant="ghost" size="sm" className="gap-2 text-sm text-[var(--ui-text-secondary)]" disabled={busy} onClick={async () => {
       if (!install) return;
       setInstructions(false);
       setBusy(true);
@@ -150,7 +150,7 @@ export function PwaSettings() {
   const t = useTranslations("Account");
   return <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
     <InstallStudioFlow />
-    <SettingsHelp label={t("configureAutostart")} trigger={<Button type="button" variant="ghost" size="sm" className="gap-2 px-0 text-xs font-medium"><Settings2 className="size-4" aria-hidden="true" />{t("configureAutostart")}</Button>}>
+    <SettingsHelp label={t("configureAutostart")} trigger={<Button type="button" variant="ghost" size="sm" className="gap-2 text-xs font-medium"><Settings2 className="size-4" aria-hidden="true" />{t("configureAutostart")}</Button>}>
       <AutostartInstructions />
     </SettingsHelp>
   </div>;

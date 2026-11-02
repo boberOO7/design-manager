@@ -24,6 +24,17 @@ it("retains additional-stage scheduling settings", async () => {
   expect(result.stages[0].kind).toBe("additional");
   expect(result.schedulePause[custom]).toEqual({ startedOn: "2026-10-01", reason: "waiting_for_client" });
 });
+it.each([null, []])("loads directions without additional scope (%j)", async area_components => {
+  const direction = { id: directionId, studio_id: directionId, project_id: directionId, name: "Фасад", kind: "facade", status: "active", is_default: false, display_order: 1, area_m2: 200, complexity_coefficient: 0.35, area_components, equivalent_area_m2: 70, start_date: null, due_date: null, created_at: "2026-11-02T00:00:00Z" };
+  mocks.rpc.mockResolvedValue({ data: { ...snapshot, directions: [direction] }, error: null });
+  expect((await getProjectStageConfiguration("project")).directions?.[0]).toMatchObject({ equivalent_area_m2: 70, area_components });
+});
+it("retains additional production scope in the workspace snapshot", async () => {
+  const area_components = [{ name: "Територія", actualArea: "30", coefficient: "0.10" }];
+  const direction = { id: directionId, studio_id: directionId, project_id: directionId, name: "Фасад", kind: "facade", status: "active", is_default: false, display_order: 1, area_m2: 200, complexity_coefficient: 0.35, area_components, equivalent_area_m2: 73, start_date: null, due_date: null, created_at: "2026-11-02T00:00:00Z" };
+  mocks.rpc.mockResolvedValue({ data: { ...snapshot, directions: [direction] }, error: null });
+  expect((await getProjectStageConfiguration("project")).directions?.[0]).toMatchObject({ equivalent_area_m2: 73, area_components });
+});
 it("fails closed for missing projects and unsupported stage metadata", async () => {
   mocks.rpc.mockResolvedValue({ data: null, error: null });
   await expect(getProjectStageConfiguration("project")).rejects.toThrow("Unable to load");

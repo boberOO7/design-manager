@@ -1280,7 +1280,23 @@
       "projectTemplatesTab": "Projects",
       "checklistsTab": "Checklists",
       "objectArea": "Object area",
-      "order": "Direction order"
+      "order": "Direction order",
+      "components": {
+        "title": "Additional components ({count})",
+        "total": "Total equivalent area",
+        "add": "Add component",
+        "primaryArea": "Primary area",
+        "primaryCoefficient": "Primary area coefficient",
+        "position": "Additional component {number}",
+        "name": "Component name",
+        "area": "Actual area, m²",
+        "coefficient": "Coefficient",
+        "equivalent": "Equivalent area",
+        "positionName": "Additional component {number} name",
+        "positionArea": "Additional component {number} area",
+        "positionCoefficient": "Additional component {number} coefficient",
+        "remove": "Remove additional component {number}"
+      }
     },
     "areaValue": "{area} m²",
     "deadlinePassed": "Project deadline passed",
@@ -3644,6 +3660,7 @@
       }
     },
     "proposal": {
+      "showPercentages": "Show percentages",
       "stageNotes": "Stage descriptions",
       "stageNote": "Stage description: {name}",
       "stageNotePlaceholder": "Short description (optional)",
@@ -4554,7 +4571,23 @@
       "saveRevision": "Save revision",
       "initialReason": "Initial project agreement",
       "areaSummary": "{area} m² × {rate} /m²",
-      "fixedSummary": "Fixed project value"
+      "fixedSummary": "Fixed project value",
+      "components": {
+        "add": "Add component",
+        "defaultName": "Design",
+        "name": "Component name",
+        "actualArea": "Actual area, m²",
+        "coefficient": "Coefficient",
+        "sharedRate": "Shared rate",
+        "amount": "Amount",
+        "position": "Component {number}",
+        "positionName": "Component {number} name",
+        "positionArea": "Component {number} actual area",
+        "positionCoefficient": "Component {number} coefficient",
+        "positionAmount": "Component {number} amount",
+        "remove": "Remove component {number}",
+        "scopeHelp": "Edit components in the work direction to change task metrics. Changes here affect only the agreement price."
+      }
     },
     "planning": {
       "additionalOptions": "Additional options",

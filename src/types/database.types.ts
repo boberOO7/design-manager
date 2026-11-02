@@ -3962,6 +3962,8 @@ export type Database = {
       }
       finance_project_plan_revisions: {
         Row: {
+          area_calculation: Json | null
+          area_components: Json | null
           area_snapshot: number | null
           item_order: string[]
           pricing_method: string
@@ -3971,6 +3973,8 @@ export type Database = {
           terms_id: string
         }
         Insert: {
+          area_calculation?: Json | null
+          area_components?: Json | null
           area_snapshot?: number | null
           item_order?: string[]
           pricing_method: string
@@ -3980,6 +3984,8 @@ export type Database = {
           terms_id: string
         }
         Update: {
+          area_calculation?: Json | null
+          area_components?: Json | null
           area_snapshot?: number | null
           item_order?: string[]
           pricing_method?: string
@@ -6091,6 +6097,7 @@ export type Database = {
           project_id: string
           source_area_m2: number | null
           source_coefficient: number | null
+          source_components: Json | null
           source_type: string
           studio_id: string
           task_id: string | null
@@ -6110,6 +6117,7 @@ export type Database = {
           project_id: string
           source_area_m2?: number | null
           source_coefficient?: number | null
+          source_components?: Json | null
           source_type: string
           studio_id: string
           task_id?: string | null
@@ -6129,6 +6137,7 @@ export type Database = {
           project_id?: string
           source_area_m2?: number | null
           source_coefficient?: number | null
+          source_components?: Json | null
           source_type?: string
           studio_id?: string
           task_id?: string | null
@@ -6707,11 +6716,13 @@ export type Database = {
       }
       project_work_directions: {
         Row: {
+          area_components: Json | null
           area_m2: number
           complexity_coefficient: number
           created_at: string
           display_order: number
           due_date: string | null
+          equivalent_area_m2: number | null
           id: string
           is_default: boolean
           kind: string | null
@@ -6722,11 +6733,13 @@ export type Database = {
           studio_id: string
         }
         Insert: {
+          area_components?: Json | null
           area_m2: number
           complexity_coefficient?: number
           created_at?: string
           display_order?: number
           due_date?: string | null
+          equivalent_area_m2?: number | null
           id?: string
           is_default?: boolean
           kind?: string | null
@@ -6737,11 +6750,13 @@ export type Database = {
           studio_id: string
         }
         Update: {
+          area_components?: Json | null
           area_m2?: number
           complexity_coefficient?: number
           created_at?: string
           display_order?: number
           due_date?: string | null
+          equivalent_area_m2?: number | null
           id?: string
           is_default?: boolean
           kind?: string | null

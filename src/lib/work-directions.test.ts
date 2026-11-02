@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { directionName, directionPresetInputSchema, equivalentArea, getStageProductivityRole, workDirectionInputSchema } from "./work-directions";
 import { getTaskCreationProgressField } from "./productivity";
+import { componentAreaValue, directionEquivalentArea } from "./work-direction-components";
 
 describe("work direction scope", () => {
+  it("adds attached scope to one direction without replacing its primary coefficient", () => {
+    const areaComponents = [{ name: "Територія", actualArea: "30", coefficient: "0.1" }];
+    expect(directionEquivalentArea({ area_m2: 200, complexity_coefficient: 0.35, area_components: areaComponents })).toBe(73);
+    expect(workDirectionInputSchema.parse({ intent: "save", name: "Фасад", areaM2: 200, coefficient: 0.35, areaComponents }).areaComponents).toEqual(areaComponents);
+    expect(workDirectionInputSchema.safeParse({ intent: "save", name: "Фасад", areaM2: 200, coefficient: 0.35, areaComponents: [{ ...areaComponents[0], coefficient: "0" }] }).success).toBe(false);
+  });
+  it("retains precise direction inputs while rounding only the financial equivalent area", () => {
+    expect(componentAreaValue("200", "0.3333333", 4)).toBe("66.6667");
+    expect(componentAreaValue("0.1", "0.2", 4)).toBe("0.0200");
+    expect(componentAreaValue("200", "0.35", 4)).toBe("70.0000");
+    expect(directionEquivalentArea({ area_m2: 200, complexity_coefficient: 0.3333333 })).toBeCloseTo(66.66666, 8);
+  });
   it("keeps studio guides optional and never clamps a precise coefficient to them", () => {
     const preset = { kind: "facade", coefficient: 12.5, recommendedMin: 0.25, recommendedMax: 0.6, templateId: null, version: 1 };
     expect(directionPresetInputSchema.safeParse(preset).success).toBe(true);

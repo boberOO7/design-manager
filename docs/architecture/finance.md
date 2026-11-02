@@ -27,8 +27,8 @@ proposal revisions and commercial confirmation.
 - Associations provide scope, never amounts: totals still aggregate canonical
   orders once. Commercial area/pricing snapshots, cash and production area ×
   coefficient remain separate. A sole linked direction may seed a new pricing
-  form's equivalent area (area × complexity coefficient), at Finance's four-decimal
-  input precision, without changing existing contractual snapshots. Shared-order
+  form with its primary and additional components, each calculated at Finance's
+  four-decimal area precision, without changing existing contractual snapshots. Shared-order
   profitability stays project/order-level; no automatic allocation is invented.
 - Direction Finance uses the same terms/payment workspace as Project Finance.
   Its summary includes only exclusively linked confirmed orders; linked shared
@@ -358,6 +358,22 @@ or notifications containing private data.
   `quiet-monument`, `folded-plane`). Missing legacy fields and first drafts use
   the original `classic` layout. New revisions inherit the latest saved variant;
   saved revisions reopen their stored design and PDF bytes without regeneration.
+  Presentation-only `showPercentages` controls the payment schedule's share column
+  across layouts and continuation pages. Missing values keep shares visible;
+  new proposal revisions inherit the latest saved choice without changing amounts.
+  Optional `finance_project_plan_revisions.area_calculation` (and draft-plan
+  `areaCalculation`) freezes actual area/coefficient for the commercial calculation.
+  Proposals explain non-unit coefficients from that snapshot only; legacy/fixed
+  pricing stays compact, with no backfill from current direction values.
+  Optional `area_components` / draft `areaComponents` stores named actual-area ×
+  coefficient inputs inside that revision; `rate_per_m2` remains shared. Each
+  calculated area rounds to Finance's four-decimal precision, then their sum
+  enters the unchanged area × rate, discount, VAT and schedule engine. Displayed
+  position amounts use cumulative rounding to close to the agreement list value.
+  Commercial component edits never update direction/productivity m². Production
+  components belong to the direction and only seed fresh commercial terms;
+  later direction edits do not rewrite financial revision snapshots. Proposals
+  freeze the components and their original shared tariff in the client snapshot.
   Reusable business contacts live on `studios` (website, email, phone, business
   address); guarded admin saves supply new drafts, and each proposal snapshots
   the actual contact values used.

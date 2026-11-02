@@ -1,5 +1,7 @@
 "use client";
 
+import { directionEquivalentArea, areaComponentsSchema } from "@/lib/work-direction-components";
+
 import { ProjectWorkspaceTabs } from "./project-workspace-tab";
 import { ProjectWorkspaceMotion } from "./project-workspace-motion";
 import { ProjectWorkspaceLink as Link, useProjectWorkspaceNavigation } from "./project-workspace-navigation";
@@ -95,8 +97,8 @@ export function ProjectWorkDirections({ projectId, configuration, tasks, selecte
   }
   function measurements(direction: ProjectWorkDirection) {
     return <dl className={styles.areaMetrics}>
-      <div><dt>{t("area")}</dt><dd>{format(direction.area_m2)} <small>м²</small></dd></div>
-      <div><dt>{t("equivalent")}</dt><dd>{format(direction.area_m2 * direction.complexity_coefficient)} <small>{t("unitShort")}</small></dd></div>
+      <div><dt>{t(areaComponentsSchema.safeParse(direction.area_components).success ? "components.primaryArea" : "area")}</dt><dd>{format(direction.area_m2)} <small>м²</small></dd></div>
+      <div><dt>{t("equivalent")}</dt><dd>{format(directionEquivalentArea(direction))} <small>{t("unitShort")}</small></dd></div>
     </dl>;
   }
   function directionPicker(direction: ProjectWorkDirection) {
@@ -182,7 +184,7 @@ export function ProjectWorkDirections({ projectId, configuration, tasks, selecte
       </div>
     </div>
     {error ? <p role="alert" className="mt-2 text-xs text-[var(--ui-danger-text)]">{error}</p> : null}
-    {editor ? <WorkDirectionEditor projectId={projectId} version={configuration.version} direction={editor === "new" ? undefined : editor} templates={templates} presets={presets} onClose={() => setEditor(null)} onSaved={id => { const creating = editor === "new"; setEditor(null); if (creating) { onNavigatingChange?.(true); router.push(projectWorkspaceHref(projectId, "board", id, backHref), { scroll: false }); } }}/>: null}
+    {editor ? <WorkDirectionEditor key={`${editor === "new" ? "new" : editor.id}-${configuration.version}`} projectId={projectId} version={configuration.version} direction={editor === "new" ? undefined : directions.find(item => item.id === editor.id) ?? editor} templates={templates} presets={presets} onClose={() => setEditor(null)} onSaved={id => { const creating = editor === "new"; setEditor(null); if (creating) { onNavigatingChange?.(true); router.push(projectWorkspaceHref(projectId, "board", id, backHref), { scroll: false }); } }}/>: null}
   </section>;
 }
 

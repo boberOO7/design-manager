@@ -63,7 +63,9 @@ rows without `voided_at`.
 
 ## Stage accounting
 
-- Direction equivalent area = actual area × positive, finite complexity factor.
+- Direction `equivalent_area_m2` is generated from primary actual area × factor
+  plus each optional `area_components` actual area × its own factor. Components
+  extend the direction's design allowance; they do not replace the primary factor.
   Coefficients are not constrained by a direction name/type. Zero-area legacy or
   internal projects retain zero scope. New directions require positive area.
 - Stage `productivity_role` is `initial`, `final`, `visualization`, or `none`.
@@ -71,13 +73,16 @@ rows without `voided_at`.
   Labels, display order, visibility and progress weights do not define credit.
 - Interior methodology remains: `initial` receives the studio's configured share
   (default 20%), `final` the remainder, and visualization task areas are credited
-  separately. All use their direction's coefficient. There is deliberately no
+  separately. Design shares use the full equivalent area, including components.
+  There is deliberately no
   combined cap that consumes visualization credit from design work.
 - Multiple stages with the same direction/role share one allowance. On first
   completion, remaining allowance after latest historical task snapshots
   (including reopened/deleted tasks) is divided equally among current noncancelled
   tasks without history. Earned snapshots stay fixed; changed scope/share/roster
   affects only the remainder, floored at zero if old credit exceeds the new scope.
+  Design attributions snapshot additional scope in `source_components`; later
+  direction edits never restate earned area or its source snapshot.
 - `visualization` snapshots task `completed_area_m2` × direction coefficient;
   `none` records count-only completion. No whole-project/direction completion
   creates additional area. `project_stage_productivity_budgets` and

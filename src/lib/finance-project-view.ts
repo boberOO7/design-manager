@@ -3,7 +3,10 @@ import { convertFinanceDisplayAmount } from "./finance-display-report";
 import type { Database } from "@/types/database.types";
 import type { FinanceProjectData } from "@/data/queries/finance";
 import { projectStreams } from "./finance-projects";
-import { equivalentArea } from "./work-directions";
+import { projectAreaComponentsValue } from "./finance-project-plan";
+import { areaComponentsSchema, directionEquivalentArea } from "./work-direction-components";
+
+type PricingDirection = Pick<FinanceProjectData["directions"][number], "id" | "area_m2" | "complexity_coefficient"> & Partial<Pick<FinanceProjectData["directions"][number], "area_components" | "equivalent_area_m2">>;
 
 export function nextProjectPayment<T extends Pick<Database["public"]["Views"]["finance_project_expected_balances"]["Row"], "order_id" | "expected_payment_date" | "due_date">>(items: readonly T[], confirmedOrderIds: readonly string[]): T | null {
   const confirmed = new Set(confirmedOrderIds);
@@ -30,17 +33,35 @@ export function projectAgreementName(name: string, defaultName: string) {
   return ["Основне замовлення", "Main order"].includes(name) ? defaultName : name;
 }
 
-export function projectPricingArea(project: { directions: readonly Pick<FinanceProjectData["directions"][number], "id" | "area_m2" | "complexity_coefficient">[]; area: FinanceProjectData["area"] }, directionIds: readonly string[]) {
+export function projectPricingArea(project: { directions: readonly PricingDirection[]; area: FinanceProjectData["area"] }, directionIds: readonly string[]) {
   if (directionIds.length > 1) return null;
   const direction = directionIds.length === 1
     ? project.directions.find(item => item.id === directionIds[0])
     : project.directions.length === 1 ? project.directions[0] : undefined;
   if (direction) {
-    const area = equivalentArea(direction.area_m2, direction.complexity_coefficient);
+    const components = projectPricingAreaComponents(project, directionIds, "");
+    const area = components.length ? Number(projectAreaComponentsValue(components, "1", 4).area) : directionEquivalentArea(direction);
     // Match Finance's four-decimal area input precision.
     return area === null ? null : Number(area.toFixed(4));
   }
   return !directionIds.length && !project.directions.length ? project.area : null;
+}
+
+export function projectPricingAreaCalculation(project: Parameters<typeof projectPricingArea>[0], directionIds: readonly string[]) {
+  if (directionIds.length > 1) return null;
+  const direction = directionIds.length === 1 ? project.directions.find(item => item.id === directionIds[0])
+    : project.directions.length === 1 ? project.directions[0] : undefined;
+  if (areaComponentsSchema.safeParse(direction?.area_components).success) return null;
+  return direction?.area_m2 != null && direction.area_m2 > 0 && direction.complexity_coefficient != null && direction.complexity_coefficient > 0
+    ? { actualArea: String(direction.area_m2), coefficient: String(direction.complexity_coefficient) } : null;
+}
+
+export function projectPricingAreaComponents(project: Parameters<typeof projectPricingArea>[0], directionIds: readonly string[], primaryName: string) {
+  if (directionIds.length > 1) return [];
+  const direction = directionIds.length === 1 ? project.directions.find(item => item.id === directionIds[0])
+    : project.directions.length === 1 ? project.directions[0] : undefined;
+  const additional = areaComponentsSchema.safeParse(direction?.area_components).data;
+  return direction && additional ? [{ name: primaryName, actualArea: String(direction.area_m2), coefficient: String(direction.complexity_coefficient) }, ...additional] : [];
 }
 
 // Shared agreements remain visible, but never enter a direction's own totals.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextProjectPayment, scopeProjectFinance, projectPricingArea, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
+import { nextProjectPayment, scopeProjectFinance, projectPricingAreaComponents, projectPricingArea, projectPricingAreaCalculation, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
 import { planningAmount } from "./finance-planning";
 import { projectAreaValue } from "./finance-project-plan";
 
@@ -129,9 +129,20 @@ describe("direction financial scope", () => {
     expect(scopeProjectFinance(sharedOnly, "interior", currencies).orders.map(order => order.id)).toEqual(["shared"]);
   });
 
+  it("seeds the complete direction scope while leaving saved commercial revisions independent", () => {
+    const source = { area: 200, directions: [{ id: "facade", area_m2: 200, complexity_coefficient: 0.35, area_components: [{ name: "Територія", actualArea: "30", coefficient: "0.10" }] }] };
+    expect(projectPricingArea(source, ["facade"])).toBe(73);
+    expect(projectPricingAreaCalculation(source, ["facade"])).toBeNull();
+    expect(projectPricingAreaComponents(source, ["facade"], "Фасад")).toEqual([{ name: "Фасад", actualArea: "200", coefficient: "0.35" }, { name: "Територія", actualArea: "30", coefficient: "0.10" }]);
+  });
+
   it("uses equivalent direction area for pricing and requires explicit area for a shared multi-direction scope", () => {
     const source = { area: 800, directions: [{ id: "interior", area_m2: 120, complexity_coefficient: 1.5 }, { id: "facade", area_m2: 800, complexity_coefficient: 0.15 }] };
     expect(projectPricingArea(source, ["facade"])).toBe(120);
+    expect(projectPricingAreaCalculation(source, ["facade"])).toEqual({ actualArea: "800", coefficient: "0.15" });
+    expect(projectPricingAreaCalculation(source, ["interior", "facade"])).toBeNull();
+    expect(projectPricingAreaCalculation(source, ["unknown"])).toBeNull();
+    expect(projectPricingAreaCalculation({ area: 800, directions: [] }, [])).toBeNull();
     expect(projectAreaValue(String(projectPricingArea(source, ["facade"])), "40", 2)).toBe("4800.00");
     expect(projectPricingArea(source, ["interior"])).toBe(180);
     expect(projectPricingArea(source, ["interior", "facade"])).toBeNull();

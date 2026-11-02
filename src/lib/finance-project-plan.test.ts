@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectBasisToGross, projectClientPaymentSchedule, projectGrossToBasis, projectMoneyText, projectMoneyUnits, projectPaymentAmounts, projectPaymentTemplates, projectPlanSchema, projectReferenceValue, projectRevenueTaxAmounts, projectScheduleVatAmounts, projectVatAmounts } from "./finance-project-plan";
+import { projectAreaComponentsValue, projectAreaValue, projectDiscountAmounts, projectRescalePayments, projectBasisToGross, projectClientPaymentSchedule, projectGrossToBasis, projectMoneyText, projectMoneyUnits, projectPaymentAmounts, projectPaymentTemplates, projectPlanSchema, projectReferenceValue, projectRevenueTaxAmounts, projectScheduleVatAmounts, projectVatAmounts } from "./finance-project-plan";
 import { projectTermsSchema } from "./finance-projects";
 
 describe("Project value and schedule previews", () => {
@@ -94,6 +94,10 @@ describe("Project value and schedule previews", () => {
     const id="65000000-0000-4000-8000-000000000001";
     const base={requestId:id,projectId:id,revision:0,pricingMethod:"fixed",amount:"100",vatRate:null,priceBasis:null,currency:"UAH",reason:"Signed",allowUnscheduled:false,known:[],items:[{id:"",name:"Advance",amount:"100",dueDate:"",expectedDate:""}]};
     expect(projectPlanSchema.safeParse(base).success).toBe(true);
+    const areaPlan = { ...base, pricingMethod: "area", area: "120", rate: "40", amount: "4800", areaCalculation: { actualArea: "800", coefficient: "0,15" } };
+    expect(projectPlanSchema.parse(areaPlan).areaCalculation).toEqual({ actualArea: "800", coefficient: "0.15" });
+    expect(projectPlanSchema.safeParse({ ...areaPlan, area: "800" }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...areaPlan, pricingMethod: "fixed" }).success).toBe(false);
     expect(projectPlanSchema.safeParse({...base,reason:""}).success).toBe(false);
     expect(projectPlanSchema.safeParse({...base,vatRate:"0",priceBasis:"net"}).success).toBe(true);
     expect(projectPlanSchema.safeParse({...base,revenueTaxRate:"6"}).success).toBe(true);
@@ -146,5 +150,43 @@ describe("Project discounts before VAT", () => {
     // Keep the entire protected 369 Gross, not only its settled 1 Gross.
     const remaining = projectClientPaymentSchedule("738",["75","25"],"23","net",2);
     expect(remaining.grossAmounts).toEqual(["553.50","184.50"]);
+  });
+});
+
+
+describe("Revision-owned area pricing components", () => {
+  const components = [{ name: "Фасад", actualArea: "200", coefficient: "0.35" }, { name: "Прилегла територія", actualArea: "30", coefficient: "0.10" }];
+  it("keeps one component identical to the existing area calculation", () => {
+    expect(projectAreaComponentsValue(components.slice(0, 1), "40", 2)).toEqual({ area: "70.0000", amount: "2800.00", items: [{ area: "70.0000", amount: "2800.00" }] });
+  });
+  it("uses each component's own area/coefficient and one shared tariff", () => {
+    expect(projectAreaComponentsValue(components, "40", 2)).toEqual({ area: "73.0000", amount: "2920.00", items: [{ area: "70.0000", amount: "2800.00" }, { area: "3.0000", amount: "120.00" }] });
+    expect(components[0]).toEqual({ name: "Фасад", actualArea: "200", coefficient: "0.35" });
+  });
+  it.each([0, 2, 4])("reconciles position amounts at %i currency digits without changing agreement-level rounding", digits => {
+    const result = projectAreaComponentsValue([{ name: "A", actualArea: "1", coefficient: "1" }, { name: "B", actualArea: "1", coefficient: "1" }], "0.005", digits);
+    expect(result.amount).toBe(projectAreaValue(result.area, "0.005", digits));
+    expect(result.items.reduce((sum, item) => sum + projectMoneyUnits(item.amount, digits), BigInt(0))).toBe(projectMoneyUnits(result.amount, digits));
+    if (digits === 2) expect(result.items.map(item => item.amount)).toEqual(["0.01", "0.00"]);
+  });
+  it("retains the existing discount, VAT and payment allocation rules", () => {
+    const value = projectAreaComponentsValue(components, "40", 2);
+    const discounted = projectDiscountAmounts(value.amount, "percentage", "10", 2);
+    const vat = projectVatAmounts(discounted.agreed, "20", "net", 2);
+    expect(vat).toEqual({ net: "2628.00", vat: "525.60", gross: "3153.60" });
+    expect(projectClientPaymentSchedule(vat.gross, ["50", "50"], "20", "net", 2).grossAmounts).toEqual(["1576.80", "1576.80"]);
+  });
+  it("validates component provenance without requiring it for legacy/manual prices", () => {
+    const id = "65000000-0000-4000-8000-000000000001";
+    const input = { requestId: id, projectId: id, revision: 0, pricingMethod: "area", amount: "2920", area: "73", rate: "40", areaComponents: components, vatRate: null, priceBasis: null, currency: "USD", reason: "Agreed", allowUnscheduled: true, known: [], items: [] };
+    expect(projectPlanSchema.safeParse(input).success).toBe(true);
+    expect(projectPlanSchema.safeParse({ ...input, area: "74" }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, pricingMethod: "fixed" }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, areaComponents: [] }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, areaComponents: [{ ...components[0], name: "" }] }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, areaComponents: [{ ...components[0], coefficient: "0" }] }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, areaCalculation: { actualArea: "73", coefficient: "1" } }).success).toBe(false);
+    expect(projectPlanSchema.safeParse({ ...input, pricingMethod: "fixed", areaComponents: null }).success).toBe(true);
+    expect(projectPlanSchema.safeParse({ ...input, areaComponents: undefined }).success).toBe(true);
   });
 });

@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { Document, Page, View, Text, Svg, Path, StyleSheet } from "@react-pdf/renderer";
 import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { projectDiscountAmounts } from "@/lib/finance-project-plan";
-import { parseProposalProjectName, proposalPriceBasis, studioWebsiteDisplay, type ProposalSnapshot, type ProposalConceptVariant } from "@/lib/finance-proposal";
+import { parseProposalProjectName, proposalAreaBreakdown, proposalPriceBasis, type ProposalSnapshot, type ProposalConceptVariant } from "@/lib/finance-proposal";
+import { ProposalFooter } from "./footer";
+import { ProposalPricingComponents } from "./pricing-components";
 
 const mm = (value: number) => value * 72 / 25.4;
 const ink = "#242521", muted = "#5d605a", rule = "#c7cac2";
@@ -37,6 +39,7 @@ const styles = StyleSheet.create({
   columns: { flexDirection: "row", fontSize: 8, color: muted, paddingBottom: mm(3), borderBottomWidth: .6, borderBottomColor: ink },
   row: { flexDirection: "row", paddingTop: mm(3.5), paddingBottom: mm(3), alignItems: "flex-start" },
   stage: { width: "61%", paddingRight: mm(5) },
+  stageWithoutPercentages: { width: "72%" },
   name: { fontSize: 9.5 },
   rowNote: { fontSize: 8.5, color: muted, marginTop: mm(1) },
   percentage: { width: "11%", textAlign: "right", fontSize: 9, color: muted },
@@ -44,8 +47,7 @@ const styles = StyleSheet.create({
   stageNumber: { fontFamily: "DesignGeometry", width: mm(12), fontSize: 9, color: muted },
   numberedName: { flex: 1 },
   intro: { fontSize: 8.5, color: muted, marginTop: mm(4) },
-  footer: { position: "absolute", bottom: mm(16), left: mm(18), right: mm(18), paddingTop: mm(4), borderTopWidth: .45, borderTopColor: rule, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: muted },
-  contactLines: { gap: mm(1), flexShrink: 1, maxWidth: "48%" },
+  footer: { position: "absolute", bottom: mm(16), left: mm(18), right: mm(18), paddingTop: mm(5), borderTopWidth: .45, borderTopColor: rule },
 });
 const layouts = StyleSheet.create({
   measuredPage: { backgroundColor: "#fbfaf7" },
@@ -82,8 +84,8 @@ const layouts = StyleSheet.create({
   foldedRow: { paddingTop: mm(3), paddingBottom: mm(2) },
 });
 
-function Section({ variant, number, label, children }: { variant: ProposalConceptVariant; number: string; label: string; children: ReactNode }) {
-  return <View wrap={number !== "02"} style={[styles.section, variant === "measured-space" ? styles.railSection : {}, variant === "folded-plane" && number === "03" ? layouts.foldedSchedule : {}]}>
+function Section({ variant, number, label, children, allowWrap = false }: { variant: ProposalConceptVariant; number: string; label: string; children: ReactNode; allowWrap?: boolean }) {
+  return <View wrap={number !== "02" || allowWrap} style={[styles.section, variant === "measured-space" ? styles.railSection : {}, variant === "folded-plane" && number === "03" ? layouts.foldedSchedule : {}]}>
     {variant === "measured-space" ? <View style={styles.rail}><Text style={styles.railNumber}>{number}</Text><Text>{label}</Text></View> : null}
     <View style={variant === "measured-space" ? styles.readingColumn : {}}>{children}</View>
   </View>;
@@ -96,11 +98,12 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
   const percent = (value: string) => new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 4 }).format(Number(value));
   const title = parseProposalProjectName(s.projectTitle).title;
   const basis = proposalPriceBasis(s);
+  const areaBreakdown = proposalAreaBreakdown(s);
+  const hasComponents = Boolean(s.areaComponents?.length && s.componentRatePerM2 && s.clientRatePerM2);
   const discount = s.pricing && Number(s.pricing.discountAmount) > 0 ? s.pricing : null;
   const discountPercent = discount ? projectDiscountAmounts(discount.listAmount, discount.discountType, discount.discountValue, s.minorUnits).percentage : null;
-  const details = s.studioContactDetails;
-  const digitalContacts = details ? [studioWebsiteDisplay(details.website), details.email].filter(Boolean) : (s.studioContacts?.split(" · ").filter(Boolean).map(studioWebsiteDisplay) ?? []);
-  const physicalContacts = details ? [details.contactPerson, phoneDisplay(details.phone), details.businessAddress].filter(Boolean) : [];
+  const showPercentages = s.showPercentages !== false;
+  const stageStyle = showPercentages ? styles.stage : [styles.stage, styles.stageWithoutPercentages];
   const facts = [
     ...(discount ? [
       { label: `До знижки${s.vatRate !== null ? " (з ПДВ)" : ""}`, value: money(discount.listGross) },
@@ -112,12 +115,12 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
     <Page size="A4" style={[styles.page, measured ? layouts.measuredPage : {}, quiet ? layouts.quietPage : {}]}>
       <View fixed style={[styles.header, quiet ? layouts.quietHeader : {}]}>
         <Svg width={mm(quiet ? 54 : 34)} height={mm(quiet ? 18.7 : 11.8)} viewBox="500 400 3950 1370"><Path d={logoPath} fill={ink}/></Svg>
-        <View style={[styles.metadata, quiet ? layouts.quietMetadata : {}]}><Text>Комерційна пропозиція № {s.projectNumber}</Text><Text>Редакція {s.revision} · {s.date.split("-").reverse().join(".")}</Text><Text render={({ pageNumber }) => pageNumber > 1 ? "Графік оплат · продовження" : ""}/></View>
+        <View style={[styles.metadata, quiet ? layouts.quietMetadata : {}]}><Text>Комерційна пропозиція № {s.projectNumber}</Text><Text>Редакція {s.revision} · {s.date.split("-").reverse().join(".")}</Text><Text render={({ pageNumber }) => pageNumber > 1 ? hasComponents ? "Пропозиція · продовження" : "Графік оплат · продовження" : ""}/></View>
       </View>
       <View fixed style={{ position: "absolute", top: mm(quiet ? 62 : 38), left: mm(quiet ? 30 : measured ? 60 : 18), right: mm(quiet ? 30 : 18), flexDirection: "row", fontSize: 8, color: muted }}>
-        <Text style={styles.stage} render={({ pageNumber }) => pageNumber > 1 ? "Етап / платіж · продовження" : ""}/>
-        <Text style={styles.percentage} render={({ pageNumber }) => pageNumber > 1 ? "Частка" : ""}/>
-        <Text style={styles.amount} render={({ pageNumber }) => pageNumber > 1 ? "Сума до сплати" : ""}/>
+        <Text style={stageStyle} render={({ pageNumber }) => pageNumber > 1 && !hasComponents ? "Етап / платіж · продовження" : ""}/>
+        {showPercentages ? <Text style={styles.percentage} render={({ pageNumber }) => pageNumber > 1 && !hasComponents ? "Частка" : ""}/> : null}
+        <Text style={styles.amount} render={({ pageNumber }) => pageNumber > 1 && !hasComponents ? "Сума до сплати" : ""}/>
       </View>
       <View style={[measured ? layouts.measuredTitleBlock : {}, folded ? layouts.foldedTitleBlock : {}]}>
         {measured ? <View style={layouts.measuredMarker}/> : null}
@@ -139,30 +142,30 @@ export function DesignProposalDocument({ snapshot: s, logoPath, variant }: { sna
           {s.area && !s.clientRatePerM2 ? <Text style={styles.detail}>Площа об’єкта — {percent(s.area)} м²</Text> : null}
         </View> : null}
       </View>
-      <Section variant={variant} number="02" label="Вартість">
-        <View wrap={false} style={[measured ? layouts.measuredCost : {}, quiet ? layouts.quietCost : {}, folded ? layouts.foldedCost : {}]}>
-          <Text style={[styles.totalLabel, quiet ? layouts.quietLabel : {}]}>{s.schemaVersion === 2 ? quiet ? "ВАРТІСТЬ ЗАМОВЛЕННЯ" : "Вартість замовлення" : quiet ? "ВАРТІСТЬ ПРОЄКТУ" : "Вартість проєкту"}</Text>
+      <Section variant={variant} number="02" label="Вартість" allowWrap={hasComponents}>
+        {hasComponents ? <View style={measured ? layouts.measuredCost : {}}><ProposalPricingComponents snapshot={s}/></View> : null}
+        <View wrap={false} style={[measured && !hasComponents ? layouts.measuredCost : {}, quiet ? layouts.quietCost : {}, folded ? layouts.foldedCost : {}, hasComponents ? { marginTop: 0 } : {}]}>
+          <Text style={[styles.totalLabel, quiet ? layouts.quietLabel : {}]}>{areaBreakdown || hasComponents ? quiet ? "ПІДСУМКОВА ВАРТІСТЬ" : "Підсумкова вартість" : s.schemaVersion === 2 ? quiet ? "ВАРТІСТЬ ЗАМОВЛЕННЯ" : "Вартість замовлення" : quiet ? "ВАРТІСТЬ ПРОЄКТУ" : "Вартість проєкту"}</Text>
           <View style={[styles.price, quiet ? layouts.quietPrice : {}]}><Text style={[styles.total, measured ? layouts.measuredPrice : {}, quiet ? layouts.quietTotal : {}, folded ? layouts.foldedTotal : {}]}>{moneyNumber(s.gross)}</Text><Text style={[styles.currency, quiet ? layouts.quietCurrency : {}]}>{s.currency}</Text></View>
-          {basis ? <Text style={styles.basis}>{basis}</Text> : null}
+          {!hasComponents ? areaBreakdown ? <View style={[styles.basis, quiet ? { alignItems: "center" } : {}]}>{areaBreakdown.map(line => <Text key={line}>{line}</Text>)}</View> : basis ? <Text style={styles.basis}>{basis}</Text> : null : null}
         </View>
         {facts.length ? <View wrap={false} style={[styles.facts, !measured ? styles.horizontalFacts : {}, folded ? layouts.foldedFacts : {}]}>{facts.map((fact, index) => <View key={fact.label} style={measured ? styles.fact : [styles.stackedFact, { textAlign: index === 0 ? "left" : index === facts.length-1 ? "right" : "center" }]}>
           <Text style={!measured ? styles.factLabel : {}}>{fact.label}</Text><Text style={styles.factValue}>{fact.value}</Text>
         </View>)}</View> : null}
       </Section>
       {s.rows.length ? <Section variant={variant} number="03" label="Оплата">
-        <View minPresenceAhead={75} style={quiet ? layouts.quietSchedule : {}}><Text style={styles.scheduleTitle}>Графік оплат</Text><View style={[styles.columns, quiet ? layouts.quietColumns : {}, folded ? layouts.foldedColumns : {}]}><Text style={styles.stage}>Етап / платіж</Text><Text style={styles.percentage}>Частка</Text><Text style={styles.amount}>Сума до сплати</Text></View></View>
+        <View minPresenceAhead={75} style={quiet ? layouts.quietSchedule : {}}><Text style={styles.scheduleTitle}>Графік оплат</Text><View style={[styles.columns, quiet ? layouts.quietColumns : {}, folded ? layouts.foldedColumns : {}]}><Text style={stageStyle}>Етап / платіж</Text>{showPercentages ? <Text style={styles.percentage}>Частка</Text> : null}<Text style={styles.amount}>Сума до сплати</Text></View></View>
         {s.rows.map((row, index) => <View key={row.id} wrap={false} style={[styles.row, folded ? layouts.foldedRow : {}]}>
-          <View style={[styles.stage, folded ? { flexDirection: "row" } : {}]}>
+          <View style={[styles.stage, !showPercentages ? styles.stageWithoutPercentages : {}, folded ? { flexDirection: "row" } : {}]}>
             {folded ? <Text style={styles.stageNumber}>{String(index+1).padStart(2,"0")}</Text> : null}
             <View style={folded ? styles.numberedName : {}}><Text style={styles.name}>{row.name}</Text>{row.note ? <Text style={styles.rowNote}>{row.note}</Text> : null}</View>
           </View>
-          <Text style={styles.percentage}>{percent(row.percentage)}%</Text><Text style={styles.amount}>{money(row.gross)}</Text>
+          {showPercentages ? <Text style={styles.percentage}>{percent(row.percentage)}%</Text> : null}<Text style={styles.amount}>{money(row.gross)}</Text>
         </View>)}
       </Section> : null}
       {s.intro ? <Text style={[styles.intro, measured ? { marginLeft: mm(42) } : {}, quiet ? layouts.quietIntro : {}]}>{s.intro}</Text> : null}
       <View fixed wrap={false} style={[styles.footer, quiet ? layouts.quietFooter : {}]}>
-        <View style={styles.contactLines}>{digitalContacts.map(value => <Text key={value}>{value}</Text>)}</View>
-        <View style={[styles.contactLines, { textAlign: "right" }]}>{physicalContacts.map(value => <Text key={value}>{value}</Text>)}</View>
+        <ProposalFooter snapshot={s}/>
       </View>
     </Page>
   </Document>;

@@ -15,7 +15,7 @@ import { studioContactDetailsSchema, studioContactDetailsInputSchema, studioWebs
 import { Tooltip } from "@/components/ui/tooltip";
 
 const errorSchema = z.enum(["error", "numberRequired", "agreementRequired", "changed", "noRows"]);
-const responseSchema = z.object({ source: proposalSnapshotSchema.nullable(), error: errorSchema.nullable(), history: z.array(z.object({ id: z.uuid(), revision: z.number(), created_at: z.string(), designVariant: proposalDesignVariantSchema })) });
+const responseSchema = z.object({ source: proposalSnapshotSchema.nullable(), error: errorSchema.nullable(), history: z.array(z.object({ id: z.uuid(), revision: z.number(), created_at: z.string(), designVariant: proposalDesignVariantSchema, showPercentages: z.boolean().optional() })) });
 type ProposalData = z.infer<typeof responseSchema>;
 function editableContacts(details: StudioContactDetails) {
   return {...details,website:studioWebsiteDisplay(details.website),phone:phoneDisplay(details.phone),contactPerson:details.contactPerson ?? ""};
@@ -65,7 +65,7 @@ export default function ProposalEditor({ projectId, orderId, orderName, readOnly
       if (latest) {
         setSelected(latest.id); setPreview(`${endpoint}${separator}id=${latest.id}`);
       } else {
-        setSource(loaded.source); setPresentation(loaded.source ? {...proposalPresentation(loaded.source),contact:phoneDisplay(loaded.source.contact)} : null);
+        setSource(loaded.source); setPresentation(loaded.source ? {...proposalPresentation(loaded.source),contact:phoneDisplay(loaded.source.contact),showPercentages:loaded.history[0]?.showPercentages ?? true} : null);
         const details = loaded.source?.studioContactDetails;
         setContactsOpen(!details || !studioContactDetailsInputSchema.safeParse(details).success || !Object.values(details).some(value => value?.trim()));
         setContacts(details ? editableContacts(details) : null); setContactsFeedback(null); setError(loaded.error);
@@ -125,11 +125,11 @@ export default function ProposalEditor({ projectId, orderId, orderName, readOnly
       if (!response.ok) { const result = z.object({ error: errorSchema }).parse(await response.json()); setError(result.error); return; }
       const { id } = z.object({ id: z.uuid() }).parse(await response.json());
       setSelected(id); setPreview(`${endpoint}${separator}id=${id}`);
-      setData((old) => old ? { ...old, history: [{ id, revision: source.revision, created_at: new Date().toISOString(), designVariant }, ...old.history.filter((item) => item.id !== id)] } : old);
+      setData((old) => old ? { ...old, history: [{ id, revision: source.revision, created_at: new Date().toISOString(), designVariant, showPercentages: presentation.showPercentages ?? true }, ...old.history.filter((item) => item.id !== id)] } : old);
     } catch { setError("error"); }
     finally { setPending(false); }
   }
-  function edit(field: keyof ProposalPresentation, value: string) {
+  function edit(field: keyof ProposalPresentation, value: string | boolean) {
     setLoading(true); setDesignPreviews({});
     setPresentation((old) => old ? { ...old, [field]: value } : old);
     requestId.current = crypto.randomUUID();
@@ -158,6 +158,7 @@ export default function ProposalEditor({ projectId, orderId, orderName, readOnly
           {source.schemaVersion === 2 ? <div className="space-y-1 text-sm"><p className="font-medium">{source.order.name}</p>{source.order.status === "draft" ? <p className="text-xs text-[var(--ui-text-muted)]">{t("orderDraft")}</p> : null}</div> : null}
           {([['projectTitle','title'],['clientName','client'],['contact','contact'],['address','address']] as const).map(([field, label]) => <FormField key={field} label={t(label)}>{field === 'contact' ? <PhoneInput value={presentation.contact} maxLength={1000} onValueChange={value => edit('contact',phoneDisplay(value))}/> : <Input value={presentation[field]} maxLength={field === 'address' ? 1000 : 500} required={field === 'projectTitle'} onChange={event => edit(field,event.target.value)}/>}</FormField>)}
           <FormField as="div" label={<label htmlFor={noteId}>{t("intro")}</label>}><Textarea id={noteId} className="resize-none overflow-hidden" ref={element=>{if(element){element.style.height="auto";element.style.height=`${element.scrollHeight}px`;}}} onInput={event=>{event.currentTarget.style.height="auto";event.currentTarget.style.height=`${event.currentTarget.scrollHeight}px`;}} placeholder={t("notePlaceholder")} value={presentation.intro} maxLength={1000} rows={3} onChange={(event) => edit("intro", event.target.value)}/></FormField>
+          {source.rows.length ? <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="size-4 shrink-0 accent-[var(--ui-action-primary)]" checked={presentation.showPercentages !== false} onChange={event => edit("showPercentages", event.target.checked)}/>{t("showPercentages")}</label> : null}
           {source.rows.length ? <AnimatedDisclosure title={t("stageNotes")} defaultOpen={source.rows.some(row => Boolean(row.note))} className="border-t border-[var(--ui-border)] pt-1">
             <div className="space-y-3 px-1 pb-3 pt-1">{source.rows.map(row => <FormField key={row.id} className="min-w-0" label={<Tooltip content={row.name}><span className="block truncate" tabIndex={0}>{row.name}</span></Tooltip>}>
               <Textarea aria-label={t("stageNote", { name: row.name })} value={presentation.stageNotes?.find(item => item.id === row.id)?.note ?? row.note} placeholder={t("stageNotePlaceholder")} rows={1} maxLength={300} className="resize-none overflow-hidden text-xs" ref={element=>{if(element){element.style.height="auto";element.style.height=`${element.scrollHeight}px`;}}} onInput={event=>{event.currentTarget.style.height="auto";event.currentTarget.style.height=`${event.currentTarget.scrollHeight}px`;}} onChange={event => editStageNote(row.id,event.target.value)}/>

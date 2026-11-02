@@ -42,7 +42,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const saved = await client.from("finance_project_proposals").select("id,revision,created_at,snapshot").eq("studio_id", admin.studio_id).eq("project_id", projectId).eq("order_id", order.data.id).order("revision", { ascending: false });
   if (saved.error) return failure("error", 500);
-  const history = saved.data.map(({ snapshot, ...revision }) => ({ ...revision, designVariant: resolveProposalDesignVariant(proposalSnapshotSchema.parse(snapshot)) }));
+  const history = saved.data.map(({ snapshot, ...revision }) => {
+    const stored = proposalSnapshotSchema.parse(snapshot);
+    return { ...revision, designVariant: resolveProposalDesignVariant(stored), showPercentages: stored.showPercentages ?? true };
+  });
   // Existing snapshots open without preparing a draft; only an explicit revision does that.
   if (history.length && !request.nextUrl.searchParams.has("draft")) {
     return NextResponse.json({source:null,error:null,history},{headers:{"Cache-Control":"no-store"}});

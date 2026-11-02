@@ -90,6 +90,11 @@ Invariants:
   the existing board and project area editor; its area synchronizes both ways
   with `projects.total_area_m2`. With multiple directions, project/object area
   stays separate and is never the sum of façade, interior and landscape areas.
+- Directions retain their primary area/coefficient calculator and optional named
+  `area_components` for additional scope. Generated `equivalent_area_m2` sums all
+  actual-area × coefficient products for design productivity. Primary area and
+  coefficient retain their existing project-area and visualization semantics.
+  Component edits affect future allowance, preserving earned task snapshots.
 - `save_project_work_direction` serializes admin CRUD/reordering with the project
   configuration version. Only empty nondefault directions without commercial or
   earned history may be removed. Started/logged stages keep their direction and

@@ -42,6 +42,18 @@ select is((select string_agg(snapshot->>'designVariant',',' order by revision) f
 select is((select count(distinct snapshot->>'gross') from public.finance_project_proposals),1::bigint,'presentation does not alter the client price');
 select is((select count(distinct snapshot->'rows') from public.finance_project_proposals),1::bigint,'presentation does not alter the payment schedule');
 select results_eq($$select snapshot,pdf from public.finance_project_proposals where revision=1$$,$$select snapshot,pdf from frozen$$,'later designs leave original snapshot and PDF unchanged');
+create temporary table visibility_source as select public.get_finance_proposal_source(pg_temp.pid(1),pg_temp.pid(30)) as source;
+select lives_ok($$select pg_temp.save(source,pg_temp.presentation(source)||'{"showPercentages":false}',205) from visibility_source$$,'schedule percentages can be hidden');
+select is((select snapshot->'showPercentages' from public.finance_project_proposals where revision=5),'false'::jsonb,'visibility is frozen as a boolean in the proposal');
+select lives_ok($$select pg_temp.save(source,pg_temp.presentation(source)||'{"showPercentages":false}',205) from visibility_source$$,'hidden-percentage save is idempotent');
+select throws_like($$select pg_temp.save(source,pg_temp.presentation(source)||'{"showPercentages":true}',205) from visibility_source$$,'%finance_request_conflict%','a retry cannot change the saved visibility');
+select throws_like($$select pg_temp.save(s,pg_temp.presentation(s)||'{"showPercentages":"false"}',206) from (select public.get_finance_proposal_source(pg_temp.pid(1),pg_temp.pid(30)) s) q$$,'%finance_input_invalid%','string visibility is rejected');
+select throws_like($$select pg_temp.save(s,pg_temp.presentation(s)||'{"showPercentages":null}',206) from (select public.get_finance_proposal_source(pg_temp.pid(1),pg_temp.pid(30)) s) q$$,'%finance_input_invalid%','null visibility is rejected');
+select lives_ok($$select pg_temp.save(s,pg_temp.presentation(s)||'{"showPercentages":true}',206) from (select public.get_finance_proposal_source(pg_temp.pid(1),pg_temp.pid(30)) s) q$$,'a new proposal can show percentages again');
+select is((select snapshot->'showPercentages' from public.finance_project_proposals where revision=6),'true'::jsonb,'enabled visibility is retained');
+select is((select count(distinct snapshot->'rows') from public.finance_project_proposals),1::bigint,'visibility changes preserve all financial schedule values');
+select is((select count(distinct snapshot->>'gross') from public.finance_project_proposals),1::bigint,'visibility changes preserve the client total');
+select results_eq($$select snapshot,pdf from public.finance_project_proposals where revision=1$$,$$select snapshot,pdf from frozen$$,'visibility changes preserve historical snapshots and PDF bytes');
 reset role;
 select throws_like($$update public.finance_project_proposals set snapshot=jsonb_set(snapshot,'{designVariant}','"folded-plane"') where revision=1$$,'%finance_history_immutable%','even privileged callers cannot change a saved variant');
 select ok(not has_function_privilege('authenticated','public.save_finance_project_proposal(uuid,uuid,uuid,jsonb,jsonb,text,uuid)','EXECUTE'),'browser still cannot inject PDF bytes');

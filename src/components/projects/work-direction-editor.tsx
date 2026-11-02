@@ -15,6 +15,10 @@ import type { ProjectTemplate } from "@/lib/project-templates";
 import { WorkDirectionCalculator } from "./work-direction-calculator";
 import { getKyivDateOnly } from "@/lib/validation/project";
 import { WorkDirectionIcon } from "./work-direction-icon";
+import { Plus } from "lucide-react";
+import { WorkDirectionComponents } from "./work-direction-components";
+import { areaComponentsSchema, type AreaComponent } from "@/lib/work-direction-components";
+import { equivalentArea } from "@/lib/work-directions";
 import { useProjectWorkspaceNavigation } from "./project-workspace-navigation";
 
 export function WorkDirectionEditor({ projectId, version, direction, templates, presets = [], onClose, onSaved }: {
@@ -27,6 +31,8 @@ export function WorkDirectionEditor({ projectId, version, direction, templates, 
   const initialPreset = presets.find(preset => preset.kind === initialKind);
   const [name, setName] = useState(direction ? directionName(direction, t) : t("kinds.interior"));
   const [area, setArea] = useState(String(direction?.area_m2 ?? "")), [coefficient, setCoefficient] = useState(String(direction?.complexity_coefficient ?? initialPreset?.coefficient ?? 1));
+  const [components, setComponents] = useState<AreaComponent[]>(() => areaComponentsSchema.safeParse(direction?.area_components).data ?? []);
+  const [componentsOpen, setComponentsOpen] = useState(false);
   const [startDate, setStartDate] = useState(direction?.start_date ?? getKyivDateOnly()), [dueDate, setDueDate] = useState(direction?.due_date ?? "");
   const [templateId, setTemplateId] = useState(templates.find(template => template.id === initialPreset?.template_id)?.id ?? ""), [error, setError] = useState<string | null>(null), [saving, startSaving] = useTransition();
   const [edited, setEdited] = useState({ name: false, coefficient: false, template: false });
@@ -41,7 +47,7 @@ export function WorkDirectionEditor({ projectId, version, direction, templates, 
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = workDirectionInputSchema.safeParse({ intent: "save", id: direction?.id, kind, name, useDefaultName: !edited.name && (!direction || direction.name === null), areaM2: Number(area), coefficient: Number(coefficient), startDate, dueDate, templateId });
+    const parsed = workDirectionInputSchema.safeParse({ intent: "save", id: direction?.id, kind, name, useDefaultName: !edited.name && (!direction || direction.name === null), areaM2: Number(area), coefficient: Number(coefficient), areaComponents: components.length ? components : null, startDate, dueDate, templateId });
     if (!parsed.success) { setError(t("invalid")); return; }
     setError(null);
     startSaving(async () => {
@@ -51,6 +57,8 @@ export function WorkDirectionEditor({ projectId, version, direction, templates, 
       if (direction) navigation?.refresh();
     });
   }
+  const areas = [equivalentArea(Number(area), Number(coefficient)), ...components.map(item => equivalentArea(Number(item.actualArea.replace(",", ".")), Number(item.coefficient.replace(",", "."))))];
+  const totalEquivalent = areas.every(value => value !== null) ? areas.reduce<number>((sum, value) => sum + (value ?? 0), 0) : null;
   return <Dialog isOpen title={t(direction ? "edit" : "add")} closeLabel={t("close")} closeDisabled={saving} onRequestClose={onClose} className="h-auto max-h-[calc(100dvh-1rem)] max-w-[35rem]">
     <form onSubmit={submit} className="flex min-h-0 flex-col">
       <div className="min-h-0 space-y-4 overflow-y-auto [scrollbar-gutter:stable] px-4 py-4 sm:px-5">
@@ -67,6 +75,8 @@ export function WorkDirectionEditor({ projectId, version, direction, templates, 
         {direction && !kind ? <p className="text-xs text-[var(--ui-text-muted)]">{t("unknownKind")}</p> : null}
         <FormField label={t("name")}><Input data-dialog-initial-focus name="directionName" value={name} required maxLength={80} onChange={event => { setName(event.target.value); setEdited(current => ({ ...current, name: true })); }} disabled={saving} placeholder={t("namePlaceholder")}/></FormField>
         <WorkDirectionCalculator area={area} coefficient={coefficient} onAreaChange={setArea} onCoefficientChange={value => { setCoefficient(value); setEdited(current => ({ ...current, coefficient: true })); }} recommendedMin={preset?.recommended_min} recommendedMax={preset?.recommended_max} disabled={saving} onResetCoefficient={preset || !direction ? () => { setCoefficient(String(preset?.coefficient ?? 1)); setEdited(current => ({ ...current, coefficient: false })); } : undefined} resetDisabled={Number(coefficient) === (preset?.coefficient ?? 1)}/>
+        {components.length ? <div className="space-y-2"><AnimatedDisclosure title={t("components.title", { count: components.length })} open={componentsOpen} onOpenChange={setComponentsOpen}><WorkDirectionComponents components={components} onChange={setComponents} disabled={saving}/></AnimatedDisclosure><div className="flex items-baseline justify-between gap-3 border-t border-[var(--ui-border)] pt-3 text-sm"><span>{t("components.total")}</span><output aria-label={t("components.total")} className="ui-numeric font-semibold">{totalEquivalent === null ? "—" : new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(totalEquivalent)} {t("unitShort")}</output></div></div> : null}
+        <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5 text-xs" disabled={saving} onClick={() => { setComponents([...components, { name: "", actualArea: "", coefficient: "1" }]); setComponentsOpen(true); }}><Plus className="size-4" aria-hidden="true"/>{t("components.add")}</Button>
         {!direction ? <FormField as="div" label={t("template")}><Select aria-label={t("template")} value={templateId} onValueChange={value => { setTemplateId(value); setEdited(current => ({ ...current, template: true })); }} disabled={saving}><SelectItem value="">{t("withoutTemplate")}</SelectItem>{templates.filter(template => template.isActive).map(template => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</Select></FormField> : <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("historyHelpShort")}</p>}
         <AnimatedDisclosure title={t("schedule")}>
           <div className="space-y-3 pb-1 pt-1">

@@ -6,6 +6,7 @@ import { isStageProgressMethod, type ProjectStageProgressMethods } from "@/lib/p
 import { isTaskStage, type ProjectStageDefinition } from "@/lib/task-stages";
 import { isWritableTaskStatus, type WritableTaskStatus } from "@/lib/tasks";
 import { directionKindSchema, directionStatusSchema, productivityRoleSchema, type ProductivityRole, type ProjectWorkDirection } from "@/lib/work-directions";
+import { areaComponentSchema, directionEquivalentArea } from "@/lib/work-direction-components";
 
 export type ProjectStageColumns = Record<string, WritableTaskStatus[]>;
 export type ConfiguredProjectStage = ProjectStageDefinition & { displayName: string | null; isEnabled: boolean; displayOrder: number; directionId?: string; productivityRole?: ProductivityRole };
@@ -16,13 +17,13 @@ export async function getProjectStageConfiguration(projectId: string): Promise<P
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_project_stage_configuration", { p_project_id: projectId });
   const snapshot = z.object({ version: z.number().int(), stageOnePercent: z.number(), includeInProductivity: z.boolean(), showProgress: z.boolean(), directions: z.array(z.object({
-    id: z.uuid(), studio_id: z.uuid(), project_id: z.uuid(), name: z.string().nullable(), kind: directionKindSchema.nullable(), status: directionStatusSchema, is_default: z.boolean(), display_order: z.number(), area_m2: z.number(), complexity_coefficient: z.number(), start_date: z.string().nullable(), due_date: z.string().nullable(), created_at: z.string(),
-  })), rows: z.array(z.object({
+    id: z.uuid(), studio_id: z.uuid(), project_id: z.uuid(), name: z.string().nullable(), kind: directionKindSchema.nullable(), status: directionStatusSchema, is_default: z.boolean(), display_order: z.number(), area_m2: z.number(), complexity_coefficient: z.number(), area_components: z.array(areaComponentSchema).nullable().default(null), equivalent_area_m2: z.number().nullable().optional(), start_date: z.string().nullable(), due_date: z.string().nullable(), created_at: z.string(),
+  }).transform(row => ({ ...row, equivalent_area_m2: directionEquivalentArea(row) }))), rows: z.array(z.object({
     stage: z.string(), display_name: z.string().nullable(), is_enabled: z.boolean(), display_order: z.number().int(), kind: z.enum(["work", "additional"]), progress_weight: z.number().int().positive(),
     enabled_statuses: z.array(z.string()), progress_method: z.string(), schedule_paused_on: z.string().nullable(), schedule_pause_reason: z.string().nullable(),
     direction_id: z.uuid(), productivity_role: productivityRoleSchema,
   })) }).safeParse(data);
-  if (error || !snapshot.success) throw new Error(`Unable to load project stage configuration for ${projectId}.`, { cause: error });
+  if (error || !snapshot.success) throw new Error(`Unable to load project stage configuration for ${projectId}.`, { cause: error ?? (!snapshot.success ? snapshot.error : undefined) });
   const columns: ProjectStageColumns = {};
   const progressMethods: ProjectStageProgressMethods = {};
   const schedulePause: Record<string, StageSchedulePause> = {};

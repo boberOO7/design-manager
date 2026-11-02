@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Database } from "@/types/database.types";
 import { templateStageProgressMethodsSchema } from "@/lib/project-templates";
 import type { TaskStage } from "@/lib/task-stages";
+import { areaComponentsSchema } from "./work-direction-components";
 
 export const productivityRoleSchema = z.enum(["initial", "visualization", "final", "none"]);
 export type ProductivityRole = z.infer<typeof productivityRoleSchema>;
@@ -33,6 +34,7 @@ export const workDirectionInputSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   areaM2: z.number().finite().positive().optional(),
   coefficient: z.number().finite().positive().optional(),
+  areaComponents: areaComponentsSchema.nullable().optional(),
   startDate: z.union([z.iso.date(), z.literal("")]).optional(),
   dueDate: z.union([z.iso.date(), z.literal("")]).optional(),
   templateId: z.union([z.uuid(), z.literal("")]).optional(),

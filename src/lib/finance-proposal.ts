@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { projectAreaValue, projectMoneyUnits } from "./finance-project-plan";
+import { projectAreaCalculationSchema, projectAreaComponentsSchema, projectAreaValue, projectMoneyUnits } from "./finance-project-plan";
+import { componentAreaValue } from "./work-direction-components";
 
 export const proposalDesignVariants = [
   { value: "measured-space", label: "Measured Space" },
@@ -39,6 +40,7 @@ export const proposalPresentationSchema = z.object({
   contact: z.string().trim().max(1000), address: z.string().trim().max(1000), intro: z.string().trim().max(1000),
   studioContacts: z.string().trim().max(300).optional(),
   designVariant: proposalDesignVariantSchema.optional(),
+  showPercentages: z.boolean().optional(),
   // Presentation override; the generated snapshot freezes it in studioContactDetails.
   studioContactPerson: z.string().trim().max(200).optional(),
   stageNotes: z.array(z.object({ id: z.uuid(), note: z.string().trim().max(300) }))
@@ -48,6 +50,9 @@ const proposalSnapshotFields = proposalPresentationSchema.omit({ studioContactPe
   projectId: z.uuid(), projectNumber: z.string().regex(/^\d+$/),
   revision: z.number().int().positive(), date: z.iso.date(), area: decimal.nullable(),
   clientRatePerM2: decimal.nullable().optional(),
+  areaCalculation: projectAreaCalculationSchema.nullable().optional(),
+  areaComponents: projectAreaComponentsSchema.nullable().optional(),
+  componentRatePerM2: decimal.nullable().optional(),
   studioContactDetails: studioContactDetailsSchema.optional(),
   currency: z.string().regex(/^[A-Z]{3}$/), minorUnits: z.number().int().min(0).max(4),
   gross: decimal, vatRate: decimal.nullable(), vatAmount: decimal,
@@ -99,6 +104,20 @@ export function proposalPriceBasis(s: Pick<ProposalSnapshot, "area" | "clientRat
   if (!s.area || !s.clientRatePerM2) return null;
   // VAT rounded for the whole agreement can differ from a rounded tariff per m².
   const approximate = projectMoneyUnits(projectAreaValue(s.area, s.clientRatePerM2, s.minorUnits), s.minorUnits) !== projectMoneyUnits(s.pricing?.listGross ?? s.gross, s.minorUnits);
-  const format = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 4 });
+  const format = new Intl.NumberFormat("uk-UA", { maximumSignificantDigits: 15 });
   return `${format.format(Number(s.area))} м² × ${approximate ? "≈ " : ""}${format.format(Number(s.clientRatePerM2))} ${s.currency}/м²`;
+}
+
+export function proposalAreaBreakdown(s: Pick<ProposalSnapshot, "area" | "areaCalculation" | "clientRatePerM2" | "currency">): string[] | null {
+  const calculation = s.areaCalculation;
+  if (!calculation || !s.area || !s.clientRatePerM2 || Number(calculation.coefficient) === 1) return null;
+  // Only explain the saved calculation; never reconstruct it from today's direction.
+  if (Number(componentAreaValue(calculation.actualArea, calculation.coefficient, 4)) !== Number(s.area)) return null;
+  const format = new Intl.NumberFormat("uk-UA", { maximumSignificantDigits: 15 });
+  return [
+    `Фактична площа: ${format.format(Number(calculation.actualArea))} м²`,
+    `Коефіцієнт трудомісткості: ${format.format(Number(calculation.coefficient))}`,
+    `Розрахункова площа: ${format.format(Number(s.area))} м²`,
+    `Базовий тариф: ${format.format(Number(s.clientRatePerM2))} ${s.currency}/м²`,
+  ];
 }

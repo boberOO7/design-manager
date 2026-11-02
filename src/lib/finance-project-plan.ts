@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { planningAmount } from "./finance-planning";
+import { areaCalculationSchema, areaComponentSchema, areaComponentsSchema, componentAreaValue, type AreaComponent } from "./work-direction-components";
 
 const date = z.union([z.iso.date(), z.literal("")]);
+export const projectAreaCalculationSchema = areaCalculationSchema;
+export const projectAreaComponentSchema = areaComponentSchema;
+export const projectAreaComponentsSchema = areaComponentsSchema;
+export type ProjectAreaComponent = AreaComponent;
 export const projectDiscountFields = {
   discountType: z.enum(["none", "percentage", "fixed"]).default("none"),
   discountValue: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform(value => value.replace(",", ".")).default("0"),
@@ -15,11 +20,23 @@ export const projectPlanSchema = z.object({
   priceBasis: z.enum(["net", "gross"]).nullable(),
   revenueTaxRate: z.string().regex(/^\d{1,10}(?:[.,]\d{1,4})?$/).transform((rate) => rate.replace(",", ".")).nullable().default(null),
   currency: z.string().regex(/^[A-Z]{3}$/), area: z.union([planningAmount,z.literal("")]).default(""), rate: z.union([planningAmount,z.literal("")]).default(""),
+  areaCalculation: projectAreaCalculationSchema.nullable().optional(),
+  areaComponents: projectAreaComponentsSchema.nullable().optional(),
   reason: z.string().trim().min(1).max(2000), allowUnscheduled: z.boolean(),
   known: z.array(z.object({ id: z.uuid(), version: z.number().int().positive(), protected: z.boolean() })),
   protectedNotes: z.array(z.object({ id: z.uuid(), clientNote: z.string().trim().max(300) })).default([]),
   items: z.array(z.object({ id: z.union([z.uuid(), z.literal("")]), draftKey: z.uuid().optional(), name: z.string().trim().min(1).max(2000), clientNote: z.string().trim().max(300).default(""), percentage: z.union([z.string().regex(/^\d{1,3}(?:\.\d{1,4})?$/), z.literal("")]).default(""), amount: planningAmount, dueDate: date, expectedDate: date })),
-}).refine(v => (v.vatRate === null) === (v.priceBasis === null)).refine(v => v.pricingMethod !== "area" || (planningAmount.safeParse(v.area).success && planningAmount.safeParse(v.rate).success));
+}).refine(v => (v.vatRate === null) === (v.priceBasis === null)).refine(v => v.pricingMethod !== "area" || (planningAmount.safeParse(v.area).success && planningAmount.safeParse(v.rate).success))
+  .refine(v => {
+    if (!v.areaCalculation) return true;
+    try { return v.pricingMethod === "area" && Number(componentAreaValue(v.areaCalculation.actualArea, v.areaCalculation.coefficient, 4)) === Number(v.area); }
+    catch { return false; }
+  })
+  .refine(v => {
+    if (!v.areaComponents) return true;
+    try { return v.pricingMethod === "area" && !v.areaCalculation && projectMoneyUnits(projectAreaComponentsValue(v.areaComponents, v.rate, 4).area, 4) === projectMoneyUnits(v.area, 4); }
+    catch { return false; }
+  });
 export type ProjectPlanInput = z.infer<typeof projectPlanSchema>;
 export const projectPaymentTemplates = [[100], [50, 50], [30, 50, 20], [25, 25, 25, 25]] as const;
 
@@ -104,6 +121,19 @@ export function projectBasisToGross(amount: string, vatRate: string | null, pric
 export function projectAreaValue(area: string, rate: string, digits: number): string {
   const product = projectMoneyUnits(area, 4) * projectMoneyUnits(rate, 4), divisor = BigInt(10) ** BigInt(8 - digits);
   return projectMoneyText((product + divisor / BigInt(2)) / divisor, digits);
+}
+// Keep the existing agreement-level rounding; cumulative item amounts close to it exactly.
+export function projectAreaComponentsValue(components: readonly ProjectAreaComponent[], rate: string, digits: number) {
+  let areaUnits = BigInt(0), assigned = BigInt(0);
+  const items = components.map(component => {
+    const area = componentAreaValue(component.actualArea, component.coefficient, 4);
+    areaUnits += projectMoneyUnits(area, 4);
+    const cumulative = projectMoneyUnits(projectAreaValue(projectMoneyText(areaUnits, 4), rate, digits), digits);
+    const amount = projectMoneyText(cumulative - assigned, digits);
+    assigned = cumulative;
+    return { area, amount };
+  });
+  return { area: projectMoneyText(areaUnits, 4), amount: projectMoneyText(assigned, digits), items };
 }
 export function projectPaymentAmounts(total: string, percentages: string[], digits: number, requireReconciled = true): string[] {
   const units = projectMoneyUnits(total, digits), weights = percentages.map(v => projectMoneyUnits(v, 4));

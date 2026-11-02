@@ -121,7 +121,7 @@ export function ProjectSettlementForm({ data, expected, projectId, today, onSave
       </section>
     </AnimatedDisclosure> : null}
     <div>
-      <Button type="button" variant="ghost" size="sm" id={`${noteId}-trigger`} aria-expanded={noteOpen} aria-controls={noteId} className="min-h-11 gap-2 px-0 font-medium" onClick={() => setNoteOpen(value => !value)}>{noteOpen ? <Minus aria-hidden="true" className="size-4"/> : <Plus aria-hidden="true" className="size-4"/>}{t("settlement.addNote")}</Button>
+      <Button type="button" variant="ghost" size="sm" id={`${noteId}-trigger`} aria-expanded={noteOpen} aria-controls={noteId} className="min-h-11 gap-2 font-medium" onClick={() => setNoteOpen(value => !value)}>{noteOpen ? <Minus aria-hidden="true" className="size-4"/> : <Plus aria-hidden="true" className="size-4"/>}{t("settlement.addNote")}</Button>
       <AnimatedFormContent id={noteId} labelledBy={`${noteId}-trigger`} isOpen={noteOpen}><FormField label={t("movements.description")}><Textarea ref={noteField} name="description" rows={2} maxLength={2000}/></FormField></AnimatedFormContent>
     </div>
   </FinanceActionForm>;
