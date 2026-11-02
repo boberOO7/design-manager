@@ -436,3 +436,62 @@ test("Team work time reconciles summary, chart and people after changing the per
   await settleCharts(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test("Task time view filters contributions and opens dated task details", async ({ page }) => {
+  const current = sql("select (current_date-1)::text");
+  const older = sql("select (date_trunc('month',current_date)-interval '4 months')::date");
+  const roundId = randomUUID();
+  const loggedTaskId = randomUUID(), emptyTaskId = randomUUID();
+  sql(`select set_config('request.jwt.claim.sub',${id(accounts[0].id)},false);
+    insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at)
+    values (${id(ongoingProjectId)},${id(accounts[1].id)},'designer',0,current_date) on conflict do nothing;
+    insert into public.tasks(id,project_id,title,stage,status,priority,assignee_id,created_by)
+    values (${id(loggedTaskId)},${id(ongoingProjectId)},'Task time fixture work','stage_2','todo','normal',${id(accounts[1].id)},${id(accounts[0].id)}),
+      (${id(emptyTaskId)},${id(ongoingProjectId)},'Task time fixture empty','stage_2','todo','normal',${id(accounts[1].id)},${id(accounts[0].id)});`);
+  await service.from("task_review_rounds").insert({ id: roundId, task_id: loggedTaskId, project_id: ongoingProjectId,
+    round_number: 1, reviewer_id: accounts[0].id, submitted_at: `${current}T10:00:00Z`, completed_at: `${current}T11:00:00Z`, result: "approved" }).throwOnError();
+  await service.from("work_log_entries").insert([
+    { studio_id: studioId, user_id: accounts[1].id, work_date: current, activity_kind: "task", task_id: loggedTaskId, minutes: 120 },
+    { studio_id: studioId, user_id: accounts[0].id, work_date: current, activity_kind: "task", task_id: loggedTaskId, minutes: 30 },
+    { studio_id: studioId, user_id: accounts[0].id, work_date: current, activity_kind: "review", task_id: loggedTaskId, review_round_id: roundId, minutes: 30 },
+    { studio_id: studioId, user_id: accounts[1].id, work_date: older, activity_kind: "task", task_id: loggedTaskId, minutes: 70 },
+  ]).throwOnError();
+  await login(page);
+  await page.goto("/statistics?period=3&section=team");
+  await page.getByRole("button", { name: "By tasks", exact: true }).click();
+  const tasks = page.locator("#stats-work-tasks");
+  const taskRow = tasks.locator("tbody tr").filter({ hasText: "Task time fixture work" });
+  await expect(taskRow).toHaveCount(1);
+  await expect(taskRow.locator("td").nth(1)).toHaveText("2:30 h:mm");
+  await expect(taskRow.locator("td").nth(2)).toHaveText("0:30 h:mm");
+  await expect(taskRow.locator("td").nth(3)).toHaveText("3:00 h:mm");
+  await expect(taskRow.locator("td").nth(4)).toHaveText("2");
+  await tasks.getByRole("combobox", { name: "All employees" }).click();
+  await page.getByRole("option", { name: "Statistics employee", exact: true }).click();
+  await expect(taskRow.locator("td").nth(1)).toHaveText("2:00 h:mm");
+  await expect(taskRow.locator("td").nth(2)).toHaveText("0:00 h:mm");
+  await expect(taskRow.locator("td").nth(3)).toHaveText("2:00 h:mm");
+  await expect(taskRow.locator("td").nth(4)).toHaveText("1");
+  await tasks.getByRole("button", { name: "Total", exact: true }).click();
+  await expect(tasks.locator('th[aria-sort]')).toHaveAttribute("aria-sort", "ascending");
+  await tasks.getByRole("link", { name: "Task time fixture work", exact: true }).click();
+  const spent = page.locator("[data-task-spent-time]");
+  await expect(spent.getByRole("button", { name: "Time spent · 4:10 h:mm", exact: true })).toBeVisible();
+  await spent.getByRole("button", { name: "Time spent · 4:10 h:mm", exact: true }).click();
+  const timeDetails = page.getByRole("dialog", { name: "Time spent", exact: true });
+  await expect(timeDetails).toContainText("Work: 3:40 h:mm");
+  await expect(timeDetails).toContainText("Review: 0:30 h:mm");
+  await expect(timeDetails).toContainText("Statistics employee");
+  await expect(timeDetails).toContainText("2:00 h:mm");
+  await expect(timeDetails).toContainText("1:10 h:mm");
+  await page.keyboard.press("Escape");
+  await expect(timeDetails).not.toBeVisible();
+  await expect(spent.getByRole("button")).toBeFocused();
+  await page.screenshot({ path: `${renderDir}/task-spent-time.png` });
+  await page.goto(`/projects/${ongoingProjectId}?task=${emptyTaskId}`);
+  await expect(page.locator("[data-task-spent-time]")).toContainText("No time logged");
+  await page.context().clearCookies();
+  await login(page, 1);
+  await page.goto(`/projects/${ongoingProjectId}?task=${loggedTaskId}`);
+  await expect(page.locator("[data-task-spent-time]").getByRole("button", { name: "My time spent · 3:10 h:mm", exact: true })).toBeVisible();
+});

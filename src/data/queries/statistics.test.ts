@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTranslator } from "next-intl";
+import messages from "../../../messages/en.json";
 
 const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn(), attributions: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin: mocks.admin }));
 vi.mock("@/data/queries/productivity-attributions", () => ({ getCanonicalProductivityAttributions: mocks.attributions }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
+vi.mock("next-intl/server", () => ({ getTranslations: async (namespace: "TaskStages" | "ProjectWorkspace.directions") => createTranslator({ locale: "en", messages, namespace }) }));
 
 import { getStatistics, getStatisticsStreams, readStatisticsPages } from "@/data/queries/statistics";
 
@@ -26,7 +29,7 @@ describe("Statistics query access boundary", () => {
     mocks.attributions.mockResolvedValue([]);
     const is = vi.fn().mockReturnThis(), lte = vi.fn().mockReturnThis();
     const from = vi.fn((table: string) => ({
-      select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is, lte,
+      select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is, lte,
       order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: studioMinutes === null ? null : { standard_workday_minutes: studioMinutes }, error: null }),
       maybeSingle: vi.fn().mockResolvedValue({ data: capacityMinutes === null ? null : { daily_minutes: capacityMinutes }, error: null }),
@@ -64,7 +67,7 @@ describe("Statistics query access boundary", () => {
   it("loads only normalized-workday settings from Finance without payroll sources", async () => {
     mocks.admin.mockResolvedValue({ studio_id: "studio" });
     mocks.attributions.mockResolvedValue([]);
-    const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }), order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: [], error: null }) };
     const from = vi.fn((_table: string) => query);
     mocks.client.mockResolvedValue({ from });
@@ -90,7 +93,7 @@ describe("Statistics query access boundary", () => {
         all_day: false, project_id: "project", organizer_id: "reviewer", assignee_id: null, cancelled_at: null, recurrence_rule: null,
         series_id: null, occurrence_start: null, compensates_time_off_request_id: null }],
     };
-    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
     const withReviews = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
@@ -127,17 +130,41 @@ describe("Statistics query access boundary", () => {
       ],
     };
     const select = vi.fn().mockReturnThis();
-    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select, eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select, eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
     const report = await getStatistics("3", "2026-10-07", "2026-10-07T12:00:00Z");
-    expect(select).toHaveBeenCalledWith(expect.stringContaining("task:tasks!work_log_entries_task_id_fkey(project_id)"));
+    expect(select).toHaveBeenCalledWith(expect.stringContaining("task:tasks!work_log_entries_task_id_fkey(id,title,project_id,stage)"));
     expect(report?.work.projects).toEqual([
       { id: "project", name: "Active project", taskMinutes: 91, reviewMinutes: 0, totalMinutes: 91 },
       { id: null, name: null, taskMinutes: 31, reviewMinutes: 0, totalMinutes: 31 },
     ]);
     expect(report?.work.totals.totalMinutes).toBe(122);
     expect(report?.totals.completedTasks).toBeNull(); // No completed-project sample for Overview.
+  });
+
+  it("loads task, stage and direction context from linked work rather than completed tasks", async () => {
+    mocks.admin.mockResolvedValue({ studio_id: "studio" });
+    mocks.attributions.mockResolvedValue([]);
+    const sources: Record<string, unknown[]> = {
+      projects: [{ id: "project", name: "Project", status: "active", archived_at: null, started_at: null,
+        completed_at: null, include_in_productivity: false, total_area_m2: 0 }],
+      tasks: [],
+      project_task_stage_columns: [{ project_id: "project", stage: "custom_planning", display_name: "Planning", direction_id: "direction",
+        direction: { name: "Interior", kind: "interior" } }],
+      work_log_entries: [{ id: "entry", user_id: "worker", work_date: "2026-10-03", activity_kind: "task", task_id: "unfinished",
+        review_round_id: null, minutes: 91, task: { id: "unfinished", title: "Planning task", project_id: "project", stage: "custom_planning" } }],
+    };
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      range: vi.fn().mockResolvedValue({ data: sources[table] ?? [], error: null }) })) });
+    const streams = await getStatisticsStreams("3", "2026-10-07");
+    expect((await streams?.work)?.tasks).toEqual([{
+      id: "unfinished", title: "Planning task", project_id: "project", projectName: "Project", stage: "custom_planning", stageName: "Planning",
+      directionId: "direction", directionName: "Interior", taskMinutes: 91, reviewMinutes: 0, totalMinutes: 91,
+      employees: [{ id: "worker", taskMinutes: 91, reviewMinutes: 0, totalMinutes: 91 }],
+    }]);
   });
 
   it.each(["work_log_entries", "task_review_rounds"])("uses %s evidence for the shared all-history boundary", async table => {
@@ -148,7 +175,7 @@ describe("Statistics query access boundary", () => {
       task_review_rounds: [{ id: "round", reviewer_id: "reviewer", completed_at: "2024-02-10T10:00:00Z", result: "approved",
         reviewers: [{ reviewer_id: "reviewer", approved_at: "2024-02-10T10:00:00Z" }] }],
     };
-    mocks.client.mockResolvedValue({ from: vi.fn((name: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    mocks.client.mockResolvedValue({ from: vi.fn((name: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: name === table ? sources[name] : [], error: null }) })) });
     const report = await getStatistics("all", "2026-10-07", "2026-10-07T12:00:00Z");
@@ -162,7 +189,7 @@ describe("Statistics query access boundary", () => {
     const credits = deferred<[]>();
     const work = deferred<{ data: []; error: null }>();
     mocks.attributions.mockReturnValue(credits.promise);
-    const from = vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    const from = vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockReturnValue(table === "work_log_entries" ? work.promise : Promise.resolve({ data: [], error: null })) }));
     mocks.client.mockResolvedValue({ from });
@@ -187,7 +214,7 @@ describe("Statistics query access boundary", () => {
     mocks.admin.mockResolvedValue({ studio_id: "studio" });
     mocks.attributions.mockResolvedValue([]);
     const evidence = deferred<{ data: Array<{ id: string; user_id: string; work_date: string; activity_kind: string; minutes: number }>; error: null }>();
-    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
+    mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: null, error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       order: vi.fn().mockReturnThis(), range: vi.fn().mockReturnValue(table === "work_log_entries" ? evidence.promise : Promise.resolve({ data: [], error: null })) })) });
     const streams = await getStatisticsStreams("all", "2026-10-07", "2026-10-07T12:00:00Z");

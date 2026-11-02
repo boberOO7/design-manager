@@ -1,5 +1,8 @@
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
+import { directionName } from "@/lib/work-directions";
+
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCanonicalProductivityAttributions } from "@/data/queries/productivity-attributions";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +55,7 @@ export async function getStatisticsStreams(period: StatisticsPeriod, today = get
       .eq("event.studio_id", studio).order("id").range(offset, offset + 999)),
     participants: readStatisticsPages(offset => client.from("calendar_event_participants").select("event_id,user_id,event:calendar_events!inner(studio_id)")
       .eq("event.studio_id", studio).order("event_id").order("user_id").range(offset, offset + 999)),
-    workLog: readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,internal_activity_type,activity_kind,task_id,review_round_id,minutes,task:tasks!work_log_entries_task_id_fkey(project_id)")
+    workLog: readStatisticsPages(offset => client.from("work_log_entries").select("id,user_id,work_date,internal_activity_type,activity_kind,task_id,review_round_id,minutes,task:tasks!work_log_entries_task_id_fkey(id,title,project_id,stage)")
       .eq("studio_id", studio).order("id").range(offset, offset + 999)),
     reviewRounds: readStatisticsPages(offset => client.from("task_review_rounds")
       .select("id,reviewer_id,completed_at,result,reviewers:task_review_round_reviewers(reviewer_id,approved_at),project:projects!inner(studio_id)")
@@ -83,8 +86,22 @@ export async function getStatisticsStreams(period: StatisticsPeriod, today = get
       buildStatistics({ projects, tasks: [], activities: [], attributions: [] }, period, today, range.from)),
     overview: Promise.all([projects, tasks, activities, attributions, range]).then(([projects, tasks, activities, attributions, range]) =>
       buildStatistics({ projects, tasks, activities, attributions }, period, today, range.from)),
-    work: Promise.all([workLog, reviewRounds, people, range, projects, reviewSessions]).then(([workLog, reviewRounds, people, range, projects, reviewSessions]) =>
-      buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects, reviewSessions)),
+    work: Promise.all([workLog, reviewRounds, people, range, projects, reviewSessions]).then(async ([workLog, reviewRounds, people, range, projects, reviewSessions]) => {
+      const stages = projects.length ? await readStatisticsPages(offset => client.from("project_task_stage_columns")
+        .select("project_id,stage,display_name,direction_id,direction:project_work_directions(name,kind)")
+        .in("project_id", projects.map(project => project.id)).order("project_id").order("stage").range(offset, offset + 999)) : [];
+      const stageByKey = new Map(stages.map(stage => [`${stage.project_id}:${stage.stage}`, stage]));
+      const names = new Map(projects.map(project => [project.id, project.name]));
+      const labels = stages.length ? await Promise.all([getTranslations("TaskStages"), getTranslations("ProjectWorkspace.directions")]) : null;
+      const taskContexts = [...new Map(workLog.flatMap(row => row.task?.title ? [[row.task.id, row.task] as const] : [])).values()].map(task => {
+        const stage = stageByKey.get(`${task.project_id}:${task.stage}`);
+        return { ...task, projectName: names.get(task.project_id) ?? null,
+          stageName: stage?.display_name ?? (labels && !task.stage.startsWith("custom_") ? labels[0](task.stage) : task.stage),
+          directionId: stage?.direction_id ?? null,
+          directionName: stage?.direction && labels ? directionName(stage.direction, labels[1]) : null };
+      });
+      return buildWorkStatistics(workLog.map(row => ({ ...row, project_id: row.task?.project_id ?? null })), reviewRounds, people, range, projects, reviewSessions, taskContexts);
+    }),
     leads: Promise.all([leads, activities, range, tasks, leadHistory]).then(([leads, activities, range, tasks, leadHistory]) =>
       buildCrmStatistics(leads, activities, range, today, tasks, leadHistory)),
     attendance: Promise.all([timeOff, events, people, range, workdayMinutes]).then(([timeOff, events, people, range, workdayMinutes]) =>

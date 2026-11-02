@@ -23,7 +23,7 @@ export function AnimatedFormContent({ children, isOpen, id, labelledBy, classNam
 }
 
 // Retain form values while closed; invalid fields reopen before receiving focus.
-export function AnimatedDisclosure({ children, title, className, open, onOpenChange, defaultOpen = false }: { children: ReactNode; title: string; className?: string; open?: boolean; onOpenChange?: (open: boolean) => void; defaultOpen?: boolean }) {
+export function AnimatedDisclosure({ children, title, className, open, onOpenChange, defaultOpen = false }: { children: ReactNode; title: ReactNode; className?: string; open?: boolean; onOpenChange?: (open: boolean) => void; defaultOpen?: boolean }) {
   const id = useId(), [localOpen, setLocalOpen] = useState(defaultOpen);
   const isOpen = open ?? localOpen;
   const setOpen = onOpenChange ?? setLocalOpen;

@@ -23,6 +23,13 @@ reviewers receive no count. Reviews do not enter completed-task counts or the
 productivity attribution ledger. Calendar activity statistics keep their existing
 source and definitions.
 
+Work Time also groups task-linked `work_log_entries` by task, with the shared
+work-date period plus project, direction, stage and employee filters. Employee
+filtering sums that employee's contribution. Task detail drawers load all retained
+visible time with employee/day breakdowns through `/api/tasks/[taskId]/time`;
+non-admins see their own time only. Both views sum task/review entries once by ID,
+without adding timer sessions, review decisions or unlinked/internal time.
+
 The header Work Log keeps the daily editor under one week navigator, with saved
 daily totals and submission statuses. The UI, Work Log API and authenticated save RPC accept only today
 or earlier dates in Kyiv; past weeks remain editable. Weekly task/review totals read `work_log_entries`; Calendar duration uses the canonical

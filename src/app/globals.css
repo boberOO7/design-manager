@@ -595,11 +595,13 @@ body,
   to { opacity: 0; }
 }
 
-.people-picker-popover[data-state="open"] {
+.people-picker-popover[data-state="open"],
+.task-time-popover[data-state="open"] {
   animation: checklist-picker-in 180ms ease-out;
 }
 
-.people-picker-popover[data-state="closed"] {
+.people-picker-popover[data-state="closed"],
+.task-time-popover[data-state="closed"] {
   animation: people-picker-out 160ms ease-in;
 }
 

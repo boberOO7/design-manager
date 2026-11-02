@@ -232,9 +232,75 @@ export function summarizeLoggedTime(entries: WorkLogEntry[], calendarMinutes = 0
   return { taskMinutes, reviewMinutes, internalMinutes, calendarMinutes, totalMinutes: taskMinutes + reviewMinutes + internalMinutes + calendarMinutes };
 }
 
+export type DatedWorkLogEntry = WorkLogEntry & Pick<Tables["work_log_entries"]["Row"], "id" | "user_id" | "work_date">;
+
+// Timer allocations already live in these entries; timer sessions and decisions are never added as minutes.
+export function loggedEntriesInRange<T extends DatedWorkLogEntry>(entries: T[], range: { from: string; through: string }) {
+  return [...new Map(entries.map(entry => [entry.id, entry])).values()]
+    .filter(entry => entry.work_date >= range.from && entry.work_date <= range.through);
+}
+
+export function summarizeTaskTime(entries: DatedWorkLogEntry[]) {
+  const rows = [...new Map(entries.map(entry => [entry.id, entry])).values()]
+    .filter(entry => entry.task_id !== null && (entry.activity_kind === "task" || entry.activity_kind === "review"));
+  const people = new Map<string, DatedWorkLogEntry[]>();
+  for (const row of rows) {
+    const personRows = people.get(row.user_id) ?? [];
+    personRows.push(row);
+    people.set(row.user_id, personRows);
+  }
+  return { ...summarizeLoggedTime(rows), employees: [...people].map(([id, entries]) => {
+    const days = new Map<string, DatedWorkLogEntry[]>();
+    for (const entry of entries) {
+      const dayRows = days.get(entry.work_date) ?? [];
+      dayRows.push(entry);
+      days.set(entry.work_date, dayRows);
+    }
+    return { id, ...summarizeLoggedTime(entries), days: [...days].sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, rows]) => ({ date, ...summarizeLoggedTime(rows) })) };
+  }).sort((a, b) => b.totalMinutes - a.totalMinutes || a.id.localeCompare(b.id)) };
+}
+
+export type TaskWorkContext = Pick<Tables["tasks"]["Row"], "id" | "title" | "project_id" | "stage"> & {
+  projectName: string | null; stageName: string; directionId: string | null; directionName: string | null;
+};
+
+export function buildTaskWorkStatistics(entries: DatedWorkLogEntry[], range: { from: string; through: string }, tasks: TaskWorkContext[]) {
+  const byTask = new Map<string, DatedWorkLogEntry[]>();
+  for (const row of loggedEntriesInRange(entries, range)) {
+    if (!row.task_id || row.activity_kind === "internal") continue;
+    const rows = byTask.get(row.task_id) ?? [];
+    rows.push(row);
+    byTask.set(row.task_id, rows);
+  }
+  return tasks.flatMap(task => {
+    const rows = byTask.get(task.id);
+    if (!rows?.length) return [];
+    const summary = summarizeTaskTime(rows);
+    return [{ ...task, taskMinutes: summary.taskMinutes, reviewMinutes: summary.reviewMinutes, totalMinutes: summary.totalMinutes,
+      employees: summary.employees.map(({ id, taskMinutes, reviewMinutes, totalMinutes }) => ({ id, taskMinutes, reviewMinutes, totalMinutes })) }];
+  }).sort((a, b) => b.totalMinutes - a.totalMinutes || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+}
+
+export function filterTaskWorkStatistics(tasks: ReturnType<typeof buildTaskWorkStatistics>, filters: {
+  projectId: string; directionId: string; stage: string; employeeId: string;
+}, ascending = false) {
+  return tasks.filter(task => (!filters.projectId || task.project_id === filters.projectId)
+    && (!filters.directionId || task.directionId === filters.directionId)
+    && (!filters.stage || `${task.project_id}:${task.stage}` === filters.stage))
+    .flatMap(task => {
+      const employees = task.employees.filter(person => !filters.employeeId || person.id === filters.employeeId);
+      if (!employees.length) return [];
+      const taskMinutes = employees.reduce((sum, person) => sum + person.taskMinutes, 0);
+      const reviewMinutes = employees.reduce((sum, person) => sum + person.reviewMinutes, 0);
+      return [{ ...task, employees, taskMinutes, reviewMinutes, totalMinutes: taskMinutes + reviewMinutes }];
+    }).sort((a, b) => (ascending ? a.totalMinutes - b.totalMinutes : b.totalMinutes - a.totalMinutes)
+      || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+}
+
 export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; user_id: string; work_date: string; project_id: string | null }>,
   rounds: ReviewStatisticsRound[], members: Array<{ id: string; name: string; active: boolean }>, range: { from: string; through: string },
-  projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = [], sessions: ReviewStatisticsSession[] = []) {
+  projects: Array<Pick<Tables["projects"]["Row"], "id" | "name">> = [], sessions: ReviewStatisticsSession[] = [], tasks: TaskWorkContext[] = []) {
   const empty = () => ({ reviewsCompleted: 0, reviewSessionsCompleted: 0, taskMinutes: 0, reviewMinutes: 0, internalMinutes: 0, totalMinutes: 0 });
   const people = new Map(members.map(member => [member.id, { ...member, ...empty() }]));
   const projectNames = new Map(projects.map(project => [project.id, project.name]));
@@ -265,8 +331,7 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
     const month = byMonth.get(date.slice(0, 7));
     if (month) month.reviewSessionsCompleted++;
   }
-  for (const row of new Map(entries.map(entry => [entry.id, entry])).values()) {
-    if (row.work_date < range.from || row.work_date > range.through) continue;
+  for (const row of loggedEntriesInRange(entries, range)) {
     const key = row.activity_kind === "internal" ? "internalMinutes" : row.activity_kind === "review" ? "reviewMinutes" : "taskMinutes";
     person(row.user_id)[key] += row.minutes;
     const month = byMonth.get(row.work_date.slice(0, 7));
@@ -290,7 +355,7 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
     totalMinutes: sum.totalMinutes + row.totalMinutes }), empty());
   const projectRows = [...projectTime.values()].sort((left, right) => right.totalMinutes - left.totalMinutes
     || (left.name ?? "").localeCompare(right.name ?? "") || (left.id ?? "").localeCompare(right.id ?? ""));
-  return { employees, months, totals, projects: projectRows };
+  return { employees, months, totals, projects: projectRows, tasks: buildTaskWorkStatistics(entries, range, tasks) };
 }
 
 export function getDailyCalendarContext(events: Array<StatisticsCalendarEvent & { assignee_id: string | null }>,

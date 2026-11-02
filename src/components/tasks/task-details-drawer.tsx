@@ -37,6 +37,7 @@ import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
+import { TaskSpentTime } from "@/components/tasks/task-spent-time";
 import { Tooltip } from "@/components/ui/tooltip";
 
 type TaskEditResponse =
@@ -477,7 +478,6 @@ export function TaskDetailsDrawer({
             </div>
           ) : (
             <div className="space-y-6">
-              {reviewSection}
               <section aria-labelledby="task-progress-heading">
                 <div className="flex items-end justify-between gap-3"><h3 id="task-progress-heading" className="text-sm font-semibold text-[var(--ui-text)]">{t("progress")}</h3><span className="ui-numeric text-lg font-semibold text-[var(--ui-text)]">{formatNumber(taskProgress.presentedOverallPercent, locale)}%</span></div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--ui-progress-track)]" role="progressbar" aria-label={t("overallProgressAria", { name: task.title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={taskProgress.presentedOverallPercent}><div className="h-full rounded-full bg-[var(--ui-action-primary)] transition-[width] duration-300 ease-out motion-reduce:transition-none" style={{ width: `${taskProgress.overallPercent}%` }} /></div>
@@ -486,6 +486,7 @@ export function TaskDetailsDrawer({
                   {isEditingManualProgress ? <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><input id={`manual-progress-${task.id}`} aria-label={t("manualProductionCompletion")} type="range" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="min-h-11 flex-1 accent-[var(--ui-action-primary)]" /><div className="flex items-center gap-2"><input aria-label={t("manualProductionPercentage")} type="number" min="0" max="100" step="1" value={manualProgress} disabled={isSaving} onChange={(event) => setManualProgress(event.target.value)} className="ui-form-control h-11 w-20 rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 text-right ui-numeric" /><span className="text-sm text-[var(--ui-text-muted)]">%</span><Button type="button" size="sm" variant="outline" disabled={isSaving} onClick={() => { setManualProgress(task.production_completion.toString()); setIsEditingManualProgress(false); }}>{t("cancel")}</Button><Button type="button" size="sm" disabled={isSaving || Number(manualProgress) === task.production_completion} onClick={() => void saveManualProgress()}>{t("save")}</Button></div></div> : null}
                 </div> : task.status === "review" ? <p className="mt-3 text-xs text-[var(--ui-text-secondary)]">{t("productionAwaitingApproval")}</p> : task.status === "completed" ? <p className="mt-3 text-xs text-[var(--ui-text-secondary)]">{t("productionApproved")}</p> : null}
               </section>
+              {reviewSection}
               {displayedChecklistItems.length ? <section className="border-t border-[var(--ui-border-subtle)] pt-5" aria-labelledby="task-checklist-heading">
                 <div className="flex items-end justify-between gap-3"><h3 id="task-checklist-heading" className="text-sm font-semibold text-[var(--ui-text)]">{checklistT("checklist")}</h3><span className="ui-numeric text-xs font-medium text-[var(--ui-text-secondary)]">{t("checklistProgress", { completed: taskProgress.completedChecklistCount, total: taskProgress.checklistCount })}</span></div>
                 {checklistSnapshot.error ? <p role="alert" className="mt-3 text-sm text-[var(--ui-danger-text)]">{checklistT("autosaveFailed")}</p> : null}
@@ -496,7 +497,10 @@ export function TaskDetailsDrawer({
                 <p className="mt-2 max-w-prose whitespace-pre-wrap text-sm leading-7 text-[var(--ui-text-secondary)]">{task.description}</p>
               </section> : null}
               <section className="border-t border-[var(--ui-border-subtle)] pt-5">
-                <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <h3 className="text-sm font-semibold text-[var(--ui-text)]">{t("taskInformation")}</h3>
+                  {isOpen ? <TaskSpentTime key={task.id} taskId={task.id} /> : null}
+                </div>
                 <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 text-sm">
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("assignee")} icon={UserRound} /></dt><dd className="mt-2 flex min-w-0 items-start gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span className="min-w-0 break-words leading-6">{task.assignee.full_name}</span></> : <span className="font-normal text-[var(--ui-text-muted)]">{t("unassigned")}</span>}</dd></div>
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("coAssignees")} icon={Users} /></dt><dd className="mt-2"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>

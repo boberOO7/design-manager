@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatStatisticsDuration } from "@/lib/statistics";
 import type { buildWorkStatistics } from "@/lib/work-log";
+import { TaskTimeReport } from "./task-time-report";
 import { StatisticsInfo } from "./statistics-info";
 
 const workSeries = [
@@ -55,7 +56,7 @@ function WorkTimeRow({ name, href, avatar, inactive, totalMinutes, maximum, chil
 export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<typeof buildWorkStatistics>; monthlyChart: ReactNode }) {
   const t = useTranslations("Statistics");
   const locale = useLocale();
-  const [view, setView] = useState<"employees" | "projects">("employees");
+  const [view, setView] = useState<"employees" | "projects" | "tasks">("employees");
   const [layout, setLayout] = useState<"list" | "grid">("list");
   const projectSeries = [workSeries[0], workSeries[1]];
   const maximum = Math.max(1, ...(view === "employees" ? report.employees : report.projects).map(row => row.totalMinutes));
@@ -65,18 +66,18 @@ export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<t
   return <>
     <div className="flex flex-wrap items-center gap-2 border-t border-[var(--ui-border)] px-5 py-3">
       <SegmentedControl ariaLabel={t("workTitle")} value={view} onValueChange={setView} className="max-w-full"
-        items={[{ value: "employees", label: t("workByEmployees") }, { value: "projects", label: t("workByProjects") }]} />
-      <div role="group" aria-label={t("workLayout")} className="inline-flex shrink-0 gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">
+        items={[{ value: "employees", label: t("workByEmployees") }, { value: "projects", label: t("workByProjects") }, { value: "tasks", label: t("workByTasks") }]} />
+      {view !== "tasks" ? <div role="group" aria-label={t("workLayout")} className="inline-flex shrink-0 gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1">
         {([{ value: "list", label: t("workLayoutList"), icon: List }, { value: "grid", label: t("workLayoutGrid"), icon: LayoutGrid }] as const).map(({ value, label, icon: Icon }) => <Tooltip key={value} content={label}>
           <Button type="button" variant="ghost" size="compact" aria-label={label} aria-pressed={layout === value} onClick={() => setLayout(value)}
             className={`size-9 p-0 ${layout === value ? "bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-[var(--ui-shadow-panel)] hover:bg-[var(--ui-surface)]" : ""}`}>
             <Icon aria-hidden="true" className="size-4" />
           </Button>
         </Tooltip>)}
-      </div>
+      </div> : null}
       {view === "projects" ? <div className="ml-auto"><StatisticsInfo label={t("projectWorkTitle")}>{t("projectWorkDefinition")}</StatisticsInfo></div> : null}
     </div>
-    <div id={view === "employees" ? "stats-work-people" : "stats-work-projects"} role="region" aria-label={t(view === "employees" ? "workByEmployees" : "workByProjects")}>
+    {view === "tasks" ? <TaskTimeReport report={report} /> : <div id={view === "employees" ? "stats-work-people" : "stats-work-projects"} role="region" aria-label={t(view === "employees" ? "workByEmployees" : "workByProjects")}>
       <ul key={view} className={`grid items-start ${layout === "grid" ? "lg:grid-cols-2 lg:gap-x-5" : "grid-cols-1"}`}>
         {view === "employees" ? report.employees.map(person => <WorkTimeRow key={person.id} layout={layout} name={person.name || t("formerEmployee")} href={`/team/${person.id}`} avatar inactive={!person.active}
           totalMinutes={person.totalMinutes} maximum={maximum} segments={workSeries.map(item => ({ key: item.key, minutes: person[item.key], color: item.color }))}>
@@ -90,7 +91,7 @@ export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<t
         </WorkTimeRow>)}
       </ul>
       {view === "projects" && !report.projects.length ? <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noProjectWorkTime")}</p> : null}
-    </div>
+    </div>}
     <AnimatedDisclosure title={t("workMonthlyTrend")} className="border-t border-[var(--ui-border)] px-5 py-1">
       <div id="stats-work-months" className="pb-4 pt-2">{monthlyChart}</div>
     </AnimatedDisclosure>

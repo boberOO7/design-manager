@@ -1147,7 +1147,16 @@
     "deleteFailed": "Не вдалося видалити завдання. Спробуйте ще раз.",
     "reviewChangeReviewers": "Змінити рецензентів",
     "reviewReassignmentHelp": "Погоджені кроки зберігаються. Заміна поточного рецензента зупиняє таймер і зберігає його час.",
-    "directionBoard": "Етапи та задачі"
+    "directionBoard": "Етапи та задачі",
+    "spentTime": "Витрачений час",
+    "spentTimeOwn": "Мій витрачений час",
+    "spentTimeUnit": "год:хв",
+    "spentTimeWork": "Робота",
+    "spentTimeReview": "Перевірка",
+    "spentTimeEmpty": "Час ще не записано",
+    "spentTimeLoading": "Завантаження витраченого часу…",
+    "spentTimeFailed": "Не вдалося завантажити витрачений час",
+    "spentTimeRetry": "Повторити"
   },
   "Workspace": {
     "backToProjects": "Проєкти",
@@ -5839,7 +5848,18 @@
     "activityDay_weekend": "Вихідний",
     "activityDay_studio_day_off": "Вихідний студії",
     "activityDay_time_off": "Погоджена відсутність",
-    "activityDay_before_joining": "До приєднання"
+    "activityDay_before_joining": "До приєднання",
+    "workByTasks": "За задачами",
+    "taskTimeTask": "Задача",
+    "taskTimeProject": "Проєкт / напрямок",
+    "taskTimeEmployees": "Співробітники",
+    "taskTimeAllProjects": "Усі проєкти",
+    "taskTimeAllDirections": "Усі напрямки",
+    "taskTimeAllStages": "Усі етапи",
+    "taskTimeAllEmployees": "Усі співробітники",
+    "taskTimeSearch": "Пошук…",
+    "taskTimeEmpty": "Немає часу задач за цими фільтрами",
+    "taskTimeTotal": "Разом"
   },
   "WorkLog": {
     "internalWork": "Внутрішня робота",
