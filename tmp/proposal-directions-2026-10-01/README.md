@@ -1,8 +1,8 @@
 # SPACE Commercial Proposal — design exploration
 
-Three finished one-page A4 directions. These are static design artifacts, not application or renderer changes. Each PDF has embedded fonts, selectable Ukrainian text, and a vector rendering of the existing SPACE logo. Each matching PNG is rendered from that PDF at 300 dpi.
+Archived PNG previews of three one-page A4 design explorations. Generated PDFs have been removed; current proposal PDFs are rendered and checked by `src/lib/finance-proposal.test.ts`.
 
-Open **00-comparison.png** to compare the compositions side by side; open the individual PDFs to assess them at actual A4 size. The artwork itself has no concept labels or presentation framing.
+Open **00-comparison.png** to compare the compositions side by side, or the individual PNGs for detail. The artwork itself has no concept labels or presentation framing.
 
 ## 01 — Measured Space / editorial architecture
 
@@ -11,7 +11,7 @@ Open **00-comparison.png** to compare the compositions side by side; open the in
 - Warm near-white, graphite ink, and generous spacing supply character with very little print coverage.
 - One large final price leads; discount, included VAT, and three payment rows remain clearly secondary.
 
-Files: **01-measured-space.pdf** and **01-measured-space.png**.
+Preview: **01-measured-space.png**.
 
 ## 02 — Quiet Monument / premium monochrome
 
@@ -20,7 +20,7 @@ Files: **01-measured-space.pdf** and **01-measured-space.png**.
 - Pure white, black, and gray derive their richness from scale and spacing rather than decoration.
 - A three-part pricing explanation and unboxed payment rows keep the lower page practical and readable.
 
-Files: **02-quiet-monument.pdf** and **02-quiet-monument.png**.
+Preview: **02-quiet-monument.png**.
 
 ## 03 — Folded Plane / SPACE geometry
 
@@ -29,7 +29,7 @@ Files: **02-quiet-monument.pdf** and **02-quiet-monument.png**.
 - Geometric typography, an asymmetric price anchor, and numbered payment rows create a distinct architectural rhythm.
 - The contained tone and generous white margins remain suitable for A4 printing and grayscale reading.
 
-Files: **03-folded-plane.pdf** and **03-folded-plane.png**.
+Preview: **03-folded-plane.png**.
 
 ## Shared representative content
 
