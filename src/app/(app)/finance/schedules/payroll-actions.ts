@@ -36,7 +36,7 @@ export async function confirmFinancePayrollEarning(_state: FinanceActionState, f
   revalidatePath("/statistics");
   revalidatePath("/projects/[projectId]", "page");
   scheduleAutomaticLabor(admin.studio_id);
-  return { status: "success", message: t("planning.saved") };
+  return { status: "success", message: t("saved") };
 }
 
 export async function loadFinancePayrollCash(scheduleId: string, date = getKyivDateOnly()) {
@@ -127,5 +127,5 @@ function payrollCashResult(error: string | null, t: Awaited<ReturnType<typeof ge
   if (error) return { status: "error", message: error === "finance_payroll_uah_required" ? t("payrollCash.uahRequired") : t(`schedules.errors.${financeScheduleError(error)}`) };
   revalidatePath("/finance", "layout");
   revalidatePath("/projects/[projectId]", "page");
-  return { status: "success", message: t("planning.saved") };
+  return { status: "success", message: t("saved") };
 }

@@ -1,0 +1,86 @@
+import { expect, test } from "@playwright/test";
+import { createTaskReviewFixture, reviewSql, sqlId, type TaskReviewFixture } from "../helpers/task-review-fixture";
+import { signInLocalTestUser } from "../helpers/auth";
+import uk from "../../messages/uk.json";
+
+let fixture: TaskReviewFixture;
+test.beforeAll(async () => {
+  fixture = await createTaskReviewFixture();
+  reviewSql(`select set_config('request.jwt.claim.sub',${sqlId(fixture.admin.id)}::text,false);
+    update public.projects set start_date='2026-09-01',total_area_m2=60 where id=${sqlId(fixture.projectId)};
+    update public.project_work_directions set area_m2=60,start_date='2026-09-01' where project_id=${sqlId(fixture.projectId)};
+    update public.tasks set status='completed' where id=${sqlId(fixture.taskId)};
+    update public.tasks set completed_at='2026-09-18' where id=${sqlId(fixture.taskId)};`);
+});
+test.afterAll(async () => { if (fixture) await fixture.dispose(); });
+
+test("Board → Drawer → assigned My Tasks → Review → closed correction preserves September", async ({ page, browser }) => {
+  const f = fixture;
+  const snapshot = reviewSql(`select to_jsonb(a) from public.productivity_attributions a where task_id=${sqlId(f.taskId)};`);
+  await page.context().addCookies([{ name: "studioflow-locale",value: "uk",url: test.info().project.use.baseURL ?? "http://localhost:3100" }]);
+  await signInLocalTestUser(page,f.admin);
+  await page.goto(`/projects/${f.projectId}?task=${f.taskId}`);
+  const drawer = page.getByRole("dialog",{ name: uk.Tasks.taskDetails });
+  await expect(drawer).toBeVisible();
+  const section = drawer.getByRole("region",{ name: uk.Tasks.corrections,exact: true });
+  await section.getByRole("button",{ name: uk.Tasks.createCorrection,exact: true }).click();
+  const form = section.locator("form");
+  await form.getByRole("textbox",{ name: uk.Tasks.description,exact: true }).fill("Уточнити розміри після здачі");
+  await form.getByRole("combobox",{ name: uk.Tasks.assignee,exact: true }).click();
+  await drawer.getByRole("option",{ name: "Review Reviewer",exact: true }).click();
+  await form.getByRole("combobox",{ name: uk.Tasks.reviewAddReviewer,exact: true }).click();
+  await drawer.getByRole("option",{ name: "Review Admin",exact: true }).click();
+  await form.getByRole("button",{ name: uk.Tasks.createCorrection,exact: true }).click();
+  await expect(section.getByText(uk.Status.inProgress,{ exact: true })).toBeVisible();
+  await expect(drawer.getByText(uk.Tasks.originalCompletionDate,{ exact: true })).toBeVisible();
+  expect((await f.admin.client.from("tasks").select("status,completed_at").eq("id",f.taskId).single().throwOnError()).data).toEqual({ status: "completed",completed_at: "2026-09-18" });
+  await drawer.getByRole("button",{ name: uk.Tasks.closeTaskDetails,exact: true }).click();
+  const card = page.locator("[data-task-card]").filter({ hasText: "Review lifecycle task" }).first();
+  await expect(card.locator("[data-active-correction]")).toHaveText(uk.Tasks.correctionInProgress);
+  await expect(card.locator('xpath=ancestor::*[@aria-labelledby][1]')).toHaveAttribute("aria-labelledby","column-in-progress");
+
+  const workerContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  try {
+    await workerContext.addCookies([{ name: "studioflow-locale",value: "uk",url: test.info().project.use.baseURL ?? "http://localhost:3100" }]);
+    const worker = await workerContext.newPage();
+    await signInLocalTestUser(worker,f.reviewer);
+    await worker.goto("/my-tasks");
+    const openTask = worker.getByRole("button",{ name: uk.Tasks.openTask.replace("{name}","Review lifecycle task"),exact: true });
+    await expect(openTask).toHaveCount(1);
+    await openTask.click();
+    const workerDrawer = worker.getByRole("dialog",{ name: uk.Tasks.taskDetails });
+    await expect(workerDrawer.getByText("Уточнити розміри після здачі",{ exact: true }).first()).toBeVisible();
+    await worker.goto(`/projects/${f.projectId}?task=${f.taskId}`);
+    await expect(workerDrawer).toBeVisible();
+    await workerDrawer.getByRole("button",{ name: uk.Tasks.closeTaskDetails,exact: true }).click();
+    await expect(workerDrawer).not.toBeVisible();
+    const correctionCard = worker.locator("[data-task-card]").filter({ hasText: "Review lifecycle task" }).first();
+    await expect(correctionCard).toHaveAttribute("aria-label",uk.Tasks.openTaskDrag.replace("{name}","Review lifecycle task"));
+    await correctionCard.scrollIntoViewIfNeeded();
+    const stage = correctionCard.locator('xpath=ancestor::*[starts-with(@id,"project-stage-")][1]');
+    const destination = stage.locator('[aria-labelledby="column-internal-review"]');
+    const sourceBox = await correctionCard.boundingBox(), targetBox = await destination.boundingBox();
+    if (!sourceBox || !targetBox) throw new Error("Missing correction drag target");
+    await worker.mouse.move(sourceBox.x + sourceBox.width / 2,sourceBox.y + 15);
+    await worker.mouse.down();
+    await worker.mouse.move(sourceBox.x + sourceBox.width / 2 + 25,sourceBox.y + 15,{ steps: 6 });
+    await worker.mouse.move(targetBox.x + targetBox.width / 2,sourceBox.y + 15,{ steps: 15 });
+    await worker.mouse.up();
+    await expect(correctionCard.locator('xpath=ancestor::*[@aria-labelledby][1]')).toHaveAttribute("aria-labelledby","column-internal-review");
+    expect((await f.admin.client.from("tasks").select("status,completed_at").eq("id",f.taskId).single().throwOnError()).data).toEqual({ status: "completed",completed_at: "2026-09-18" });
+    await page.goto("/my-tasks?view=review");
+    const queue = page.getByRole("list",{ name: uk.Tasks.reviewQueue });
+    await expect(queue).toContainText(uk.Tasks.corrections);
+    await expect(queue).toContainText("Review Reviewer");
+    await queue.locator("[data-review-open]").click();
+    const reviewDrawer = page.getByRole("dialog",{ name: uk.Tasks.taskDetails });
+    await reviewDrawer.getByRole("button",{ name: uk.ReviewTimer.start,exact: true }).click();
+    await reviewDrawer.getByRole("button",{ name: uk.Tasks.reviewApprove,exact: true }).click();
+    expect((await f.admin.client.from("task_corrections").select("status").eq("task_id",f.taskId).single().throwOnError()).data.status).toBe("review");
+    await reviewDrawer.getByRole("button",{ name: uk.Tasks.correctionComplete,exact: true }).click();
+    expect((await f.admin.client.from("task_corrections").select("status").eq("task_id",f.taskId).single().throwOnError()).data.status).toBe("closed");
+    await expect(reviewDrawer.getByRole("button",{ name: uk.Tasks.createCorrection,exact: true })).toBeVisible();
+    expect(reviewSql(`select to_jsonb(a) from public.productivity_attributions a where task_id=${sqlId(f.taskId)};`)).toBe(snapshot);
+    expect((await f.admin.client.from("tasks").select("status,completed_at").eq("id",f.taskId).single().throwOnError()).data).toEqual({ status: "completed",completed_at: "2026-09-18" });
+  } finally { await workerContext.close(); }
+});

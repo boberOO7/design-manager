@@ -1,6 +1,7 @@
 import type { MyOfficeAssignment } from "@/data/queries/office-assignments";
 import { isOfficeAssignmentOverdue } from "@/lib/office-assignments";
 import { isTaskOverdue } from "@/lib/tasks";
+import { getActiveCorrection } from "@/lib/task-corrections";
 import type { MyTask } from "@/types/tasks";
 
 export type InboxItem =
@@ -37,9 +38,11 @@ export function getMyTasksInbox(tasks: MyTask[], assignments: MyOfficeAssignment
   }
 
   if (filters.type !== "office") for (const task of tasks) {
-    const completed = task.status === "completed";
+    const correction = getActiveCorrection(task);
+    const completed = task.status === "completed" && !correction;
+    const deadline = correction ? correction.due_date : task.due_date;
     if (task.status === "cancelled" || (filters.state === "active" && completed) || (filters.state === "completed" && !completed) || (filters.project !== "all" && filters.project !== task.project_id)) continue;
-    const item: InboxItem = { kind: "project", task, title: task.title, deadline: task.due_date, overdue: isTaskOverdue(task, today), completed };
+    const item: InboxItem = { kind: "project", task, title: task.title, deadline, overdue: correction ? Boolean(deadline && deadline < today) : isTaskOverdue(task, today), completed };
     if (!include(item)) continue;
     const group = groups.get(task.project_id) ?? { id: task.project_id, name: task.project.name, status: task.project.status, items: [] };
     group.items.push(item);

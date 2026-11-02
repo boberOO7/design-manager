@@ -7556,6 +7556,109 @@ export type Database = {
           },
         ]
       }
+      task_correction_events: {
+        Row: {
+          actor_id: string
+          changes: Json
+          correction_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          actor_id: string
+          changes: Json
+          correction_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          actor_id?: string
+          changes?: Json
+          correction_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_correction_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_correction_events_correction_id_fkey"
+            columns: ["correction_id"]
+            isOneToOne: false
+            referencedRelation: "task_corrections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_corrections: {
+        Row: {
+          assignee_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          id: string
+          reviewer_ids: string[]
+          status: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id: string
+          closed_at?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          due_date?: string | null
+          id?: string
+          reviewer_ids: string[]
+          status?: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          reviewer_ids?: string[]
+          status?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_corrections_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_corrections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_corrections_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_deadline_completions: {
         Row: {
           assignee_id: string | null
@@ -7680,6 +7783,7 @@ export type Database = {
       task_review_rounds: {
         Row: {
           completed_at: string | null
+          correction_id: string | null
           id: string
           project_id: string
           result: string | null
@@ -7691,6 +7795,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          correction_id?: string | null
           id?: string
           project_id: string
           result?: string | null
@@ -7702,6 +7807,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          correction_id?: string | null
           id?: string
           project_id?: string
           result?: string | null
@@ -7712,6 +7818,13 @@ export type Database = {
           task_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_review_rounds_correction_task_fkey"
+            columns: ["correction_id", "task_id"]
+            isOneToOne: false
+            referencedRelation: "task_corrections"
+            referencedColumns: ["id", "task_id"]
+          },
           {
             foreignKeyName: "task_review_rounds_project_id_fkey"
             columns: ["project_id"]
@@ -8345,6 +8458,7 @@ export type Database = {
       work_log_entries: {
         Row: {
           activity_kind: string
+          correction_id: string | null
           created_at: string
           id: string
           internal_activity_type: string | null
@@ -8358,6 +8472,7 @@ export type Database = {
         }
         Insert: {
           activity_kind: string
+          correction_id?: string | null
           created_at?: string
           id?: string
           internal_activity_type?: string | null
@@ -8371,6 +8486,7 @@ export type Database = {
         }
         Update: {
           activity_kind?: string
+          correction_id?: string | null
           created_at?: string
           id?: string
           internal_activity_type?: string | null
@@ -8383,6 +8499,13 @@ export type Database = {
           work_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "work_log_entries_correction_task_fkey"
+            columns: ["correction_id", "task_id"]
+            isOneToOne: false
+            referencedRelation: "task_corrections"
+            referencedColumns: ["id", "task_id"]
+          },
           {
             foreignKeyName: "work_log_entries_review_round_id_task_id_fkey"
             columns: ["review_round_id", "task_id"]
@@ -12098,6 +12221,18 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      update_task_correction: {
+        Args: {
+          p_action: string
+          p_assignee_id?: string
+          p_correction_id?: string
+          p_description?: string
+          p_due_date?: string
+          p_reviewer_ids?: string[]
+          p_task_id: string
+        }
+        Returns: string
       }
       update_task_details_with_collaborators: {
         Args: {

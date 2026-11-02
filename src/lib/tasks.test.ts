@@ -322,7 +322,7 @@ describe("optimistic task Board state", () => {
 
   it("retains sequential handoff and approval changes within the same open round", () => {
     const task = makeTask({ status: "internal_review", requires_review: true, reviewer_id: "first" });
-    const original = { ...task, review_rounds: [{ id: "round", task_id: task.id, project_id: task.project_id, round_number: 1,
+    const original = { ...task, review_rounds: [{ correction_id: null, id: "round", task_id: task.id, project_id: task.project_id, round_number: 1,
       reviewer_id: "first", reviewer: null, submitted_at: "2026-10-12T10:00:00Z", completed_at: null, result: null, rework_comment: null,
       reviewers: [{ round_id: "round", reviewer_id: "first", position: 0, approved_at: null, reviewer: null }] }] };
     const updated = { ...task, review_rounds: [{ ...original.review_rounds[0], reviewer_id: "second",

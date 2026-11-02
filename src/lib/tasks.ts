@@ -1,3 +1,4 @@
+import { getActiveCorrection, getTaskDisplayStatus } from "./task-corrections";
 import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES, type MyTask, type ProjectTask, type TaskPriority, type TaskStatus } from "../types/tasks";
 import { getAutomaticTaskProgress } from "./project-progress";
 import { isTaskDeadlineOverdue } from "./task-deadlines";
@@ -97,6 +98,28 @@ export function getTaskStatusForDrop(
   return getWritableStatusForBoardColumn(targetColumnId);
 }
 
+/** Correction drops submit their own review; they cannot bypass approval into Done. */
+export function getTaskBoardDropStatus(task: Pick<ProjectTask, "status" | "corrections">, targetColumnId: BoardColumnId): WritableTaskStatus | null {
+  if (task.status === "completed") {
+    const status = getActiveCorrection(task)?.status;
+    if (status === "in_progress" && targetColumnId === "internal-review") return "internal_review";
+    if (status === "review" && targetColumnId === "done") return "completed";
+    if (status === "review" && targetColumnId === "in-progress") return "in_progress";
+    return null;
+  }
+  return getTaskStatusForDrop(task.status, targetColumnId);
+}
+
+export function canDragTaskOnBoard({ task, currentUserId, isAdmin, isProjectReadOnly, correctionsReadOnly }: {
+  task: Pick<ProjectTask, "status" | "assignee_id" | "corrections">;
+  currentUserId: string; isAdmin: boolean; isProjectReadOnly: boolean; correctionsReadOnly: boolean;
+}): boolean {
+  const correction = task.status === "completed" ? getActiveCorrection(task) : null;
+  if (task.status === "completed" && !(["in_progress", "review"].includes(correction?.status ?? ""))) return false;
+  return canMoveTask({ assigneeId: correction ? correction.assignee_id : task.assignee_id, currentUserId, isAdmin,
+    isProjectReadOnly: correction ? correctionsReadOnly : isProjectReadOnly });
+}
+
 export function isBoardColumnId(value: string): value is BoardColumnId {
   return value === "todo" || value === "in-progress" || value === "internal-review" || value === "client-review" || value === "done";
 }
@@ -151,7 +174,7 @@ export function groupTasksByBoardColumn(tasks: ProjectTask[]): Record<BoardColum
     done: [],
   };
 
-  for (const task of tasks) groups[getBoardColumn(task.status)].push(task);
+  for (const task of tasks) groups[getBoardColumn(getTaskDisplayStatus(task))].push(task);
   return groups;
 }
 
@@ -215,6 +238,7 @@ function areProjectTasksEqual(left: ProjectTask, right: ProjectTask): boolean {
     && left.reviewer_id === right.reviewer_id
     && areTaskPeopleEqual(left.reviewer ?? null, right.reviewer ?? null)
     && JSON.stringify(left.reviewers ?? []) === JSON.stringify(right.reviewers ?? [])
+    && JSON.stringify(left.corrections ?? []) === JSON.stringify(right.corrections ?? [])
     && JSON.stringify(left.review_rounds ?? []) === JSON.stringify(right.review_rounds ?? [])
     && left.due_date === right.due_date
     && (left.deadlines?.length ?? 0) === (right.deadlines?.length ?? 0)

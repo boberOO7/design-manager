@@ -1,5 +1,6 @@
 {
   "Common": {
+    "close": "Close",
     "skipToContent": "Skip to main content",
     "notAvailable": "Unavailable",
     "unknown": "Unknown",
@@ -907,6 +908,30 @@
     "saved": "Stage task changes saved."
   },
   "Tasks": {
+    "correctionCreated": "Created",
+    "correctionHistoryClosed": "Closed",
+
+    "correctionClientReview": "Correction · Client review",
+    "correctionComplete": "Complete",
+    "correctionResume": "Return to work",
+
+    "correction": "Correction",
+    "correctionSubmit": "Submit for review",
+    "correctionsHistory": "History ({count})",
+
+    "correctionReviewRequired": "An administrator needs to assign reviewers for this correction.",
+    "corrections": "Corrections",
+    "createCorrection": "Create correction",
+    "correctionInProgress": "Correction · In progress",
+    "correctionReview": "Correction · In review",
+    "correctionClosed": "Correction closed",
+    "correctionHistory": "Correction history",
+    "correctionChanged": "Correction changed",
+    "cancelCompletion": "Cancel completion",
+    "cancelCompletionConfirm": "Cancel the original completion? This voids the task’s productivity credit.",
+    "correctionTime": "Correction time",
+    "originalCompletionDate": "Original completion",
+
     "stageProgressMethods": {
       "title": "Progress method",
       "templateHelp": "Applies to new stages. Existing settings are preserved.",
@@ -3248,6 +3273,7 @@
       "reviewSource": "Review {description}"
     },
     "labor": {
+      "allocationTotalUnknown": "The split total and capacity cannot be compared without conversion to the base currency.",
       "historicalSource": "Historical source unavailable · {id}",
       "allocationCleared": "No project shares in this revision; the cost remains studio cost.",
       "allocationAuthor": "Author ID",
@@ -4151,6 +4177,8 @@
     },
     "forecast": {
       "scenarios": {
+        "chooseCurrency": "Choose a currency",
+        "cashIncomplete": "Opening cash is incomplete. Check the accounts.",
         "monthlyDetail": "Monthly detail · {count}",
         "unknownCurrency": "source currency unavailable",
         "incomeCategory": "Income category",

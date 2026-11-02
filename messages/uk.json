@@ -1,5 +1,6 @@
 {
   "Common": {
+    "close": "Закрити",
     "skipToContent": "Перейти до основного вмісту",
     "notAvailable": "Недоступно",
     "unknown": "Невідомо",
@@ -907,6 +908,30 @@
     "saved": "Зміни задач етапу збережено."
   },
   "Tasks": {
+    "correctionCreated": "Створено",
+    "correctionHistoryClosed": "Закрито",
+
+    "correctionClientReview": "Коректива · Перевірка клієнтом",
+    "correctionComplete": "Завершити",
+    "correctionResume": "У роботу",
+
+    "correction": "Коректива",
+    "correctionSubmit": "На перевірку",
+    "correctionsHistory": "Історія ({count})",
+
+    "correctionReviewRequired": "Адміністратор має призначити перевіряючих для корективи.",
+    "corrections": "Корективи",
+    "createCorrection": "Створити корективу",
+    "correctionInProgress": "Коректива · В роботі",
+    "correctionReview": "Коректива · На перевірці",
+    "correctionClosed": "Корективу закрито",
+    "correctionHistory": "Історія корективи",
+    "correctionChanged": "Зміна корективи",
+    "cancelCompletion": "Скасувати завершення",
+    "cancelCompletionConfirm": "Скасувати первинне завершення? Це анулює зарахування продуктивності задачі.",
+    "correctionTime": "Час коректив",
+    "originalCompletionDate": "Первинне завершення",
+
     "stageProgressMethods": {
       "title": "Метод прогресу",
       "templateHelp": "Застосовується до нових етапів. Наявні налаштування зберігаються.",
@@ -3248,6 +3273,7 @@
       "reviewSource": "Перевірити: {description}"
     },
     "labor": {
+      "allocationTotalUnknown": "Суму розподілу та межу неможливо порівняти без перерахунку в базову валюту.",
       "historicalSource": "Історичне джерело недоступне · {id}",
       "allocationCleared": "У цій версії частки за проєктами відсутні; витрата залишається витратою студії.",
       "allocationAuthor": "Ідентифікатор автора",
@@ -4151,6 +4177,8 @@
     },
     "forecast": {
       "scenarios": {
+        "chooseCurrency": "Оберіть валюту",
+        "cashIncomplete": "Початковий залишок коштів визначено не повністю. Перевірте рахунки.",
         "monthlyDetail": "Помісячні дані · {count}",
         "unknownCurrency": "валюту джерела не визначено",
         "incomeCategory": "Категорія надходжень",

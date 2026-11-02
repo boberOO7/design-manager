@@ -8,7 +8,7 @@ import { taskStageSchema } from "@/lib/task-stages";
 
 type Tables = Database["public"]["Tables"];
 export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">
-  & Partial<Pick<Tables["work_log_entries"]["Row"], "internal_activity_type">>;
+  & Partial<Pick<Tables["work_log_entries"]["Row"], "internal_activity_type" | "correction_id">>;
 export type ReviewStatisticsRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "reviewer_id" | "completed_at" | "result"> & {
   reviewers: Array<Pick<Tables["task_review_round_reviewers"]["Row"], "reviewer_id" | "approved_at">>;
 };
@@ -17,6 +17,7 @@ export type ReviewStatisticsSession = Pick<Tables["review_timer_sessions"]["Row"
 };
 
 const entryFields = z.object({
+  correction_id: z.uuid().nullable().optional(),
   activity_kind: z.enum(["task", "review", "internal"]), task_id: z.uuid().nullable(), review_round_id: z.uuid().nullable(),
   internal_activity_type: z.enum(["team_walkthrough"]).nullable().default(null),
   minutes: z.number().int().positive().max(2147483647),
@@ -24,7 +25,7 @@ const entryFields = z.object({
 export const workLogTimerSnapshotSchema = z.object({ entries: z.array(entryFields),
   timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()), changed: z.boolean(), studioId: z.uuid().nullable() });
 const entrySchema = entryFields.refine(row => row.activity_kind === "internal"
-  ? row.internal_activity_type !== null && row.task_id === null && row.review_round_id === null
+  ? row.internal_activity_type !== null && row.task_id === null && row.review_round_id === null && !row.correction_id
   : row.internal_activity_type === null && row.task_id !== null && (row.activity_kind === "review") === (row.review_round_id !== null));
 export const workLogInputSchema = z.object({
   date: z.iso.date(), entries: z.array(entrySchema), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).optional(),
@@ -39,7 +40,7 @@ const dailyRowSchema = entryFields.extend({
 });
 export const dailyWorkLogSchema = z.object({
   canLogInternalWork: z.boolean().default(false),
-  date: z.iso.date(), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).default({}), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema),
+  date: z.iso.date(), timerSnapshot: z.record(z.uuid(), z.number().int().nonnegative()).default({}), submittedAt: z.string().nullable(), rows: z.array(dailyRowSchema), additionalReviews: z.array(dailyRowSchema), additionalCorrections: z.array(dailyRowSchema).default([]),
   activeTasks: z.array(z.object({ ...workLogProjectFields, id: z.uuid(), title: z.string(), projectName: z.string(), isParticipating: z.boolean() })),
   calendar: z.object({ minutes: z.number().nonnegative(), categories: z.array(z.object({ eventType: z.enum(STATISTICS_CALENDAR_TYPES), minutes: z.number().nonnegative(), allDayCount: z.number() })) }),
 });
@@ -153,9 +154,9 @@ export function buildWorkLogReminders(today: string, submissions: SubmittedDay[]
     previousWeekMissing: missingDates.filter(day => day >= previousWeek && day < week) };
 }
 
-export function workLogRowKey(row: Pick<WorkLogEntry, "task_id" | "review_round_id" | "internal_activity_type">) {
+export function workLogRowKey(row: Pick<WorkLogEntry, "task_id" | "review_round_id" | "internal_activity_type" | "correction_id">) {
   if (row.internal_activity_type) return `internal:${row.internal_activity_type}`;
-  return row.review_round_id ? `review:${row.review_round_id}` : `task:${row.task_id}`;
+  return row.review_round_id ? `review:${row.review_round_id}` : row.correction_id ? `correction:${row.correction_id}` : `task:${row.task_id}`;
 }
 
 export function isWorkLogDateEditable(date: string, today: string) {

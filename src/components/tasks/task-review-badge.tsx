@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getCurrentStatusDuration } from "@/lib/dashboard";
 import { getActiveTaskReview, isTaskInRework } from "@/lib/task-reviews";
+import { getActiveCorrection } from "@/lib/task-corrections";
 import type { ProjectTask } from "@/types/tasks";
 
-export function TaskReviewBadge({ task }: { task: Pick<ProjectTask, "status" | "review_rounds"> }) {
+export function TaskReviewBadge({ task }: { task: Pick<ProjectTask, "status" | "review_rounds" | "corrections"> }) {
   const t = useTranslations("Tasks");
+  const correction = getActiveCorrection(task);
+  if (correction) return <span data-active-correction className="shrink-0 rounded-full bg-[var(--ui-info-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--ui-info-text)]">{t(correction.status === "review" ? "correctionClientReview" : correction.status === "internal_review" ? "correctionReview" : "correctionInProgress")}</span>;
   const active = getActiveTaskReview(task);
   const rework = isTaskInRework(task);
   if (!active && !rework) return null;

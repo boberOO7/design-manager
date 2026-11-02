@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -30,9 +31,9 @@ export async function getTaskReviewQueue() {
   const supabase = await createClient();
   const { data, error } = await loadAllRows((from, to) => {
     const query = supabase.from("task_review_rounds")
-      .select("id, round_number, reviewer_id, submitted_at, task:tasks!inner(id, title, stage, status, priority, assignee:profiles!tasks_assignee_id_fkey(full_name,avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(full_name)")
+      .select("id, correction_id, correction:task_corrections!task_review_rounds_correction_task_fkey(status,assignee:profiles!task_corrections_assignee_id_fkey(full_name,avatar_url)), round_number, reviewer_id, submitted_at, task:tasks!inner(id, title, stage, status, priority, assignee:profiles!tasks_assignee_id_fkey(full_name,avatar_url), project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(full_name)")
       .eq("reviewer_id", membership.authenticatedUserId)
-      .is("completed_at", null).eq("task.status", "internal_review").is("task.project.archived_at", null)
+      .is("completed_at", null).is("task.project.archived_at", null)
       .order("submitted_at").order("id").range(from, to);
     return query;
   });
@@ -41,6 +42,23 @@ export async function getTaskReviewQueue() {
   const { data: stages, error: stageError } = await loadAllRows((from, to) => supabase.from("project_task_stage_columns").select("project_id,stage,kind").in("project_id", [...new Set(data.map((round) => round.task.project.id))]).is("deleted_at", null).order("project_id").order("stage").range(from, to));
   if (stageError) throw new Error("Unable to load review stage types.", { cause: stageError });
   const kindByStage = new Map((stages ?? []).map((stage) => [`${stage.project_id}:${stage.stage}`, stage.kind]));
-  return data.filter((round) => round.task.project.status !== "completed" || kindByStage.get(`${round.task.project.id}:${round.task.stage}`) === "additional");
+  return data.filter(round => round.correction_id ? round.correction?.status === "internal_review" : round.task.status === "internal_review").map(round => ({ ...round, task: round.correction ? { ...round.task, assignee: round.correction.assignee } : round.task })).filter((round) => round.correction_id || round.task.project.status !== "completed" || kindByStage.get(`${round.task.project.id}:${round.task.stage}`) === "additional");
 }
 export type TaskReviewQueueItem = Awaited<ReturnType<typeof getTaskReviewQueue>>[number];
+
+export async function getTaskCorrectionCandidates(taskId: string) {
+  if (!z.uuid().safeParse(taskId).success) return null;
+  const access = await resolveActiveStudioMembership();
+  if (access.status !== "ACTIVE_STUDIO") return null;
+  const client = await createClient();
+  const { data: task, error } = await client.from("tasks").select("project_id,assignee_id,corrections:task_corrections(assignee_id,status)").eq("id",taskId).maybeSingle();
+  if (error || !task) return null;
+  const { membership } = access;
+  if (membership.system_role !== "admin" && task.assignee_id !== membership.authenticatedUserId && !task.corrections.some(c => c.status !== "closed" && c.assignee_id === membership.authenticatedUserId)) return null;
+  const [members, admins] = await Promise.all([
+    getAssignableProjectMembers(task.project_id,membership.studio_id),
+    client.from("studio_members").select("profile:profiles!studio_members_user_id_fkey!inner(id,full_name,job_title,avatar_url,is_active)").eq("studio_id",membership.studio_id).eq("system_role","admin").eq("is_active",true).eq("profile.is_active",true),
+  ]);
+  if (admins.error) throw new Error("Unable to load correction members.", { cause: admins.error });
+  return [...new Map([...members,...(admins.data ?? []).map(row => row.profile)].map(person => [person.id,person])).values()];
+}

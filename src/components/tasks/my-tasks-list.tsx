@@ -7,12 +7,13 @@ import { ChevronDown, FolderKanban } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { LifecycleDot } from "@/components/projects/project-lifecycle-dot";
+import { getActiveCorrection } from "@/lib/task-corrections";
 import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { Select, SelectItem } from "@/components/ui/select";
 import type { MyOfficeAssignment } from "@/data/queries/office-assignments";
 import { getMyTasksInbox, type InboxFilters, type InboxItem } from "@/lib/my-tasks-inbox";
-import { canWorkOnTaskInProject } from "@/lib/project-lifecycle";
+import { canWorkOnTaskInProject, isProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import { mergeProjectTask } from "@/lib/tasks";
 import { formatDateOnly } from "@/lib/utils";
@@ -35,7 +36,7 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const isTaskDrawerOpenRef = useRef(false);
-  const groups = getMyTasksInbox(tasks, assignments, filters, today);
+  const groups = getMyTasksInbox(tasks.map(task => ({ ...task, corrections: task.corrections?.filter(c => c.status === "closed" || c.assignee_id === currentUserId) })), assignments, filters, today);
   const projects = [...new Map(tasks.filter((task) => task.status !== "cancelled").map((task) => [task.project_id, task.project])).entries()]
     .sort((left, right) => left[1].name.localeCompare(right[1].name));
   const selectedTask = selectedTaskId ? tasks.find((task) => task.id === selectedTaskId) ?? null : null;
@@ -69,8 +70,9 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
   }
 
   function rowContent(item: InboxItem) {
-    const itemStatus = item.kind === "project" ? status(item.task.status === "in_progress" ? "inProgress" : item.task.status) : office(`statuses.${item.assignment.status}`);
-    const statusClass = item.kind === "project" ? getTaskStatusBadgeStyle(item.task.status).className : item.assignment.status === "done" ? "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]" : item.assignment.status === "in_progress" ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
+    const correction = item.kind === "project" ? getActiveCorrection(item.task) : null;
+    const itemStatus = correction ? t(correction.status === "review" ? "correctionClientReview" : correction.status === "internal_review" ? "correctionReview" : "correctionInProgress") : item.kind === "project" ? status(item.task.status === "in_progress" ? "inProgress" : item.task.status) : office(`statuses.${item.assignment.status}`);
+    const statusClass = item.kind === "project" ? getTaskStatusBadgeStyle(correction?.status ?? item.task.status).className : item.assignment.status === "done" ? "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]" : item.assignment.status === "in_progress" ? "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
     return <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left lg:grid lg:grid-cols-[minmax(0,1fr)_max-content_8rem_10rem]">
       <span className="min-w-0 flex-[1_1_15rem] break-words text-sm font-medium text-[var(--ui-text)]">{item.title}{item.kind === "project" ? <span className="ml-2 inline-flex"><TaskReviewBadge task={item.task} /></span> : null}</span>
       <span data-inbox-deadline className={`ui-numeric shrink-0 text-xs lg:justify-self-end ${item.overdue ? "font-semibold text-[var(--ui-danger-text)]" : item.deadline === today ? "font-medium text-[var(--ui-warning-text)]" : "text-[var(--ui-text-muted)]"}`}>
@@ -127,6 +129,6 @@ export function MyTasksList({ currentUserId, tasks: initialTasks, assignments, s
         })}
       </div> : <p className="py-10 text-center text-sm text-[var(--ui-text-muted)]">{t("inboxEmpty")}</p>}
     </div>
-    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: selectedTask.project.status, archivedAt: selectedTask.project.archived_at, stage: selectedTask.stage, stageKind: selectedTask.stageKind })} members={[]} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
+    {selectedTask ? <TaskDetailsDrawer key={selectedTask.id} projectStatus={isProjectLifecycleStatus(selectedTask.project.status) ? selectedTask.project.status : undefined} canManageTasks={false} currentUserId={currentUserId} isProjectReadOnly={!canWorkOnTaskInProject({ projectStatus: selectedTask.project.status, archivedAt: selectedTask.project.archived_at, stage: selectedTask.stage, stageKind: selectedTask.stageKind })} members={[]} isOpen={isTaskDrawerOpen} onClose={closeTaskDrawer} onExited={clearExitedTask} onTaskUpdated={updateTask} task={selectedTask} /> : null}
   </>;
 }

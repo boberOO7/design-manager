@@ -17,14 +17,17 @@ export async function getTaskWorkTime(taskId: string) {
   if (task.error) throw new Error("Unable to load task.", { cause: task.error });
   if (!task.data) return null;
   const entries = await loadAllRows((from, to) => client.from("work_log_entries")
-    .select("id,user_id,work_date,activity_kind,task_id,review_round_id,minutes,person:profiles!work_log_entries_user_id_fkey(full_name,avatar_url)")
+    .select("correction_id,id,user_id,work_date,activity_kind,task_id,review_round_id,minutes,correction:task_corrections!work_log_entries_correction_task_fkey(description,created_at),person:profiles!work_log_entries_user_id_fkey(full_name,avatar_url)")
     .eq("studio_id", membership.studio_id).eq("task_id", taskId).lte("work_date", getKyivDateOnly())
     .order("id").range(from, to));
   if (entries.error) throw new Error("Unable to load task time.", { cause: entries.error });
   const rows = entries.data ?? [];
   const people = new Map(rows.map(row => [row.user_id, row.person]));
   const summary = summarizeTaskTime(rows);
-  return { ...summary, ownTimeOnly: membership.system_role !== "admin", employees: summary.employees.map(person => ({
+  const correctionMinutes = rows.filter(row => row.correction_id).reduce((sum,row) => sum + row.minutes,0);
+  const corrections = [...new Set(rows.flatMap(row => row.correction_id ? [row.correction_id] : []))]
+    .map(id => ({ id, description: rows.find(row => row.correction_id === id)?.correction?.description ?? "", createdAt: rows.find(row => row.correction_id === id)?.correction?.created_at ?? "", minutes: rows.filter(row => row.correction_id === id).reduce((sum,row) => sum + row.minutes,0) })).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+  return { ...summary, correctionMinutes, corrections, ownTimeOnly: membership.system_role !== "admin", employees: summary.employees.map(person => ({
     ...person, name: people.get(person.id)?.full_name ?? null, avatarUrl: people.get(person.id)?.avatar_url ?? null,
   })) };
 }

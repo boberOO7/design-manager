@@ -94,16 +94,17 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
     ...data.activeTasks.map(task => ({ internal_activity_type: null, activity_kind: "task" as const, task_id: task.id, review_round_id: null,
       minutes: 0, projectId: task.projectId, stage: task.stage, stageName: task.stageName, title: task.title, projectName: task.projectName, roundNumber: null })),
     ...data.additionalReviews,
+    ...data.additionalCorrections,
   ].filter(row => !rows.some(current => workLogRowKey(current) === workLogRowKey(row))) : [];
   const personalTaskIds = new Set(data?.activeTasks.filter(task => task.isParticipating).map(task => task.id));
-  const personalWork = available.filter(row => row.activity_kind === "review" || row.task_id !== null && personalTaskIds.has(row.task_id));
-  const otherWork = available.filter(row => row.activity_kind === "task" && !(row.task_id !== null && personalTaskIds.has(row.task_id)));
+  const personalWork = available.filter(row => row.activity_kind === "review" || Boolean(row.correction_id) || row.task_id !== null && personalTaskIds.has(row.task_id));
+  const otherWork = available.filter(row => row.activity_kind === "task" && !row.correction_id && !(row.task_id !== null && personalTaskIds.has(row.task_id)));
   const choices = addingOthers ? otherWork : personalWork;
 
   async function save() {
     if (!data || editorDisabled) return;
     const input = workLogInputSchema.safeParse({ date: data.date, timerSnapshot: data.timerSnapshot, entries: rows.filter(row => row.minutes > 0).map(row => ({
-      internal_activity_type: row.internal_activity_type, activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id, minutes: row.minutes,
+      internal_activity_type: row.internal_activity_type, activity_kind: row.activity_kind, task_id: row.task_id, review_round_id: row.review_round_id, correction_id: row.correction_id, minutes: row.minutes,
     })) });
     if (!input.success) { setError(t("durationInvalid")); return; }
     setSaving(true); setError("");

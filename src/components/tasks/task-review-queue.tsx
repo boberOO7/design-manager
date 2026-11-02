@@ -172,7 +172,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
         <span className="min-w-0 break-words text-xs leading-5 text-[var(--ui-text-secondary)]">{round.task.assignee?.full_name ?? t("unassigned")}</span>
       </div>
       <div className="pointer-events-none relative min-w-0 space-y-1 @max-[76rem]:col-start-1 @max-[76rem]:row-start-3">
-        <p className="text-xs font-medium text-[var(--ui-info-text)]">{t("reviewRound", { number: round.round_number })}</p>
+        <p className="text-xs font-medium text-[var(--ui-info-text)]">{round.correction_id ? `${t("corrections")} · ` : ""}{t("reviewRound", { number: round.round_number })}</p>
         <TaskReviewWaiting submittedAt={round.submitted_at} />
         {showReviewer ? <p className="truncate text-xs text-[var(--ui-text-muted)]">{t("reviewer")}: {round.reviewer?.full_name ?? t("unknown")}</p> : null}
       </div>

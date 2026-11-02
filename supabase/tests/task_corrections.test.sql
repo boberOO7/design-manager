@@ -1,0 +1,111 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select plan(53);
+insert into public.studios(id,name) values('ac000000-0000-0000-0000-000000000001','Correction test');
+insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) select
+  ('ac000000-0000-0000-0000-0000000000'||n)::uuid,'authenticated','authenticated','correction-'||n||'@example.test','{}','{}',now(),now()
+  from unnest(array['10','11','12','13']) n;
+insert into public.profiles(id,full_name,email,system_role) select
+  ('ac000000-0000-0000-0000-0000000000'||n)::uuid,'Correction '||n,'correction-'||n||'@example.test',case when n='10' then 'admin' else 'employee' end
+  from unnest(array['10','11','12','13']) n;
+insert into public.studio_members(studio_id,user_id,system_role) select
+  'ac000000-0000-0000-0000-000000000001',id,system_role from public.profiles where id::text like 'ac000000-%';
+insert into public.projects(id,studio_id,name,total_area_m2,status,start_date,created_by) values
+  ('ac000000-0000-0000-0000-000000000020','ac000000-0000-0000-0000-000000000001','Corrections',60,'active','2026-09-01','ac000000-0000-0000-0000-000000000010');
+insert into public.project_members(project_id,user_id,project_role,assigned_area_m2,assigned_at) select
+  'ac000000-0000-0000-0000-000000000020',('ac000000-0000-0000-0000-0000000000'||n)::uuid,'designer',0,'2026-09-01' from unnest(array['11','12']) n;
+insert into public.tasks(id,project_id,title,stage,status,assignee_id,created_by) values
+  ('ac000000-0000-0000-0000-000000000030','ac000000-0000-0000-0000-000000000020','September task','stage_1','in_progress','ac000000-0000-0000-0000-000000000011','ac000000-0000-0000-0000-000000000010');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000010',true);
+update public.tasks set status='completed' where id='ac000000-0000-0000-0000-000000000030';
+update public.tasks set completed_at='2026-09-18' where id='ac000000-0000-0000-0000-000000000030';
+create temp table original_snapshot as select * from public.productivity_attributions where task_id='ac000000-0000-0000-0000-000000000030';
+create temp table original_task as select * from public.tasks where id='ac000000-0000-0000-0000-000000000030';
+create temp table original_budget as select * from public.project_work_directions where project_id='ac000000-0000-0000-0000-000000000020';
+select is((select credited_area_m2 from original_snapshot),12::numeric,'September receives 12 m2');
+select is((select (completed_at at time zone 'Europe/Kyiv')::date from original_snapshot),'2026-09-18'::date,'September completion date');
+set local role authenticated;
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','create',p_description=>'November changes',p_assignee_id=>'ac000000-0000-0000-0000-000000000012',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000011','ac000000-0000-0000-0000-000000000010']::uuid[])$$,'admin creates a correction for another employee');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','create',p_description=>'Duplicate',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000010']::uuid[])$$,'23505',null,'database prevents another active correction');
+select throws_ok($$update public.tasks set status='in_progress' where id='ac000000-0000-0000-0000-000000000030'$$,'P0001',null,'normal status mutation cannot void completion');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000013',true);
+select is((select count(*) from public.task_corrections),0::bigint,'unassigned employee cannot read correction');
+select is((select count(*) from public.task_correction_events),0::bigint,'unassigned employee cannot read correction audit');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','create',p_description=>'No access',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000013']::uuid[])$$,'P0001',null,'unavailable task cannot be mutated');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000012',true);
+select is((select count(*) from public.get_personal_task_ids() where task_id='ac000000-0000-0000-0000-000000000030'),1::bigint,'correction assignee sees the existing task in personal work');
+select throws_ok($$update public.task_corrections set status='closed'$$,'42501',null,'direct writes cannot bypass workflow');
+select lives_ok($$select public.save_daily_work_log((now() at time zone 'Europe/Kyiv')::date,jsonb_build_array(jsonb_build_object('activity_kind','task','task_id','ac000000-0000-0000-0000-000000000030','correction_id',(select id from public.task_corrections limit 1),'minutes',90)))$$,'correction uses existing daily work log');
+select throws_ok($$select public.save_daily_work_log((now() at time zone 'Europe/Kyiv')::date,jsonb_build_array(jsonb_build_object('activity_kind','task','task_id','ac000000-0000-0000-0000-000000000030','minutes',90)))$$,'P0001',null,'correction work cannot lose its cycle identity');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','update',(select id from public.task_corrections limit 1),p_description=>'Changed',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000012']::uuid[])$$,'P0001',null,'employee cannot replace administrators reviewer sequence');
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','submit',(select id from public.task_corrections limit 1))$$,'assignee submits correction');
+select throws_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011')$$,'P0001',null,'executor cannot approve another reviewer step');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000010',true);
+select lives_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','reassign',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000011','ac000000-0000-0000-0000-000000000012','ac000000-0000-0000-0000-000000000010']::uuid[])$$,'administrator can reassign a correction review using the existing workflow');
+select is((select cardinality(reviewer_ids) from public.task_corrections),3,'correction reviewer settings change independently');
+select is((select count(*) from public.task_reviewers),0::bigint,'primary task reviewer settings remain unchanged');
+select public.update_task_review('ac000000-0000-0000-0000-000000000030','reassign',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000011','ac000000-0000-0000-0000-000000000010']::uuid[]);
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000011',true);
+select lives_ok($$select public.control_review_timer('start',gen_random_uuid(),array[(select id from public.task_review_rounds where completed_at is null)])$$,'existing review timer works while task remains completed');
+select lives_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','rework',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_comment=>'Fix dimensions',p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011')$$,'review rejection returns correction to work');
+select is((select status from public.task_corrections),'in_progress','rejected correction is in progress');
+select lives_ok($$select public.save_daily_work_log((now() at time zone 'Europe/Kyiv')::date,jsonb_build_array(jsonb_build_object('activity_kind','review','task_id','ac000000-0000-0000-0000-000000000030','review_round_id',(select id from public.task_review_rounds limit 1),'minutes',10)), '{}'::jsonb)$$,'review time reuses daily work log');
+select is((select count(*) from public.work_log_entries where activity_kind='review' and correction_id is not null),1::bigint,'review time inherits correction from its round');
+
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000012',true);
+select public.update_task_correction('ac000000-0000-0000-0000-000000000030','submit',(select id from public.task_corrections limit 1));
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000011',true);
+select lives_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011')$$,'first reviewer hands off');
+select throws_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011')$$,'P0001',null,'retry cannot approve next step');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000010',true);
+select throws_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','reassign',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000010',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000010']::uuid[])$$,'P0001',null,'reassignment cannot erase approved correction steps');
+select lives_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000010')$$,'last reviewer approval moves correction to client review');
+select throws_ok($$select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds order by round_number desc limit 1),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000010')$$,'P0001',null,'resolved reviewer approval cannot repeat');
+select is((select status from public.task_corrections),'review','correction waits for client approval');
+select is((select closed_at from public.task_corrections),null::timestamptz,'client review has no closing timestamp');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','create',p_description=>'Too early',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000010']::uuid[])$$,'23505',null,'client review still counts as the single active correction');
+select is((select count(*) from public.task_correction_events),7::bigint,'all lifecycle changes have author history');
+reset role;
+select results_eq('select * from public.productivity_attributions where task_id=''ac000000-0000-0000-0000-000000000030''','select * from original_snapshot','reviewer approval leaves the original snapshot unchanged');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000011',true);
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','complete',(select id from public.task_corrections limit 1))$$,'P0001',null,'original assignee cannot close another executor correction');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000012',true);
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','resume',(select id from public.task_corrections limit 1))$$,'client changes can return correction to work');
+select is((select status from public.task_corrections),'in_progress','client return does not reopen original completion');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','complete',(select id from public.task_corrections limit 1))$$,'P0001',null,'work cannot bypass reviewer approval');
+select public.update_task_correction('ac000000-0000-0000-0000-000000000030','submit',(select id from public.task_corrections limit 1));
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000011',true);
+select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000011');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000010',true);
+select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000010');
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','complete',(select id from public.task_corrections limit 1))$$,'explicit client completion closes the correction');
+select is((select status from public.task_corrections),'closed','client-approved correction closes');
+select isnt((select closed_at from public.task_corrections),null::timestamptz,'client completion records its own closing timestamp');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','complete',(select id from public.task_corrections limit 1))$$,'P0001',null,'client completion cannot be credited twice');
+
+reset role;
+select results_eq('select * from public.productivity_attributions where task_id=''ac000000-0000-0000-0000-000000000030''','select * from original_snapshot','snapshot stays byte-for-byte unchanged');
+select results_eq('select * from public.tasks where id=''ac000000-0000-0000-0000-000000000030''','select * from original_task','original task including completion and progress unchanged');
+select results_eq('select * from public.project_work_directions where project_id=''ac000000-0000-0000-0000-000000000020''','select * from original_budget','area distribution unchanged');
+select is((select sum(minutes) from public.work_log_entries where user_id='ac000000-0000-0000-0000-000000000012' and correction_id is not null),90::bigint,'time belongs to actual correction executor');
+set local role authenticated;
+reset role;
+update public.project_task_stage_columns set enabled_statuses=array['todo','in_progress','internal_review','completed'] where project_id='ac000000-0000-0000-0000-000000000020' and stage='stage_1';
+set local role authenticated;
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','create',p_description=>'Second correction',p_reviewer_ids=>array['ac000000-0000-0000-0000-000000000010']::uuid[])$$,'another correction can start after closure');
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','cancel_completion')$$,'P0001',null,'cannot cancel completion during an active correction');
+select public.update_task_correction('ac000000-0000-0000-0000-000000000030','submit',(select id from public.task_corrections where status='in_progress'));
+select public.update_task_review('ac000000-0000-0000-0000-000000000030','approved',p_round_id=>(select id from public.task_review_rounds where completed_at is null),p_expected_reviewer_id=>'ac000000-0000-0000-0000-000000000010');
+select is((select status from public.task_corrections order by created_at desc limit 1),'closed','stage without client-review column closes after reviewer approval');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000011',true);
+select throws_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','cancel_completion')$$,'P0001',null,'employee cannot cancel original completion');
+select set_config('request.jwt.claim.sub','ac000000-0000-0000-0000-000000000010',true);
+select lives_ok($$select public.update_task_correction('ac000000-0000-0000-0000-000000000030','cancel_completion')$$,'admin explicitly cancels mistaken completion');
+select is((select status from public.tasks where id='ac000000-0000-0000-0000-000000000030'),'in_progress','cancellation reopens original task');
+reset role;
+select is((select count(*) from public.productivity_attributions where task_id='ac000000-0000-0000-0000-000000000030' and voided_at is null),0::bigint,'only cancellation voids productivity');
+select is((select count(*) from public.task_corrections where task_id='ac000000-0000-0000-0000-000000000030' and status='closed'),2::bigint,'both correction cycles remain in history after cancellation');
+select * from finish();
+rollback;

@@ -50,7 +50,11 @@ rows without `voided_at`.
   period reporting follows the corrected Kyiv calendar date. It does not change
   contributor, stage or area snapshots. This explicit correction remains distinct
   from ordinary metadata/scope edits.
-- Reopening voids the active row. Recompletion reactivates the same latest task
+- Completed-task corrections leave the task and its productivity snapshot unchanged,
+  including area, contributor, completion period and completed-task count. Their
+  time is ordinary Work Log time in the actual executor’s work period.
+- Only explicit administrator cancellation of completion voids the active row;
+  ordinary status moves out of Done are rejected. Recompletion reactivates the same latest task
   snapshot, retaining its owner and original Kyiv completion date in both task
   and ledger. It neither duplicates credit nor shifts earned area between months.
 - Contributor ID, name, and professional title are snapshots. They are not

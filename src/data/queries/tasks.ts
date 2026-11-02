@@ -11,7 +11,7 @@ import type { MyTask, ProjectTask, TaskSchedule, TaskStatusPeriod } from "@/type
 import { getTranslations } from "next-intl/server";
 import { productivityRoleSchema } from "@/lib/work-directions";
 
-const TASK_SELECT = "id, project_id, checklist_template_id, stage, stage_position, title, description, status, priority, assignee_id, requires_review, reviewer_id, reviewer:profiles!tasks_reviewer_id_fkey(id, full_name, job_title, avatar_url), reviewers:task_reviewers(task_id, reviewer_id, position, reviewer:profiles!task_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), review_rounds:task_review_rounds(id, task_id, project_id, round_number, reviewer_id, submitted_at, completed_at, result, rework_comment, reviewers:task_review_round_reviewers(round_id, reviewer_id, position, approved_at, reviewer:profiles!task_review_round_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(id, full_name, job_title, avatar_url)), due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url)";
+const TASK_SELECT = "id, project_id, checklist_template_id, stage, stage_position, title, description, status, priority, assignee_id, requires_review, reviewer_id, reviewer:profiles!tasks_reviewer_id_fkey(id, full_name, job_title, avatar_url), reviewers:task_reviewers(task_id, reviewer_id, position, reviewer:profiles!task_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), review_rounds:task_review_rounds(correction_id, id, task_id, project_id, round_number, reviewer_id, submitted_at, completed_at, result, rework_comment, reviewers:task_review_round_reviewers(round_id, reviewer_id, position, approved_at, reviewer:profiles!task_review_round_reviewers_reviewer_id_fkey(id, full_name, job_title, avatar_url)), reviewer:profiles!task_review_rounds_reviewer_id_fkey(id, full_name, job_title, avatar_url)), due_date, completed_at, completed_area_m2, manual_progress_override, production_completion, progress_weight, created_at, created_by, schedule:task_schedules(expected_workdays, baseline_start, baseline_due, current_start, current_due, is_blocked, is_paused), deadlines:task_deadlines(id, target_status, due_date, created_at, updated_at), checklist_items:task_checklist_items(id, task_id, title, is_completed, is_not_needed, weight, position, created_at, updated_at), assignee:profiles!tasks_assignee_id_fkey(id, full_name, job_title, avatar_url), collaborators:task_collaborators(user_id, profile:profiles!task_collaborators_user_id_fkey(id, full_name, job_title, avatar_url)), creator:profiles!tasks_created_by_fkey(id, full_name, job_title, avatar_url), corrections:task_corrections(*, assignee:profiles!task_corrections_assignee_id_fkey(id,full_name,job_title,avatar_url), creator:profiles!task_corrections_created_by_fkey(id,full_name,job_title,avatar_url), events:task_correction_events(*, actor:profiles!task_correction_events_actor_id_fkey(id,full_name,job_title,avatar_url)))";
 
 type ProjectTaskRow = Omit<ProjectTask, "collaborators" | "currentStatusEnteredAt" | "schedule"> & {
   schedule: Omit<TaskSchedule, "predecessors"> | null;
@@ -177,23 +177,27 @@ export async function getMyTasks(): Promise<MyTask[]> {
   const { data: personalTaskIds, error: personalTaskIdsError } = await supabase.rpc("get_personal_task_ids");
   if (personalTaskIdsError || !personalTaskIds) throw new Error("Unable to load tasks assigned to the current user.", { cause: personalTaskIdsError });
   if (personalTaskIds.length === 0) return [];
-  const { data: projectRows, error: projectError } = await supabase.from("tasks")
-    .select("project_id").in("id", personalTaskIds.map((row) => row.task_id));
+  // Keep UUID filters plus the nested drawer selection below the API URL limit.
+  const batches = Array.from({ length: Math.ceil(personalTaskIds.length / 100) }, (_, index) => personalTaskIds.slice(index * 100, (index + 1) * 100).map(row => row.task_id));
+  const projectResults = await Promise.all(batches.map(ids => supabase.from("tasks")
+    .select("project_id").in("id", ids)));
+  const projectError = projectResults.find(result => result.error)?.error;
   if (projectError) throw new Error("Unable to load personal task projects.", { cause: projectError });
-  await refreshProjectTaskSchedules([...new Set((projectRows ?? []).map((row) => row.project_id))]);
-  const { data, error } = await supabase
+  await refreshProjectTaskSchedules([...new Set(projectResults.flatMap(result => (result.data ?? []).map(row => row.project_id)))]);
+  const results = await Promise.all(batches.map(ids => supabase
     .from("tasks")
     .select(`${TASK_SELECT}, project:projects!tasks_project_id_fkey!inner(id, name, status, archived_at)`)
-    .in("id", personalTaskIds.map((row) => row.task_id))
+    .in("id", ids)
     .neq("project.status", "paused")
     .is("project.archived_at", null)
-    .overrideTypes<MyTaskRow[], { merge: false }>();
+    .overrideTypes<MyTaskRow[], { merge: false }>()));
 
-  if (error || !data) {
-    throw new Error("Unable to load tasks assigned to the current user.", { cause: error });
+  const failed = results.find(result => result.error || !result.data);
+  if (failed) {
+    throw new Error("Unable to load tasks assigned to the current user.", { cause: failed.error });
   }
-
-  return (await attachSchedulePredecessors(supabase, await attachDeadlineCompletions(supabase, data.map(normalizeMyTask)))).filter(task => task.directionStatus !== "paused").sort((left, right) => {
+  const tasks = (await Promise.all(results.map(result => attachDeadlineCompletions(supabase, (result.data ?? []).map(normalizeMyTask))))).flat();
+  return (await attachSchedulePredecessors(supabase, tasks)).filter(task => task.directionStatus !== "paused").sort((left, right) => {
     const leftRank = isTaskFinished(left.status) ? 2 : isTaskOverdue(left) ? 0 : 1;
     const rightRank = isTaskFinished(right.status) ? 2 : isTaskOverdue(right) ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;

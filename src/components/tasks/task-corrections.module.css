@@ -1,0 +1,9 @@
+.history::details-content {
+  block-size: 0;
+  overflow: hidden;
+  interpolate-size: allow-keywords;
+  transition: block-size 180ms ease-out, content-visibility 180ms allow-discrete;
+}
+.history[open]::details-content { block-size: auto; }
+@media (prefers-reduced-motion: reduce) { .history::details-content { transition: none; } }
+:global(:root[data-motion="off"]) .history::details-content { transition: none; }

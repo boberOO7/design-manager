@@ -22,6 +22,7 @@ import { getTaskDeadlinePresentation, toTaskDeadlineInputs, type TaskDeadlineInp
 import { TaskCollaboratorMultiSelect } from "@/components/tasks/task-collaborator-multi-select";
 import { TaskFieldLabel } from "@/components/tasks/task-field-label";
 import { TaskPersonSelect } from "@/components/tasks/task-person-select";
+import { getActiveCorrection, getTaskDisplayStatus } from "@/lib/task-corrections";
 import { TaskReviewSection } from "@/components/tasks/task-review-section";
 import { getActiveTaskReview, getTaskReviewerIds } from "@/lib/task-reviews";
 import { TaskDeadlineEditor } from "@/components/tasks/task-deadline-editor";
@@ -37,6 +38,7 @@ import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
+import { TaskCorrectionsSection } from "@/components/tasks/task-corrections-section";
 import { TaskSpentTime } from "@/components/tasks/task-spent-time";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -147,13 +149,15 @@ export function TaskDetailsDrawer({
   const [isApplyingChecklistTemplate, setIsApplyingChecklistTemplate] = useState(false);
   const statusLabel = (status: ProjectTask["status"]) => statusT(status === "in_progress" ? "inProgress" : status);
   const enabledTaskStatuses = stageColumns?.[task.stage] ?? BOARD_COLUMNS.map((column) => column.status);
-  const currentStatusDuration = getCurrentStatusDuration(task.currentStatusEnteredAt ?? null, new Date().toISOString());
+  const activeCorrection = getActiveCorrection(task);
+  const displayStatus = getTaskDisplayStatus(task);
+  const currentStatusDuration = activeCorrection ? null : getCurrentStatusDuration(task.currentStatusEnteredAt ?? null, new Date().toISOString());
   const currentStatusDurationLabel = currentStatusDuration === null ? null : currentStatusDuration.days === 0 && currentStatusDuration.hours === 0 ? t("statusDurationUnderHour") : currentStatusDuration.days === 0 ? t("statusDurationHours", { count: currentStatusDuration.hours }) : t("statusDurationDaysHours", { days: currentStatusDuration.days, hours: currentStatusDuration.hours });
 
   const canEditTaskFields = canEditTaskDetails({ isAdmin: canManageTasks, isProjectReadOnly });
   const canEditCompletionDate = canManageTasks && task.status === "completed" && projectStatus !== "archived";
   const canEdit = canEditTaskFields || canEditCompletionDate;
-  const canUpdateStatus = !isProjectReadOnly
+  const canUpdateStatus = task.status !== "completed" && !isProjectReadOnly
     && (canManageTasks || task.assignee_id === currentUserId);
   const canEditWork = canEditTaskWork({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, status: task.status });
   taskRef.current = task;
@@ -386,7 +390,7 @@ export function TaskDetailsDrawer({
             <div className="min-w-0">
               <h2 id="task-details-title" className="break-words text-xl font-semibold leading-7 text-[var(--ui-text)]">{task.title}</h2>
               <div className="mt-2 flex flex-wrap gap-2">
-                <span className={cn(getTaskStatusBadgeStyle(task.status).className, "inline-flex items-center rounded-md border-0 px-2 py-1 text-xs font-medium")}>{statusLabel(task.status)}</span>
+                <span className={cn(getTaskStatusBadgeStyle(displayStatus).className, "inline-flex items-center rounded-md border-0 px-2 py-1 text-xs font-medium")}>{statusLabel(displayStatus)}</span>
                 {currentStatusDurationLabel ? <span className="inline-flex items-center gap-1 self-center text-xs text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("currentStatusDuration", { duration: currentStatusDurationLabel })}</span> : null}
               </div>
             </div>
@@ -520,9 +524,10 @@ export function TaskDetailsDrawer({
                 <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 border-t border-[var(--ui-border-subtle)] pt-4 text-xs text-[var(--ui-text-muted)]">
                   <div><dt className="text-[var(--ui-text-muted)]">{t("createdBy")}</dt><dd className="mt-2 flex min-w-0 items-center gap-2 text-[var(--ui-text-secondary)]">{task.creator ? <><UserAvatar decorative imageUrl={task.creator.avatar_url} name={task.creator.full_name} size="boardCard" /><span className="min-w-0 break-words">{task.creator.full_name}</span></> : t("unknown")}</dd></div>
                   <div><dt className="text-[var(--ui-text-muted)]">{t("created")}</dt><dd className="mt-2 leading-7 text-[var(--ui-text-secondary)]">{formatDate(task.created_at, locale)}</dd></div>
-                  {canManageTasks && task.status === "completed" && task.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("completionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.completed_at, locale)}</dd></div> : null}
+                  {task.status === "completed" && task.completed_at ? <div><dt className="text-[var(--ui-text-muted)]">{t("originalCompletionDate")}</dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{formatDate(task.completed_at, locale)}</dd></div> : null}
                 </dl>
               </section>
+              <TaskCorrectionsSection task={task} currentUserId={currentUserId} canManageTasks={canManageTasks} isReadOnly={projectStatus === "archived"} canCancelCompletion={!isProjectReadOnly} disabled={isSaving} onPendingChange={setIsSaving} onUpdated={updatedTask => { onTaskUpdated(updatedTask); checklistStore.seed(updatedTask); router.refresh(); }} />
               {!canManageTasks && canUpdateStatus && !(task.requires_review && task.status === "internal_review") ? <section className="border-t border-[var(--ui-border-subtle)] pt-5">
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--ui-text)]">{t("updateStatus")}
                   <Select value={task.status} disabled={isSaving} onValueChange={(status) => void saveEmployeeStatus(status)} className="font-normal">

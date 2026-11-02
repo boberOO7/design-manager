@@ -9,7 +9,7 @@ export function getTaskReviewerIds(task: Pick<ProjectTask, "reviewers" | "review
 }
 
 export function getLatestTaskReview(task: Pick<ProjectTask, "review_rounds">): TaskReviewRound | null {
-  return (task.review_rounds ?? []).reduce<TaskReviewRound | null>((latest, round) => !latest || round.round_number > latest.round_number ? round : latest, null);
+  return (task.review_rounds ?? []).filter(round => !round.correction_id).reduce<TaskReviewRound | null>((latest, round) => !latest || round.round_number > latest.round_number ? round : latest, null);
 }
 
 export function getActiveTaskReview(task: Pick<ProjectTask, "status" | "review_rounds">): TaskReviewRound | null {

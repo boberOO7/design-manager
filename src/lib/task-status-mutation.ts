@@ -14,3 +14,10 @@ export function toTaskStatusActionState(
 export type TaskEditMutationResult =
   | { success: true; task: ProjectTask; projectStatus: string }
   | { success: false; formError: string; fieldErrors?: Record<string, string> };
+
+export function isTaskStatusMutationResult(value: unknown): value is TaskStatusMutationResult {
+  return typeof value === "object" && value !== null && "success" in value
+    && (value.success === false && "formError" in value && typeof value.formError === "string"
+      || value.success === true && "task" in value && typeof value.task === "object" && value.task !== null
+      && "projectStatus" in value && typeof value.projectStatus === "string");
+}

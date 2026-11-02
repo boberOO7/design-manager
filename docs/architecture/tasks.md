@@ -147,6 +147,45 @@ Project aggregation and attribution are described in
   links directly to the task. My Tasks also shows the pending queue count and a
   queue link independently of notification read state.
 
+## Corrections to completed tasks
+
+`task_corrections` owns a separate `in_progress → internal_review → review → closed` cycle.
+Reviewer approval follows the stage’s enabled statuses: client review when enabled,
+otherwise closed when Done is enabled. Only explicit client completion closes a
+cycle waiting in `review`; client changes can return it to work.
+A partial unique index permits one active correction per task. Creators, current
+assignees, optional deadlines and reviewer sequences are retained; authored
+`task_correction_events` snapshot every change. Only administrators configure
+reviewer sequences; the original task assignee/admin can create a correction,
+and its assignee/admin can edit or submit it. Archived projects remain read-only.
+Completed projects/directions can receive corrections without reopening production.
+
+Corrections leave `tasks.status`, `completed_at`, progress and productivity untouched.
+`task_review_rounds.correction_id` scopes existing sequential reviews, rework,
+reviewer reassignment, notifications and review timers to the correction. Primary
+approval history excludes these rounds. Board groups the same task by the active
+correction’s operational status (In progress/Internal review/Client review), returning it to Done
+after closure; the persisted task remains completed for progress and productivity.
+A correction in work or client review is draggable by its assignee/admin, including
+on completed production. Dropping work into Internal review submits it; dropping
+client review into Done closes it, or into In progress returns it for changes. The
+single-card column grip follows that same path. Correction drops cannot bypass
+approval into Done or mutate primary task status; review resolution uses its
+existing controls. Archived project corrections remain read-only.
+My Tasks includes the same task for its correction assignee; Review includes the
+correction's open round. The drawer holds the creation form and cycle histories.
+
+`work_log_entries.correction_id` identifies correction work on the original task.
+Review time derives that identity from its round; task time requires an assignee
+whose recorded assignment overlaps the Kyiv work date. Existing Work Log totals,
+review timers and reports count actual time without creating area or task credits.
+The task time popover separates correction totals and individual cycles.
+
+Only the administrator `update_task_correction(..., 'cancel_completion')` action
+can deliberately leave Done and invoke snapshot invalidation. It requires no
+active correction and retains existing primary task lifecycle/read-only guards.
+Ordinary status moves, including bulk moves, cannot reopen completed tasks.
+
 ## Status history
 
 - `task_status_periods` stores one row per visit to a workflow status, including
@@ -271,7 +310,7 @@ active deadlines are selected before removing milestone rows from context props.
 
 Daily Work Log (`/api/work-log`, `src/data/queries/work-log.ts`) stores positive
 whole minutes in `work_log_entries` by user, Kyiv work date, task, and optional
-specific review round. The guarded `save_daily_work_log` RPC resolves the actor's
+specific review round/correction cycle. The guarded `save_daily_work_log` RPC resolves the actor's
 single active membership and atomically edits their day; RLS reads are self/admin.
 Existing entries stay editable after project access changes. Task suggestions are
 limited to the user's assigned/collaborating tasks: daily activity (including

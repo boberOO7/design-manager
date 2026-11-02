@@ -3,7 +3,7 @@ import type { TaskReviewQueueItem } from "@/data/queries/task-reviews";
 import { eligibleReviewSelection, toggleReviewSelection } from "./review-queue-selection";
 
 const round = (id: string, reviewerId = "me", projectId = "project", stage: TaskReviewQueueItem["task"]["stage"] = "stage_1"): TaskReviewQueueItem => ({
-  id, reviewer_id: reviewerId, reviewer: { full_name: "Reviewer" }, round_number: 1, submitted_at: "2026-10-12T10:00:00Z",
+  correction_id: null, correction: null, id, reviewer_id: reviewerId, reviewer: { full_name: "Reviewer" }, round_number: 1, submitted_at: "2026-10-12T10:00:00Z",
   task: { id: `task-${id}`, title: id, stage, status: "internal_review", priority: "normal", assignee: null,
     project: { id: projectId, name: projectId, status: "active", archived_at: null } },
 });

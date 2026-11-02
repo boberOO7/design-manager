@@ -57,6 +57,8 @@ export function TaskSpentTime({ taskId }: { taskId: string }) {
                   <Popover.Close aria-label={commonT("close")} className="flex size-8 shrink-0 items-center justify-center rounded-[var(--ui-radius-control)] text-[var(--ui-text-muted)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><X className="size-4" aria-hidden="true" /></Popover.Close>
                 </div>
                 <p className="mb-2 text-lg font-semibold tabular-nums">{duration(report.totalMinutes)}</p>
+                {report.correctionMinutes > 0 ? <p className="text-xs text-[var(--ui-text-secondary)]">{t("correctionTime")}: {duration(report.correctionMinutes)}</p> : null}
+                {report.corrections.map(correction => <p key={correction.id} className="mt-1 text-xs text-[var(--ui-text-muted)]">{correction.description}: {duration(correction.minutes)}</p>)}
                 {report.reviewMinutes > 0 ? split(report) : null}
                 <ul className="mt-3 divide-y divide-[var(--ui-border-subtle)]">
                   {report.employees.map(person => <li key={person.id} className="py-3 first:pt-0 last:pb-0">

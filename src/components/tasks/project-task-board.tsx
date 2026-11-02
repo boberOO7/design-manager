@@ -21,6 +21,7 @@ import { ProjectTemplateStageDialog } from "@/components/tasks/project-template-
 import { StageTaskEditor } from "@/components/tasks/stage-task-editor";
 import { BulkTaskReviewerEditor } from "@/components/tasks/bulk-task-reviewer-editor";
 import { canConfigureTaskReview, getActiveTaskReview } from "@/lib/task-reviews";
+import { getActiveCorrection } from "@/lib/task-corrections";
 import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
 import { TaskPriorityIcon, taskPriorityLabel } from "@/components/tasks/task-select-presentation";
@@ -32,8 +33,9 @@ import type { ConfiguredProjectStage, StageSchedulePause } from "@/data/queries/
 import {
   BOARD_COLUMNS,
   canMoveTask,
+  canDragTaskOnBoard,
+  getTaskBoardDropStatus,
   getBoardColumn,
-  getTaskStatusForDrop,
   groupTasksByBoardColumn,
   isBoardColumnId,
   isTaskOverdue,
@@ -365,7 +367,7 @@ function TaskCardContent({
   isPending = false,
   isSelected = false,
   showGrip = false,
-  task,
+  task: originalTask,
 }: {
   compact?: boolean;
   isOverlay?: boolean;
@@ -379,9 +381,11 @@ function TaskCardContent({
   const priority = useTranslations("Priority");
   const status = useTranslations("Status");
   const locale = useLocale();
-  const overdue = isTaskOverdue(task);
+  const correction = getActiveCorrection(originalTask);
+  const task = correction ? { ...originalTask, assignee: correction.assignee, collaborators: [], due_date: correction.due_date } : originalTask;
+  const overdue = correction ? Boolean(task.due_date && task.due_date < getTodayDateOnly()) : isTaskOverdue(task);
   const scheduleLabel = task.status === "completed" || task.status === "cancelled" ? null : task.schedule?.is_paused ? t("schedulePaused") : task.schedule?.is_blocked ? t("scheduleBlocked") : task.schedule && task.schedule.current_due !== task.schedule.baseline_due ? t("scheduleShifted") : null;
-  const progress = getBoardTaskProgressSummary(task);
+  const progress = correction ? null : getBoardTaskProgressSummary(task);
   const hasTaskParticipants = task.assignee !== null || task.collaborators.length > 0;
   const visibleCollaboratorCount = task.assignee ? 3 : 4;
   const priorityIndicator = <Tooltip content={priority(task.priority)}><span role="img" aria-label={`${t("priority")}: ${priority(task.priority)}`} tabIndex={isOverlay ? undefined : 0} className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><TaskPriorityIcon priority={task.priority} /></span></Tooltip>;
@@ -545,6 +549,7 @@ function BoardColumn({
   columnId,
   currentUserId,
   isProjectReadOnly,
+  correctionsReadOnly,
   label,
   status,
   stage,
@@ -563,6 +568,7 @@ function BoardColumn({
   columnId: BoardColumnId;
   currentUserId: string;
   isProjectReadOnly: boolean;
+  correctionsReadOnly: boolean;
   label: string;
   status: WritableTaskStatus;
   stage: TaskStage;
@@ -577,7 +583,7 @@ function BoardColumn({
   const t = useTranslations("Tasks");
   const acceptsActiveTask = activeTask !== null
     && activeTask.stage === stage
-    && getTaskStatusForDrop(activeTask.status, columnId) !== null;
+    && getTaskBoardDropStatus(activeTask, columnId) !== null;
   const acceptsActiveBulk = activeBulkDrag !== null && activeBulkDrag.stage === stage && activeBulkDrag.columnId !== columnId;
   const acceptsDrop = acceptsActiveTask || acceptsActiveBulk;
   const { isDropTarget, ref } = useDroppable({
@@ -588,7 +594,9 @@ function BoardColumn({
     accept: ["project-task", "project-task-bulk"],
   });
   const isHighlighted = acceptsDrop && isDropTarget;
-  const canBulkDrag = tasks.length > 0 && !isProjectReadOnly && tasks.every((task) => canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly }));
+  const canBulkDrag = tasks.length === 1 && getActiveCorrection(tasks[0])
+    ? canDragTaskOnBoard({ task: tasks[0], currentUserId, isAdmin: canManageTasks, isProjectReadOnly, correctionsReadOnly })
+    : tasks.length > 0 && !isProjectReadOnly && tasks.every((task) => task.status !== "completed" && canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly }));
   return (
     <section
       ref={ref}
@@ -606,12 +614,7 @@ function BoardColumn({
         {tasks.length === 0 ? (
           <div className="flex min-h-28 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-center text-sm text-[var(--ui-text-muted)]">{t("noTasks")}</div>
         ) : tasks.map((task) => {
-          const canDrag = canMoveTask({
-            assigneeId: task.assignee_id,
-            currentUserId,
-            isAdmin: canManageTasks,
-            isProjectReadOnly,
-          });
+          const canDrag = canDragTaskOnBoard({ task, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, correctionsReadOnly });
           const isSelected = selectedTaskIds.has(task.id);
           const isGroupDragging = activeBulkDrag?.kind === "selection" && activeBulkDrag.taskIds.includes(task.id);
           return canDrag
@@ -922,7 +925,7 @@ export function ProjectTaskBoard({
     || (projectStatus === "completed" && isWorkingStage(taskSelection.stage));
   const canMoveSelection = selectedTasks.length === taskSelection.taskIds.length
     && selectedTasks.length > 0
-    && selectedTasks.every((task) => canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: selectedStageIsReadOnly }));
+    && selectedTasks.every((task) => task.status !== "completed" && canMoveTask({ assigneeId: task.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: selectedStageIsReadOnly }));
 
   function clearTaskSelection() {
     setTaskSelection({ stage: null, taskIds: [] });
@@ -1038,6 +1041,25 @@ export function ProjectTaskBoard({
       const restoredMessage = getTaskActionErrorCode(error) === "savedRefreshFailed" ? message : t("statusRestored", { message });
       showBoardError(restoredMessage);
     }
+  }
+
+  async function persistCorrectionMove(task: ProjectTask, correctionId: string, targetStatus: WritableTaskStatus) {
+    setTaskPending(task.id, true);
+    setBoardError(null);
+    try {
+      const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}/corrections`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: targetStatus === "completed" ? "complete" : targetStatus === "in_progress" ? "resume" : "submit", correction_id: correctionId }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSuccessfulTaskStatusResponse(result)) throw createTaskActionError(result, response.status);
+      const mergedTasks = mergeProjectTask(localTasksRef.current, result.task);
+      localTasksRef.current = mergedTasks;
+      setLocalTasks(mergedTasks);
+      setAnnouncement(t("taskMoved", { name: task.title, status: statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus) }));
+      window.dispatchEvent(new Event("review-timer-change"));
+    } catch (error) {
+      showBoardError(describeTaskError(error, t("statusUpdateFailed")));
+    } finally { setTaskPending(task.id, false); }
   }
 
   async function persistBulkTaskMove(source: BulkDragSource, targetStatus: WritableTaskStatus, targetLabel: string, previousTasks: ProjectTask[], previousProjectStatus: ProjectLifecycleStatus): Promise<boolean> {
@@ -1283,6 +1305,16 @@ export function ProjectTaskBoard({
       const columnId = String(data.columnId);
       const stage = String(data.stage);
       if (!isBoardColumnId(columnId) || !isTaskStage(stage)) return;
+      const [onlyTaskId] = data.taskIds;
+      const correctionTask = data.taskIds.length === 1 ? localTasksRef.current.find(task => task.id === onlyTaskId && getActiveCorrection(task)) : null;
+      if (correctionTask) {
+        clearTaskSelection();
+        setActiveTaskId(correctionTask.id);
+        setActiveBulkDrag(null);
+        setBoardError(null);
+        setAnnouncement(t("movingTask", { name: correctionTask.title }));
+        return;
+      }
       clearTaskSelection();
       setActiveBulkDrag({ columnId, kind: "column", stage, taskIds: data.taskIds });
       setBoardError(null);
@@ -1295,7 +1327,7 @@ export function ProjectTaskBoard({
     const selectedBatch = taskSelection.taskIds.includes(task.id)
       ? localTasksRef.current.filter((item) => taskSelection.taskIds.includes(item.id))
       : [];
-    if (selectedBatch.length === taskSelection.taskIds.length && selectedBatch.length > 0 && selectedBatch.every((item) => canMoveTask({ assigneeId: item.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: isProjectReadOnly || (projectStatus === "completed" && isWorkingStage(item.stage)) }))) {
+    if (selectedBatch.length === taskSelection.taskIds.length && selectedBatch.length > 0 && selectedBatch.every((item) => item.status !== "completed" && canMoveTask({ assigneeId: item.assignee_id, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: isProjectReadOnly || (projectStatus === "completed" && isWorkingStage(item.stage)) }))) {
       setActiveBulkDrag({ columnId: getBoardColumn(task.status), kind: "selection", previewOffset: getBulkPreviewOffset(event), stage: task.stage, taskIds: taskSelection.taskIds });
       setBoardError(null);
       setAnnouncement(locale === "uk" ? `Переміщення ${taskSelection.taskIds.length} задач.` : `Moving ${taskSelection.taskIds.length} tasks.`);
@@ -1311,6 +1343,7 @@ export function ProjectTaskBoard({
     const taskId = event.operation.source?.id;
     const target = getDropTarget(event.operation.target?.id);
     const bulkSource = activeBulkDrag;
+    const draggedTaskId = activeTaskId ?? taskId;
     setActiveTaskId(null);
     setActiveBulkDrag(null);
     window.setTimeout(() => {
@@ -1327,11 +1360,17 @@ export function ProjectTaskBoard({
       return;
     }
 
-    const task = localTasksRef.current.find((item) => item.id === String(taskId));
+    const task = localTasksRef.current.find((item) => item.id === String(draggedTaskId));
     if (!task || pendingTaskIdsRef.current.has(task.id)) return;
     if (task.stage !== target.stage) return;
-    const targetStatus = getTaskStatusForDrop(task.status, target.columnId);
+    const targetStatus = getTaskBoardDropStatus(task, target.columnId);
     if (!targetStatus) return;
+    const correction = getActiveCorrection(task);
+    if (correction) {
+      if (!canDragTaskOnBoard({ task, currentUserId, isAdmin: canManageTasks, isProjectReadOnly: isProjectReadOnly || projectStatus === "completed", correctionsReadOnly: isProjectReadOnly || projectStatus === "archived" })) return;
+      void persistCorrectionMove(task, correction.id, targetStatus);
+      return;
+    }
     const targetLabel = statusLabels(targetStatus === "in_progress" ? "inProgress" : targetStatus);
     if (!targetLabel) return;
 
@@ -1418,7 +1457,8 @@ export function ProjectTaskBoard({
               : pause?.reason === "internal_pause" ? t("schedulePauseReasonInternal")
               : pause?.reason === "other" ? t("schedulePauseReasonOther") : null;
             const isExpanded = expandedStages[stage];
-            const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status));
+            const hasActiveCorrection = localTasks.some(task => task.stage === stage && getActiveCorrection(task));
+            const enabledColumns = BOARD_COLUMNS.filter((column) => localStageColumns[stage].includes(column.status) || hasActiveCorrection && (column.status === "in_progress" || column.status === "internal_review" || groupsByStage[stage][column.id].some(task => getActiveCorrection(task))));
             const taskCount = groupsByStage[stage].todo.length
               + groupsByStage[stage]["in-progress"].length
               + groupsByStage[stage]["internal-review"].length
@@ -1501,7 +1541,8 @@ export function ProjectTaskBoard({
                           compactCards={compactCards}
                           columnId={column.id}
                           currentUserId={currentUserId}
-                          isProjectReadOnly={isStageReadOnly}
+                          isProjectReadOnly={isStageReadOnly || !localStageColumns[stage].includes(column.status)}
+                          correctionsReadOnly={isProjectReadOnly || projectStatus === "archived"}
                           label={statusLabels(column.status === "in_progress" ? "inProgress" : column.status)}
                           onOpenTask={openTaskDrawer}
                           onTaskContextMenu={openTaskContextMenu}

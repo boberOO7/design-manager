@@ -1,5 +1,6 @@
 import "server-only";
 
+import { wasCorrectionAssignedOnDate } from "@/lib/task-corrections";
 import { reviewTimerSyncSchema } from "@/lib/review-timer";
 
 import { resolveActiveStudioMembership, type ActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -48,7 +49,7 @@ export async function getDailyWorkLog(date: string) {
   const { start, end } = workLogDayBounds(date);
   const [saved, activities, tasks, rounds, events, submission, statusPeriods] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries")
-      .select("internal_activity_type,activity_kind,task_id,review_round_id,minutes,task:tasks(title,project_id,stage,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
+      .select("correction_id,internal_activity_type,activity_kind,task_id,review_round_id,minutes,correction:task_corrections!work_log_entries_correction_task_fkey(description),task:tasks(title,project_id,stage,project:projects(name)),round:task_review_rounds!work_log_entries_review_round_id_task_id_fkey(round_number)")
       .eq("studio_id", studioId).eq("user_id", userId).eq("work_date", date).order("id").range(from, to)),
     loadAllRows((from, to) => client.from("project_activity").select("action_type,entity_id,actor_id,changes,created_at").eq("actor_id", userId)
       .eq("studio_id", studioId).eq("entity_type", "task").gte("created_at", start).lt("created_at", end)
@@ -97,15 +98,23 @@ export async function getDailyWorkLog(date: string) {
       && (inProgressOnDate.has(task.id) || date === instantToDateOnly(new Date().toISOString()))).map(task => task.id));
   const savedByKey = new Map((saved.data ?? []).map(row => [workLogRowKey(row), row]));
   const byRound = new Map(reviewRows.map(round => [round.id, round]));
+  const corrections = await loadAllRows((from,to) => client.from("task_corrections").select("id,task_id,description,status,assignee_id,created_at,closed_at,events:task_correction_events(id,created_at,changes)").lt("created_at",end).or(`closed_at.is.null,closed_at.gte.${start}`).order("id").range(from,to));
+  if (corrections.error) throw new Error("Unable to load correction work.", { cause: corrections.error });
+  const correctionRows = (corrections.data ?? []).filter(c => wasCorrectionAssignedOnDate(c.events,userId,date)).flatMap(c => {
+    const task = byTask.get(c.task_id);
+    return task ? [{ correction_id: c.id, internal_activity_type: null, activity_kind: "task", task_id: c.task_id, review_round_id: null, minutes: 0,
+      projectId: task.project_id, stage: task.stage, title: `${task.title} · ${c.description}`, projectName: task.project.name, roundNumber: null }] : [];
+  });
   const rows = [
     ...logSnapshot.entries.map(entry => {
       const row = savedByKey.get(workLogRowKey(entry));
       const task = entry.task_id ? byTask.get(entry.task_id) : null;
       const round = entry.review_round_id ? byRound.get(entry.review_round_id) : null;
       return { ...entry, projectId: row?.task?.project_id ?? task?.project_id ?? null, stage: row?.task?.stage ?? task?.stage ?? null,
-        title: row?.task?.title ?? task?.title ?? null, projectName: row?.task?.project?.name ?? task?.project.name ?? null,
+        title: row?.correction ? `${row.task?.title ?? task?.title} · ${row.correction.description}` : row?.task?.title ?? task?.title ?? null, projectName: row?.task?.project?.name ?? task?.project.name ?? null,
         roundNumber: row?.round?.round_number ?? round?.round_number ?? null };
     }),
+    ...correctionRows,
     ...suggestedIds.flatMap(id => {
       const task = byTask.get(id);
       return task ? [{ internal_activity_type: null, activity_kind: "task", task_id: id, review_round_id: null, minutes: 0, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, roundNumber: null }] : [];
@@ -130,7 +139,7 @@ export async function getDailyWorkLog(date: string) {
     calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString());
   // Explicit manual choices include closed/historical work; suggestions above
   // remain conservative. Saved rows are always retained independently.
-  return dailyWorkLogSchema.parse({ date, canLogInternalWork: access.membership.system_role === "admin", timerSnapshot: logSnapshot.timerSnapshot, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), activeTasks: taskRows.map(task => withStageName({
+  return dailyWorkLogSchema.parse({ date, canLogInternalWork: access.membership.system_role === "admin", timerSnapshot: logSnapshot.timerSnapshot, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), additionalCorrections: correctionRows.map(withStageName), activeTasks: taskRows.filter(task => !correctionRows.some(row => row.task_id === task.id)).map(task => withStageName({
     id: task.id, projectId: task.project_id, stage: task.stage, title: task.title, projectName: task.project.name, isParticipating: participating.has(task.id),
   })), calendar });
 }

@@ -23,8 +23,9 @@ function isReviewResponse(value: unknown): value is TaskStatusMutationResult {
   return typeof value === "object" && value !== null && "success" in value;
 }
 
-export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditing, isReadOnly, disabled, reviewerIds, onReviewersChange, fieldError, onPendingChange, onUpdated, className }: {
+export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditing, isReadOnly, disabled, reviewerIds, onReviewersChange, fieldError, onPendingChange, onUpdated, className, correctionId }: {
   task: ProjectTask;
+  correctionId?: string;
   canManageTasks: boolean;
   currentUserId: string;
   isEditing: boolean;
@@ -56,10 +57,10 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
   const [reviewers, setReviewers] = useState<z.infer<typeof reviewersSchema>["reviewers"]>([]);
   const [loadingReviewers, setLoadingReviewers] = useState(false);
   const [reviewerLoadAttempt, setReviewerLoadAttempt] = useState(0);
-  const canConfigure = canManageTasks && isEditing && !isReadOnly;
+  const canConfigure = !correctionId && canManageTasks && isEditing && !isReadOnly;
   const canReassign = canManageTasks && !isEditing && !isReadOnly && Boolean(active);
   const loadReviewers = canConfigure || canReassign && showAssignment;
-  const completed = (task.review_rounds ?? []).filter((round) => round.completed_at).sort((left, right) => right.round_number - left.round_number);
+  const completed = (task.review_rounds ?? []).filter((round) => round.completed_at && !round.correction_id).sort((left, right) => right.round_number - left.round_number);
   const assignedReviewers = [...(task.reviewers ?? [])].sort((left, right) => left.position - right.position).flatMap((assignment) => assignment.reviewer ? [assignment.reviewer] : []);
   const reviewerOptions = [...new Map([...assignedReviewers, ...reviewers].map((reviewer) => [reviewer.id, reviewer])).values()];
   const activeSteps = [...(active?.reviewers ?? [])].sort((left, right) => left.position - right.position);
@@ -70,14 +71,14 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
     let cancelled = false;
     setLoadingReviewers(true);
     setError(null);
-    void fetch(`/api/tasks/${encodeURIComponent(task.id)}/review`).then(async (response) => {
+    void fetch(`/api/tasks/${encodeURIComponent(task.id)}/${correctionId ? "corrections" : "review"}`).then(async (response) => {
       const result = reviewersSchema.safeParse(await response.json());
       if (!response.ok || !result.success) throw new Error(t("reviewLoadFailed"));
       if (!cancelled) setReviewers(result.data.reviewers);
     }).catch(() => { if (!cancelled) setError(t("reviewLoadFailed")); })
       .finally(() => { if (!cancelled) setLoadingReviewers(false); });
     return () => { cancelled = true; };
-  }, [loadReviewers, task.id, t, reviewerLoadAttempt]);
+  }, [loadReviewers, task.id, t, reviewerLoadAttempt, correctionId]);
 
   async function mutate(action: TaskReviewAction) {
     if (disabled) return;
@@ -102,8 +103,8 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
   }
 
   if (!task.requires_review && !latest && !canConfigure) return null;
-  return <section aria-labelledby="task-review-title" className={cn("border-b border-[var(--ui-border-subtle)] pb-4", active && "rounded-[var(--ui-radius-control)] border-0 bg-[var(--ui-surface-subtle)] p-4", className)}>
-    <h3 id="task-review-title" className={cn("flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]", canConfigure && "sr-only")}><ShieldCheck aria-hidden="true" className={cn("size-4", active ? "text-[var(--ui-info-text)]" : "text-[var(--ui-text-muted)]")} />{active ? t("reviewRound", { number: active.round_number }) : t("reviewSection")}</h3>
+  return <section aria-labelledby={correctionId ? `correction-review-${correctionId}` : "task-review-title"} className={cn("border-b border-[var(--ui-border-subtle)] pb-4", active && "rounded-[var(--ui-radius-control)] border-0 bg-[var(--ui-surface-subtle)] p-4", className)}>
+    <h3 id={correctionId ? `correction-review-${correctionId}` : "task-review-title"} className={cn("flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]", canConfigure && "sr-only")}><ShieldCheck aria-hidden="true" className={cn("size-4", active ? "text-[var(--ui-info-text)]" : "text-[var(--ui-text-muted)]")} />{active ? t("reviewRound", { number: active.round_number }) : t("reviewSection")}</h3>
     {canConfigure ? <div className="space-y-2">
       <FormField as="div" label={<TaskFieldLabel label={t("reviewers")} icon={ShieldCheck} help={t("reviewSelectionHelp")} />} error={fieldError}>
         <TaskReviewerEditor reviewers={reviewerOptions} selectedIds={reviewerIds} lockedCount={approvedCount} disabled={disabled || loadingReviewers || !canConfigureTaskReview(task)} onChange={onReviewersChange} />
@@ -160,7 +161,7 @@ export function TaskReviewSection({ task, canManageTasks, currentUserId, isEditi
         <p>{t("reviewPrevious", { number: latest.round_number, result: t(latest.result === "approved" ? "reviewApproved" : "reviewRework") })}</p>
         {latest.rework_comment ? <p className="mt-1 whitespace-pre-wrap break-words text-[var(--ui-text)]">{latest.rework_comment}</p> : null}
       </div> : null}
-      {task.requires_review && task.status === "in_progress" && !isReadOnly && (canManageTasks || task.assignee_id === currentUserId) ? <Button type="button" size="sm" className="mt-3" disabled={disabled} onClick={() => void mutate({ action: "submit" })}>{t("reviewSubmit")}</Button> : null}
+      {!correctionId && task.requires_review && task.status === "in_progress" && !isReadOnly && (canManageTasks || task.assignee_id === currentUserId) ? <Button type="button" size="sm" className="mt-3" disabled={disabled} onClick={() => void mutate({ action: "submit" })}>{t("reviewSubmit")}</Button> : null}
     </>}
     {completed.length ? <div className="mt-3">
       <button type="button" aria-expanded={showHistory} aria-controls="task-review-history" onClick={() => setShowHistory((shown) => !shown)} className="flex min-h-9 cursor-pointer items-center gap-1 text-xs font-medium text-[var(--ui-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
