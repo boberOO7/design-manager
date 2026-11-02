@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowLeft, ChevronDown, ExternalLink, Ban, Info, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -31,11 +30,6 @@ type Availability = {
   latest: string | null;
   loading: boolean;
   error: boolean;
-};
-type Plan = {
-  ids: string[];
-  existing: number;
-  skipped: number;
 };
 type Result = {
   imported: number;
@@ -62,7 +56,7 @@ export function MetaLeadsWorkspace() {
   const [formId, setFormId] = useState<string | null>(null), [leads, setLeads] = useState<MetaPreview[]>([]), [previewLoading, setPreviewLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [from, setFrom] = useState(""), [to, setTo] = useState(""), [page, setPage] = useState(0);
-  const [plan, setPlan] = useState<Plan | null>(null), [result, setResult] = useState<Result | null>(null), [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<Result | null>(null), [importing, setImporting] = useState(false);
   const catalog = useRef<AbortController | null>(null), preview = useRef<AbortController | null>(null), operation = useRef<AbortController | null>(null);
   const [infoOpen,setInfoOpen]=useState(false),[previewFailed,setPreviewFailed]=useState(false);
   const currentForm = forms.find(item => item.form_id === formId);
@@ -226,44 +220,18 @@ export function MetaLeadsWorkspace() {
       setBusy(false);
     }
   }
-  async function prepareImport() {
-    if (!formId)
-      return;
-    setBusy(true);
-    setError(null);
-    try {
-      const next: Plan = { ids: [], existing: 0, skipped: 0 };
-      for (const ids of batches([...selected])) {
-        const response = await request({}, { action: "plan", formId, leadIds: ids });
-        if (response.kind !== "plan")
-          throw new Error("request_failed");
-        next.ids.push(...response.importable);
-        next.existing += response.existing;
-        next.skipped += response.skipped;
-      }
-      setPlan(next);
-    }
-    catch (error) {
-      setError(error instanceof Error ? error.message : "request_failed");
-    }
-    finally {
-      setBusy(false);
-    }
-  }
   async function importSelection() {
-    if (!plan || !formId)
+    if (!formId || !selected.size)
       return;
-    const chosen = plan;
-    setPlan(null);
     setImporting(true);
     setError(null);
     setResult(null);
     const controller = new AbortController();
     operation.current = controller;
-    let existing = chosen.existing, skipped = chosen.skipped;
+    let existing = 0, skipped = 0;
     const queued: string[] = [];
     try {
-      for (const ids of batches(chosen.ids)) {
+      for (const ids of batches([...selected])) {
         const response = await request({}, { action: "enqueue", formId, leadIds: ids }, controller.signal);
         if (response.kind !== "plan")
           throw new Error("request_failed");
@@ -368,7 +336,7 @@ export function MetaLeadsWorkspace() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="mr-1 text-sm tabular-nums text-[var(--ui-text-muted)]">{t("availableCount", {count:filtered.length})}</span>
           <Button variant="outline" size="compact" disabled={interactionDisabled || !canSelect || !eligible.length} onClick={() => setSelected(old => {const next=new Set(old);eligible.forEach(lead => allSelected ? next.delete(lead.id) : next.add(lead.id));return next;})}>{allSelected ? t("clearSelection") : t("selectAll")}</Button>
-          {currentForm?.sync_enabled ? <Button size="compact" disabled={!selected.size || interactionDisabled || previewFailed || !diagnostics?.manualAvailable} onClick={() => void prepareImport()}>{busy ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true"/> : null}{t("importSelected", {count:selected.size})}</Button> : null}
+          {currentForm?.sync_enabled ? <Button size="compact" disabled={!selected.size || interactionDisabled || previewFailed || !diagnostics?.manualAvailable} onClick={() => void importSelection()}>{importing ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true"/> : null}{t("importSelected", {count:selected.size})}</Button> : null}
         </div>
       </div>
       <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("selectionHint")}</p>
@@ -397,10 +365,6 @@ export function MetaLeadsWorkspace() {
         {loading ? <p role="status" className="p-4 text-sm">{t("loadingForms")}</p> : !forms.length ? <p className="p-6 text-sm text-[var(--ui-text-muted)]">{t("noForms")}</p> : null}
       </div>
     </section>}
-    <Dialog isOpen={Boolean(plan)} onRequestClose={() => setPlan(null)} title={t("confirmTitle")} closeLabel={t("cancel")}>
-      <p className="text-sm leading-6">{t("confirmCounts", {count:plan?.ids.length ?? 0,existing:plan?.existing ?? 0,skipped:plan?.skipped ?? 0})}</p><p className="mt-3 text-sm text-[var(--ui-text-muted)]">{t("confirmHint")}</p>
-      <div className="mt-6 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => setPlan(null)}>{t("cancel")}</Button><Button onClick={() => void importSelection()}>{t("confirmImport")}</Button></div>
-    </Dialog>
   </div>;
 }
 

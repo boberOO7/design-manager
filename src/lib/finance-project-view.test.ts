@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextProjectPayment, scopeProjectFinance, projectPricingArea, projectOrderPaymentProgress, projectAgreementRemaining, projectContractSummary, projectFinanceTab, projectProfitPeriod } from "./finance-project-view";
+import { planningAmount } from "./finance-planning";
+import { projectAreaValue } from "./finance-project-plan";
 
 describe("next contractual payment across confirmed orders", () => {
   const item = (id: string, order_id: string, expected_payment_date: string | null, due_date: string | null = null) => ({ id, order_id, expected_payment_date, due_date });
@@ -127,10 +129,25 @@ describe("direction financial scope", () => {
     expect(scopeProjectFinance(sharedOnly, "interior", currencies).orders.map(order => order.id)).toEqual(["shared"]);
   });
 
-  it("uses direction area for pricing and requires explicit area for a shared multi-direction scope", () => {
-    const source = { area: 120, directions: [{ id: "interior", area_m2: 120 }, { id: "facade", area_m2: 300 }] };
-    expect(projectPricingArea(source, ["facade"])).toBe(300);
+  it("uses equivalent direction area for pricing and requires explicit area for a shared multi-direction scope", () => {
+    const source = { area: 800, directions: [{ id: "interior", area_m2: 120, complexity_coefficient: 1.5 }, { id: "facade", area_m2: 800, complexity_coefficient: 0.15 }] };
+    expect(projectPricingArea(source, ["facade"])).toBe(120);
+    expect(projectAreaValue(String(projectPricingArea(source, ["facade"])), "40", 2)).toBe("4800.00");
+    expect(projectPricingArea(source, ["interior"])).toBe(180);
     expect(projectPricingArea(source, ["interior", "facade"])).toBeNull();
     expect(projectPricingArea(source, ["unknown"])).toBeNull();
+    expect(projectPricingArea(source, [])).toBeNull();
+  });
+
+  it("uses the sole direction's coefficient without an explicit scope and retains the legacy area fallback", () => {
+    expect(projectPricingArea({ area: 800, directions: [{ id: "facade", area_m2: 800, complexity_coefficient: 0.15 }] }, [])).toBe(120);
+    expect(projectPricingArea({ area: 800, directions: [{ id: "interior", area_m2: 800, complexity_coefficient: 1 }] }, [])).toBe(800);
+    expect(projectPricingArea({ area: 800, directions: [] }, [])).toBe(800);
+  });
+
+  it.each([[0.1, 0.2, 0.02], [123.45, 0.1234, 15.2337]])("fits equivalent area into the existing financial input precision", (area, coefficient, expected) => {
+    const result = projectPricingArea({ area, directions: [{ id: "direction", area_m2: area, complexity_coefficient: coefficient }] }, ["direction"]);
+    expect(result).toBe(expected);
+    expect(planningAmount.safeParse(String(result)).success).toBe(true);
   });
 });

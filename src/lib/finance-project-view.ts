@@ -3,6 +3,7 @@ import { convertFinanceDisplayAmount } from "./finance-display-report";
 import type { Database } from "@/types/database.types";
 import type { FinanceProjectData } from "@/data/queries/finance";
 import { projectStreams } from "./finance-projects";
+import { equivalentArea } from "./work-directions";
 
 export function nextProjectPayment<T extends Pick<Database["public"]["Views"]["finance_project_expected_balances"]["Row"], "order_id" | "expected_payment_date" | "due_date">>(items: readonly T[], confirmedOrderIds: readonly string[]): T | null {
   const confirmed = new Set(confirmedOrderIds);
@@ -29,9 +30,17 @@ export function projectAgreementName(name: string, defaultName: string) {
   return ["Основне замовлення", "Main order"].includes(name) ? defaultName : name;
 }
 
-export function projectPricingArea(project: { directions: readonly Pick<FinanceProjectData["directions"][number], "id" | "area_m2">[]; area: FinanceProjectData["area"] }, directionIds: readonly string[]) {
-  if (directionIds.length === 1) return project.directions.find(direction => direction.id === directionIds[0])?.area_m2 ?? null;
-  return project.directions.length <= 1 ? project.area : null;
+export function projectPricingArea(project: { directions: readonly Pick<FinanceProjectData["directions"][number], "id" | "area_m2" | "complexity_coefficient">[]; area: FinanceProjectData["area"] }, directionIds: readonly string[]) {
+  if (directionIds.length > 1) return null;
+  const direction = directionIds.length === 1
+    ? project.directions.find(item => item.id === directionIds[0])
+    : project.directions.length === 1 ? project.directions[0] : undefined;
+  if (direction) {
+    const area = equivalentArea(direction.area_m2, direction.complexity_coefficient);
+    // Match Finance's four-decimal area input precision.
+    return area === null ? null : Number(area.toFixed(4));
+  }
+  return !directionIds.length && !project.directions.length ? project.area : null;
 }
 
 // Shared agreements remain visible, but never enter a direction's own totals.

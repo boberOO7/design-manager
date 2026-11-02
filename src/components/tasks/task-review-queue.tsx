@@ -16,6 +16,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { FormField, Textarea } from "@/components/ui/form-field";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getPriorityBadgeStyle } from "@/lib/semantic-styles";
+import { TaskPriorityIcon } from "@/components/tasks/task-select-presentation";
 import { canWorkOnTaskInProject, isProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { formatReviewElapsed, reviewGroupElapsed, reviewTimerForRound } from "@/lib/review-timer";
 import { useReviewTimer } from "@/hooks/use-review-timer";
@@ -175,7 +176,7 @@ export function TaskReviewQueue({ rounds, currentUserId, stageNames }: {
         <TaskReviewWaiting submittedAt={round.submitted_at} />
         {showReviewer ? <p className="truncate text-xs text-[var(--ui-text-muted)]">{t("reviewer")}: {round.reviewer?.full_name ?? t("unknown")}</p> : null}
       </div>
-      <span className={`pointer-events-none relative w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium @max-[76rem]:col-start-2 @max-[76rem]:row-start-2 @max-[76rem]:justify-self-end ${getPriorityBadgeStyle(round.task.priority).className}`}>{priority(round.task.priority)}</span>
+      <span className={`pointer-events-none relative inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium @max-[76rem]:col-start-2 @max-[76rem]:row-start-2 @max-[76rem]:justify-self-end ${getPriorityBadgeStyle(round.task.priority).className}`}><TaskPriorityIcon priority={round.task.priority} />{priority(round.task.priority)}</span>
       <div className="pointer-events-none relative min-w-0 space-y-1 text-xs @max-[76rem]:col-start-2 @max-[76rem]:row-start-3 @max-[76rem]:text-right">
         <p className={state.state === "active" ? "font-medium text-[var(--ui-info-text)]" : "text-[var(--ui-text-muted)]"}>{timerText(shared ? "inGroup" : state.state)}</p>
         {state.state !== "waiting" && !shared ? <p data-review-elapsed className="tabular-nums">{formatReviewElapsed(state.seconds)}</p> : null}

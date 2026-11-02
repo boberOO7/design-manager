@@ -551,6 +551,45 @@ body,
   to { opacity: 1; translate: 0 0; }
 }
 
+.checklist-template-picker-popover {
+  --checklist-picker-closed: inset(0 -2rem 100% -2rem);
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  animation-fill-mode: both;
+}
+
+.checklist-template-picker-popover[data-side="top"] {
+  --checklist-picker-closed: inset(100% -2rem 0 -2rem);
+}
+
+@keyframes checklist-template-picker-open {
+  from { clip-path: var(--checklist-picker-closed); }
+  to { clip-path: inset(-2rem); }
+}
+
+@keyframes checklist-template-picker-close {
+  from { clip-path: inset(-2rem); }
+  to { clip-path: var(--checklist-picker-closed); }
+}
+
+.checklist-template-picker-popover[data-state="open"] {
+  animation-name: checklist-template-picker-open;
+  animation-duration: 200ms;
+}
+
+.checklist-template-picker-popover[data-state="closed"] {
+  animation-name: checklist-template-picker-close;
+  animation-duration: 140ms;
+}
+
+.checklist-template-picker-popover[data-instant],
+:root[data-motion="off"] .checklist-template-picker-popover {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checklist-template-picker-popover[data-state] { animation: none; }
+}
+
 @keyframes people-picker-out {
   from { opacity: 1; }
   to { opacity: 0; }

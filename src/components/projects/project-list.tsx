@@ -11,12 +11,14 @@ import { Button } from "@/components/ui/button";
 import { useLocale, useTranslations } from "next-intl";
 import { getPriorityBadgeStyle, getProjectHealthBadgeStyle } from "@/lib/semantic-styles";
 import { filterAndSortProjects, getNextProjectListSort, getProjectListEmptyState, getProjectListFilters, hasActiveProjectListFilters, getProjectHref, getProjectProgressLabel, PROJECT_LIST_FILTER_KEYS, type PresentedProject } from "@/lib/project-list-presentation";
-import { formatDateOnly } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AccessibleProjectWithTasks } from "@/data/queries/project-progress";
 import { Tooltip } from "@/components/ui/tooltip";
+import { WorkDirectionIcon } from "./work-direction-icon";
+import { directionName } from "@/lib/work-directions";
 
-type ProjectItem = Pick<PresentedProject<AccessibleProjectWithTasks>, "id" | "name" | "client_name" | "status" | "priority" | "due_date" | "participants" | "progress" | "health" | "healthReason">;
+type ProjectItem = Pick<PresentedProject<AccessibleProjectWithTasks>, "id" | "name" | "client_name" | "status" | "priority" | "due_date" | "participants" | "directions" | "progress" | "health" | "healthReason">;
 
 const healthKeys = { on_track: "healthOnTrack", needs_attention: "healthNeedsAttention", deadline_soon: "healthDeadlineSoon", overdue: "healthOverdue", completed: "healthCompleted" } as const;
 
@@ -85,7 +87,19 @@ function ProjectMobileCard({ filters, project }: { filters: ReturnType<typeof ge
     <div className="mt-3 border-t border-[var(--ui-border-subtle)] pt-3"><ProjectDeadlines project={project} flush muted={paused} /></div>
   </Link></li>;
 }
-function ProjectIdentity({ project }: { project: ProjectItem }) { const status = useTranslations("Status"); const t = useTranslations("Projects"); const label = status(project.status); return <div className="min-w-0"><p className="flex flex-wrap items-center gap-2 break-words font-semibold text-[var(--ui-text)]"><LifecycleDot status={project.status} label={label} />{project.name}{project.status === "paused" ? <Badge className="border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" label={t("pausedBadge")} /> : null}</p>{project.client_name ? <p className="mt-0.5 text-sm text-[var(--ui-text-muted)]">{project.client_name}</p> : null}</div>; }
+function ProjectIdentity({ project }: { project: ProjectItem }) {
+  const status = useTranslations("Status"), t = useTranslations("Projects"), directions = useTranslations("ProjectWorkspace.directions");
+  return <div className="min-w-0">
+    <p className="flex flex-wrap items-center gap-2 break-words font-semibold text-[var(--ui-text)]"><LifecycleDot status={project.status} label={status(project.status)} />{project.name}{project.status === "paused" ? <Badge className="border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]" label={t("pausedBadge")} /> : null}</p>
+    {project.client_name || project.directions.length > 0 ? <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      {project.client_name ? <p className="min-w-0 break-words text-sm text-[var(--ui-text-muted)]">{project.client_name}</p> : null}
+      {project.directions.length > 0 ? <span className="inline-flex flex-wrap items-center gap-1 text-[var(--ui-text-muted)]">{project.directions.map(direction => {
+        const label = directionName(direction, directions);
+        return <Tooltip key={direction.id} content={label}><span role="img" aria-label={label} tabIndex={0} className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><WorkDirectionIcon kind={direction.kind} className="size-4" /></span></Tooltip>;
+      })}</span> : null}
+    </div> : null}
+  </div>;
+}
 function ProjectParticipants({ participants }: { participants: ProjectItem["participants"] }) { const t = useTranslations("Projects"); const visibleParticipants = participants.slice(0, 5); const hiddenCount = participants.length - visibleParticipants.length; if (visibleParticipants.length === 0) return <span className="text-sm text-[var(--ui-text-subtle)]" aria-label={t("noParticipants")}>—</span>; return <div className="flex min-w-0 items-center" aria-label={t("participants")}>{visibleParticipants.map((participant, index) => <Tooltip content={participant.full_name} key={participant.id}><span className={index === 0 ? "relative shrink-0" : "relative -ml-1.5 shrink-0"} tabIndex={0}><UserAvatar className="ring-2 ring-[var(--ui-surface)]" decorative imageUrl={participant.avatar_url} name={participant.full_name} size="projectList" /></span></Tooltip>)}{hiddenCount > 0 ? <Tooltip content={t("moreParticipants", { count: hiddenCount })}><span className="-ml-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[var(--ui-surface)] bg-[var(--ui-surface-muted)] text-[10px] font-semibold text-[var(--ui-text-secondary)]" tabIndex={0}>+{hiddenCount}</span></Tooltip> : null}</div>; }
 function ProjectSignals({ centered = false, project }: { centered?: boolean; project: ProjectItem }) { const t = useTranslations("Projects"); const priority = useTranslations("Priority"); const healthLabel = t(healthKeys[project.health]); const needsAttention = project.health !== "on_track" && project.health !== "completed"; return <div className={`flex min-w-0 flex-col ${centered ? "justify-self-center items-center text-center" : "items-start text-left"}`}>{needsAttention ? <Badge className={`font-semibold ${getProjectHealthBadgeStyle(project.health).className}`} label={healthLabel} title={project.healthReason ?? healthLabel} /> : null}<PrioritySignal priority={project.priority} label={priority(project.priority)} className={needsAttention ? "mt-1.5" : ""} /></div>; }
 function PrioritySignal({ className = "", label, priority }: { className?: string; label: string; priority: string }) { if (priority === "normal" || priority === "low") return <span className={`text-xs font-medium text-[var(--ui-text-muted)] ${className}`}>{label}</span>; return <Badge className={`${getPriorityBadgeStyle(priority).className} ${className}`} label={label} />; }
@@ -95,4 +109,4 @@ function ProjectProgress({ compact = false, muted = false, project }: { compact?
   <span className={`whitespace-nowrap rounded-md px-2 py-1 font-semibold ${project.progress.overdueTaskCount ? "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]" : "bg-[var(--ui-neutral-surface)] text-[var(--ui-neutral-text)]"}`}>{t("overdueCount", { count: project.progress.overdueTaskCount })}</span>
 </div></div>; }
 function ProjectDeadlines({ compact = false, flush = false, muted = false, project }: { compact?: boolean; flush?: boolean; muted?: boolean; project: ProjectItem }) { const t = useTranslations("Projects"); const locale = useLocale(); return <div className={`${compact ? "text-xs" : flush ? "text-sm" : "mt-4 text-sm"} ${muted ? "text-[var(--ui-text-subtle)]" : "text-[var(--ui-text-muted)]"}`}><p>{project.due_date ? t("projectDeadline", { date: formatDateOnly(project.due_date, locale) }) : "—"}</p></div>; }
-function Badge({ className, label, title }: { className: string; label: string; title?: string }) { return <Tooltip content={title}><span tabIndex={title ? 0 : undefined} className={`rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span></Tooltip>; }
+function Badge({ className, label, title }: { className: string; label: string; title?: string }) { return <Tooltip content={title}><span tabIndex={title ? 0 : undefined} className={cn("inline-flex max-w-full items-center px-2 py-1 text-xs font-medium leading-4", className, "rounded-md border-0")}>{label}</span></Tooltip>; }

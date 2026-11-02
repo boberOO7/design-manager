@@ -11,6 +11,11 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/data/mutations/refresh-task-schedules", () => ({ refreshProjectTaskSchedules: mocks.refresh }));
 
 const projects = ["305", "269", "empty"].map((id) => ({ id, name: id, status: "active", priority: "normal", due_date: null, archived_at: null, total_area_m2: 100, project_code: null, client_name: null, description: null }));
+const directions = [
+  { id: "facade", project_id: "269", name: "Street facade", kind: "facade" },
+  { id: "interior", project_id: "305", name: null, kind: "interior" },
+  { id: "garden", project_id: "305", name: "Back garden", kind: "landscape" },
+];
 const tasks: Array<ProjectTaskForProgress & { project_id: string; deadlines: Array<{ id: string; target_status: string; due_date: string }> }> = Array.from({ length: 1200 }, (_, index) => ({
   id: String(index).padStart(5, "0"), project_id: projects[Math.floor(index / 600)].id,
   stage: `stage_${index % 4 + 1}`, status: ["todo", "in_progress", "internal_review", "review", "completed", "cancelled"][index % 6],
@@ -21,15 +26,19 @@ const tasks: Array<ProjectTaskForProgress & { project_id: string; deadlines: Arr
 }));
 
 const taskRequests: URL[] = [];
+const directionRequests: URL[] = [];
 const tablesRequested: string[] = [];
 let failedOffset: number | null;
+let failDirections: boolean;
 
 beforeEach(() => {
   vi.clearAllMocks();
   taskRequests.length = 0;
+  directionRequests.length = 0;
   tablesRequested.length = 0;
   mocks.refresh.mockResolvedValue(undefined);
   failedOffset = null;
+  failDirections = false;
   const client = createClient<ApplicationDatabase>("http://localhost:54321", "test-key", {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { fetch: async (input) => {
@@ -42,9 +51,14 @@ beforeEach(() => {
         taskRequests.push(url);
         if (failedOffset !== null && offset >= failedOffset) return new Response(JSON.stringify({ code: "test_error", message: "Page unavailable" }), { status: 400 });
       }
+      if (table === "project_work_directions") {
+        directionRequests.push(url);
+        if (failDirections) return new Response(JSON.stringify({ code: "test_error", message: "Directions unavailable" }), { status: 400 });
+      }
       const ids = url.searchParams.get("project_id")?.slice(4, -1).split(",") ?? projects.map((project) => project.id);
       const rows = table === "projects" ? projects
         : table === "tasks" ? tasks.filter((task) => ids.includes(task.project_id))
+        : table === "project_work_directions" ? directions.filter(direction => ids.includes(direction.project_id))
         : table === "project_members" ? projects.map((project) => ({ project_id: project.id, user_id: "member", profile: { id: "member", full_name: "Member", avatar_url: null } }))
         : table === "project_task_stage_columns" ? projects.flatMap((project) => ["stage_1", "stage_2", "stage_3", "stage_4"].map((stage) => ({ project_id: project.id, stage, kind: stage === "stage_4" ? "additional" : "work", progress_weight: stage === "stage_2" || stage === "stage_3" ? 2 : 1, progress_method: stage === "stage_2" ? "area" : stage === "stage_3" ? "weighted" : "equal" }))) : [];
       return new Response(JSON.stringify(rows.slice(offset, offset + limit)), { headers: { "Content-Type": "application/json" } });
@@ -54,6 +68,28 @@ beforeEach(() => {
 });
 
 describe("complete project-summary reads", () => {
+  it("loads ordered direction metadata once for accessible project IDs and preserves it in presentation", async () => {
+    const result = await getAccessibleProjectsWithTasks({ refreshSchedules: false });
+    expect(result.error).toBeNull();
+    expect(directionRequests).toHaveLength(1);
+    expect(directionRequests[0].searchParams.get("project_id")).toBe("in.(305,269,empty)");
+    expect(directionRequests[0].searchParams.get("order")).toBe("project_id.asc,display_order.asc,id.asc");
+    expect(directionRequests[0].searchParams.get("select")).toBe("id,project_id,name,kind");
+    expect(getPresentedProjects(result.projects ?? []).map(project => project.directions)).toEqual([
+      [{ id: "interior", name: null, kind: "interior" }, { id: "garden", name: "Back garden", kind: "landscape" }],
+      [{ id: "facade", name: "Street facade", kind: "facade" }],
+      [],
+    ]);
+  });
+
+  it("reports a failed direction read rather than presenting projects with missing metadata", async () => {
+    failDirections = true;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await getAccessibleProjectsWithTasks()).toEqual({ projects: null, error: "query_failed" });
+    } finally { log.mockRestore(); }
+  });
+
   it("keeps speculative list reads read-only without dropping any summary data", async () => {
     const result = await getAccessibleProjectsWithTasks({ refreshSchedules: false });
     expect(result.error).toBeNull();

@@ -7,6 +7,7 @@ import { loadAllRows } from "./all-rows";
 import { refreshProjectTaskSchedules } from "@/data/mutations/refresh-task-schedules";
 import { getActiveTaskDeadline } from "@/lib/task-deadlines";
 import type { Database } from "@/types/database.types";
+import type { ProjectWorkDirection } from "@/lib/work-directions";
 import { DEFAULT_PROJECT_STAGE_PROGRESS_METHODS, isStageProgressMethod, type ProjectStageProgressMethods, type ProjectTaskForProgress } from "@/lib/project-progress";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -40,6 +41,7 @@ async function getTasksForProgress(supabase: Awaited<ReturnType<typeof createCli
 }
 
 export type AccessibleProjectWithTasks = ProjectListRow & {
+  directions: Pick<ProjectWorkDirection, "id" | "name" | "kind">[];
   participants: ProjectListParticipant[];
   stageProgressMethods: ProjectStageProgressMethods;
   stages: ProjectStageDefinition[];
@@ -69,7 +71,7 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
   }
   if (projects.length === 0) return { projects: [], error: null };
   const ids = projects.map((project) => project.id);
-  const [tasksResult, membershipsResult, stageConfigurationsResult] = await Promise.all([
+  const [tasksResult, membershipsResult, stageConfigurationsResult, directionsResult] = await Promise.all([
     (refreshSchedules ? refreshProjectTaskSchedules(ids) : Promise.resolve()).then(() => getTasksForProgress(supabase, ids)),
     loadAllRows((from, to) => supabase
       .from("project_members")
@@ -83,6 +85,10 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
       .from("project_task_stage_columns")
       .select("project_id, stage, progress_method, kind, progress_weight").is("deleted_at", null)
       .in("project_id", ids).order("project_id").order("stage").range(from, to)),
+    loadAllRows((from, to) => supabase
+      .from("project_work_directions")
+      .select("id, project_id, name, kind")
+      .in("project_id", ids).order("project_id").order("display_order").order("id").range(from, to)),
   ]);
   const { data: tasks, error: tasksError } = tasksResult;
   if (tasksError || !tasks) {
@@ -98,6 +104,17 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
   if (stageConfigurationsError || !stageConfigurations) {
     console.error("Unable to load project stage progress methods", stageConfigurationsError);
     return { projects: null, error: "query_failed" };
+  }
+  const { data: directions, error: directionsError } = directionsResult;
+  if (directionsError || !directions) {
+    console.error("Unable to load project directions", directionsError);
+    return { projects: null, error: "query_failed" };
+  }
+  const directionsByProject = new Map<string, AccessibleProjectWithTasks["directions"]>();
+  for (const { project_id, id, name, kind } of directions) {
+    const projectDirections = directionsByProject.get(project_id) ?? [];
+    projectDirections.push({ id, name, kind });
+    directionsByProject.set(project_id, projectDirections);
   }
   const tasksByProject = new Map<string, ProjectTaskForProgress[]>();
   for (const task of tasks) {
@@ -129,5 +146,5 @@ export async function getAccessibleProjectsWithTasks({ refreshSchedules = true }
     const methods = methodsByProject.get(configuration.project_id);
     if (methods && isStageProgressMethod(configuration.progress_method)) methods[configuration.stage] = configuration.progress_method;
   }
-  return { projects: projects.map((project) => ({ ...project, stages: stagesByProject.get(project.id) ?? [], participants: participantsByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS }, tasks: tasksByProject.get(project.id) ?? [] })), error: null };
+  return { projects: projects.map((project) => ({ ...project, directions: directionsByProject.get(project.id) ?? [], stages: stagesByProject.get(project.id) ?? [], participants: participantsByProject.get(project.id) ?? [], stageProgressMethods: methodsByProject.get(project.id) ?? { ...DEFAULT_PROJECT_STAGE_PROGRESS_METHODS }, tasks: tasksByProject.get(project.id) ?? [] })), error: null };
 }

@@ -27,7 +27,8 @@ proposal revisions and commercial confirmation.
 - Associations provide scope, never amounts: totals still aggregate canonical
   orders once. Commercial area/pricing snapshots, cash and production area ×
   coefficient remain separate. A sole linked direction may seed a new pricing
-  form's actual area without changing existing contractual snapshots. Shared-order
+  form's equivalent area (area × complexity coefficient), at Finance's four-decimal
+  input precision, without changing existing contractual snapshots. Shared-order
   profitability stays project/order-level; no automatic allocation is invented.
 - Direction Finance uses the same terms/payment workspace as Project Finance.
   Its summary includes only exclusively linked confirmed orders; linked shared
@@ -42,8 +43,8 @@ proposal revisions and commercial confirmation.
   all income streams, related bank receipts, explicit project cash attribution,
   expenses and result reporting. Full related receipts are listed without treating
   them as attributed project totals; explicit attribution remains a separate measure.
-  Area pricing defaults and mismatch actions use a sole linked direction's area;
-  a multi-direction agreement requires its own commercial area.
+  Area pricing defaults and mismatch actions use a sole linked direction's
+  equivalent area; a multi-direction agreement requires its own commercial area.
 - Earning milestone stages must belong to linked directions. Link edits cannot
   orphan active milestones. Completion of production tasks never creates cash or
   client acceptance. Stage tombstones retain financial history labels.

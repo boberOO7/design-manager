@@ -23,7 +23,7 @@ import { BulkTaskReviewerEditor } from "@/components/tasks/bulk-task-reviewer-ed
 import { canConfigureTaskReview, getActiveTaskReview } from "@/lib/task-reviews";
 import { TaskReviewBadge } from "@/components/tasks/task-review-badge";
 import { TaskDetailsDrawer } from "@/components/tasks/task-details-drawer";
-import { taskPriorityLabel } from "@/components/tasks/task-select-presentation";
+import { TaskPriorityIcon, taskPriorityLabel } from "@/components/tasks/task-select-presentation";
 import { ActionErrorToast } from "@/components/ui/action-error-toast";
 import { createTaskActionError, getTaskActionErrorCode } from "@/lib/task-action-errors";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -45,7 +45,7 @@ import {
   type WritableTaskStatus,
 } from "@/lib/tasks";
 import { cn, formatDateOnly, formatDateShort, formatNumber } from "@/lib/utils";
-import { getPriorityBadgeStyle, getTaskStatusBadgeStyle, getTaskStatusBulkDragStyle, getTaskStatusColumnStyle, getTaskStatusCountBadgeClassName } from "@/lib/semantic-styles";
+import { getTaskStatusBadgeStyle, getTaskStatusBulkDragStyle, getTaskStatusColumnStyle, getTaskStatusCountBadgeClassName } from "@/lib/semantic-styles";
 import { TASK_PRIORITY_VALUES, type ProjectTask, type TaskPriority } from "@/types/tasks";
 import { getBoardTaskProgressSummary } from "@/lib/task-card-presentation";
 import type { StudioChecklistTemplate } from "@/lib/studio-checklist-templates";
@@ -384,18 +384,16 @@ function TaskCardContent({
   const progress = getBoardTaskProgressSummary(task);
   const hasTaskParticipants = task.assignee !== null || task.collaborators.length > 0;
   const visibleCollaboratorCount = task.assignee ? 3 : 4;
+  const priorityIndicator = <Tooltip content={priority(task.priority)}><span role="img" aria-label={`${t("priority")}: ${priority(task.priority)}`} tabIndex={isOverlay ? undefined : 0} className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><TaskPriorityIcon priority={task.priority} /></span></Tooltip>;
 
   return (
     <div className={cn("relative rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] transition-[border-color,box-shadow]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected && "border-[var(--ui-focus)]")}>
       {isSelected ? <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)] shadow-sm"><Check className="size-3" /></span> : null}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-1.5">
-          {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
-          <Tooltip content={compact ? undefined : task.title}><h4 className={cn("min-w-0 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]", !compact && "line-clamp-2")} tabIndex={compact ? undefined : 0}>{task.title}</h4></Tooltip>
-        </div>
-        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-4 ${getPriorityBadgeStyle(task.priority).className}`}>{priority(task.priority)}</span>
+      <div className="flex min-w-0 items-start gap-1.5">
+        {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
+        <Tooltip content={compact ? undefined : task.title}><h4 className={cn("min-w-0 flex-1 text-sm font-medium leading-5 text-[var(--ui-text)] [overflow-wrap:anywhere]", !compact && "line-clamp-2")} tabIndex={compact ? undefined : 0}>{task.title}</h4></Tooltip>
       </div>
-      <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] text-xs leading-4", compact ? "mt-1.5 items-center gap-1.5" : "mt-2 items-start gap-2")}>
+      <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] text-xs leading-4", compact ? "mt-1.5 items-center gap-1.5" : "mt-2 items-center gap-2")}>
         <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
           {hasTaskParticipants ? <span className="flex shrink-0 -space-x-1.5" aria-label={[task.assignee, ...task.collaborators].filter(Boolean).map((person) => person!.full_name).join(", ")}>
             {task.assignee ? <Tooltip content={task.assignee.full_name}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" decorative /></span></Tooltip> : null}
@@ -417,9 +415,10 @@ function TaskCardContent({
           <TaskReviewBadge task={task} />
           {task.status === "cancelled" ? <span className={`rounded-full px-1.5 py-0.5 font-medium leading-4 ${getTaskStatusBadgeStyle(task.status).className}`}>{status("cancelled")}</span> : null}
           {isPending ? <LoaderCircle className="size-3 animate-spin text-[var(--ui-info-text)]" aria-label={t("saving")} /> : null}
+          {priorityIndicator}
         </div> : null}
       </div>
-      {!compact ? <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--ui-border-subtle)] pt-2 text-xs leading-4 text-[var(--ui-text-muted)]">
+      {!compact ? <div className="mt-1.5 flex items-center justify-between gap-2 text-xs leading-4 text-[var(--ui-text-muted)]"><div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {task.due_date ? <span>{t("due", { date: formatDateShort(task.due_date, locale) })}</span> : <span>{t("noDueDate")}</span>}
         {overdue ? <span className="rounded-full bg-[var(--ui-danger-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-danger-text)]">{t("overdue")}</span> : null}
         {scheduleLabel ? <span className="rounded-full bg-[var(--ui-info-surface)] px-1.5 py-0.5 font-medium leading-4 text-[var(--ui-info-text)]">{scheduleLabel}</span> : null}
@@ -430,7 +429,7 @@ function TaskCardContent({
             <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> {t("saving")}
           </span>
         ) : null}
-      </div> : null}
+      </div>{priorityIndicator}</div> : null}
     </div>
   );
 }

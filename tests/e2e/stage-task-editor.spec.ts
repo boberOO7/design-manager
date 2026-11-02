@@ -138,7 +138,9 @@ test("edit many template tasks, duplicate, add/delete, and save once", async ({ 
   await rows.nth(1).getByRole("spinbutton").press("Enter");
   await expect(rows.nth(2).getByRole("spinbutton")).toBeFocused();
   await rows.nth(2).getByRole("spinbutton").fill("30");
-  await rows.nth(1).getByRole("combobox").selectOption(templateB);
+  await rows.nth(1).getByRole("button", { name: /checklist template$/ }).click();
+  await editor.getByRole("searchbox", { name: en.Templates.searchChecklistTemplate }).fill("Changed");
+  await editor.getByRole("button", { name: "Changed checklist", exact: true }).click();
   await first.getByRole("button", { name: "Duplicate task 1", exact: true }).click();
   await expect(rows.nth(1).getByRole("textbox")).toBeFocused();
   await expect(rows.nth(1).getByRole("spinbutton")).toHaveValue("12.5");
@@ -147,7 +149,9 @@ test("edit many template tasks, duplicate, add/delete, and save once", async ({ 
   await editor.getByRole("button", { name: en.Tasks.addTask, exact: true }).click();
   await rows.last().getByRole("textbox").fill("New room");
   await rows.last().getByRole("spinbutton").fill("8");
-  await rows.last().getByRole("combobox").selectOption(templateB);
+  await rows.last().getByRole("button", { name: /checklist template$/ }).click();
+  await editor.getByRole("searchbox", { name: en.Templates.searchChecklistTemplate }).fill("Changed");
+  await editor.getByRole("button", { name: "Changed checklist", exact: true }).click();
   const removedName = names[23];
   await rows.nth(24).getByRole("button", { name: "Delete task 25", exact: true }).click();
   await expect(rows.nth(24)).toContainText(en.StageTaskEditor.pendingDelete);

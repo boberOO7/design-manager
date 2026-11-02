@@ -54,5 +54,5 @@ async function CreationAction() {
 
 async function ProjectsStream({ pending }: { pending: ReturnType<typeof getAccessibleProjectsWithTasks> }) {
   const result = await pending;
-  return <InstaLoadReady name="projects" className="instaload-panel projects-list-motion space-y-6"><ProjectListResults loadError={Boolean(result.error)} projects={getPresentedProjects(result.projects ?? []).map(({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }) => ({ id, name, client_name, status, priority, due_date, participants, progress, health, healthReason }))} /></InstaLoadReady>;
+  return <InstaLoadReady name="projects" className="instaload-panel projects-list-motion space-y-6"><ProjectListResults loadError={Boolean(result.error)} projects={getPresentedProjects(result.projects ?? []).map(({ id, name, client_name, status, priority, due_date, participants, directions, progress, health, healthReason }) => ({ id, name, client_name, status, priority, due_date, participants, directions, progress, health, healthReason }))} /></InstaLoadReady>;
 }

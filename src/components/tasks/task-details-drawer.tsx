@@ -13,7 +13,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
+import { TaskPriorityIcon, taskPrioritySelectItem, taskStatusSelectItem } from "@/components/tasks/task-select-presentation";
 import type { AssignableProjectMember } from "@/data/queries/project-members";
 import { isValidChecklistWeightInput } from "@/lib/checklist-interaction";
 import { getChecklistAutosaveStore, type ChecklistChange } from "@/lib/checklist-autosave";
@@ -32,7 +32,7 @@ import type { TaskEditField } from "@/lib/validation/task";
 import { TASK_PRIORITY_VALUES } from "@/types/tasks";
 import { getStageLabel, isTaskStage, TASK_STAGES } from "@/lib/task-stages";
 import type { ConfiguredProjectStage, ProjectStageColumns } from "@/data/queries/project-stage-columns";
-import { getPriorityBadgeStyle, getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
+import { getTaskStatusBadgeStyle } from "@/lib/semantic-styles";
 import type { ProjectTask, TaskChecklistItem } from "@/types/tasks";
 import { isProjectLifecycleStatus, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { getCanonicalRoleTranslationKey } from "@/lib/professional-roles";
@@ -385,8 +385,7 @@ export function TaskDetailsDrawer({
             <div className="min-w-0">
               <h2 id="task-details-title" className="break-words text-xl font-semibold leading-7 text-[var(--ui-text)]">{task.title}</h2>
               <div className="mt-2 flex flex-wrap gap-2">
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getTaskStatusBadgeStyle(task.status).className}`}>{statusLabel(task.status)}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span>
+                <span className={cn(getTaskStatusBadgeStyle(task.status).className, "inline-flex items-center rounded-md border-0 px-2 py-1 text-xs font-medium")}>{statusLabel(task.status)}</span>
                 {currentStatusDurationLabel ? <span className="inline-flex items-center gap-1 self-center text-xs text-[var(--ui-text-muted)]"><Clock3 className="size-3" aria-hidden="true" />{t("currentStatusDuration", { duration: currentStatusDurationLabel })}</span> : null}
               </div>
             </div>
@@ -502,7 +501,7 @@ export function TaskDetailsDrawer({
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("assignee")} icon={UserRound} /></dt><dd className="mt-2 flex min-w-0 items-start gap-2 font-medium text-[var(--ui-text)]">{task.assignee ? <><UserAvatar decorative imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" /><span className="min-w-0 break-words leading-6">{task.assignee.full_name}</span></> : <span className="font-normal text-[var(--ui-text-muted)]">{t("unassigned")}</span>}</dd></div>
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("coAssignees")} icon={Users} /></dt><dd className="mt-2"><TaskCollaboratorSummary collaborators={task.collaborators} emptyLabel={t("noCollaborators")} /></dd></div>
                   <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("stage")} icon={Layers3} /></dt><dd className="mt-1 font-medium text-[var(--ui-text)]">{getStageLabel(task.stage, stagesT, task.stageName)}</dd></div>
-                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("priority")} icon={Flag} /></dt><dd className="mt-1.5"><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadgeStyle(task.priority).className}`}>{priorityT(task.priority)}</span></dd></div>
+                  <div><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("priority")} icon={Flag} /></dt><dd className="mt-1.5 inline-flex items-center gap-1.5 font-medium text-[var(--ui-text)]"><TaskPriorityIcon priority={task.priority} />{priorityT(task.priority)}</dd></div>
                   {task.schedule ? <div className="col-span-2"><dt className="text-xs text-[var(--ui-text-muted)]"><TaskFieldLabel label={t("schedule")} icon={CalendarDays} /></dt><dd className="mt-1 space-y-1 text-sm text-[var(--ui-text)]">
                     <p>{t("scheduleDuration", { count: task.schedule.expected_workdays })}</p>
                     <details className="group">

@@ -1,14 +1,16 @@
-import { Flame } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUp, Equal } from "lucide-react";
+import type { ReactNode } from "react";
 import { SelectItem } from "@/components/ui/select";
 import type { TaskStatus } from "@/types/tasks";
+import { isTaskPriority } from "@/lib/tasks";
 
-const priorityTone = {
-  low: "text-[var(--ui-neutral-text)]",
-  normal: "text-[var(--ui-info-text)]",
-  high: "text-[var(--ui-warning-text)]",
-  urgent: "text-[var(--ui-urgent-text)]",
+const priorityPresentation = {
+  low: { icon: ChevronDown, color: "#8B95A5", tone: "text-[var(--ui-neutral-text)]" },
+  normal: { icon: Equal, color: "#60A5FA", tone: "text-[var(--ui-info-text)]" },
+  high: { icon: ChevronUp, color: "#F5B52E", tone: "text-[var(--ui-warning-text)]" },
+  urgent: { icon: ChevronsUp, color: "#F06438", tone: "text-[var(--ui-urgent-text)]" },
 } as const;
-type PriorityValue = keyof typeof priorityTone;
+type PriorityValue = keyof typeof priorityPresentation;
 
 const statusTone = {
   todo: "text-[var(--ui-neutral-text)]",
@@ -19,12 +21,18 @@ const statusTone = {
   cancelled: "text-[var(--ui-text-muted)]",
 } as const;
 
-function TaskSelectLabel({ children, className, urgent = false }: { children: string; className: string; urgent?: boolean }) {
-  return <span className={`inline-flex min-w-0 items-center gap-1.5 font-medium ${className}`}><span className="truncate">{children}</span>{urgent ? <Flame aria-hidden="true" className="size-3.5 shrink-0" /> : null}</span>;
+export function TaskPriorityIcon({ priority, className = "" }: { priority: string; className?: string }) {
+  if (!isTaskPriority(priority)) return null;
+  const { icon: Icon, color } = priorityPresentation[priority];
+  return <Icon aria-hidden="true" className={`size-3.5 shrink-0 ${className}`} strokeWidth={3} style={{ color }} />;
+}
+
+function TaskSelectLabel({ children, className, icon }: { children: string; className: string; icon?: ReactNode }) {
+  return <span className={`inline-flex min-w-0 items-center gap-1.5 font-medium ${className}`}>{icon}<span className="truncate">{children}</span></span>;
 }
 
 export function taskPriorityLabel(priority: PriorityValue, label: string) {
-  return <TaskSelectLabel className={priorityTone[priority]} urgent={priority === "urgent"}>{label}</TaskSelectLabel>;
+  return <TaskSelectLabel className={priorityPresentation[priority].tone} icon={<TaskPriorityIcon priority={priority} />}>{label}</TaskSelectLabel>;
 }
 
 export function taskPrioritySelectItem(priority: PriorityValue, label: string) {

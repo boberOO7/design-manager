@@ -32,7 +32,7 @@ test.afterAll(async()=>{
   if(account.id)await service.auth.admin.deleteUser(account.id);
 });
 
-test("forms → preview → activation → selected import → confirmation → result, with no production Graph or CRM writes",async({page})=>{
+test("forms → preview → activation → selected import → result, with no production Graph or CRM writes",async({page})=>{
   const browserErrors:string[]=[];page.on("pageerror",error=>browserErrors.push(error.message));
   let enabled=false;const importedIds:string[][]=[];const excluded=new Set<string>();
   const lead=(id:string,state:MetaPreview["status"]="not_imported"):MetaPreview=>{
@@ -55,8 +55,8 @@ test("forms → preview → activation → selected import → confirmation → 
       const value=metaMutationSchema.parse(request.postDataJSON());
       if(value.action==="sync"){enabled=value.enabled;body={kind:"saved"};}
       else if(value.action==="exclude"){value.excluded ? excluded.add(value.leadId) : excluded.delete(value.leadId);body={kind:"saved"};}
-      else if(value.action==="plan" || value.action==="enqueue"){
-        if(value.action==="enqueue")importedIds.push(value.leadIds);
+      else if(value.action==="enqueue"){
+        importedIds.push(value.leadIds);
         body={kind:"plan",importable:value.leadIds,existing:0,skipped:0};
       } else if(value.action==="process")body={kind:"status",jobs:value.leadIds.map(leadgen_id=>({leadgen_id,form_id:"10",status:"completed",crm_lead_id:"fixture-crm-id",last_error:null,updated_at:new Date().toISOString()}))};
       else throw new Error("Unexpected Meta write");
@@ -114,9 +114,7 @@ test("forms → preview → activation → selected import → confirmation → 
   await expect(page.getByRole("checkbox",{name:"Вибрати заявку 12",exact:true})).toBeDisabled();
   await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeChecked();
   await page.getByRole("button",{name:"Імпортувати вибрані (1)",exact:true}).click();
-  const confirmation=page.getByRole("dialog",{name:"Підтвердьте імпорт із Meta"});
-  await expect(confirmation.getByText("До обробки: 1. Уже існували: 0. Пропущено: 0.",{exact:true})).toBeVisible();
-  expect(importedIds).toEqual([]);await confirmation.getByRole("button",{name:"Підтвердити імпорт",exact:true}).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText("Імпортовано: 1 · Уже існували: 0 · Пропущено: 0 · Помилки: 0 · У черзі: 0",{exact:true})).toBeVisible();
   expect(importedIds).toEqual([["11"]]);
   await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeDisabled();
