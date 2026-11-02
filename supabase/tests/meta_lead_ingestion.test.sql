@@ -71,7 +71,7 @@ update public.meta_lead_jobs set payload=jsonb_build_object('id',leadgen_id), su
   where page_id='123' and leadgen_id='457';
 select public.complete_meta_lead_job(page_id,leadgen_id,studio_id,lease_token,'{"client_name":"Second Inquiry","phone":"+380501234567"}') from meta_claims where leadgen_id='457';
 set local role postgres;
-select is((select count(*)::integer from public.crm_leads where phone='+380501234567' and studio_id='53000000-0000-4000-8000-000000000001'),2,'separate submissions never merge on phone');
+select is((select count(*)::integer from public.crm_leads where phone='+380501234567' and studio_id='53000000-0000-4000-8000-000000000001'),1,'phone-matched submissions do not create another CRM lead');
 set local role service_role;
 select public.fail_meta_lead_job(page_id,leadgen_id,studio_id,lease_token,'missing_client_name',false) from meta_claims where leadgen_id='458';
 select is((select status from public.meta_lead_jobs where page_id='123' and leadgen_id='458'),'failed','missing required data is held for repair');
@@ -88,7 +88,7 @@ select is((select status from public.meta_lead_jobs where page_id='123' and lead
 set local role postgres;
 select set_config('request.jwt.claim.sub','53000000-0000-4000-8000-000000000011',true);
 set local role authenticated;
-select is((select count(*)::integer from public.crm_leads where client_name in ('Meta Contact','Second Inquiry')),2,'own studio admins see imported leads in existing CRM');
+select is((select count(*)::integer from public.crm_leads where client_name in ('Meta Contact','Second Inquiry')),1,'own studio admins see imported leads in existing CRM');
 select throws_ok($$select * from public.meta_lead_jobs$$,'42501',null,'browser cannot read raw Meta payloads');
 select set_config('request.jwt.claim.sub','53000000-0000-4000-8000-000000000012',true);
 select is((select count(*)::integer from public.crm_leads where client_name in ('Meta Contact','Second Inquiry')),0,'other studio admins cannot read imported leads');

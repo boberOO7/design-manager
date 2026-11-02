@@ -245,7 +245,7 @@
       "missingDate": "The submission date is missing or invalid.",
       "invalidFields": "The answers do not meet CRM field requirements.",
       "deletedLead": "The previously imported CRM lead was deleted. It will not be recreated.",
-      "excludedLead": "Explicitly excluded by an administrator.",
+      "excludedLead": "This lead is excluded from manual and automatic import.",
       "disabledHint": "Enable synchronization for this form before importing.",
       "technicalError": "Technical code: {code}",
       "enabledCount": "Enabled: {count}",
@@ -265,7 +265,7 @@
       "clearSelection": "Clear selection",
       "selectAll": "Select all eligible",
       "availableCount": "Leads: {count}",
-      "selectionHint": "Selection applies only to this import. “Do not import” in the lead menu saves an exclusion. Changing dates clears the selection.",
+      "selectionHint": "Checkboxes select leads for this import. “Exclude” also blocks future automatic imports of this lead.",
       "selection": "Select",
       "submitted": "Submitted",
       "name": "Name",
@@ -310,8 +310,8 @@
       "confirmImport": "Confirm import",
       "selectLead": "Select lead {id}",
       "answers": "Answers",
-      "allowImport": "Allow import again",
-      "exclude": "Do not import",
+      "allowImport": "Allow import",
+      "exclude": "Exclude",
       "statuses": {
         "not_imported": "Not imported",
         "crm": "In CRM",
@@ -319,7 +319,8 @@
         "error": "Error",
         "skipped": "Skipped",
         "pending": "Queued",
-        "processing": "Processing"
+        "processing": "Processing",
+        "duplicate": "Phone already in CRM"
       },
       "kyivDates": "Kyiv dates",
       "syncInfo": "About synchronization",
@@ -338,7 +339,15 @@
       "previewTable": "Leads from {name}",
       "noFilteredLeads": "No leads match these dates. Change or clear the date filter.",
       "previewFailed": "Not all leads could be loaded. Select Refresh before selecting and importing leads.",
-      "anyDate": "Any date"
+      "anyDate": "Any date",
+      "additionalData": "Additional details",
+      "additionalDataFor": "Additional details for lead {id}",
+      "acknowledgements": "Form acknowledgements",
+      "answerCount": "Answers: {count}",
+      "moreAnswers": "More: {count}",
+      "excludeHint": "Persistently exclude this lead from manual and automatic import. Existing CRM leads are retained.",
+      "allowImportHint": "Remove the exclusion. Select the lead separately to import it.",
+      "duplicatePhone": "A lead with this phone already exists in this studio. Duplicate import is blocked."
     }
   },
   "Contractors": {

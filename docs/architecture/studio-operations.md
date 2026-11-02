@@ -122,7 +122,11 @@ migrations/tests.
   database boundary; enabling never resumes historical work automatically.
   Selected UI imports and CLI backfill reuse the durable Meta queue and atomic
   CRM completion. Explicit exclusions retain minimal `skipped` tombstones, and
-  completed jobs remain deduplication tombstones after CRM deletion. Management
+  completed jobs remain deduplication tombstones after CRM deletion. Meta imports
+  also skip existing same-studio phone matches at atomic completion, serialized
+  with CRM phone writes. Comparison removes presentation punctuation and uses
+  known-country normalization without guessing unknown national prefixes.
+  Phone skips retain their original answers and never merge/update a CRM lead. Management
   diagnostics describe Graph access and queue state, not webhook delivery or
   Meta App publication.
 - A Lead that is neither lost nor invalid can create one Project through the

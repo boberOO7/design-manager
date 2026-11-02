@@ -11017,6 +11017,12 @@ export type Database = {
         Args: { p_studio_id: string }
         Returns: undefined
       }
+      find_meta_lead_phone_matches: {
+        Args: { p_contacts: Json; p_studio_id: string }
+        Returns: {
+          leadgen_id: string
+        }[]
+      }
       finish_equipment_catalog_sync: {
         Args: {
           p_error?: string

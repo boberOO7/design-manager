@@ -4,18 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowLeft, ChevronDown, ExternalLink, Info, LoaderCircle, MoreHorizontal, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronDown, ExternalLink, Ban, Info, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Tooltip } from "@/components/ui/tooltip";
+import { additionalMetaAnswers } from "@/lib/meta-leads/presentation";
 import { BinarySwitch } from "@/components/ui/binary-switch";
 import { instantToDateOnly } from "@/lib/calendar";
 import { META_BATCH_SIZE, metaResponseSchema, type MetaFormSummary, type MetaJobState, type MetaPreview, type MetaResponse } from "@/lib/meta-leads/contracts";
 const endpoint = "/api/integrations/meta-leads/manage";
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
 const cell = "px-3 py-3 text-left align-top sm:px-4";
-const badge = "inline-flex rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-2 py-0.5 text-xs font-medium leading-5";
+const badge = "inline-flex rounded-md bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-medium leading-5";
 const batches = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / META_BATCH_SIZE) }, (_, index) => ids.slice(index * META_BATCH_SIZE, (index + 1) * META_BATCH_SIZE));
 const matchesDates = (lead: MetaPreview, from: string, to: string) => {
   const day = lead.submitted_at ? instantToDateOnly(lead.submitted_at) : "";
@@ -58,7 +60,7 @@ export function MetaLeadsWorkspace() {
   const [availability, setAvailability] = useState<Record<string, Availability>>({});
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null), [leads, setLeads] = useState<MetaPreview[]>([]), [previewLoading, setPreviewLoading] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set()), [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [from, setFrom] = useState(""), [to, setTo] = useState(""), [page, setPage] = useState(0);
   const [plan, setPlan] = useState<Plan | null>(null), [result, setResult] = useState<Result | null>(null), [importing, setImporting] = useState(false);
   const catalog = useRef<AbortController | null>(null), preview = useRef<AbortController | null>(null), operation = useRef<AbortController | null>(null);
@@ -72,6 +74,7 @@ export function MetaLeadsWorkspace() {
       case "invalid_crm_fields": return t("invalidFields");
       case "crm_lead_deleted": return t("deletedLead");
       case "admin_skipped": return t("excludedLead");
+      case "duplicate_phone": return t("duplicatePhone");
       case "form_disabled": return t("disabledHint");
       default: return code ? t("technicalError", { code }) : "";
     }
@@ -145,7 +148,7 @@ export function MetaLeadsWorkspace() {
     preview.current = controller;
     setFormId(id);
     if (resetView) {
-      setLeads([]);setSelected(new Set());setExpanded(new Set());
+      setLeads([]);setSelected(new Set());
       setFrom("");setTo("");setResult(null);setPage(0);
     }
     setError(null);
@@ -172,7 +175,6 @@ export function MetaLeadsWorkspace() {
       if (!resetView) {
         const eligibleIds = new Set(records.filter(lead => lead.eligible).map(lead => lead.id));
         setSelected(old => new Set([...old].filter(id => eligibleIds.has(id))));
-        setExpanded(old => new Set([...old].filter(id => collected.has(id))));
         const lastPage = Math.max(0, Math.ceil(records.filter(lead => matchesDates(lead, from, to)).length / META_BATCH_SIZE) - 1);
         setPage(old => Math.min(old, lastPage));
       }
@@ -284,6 +286,8 @@ export function MetaLeadsWorkspace() {
           const job = states.get(id);
           if (job?.status === "completed" && job.crm_lead_id)
             summary.imported++;
+          else if (job?.status === "skipped" && job.last_error === "duplicate_phone")
+            summary.existing++;
           else if (job?.status === "completed" || job?.status === "skipped" || job?.status === "blocked")
             summary.skipped++;
           else if (job?.status === "failed")
@@ -331,7 +335,7 @@ export function MetaLeadsWorkspace() {
       </div>
       <div id="meta-sync-info" aria-hidden={!infoOpen} inert={!infoOpen} className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${infoOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="min-h-0 overflow-hidden"><div className="mt-3 grid gap-4 border-t border-[var(--ui-border)] py-3 text-sm leading-6 text-[var(--ui-text-muted)] md:grid-cols-2">
-          <div><p className="font-medium text-[var(--ui-text)]">{t("syncRulesTitle")}</p><p>{t("enableHint")}</p><p className="mt-2">{t("selectionHint")}</p></div>
+          <div><p className="font-medium text-[var(--ui-text)]">{t("syncRulesTitle")}</p><p>{t("enableHint")}</p></div>
           <div><p className="font-medium text-[var(--ui-text)]">{t("metaLimitsTitle")}</p><p>{t("formHint")}</p><p className="mt-2">{t("adUsageUnknown")}</p></div>
           <div className="md:col-span-2"><p>{diagnostics?.manualAvailable ? t("manualAvailable") : t("manualUnavailable")} · {t("lastSuccess", {date:date(diagnostics?.lastSuccess ?? null)})}</p><p>{t("deliveryHint")}</p></div>
         </div></div>
@@ -367,9 +371,10 @@ export function MetaLeadsWorkspace() {
           {currentForm?.sync_enabled ? <Button size="compact" disabled={!selected.size || interactionDisabled || previewFailed || !diagnostics?.manualAvailable} onClick={() => void prepareImport()}>{busy ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true"/> : null}{t("importSelected", {count:selected.size})}</Button> : null}
         </div>
       </div>
+      <p className="text-xs leading-5 text-[var(--ui-text-muted)]">{t("selectionHint")}</p>
       <div className={`${panel} overflow-x-auto`} aria-busy={previewLoading}>
-        <table className="w-full min-w-[820px] text-sm"><caption className="sr-only">{t("previewTable", {name:currentForm?.name || formId})}</caption><thead className="bg-[var(--ui-surface-muted)] text-xs text-[var(--ui-text-muted)]"><tr>{[t("selection"),t("submitted"),t("name"),t("phone"),t("email"),t("status"),t("actions")].map(label => <th key={label} scope="col" className={`${cell} py-2 font-medium`}>{label}</th>)}</tr></thead><tbody>
-          {shown.map(lead => <MetaLeadRows key={lead.id} lead={lead} checked={selected.has(lead.id)} expanded={expanded.has(lead.id)} disabled={interactionDisabled} selectable={canSelect} date={date(lead.submitted_at)} reason={reason(lead.reason)} onSelect={() => setSelected(old => {const next=new Set(old);next.has(lead.id) ? next.delete(lead.id) : next.add(lead.id);return next;})} onExpand={() => setExpanded(old => {const next=new Set(old);next.has(lead.id) ? next.delete(lead.id) : next.add(lead.id);return next;})} onExclude={() => void exclude(lead)}/>)}
+        <table className="w-full min-w-[820px] text-sm"><caption className="sr-only">{t("previewTable", {name:currentForm?.name || formId})}</caption><thead className="bg-[var(--ui-surface-muted)] text-xs text-[var(--ui-text-muted)]"><tr>{[t("selection"),t("submitted"),t("name"),t("phone"),t("email"),t("additionalData"),t("status"),t("actions")].map(label => <th key={label} scope="col" className={`${cell} py-2 font-medium`}>{label}</th>)}</tr></thead><tbody>
+          {shown.map(lead => <MetaLeadRows key={lead.id} lead={lead} checked={selected.has(lead.id)} disabled={interactionDisabled} selectable={canSelect} date={date(lead.submitted_at)} reason={reason(lead.reason)} onSelect={() => setSelected(old => {const next=new Set(old);next.has(lead.id) ? next.delete(lead.id) : next.add(lead.id);return next;})} onExclude={() => void exclude(lead)}/>)}
         </tbody></table>
         {!filtered.length && !previewLoading ? <p className="p-6 text-sm text-[var(--ui-text-muted)]">{t(from || to ? "noFilteredLeads" : "noLeads")}</p> : null}
         {previewLoading ? <p role="status" className="flex items-center gap-2 p-4 text-sm"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true"/>{t("loadingPreview")}</p> : null}
@@ -404,23 +409,18 @@ function FormSyncSwitch({form,disabled,onToggle}:{form:MetaFormSummary;disabled:
   return <BinarySwitch hideLabel label={`${t("sync")} ${form.name || form.form_id}`} emptyLabel={t("disabled")} options={["off","on"]} value={form.sync_enabled ? "on" : "off"} optionLabel={value=>t(value==="on" ? "enabled" : "disabled")} disabled={disabled} onChange={onToggle}/>;
 }
 
-function MetaLeadRows({lead,checked,expanded,disabled,selectable,date,reason,onSelect,onExpand,onExclude}:{lead:MetaPreview;checked:boolean;expanded:boolean;disabled:boolean;selectable:boolean;date:string;reason:string;onSelect:()=>void;onExpand:()=>void;onExclude:()=>void}) {
+function MetaLeadRows({lead,checked,disabled,selectable,date,reason,onSelect,onExclude}:{lead:MetaPreview;checked:boolean;disabled:boolean;selectable:boolean;date:string;reason:string;onSelect:()=>void;onExclude:()=>void}) {
   const t=useTranslations("Crm.meta");
-  const [menuOpen,setMenuOpen]=useState(false);
-  const canExclude=lead.status!=="crm" && lead.reason!=="crm_lead_deleted";
-  return <>
-    <tr className="border-t border-[var(--ui-border)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] motion-reduce:transition-none">
-      <td className="w-12 px-2 py-1 align-top"><label className="flex min-h-11 min-w-9 items-center justify-center rounded-[var(--ui-radius-control)] has-enabled:cursor-pointer has-enabled:hover:bg-[var(--ui-surface-muted)]"><input type="checkbox" className="size-4 accent-[var(--ui-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed" aria-label={t("selectLead", {id:lead.id})} checked={checked} disabled={disabled || !selectable || !lead.eligible} onChange={onSelect}/></label></td>
-      <td className={`${cell} whitespace-nowrap tabular-nums text-[var(--ui-text-secondary)]`}>{date}</td><td className={`${cell} max-w-60 break-words font-medium`}>{lead.client_name || "—"}</td><td className={`${cell} whitespace-nowrap tabular-nums`}>{lead.phone || "—"}</td><td className={`${cell} max-w-64 [overflow-wrap:anywhere]`}>{lead.email || "—"}</td>
-      <td className={cell}><span className={`${badge} ${lead.status==="error" || lead.status==="incomplete" ? "text-[var(--ui-danger-text)]" : ""}`}>{t(`statuses.${lead.status}`)}</span>{reason ? <p className="mt-1 max-w-60 text-xs leading-5 text-[var(--ui-text-muted)]">{reason}</p> : null}</td>
-      <td className="px-3 py-1.5 align-top"><div className="flex items-center justify-end gap-1">
-        <Button size="compact" variant="ghost" aria-expanded={expanded} aria-controls={`meta-answers-${lead.id}`} onClick={onExpand}><ChevronDown className={`size-3.5 transition-transform duration-200 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} aria-hidden="true"/>{t("answers")}</Button>
-        {canExclude ? <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}><Popover.Trigger asChild><Button variant="ghost" size="compact" className="size-11 shrink-0 p-0 sm:size-9" aria-label={t("leadActions", {id:lead.id})} disabled={disabled}><MoreHorizontal className="size-4" aria-hidden="true"/></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={6} collisionPadding={8} className="z-50 max-w-[calc(100vw-2rem)] rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-panel)]"><button type="button" onClick={()=>{setMenuOpen(false);onExclude();}} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-text)] outline-none transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:bg-[var(--ui-surface-muted)]">{lead.reason==="admin_skipped" ? t("allowImport") : t("exclude")}</button></Popover.Content></Popover.Portal></Popover.Root> : null}
-      </div></td>
-    </tr>
-    <tr><td colSpan={7} className="p-0"><div id={`meta-answers-${lead.id}`} aria-hidden={!expanded} inert={!expanded} className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}><div className="min-h-0 overflow-hidden"><dl className="grid gap-3 bg-[var(--ui-surface-muted)] p-4 sm:grid-cols-2 xl:grid-cols-3">
-      {lead.field_data.map((answer,index)=><div key={`${answer.name}-${index}`} className="min-w-0"><dt className="text-xs text-[var(--ui-text-muted)]">{answer.name}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{answer.values.join(", ") || "—"}</dd></div>)}
-      {lead.custom_disclaimer_responses?.map((answer,index)=><div key={`disclaimer-${index}`} className="min-w-0"><dt className="text-xs text-[var(--ui-text-muted)]">{t("disclaimerAnswer", {key:answer.checkbox_key})}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{String(answer.is_checked)}</dd></div>)}
-    </dl></div></div></td></tr>
-  </>;
+  const extra=additionalMetaAnswers(lead);
+  const count=extra.answers.length+extra.acknowledgements.length;
+  const first=extra.answers[0];
+  const canExclude=!["crm","duplicate"].includes(lead.status) && lead.reason!=="crm_lead_deleted";
+  const fieldLabel=(name:string)=>name.replace(/_/g," ").replace(/:\s*$/u,"");
+  return <tr className="border-t border-[var(--ui-border)] transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] motion-reduce:transition-none">
+    <td className="w-12 px-2 py-1 align-top"><label className="flex min-h-11 min-w-9 items-center justify-center rounded-[var(--ui-radius-control)] has-enabled:cursor-pointer has-enabled:hover:bg-[var(--ui-surface-muted)]"><input type="checkbox" className="size-4 accent-[var(--ui-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed" aria-label={t("selectLead", {id:lead.id})} checked={checked} disabled={disabled || !selectable || !lead.eligible} onChange={onSelect}/></label></td>
+    <td className={`${cell} whitespace-nowrap tabular-nums text-[var(--ui-text-secondary)]`}>{date}</td><td className={`${cell} max-w-60 break-words font-medium`}>{lead.client_name || "—"}</td><td className={`${cell} whitespace-nowrap tabular-nums`}>{lead.phone || "—"}</td><td className={`${cell} max-w-64 [overflow-wrap:anywhere]`}>{lead.email || "—"}</td>
+    <td className={`${cell} min-w-40 max-w-64`}>{count ? <Popover.Root><Popover.Trigger asChild><button type="button" aria-label={t("additionalDataFor",{id:lead.id})} className="group w-full cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="flex items-center gap-2 text-xs text-[var(--ui-text-muted)]"><span className="min-w-0 truncate">{first ? fieldLabel(first.name) : t("acknowledgements")}</span><ChevronDown className="size-3 shrink-0" aria-hidden="true"/></span><span className="mt-1 line-clamp-2 text-sm text-[var(--ui-text-secondary)] group-hover:text-[var(--ui-text)]">{first ? first.values.join(", ") : t("answerCount",{count})}</span>{count>1 ? <span className="text-xs text-[var(--ui-text-muted)]">{t("moreAnswers",{count:count-1})}</span> : null}</button></Popover.Trigger><Popover.Portal><Popover.Content align="start" sideOffset={6} collisionPadding={8} className="z-50 max-h-[min(28rem,80vh)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-sm shadow-[var(--ui-shadow-panel)]"><h3 className="mb-3 font-semibold">{t("additionalData")}</h3><dl className="space-y-3">{extra.answers.map((answer,index)=><div key={index}><dt className="text-xs text-[var(--ui-text-muted)]">{fieldLabel(answer.name)}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{answer.values.join(", ")}</dd></div>)}{extra.acknowledgements.map((answer,index)=><div key={`ack-${index}`}><dt className="text-xs text-[var(--ui-text-muted)]">{t("disclaimerAnswer",{key:answer.checkbox_key})}</dt><dd className="mt-1">{String(answer.is_checked)}</dd></div>)}</dl></Popover.Content></Popover.Portal></Popover.Root> : <span className="text-[var(--ui-text-muted)]">—</span>}</td>
+    <td className={cell}><span className={`${badge} ${lead.status==="error" || lead.status==="incomplete" ? "text-[var(--ui-danger-text)]" : ""}`}>{t(`statuses.${lead.status}`)}</span>{reason ? <p className="mt-1 max-w-60 text-xs leading-5 text-[var(--ui-text-muted)]">{reason}</p> : null}</td>
+    <td className="px-3 py-1.5 text-right align-top">{canExclude ? <Tooltip content={t(lead.reason==="admin_skipped" ? "allowImportHint" : "excludeHint")}><Button variant="ghost" size="compact" disabled={disabled} onClick={onExclude}><Ban className="size-3.5" aria-hidden="true"/>{t(lead.reason==="admin_skipped" ? "allowImport" : "exclude")}</Button></Tooltip> : null}</td>
+  </tr>;
 }

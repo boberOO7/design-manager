@@ -55,6 +55,15 @@ it("preview uses the same normalized contacts as import and exposes form acknowl
   const response=previewMetaLead({...lead,field_data:[{name:"full_name",values:["", " Fixture person "]},{name:"email",values:[]},{name:"email",values:[" FIXTURE@EXAMPLE.TEST "]}],custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true}]},undefined,true);
   expect(response).toMatchObject({client_name:"Fixture person",email:"fixture@example.test",eligible:true,custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true}]});
 });
+it("previews a same-studio phone collision read-only and keeps failed/terminal duplicates ineligible",async()=>{
+  mocks.preview.mockResolvedValue({data:[{...lead,field_data:[...lead.field_data,{name:"phone_number",values:["+48503448352"]}]}],next:null});
+  mocks.rpc.mockResolvedValue({data:[{leadgen_id:"11"}],error:null});
+  expect(await getMetaPreview(await requireMetaAdmin(),"10")).toMatchObject({leads:[{status:"duplicate",reason:"duplicate_phone",eligible:false}]});
+  expect(mocks.rpc).toHaveBeenCalledWith("find_meta_lead_phone_matches",{p_studio_id:studio,p_contacts:[{id:"11",phone:"+48503448352",country_code:null}]});
+  expect(mocks.query.update).not.toHaveBeenCalled();expect(mocks.enqueue).not.toHaveBeenCalled();
+  expect(previewMetaLead(lead,{...job,status:"failed",last_error:"graph_unavailable"},true,true)).toMatchObject({status:"duplicate",eligible:false});
+  expect(previewMetaLead(lead,{...job,status:"skipped",last_error:"duplicate_phone",crm_lead_id:null},true)).toMatchObject({status:"duplicate",reason:"duplicate_phone",eligible:false});
+});
 it("refuses unknown/disabled forms and mismatched provider form identities",async()=>{
   const ctx=await requireMetaAdmin();
   mocks.query.maybeSingle.mockResolvedValueOnce({data:null,error:null});

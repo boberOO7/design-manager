@@ -40,7 +40,11 @@ async function processJob(job: Job) {
     metaSubmittedAt(payload);
     const result = await admin.rpc("complete_meta_lead_job", { ...identity, p_lead: mapMetaLead(payload) });
     if (result.error) throw new MetaLeadError("meta_crm_write_failed");
-    return result.data ? "completed" : "stale";
+    if (result.data) return "completed";
+    const state=await admin.from("meta_lead_jobs").select("status,last_error").eq("page_id",job.page_id)
+      .eq("studio_id",job.studio_id).eq("leadgen_id",job.leadgen_id).maybeSingle();
+    if (state.error) throw new MetaLeadError("meta_result_read_failed");
+    return state.data?.status==="skipped" && state.data.last_error==="duplicate_phone" ? "skipped" : "stale";
   } catch (error) {
     const failure = error instanceof MetaLeadError ? error : new MetaLeadError("meta_processing_failed");
     const result = await admin.rpc("fail_meta_lead_job", { ...identity, p_error: failure.code, p_retry: failure.retryable });
@@ -60,6 +64,7 @@ export async function processMetaLeadQueue(leadgenIds?: string[]) {
     completed: outcomes.filter(value => value === "completed").length,
     retried: outcomes.filter(value => value === "retried").length,
     failed: outcomes.filter(value => value === "failed").length,
+    skipped: outcomes.filter(value => value === "skipped").length,
     stale: outcomes.filter(value => value === "stale").length,
   };
 }

@@ -93,7 +93,7 @@ export async function getMetaJobStates(context: Context, formId: string, ids: st
   return metaJobStateSchema.array().parse(result.data);
 }
 
-export function previewMetaLead(lead: MetaLead, job: MetaJobState | undefined, enabled: boolean): MetaPreview {
+export function previewMetaLead(lead: MetaLead, job: MetaJobState | undefined, enabled: boolean, duplicatePhone = false): MetaPreview {
   let contacts = metaContactAnswers(lead);
   let submittedAt: string | null = null, reason: string | null = null;
   try {
@@ -105,13 +105,14 @@ export function previewMetaLead(lead: MetaLead, job: MetaJobState | undefined, e
     reason = error instanceof MetaLeadError ? error.code : "invalid_crm_fields";
   }
   let status: MetaPreview["status"] = reason ? "incomplete" : "not_imported";
+  if (!reason && duplicatePhone) { status="duplicate"; reason="duplicate_phone"; }
   if (job?.status === "completed") {
     status = job.crm_lead_id ? "crm" : "skipped";
     reason = job.crm_lead_id ? null : "crm_lead_deleted";
   }
   else if (job?.status === "skipped") {
-    status = "skipped";
-    reason = "admin_skipped";
+    status = job.last_error === "duplicate_phone" ? "duplicate" : "skipped";
+    reason = job.last_error === "duplicate_phone" ? "duplicate_phone" : "admin_skipped";
   }
   else if (job?.status === "pending" || job?.status === "processing") {
     status = job.status;
@@ -134,7 +135,14 @@ export async function getMetaPreview(context: Context, formId: string, after?: s
     throw new MetaManagementError("form_mismatch");
   const states = await getMetaJobStates(context, formId, page.data.map(lead => lead.id));
   const byId = new Map(states.map(state => [state.leadgen_id, state]));
-  return { kind: "preview" as const, leads: page.data.map(lead => previewMetaLead(lead, byId.get(lead.id), policy.sync_enabled)), next: page.next };
+  const contacts=page.data.flatMap(lead=>{
+    try {const mapped=mapMetaLead(lead);return mapped.phone ? [{id:lead.id,phone:mapped.phone,country_code:mapped.country_code}] : [];}
+    catch {return [];}
+  });
+  const matches=contacts.length ? await context.admin.rpc("find_meta_lead_phone_matches",{p_studio_id:context.studioId,p_contacts:contacts}) : {data:[],error:null};
+  if(matches.error)throw new MetaManagementError("phone_check_unavailable");
+  const duplicates=new Set((matches.data ?? []).map(item=>item.leadgen_id));
+  return { kind: "preview" as const, leads: page.data.map(lead => previewMetaLead(lead, byId.get(lead.id), policy.sync_enabled,duplicates.has(lead.id))), next: page.next };
 }
 
 export async function setMetaFormSync(context: Context, formId: string, enabled: boolean) {
@@ -164,7 +172,7 @@ export async function planMetaImport(context: Context, formId: string, ids: stri
   const result = { kind: "plan" as const, importable, existing: 0, skipped: 0 };
   for (const id of new Set(ids)) {
     const state = states.get(id);
-    if (state?.status === "completed" && state.crm_lead_id)
+    if ((state?.status === "completed" && state.crm_lead_id) || (state?.status === "skipped" && state.last_error === "duplicate_phone"))
       result.existing++;
     else if (state?.status === "skipped" || state?.status === "completed")
       result.skipped++;

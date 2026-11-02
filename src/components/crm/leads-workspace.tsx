@@ -20,6 +20,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input } from "@/components/ui/form-field";
+import { cn } from "@/lib/utils";
+import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -136,12 +138,12 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
         <Button type="button" onClick={openCreate}><Plus className="size-4" aria-hidden="true" />{t("leads.add")}</Button>
       </div>
       {visible.length ? <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
-        <thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs uppercase tracking-wide text-[var(--ui-text-muted)]"><tr><th className="px-4 py-3">{t("leads.columns.contact")}</th><th className="px-4 py-3">{t("leads.columns.request")}</th><th className="px-4 py-3">{t("leads.columns.status")}</th><th className="px-4 py-3">{t("leads.columns.responsible")}</th><th className="px-4 py-3">{t("leads.columns.followUp")}</th><th className="px-4 py-3 text-right"><span className="sr-only">{t("recordActions")}</span></th></tr></thead>
+        <thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs uppercase tracking-wide text-[var(--ui-text-muted)]"><tr><th className="px-4 py-3">{t("leads.columns.contact")}</th><th className="px-4 py-3">{t("fields.phone")}</th><th className="px-4 py-3">{t("leads.columns.request")}</th><th className="px-4 py-3">{t("leads.columns.status")}</th><th className="px-4 py-3">{t("leads.columns.responsible")}</th><th className="px-4 py-3">{t("leads.columns.followUp")}</th><th className="px-4 py-3 text-right"><span className="sr-only">{t("recordActions")}</span></th></tr></thead>
         <tbody className="divide-y divide-[var(--ui-border)]">{visible.map((item) => <tr
           key={item.id}
           onClick={(event) => { if (!isNestedInteractiveTarget(event.target, event.currentTarget)) openRecord(item); }}
           className="cursor-pointer outline-none transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)]"
-        ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><LeadStatusPill status={item.status} label={t(`leadStatus.${item.status}`)} /></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3"><FollowUpTime value={item.next_contact_at} locale={locale} /></td><td className="px-4 py-3 text-right"><LeadProjectAction lead={item} onConvert={openConversion} presentation="table" /></td></tr>)}</tbody>
+        ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="whitespace-nowrap px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{item.phone ? <a href={`tel:${item.phone}`} className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{phoneDisplay(item.phone)}</a> : "—"}</td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><LeadStatusPill status={item.status} label={t(`leadStatus.${item.status}`)} /></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3"><FollowUpTime value={item.next_contact_at} locale={locale} /></td><td className="px-4 py-3 text-right"><LeadProjectAction lead={item} onConvert={openConversion} presentation="table" /></td></tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" || attentionOnly ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" || attentionOnly ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
     <Dialog className={view === "convert" ? "max-w-[62rem]" : undefined} isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
@@ -335,7 +337,7 @@ function FollowUpTime({ locale, value }: { locale: string; value: string | null 
 
 function LeadStatusPill({ label, status }: { label: string; status: CrmLead["status"] }) {
   const style = getCrmLeadStatusBadgeStyle(status);
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${style.className}`}>{label}</span>;
+  return <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-medium", style.className, "border-0")}>{label}</span>;
 }
 
 function LeadHistoryPanel({ error, history, locale }: { error: string | null; history: CrmLeadHistory[] | null; locale: string }) {

@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => {
   const query = { eq(_column: string, _value: unknown) { return this; }, select(_columns: string) { return this; }, maybeSingle: vi.fn() };
   const update = vi.fn(() => query);
-  return { query, update, rpc: vi.fn(), from: vi.fn(() => ({ update })), fetchLead: vi.fn() };
+  return { query, update, rpc: vi.fn(), from: vi.fn(() => ({ update, select: (_columns:string)=>query })), fetchLead: vi.fn() };
 });
 vi.mock("@/lib/supabase/admin-client", () => ({ createAdminClient: () => ({ rpc: mocks.rpc, from: mocks.from }) }));
 vi.mock("./graph", async importOriginal => ({ ...await importOriginal<typeof import("./graph")>(), fetchMetaLead: mocks.fetchLead }));
@@ -27,6 +27,11 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("durable Meta worker orchestration", () => {
+  it("reports an atomically phone-skipped completion without treating it as a failure or successful CRM insertion",async()=>{
+    mocks.rpc.mockImplementation(async(name:string)=>({data:name==="claim_meta_lead_jobs" ? [job] : name==="complete_meta_lead_job" ? null : 1,error:null}));
+    mocks.query.maybeSingle.mockResolvedValueOnce({data:{leadgen_id:"456"},error:null}).mockResolvedValueOnce({data:{status:"skipped",last_error:"duplicate_phone"},error:null});
+    expect(await processMetaLeadQueue()).toMatchObject({claimed:1,completed:0,skipped:1,failed:0,stale:0});
+  });
   it("enqueues with only the configured page and studio, passing explicit retry only for operator repair", async () => {
     await enqueueMetaLeads([{ leadgen_id: "456" }]);
     expect(mocks.rpc).toHaveBeenLastCalledWith("enqueue_meta_lead_jobs", { p_page_id: "123", p_studio_id: studioId, p_events: [{ leadgen_id: "456" }], p_retry_failed: false, p_manual: false });

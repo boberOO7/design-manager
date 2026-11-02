@@ -27,7 +27,7 @@ export const metaPreviewSchema = z.object({
   id: metaId, submitted_at: z.string().nullable(), client_name: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable(),
   field_data: metaLeadSchema.shape.field_data,
   custom_disclaimer_responses: metaLeadSchema.shape.custom_disclaimer_responses,
-  status: z.enum(["not_imported", "crm", "incomplete", "error", "skipped", "pending", "processing"]), reason: z.string().nullable(), eligible: z.boolean(),
+  status: z.enum(["not_imported", "crm", "duplicate", "incomplete", "error", "skipped", "pending", "processing"]), reason: z.string().nullable(), eligible: z.boolean(),
 });
 export type MetaPreview = z.infer<typeof metaPreviewSchema>;
 export const metaDiagnosticsSchema = z.object({ enabledForms: z.number(), pending: z.number(), failed: z.number(), lastSuccess: z.string().nullable(), manualAvailable: z.boolean(), graphError: z.string().nullable() });
