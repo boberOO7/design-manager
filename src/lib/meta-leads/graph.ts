@@ -40,7 +40,7 @@ export async function fetchMetaLead(leadgenId: string) {
   return parsed.data;
 }
 
-const leadFields = "id,created_time,form_id,field_data,platform";
+const leadFields = "id,created_time,form_id,field_data,platform,custom_disclaimer_responses";
 async function fetchGraphPage<T extends z.ZodType>(ownerId: string, edge: string, fields: string, item: T, after?: string) {
   metaId.parse(ownerId);
   const parsed = z.object({ data: z.array(item), paging: z.object({ cursors: z.object({ after: z.string().optional() }).optional(), next: z.string().optional() }).optional() })

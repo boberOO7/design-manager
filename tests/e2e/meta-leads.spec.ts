@@ -30,13 +30,16 @@ test.afterAll(async()=>{
   if(account.id)await service.auth.admin.deleteUser(account.id);
 });
 
-test("forms → preview → selected import → confirmation → result, with no production Graph or CRM writes",async({page})=>{
+test("forms → preview → activation → selected import → confirmation → result, with no production Graph or CRM writes",async({page})=>{
   const browserErrors:string[]=[];page.on("pageerror",error=>browserErrors.push(error.message));
-  let enabled=false;const importedIds:string[][]=[];
-  const lead=(id:string,status:MetaPreview["status"]="not_imported"):MetaPreview=>({
+  let enabled=false;const importedIds:string[][]=[];const excluded=new Set<string>();
+  const lead=(id:string,state:MetaPreview["status"]="not_imported"):MetaPreview=>{
+    const status:MetaPreview["status"]=id==="11" && importedIds.length ? "crm" : excluded.has(id) ? "skipped" : state;
+    return ({
     id,submitted_at:"2026-10-18T11:00:00Z",client_name:`Fixture ${id}`,phone:"+380501234567",email:`fixture-${id}@example.test`,
-    field_data:[{name:"project_type",values:["Fixture apartment"]}],status,reason:status==="incomplete" ? "missing_client_name" : null,eligible:enabled && status==="not_imported",
-  });
+    field_data:[{name:"project_type",values:["Fixture apartment"]}],status,reason:status==="incomplete" ? "missing_client_name" : status==="skipped" ? "admin_skipped" : null,eligible:enabled && status==="not_imported",
+    custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true}],
+  });};
   const form=()=>({form_id:"10",name:"Fixture form",meta_status:"ACTIVE",meta_created_at:"2024-01-01T00:00:00Z",lifetime_leads_count:11,sync_enabled:enabled,imported:0,pending:0,failed:0});
   await page.route("**/api/integrations/meta-leads/manage?*",async route=>{
     const request=route.request(),url=new URL(request.url());let body:unknown;
@@ -49,6 +52,7 @@ test("forms → preview → selected import → confirmation → result, with no
     } else {
       const value=metaMutationSchema.parse(request.postDataJSON());
       if(value.action==="sync"){enabled=value.enabled;body={kind:"saved"};}
+      else if(value.action==="exclude"){value.excluded ? excluded.add(value.leadId) : excluded.delete(value.leadId);body={kind:"saved"};}
       else if(value.action==="plan" || value.action==="enqueue"){
         if(value.action==="enqueue")importedIds.push(value.leadIds);
         body={kind:"plan",importable:value.leadIds,existing:0,skipped:0};
@@ -60,21 +64,50 @@ test("forms → preview → selected import → confirmation → result, with no
   await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://localhost:3000"}]);
   await signInLocalTestUser(page,account);await page.goto("/crm/leads");
   await page.getByRole("link",{name:"Meta Leads",exact:true}).click();
-  const toggle=page.getByRole("switch",{name:"Синхронізувати Fixture form"});
-  await expect(toggle).not.toBeChecked();await toggle.click();await expect(toggle).toBeChecked();
-  expect(importedIds).toEqual([]);
+  await expect(page.getByRole("switch",{name:/Синхронізувати Fixture form/})).not.toBeChecked();
+  await expect(page.locator("#meta-sync-info")).toHaveAttribute("aria-hidden","true");
+  expect(await page.locator("#meta-sync-info").evaluate(node=>node.getBoundingClientRect().height)).toBe(0);
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({path:".local/meta-leads-forms-mobile.png",fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:".local/meta-leads-forms.png",fullPage:true});
+  await page.emulateMedia({colorScheme:"dark"});
+  await expect(page.locator("html")).toHaveAttribute("data-theme","dark");
+  await page.screenshot({path:".local/meta-leads-forms-dark.png",fullPage:true});
   await page.getByRole("button",{name:"Fixture form",exact:true}).click();
-  await expect(page.getByText("Доступно в цьому перегляді: 4",{exact:true})).toBeVisible();
+  await expect(page.getByText("Заявок: 4",{exact:true})).toBeVisible();
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeDisabled();
+  await expect(page.getByText("Імпорт для цієї форми вимкнено",{exact:true})).toBeVisible();
+  await page.screenshot({path:".local/meta-leads-preview-disabled.png",fullPage:true});
+  await page.getByRole("button",{name:"Увімкнути форму",exact:true}).click();
+  await expect(page.getByRole("switch",{name:/Синхронізувати Fixture form/})).toBeChecked();
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeEnabled();
+  expect(importedIds).toEqual([]);
+  const from=page.getByRole("combobox",{name:"Від",exact:true});
+  await from.click();await expect(from).toHaveAttribute("aria-expanded","true");
+  await page.keyboard.press("Escape");await expect(from).toHaveAttribute("aria-expanded","false");
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({path:".local/meta-leads-preview-mobile.png",fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:".local/meta-leads-preview.png",fullPage:true});
   await expect(page.getByRole("checkbox",{name:"Вибрати заявку 13",exact:true})).toBeDisabled();
   await expect(page.getByRole("checkbox",{name:"Вибрати заявку 14",exact:true})).toBeDisabled();
   await page.getByRole("button",{name:"Вибрати всі придатні",exact:true}).click();
-  await page.getByRole("checkbox",{name:"Вибрати заявку 12",exact:true}).uncheck();
+  await page.getByRole("button",{name:"Дії із заявкою 12",exact:true}).click();
+  await page.getByRole("button",{name:"Не імпортувати",exact:true}).click();
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 12",exact:true})).toBeDisabled();
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeChecked();
   await page.getByRole("button",{name:"Імпортувати вибрані (1)",exact:true}).click();
   const confirmation=page.getByRole("dialog",{name:"Підтвердьте імпорт із Meta"});
   await expect(confirmation.getByText("До обробки: 1. Уже існували: 0. Пропущено: 0.",{exact:true})).toBeVisible();
   expect(importedIds).toEqual([]);await confirmation.getByRole("button",{name:"Підтвердити імпорт",exact:true}).click();
   await expect(page.getByText("Імпортовано: 1 · Уже існували: 0 · Пропущено: 0 · Помилки: 0 · У черзі: 0",{exact:true})).toBeVisible();
-  expect(importedIds).toEqual([["11"]]);expect(browserErrors).toEqual([]);
+  expect(importedIds).toEqual([["11"]]);
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true})).toBeDisabled();
+  await expect(page.getByRole("checkbox",{name:"Вибрати заявку 11",exact:true}).locator("xpath=ancestor::tr").getByText("У CRM",{exact:true})).toBeVisible();
+  expect(browserErrors).toEqual([]);
   const count=execFileSync("docker",["exec","-i","supabase_db_design-manager","psql","-U","postgres","-d","postgres","-At"],{input:`select count(*) from public.crm_leads where studio_id=${id(studioId)};`,encoding:"utf8"}).trim();
   expect(count).toBe("0");
 });

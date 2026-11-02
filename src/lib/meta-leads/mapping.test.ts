@@ -19,6 +19,31 @@ describe("Meta to existing CRM mapping", () => {
     expect(mapMetaLead(lead({ field_data: [{ name: "first_name", values: ["Олена"] }, { name: "last_name", values: ["Тест"] }] })).client_name).toBe("Олена Тест");
     expect(() => mapMetaLead(lead({ field_data: [{ name: "email", values: ["client@example.test"] }] }))).toThrow("missing_client_name");
   });
+  it("uses the first non-empty value across repeated exact fields without discarding additional answers", () => {
+    const original=lead({field_data:[
+      {name:"full_name",values:["  "]},{name:"full_name",values:["", " Олена Тест "]},
+      {name:"phone_number",values:[]},{name:"phone_number",values:["", "+48503448352"]},
+      {name:"email",values:["", " CLIENT@EXAMPLE.COM "]},
+      {name:"нестандартне_питання",values:["Перша відповідь","Друга відповідь"]},
+    ]});
+    const result=mapMetaLead(original);
+    expect(result).toMatchObject({client_name:"Олена Тест",phone:"+48503448352",email:"client@example.com",country_code:null});
+    expect(result.internal_notes).toContain("нестандартне_питання: Перша відповідь, Друга відповідь");
+    expect(original.field_data[1].values).toEqual(["", " Олена Тест "]);
+  });
+  it("does not guess custom field aliases or fabricate missing contacts", () => {
+    expect(mapMetaLead(lead({field_data:[{name:"full_name",values:["Name"]},{name:"your_phone",values:["Custom answer"]}]})))
+      .toMatchObject({phone:null,email:null,internal_notes:expect.stringContaining("your_phone: Custom answer")});
+    expect(()=>mapMetaLead(lead({field_data:[{name:"ім’я",values:["Custom answer"]}]}))).toThrow("missing_client_name");
+  });
+  it("includes original form acknowledgements and retains the established CRM notes limit", () => {
+    const original=lead({custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true},{checkbox_key:"contact",is_checked:"0"}]});
+    expect(mapMetaLead(original).internal_notes).toContain("custom_disclaimer_responses.privacy: true");
+    expect(mapMetaLead(original).internal_notes).toContain("custom_disclaimer_responses.contact: 0");
+    const long=lead({field_data:[{name:"full_name",values:["Name"]},{name:"extra",values:["x".repeat(12000)]}]});
+    expect(mapMetaLead(long).internal_notes).toHaveLength(10000);
+    expect(long.field_data[1].values[0]).toHaveLength(12000);
+  });
   it("requires the actual submission time, preserving instants with timezone offsets", () => {
     expect(metaSubmittedAt(lead())).toBe("2026-10-30T23:30:00.000Z");
     expect(() => mapMetaLead(lead({ created_time: undefined }))).toThrow("missing_or_invalid_created_time");

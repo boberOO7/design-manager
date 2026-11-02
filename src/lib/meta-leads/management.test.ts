@@ -48,7 +48,12 @@ it("preview is read-only and keeps incomplete, excluded and deleted leads inelig
   expect(previewMetaLead({...lead,field_data:[]},undefined,true)).toMatchObject({status:"incomplete",eligible:false,reason:"missing_client_name"});
   expect(previewMetaLead(lead,{...job,crm_lead_id:null},true)).toMatchObject({status:"skipped",eligible:false,reason:"crm_lead_deleted"});
   expect(previewMetaLead(lead,{...job,status:"skipped"},true)).toMatchObject({status:"skipped",eligible:false,reason:"admin_skipped"});
-  expect(previewMetaLead(lead,undefined,false)).toMatchObject({eligible:false,reason:"form_disabled"});
+  expect(previewMetaLead(lead,undefined,false)).toMatchObject({eligible:false,reason:null});
+  expect(previewMetaLead(lead,job,false)).toMatchObject({status:"crm",eligible:false,reason:null});
+});
+it("preview uses the same normalized contacts as import and exposes form acknowledgements",()=>{
+  const response=previewMetaLead({...lead,field_data:[{name:"full_name",values:["", " Fixture person "]},{name:"email",values:[]},{name:"email",values:[" FIXTURE@EXAMPLE.TEST "]}],custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true}]},undefined,true);
+  expect(response).toMatchObject({client_name:"Fixture person",email:"fixture@example.test",eligible:true,custom_disclaimer_responses:[{checkbox_key:"privacy",is_checked:true}]});
 });
 it("refuses unknown/disabled forms and mismatched provider form identities",async()=>{
   const ctx=await requireMetaAdmin();

@@ -24,20 +24,38 @@ export function metaSubmittedAt(lead: MetaLead): string {
   return new Date(parsed.data).toISOString();
 }
 
+// Only exact Meta field keys are mapped. Custom/localized questions remain
+// answers, never guessed contact fields. Retain all original values in notes.
+export function metaAnswer(lead: MetaLead, name: string) {
+  return lead.field_data.filter(field => field.name === name)
+    .flatMap(field => field.values).map(value => value.trim()).find(Boolean) ?? "";
+}
+
+export function metaContactAnswers(lead: MetaLead) {
+  return {
+    client_name: metaAnswer(lead, "full_name") || [metaAnswer(lead, "first_name"), metaAnswer(lead, "last_name")].filter(Boolean).join(" "),
+    phone: metaAnswer(lead, "phone_number"), email: metaAnswer(lead, "email"),
+  };
+}
+
 export function mapMetaLead(lead: MetaLead) {
-  const answer = (name: string) => lead.field_data.find(field => field.name === name)?.values[0]?.trim() ?? "";
-  const clientName = answer("full_name") || [answer("first_name"), answer("last_name")].filter(Boolean).join(" ");
+  const answer = (name: string) => metaAnswer(lead, name);
+  const contacts = metaContactAnswers(lead);
+  const clientName = contacts.client_name;
   if (!clientName) throw new MetaLeadError("missing_client_name", false);
   const country = answer("country").toUpperCase();
   const source = lead.platform === "ig" ? "instagram" : lead.platform === "fb" ? "Facebook Lead Ads" : "Meta Lead Ads";
   const parsed = importedLeadSchema.safeParse({
-    client_name: clientName, company: answer("company_name"), email: answer("email"), phone: answer("phone_number"),
+    client_name: clientName, company: answer("company_name"), email: contacts.email, phone: contacts.phone,
     city: answer("city"), site_address: answer("street_address"), country_code: isCountryCode(country) ? country : "",
     source: source === "instagram" ? "instagram" : "other", source_custom: source,
     budget_amount: "", first_contact_date: instantToDateOnly(metaSubmittedAt(lead)),
     // The complete structured answers stay in the private inbox, including any
     // content exceeding the existing CRM notes limit.
-    internal_notes: lead.field_data.map(field => `${field.name}: ${field.values.join(", ")}`).join("\n").slice(0, 10000),
+    internal_notes: [
+      ...lead.field_data.map(field => `${field.name}: ${field.values.join(", ")}`),
+      ...(lead.custom_disclaimer_responses ?? []).map(item => `custom_disclaimer_responses.${item.checkbox_key}: ${item.is_checked}`),
+    ].join("\n").slice(0, 10000),
   });
   if (!parsed.success) throw new MetaLeadError("invalid_crm_fields", false);
   const value = parsed.data;

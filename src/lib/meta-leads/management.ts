@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMetaGraphConfig, getMetaLeadTarget } from "./config";
 import { metaDiagnosticsSchema, metaFormSummarySchema, metaJobStateSchema, type MetaJobState, type MetaPreview } from "./contracts";
 import { fetchMetaFormsPage, fetchMetaAvailabilityPage, fetchMetaPreviewPage, fetchMetaLead, MetaLeadError, type MetaLead } from "./graph";
-import { mapMetaLead, metaSubmittedAt } from "./mapping";
+import { mapMetaLead, metaContactAnswers, metaSubmittedAt } from "./mapping";
 import { enqueueMetaLeads } from "./queue";
 export class MetaManagementError extends Error {
   constructor(readonly code: string, readonly status = 503) { super(code); }
@@ -94,11 +94,12 @@ export async function getMetaJobStates(context: Context, formId: string, ids: st
 }
 
 export function previewMetaLead(lead: MetaLead, job: MetaJobState | undefined, enabled: boolean): MetaPreview {
-  const answer = (name: string) => lead.field_data.find(field => field.name === name)?.values[0]?.trim() || null;
+  let contacts = metaContactAnswers(lead);
   let submittedAt: string | null = null, reason: string | null = null;
   try {
     submittedAt = metaSubmittedAt(lead);
-    mapMetaLead(lead);
+    const mapped = mapMetaLead(lead);
+    contacts = {client_name:mapped.client_name,phone:mapped.phone ?? "",email:mapped.email ?? ""};
   }
   catch (error) {
     reason = error instanceof MetaLeadError ? error.code : "invalid_crm_fields";
@@ -121,8 +122,9 @@ export function previewMetaLead(lead: MetaLead, job: MetaJobState | undefined, e
     reason = job.last_error;
   }
   const eligible = enabled && ["not_imported", "error"].includes(status);
-  return { id: lead.id, submitted_at: submittedAt, client_name: answer("full_name") || [answer("first_name"), answer("last_name")].filter(Boolean).join(" ") || null,
-    phone: answer("phone_number"), email: answer("email"), field_data: lead.field_data, status, reason: reason || (!enabled ? "form_disabled" : null), eligible };
+  return { id: lead.id, submitted_at: submittedAt, client_name: contacts.client_name || null,
+    phone: contacts.phone || null, email: contacts.email || null, field_data: lead.field_data,
+    custom_disclaimer_responses:lead.custom_disclaimer_responses, status, reason, eligible };
 }
 
 export async function getMetaPreview(context: Context, formId: string, after?: string) {
