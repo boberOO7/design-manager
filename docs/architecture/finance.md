@@ -346,6 +346,16 @@ or notifications containing private data.
 
 ## Project agreements, income, and expenses
 
+- CRM Lead proposals reuse the same proposal editor, designs and PDF renderer.
+  Their explicit quote terms (manual number, fixed/area price, discount, VAT and
+  payment shares) use the shared Finance arithmetic but create no Project,
+  Finance order, agreement or expected payments. V3 snapshots have `projectId:
+  null` and `leadId`; V1/V2 project snapshots remain supported unchanged.
+  `crm_lead_proposals` retains immutable snapshots/PDF bytes and revision history
+  on the Lead, including after conversion. The first manually entered number
+  stays fixed across revisions. Tenant-admin SELECT RLS and a renderer-only save
+  RPC enforce ownership, verified actor, idempotency and source/revision freshness.
+  Lead deletion is restricted while it owns proposal history.
 - Commercial proposals on Project Finance use the saved design agreement’s Gross
   client total and the same active payment rows, names, percentages and compact
   client notes. Project/site address is carried from CRM Lead through project

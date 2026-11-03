@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { projectAreaCalculationSchema, projectAreaComponentsSchema, projectAreaValue, projectMoneyUnits } from "./finance-project-plan";
 import { componentAreaValue } from "./work-direction-components";
+import { proposalCommercialTermsSchema } from "./proposal-commercial-terms";
 
 export const proposalDesignVariants = [
   { value: "measured-space", label: "Measured Space" },
@@ -70,6 +71,10 @@ export const proposalSnapshotSchema = z.discriminatedUnion("schemaVersion", [
     schemaVersion: z.literal(2),
     order: z.object({ id: z.uuid(), name: z.string().trim().min(1).max(200), status: z.enum(["draft", "confirmed"]) }),
     sourceRevision: z.number().int().positive(),
+  }),
+  proposalSnapshotFields.extend({
+    schemaVersion: z.literal(3), projectId: z.null(), leadId: z.uuid(),
+    leadUpdatedAt: z.string(), commercialTerms: proposalCommercialTermsSchema,
   }),
 ]);
 export type ProposalSnapshot = z.infer<typeof proposalSnapshotSchema>;

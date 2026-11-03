@@ -65,7 +65,7 @@ test("forms → preview → activation → selected import → result, with no p
   });
   await page.context().addCookies([{name:"studioflow-locale",value:"uk",url:"http://localhost:3000"}]);
   await signInLocalTestUser(page,account);await page.goto("/crm/leads");
-  await expect(page.getByRole("columnheader",{name:"Телефон",exact:true})).toBeVisible();
+  await expect(page.getByRole("columnheader",{name:"Контакт",exact:true})).toBeVisible();
   const manualRow=page.getByRole("row").filter({hasText:"Manual UI fixture"});
   await expect(manualRow.getByRole("link",{name:"+48503448352",exact:true})).toBeVisible();
   await expect(manualRow.getByText("Новий",{exact:true})).toHaveCSS("border-top-width","0px");

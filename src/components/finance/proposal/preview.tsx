@@ -29,8 +29,13 @@ export default function ProposalPreview({ url }: { url: string }) {
       // This worker is vendored from the pinned pdfjs-dist version; update together.
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const task = pdfjs.getDocument({ url });
-      destroy = () => task.destroy();
+      destroy = async () => {
+        // PDF.js may throw inside its worker if terminated before initial loading settles.
+        await task.promise.catch(() => {});
+        await task.destroy();
+      };
       const document = await task.promise;
+      if (cancelled) return;
       container.className = document.numPages === 1
         ? "flex h-full w-full items-center justify-center overflow-hidden p-2"
         : "flex h-full w-full flex-col items-center gap-2 overflow-y-auto overflow-x-hidden p-2";
@@ -56,7 +61,11 @@ export default function ProposalPreview({ url }: { url: string }) {
         }
       }
     })().catch(() => { if (!cancelled) setError(true); });
-    return () => { cancelled = true; resize.disconnect(); void destroy?.(); };
+    return () => {
+      cancelled = true; resize.disconnect();
+      // Closing or replacing a preview may terminate an in-flight PDF worker.
+      void destroy?.().catch(() => {});
+    };
   }, [url, t]);
   return <div aria-label={t("preview")} role="region" className="relative h-full min-h-0 w-full">{error ? <p role="alert" className="p-4 text-sm text-[var(--ui-danger-text)]">{t("error")}</p> : null}<div ref={host} data-proposal-pages/></div>;
 }

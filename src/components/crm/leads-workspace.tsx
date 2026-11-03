@@ -2,7 +2,8 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarCheck2, CalendarDays, CircleDot, FileText, FolderKanban, History, LoaderCircle, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, XCircle, type LucideIcon } from "lucide-react";
+import dynamic from "next/dynamic";
+import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarCheck2, CalendarDays, CircleCheck, CircleDashed, CircleDot, CircleSlash, FileText, FolderKanban, History, LoaderCircle, Mail, MapPin, Megaphone, MessagesSquare, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, XCircle, type LucideIcon } from "lucide-react";
 import { Suspense, use, useCallback, useMemo, useState, useTransition, type ComponentProps, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,7 @@ import type { ProjectFormDefaults } from "@/components/projects/project-form";
 import { LazyProjectForm as ProjectForm } from "@/components/projects/lazy-project-form";
 import { ProjectCountrySelect, ProjectTypeSelect, useProjectMetadataControls } from "@/components/projects/project-metadata-controls";
 import { Button } from "@/components/ui/button";
+import actionFeedback from "@/components/ui/primary-action-feedback.module.css";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,6 +27,8 @@ import { phoneDisplay } from "@/lib/ukrainian-phone";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select, SelectItem } from "@/components/ui/select";
 import { TimePicker } from "@/components/ui/time-picker";
+import { Tooltip } from "@/components/ui/tooltip";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { CrmAdmin, CrmLead, CrmLeadHistory } from "@/data/queries/crm";
 import type { ActiveStudioAssignee } from "@/data/queries/project-members";
 import { CRM_BUDGET_CURRENCIES, formatCrmBudget, getCrmBudgetInputValue, isCrmBudgetCurrency, type CrmBudgetCurrency } from "@/lib/crm-budget";
@@ -35,6 +39,8 @@ import { getCrmLeadStatusBadgeStyle } from "@/lib/semantic-styles";
 import { CRM_LEAD_INVALID_REASONS, CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadInvalidReason, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
 import type { ProjectTemplate } from "@/lib/project-templates";
+
+const ProposalEditor = dynamic(() => import("@/components/finance/proposal/editor"), { ssr: false });
 
 function isNestedInteractiveTarget(target: EventTarget | null, row: HTMLElement) {
   if (!(target instanceof Element)) return false;
@@ -47,6 +53,7 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
   const common = useTranslations("Common");
   const locale = useLocale();
   const router = useRouter();
+  const [proposalLead, setProposalLead] = useState<CrmLead | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [attentionOnly, setAttentionOnly] = useState(initialAttentionOnly);
@@ -130,25 +137,45 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
 
   return <>
     <div data-instaload-arrival="leads-list" className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
-      <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 md:flex-row md:items-center">
-        <label className="relative min-w-0 flex-1"><span className="sr-only">{t("search")}</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" aria-hidden="true" /><Input className="pl-9" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("leads.searchPlaceholder")} /></label>
-        <Button type="button" variant="outline" aria-pressed={attentionOnly} disabled={attentionLeads.length === 0} onClick={() => setAttentionOnly((current) => !current)} className={attentionOnly ? "border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" : undefined}><AlertCircle className="size-4" aria-hidden="true" />{t("filters.needsAttention", { count: attentionLeads.length })}</Button>
-        <Select aria-label={t("statusFilter")} value={status} onValueChange={setStatus} className="md:w-52"><SelectItem value="all">{t("filters.all")}</SelectItem>{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`leadStatus.${value}`)}</SelectItem>)}</Select>
-        <Button asChild variant="outline"><Link href="/crm/leads/meta">{t("meta.title")}</Link></Button>
-        <Button type="button" onClick={openCreate}><Plus className="size-4" aria-hidden="true" />{t("leads.add")}</Button>
+      <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 md:flex-row md:flex-wrap md:items-center">
+        <label className="relative w-full min-w-0 md:w-96"><span className="sr-only">{t("search")}</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" aria-hidden="true" /><Input className="h-10 pl-9" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("leads.searchPlaceholder")} /></label>
+        <Button type="button" variant="ghost" aria-pressed={attentionOnly} disabled={attentionLeads.length === 0} onClick={() => setAttentionOnly((current) => !current)} className={cn("gap-2", attentionOnly && "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]")}><AlertCircle className="size-4" aria-hidden="true" />{t("filters.needsAttention", { count: attentionLeads.length })}</Button>
+        <Select aria-label={t("statusFilter")} value={status} onValueChange={setStatus} className="md:w-60"><SelectItem value="all">{t("filters.all")}</SelectItem>{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value} textValue={t(`leadStatus.${value}`)}><LeadStatusLabel status={value} label={t(`leadStatus.${value}`)} /></SelectItem>)}</Select>
+        <Button asChild variant="ghost" className="gap-2 text-[var(--ui-info-text)] md:ml-auto"><Link href="/crm/leads/meta"><Megaphone className="size-4" aria-hidden="true" />{t("meta.title")}</Link></Button>
+        <Button type="button" className={`${actionFeedback.primary} gap-2`} onClick={openCreate}><Plus className="size-4" aria-hidden="true" />{t("leads.add")}</Button>
       </div>
-      {visible.length ? <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
-        <thead className="border-b border-[var(--ui-border-strong)] bg-[var(--ui-surface-muted)] text-xs uppercase tracking-wide text-[var(--ui-text-muted)]"><tr><th className="px-4 py-3">{t("leads.columns.contact")}</th><th className="px-4 py-3">{t("fields.phone")}</th><th className="px-4 py-3">{t("leads.columns.request")}</th><th className="px-4 py-3">{t("leads.columns.status")}</th><th className="px-4 py-3">{t("leads.columns.responsible")}</th><th className="px-4 py-3">{t("leads.columns.followUp")}</th><th className="px-4 py-3 text-right"><span className="sr-only">{t("recordActions")}</span></th></tr></thead>
-        <tbody className="divide-y divide-[var(--ui-border)]">{visible.map((item) => <tr
+      {visible.length ? <div><table role="table" aria-label={t("leads.title")} className="block w-full text-left text-sm lg:table lg:table-fixed">
+        <thead role="rowgroup" className="sr-only border-b border-[var(--ui-border)] text-xs text-[var(--ui-text-muted)] lg:not-sr-only lg:table-header-group"><tr role="row"><th scope="col" className="px-4 py-3 font-medium lg:w-[24%]">{t("leads.columns.contact")}</th><th scope="col" className="px-4 py-3 font-medium">{t("leads.columns.request")}</th><th scope="col" className="px-4 py-3 font-medium lg:w-[21%]">{t("leads.columns.status")} / {t("leads.columns.responsible")}</th><th scope="col" className="px-4 py-3 font-medium lg:w-[26%]">{t("leads.columns.followUp")}</th><th scope="col" className="px-4 py-3 text-right lg:w-16 xl:w-48"><span className="sr-only">{t("recordActions")}</span></th></tr></thead>
+        <tbody role="rowgroup" className="block divide-y divide-[var(--ui-border)] lg:table-row-group">{visible.map((item) => <tr
+          role="row"
           key={item.id}
           onClick={(event) => { if (!isNestedInteractiveTarget(event.target, event.currentTarget)) openRecord(item); }}
-          className="cursor-pointer outline-none transition-colors hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)]"
-        ><td className="px-4 py-3"><button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="font-medium text-[var(--ui-text)] outline-none">{item.client_name}</button><p className="text-xs text-[var(--ui-text-muted)]">{item.company || item.email || "—"}</p></td><td className="whitespace-nowrap px-4 py-3 tabular-nums text-[var(--ui-text-secondary)]">{item.phone ? <a href={`tel:${item.phone}`} className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{phoneDisplay(item.phone)}</a> : "—"}</td><td className="max-w-80 px-4 py-3 text-[var(--ui-text-secondary)]"><span className="line-clamp-2">{item.request_description || "—"}</span></td><td className="px-4 py-3"><LeadStatusPill status={item.status} label={t(`leadStatus.${item.status}`)} /></td><td className="px-4 py-3 text-[var(--ui-text-secondary)]">{item.responsibleAdmin?.name ?? t("notAssigned")}</td><td className="px-4 py-3"><FollowUpTime value={item.next_contact_at} locale={locale} /></td><td className="px-4 py-3 text-right"><LeadProjectAction lead={item} onConvert={openConversion} presentation="table" /></td></tr>)}</tbody>
+          className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 px-4 py-4 outline-none transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-within:bg-[var(--ui-surface-subtle)] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[var(--ui-focus)] motion-reduce:transition-none lg:table-row lg:p-0"
+        >
+          <td role="cell" className="min-w-0 lg:px-4 lg:py-4">
+            <div className="flex min-w-0 flex-col items-start gap-1">
+              <button type="button" aria-label={t("leads.openRecord", { name: item.client_name })} onClick={() => openRecord(item)} className="max-w-full rounded-sm text-left font-semibold text-[var(--ui-text)] outline-none [overflow-wrap:anywhere]">{item.client_name}</button>
+              {item.company || item.email ? <p className="max-w-full text-xs text-[var(--ui-text-muted)] [overflow-wrap:anywhere]">{item.company || item.email}</p> : null}
+              {item.phone ? <a href={`tel:${item.phone}`} className="whitespace-nowrap rounded-sm text-xs tabular-nums text-[var(--ui-text-secondary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{phoneDisplay(item.phone)}</a> : null}
+            </div>
+          </td>
+          <td role="cell" className="col-span-2 row-start-2 min-w-0 text-[var(--ui-text-secondary)] lg:px-4 lg:py-4"><span className="line-clamp-2 max-w-prose leading-5">{item.request_description || "—"}</span></td>
+          <td role="cell" className="col-span-2 row-start-3 min-w-0 sm:col-span-1 lg:px-4 lg:py-4">
+            <LeadStatusLabel status={item.status} label={t(`leadStatus.${item.status}`)} />
+            <div className="mt-2 text-xs text-[var(--ui-text-muted)]">{item.responsibleAdmin ? <span className="flex items-center gap-2"><UserAvatar decorative imageUrl={item.responsibleAdmin.avatar_url} name={item.responsibleAdmin.name} size="board" /><span className="[overflow-wrap:anywhere]">{item.responsibleAdmin.name}</span></span> : t("notAssigned")}</div>
+          </td>
+          <td role="cell" className="col-span-2 row-start-4 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-3 lg:px-4 lg:py-4">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span className="text-xs text-[var(--ui-text-muted)] lg:sr-only">{t("leads.columns.followUp")}</span><FollowUpTime value={item.next_contact_at} locale={locale} compact /></div>
+            {item.first_contact_date ? <p className="mt-1.5 flex flex-wrap gap-x-1 text-xs text-[var(--ui-text-muted)]"><span>{t("fields.firstContact")}:</span><time dateTime={item.first_contact_date}>{formatDate(item.first_contact_date, locale)}</time></p> : null}
+          </td>
+          <td role="cell" className="col-start-2 row-start-1 -mr-2 -mt-1 text-right lg:m-0 lg:px-2 lg:py-4"><LeadProjectAction lead={item} onConvert={openConversion} /></td>
+        </tr>)}</tbody>
       </table></div> : <EmptyState title={query || status !== "all" || attentionOnly ? t("empty.filteredTitle") : t("leads.emptyTitle")} description={query || status !== "all" || attentionOnly ? t("empty.filteredDescription") : t("leads.emptyDescription")} />}
     </div>
-    <Dialog className={view === "convert" ? "max-w-[62rem]" : undefined} isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? t("leads.detailDescription") : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} lead={lead} onConvert={() => openConversion(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
-      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <Suspense fallback={<p role="status" className="p-6 text-sm text-[var(--ui-text-muted)]">{common("loading")}</p>}><LeadConversionForm projectOptions={projectOptions} action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} /></Suspense> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => setOpenLead(null)}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
+    <Dialog className={view === "convert" ? "max-w-[62rem]" : undefined} isOpen={Boolean(openLead)} onRequestClose={closeDialog} closeDisabled={deleting || conversionPending} closeLabel={t("close")} title={lead ? (view === "convert" ? t("conversion.title") : lead.client_name) : t("leads.add")} description={lead ? (view === "history" ? t("history.description") : view === "convert" ? t("conversion.description", { name: lead.client_name }) : view === "detail" ? undefined : t("leads.formDescription")) : t("leads.formDescription")} headerActions={lead && view !== "edit" && view !== "convert" ? <LeadHeaderActions deleting={deleting} historyOpen={view === "history"} onProposal={() => setProposalLead(lead)} onDelete={() => void remove()} onEdit={() => setView("edit")} onHistory={() => { if (view === "history") setView("detail"); else void showHistory(); }} /> : undefined}>
+      {lead && view === "detail" ? <LeadDetail lead={lead} locale={locale} onFollowUpAction={(action) => changeFollowUp(action)} onSchedule={() => setFollowUpMode(lead.next_contact_at ? "reschedule" : "schedule")} onStatusChange={changeStatus} /> : lead && view === "history" ? <LeadHistoryPanel history={history} error={historyError} locale={locale} /> : lead && view === "convert" ? <Suspense fallback={<p role="status" className="p-6 text-sm text-[var(--ui-text-muted)]">{common("loading")}</p>}><LeadConversionForm projectOptions={projectOptions} action={createProjectFromLead.bind(null, lead.id)} defaultValues={getLeadProjectDefaults(lead, defaultStartDate)} layout="modal" mode="create" onCancel={cancelConversion} onPendingChange={setConversionPending} onSuccess={(projectId) => { setConversionPending(false); router.push(`/projects/${projectId}`); }} /></Suspense> : <div className="overflow-y-auto p-4 sm:p-6"><CrmActionForm submitClassName={actionFeedback.primary} action={saveLead.bind(null, lead?.id ?? null)} cancelLabel={t("cancel")} onCancel={lead ? () => setView("detail") : closeDialog} submitLabel={t("save")} onSuccess={() => setOpenLead(null)}>{(state) => <LeadFormFields admins={admins} defaultStartDate={defaultStartDate} lead={lead} state={state} />}</CrmActionForm></div>}
     </Dialog>
+    {proposalLead ? <ProposalEditor leadId={proposalLead.id} orderName={proposalLead.client_name} onClose={() => setProposalLead(null)} /> : null}
     {lead && followUpMode ? <LeadFollowUpDialog defaultStartDate={defaultStartDate} lead={lead} mode={followUpMode} onClose={() => setFollowUpMode(null)} onSave={(followUp) => changeFollowUp("schedule", followUp)} /> : null}
   </>;
 }
@@ -186,7 +213,7 @@ function LeadFormFields({ admins, defaultStartDate, lead, state }: { admins: Crm
       <FormField as="div" label={t("fields.city")} error={state.fieldErrors?.city} optional><CityCombobox countryCode={metadata.countryCode} describedBy={state.fieldErrors?.city ? "city-error" : undefined} invalid={Boolean(state.fieldErrors?.city)} name="city_search" value={metadata.city} onGeoNamesIdChange={metadata.setCityGeoNamesId} onValueChange={metadata.changeCity} /><input type="hidden" name="city" value={metadata.city} /><input type="hidden" name="city_geonames_id" value={metadata.cityGeoNamesId ?? ""} /></FormField>
       <FormField label={t("fields.siteAddress")} error={state.fieldErrors?.site_address} optional><Input name="site_address" maxLength={500} autoComplete="street-address" defaultValue={lead?.site_address ?? ""} aria-invalid={Boolean(state.fieldErrors?.site_address)} /></FormField>
       <TextField name="approximate_area" label={t("fields.area")} type="number" defaultValue={lead?.approximate_area?.toString()} error={state.fieldErrors?.approximate_area} />
-      <FormField label={t("fields.budget")} error={state.fieldErrors?.budget_amount} optional><div className="flex"><Input className="relative min-w-0 flex-1 rounded-r-none focus-visible:z-10" name="budget_amount" defaultValue={lead ? getCrmBudgetInputValue({ amount: lead.budget_amount, currency: lead.budget_currency }) : ""} inputMode="numeric" placeholder={t("fields.budgetPlaceholder")} aria-invalid={Boolean(state.fieldErrors?.budget_amount)} /><Select aria-label={t("fields.budgetCurrency")} className="relative shrink-0 rounded-l-none border-l-0 bg-[var(--ui-action-primary)] px-0 text-[var(--ui-action-primary-text)] hover:bg-[var(--ui-action-primary-hover)] focus-visible:z-10 [&>span:last-child]:border-[var(--ui-action-primary-hover)] [&>span:last-child]:text-[var(--ui-action-primary-text)] [&_[data-currency-code]]:text-[var(--ui-action-primary-text)]" contentMinWidth="natural" defaultValue={lead && isCrmBudgetCurrency(lead.budget_currency) ? lead.budget_currency : "UAH"} name="budget_currency" width="content">{CRM_BUDGET_CURRENCIES.map((currency) => <SelectItem key={currency} value={currency} textValue={`${getCurrencySymbol(currency)} — ${currency}`}><span className="flex items-center gap-2"><span>{getCurrencySymbol(currency)}</span><span data-currency-code className="text-[var(--ui-text-muted)]">{currency}</span></span></SelectItem>)}</Select></div>{lead?.budget_note && lead.budget_amount === null ? <span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("fields.legacyBudget", { value: lead.budget_note })}</span> : null}</FormField>
+      <FormField label={t("fields.budget")} error={state.fieldErrors?.budget_amount} optional><div className="flex"><Input className="relative min-w-0 flex-1 rounded-r-none focus-visible:z-10" name="budget_amount" defaultValue={lead ? getCrmBudgetInputValue({ amount: lead.budget_amount, currency: lead.budget_currency }) : ""} inputMode="numeric" placeholder={t("fields.budgetPlaceholder")} aria-invalid={Boolean(state.fieldErrors?.budget_amount)} /><Select aria-label={t("fields.budgetCurrency")} className={`${actionFeedback.primary} ${actionFeedback.joined} relative shrink-0 rounded-l-none border-l-0 bg-[var(--ui-action-primary)] px-0 text-[var(--ui-action-primary-text)] hover:bg-[var(--ui-action-primary-hover)] focus-visible:z-10 [&>span:last-child]:border-[var(--ui-action-primary-hover)] [&>span:last-child]:text-[var(--ui-action-primary-text)] [&_[data-currency-code]]:text-[var(--ui-action-primary-text)]`} contentMinWidth="natural" defaultValue={lead && isCrmBudgetCurrency(lead.budget_currency) ? lead.budget_currency : "UAH"} name="budget_currency" width="content">{CRM_BUDGET_CURRENCIES.map((currency) => <SelectItem key={currency} value={currency} textValue={`${getCurrencySymbol(currency)} — ${currency}`}><span className="flex items-center gap-2"><span>{getCurrencySymbol(currency)}</span><span data-currency-code className="text-[var(--ui-text-muted)]">{currency}</span></span></SelectItem>)}</Select></div>{lead?.budget_note && lead.budget_amount === null ? <span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("fields.legacyBudget", { value: lead.budget_note })}</span> : null}</FormField>
       <FormField as="div" label={t("fields.firstContact")} error={state.fieldErrors?.first_contact_date}><DatePicker name="first_contact_date" defaultValue={lead?.first_contact_date ?? defaultStartDate} locale={locale} invalid={Boolean(state.fieldErrors?.first_contact_date)} /></FormField>
       <LeadFollowUpFields defaultStartDate={defaultStartDate} lead={lead} state={state} />
       <AdminField admins={admins} defaultValue={lead?.responsible_admin_id} error={state.fieldErrors?.responsible_admin_id} label={t("fields.responsible")} emptyLabel={t("notAssigned")} />
@@ -251,22 +278,23 @@ function LeadFollowUpDialog({ defaultStartDate, lead, mode, onClose, onSave }: {
       {error ? <p role="alert" className="text-sm text-[var(--ui-danger-text)]">{error}</p> : null}
       <div className="flex justify-end gap-2 border-t border-[var(--ui-border)] pt-4">
         <Button size="lg" type="button" variant="outline" disabled={pending} onClick={onClose}>{t("cancel")}</Button>
-        <Button size="lg" type="submit" disabled={pending || !date || !time}>{pending ? t("saving") : t(mode === "schedule" ? "followUp.scheduleAction" : "followUp.rescheduleAction")}</Button>
+        <Button size="lg" className={actionFeedback.primary} type="submit" disabled={pending || !date || !time}>{pending ? t("saving") : t(mode === "schedule" ? "followUp.scheduleAction" : "followUp.rescheduleAction")}</Button>
       </div>
     </form>
   </Dialog>;
 }
 
-function LeadHeaderActions({ deleting, historyOpen, lead, onConvert, onDelete, onEdit, onHistory }: { deleting: boolean; historyOpen: boolean; lead: CrmLead; onConvert: () => void; onDelete: () => void; onEdit: () => void; onHistory: () => void }) {
+function LeadHeaderActions({ deleting, historyOpen, onDelete, onEdit, onHistory, onProposal }: { deleting: boolean; historyOpen: boolean; onDelete: () => void; onEdit: () => void; onHistory: () => void; onProposal: () => void }) {
   const t = useTranslations("Crm");
+  const proposal = useTranslations("Finance.proposal");
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const setMenuTriggerRef = useCallback((node: HTMLButtonElement | null) => setPortalContainer(node?.closest<HTMLElement>("dialog, [role='dialog']") ?? null), []);
   const [menuOpen, setMenuOpen] = useState(false);
 
   return <>
-    <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onHistory} aria-label={t(historyOpen ? "history.back" : "history.action")}>{historyOpen ? <ArrowLeft className="size-4" aria-hidden="true" /> : <History className="size-4" aria-hidden="true" />}<span className="hidden sm:inline">{t(historyOpen ? "history.back" : "history.action")}</span></Button>
-    <LeadProjectAction lead={lead} onConvert={() => onConvert()} presentation="header" />
-    <Button type="button" variant="ghost" className="size-11 p-0 sm:w-auto sm:px-3" onClick={onEdit} aria-label={t("edit")}><Pencil className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{t("edit")}</span></Button>
+    <Button type="button" className={`${actionFeedback.primary} size-11 gap-2 p-0 sm:w-auto sm:px-3`} onClick={onProposal} aria-label={proposal("action")}><FileText className="size-4" aria-hidden="true" /><span className="hidden sm:inline">{proposal("action")}</span></Button>
+    <Tooltip content={t(historyOpen ? "history.back" : "history.action")}><Button type="button" variant="ghost" className="size-11 p-0" onClick={onHistory} aria-label={t(historyOpen ? "history.back" : "history.action")}>{historyOpen ? <ArrowLeft className="size-4" aria-hidden="true" /> : <History className="size-4" aria-hidden="true" />}</Button></Tooltip>
+    <Tooltip content={t("edit")}><Button type="button" variant="ghost" className="size-11 p-0" onClick={onEdit} aria-label={t("edit")}><Pencil className="size-4" aria-hidden="true" /></Button></Tooltip>
     <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
       <Popover.Trigger asChild><Button ref={setMenuTriggerRef} type="button" variant="ghost" className="size-11 p-0" aria-label={t("recordActions")}><MoreHorizontal className="size-5" aria-hidden="true" /></Button></Popover.Trigger>
       <Popover.Portal container={portalContainer ?? undefined}><Popover.Content align="end" sideOffset={6} className="z-[80] min-w-48 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-[var(--ui-shadow-popover)]"><button type="button" disabled={deleting} onClick={() => { setMenuOpen(false); onDelete(); }} className="flex min-h-11 w-full items-center gap-2 rounded-[calc(var(--ui-radius-control)-0.125rem)] px-3 text-left text-sm font-medium text-[var(--ui-danger-text)] outline-none transition-colors hover:bg-[var(--ui-danger-surface)] focus-visible:bg-[var(--ui-danger-surface)] disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />{deleting ? t("deleting") : t("delete")}</button></Popover.Content></Popover.Portal>
@@ -274,11 +302,10 @@ function LeadHeaderActions({ deleting, historyOpen, lead, onConvert, onDelete, o
   </>;
 }
 
-function LeadProjectAction({ lead, onConvert, presentation }: { lead: CrmLead; onConvert: (lead: CrmLead) => void; presentation: "header" | "table" }) {
+function LeadProjectAction({ lead, onConvert }: { lead: CrmLead; onConvert: (lead: CrmLead) => void }) {
   const t = useTranslations("Crm");
-  const isTableAction = presentation === "table";
-  const buttonClassName = isTableAction ? "h-11 whitespace-nowrap px-3" : "size-11 p-0 sm:w-auto sm:px-3";
-  const labelClassName = isTableAction ? "hidden xl:inline" : "hidden sm:inline";
+  const buttonClassName = "size-11 gap-2 p-0 xl:w-auto xl:px-3";
+  const labelClassName = "hidden xl:inline";
 
   if (lead.project_id) {
     return <Button asChild variant="ghost" className={buttonClassName}><Link href={`/projects/${lead.project_id}`} aria-label={t("conversion.openProject")} onClick={(event) => event.stopPropagation()}><FolderKanban className="size-4" aria-hidden="true" /><span className={labelClassName}>{t("conversion.openProject")}</span></Link></Button>;
@@ -308,7 +335,7 @@ function LeadDetail({ lead, locale, onFollowUpAction, onSchedule, onStatusChange
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
         <DetailField icon={Building2} label={t("fields.company")} value={lead.company} />
-        <DetailField icon={CircleDot} label={t("fields.status")} value={<div className="flex flex-col items-start gap-2"><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending || Boolean(lead.project_id)} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value} textValue={t(`leadStatus.${value}`)}><LeadStatusPill status={value} label={t(`leadStatus.${value}`)} /></SelectItem>)}</Select>{lead.project_id ? <p className="text-xs text-[var(--ui-text-muted)]">{t("status.linkedProjectLocked")}</p> : null}{lead.status === "invalid" ? <Select aria-label={t("status.invalidReasonLabel")} value={lead.invalid_reason ?? ""} disabled={statusPending} onValueChange={(value) => { if (value !== "" && !isCrmLeadInvalidReason(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange("invalid", value || null); setStatusError(result.error ?? null); }); }} className="max-w-64"><SelectItem value="">{t("invalidReason.notSpecified")}</SelectItem>{CRM_LEAD_INVALID_REASONS.map((reason) => <SelectItem key={reason} value={reason}>{t(`invalidReason.${reason}`)}</SelectItem>)}</Select> : null}{statusError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}</div>} />
+        <DetailField icon={CircleDot} label={t("fields.status")} value={<div className="flex flex-col items-start gap-2"><Select aria-label={t("status.changeLabel")} value={lead.status} disabled={statusPending || Boolean(lead.project_id)} onValueChange={(value) => { if (!isCrmLeadStatus(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange(value); setStatusError(result.error ?? null); }); }} className="max-w-64">{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value} textValue={t(`leadStatus.${value}`)}><LeadStatusLabel status={value} label={t(`leadStatus.${value}`)} /></SelectItem>)}</Select>{lead.project_id ? <p className="text-xs text-[var(--ui-text-muted)]">{t("status.linkedProjectLocked")}</p> : null}{lead.status === "invalid" ? <Select aria-label={t("status.invalidReasonLabel")} value={lead.invalid_reason ?? ""} disabled={statusPending} onValueChange={(value) => { if (value !== "" && !isCrmLeadInvalidReason(value)) return; setStatusError(null); startStatusTransition(async () => { const result = await onStatusChange("invalid", value || null); setStatusError(result.error ?? null); }); }} className="max-w-64"><SelectItem value="">{t("invalidReason.notSpecified")}</SelectItem>{CRM_LEAD_INVALID_REASONS.map((reason) => <SelectItem key={reason} value={reason}>{t(`invalidReason.${reason}`)}</SelectItem>)}</Select> : null}{statusError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{statusError}</p> : null}</div>} />
         <DetailField icon={Mail} label={t("fields.email")} value={lead.email ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a> : null} />
         <DetailField icon={Phone} label={t("fields.phone")} value={lead.phone ? <a className="font-medium text-[var(--ui-text)] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a> : null} />
         <DetailField icon={Megaphone} label={t("fields.source")} value={source} />
@@ -318,7 +345,7 @@ function LeadDetail({ lead, locale, onFollowUpAction, onSchedule, onStatusChange
         <DetailField icon={Ruler} label={t("fields.area")} value={lead.approximate_area !== null ? `${lead.approximate_area} m²` : null} />
         <DetailField icon={Banknote} label={t("fields.budget")} value={budget} />
         <DetailField icon={CalendarDays} label={t("fields.firstContact")} value={formatDate(lead.first_contact_date, locale)} />
-        <DetailField icon={CalendarDays} label={t("fields.nextContact")} value={<div className="space-y-2">{lead.next_contact_at ? <FollowUpTime value={lead.next_contact_at} locale={locale} /> : null}{lead.next_contact_at && !lead.responsible_admin_id ? <span className="flex items-center gap-1.5 text-xs text-[var(--ui-warning-text)]"><AlertCircle className="size-3.5" aria-hidden="true" />{t("reminder.needsResponsible")}</span> : null}<div className="flex flex-wrap gap-2">{lead.next_contact_at ? <><Button size="sm" disabled={followUpPending} onClick={() => { setFollowUpError(null); startFollowUpTransition(async () => { const result = await onFollowUpAction("complete"); setFollowUpError(result.error ?? null); }); }}><CalendarCheck2 className="size-4" aria-hidden="true" />{t("followUp.complete")}</Button><Button size="sm" variant="outline" disabled={followUpPending} onClick={onSchedule}>{t("followUp.reschedule")}</Button><Button size="sm" variant="ghost" disabled={followUpPending} onClick={() => { setFollowUpError(null); startFollowUpTransition(async () => { const result = await onFollowUpAction("cancel"); setFollowUpError(result.error ?? null); }); }}><XCircle className="size-4" aria-hidden="true" />{t("followUp.cancel")}</Button></> : lead.status !== "invalid" ? <Button size="sm" variant="outline" onClick={onSchedule}>{t("followUp.schedule")}</Button> : null}</div>{followUpError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{followUpError}</p> : null}</div>} />
+        <DetailField icon={CalendarDays} label={t("fields.nextContact")} value={<div className="space-y-2">{lead.next_contact_at ? <FollowUpTime value={lead.next_contact_at} locale={locale} /> : null}{lead.next_contact_at && !lead.responsible_admin_id ? <span className="flex items-center gap-1.5 text-xs text-[var(--ui-warning-text)]"><AlertCircle className="size-3.5" aria-hidden="true" />{t("reminder.needsResponsible")}</span> : null}<div className="flex flex-wrap gap-2">{lead.next_contact_at ? <><Button size="sm" className={`${actionFeedback.primary} gap-2`} disabled={followUpPending} onClick={() => { setFollowUpError(null); startFollowUpTransition(async () => { const result = await onFollowUpAction("complete"); setFollowUpError(result.error ?? null); }); }}><CalendarCheck2 className="size-4" aria-hidden="true" />{t("followUp.complete")}</Button><Button size="sm" variant="outline" disabled={followUpPending} onClick={onSchedule}>{t("followUp.reschedule")}</Button><Button size="sm" variant="ghost" className="gap-1.5" disabled={followUpPending} onClick={() => { setFollowUpError(null); startFollowUpTransition(async () => { const result = await onFollowUpAction("cancel"); setFollowUpError(result.error ?? null); }); }}><XCircle className="size-4" aria-hidden="true" />{t("followUp.cancel")}</Button></> : lead.status !== "invalid" ? <Button size="sm" variant="outline" onClick={onSchedule}>{t("followUp.schedule")}</Button> : null}</div>{followUpError ? <p role="alert" className="text-xs text-[var(--ui-danger-text)]">{followUpError}</p> : null}</div>} />
       </dl>
       <div className="mt-6 grid gap-5 border-t border-[var(--ui-border)] pt-5">
         <DetailField icon={FileText} label={t("fields.request")} value={lead.request_description} multiline />
@@ -328,16 +355,27 @@ function LeadDetail({ lead, locale, onFollowUpAction, onSchedule, onStatusChange
   </div>;
 }
 
-function FollowUpTime({ locale, value }: { locale: string; value: string | null }) {
+function FollowUpTime({ compact = false, locale, value }: { compact?: boolean; locale: string; value: string | null }) {
   const t = useTranslations("Crm");
   if (!value) return <span className="text-sm text-[var(--ui-text-muted)]">—</span>;
   const overdue = isCrmFollowUpOverdue(value);
-  return <span className={`inline-flex items-center gap-1.5 text-sm font-medium tabular-nums ${overdue ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text-secondary)]"}`}>{overdue ? <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" /> : null}<span>{formatCalendarDateTime(value, locale)}</span>{overdue ? <span className="text-xs font-semibold uppercase">{t("followUp.overdue")}</span> : null}</span>;
+  return <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums", compact ? "text-xs" : "text-sm font-medium", overdue ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text-secondary)]")}>{overdue ? <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" /> : null}<time dateTime={value}>{formatCalendarDateTime(value, locale)}</time>{overdue ? <span className={compact ? "text-xs" : "text-xs font-semibold uppercase"}>{t("followUp.overdue")}</span> : null}</span>;
 }
 
-function LeadStatusPill({ label, status }: { label: string; status: CrmLead["status"] }) {
+const leadStatusIcons: Record<CrmLead["status"], LucideIcon> = {
+  new: CircleDashed,
+  contacted: CircleDot,
+  discussion: MessagesSquare,
+  proposal: FileText,
+  won: CircleCheck,
+  lost: XCircle,
+  invalid: CircleSlash,
+};
+
+function LeadStatusLabel({ label, status }: { label: string; status: CrmLead["status"] }) {
   const style = getCrmLeadStatusBadgeStyle(status);
-  return <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-medium", style.className, "border-0")}>{label}</span>;
+  const Icon = leadStatusIcons[status];
+  return <span className="inline-flex min-w-0 items-center gap-2 text-sm font-medium leading-5 text-[var(--ui-text-secondary)]"><Icon className={cn("size-3.5 shrink-0", style.className, "border-0 bg-transparent")} aria-hidden="true" /><span>{label}</span></span>;
 }
 
 function LeadHistoryPanel({ error, history, locale }: { error: string | null; history: CrmLeadHistory[] | null; locale: string }) {

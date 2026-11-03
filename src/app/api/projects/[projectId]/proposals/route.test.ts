@@ -22,7 +22,8 @@ it.each(["coefficient", "unit", "legacy", "manual"].flatMap(state => [true, fals
     gross: state === "unit" ? "32000.00" : "4800.00", vatRate: null, vatAmount: "0",
     rows: [{ ...proposalDesignSample.rows[0], percentage: "100", gross: state === "unit" ? "32000.00" : "4800.00" }],
   });
-  let saved: { id: string; snapshot: typeof source; pdf: string } | null = null;
+  if (source.schemaVersion !== 2) throw new Error("Expected a project proposal");
+  let saved: { id: string; snapshot: ReturnType<typeof createProposalSnapshot>; pdf: string } | null = null;
   const sourceRpc = vi.fn(async () => ({ data: source, error: null }));
   mocks.client.mockResolvedValue({ rpc: sourceRpc, from: (table: string) => {
     const query = { select: () => query, eq: () => query, neq: () => query,

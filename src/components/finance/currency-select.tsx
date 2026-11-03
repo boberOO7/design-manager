@@ -21,12 +21,14 @@ export function groupFinanceCurrencies(currencies: FinanceCurrency[], reportingC
   return { reporting, common, other };
 }
 
-export function FinanceCurrencySelect({ className, currencies, name, onValueChange, reportingCurrency, size, value, "aria-label": ariaLabel }: {
+export function FinanceCurrencySelect({ className, currencies, name, onValueChange, placeholder, reportingCurrency, size, value, "aria-label": ariaLabel, "aria-invalid": ariaInvalid }: {
   "aria-label"?: string;
+  "aria-invalid"?: boolean;
   className?: string;
   currencies: FinanceCurrency[];
   name: string;
   onValueChange: (value: string) => void;
+  placeholder?: string;
   reportingCurrency: string;
   size?: "compact" | "default";
   value: string;
@@ -34,7 +36,7 @@ export function FinanceCurrencySelect({ className, currencies, name, onValueChan
   const t = useTranslations("Finance");
   const groups = groupFinanceCurrencies(currencies, reportingCurrency);
   const items = (group: FinanceCurrency[]) => group.map((currency) => <SelectItem key={currency.code} value={currency.code}>{currency.code}</SelectItem>);
-  return <Select aria-label={ariaLabel ?? (name === "baseCurrency" ? t("baseCurrency") : t("currency"))} className={className} name={name} size={size} value={value} onValueChange={onValueChange} required searchPlaceholder={t("searchCurrencies")} searchEmptyMessage={t("currencySearchEmpty")}>
+  return <Select aria-label={ariaLabel ?? (name === "baseCurrency" ? t("baseCurrency") : t("currency"))} aria-invalid={ariaInvalid} className={className} name={name} size={size} value={value} placeholder={placeholder} onValueChange={onValueChange} required searchPlaceholder={t("searchCurrencies")} searchEmptyMessage={t("currencySearchEmpty")}>
     {groups.reporting.length ? <SelectGroup label={t("reportingCurrencyGroup")}>{items(groups.reporting)}</SelectGroup> : null}
     <SelectGroup label={t("commonCurrencies")}>{items(groups.common)}</SelectGroup>
     <SelectGroup label={t("otherCurrencies")}>{items(groups.other)}</SelectGroup>

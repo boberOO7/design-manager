@@ -1,0 +1,36 @@
+.primary {
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary:where(:not(:disabled):not([aria-disabled="true"])):hover {
+    background-color: color-mix(in srgb, var(--ui-action-primary) 82%, var(--ui-action-primary-text));
+    box-shadow: 0 3px 8px rgb(0 0 0 / 0.18);
+    transform: translateY(-1px);
+  }
+
+  .primary.joined:hover {
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+.primary:where(:not(:disabled):not([aria-disabled="true"])):active {
+  background-color: color-mix(in srgb, var(--ui-action-primary) 74%, var(--ui-action-primary-text));
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.18);
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary {
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .primary:hover,
+  .primary:active {
+    transform: none;
+  }
+}

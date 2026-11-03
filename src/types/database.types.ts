@@ -624,6 +624,64 @@ export type Database = {
           },
         ]
       }
+      crm_lead_proposals: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string
+          pdf: string
+          request_id: string
+          revision: number
+          snapshot: Json
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id: string
+          pdf: string
+          request_id: string
+          revision: number
+          snapshot: Json
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string
+          pdf?: string
+          request_id?: string
+          revision?: number
+          snapshot?: Json
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_proposals_lead_id_studio_id_fkey"
+            columns: ["lead_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "crm_lead_proposals_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_leads: {
         Row: {
           approximate_area: number | null
@@ -11763,6 +11821,18 @@ export type Database = {
           p_stages: Json
           p_studio_id: string
           p_template_id?: string
+        }
+        Returns: string
+      }
+      save_crm_lead_proposal: {
+        Args: {
+          p_actor_id: string
+          p_lead_id: string
+          p_pdf: string
+          p_request_id: string
+          p_snapshot: Json
+          p_source: Json
+          p_studio_id: string
         }
         Returns: string
       }

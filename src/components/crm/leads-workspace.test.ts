@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { createTranslator } from "next-intl";
 import en from "../../../messages/en.json";
 import uk from "../../../messages/uk.json";
+import { selectMessages } from "../../i18n/message-scopes";
 
 const workspacePath = new URL("./leads-workspace.tsx", import.meta.url);
 const actionsPath = new URL("../../app/(app)/crm/actions.ts", import.meta.url);
@@ -10,6 +12,19 @@ const cityComboboxPath = new URL("../projects/city-combobox.tsx", import.meta.ur
 const projectFormPath = new URL("../projects/project-form.tsx", import.meta.url);
 
 describe("CRM leads workspace contract", () => {
+  for (const [locale, messages] of [["en", en], ["uk", uk]] as const) {
+    it(`resolves every literal lead UI key from the scoped client messages in ${locale}`, async () => {
+      const workspace = await readFile(workspacePath, "utf8");
+      const translate = createTranslator({ locale, messages: selectMessages(messages, "crm"), namespace: "Crm", onError: (error) => { throw error; } });
+      for (const [, key] of workspace.matchAll(/\bt\("([^"]+)"/g)) {
+        expect(translate.has(key), key).toBe(true);
+      }
+      for (const key of ["leads.columns.status", "leads.columns.responsible", "leads.columns.followUp", "fields.firstContact", "recordActions"]) {
+        expect(translate(key), key).not.toBe(`Crm.${key}`);
+      }
+    });
+  }
+
   it("reuses Project metadata controls and defaults new lead location to Ukraine", async () => {
     const [workspace, controls] = await Promise.all([readFile(workspacePath, "utf8"), readFile(metadataControlsPath, "utf8")]);
     expect(workspace).toContain("ProjectCountrySelect");
@@ -53,8 +68,8 @@ describe("CRM leads workspace contract", () => {
     expect(en.Crm.status.linkedProjectLocked).toBeTruthy();
     expect(uk.Crm.status.linkedProjectLocked).toBeTruthy();
     expect(workspace).toContain("getCrmLeadStatusBadgeStyle");
-    expect(workspace).toContain("<LeadStatusPill status={item.status}");
-    expect(workspace).toContain("<LeadStatusPill status={value}");
+    expect(workspace).toContain("<LeadStatusLabel status={item.status}");
+    expect(workspace).toContain("<LeadStatusLabel status={value}");
   });
 
   it("explains when a follow-up date cannot schedule a reminder", async () => {
@@ -161,15 +176,17 @@ describe("CRM leads workspace contract", () => {
     expect(uk.Crm.leadStatus.won).toBe("Виграно");
   });
 
-  it("keeps Project actions in the header and uses structured contact and budget inputs", async () => {
+  it("keeps the proposal in the header with icon-only tools and uses structured contact and budget inputs", async () => {
     const workspace = await readFile(workspacePath, "utf8");
     const headerStart = workspace.indexOf("function LeadHeaderActions");
     const detailStart = workspace.indexOf("function LeadDetail");
-    const header = workspace.slice(headerStart, detailStart);
+    const header = workspace.slice(headerStart, workspace.indexOf("function LeadProjectAction"));
     const detail = workspace.slice(detailStart, workspace.indexOf("function LeadHistoryPanel"));
-    expect(header).toContain('<LeadProjectAction lead={lead} onConvert={() => onConvert()} presentation="header" />');
-    expect(header).toContain('t("conversion.openProject")');
-    expect(header).toContain('t("conversion.action")');
+    expect(header).not.toContain("<LeadProjectAction");
+    expect(header).toContain('onClick={onProposal}');
+    expect(header).toContain('<Tooltip content={t("edit")}');
+    expect(header).not.toContain('<span className="hidden sm:inline">{t("edit")}</span>');
+    expect(workspace).not.toContain('t("leads.detailDescription")');
     expect(detail).not.toContain('t("conversion.openProject")');
     expect(detail).not.toContain('t("conversion.action")');
     expect(workspace).toContain("<PhoneInput");
@@ -179,12 +196,18 @@ describe("CRM leads workspace contract", () => {
     expect(Object.keys(en.Crm.fields).sort()).toEqual(Object.keys(uk.Crm.fields).sort());
   });
 
-  it("reuses the detail conversion action from the Leads table without opening the record", async () => {
+  it("opens or creates a project directly from the compact list without a redundant lead menu", async () => {
     const workspace = await readFile(workspacePath, "utf8");
     const table = workspace.slice(workspace.indexOf("<table"), workspace.indexOf("</table>"));
     const projectAction = workspace.slice(workspace.indexOf("function LeadProjectAction"), workspace.indexOf("function LeadDetail"));
-    expect(table).toContain('<LeadProjectAction lead={item} onConvert={openConversion} presentation="table" />');
-    expect(table).toContain('text-right"><span className="sr-only">{t("recordActions")}</span>');
+    expect(table).toContain('<LeadProjectAction lead={item} onConvert={openConversion} />');
+    expect(table).not.toContain("<Popover");
+    expect(workspace).not.toContain("LeadRowActions");
+    expect(table).toContain('href={`tel:${item.phone}`}');
+    expect(table).toContain('t("fields.firstContact")');
+    expect(table).toContain('dateTime={item.first_contact_date}>{formatDate(item.first_contact_date, locale)}');
+    expect(table).toContain('imageUrl={item.responsibleAdmin.avatar_url}');
+    expect(table).toContain('<span className="sr-only">{t("recordActions")}</span>');
     expect(workspace).toContain('function openConversion(item: CrmLead)');
     expect(workspace).toContain('setView("convert")');
     expect(projectAction).toContain('if (lead.project_id)');

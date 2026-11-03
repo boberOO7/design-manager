@@ -114,7 +114,8 @@ defined by whole namespaces in `src/i18n/message-scopes.ts`:
   and city messages also cover the deferred profile/crop/Google editor everywhere.
 - Domain layouts add their own messages through the server-only `DomainMessages`.
   Projects owns its list, workspace, templates, forms, and task editors; CRM also
-  owns the Project form namespaces needed for Lead conversion. Dashboard, My
+  owns Finance for the shared Lead proposal editor and the Project form
+  namespaces needed for Lead conversion. Dashboard, My
   Tasks, and Projects share the task namespace group.
 - Office adds only `Office`; Equipment, Assignments, and Submissions add separate
   scopes below it. Other domains have their own layouts. Server-rendered text
