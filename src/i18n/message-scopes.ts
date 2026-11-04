@@ -16,7 +16,7 @@ export const messageScopes = {
   crm: ["Crm", "Finance", "ProjectWorkspace", "ProjectForm", "ProjectTypes", "Priority", "Roles"],
   finance: ["Finance"],
   feedback: ["Feedback"],
-  statistics: ["Statistics"],
+  statistics: ["Statistics", "TimeOff"],
   office: ["Office"],
   equipment: ["Equipment"],
   assignments: ["OfficeAssignments"],

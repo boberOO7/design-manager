@@ -9,11 +9,12 @@ import { mapMetaLead, metaSubmittedAt } from "./mapping";
 export type MetaLeadEvent = { leadgen_id: string; form_id?: string; ad_id?: string; submitted_at?: string };
 type Job = Database["public"]["Tables"]["meta_lead_jobs"]["Row"];
 
-export async function enqueueMetaLeads(events: MetaLeadEvent[], retryFailed = false, manual = false) {
+export async function enqueueMetaLeads(events: MetaLeadEvent[], retryFailed = false, manual = false, notifyAdmins = true) {
   const target = getMetaLeadTarget();
   if (!events.length) return 0;
   const { data, error } = await createAdminClient().rpc("enqueue_meta_lead_jobs", {
-    p_page_id: target.pageId, p_studio_id: target.studioId, p_events: events, p_retry_failed: retryFailed, p_manual: manual,
+    p_page_id: target.pageId, p_studio_id: target.studioId,
+    p_events: events.map(event => ({ ...event, notify_admins: notifyAdmins })), p_retry_failed: retryFailed, p_manual: manual,
   });
   if (error) throw new MetaLeadError("meta_enqueue_failed");
   return data;

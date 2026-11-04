@@ -33,6 +33,8 @@ describe("CRM lead source selection", () => {
   it("restores arbitrary legacy source text through Other without losing it", () => {
     expect(getCrmLeadSourceFormValues("Architecture expo")).toEqual({ source: "other", sourceCustom: "Architecture expo" });
     expect(getCrmLeadSourceFormValues("website")).toEqual({ source: "website", sourceCustom: "" });
+    expect(getCrmLeadSourceFormValues("facebook")).toEqual({ source: "facebook", sourceCustom: "" });
+    expect(crmLeadSchema.parse({ ...validLead, source: "facebook" }).source).toBe("facebook");
     expect(getCrmLeadSourceFormValues(null)).toEqual({ source: "", sourceCustom: "" });
   });
 

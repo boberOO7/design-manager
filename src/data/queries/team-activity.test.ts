@@ -27,8 +27,9 @@ describe("team activity month query", () => {
   ])("bounds log and submission reads to $month and reuses the configured workday", async ({ month, next, capacity, setting, expected }) => {
     mocks.admin.mockResolvedValue({ studio_id: "studio" });
     const calls: Array<{ table: string; field: string; value: unknown; op: string }> = [];
+    const selections: Array<{ table: string; columns: string }> = [];
     const from = vi.fn((table: string) => ({
-      select: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), or: vi.fn().mockReturnThis(),
+      select: vi.fn(function (this: unknown, columns: string) { selections.push({ table, columns }); return this; }), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), or: vi.fn().mockReturnThis(),
       eq: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "eq" }); return this; }),
       gte: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "gte" }); return this; }),
       lt: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "lt" }); return this; }),
@@ -47,7 +48,8 @@ describe("team activity month query", () => {
     }
     expect(calls).toContainEqual({ table: "time_off_requests", field: "studio_id", value: "studio", op: "eq" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "status", value: "approved", op: "eq" });
-    expect(calls).toContainEqual({ table: "time_off_requests", field: "all_day", value: true, op: "eq" });
+    expect(calls.some(call => call.table === "time_off_requests" && call.field === "all_day")).toBe(false);
+    expect(selections).toContainEqual({ table: "time_off_requests", columns: "id,user_id,request_type,start_date,end_date,all_day,start_time,end_time" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "cancelled_at", value: null, op: "is" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "start_date", value: next, op: "lt" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "end_date", value: `${month}-01`, op: "gte" });

@@ -1,22 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { activityMonthBounds, buildTeamActivity, getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, teamActivityReportSchema, type TeamActivityEntry, type TeamActivityTimer, type TeamActivityEvent } from "./team-activity";
+import { activityMonthBounds, buildTeamActivity, getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, teamActivityReportSchema, type TeamActivityEntry, type TeamActivityTimer, type TeamActivityEvent, type TeamActivityTimeOff } from "./team-activity";
 
 const task = (id: string) => ({ id, title: `Task ${id}`, project_id: "project", project: { id: "project", name: "Project" } });
 const entry = (id: string, date: string, minutes: number, taskId = "a"): TeamActivityEntry => ({
   id, user_id: "employee", work_date: date, minutes, activity_kind: "task", internal_activity_type: null, review_round_id: null, task: task(taskId),
 });
-function report(entries: TeamActivityEntry[] = [], options: { month?: string; submissions?: Array<{ user_id: string; work_date: string }>; timers?: TeamActivityTimer[]; events?: TeamActivityEvent[]; now?: string } = {}) {
+function report(entries: TeamActivityEntry[] = [], options: { month?: string; submissions?: Array<{ user_id: string; work_date: string }>; timers?: TeamActivityTimer[]; events?: TeamActivityEvent[]; timeOff?: TeamActivityTimeOff[]; now?: string } = {}) {
   return buildTeamActivity({ month: "2026-10", today: "2026-10-16", workdayMinutes: 420,
     people: [{ id: "employee", name: "Employee", active: true }, { id: "empty", name: "Empty", active: true }, { id: "inactive", name: "Inactive", active: false }],
     entries, submissions: [], timers: [], now: "2026-10-16T12:00:00Z", ...options });
 }
 
 describe("team activity calendar", () => {
+  const absence = (changes: Partial<TeamActivityTimeOff> = {}): TeamActivityTimeOff => ({
+    id: "absence", user_id: "employee", request_type: "day_off", start_date: "2026-10-16", end_date: "2026-10-16",
+    all_day: false, start_time: "14:00:00", end_time: "18:00:00", ...changes,
+  });
+
+  it("retains partial absence details without changing recorded work, the workday kind or its target", () => {
+    const request = absence();
+    const data = teamActivityReportSchema.parse(report([entry("work", "2026-10-16", 240)], { timeOff: [request, request, absence({ id: "other-user", user_id: "empty" })] }));
+    const day = data.people.find(person => person.id === "employee")!.days[15];
+    expect(day).toMatchObject({ kind: "day", minutes: 240, recorded: true, absences: [
+      { id: "absence", requestType: "day_off", allDay: false, startTime: "14:00", endTime: "18:00", minutes: 240 },
+    ] });
+    expect(day.absences).toHaveLength(1);
+    expect(getTeamActivityDayState(day, data.workdayMinutes)).toBe("under");
+    expect(data.people.find(person => person.id === "employee")!.days[14].absences).toEqual([]);
+    expect(data.workdayMinutes).toBe(420);
+  });
+
+  it("shows full-day leave on each covered date and retains each distinct partial request without summing overlaps", () => {
+    const data = report([], { timeOff: [
+      absence({ id: "vacation", request_type: "vacation", start_date: "2026-09-30", end_date: "2026-10-02", all_day: true, start_time: null, end_time: null }),
+      absence({ id: "medical", request_type: "medical_appointment", start_time: "15:00:00", end_time: "16:30:00" }),
+      absence({ id: "sick", request_type: "sick_leave", start_time: "16:00:00", end_time: "18:00:00" }),
+    ] });
+    const days = data.people.find(person => person.id === "employee")!.days;
+    expect(days[0]).toMatchObject({ kind: "time_off", recorded: false, minutes: 0, absences: [{ requestType: "vacation", allDay: true, minutes: null }] });
+    expect(days[1].absences).toHaveLength(1);
+    expect(days[2].absences).toEqual([]);
+    expect(days[15]).toMatchObject({ kind: "day", recorded: false, minutes: 0 });
+    expect(days[15].absences.map(item => [item.requestType, item.minutes])).toEqual([["medical_appointment", 90], ["sick_leave", 120]]);
+  });
   const event = (id: string, changes: Partial<TeamActivityEvent> = {}): TeamActivityEvent => ({
     id, title: `Meeting ${id}`, event_type: "meeting", starts_at: "2026-10-07T09:00:00Z", ends_at: "2026-10-07T10:00:00Z",
     all_day: false, organizer_id: "employee", assignee_id: null, project_id: "project", project: task("a").project,
     cancelled_at: null, recurrence_rule: null, series_id: null, occurrence_start: null, compensates_time_off_request_id: null,
     invites: [{ event_id: id, user_id: "employee", status: "accepted" }], participants: [], ...changes,
+  });
+
+  it("keeps partial absences from suppressing ordinary full-day calendar work", () => {
+    const day = report([], { now: "2026-10-17T12:00:00Z", timeOff: [absence()], events: [
+      event("trip", { event_type: "business_trip", all_day: true, starts_at: "2026-10-15T21:00:00Z", ends_at: "2026-10-16T21:00:00Z",
+        participants: [{ event_id: "trip", user_id: "employee" }] }),
+    ] }).people.find(person => person.id === "employee")!.days[15];
+    expect(day.kind).toBe("day");
+    expect(day.minutes).toBe(480);
+    expect(day.absences[0].minutes).toBe(240);
   });
 
   it("counts completed project events with logged tasks and counts overlapping events once per person", () => {
@@ -117,7 +158,7 @@ describe("team activity calendar", () => {
   it("keeps missing days neutral and distinguishes an explicit zero-hour submission", () => {
     const data = report([], { submissions: [{ user_id: "employee", work_date: "2026-10-02" }] });
     const days = data.people.find(person => person.id === "employee")!.days;
-    expect(days[0]).toEqual({ date: "2026-10-01", kind: "day", weekend: false, recorded: false, minutes: 0, items: [], runningTasks: [] });
+    expect(days[0]).toEqual({ date: "2026-10-01", kind: "day", weekend: false, recorded: false, minutes: 0, items: [], runningTasks: [], absences: [] });
     expect(days[1]).toMatchObject({ date: "2026-10-02", recorded: true, minutes: 0 });
     expect(data.people.map(person => person.id)).toEqual(["employee", "empty"]);
     expect(data.people.find(person => person.id === "empty")!.days.every(day => !day.recorded)).toBe(true);
@@ -175,7 +216,7 @@ describe("team activity calendar", () => {
     const data = buildTeamActivity({ month: "2026-10", today: "2026-10-16", workdayMinutes: 420,
       people: [{ id: "employee", name: "Employee", active: true, avatarUrl: "/avatar.png", joinedDate: "2026-10-02" }],
       entries: [entry("work", "2026-10-03", 60)], submissions: [], timers: [],
-      timeOff: [{ user_id: "employee", start_date: "2026-10-03", end_date: "2026-10-05" }], studioDaysOff: ["2026-10-04", "2026-10-06"],
+      timeOff: [absence({ start_date: "2026-10-03", end_date: "2026-10-05", all_day: true, start_time: null, end_time: null })], studioDaysOff: ["2026-10-04", "2026-10-06"],
     });
     const person = data.people[0], days = person.days;
     expect(person.avatarUrl).toBe("/avatar.png");

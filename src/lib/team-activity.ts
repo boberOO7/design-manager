@@ -4,6 +4,7 @@ import { calendarStatisticsAssignments, materializeStatisticsEvents, type Statis
 import { summarizeDailyCalendarWork } from "@/lib/calendar-work-time";
 import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import type { Database } from "@/types/database.types";
+import { TIME_OFF_REQUEST_TYPES } from "@/types/calendar";
 
 type Tables = Database["public"]["Tables"];
 export const teamActivityMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
@@ -11,10 +12,13 @@ export const teamActivityMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$
 const taskSchema = z.object({ id: z.string(), title: z.string(), project_id: z.string(), project: z.object({ id: z.string(), name: z.string() }).nullable() });
 const itemSchema = z.object({ activityKind: z.string(), internalActivityType: z.string().nullable(), task: taskSchema.nullable(), minutes: z.number().nonnegative(), reviewRoundId: z.string().nullable(), reviewSessionId: z.string().nullable(),
   calendarEvent: z.object({ id: z.string(), title: z.string(), project: z.object({ id: z.string(), name: z.string() }).nullable() }).optional() });
+const absenceSchema = z.object({ id: z.string(), requestType: z.enum(TIME_OFF_REQUEST_TYPES), allDay: z.boolean(),
+  startTime: z.string().nullable(), endTime: z.string().nullable(), minutes: z.number().nonnegative().nullable() });
 export const teamActivityReportSchema = z.object({
   month: teamActivityMonthSchema, today: z.iso.date(), workdayMinutes: z.number().positive(),
   people: z.array(z.object({ id: z.string(), name: z.string(), active: z.boolean(), avatarUrl: z.string().nullable(), days: z.array(z.object({
     date: z.iso.date(), kind: z.enum(WORKDAY_KINDS), weekend: z.boolean(), recorded: z.boolean(), minutes: z.number().nonnegative(), items: z.array(itemSchema), runningTasks: z.array(taskSchema),
+    absences: z.array(absenceSchema).default([]),
   })) })),
 });
 export type TeamActivityReport = z.infer<typeof teamActivityReportSchema>;
@@ -37,6 +41,8 @@ export type TeamActivityEvent = StatisticsCalendarEvent & Pick<Tables["calendar_
   invites: Array<Pick<Tables["calendar_event_invites"]["Row"], "event_id" | "user_id" | "status">>;
   participants: Array<Pick<Tables["calendar_event_participants"]["Row"], "event_id" | "user_id">>;
 };
+export type TeamActivityTimeOff = Pick<Tables["time_off_requests"]["Row"],
+  "id" | "user_id" | "request_type" | "start_date" | "end_date" | "all_day" | "start_time" | "end_time">;
 
 export function groupTeamActivityItems(items: TeamActivityDay["items"]) {
   const groups: Array<{ reviewSessionId: string | null; items: TeamActivityDay["items"]; minutes: number }> = [];
@@ -67,17 +73,27 @@ export function buildTeamActivity({ month, today, workdayMinutes, people, entrie
   timers: TeamActivityTimer[];
   events?: TeamActivityEvent[];
   now?: string;
-  timeOff?: Array<Pick<Tables["time_off_requests"]["Row"], "user_id" | "start_date" | "end_date">>;
+  timeOff?: TeamActivityTimeOff[];
   studioDaysOff?: string[];
 }): TeamActivityReport {
   const { from, until } = activityMonthBounds(month);
   const dates: string[] = [];
   for (let date = from; date < until; date = addCalendarDays(date, 1)) dates.push(date);
+  // Only full-day absences exempt a date from workday/calendar accounting.
+  const fullDayTimeOff = timeOff.filter(period => period.all_day);
   const rows = new Map(people.map(person => {
-    const eligibility = { joinedDate: person.joinedDate ?? null, timeOff: timeOff.filter(period => period.user_id === person.id), studioDaysOff };
+    const absences = [...new Map(timeOff.filter(period => period.user_id === person.id).map(period => [period.id, period])).values()];
+    const eligibility = { joinedDate: person.joinedDate ?? null, timeOff: fullDayTimeOff.filter(period => period.user_id === person.id), studioDaysOff };
     return [person.id, { id: person.id, name: person.name, active: person.active, avatarUrl: person.avatarUrl ?? null, days: dates.map((date): TeamActivityDay => ({
       date, kind: getWorkdayKind(date, eligibility), weekend: getWorkdayKind(date, { joinedDate: null }) === "weekend",
       recorded: false, minutes: 0, items: [], runningTasks: [],
+      absences: absences.filter(period => period.start_date <= date && date <= period.end_date).map(period => {
+        const startTime = period.start_time?.slice(0, 5) ?? null;
+        const endTime = period.end_time?.slice(0, 5) ?? null;
+        const minutes = (time: string) => { const [hours, minutes] = time.split(":").map(Number); return hours * 60 + minutes; };
+        return { id: period.id, requestType: period.request_type, allDay: period.all_day, startTime, endTime,
+          minutes: !period.all_day && startTime && endTime ? Math.max(0, minutes(endTime) - minutes(startTime)) : null };
+      }),
     })) }];
   }));
   const dayFor = (userId: string, date: string) => rows.get(userId)?.days.find(day => day.date === date);
@@ -126,7 +142,7 @@ export function buildTeamActivity({ month, today, workdayMinutes, people, entrie
   for (const person of rows.values()) {
     const assigned = occurrences.filter(event => participants.get(event.id)?.has(person.id));
     const eligibility = { joinedDate: people.find(row => row.id === person.id)?.joinedDate ?? null,
-      timeOff: timeOff.filter(period => period.user_id === person.id), studioDaysOff };
+      timeOff: fullDayTimeOff.filter(period => period.user_id === person.id), studioDaysOff };
     for (const day of person.days) {
       const calendar = summarizeDailyCalendarWork(assigned, day.date, now, eligibility);
       day.minutes += calendar.minutes;

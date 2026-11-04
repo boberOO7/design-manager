@@ -6,7 +6,7 @@ import { normalizeUkrainianPhone, shouldFormatAsUkrainianPhone } from "@/lib/ukr
 
 export const CRM_LEAD_STATUSES = ["new", "contacted", "discussion", "proposal", "won", "lost", "invalid"] as const;
 export const CRM_LEAD_INVALID_REASONS = ["not_submitted", "wrong_number", "spam", "duplicate", "other"] as const;
-export const CRM_LEAD_SOURCE_KEYS = ["website", "instagram", "referral", "partner"] as const;
+export const CRM_LEAD_SOURCE_KEYS = ["website", "instagram", "facebook", "referral", "partner"] as const;
 export const RECRUITING_STAGES = ["new", "interview_scheduled", "interview_completed", "test_task", "decision"] as const;
 export const RECRUITING_OUTCOMES = ["hired", "reserve", "rejected"] as const;
 

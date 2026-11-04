@@ -5884,6 +5884,7 @@ export type Database = {
           leadgen_id: string
           lease_token: string | null
           locked_at: string | null
+          notify_admins: boolean
           page_id: string
           payload: Json | null
           status: string
@@ -5903,6 +5904,7 @@ export type Database = {
           leadgen_id: string
           lease_token?: string | null
           locked_at?: string | null
+          notify_admins?: boolean
           page_id: string
           payload?: Json | null
           status?: string
@@ -5922,6 +5924,7 @@ export type Database = {
           leadgen_id?: string
           lease_token?: string | null
           locked_at?: string | null
+          notify_admins?: boolean
           page_id?: string
           payload?: Json | null
           status?: string
@@ -10914,6 +10917,7 @@ export type Database = {
           leadgen_id: string
           lease_token: string | null
           locked_at: string | null
+          notify_admins: boolean
           page_id: string
           payload: Json | null
           status: string
@@ -12428,6 +12432,7 @@ export type Database = {
         | "equipment_maintenance_upcoming"
         | "equipment_maintenance_overdue"
         | "task_review_requested"
+        | "meta_lead_created"
       office_assignment_status:
         | "assigned"
         | "in_progress"
@@ -12657,6 +12662,7 @@ export const Constants = {
         "equipment_maintenance_upcoming",
         "equipment_maintenance_overdue",
         "task_review_requested",
+        "meta_lead_created",
       ],
       office_assignment_status: [
         "assigned",

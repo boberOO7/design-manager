@@ -52,7 +52,7 @@ describe("Meta to existing CRM mapping", () => {
   });
   it("uses platform only when Graph explicitly attributes it", () => {
     expect(mapMetaLead(lead({ platform: "ig" })).source).toBe("instagram");
-    expect(mapMetaLead(lead({ platform: "fb" })).source).toBe("Facebook Lead Ads");
+    expect(mapMetaLead(lead({ platform: "fb" })).source).toBe("facebook");
     expect(mapMetaLead(lead({ platform: "unknown" })).source).toBe("Meta Lead Ads");
   });
   it("keeps unknown country null and rejects invalid or oversized CRM fields", () => {

@@ -12,7 +12,8 @@ function concise(value: string, limit: number) {
 }
 
 // Only explicit, operational metadata is eligible for an OS preview. Never use
-// persisted free-form titles/bodies, people, locations, notes or financial data.
+// persisted free-form titles/bodies, locations, notes or financial data.
+// New Meta leads explicitly allow the client name after recipient/CRM authorization.
 export function getWebPushPreview(notification: Notification, locale: string, calendarContextAllowed = false) {
   const language = locale === "en" ? "en" : "uk";
   const t = createTranslator({ locale: language, messages: language === "en" ? en : uk, namespace: "Notifications" });
@@ -33,6 +34,12 @@ export function getWebPushPreview(notification: Notification, locale: string, ca
   let title = "StudioFlow";
   let body = t("pushGenericBody");
   switch (notification.notification_type) {
+    case "meta_lead_created": {
+      title = t("metaLeadCreatedTitle");
+      const lead = value("leadName");
+      body = lead ? t("metaLeadCreatedBody", { lead }) : t("metaLeadCreatedFallbackBody");
+      break;
+    }
     case "task_assigned":
       title = t(value("assignmentKind") === "collaborator" ? "pushTaskCollaboratorTitle" : "taskAssignedTitle");
       body = context(subject, t("pushOpenTaskBody"));

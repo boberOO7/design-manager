@@ -5,6 +5,12 @@ import { Constants } from "@/types/database.types";
 import { getWebPushPreview } from "./preview";
 
 describe("privacy-safe Web Push previews", () => {
+  it("allows only the explicit Meta client name and sanitizes banner content", () => {
+    expect(getWebPushPreview({ notification_type: "meta_lead_created", metadata: { leadName: "Наталія\nТест", notes: "SECRET", phone: "+380501234567" } }, "uk"))
+      .toEqual({ title: "Новий лід із Meta", body: "Новий клієнт: Наталія Тест." });
+    expect(getWebPushPreview({ notification_type: "meta_lead_created", metadata: {} }, "en"))
+      .toEqual({ title: "New lead from Meta", body: "View the new lead in CRM." });
+  });
   it.each(["uk", "en"])("covers every existing notification category in %s, even without metadata", locale => {
     for (const notification_type of Constants.public.Enums.notification_type) {
       const preview = getWebPushPreview({ notification_type, metadata: {} }, locale);

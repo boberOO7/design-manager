@@ -15,7 +15,7 @@ export async function backfillMetaLeads(retryFailed = false) {
     if (!enabled.has(formId)) continue;
     forms += 1;
     for await (const leadId of listMetaIds(formId, "leads")) {
-      enqueued += await enqueueMetaLeads([{ leadgen_id: leadId, form_id: formId }], retryFailed, true);
+      enqueued += await enqueueMetaLeads([{ leadgen_id: leadId, form_id: formId }], retryFailed, true, false);
       scanned += 1;
     }
   }

@@ -27,6 +27,6 @@ it("walks paginated forms and leads, resuming repeatable history through the com
   });
   expect(await backfillMetaLeads()).toEqual({ forms: 2, scanned: 3, enqueued: 3 });
   expect(await backfillMetaLeads(true)).toEqual({ forms: 2, scanned: 3, enqueued: 0 });
-  expect(mocks.enqueue).toHaveBeenCalledWith([{ leadgen_id: "102", form_id: "10" }], false, true);
-  expect(mocks.enqueue).toHaveBeenLastCalledWith([{ leadgen_id: "201", form_id: "20" }], true, true);
+  expect(mocks.enqueue).toHaveBeenCalledWith([{ leadgen_id: "102", form_id: "10" }], false, true, false);
+  expect(mocks.enqueue).toHaveBeenLastCalledWith([{ leadgen_id: "201", form_id: "20" }], true, true, false);
 });

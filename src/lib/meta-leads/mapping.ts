@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { instantToDateOnly } from "@/lib/calendar";
 import { isCountryCode } from "@/lib/countries";
-import { crmLeadSchema } from "@/lib/validation/crm";
+import { crmLeadSchema, isCrmLeadSourceKey } from "@/lib/validation/crm";
 import { normalizePhoneForCountry, normalizeUkrainianPhone, shouldFormatAsUkrainianPhone } from "@/lib/ukrainian-phone";
 import { MetaLeadError, type MetaLead } from "./graph";
 
@@ -44,11 +44,11 @@ export function mapMetaLead(lead: MetaLead) {
   const clientName = contacts.client_name;
   if (!clientName) throw new MetaLeadError("missing_client_name", false);
   const country = answer("country").toUpperCase();
-  const source = lead.platform === "ig" ? "instagram" : lead.platform === "fb" ? "Facebook Lead Ads" : "Meta Lead Ads";
+  const source = lead.platform === "ig" ? "instagram" : lead.platform === "fb" ? "facebook" : "Meta Lead Ads";
   const parsed = importedLeadSchema.safeParse({
     client_name: clientName, company: answer("company_name"), email: contacts.email, phone: contacts.phone,
     city: answer("city"), site_address: answer("street_address"), country_code: isCountryCode(country) ? country : "",
-    source: source === "instagram" ? "instagram" : "other", source_custom: source,
+    source: isCrmLeadSourceKey(source) ? source : "other", source_custom: source,
     budget_amount: "", first_contact_date: instantToDateOnly(metaSubmittedAt(lead)),
     // The complete structured answers stay in the private inbox, including any
     // content exceeding the existing CRM notes limit.

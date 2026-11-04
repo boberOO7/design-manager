@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatStatisticsDuration } from "@/lib/statistics";
 import { getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, teamActivityReportSchema, type TeamActivityDay, type TeamActivityDayState, type TeamActivityReport } from "@/lib/team-activity";
+import { timeOffRequestTypeKey } from "@/lib/time-off-labels";
 import { statisticsPanel } from "./statistics-card";
 import { StatisticsInfo } from "./statistics-info";
 
@@ -29,11 +30,13 @@ const activityCategories = [
   { kind: "calendar", label: "activityCalendar", color: "var(--ui-success-text)" },
 ] as const;
 
-function ActivityMark({ state, kind, small = false }: { state: TeamActivityDayState; kind?: TeamActivityDay["kind"]; small?: boolean }) {
+function ActivityMark({ state, kind, small = false, partialAbsence = false }: { state: TeamActivityDayState; kind?: TeamActivityDay["kind"]; small?: boolean; partialAbsence?: boolean }) {
   const appearance = state === "excused" && kind === "time_off"
     ? "border border-dashed border-[var(--ui-text-subtle)] bg-[var(--ui-surface-muted)]"
     : dayStateClasses[state];
-  return <span aria-hidden="true" className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[3px] ${small ? "size-3" : "size-5 2xl:size-7"} ${appearance}`} />;
+  return <span aria-hidden="true" className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[3px] ${small ? "size-3" : "size-5 2xl:size-7"} ${appearance}`}>
+    {partialAbsence ? <CalendarClock data-testid="activity-partial-absence" className={`stroke-[1.75] ${small ? "size-2.5" : "size-3.5 2xl:size-4"} ${state === "missing" || state === "excused" ? "text-[var(--ui-text-secondary)]" : "text-[var(--ui-surface)]"}`} /> : null}
+  </span>;
 }
 
 export function TeamActivityCalendar({ today }: { today: string }) {
@@ -102,6 +105,7 @@ export function TeamActivityCalendar({ today }: { today: string }) {
       <span className="inline-flex items-center gap-1.5"><ActivityMark state="worked" small />{t("activityState_worked")}</span>
       <span className="inline-flex items-center gap-1.5"><ActivityMark state="excused" kind="weekend" small />{t("activityDay_weekend")}</span>
       <span className="inline-flex items-center gap-1.5"><ActivityMark state="excused" kind="time_off" small />{t("activityDay_time_off")}</span>
+      <span className="inline-flex items-center gap-1.5"><ActivityMark state="under" partialAbsence small />{t("activityPartialAbsence")}</span>
       <span className="sm:ml-auto">{t("activityTimezone")}</span>
     </div> : null}
   </section>;
@@ -132,38 +136,75 @@ function ActivityGrid({ report, liveAvailable }: { report: TeamActivityReport; l
   </div>;
 }
 
-function ActivityCell({ day, name, workday, liveAvailable }: { day: TeamActivityDay; name: string; workday: number; liveAvailable: boolean }) {
+export function ActivityCell({ day, name, workday, liveAvailable }: { day: TeamActivityDay; name: string; workday: number; liveAvailable: boolean }) {
   const t = useTranslations("Statistics");
+  const timeOff = useTranslations("TimeOff");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const date = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(day.date));
-  const total = day.recorded ? t("activityHours", { hours: formatStatisticsDuration(day.minutes / 60) }) : t("activityMissing");
+  const partialAbsence = day.kind !== "time_off" && day.absences.some(absence => !absence.allDay);
+  const total = day.recorded ? t("activityWorkHours", { hours: formatStatisticsDuration(day.minutes / 60) }) : t("activityMissing");
   const state = getTeamActivityDayState(day, workday);
   const context = [day.kind !== "day" ? t(`activityDay_${day.kind}`) : null,
-    day.weekend && day.kind !== "weekend" ? t("activityDay_weekend") : null, t(`activityState_${state}`)].filter(Boolean).join(" · ");
-  const target = day.kind === "day" ? t("activityTarget", { hours: formatStatisticsDuration(workday / 60) }) : t("activityNoTarget");
+    day.weekend && day.kind !== "weekend" ? t("activityDay_weekend") : null,
+    partialAbsence ? t("activityPartialAbsence") : null,
+    partialAbsence && day.kind === "day" ? null : t(`activityState_${state}`)].filter(Boolean).join(" · ");
+  const absenceContext = day.absences.map(absence => `${timeOff(timeOffRequestTypeKey[absence.requestType])} · ${absence.allDay ? timeOff("allDay") : [absence.startTime, absence.endTime].filter(Boolean).join("–")}`).join("; ");
   const running = liveAvailable && day.runningTasks.length > 0;
-  const summary = <div className="-mr-2.5 max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain pr-2.5 [scrollbar-gutter:stable]"><p className="font-semibold">{name} · {date}</p><p className="tabular-nums">{total}</p><p>{context}</p><p className="text-[var(--ui-text-muted)]">{target}</p><DailyBreakdown day={day} liveAvailable={liveAvailable} /></div>;
+  const summary = <div className="-mr-2.5 max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain pr-2.5 [scrollbar-gutter:stable]"><ActivityDayDetails day={day} name={name} workday={workday} liveAvailable={liveAvailable} /></div>;
   return <Popover.Root open={open} onOpenChange={setOpen}>
     <Tooltip content={open ? null : summary} interactive contentClassName="w-[30rem] max-w-[min(30rem,var(--radix-tooltip-content-available-width))]"><Popover.Trigger asChild>
-      <button type="button" data-activity-date={day.date} data-recorded={day.recorded} data-activity-state={state} data-day-kind={day.kind} data-weekend={day.weekend} aria-label={`${name}, ${date}: ${total} · ${context}${running ? ` · ${t("activityRunning")}` : ""}`}
+      <button type="button" data-activity-date={day.date} data-recorded={day.recorded} data-activity-state={state} data-day-kind={day.kind} data-weekend={day.weekend} aria-label={`${name}, ${date}: ${total} · ${context}${absenceContext ? ` · ${absenceContext}` : ""}${running ? ` · ${t("activityRunning")}` : ""}`}
         className="relative inline-flex size-7 items-center justify-center rounded transition-transform duration-[140ms] ease-[ease-out] hover:z-30 motion-safe:hover:[transform:scale(1.1)] focus-visible:z-30 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)] motion-reduce:transition-none 2xl:size-9">
-        <ActivityMark state={state} kind={day.kind} />
+        <ActivityMark state={state} kind={day.kind} partialAbsence={partialAbsence} />
         {running ? <span data-testid="activity-running" aria-hidden="true" className="absolute right-0.5 top-0.5 size-2 rounded-full border border-[var(--ui-surface)] bg-[var(--ui-info-text)]" /> : null}
       </button>
     </Popover.Trigger></Tooltip>
     <Popover.Portal><Popover.Content aria-label={`${name} · ${date}`} sideOffset={6} collisionPadding={12}
       className="ui-tooltip z-[80] max-h-[min(70dvh,28rem,var(--radix-popover-content-available-height))] w-[30rem] max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-xs leading-5 text-[var(--ui-text-secondary)] shadow-[var(--ui-shadow-popover)]">
-      <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-[var(--ui-text)]">{name}</p><p>{date}</p></div><Popover.Close aria-label={t("closeInfo")} className="rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><X className="size-4" aria-hidden="true" /></Popover.Close></div>
-      <p className="mt-2 font-semibold tabular-nums text-[var(--ui-text)]">{total}</p><p>{context}</p><p className="text-[var(--ui-text-muted)]">{target}</p><DailyBreakdown day={day} liveAvailable={liveAvailable} />
+      <ActivityDayDetails day={day} name={name} workday={workday} liveAvailable={liveAvailable} closeControl={<Popover.Close aria-label={t("closeInfo")} className="shrink-0 rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]"><X className="size-4" aria-hidden="true" /></Popover.Close>} />
     </Popover.Content></Popover.Portal>
   </Popover.Root>;
 }
 
+export function ActivityDayDetails({ day, name, workday, liveAvailable, closeControl }: { day: TeamActivityDay; name: string; workday: number; liveAvailable: boolean; closeControl?: ReactNode }) {
+  const t = useTranslations("Statistics");
+  const locale = useLocale();
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(day.date));
+  const context = [day.kind !== "day" && day.kind !== "time_off" ? t(`activityDay_${day.kind}`) : null,
+    day.weekend && day.kind !== "weekend" ? t("activityDay_weekend") : null,
+    !day.absences.length ? t(`activityState_${getTeamActivityDayState(day, workday)}`) : null].filter(Boolean).join(" · ");
+  return <>
+    <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+        <p className="min-w-0 break-words font-semibold text-[var(--ui-text)]">{name}</p>
+        <time dateTime={day.date} className="shrink-0 text-[11px] text-[var(--ui-text-muted)]">{date}</time>
+      </div>
+      {closeControl}
+    </div>
+    <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 tabular-nums">
+      <p className="font-semibold text-[var(--ui-text)]">{day.recorded ? t("activityWorkHours", { hours: formatStatisticsDuration(day.minutes / 60) }) : t("activityMissing")}</p>
+      {day.kind === "day" ? <p className="text-[11px] text-[var(--ui-text-muted)]">{t("activityTarget", { hours: formatStatisticsDuration(workday / 60) })}</p> : null}
+    </div>
+    {context ? <p className="mt-1 text-[11px] text-[var(--ui-text-muted)]">{context}</p> : null}
+    <DailyBreakdown day={day} liveAvailable={liveAvailable} />
+  </>;
+}
+
 export function DailyBreakdown({ day, liveAvailable }: { day: TeamActivityDay; liveAvailable: boolean }) {
   const t = useTranslations("Statistics");
+  const timeOff = useTranslations("TimeOff");
   let reviewNumber = 0;
   return <>
+    {day.absences.length ? <section aria-label={t("activityDay_time_off")} data-activity-category="absence" className="mt-3 border-t border-[var(--ui-border)] pt-2">
+      <h3 className="mb-2 text-[11px] font-semibold text-[var(--ui-text-secondary)]">{t("activityDay_time_off")}</h3>
+      <ul className="space-y-2">{day.absences.map(absence => <li key={absence.id}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3"><span className="flex min-w-0 flex-wrap items-baseline gap-x-2"><span className="inline-flex items-center gap-1.5">{absence.requestType === "day_off" ? <CalendarClock aria-hidden="true" className="size-3.5 shrink-0 stroke-[1.75] text-[var(--ui-text-secondary)]" /> : null}{timeOff(timeOffRequestTypeKey[absence.requestType])}</span>
+          {!absence.allDay && absence.startTime && absence.endTime ? <span className="whitespace-nowrap tabular-nums text-[var(--ui-text-muted)]">{absence.startTime}–{absence.endTime}</span> : null}</span>
+          <span className="whitespace-nowrap text-right tabular-nums">{absence.allDay ? timeOff("allDay") : absence.minutes !== null ? t("activityHours", { hours: formatStatisticsDuration(absence.minutes / 60) }) : null}</span>
+        </div>
+      </li>)}</ul>
+    </section> : null}
     {activityCategories.map(category => {
       const items = day.items.filter(item => item.activityKind === category.kind);
       if (!items.length) return null;

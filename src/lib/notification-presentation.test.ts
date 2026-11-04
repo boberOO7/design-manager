@@ -31,6 +31,12 @@ function presentation(locale: "en" | "uk", notification: NotificationItem) {
 }
 
 describe("notification panel localization", () => {
+  it("localizes a new Meta lead while retaining its actual name", () => {
+    const notification = item({ notification_type: "meta_lead_created", metadata: { leadName: "Наталія", source: "facebook" } });
+    expect(presentation("uk", notification)).toEqual({ title: "Новий лід із Meta", body: "Новий клієнт: Наталія." });
+    expect(presentation("en", notification)).toEqual({ title: "New lead from Meta", body: "New client: Наталія." });
+    expect(presentation("uk", { ...notification, metadata: {} }).body).toBe("Перегляньте нового ліда у CRM.");
+  });
   it("keeps the complete English and Ukrainian notification namespaces in parity", () => {
     expect(Object.keys(en.Notifications).sort()).toEqual(Object.keys(uk.Notifications).sort());
   });

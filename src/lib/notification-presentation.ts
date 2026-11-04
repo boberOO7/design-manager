@@ -11,6 +11,9 @@ export type NotificationMessageKey =
   | "calendarInvitationTitle"
   | "crmLeadFollowUpBody"
   | "crmLeadFollowUpTitle"
+  | "metaLeadCreatedTitle"
+  | "metaLeadCreatedBody"
+  | "metaLeadCreatedFallbackBody"
   | "equipmentMaintenanceOverdueBody"
   | "equipmentMaintenanceOverdueTitle"
   | "equipmentMaintenanceUpcomingBody"
@@ -195,6 +198,10 @@ export function getNotificationPresentation(item: NotificationItem, locale: stri
   const subject = metadataString(metadata, "subject") ?? metadataString(metadata, "taskTitle") ?? metadataString(metadata, "eventTitle") ?? quotedValue(item.body);
 
   switch (item.notification_type) {
+    case "meta_lead_created": {
+      const lead = metadataString(metadata, "leadName");
+      return { title: t("metaLeadCreatedTitle"), body: lead ? t("metaLeadCreatedBody", { lead }) : t("metaLeadCreatedFallbackBody") };
+    }
     case "equipment_maintenance_upcoming":
     case "equipment_maintenance_overdue": {
       const equipment = metadataString(metadata, "equipmentName") ?? subject;
