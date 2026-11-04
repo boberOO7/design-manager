@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatCalendarTime, instantToDateOnly } from "./calendar";
 import type { CalendarItem } from "../types/calendar";
-import { createCalendarEventFormValues, getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
+import { getCalendarEventTypeAttendees, createCalendarEventFormValues, getAllDayEventBounds, getBusinessTripTitle, getInclusiveAllDayEndDate, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormValues } from "./calendar-event-form";
 import { calendarEventSchema, timeOffRequestSchema } from "./validation/calendar";
 import { getTimeOffRequestPresentation } from "./time-off-labels";
 import { CALENDAR_EVENT_TYPES } from "../types/calendar";
@@ -39,12 +39,22 @@ describe("Calendar event project options", () => {
 });
 
 describe("Calendar event invitee eligibility", () => {
+  it.each(["meeting", "presentation"] as const)("selects the creator once by default for %s", eventType => {
+    expect(getCalendarEventTypeAttendees(eventType, ["guest"], "creator")).toEqual(["guest", "creator"]);
+    expect(getCalendarEventTypeAttendees(eventType, ["creator"], "creator")).toEqual(["creator"]);
+    expect(getCalendarEventTypeAttendees("general", [], "creator")).toEqual([]);
+  });
+
   it("allows the organizer to participate in a generic event", () => {
     expect(isCalendarEventInviteeSelectable("general", "current-user", "current-user")).toBe(true);
   });
 
+  it("allows removable creator participation in meetings and presentations", () => {
+    expect(isCalendarEventInviteeSelectable("meeting", "current-user", "current-user")).toBe(true);
+    expect(isCalendarEventInviteeSelectable("presentation", "current-user", "current-user")).toBe(true);
+  });
+
   it("preserves organizer exclusion for other invitation-based event types", () => {
-    expect(isCalendarEventInviteeSelectable("meeting", "current-user", "current-user")).toBe(false);
     expect(isCalendarEventInviteeSelectable("internal_review", "current-user", "current-user")).toBe(false);
     expect(isCalendarEventInviteeSelectable("general", "studio-member", "current-user")).toBe(true);
   });

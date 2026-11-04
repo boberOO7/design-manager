@@ -1,6 +1,8 @@
 import "server-only";
 
 import { wasCorrectionAssignedOnDate } from "@/lib/task-corrections";
+import { getWorkMakeupDates } from "@/lib/calendar-work-time";
+import type { StatisticsCalendarEvent } from "@/lib/statistics-calendar";
 import { reviewTimerSyncSchema } from "@/lib/review-timer";
 
 import { resolveActiveStudioMembership, type ActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -17,7 +19,7 @@ function loadWorkLogCalendar(client: Client, studioId: string) {
     .eq("studio_id", studioId).order("id").range(from, to));
 }
 
-async function loadWorkLogEligibility(client: Client, membership: ActiveStudioMembership, from: string | null, through: string) {
+async function loadWorkLogEligibility(client: Client, membership: ActiveStudioMembership, from: string | null, through: string, events?: StatisticsCalendarEvent[]) {
   let joinedAt = membership.joined_at;
   if (!joinedAt) {
     const profile = await client.from("profiles").select("created_at").eq("id", membership.authenticatedUserId).single();
@@ -26,16 +28,18 @@ async function loadWorkLogEligibility(client: Client, membership: ActiveStudioMe
   }
   const joinedDate = instantToDateOnly(joinedAt);
   const start = from ?? getWorkLogReminderWindow(through, joinedDate).from;
-  const [absences, daysOff] = await Promise.all([
+  const [absences, daysOff, calendar] = await Promise.all([
     loadAllRows((first, last) => client.from("time_off_requests").select("start_date,end_date")
       .eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId)
       .eq("status", "approved").eq("all_day", true).is("cancelled_at", null)
       .lte("start_date", through).gte("end_date", start).order("id").range(first, last)),
     loadAllRows((first, last) => client.from("studio_days_off").select("date")
       .eq("studio_id", membership.studio_id).gte("date", start).lte("date", through).order("date").range(first, last)),
+    events ? Promise.resolve({ data: events, error: null }) : loadWorkLogCalendar(client, membership.studio_id),
   ]);
-  if (absences.error || daysOff.error) throw new Error("Unable to load work calendar.", { cause: absences.error ?? daysOff.error });
-  return { joinedDate, timeOff: absences.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date) };
+  if (absences.error || daysOff.error || calendar.error) throw new Error("Unable to load work calendar.", { cause: absences.error ?? daysOff.error ?? calendar.error });
+  return { joinedDate, timeOff: absences.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date),
+    workMakeupDates: getWorkMakeupDates(calendar.data ?? [], membership.authenticatedUserId, { from: start, through }) };
 }
 
 export async function getDailyWorkLog(date: string) {
@@ -135,8 +139,9 @@ export async function getDailyWorkLog(date: string) {
     ...row, stageName: row.projectId && row.stage ? stageNames[`${row.projectId}:${row.stage}`] ?? null : null,
   });
   const calendarEvents = events.data ?? [];
+  const eligibility = await loadWorkLogEligibility(client, access.membership, date, date, calendarEvents);
   const calendar = getDailyCalendarContext(calendarEvents, calendarEvents.flatMap(row => row.invites),
-    calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString());
+    calendarEvents.flatMap(row => row.participants), userId, date, new Date().toISOString(), eligibility);
   // Explicit manual choices include closed/historical work; suggestions above
   // remain conservative. Saved rows are always retained independently.
   return dailyWorkLogSchema.parse({ date, canLogInternalWork: access.membership.system_role === "admin", timerSnapshot: logSnapshot.timerSnapshot, submittedAt: submission.data?.submitted_at ?? null, rows: uniqueRows.map(withStageName), additionalReviews: additionalReviews.map(withStageName), additionalCorrections: correctionRows.map(withStageName), activeTasks: taskRows.filter(task => !correctionRows.some(row => row.task_id === task.id)).map(task => withStageName({
@@ -156,20 +161,20 @@ export async function getWeeklyWorkLog(date: string, now = new Date()) {
   if (sync.error) throw new Error("Unable to synchronize review time.", { cause: sync.error });
   reviewTimerSyncSchema.parse(sync.data);
   const start = startOfMondayWeek(date), through = addCalendarDays(start, 6);
-  const [entries, submissions, events, eligibility] = await Promise.all([
+  const [entries, submissions, events] = await Promise.all([
     loadAllRows((from, to) => client.from("work_log_entries").select("internal_activity_type,activity_kind,task_id,review_round_id,minutes,work_date")
       .eq("studio_id", studioId).eq("user_id", userId).gte("work_date", start).lte("work_date", through).order("id").range(from, to)),
     client.from("work_log_days").select("work_date,submitted_at").eq("studio_id", studioId).eq("user_id", userId)
       .gte("work_date", start).lte("work_date", through),
     loadWorkLogCalendar(client, studioId),
-    loadWorkLogEligibility(client, membership, start, through),
   ]);
   if (entries.error || submissions.error || events.error) throw new Error("Unable to load weekly work log.", { cause: entries.error ?? submissions.error ?? events.error });
   const calendarEvents = events.data ?? [];
+  const eligibility = await loadWorkLogEligibility(client, membership, start, through, calendarEvents);
   const invites = calendarEvents.flatMap(row => row.invites), participants = calendarEvents.flatMap(row => row.participants);
   const calendarMinutes = new Map(Array.from({ length: 7 }, (_, index) => {
     const day = addCalendarDays(start, index);
-    return [day, getDailyCalendarContext(calendarEvents, invites, participants, userId, day, now.toISOString()).minutes];
+    return [day, getDailyCalendarContext(calendarEvents, invites, participants, userId, day, now.toISOString(), eligibility).minutes];
   }));
   return buildWeeklyWorkLog(date, instantToDateOnly(now.toISOString()), entries.data ?? [], submissions.data ?? [], calendarMinutes, eligibility);
 }

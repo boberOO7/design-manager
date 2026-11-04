@@ -27,9 +27,9 @@ export async function getTeamActivity(month: string, today = getKyivDateOnly()) 
       .eq("studio_id", studio).lt("started_at", zonedWallTimeToIso(`${until}T00:00`))
       .or(`paused_at.gte.${zonedWallTimeToIso(`${from}T00:00`)},paused_at.is.null`).order("started_at").order("id").range(first, last)),
     getStatisticsWorkday(client, studio, today),
-    // Only approved dates are context; partial absences do not create an invented adjusted target.
+    // Partial absences do not turn the whole date into a non-working day.
     loadAllRows((first, last) => client.from("time_off_requests").select("user_id,start_date,end_date")
-      .eq("studio_id", studio).eq("status", "approved").is("cancelled_at", null)
+      .eq("studio_id", studio).eq("status", "approved").eq("all_day", true).is("cancelled_at", null)
       .lt("start_date", until).gte("end_date", from).order("id").range(first, last)),
     loadAllRows((first, last) => client.from("studio_days_off").select("date")
       .eq("studio_id", studio).gte("date", from).lt("date", until).order("date").range(first, last)),

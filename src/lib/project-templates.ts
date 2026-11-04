@@ -33,6 +33,15 @@ export const templateStageProgressMethodsSchema = z.object({
 }).strict();
 export type TemplateStageProgressMethods = z.infer<typeof templateStageProgressMethodsSchema>;
 
+const stageNameSchema = z.string().trim().min(1).max(80);
+export const templateStageNamesSchema = z.object({
+  stage_1: stageNameSchema.optional(),
+  stage_2: stageNameSchema.optional(),
+  stage_3: stageNameSchema.optional(),
+  stage_4: stageNameSchema.optional(),
+}).strict();
+export type TemplateStageNames = z.infer<typeof templateStageNamesSchema>;
+
 export type ProjectTemplate = {
   id: string;
   name: string;
@@ -41,6 +50,7 @@ export type ProjectTemplate = {
   isDefault: boolean;
   tasks: ProjectTemplateTask[];
   stageProgressMethods?: TemplateStageProgressMethods;
+  stageNames?: TemplateStageNames;
 };
 
 export function createProjectTemplateCopy(template: ProjectTemplate, name: string): Omit<ProjectTemplate, "id"> & { id: null } {

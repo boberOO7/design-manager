@@ -16,7 +16,7 @@ describe("team activity calendar", () => {
     id, title: `Meeting ${id}`, event_type: "meeting", starts_at: "2026-10-07T09:00:00Z", ends_at: "2026-10-07T10:00:00Z",
     all_day: false, organizer_id: "employee", assignee_id: null, project_id: "project", project: task("a").project,
     cancelled_at: null, recurrence_rule: null, series_id: null, occurrence_start: null, compensates_time_off_request_id: null,
-    invites: [], participants: [], ...changes,
+    invites: [{ event_id: id, user_id: "employee", status: "accepted" }], participants: [], ...changes,
   });
 
   it("counts completed project events with logged tasks and counts overlapping events once per person", () => {
@@ -35,7 +35,7 @@ describe("team activity calendar", () => {
     const events = [event("declined", { organizer_id: "someone", invites: [{ event_id: "declined", user_id: "employee", status: "declined" }] }),
       event("cancelled", { cancelled_at: "2026-10-06T10:00:00Z" }), event("all-day", { all_day: true }),
       event("ongoing", { ends_at: "2026-10-08T09:00:00Z" }), event("makeup", { event_type: "work_makeup" }),
-      event("unassigned", { event_type: "general" }),
+      event("unassigned", { event_type: "general", invites: [] }),
       event("visit", { event_type: "site_visit", organizer_id: "someone", participants: [{ event_id: "visit", user_id: "employee" }] })];
     const day = report([], { events, now: "2026-10-07T12:00:00Z" }).people[0].days[6];
     expect(day).toMatchObject({ minutes: 60, recorded: true });

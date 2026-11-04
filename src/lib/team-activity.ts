@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { addCalendarDays, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, instantToDateOnly } from "@/lib/calendar";
 import { calendarStatisticsAssignments, materializeStatisticsEvents, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
+import { summarizeDailyCalendarWork } from "@/lib/calendar-work-time";
 import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import type { Database } from "@/types/database.types";
 
@@ -121,34 +122,21 @@ export function buildTeamActivity({ month, today, workdayMinutes, people, entrie
     participants.set(eventId, ids);
   }
   const byId = new Map(events.map(event => [event.id, event]));
-  const intervals = new Map<TeamActivityDay, Array<{ start: number; end: number }>>();
-  for (const occurrence of materializeStatisticsEvents(events, { from, through: addCalendarDays(until, -1) })) {
-    // Match Work Tracking: only completed timed events establish worked minutes.
-    if (occurrence.all_day || occurrence.event_type === "work_makeup" || Date.parse(occurrence.ends_at) > Date.parse(now)) continue;
-    const event = byId.get(occurrence.id);
-    if (!event) continue;
-    for (const date of dates) {
-      const start = Math.max(Date.parse(occurrence.starts_at), Date.parse(zonedWallTimeToIso(`${date}T00:00`)));
-      const end = Math.min(Date.parse(occurrence.ends_at), Date.parse(zonedWallTimeToIso(`${addCalendarDays(date, 1)}T00:00`)));
-      if (!(end > start)) continue;
-      for (const userId of participants.get(occurrence.id) ?? []) {
-        const day = dayFor(userId, date);
-        if (!day) continue;
-        day.recorded = true;
-        day.items.push({ activityKind: "calendar", internalActivityType: null, task: null, minutes: (end - start) / 60_000,
+  const occurrences = materializeStatisticsEvents(events, { from, through: addCalendarDays(until, -1) });
+  for (const person of rows.values()) {
+    const assigned = occurrences.filter(event => participants.get(event.id)?.has(person.id));
+    const eligibility = { joinedDate: people.find(row => row.id === person.id)?.joinedDate ?? null,
+      timeOff: timeOff.filter(period => period.user_id === person.id), studioDaysOff };
+    for (const day of person.days) {
+      const calendar = summarizeDailyCalendarWork(assigned, day.date, now, eligibility);
+      day.minutes += calendar.minutes;
+      if (calendar.items.length) day.recorded = true;
+      for (const item of calendar.items) {
+        const event = byId.get(item.event.id);
+        if (!event) continue;
+        day.items.push({ activityKind: "calendar", internalActivityType: null, task: null, minutes: item.minutes,
           reviewRoundId: null, reviewSessionId: null, calendarEvent: { id: event.id, title: event.title, project: event.project } });
-        const spans = intervals.get(day) ?? [];
-        spans.push({ start, end });
-        intervals.set(day, spans);
       }
-    }
-  }
-  // Concurrent invitations cannot multiply a person's working time.
-  for (const [day, spans] of intervals) {
-    let coveredUntil = 0;
-    for (const { start, end } of spans.sort((a, b) => a.start - b.start)) {
-      day.minutes += Math.max(0, end - Math.max(start, coveredUntil)) / 60_000;
-      coveredUntil = Math.max(coveredUntil, end);
     }
   }
   // Live state is separate from recorded minutes; timer accounting already writes to the work log.

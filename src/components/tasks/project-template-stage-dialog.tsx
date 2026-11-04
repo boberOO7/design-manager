@@ -80,7 +80,7 @@ export function ProjectTemplateStageDialog({ destinationStage, destinationStageN
             {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
           </Select>
         </FormField>
-        {!isProjectTemplateStage(destinationStage) ? <FormField label={t("sourceStage")}><Select value={sourceStage} disabled={saving} onValueChange={(stage) => { if (isProjectTemplateStage(stage)) { setSourceStage(stage); setError(null); } }}>{PROJECT_TEMPLATE_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{stageT(stage)}</SelectItem>)}</Select></FormField> : null}
+        {!isProjectTemplateStage(destinationStage) ? <FormField label={t("sourceStage")}><Select value={sourceStage} disabled={saving} onValueChange={(stage) => { if (isProjectTemplateStage(stage)) { setSourceStage(stage); setError(null); } }}>{PROJECT_TEMPLATE_STAGES.map((stage) => <SelectItem key={stage} value={stage}>{selectedTemplate?.stageNames?.[stage] ?? stageT(stage)}</SelectItem>)}</Select></FormField> : null}
         {hasScheduledTasks ? <FormField label={t("stageScheduleStartDate")}><DatePicker value={anchorDate} locale={locale} disabled={saving} onValueChange={setAnchorDate} /></FormField> : null}
       </div>
       {selectedTemplate && selectedTasks.length > 0 ? <div className="mt-4 rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] px-3 py-3"><p className="text-sm font-medium text-[var(--ui-text)]">{t("tasksWillBeAdded", { count: selectedTasks.length })}</p><p className="mt-1 text-xs leading-5 text-[var(--ui-text-muted)]">{t("existingTasksRemain")}</p></div> : <p className="mt-4 text-sm text-[var(--ui-text-muted)]">{templates.length === 0 ? t("noTemplates") : t("emptySourceStage")}</p>}

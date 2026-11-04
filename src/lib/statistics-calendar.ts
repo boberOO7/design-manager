@@ -37,7 +37,7 @@ export function calendarStatisticsAssignments(
       ...(roles.get(event.id)?.includes("organizer") ? [event.organizer_id] : []),
       ...(roles.get(event.id)?.includes("assignee") && event.assignee_id ? [event.assignee_id] : []),
     ].map(personId => ({ eventId: event.id, personId }))),
-    ...invites.flatMap(invite => invite.status !== "declined" && roles.get(invite.event_id)?.includes("invitations")
+    ...invites.flatMap(invite => invite.status === "accepted" && roles.get(invite.event_id)?.includes("invitations")
       ? [{ eventId: invite.event_id, personId: invite.user_id }] : []),
     ...participants.flatMap(participant => roles.get(participant.event_id)?.includes("participants")
       ? [{ eventId: participant.event_id, personId: participant.user_id }] : []),

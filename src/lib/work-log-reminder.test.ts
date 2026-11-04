@@ -12,6 +12,19 @@ const storage = () => {
 };
 
 describe("weekly Work Log and missing-day reminders", () => {
+  it("requires saved work on makeup weekends and holidays, without auto-crediting scheduled hours", () => {
+    const rules = { joinedDate: "2026-11-02", studioDaysOff: ["2026-11-06"],
+      workMakeupDates: ["2026-11-01", "2026-11-06", "2026-11-07", "2026-11-09"] };
+    const data = buildWorkLogReminders("2026-11-09", [], rules);
+    expect(data.missingDates).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"]);
+    expect(data.latestEligibleDate).toBe("2026-11-07");
+    expect(data.previousWeekMissing).toContain("2026-11-07");
+    const week = buildWeeklyWorkLog("2026-11-07", "2026-11-09", [], [], new Map(), rules);
+    expect(week.days[5]).toMatchObject({ kind: "weekend", missing: true, totalMinutes: 0 });
+    expect(week.days[6]).toMatchObject({ kind: "weekend", missing: false });
+    expect(buildWorkLogReminders("2026-11-09", [submitted("2026-11-07")], rules).missingDates).not.toContain("2026-11-07");
+  });
+
   it("caps a long-tenure employee's reminders at rollout and never includes today", () => {
     const rules = { joinedDate: "2024-01-01" };
     expect(WORK_TRACKING_ROLLOUT_DATE).toBe("2026-10-12");

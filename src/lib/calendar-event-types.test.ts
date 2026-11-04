@@ -26,8 +26,9 @@ describe("calendar event semantic types", () => {
     expect(CALENDAR_EVENT_DETAIL_CONFIG.interview.assigneeLabel).toBe("interviewer");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.meeting.invitationLabel).toBe("participants");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.meeting.sections).toContain("meetingMode");
-    expect(CALENDAR_EVENT_DETAIL_CONFIG.meeting.organizerLabel).toBe("organizer");
-    expect(CALENDAR_EVENT_DETAIL_CONFIG.presentation.organizerLabel).toBe("presenter");
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.meeting.sections).not.toContain("organizer");
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.presentation.sections).not.toContain("organizer");
+    expect(CALENDAR_EVENT_DETAIL_CONFIG.presentation.invitationLabel).toBe("participants");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.general.invitationLabel).toBe("invitees");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.general.sections).not.toContain("organizer");
     expect(CALENDAR_EVENT_DETAIL_CONFIG.internal_review.sections).toContain("recurrence");

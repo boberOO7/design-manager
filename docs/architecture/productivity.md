@@ -144,9 +144,16 @@ rows without `voided_at`.
 - Calendar time retains its existing source and separate statistics. Internal
   activity logging does not create or copy Calendar time.
 - Team Activity includes completed timed Calendar occurrences by their semantic
-  participant roles, with recurrence overrides and Kyiv day boundaries. Concurrent
-  events count once in daily totals; individual event durations remain visible.
-  All-day and work-makeup events do not imply worked hours.
+  participant roles, with recurrence overrides and Kyiv day boundaries. Work Log
+  and Team Activity require accepted invitations for RSVP event participation
+  (including the creator); later acceptance updates past event dates. They share
+  `calendar-work-time.ts`: all-day work events contribute
+  480 minutes per completed working date, excluding weekends, studio days off,
+  full-day leave and dates before joining. Concurrent Calendar events count once
+  in daily totals; a full-day event covers that day's timed Calendar activities.
+  Work-makeup events require explicit Work Log submission even on non-working
+  dates, but do not automatically add worked hours. Partial leave does not turn
+  an entire weekday into work outside the schedule.
 
 ## Current unresolved boundary
 

@@ -775,7 +775,7 @@
     "stage_1": "Stage 1",
     "stage_2": "Stage 2",
     "stage_3": "Stage 3",
-    "stage_4": "Stage 4"
+    "stage_4": "Additional tasks"
   },
   "StageConfiguration": {
     "configure": "Configure stages",
@@ -1479,6 +1479,7 @@
     "removeStage": "Remove {title}"
   },
   "ProjectTemplates": {
+    "stageName": "Stage name",
     "duplicateTemplate": "Duplicate template",
     "copyName": "{name} (copy)",
     "stageScheduleStartDate": "Stage schedule start date",
@@ -1668,7 +1669,8 @@
     "searchInvitees": "Search studio members",
     "noInviteeResults": "No matching members.",
     "removeInvitee": "Remove {name}",
-    "inviteesHelp": "Invitees can accept or decline. Non-meeting project events are limited to active project members.",
+    "inviteesHelpLabel": "About participation and work hours",
+    "inviteesHelp": "Invitees, including the creator, must accept for hours to count. The creator can be removed from meeting and presentation participants. Other project events are limited to active project members.",
     "location": "Location",
     "meetingUrl": "Meeting URL",
     "descriptionLabel": "Description",
@@ -2752,7 +2754,7 @@
     "removeDirection": "Remove {name} direction",
     "stageComposition": "Stages: {work} main · {additional} additional",
     "templateTeam": "Tasks and assignees",
-    "templateStage": "Stage {index} · {count, plural, one {# task} other {# tasks}}",
+    "templateStage": "{name} · {count, plural, one {# task} other {# tasks}}",
     "unassigned": "Unassigned",
     "increaseCoefficient": "Increase coefficient by 0.05",
     "decreaseCoefficient": "Decrease coefficient by 0.05"
@@ -5850,7 +5852,7 @@
     "closedStagesOnly": "Closed stays only. Missing history is unavailable, not zero.",
     "balanceLink": "Vacation balance — in employee profiles",
     "calendarPeopleTitle": "Employee calendar involvement",
-    "calendarPeopleDefinition": "Scheduled involvement follows each event type: meeting organizers/presenters, assigned interviewers, trip/site-visit participants, and non-declined invitees where invitations apply. Creating an event alone does not imply participation. Each person counts once per occurrence, even in several roles. Pending invitations are included; attendance is not verified. Recurring events use the template’s people; an override uses its own people. Timed hours are clipped to the selected period. All-day and unknown durations add participations but no hours. Current participant records are used; past invitation edits are not reconstructed.",
+    "calendarPeopleDefinition": "Participation follows each event type: assigned interviewers, trip/site-visit participants, and accepted invitees where invitations apply. Creating an event alone does not imply participation. Each person counts once per occurrence, even in several roles. Pending and declined invitations are excluded. Late acceptance counts on the original event date; actual attendance is not verified. Recurring events use the template’s people; an override uses its own people. Timed hours are clipped to the selected period. All-day and unknown durations add participations but no hours. Current participant records are used; past invitation edits are not reconstructed.",
     "participantCountNote": "One event with five people is five participations; hours are scheduled, not verified attendance.",
     "eventParticipations": "Event participations",
     "scheduledParticipantHours": "Scheduled participation · h",
@@ -5895,7 +5897,7 @@
     "workDefinition": "Task and review time belongs to the person who logged it, by work date in the selected period; review entries refer to a specific round. Each resolved reviewer step counts on its approval or rework date, including approvals in an open round. Reviews add no completed tasks or m² credit. The total includes logged task, review and internal work time. Internal work adds no completed tasks or m² credit and is not attributed to a project. Event participation is reported separately in the Calendar tab; time off and make-up retain their separate accounting. Review sessions count shared work once across pause/resume; task review steps count each reviewer’s decisions separately.",
     "reviewSessionsCompleted": "Review sessions completed",
     "activityTitle": "Team activity",
-    "activityDefinition": "Recorded task, review and internal work plus completed timed calendar events by Kyiv work date. All-day events do not imply worked hours; overlapping events count once. Solid squares show missing records in muted gray, recorded time below the normalized studio workday (including an explicit 0 hours) in amber, a full workday in green, time above it in vivid bright green, and work outside the schedule in violet. Empty weekends and studio days off have light outlines; approved absences without work have a muted fill and dashed outlines. Approved absences (including partial days), studio days off and dates before joining have no target comparison. Active review timers keep a separate cell marker; their unrecorded time is not added to totals. Hover or focus for the exact hours and day context; click for the full task breakdown.",
+    "activityDefinition": "Recorded task, review and internal work plus completed calendar events by Kyiv work date. All-day events count as 8 hours per completed working day; overlapping events count once. Makeup events require actual work to be logged and do not add hours automatically. Invitations count only after acceptance, including acceptance after the event. Solid squares show missing records in muted gray, recorded time below the normalized studio workday (including an explicit 0 hours) in amber, a full workday in green, time above it in vivid bright green, and work outside the schedule in violet. Empty weekends and studio days off have light outlines; approved absences without work have a muted fill and dashed outlines. Approved full-day absences, studio days off and dates before joining have no target comparison. Partial absences do not change the working day type. Active review timers keep a separate cell marker; their unrecorded time is not added to totals. Hover or focus for the exact hours and day context; click for the full task breakdown.",
     "activityMonthNavigation": "Activity month",
     "activityPreviousMonth": "Previous month",
     "activityNextMonth": "Next month",

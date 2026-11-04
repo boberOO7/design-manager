@@ -420,10 +420,10 @@ describe("Calendar relevance semantics", () => {
     expect(filterCalendarItems([siteVisit], { ...DEFAULT_CALENDAR_FILTERS, mine: true }, "u2")).toEqual([siteVisit]);
   });
 
-  it("keeps meeting organizers relevant as genuine participants", () => {
+  it("does not treat meeting ownership as participation", () => {
     const meeting = calendarEvent({ eventType: "meeting", organizer: { ...executor, id: "u1", full_name: "Organizer" }, personIds: ["u1"] });
 
-    expect(isCalendarItemRelevantToUser(meeting, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(meeting, "u1")).toBe(false);
   });
 
   it("keeps explicit invitees relevant without treating a generic creator as relevant", () => {
@@ -456,7 +456,8 @@ describe("Calendar relevance semantics", () => {
     const internalReview = calendarEvent({ eventType: "internal_review", invitees: [invitee] });
     const workMakeup = calendarEvent({ eventType: "work_makeup", organizer: { ...executor, id: "u1", full_name: "Employee" } });
 
-    expect(isCalendarItemRelevantToUser(presenterEvent, "u1")).toBe(true);
+    expect(isCalendarItemRelevantToUser(presenterEvent, "u1")).toBe(false);
+    expect(isCalendarItemRelevantToUser({ ...presenterEvent, invitees: [invitee] }, invitee.id)).toBe(true);
     expect(isCalendarItemRelevantToUser(interview, "u2")).toBe(true);
     expect(isCalendarItemRelevantToUser(internalReview, "u2")).toBe(true);
     expect(isCalendarItemRelevantToUser(workMakeup, "u1")).toBe(true);

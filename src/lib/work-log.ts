@@ -2,7 +2,8 @@ import { z } from "zod";
 import { addCalendarDays, instantToDateOnly, startOfMondayWeek, zonedWallTimeToIso } from "@/lib/calendar";
 import { getWorkdayKind, WORKDAY_KINDS } from "@/lib/workdays";
 import { isActivityChange, isActivityChanges } from "@/lib/project-activity";
-import { buildCalendarStatistics, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
+import { materializeStatisticsEvents, calendarStatisticsAssignments, STATISTICS_CALENDAR_TYPES, type StatisticsCalendarEvent } from "@/lib/statistics-calendar";
+import { summarizeDailyCalendarWork } from "@/lib/calendar-work-time";
 import type { Database } from "@/types/database.types";
 import { taskStageSchema } from "@/lib/task-stages";
 
@@ -108,7 +109,12 @@ export const workLogRemindersSchema = z.object({
 });
 export type WorkLogReminders = z.infer<typeof workLogRemindersSchema>;
 
-export type WorkLogEligibility = Parameters<typeof getWorkdayKind>[1];
+export type WorkLogEligibility = Parameters<typeof getWorkdayKind>[1] & { workMakeupDates?: readonly string[] };
+
+function requiresWorkLog(date: string, eligibility: WorkLogEligibility) {
+  const kind = getWorkdayKind(date, eligibility);
+  return kind === "day" || kind !== "before_joining" && !!eligibility.workMakeupDates?.includes(date);
+}
 type SubmittedDay = Pick<Tables["work_log_days"]["Row"], "work_date" | "submitted_at">;
 
 // Fixed production rollout date in the Work Log's Europe/Kyiv work-date timezone.
@@ -130,7 +136,7 @@ export function buildWeeklyWorkLog(date: string, today: string, entries: Array<W
     const day = addCalendarDays(start, index);
     const submittedAt = submitted.get(day) ?? null;
     const kind = getWorkdayKind(day, eligibility);
-    return { date: day, submittedAt, kind, missing: day >= reminderWindow.from && day < today && kind === "day" && submittedAt === null,
+    return { date: day, submittedAt, kind, missing: day >= reminderWindow.from && day < today && requiresWorkLog(day, eligibility) && submittedAt === null,
       ...summarizeLoggedTime(entries.filter(row => row.work_date === day), calendarMinutes.get(day) ?? 0) };
   });
   const totals = days.reduce((sum, day) => ({ taskMinutes: sum.taskMinutes + day.taskMinutes,
@@ -145,7 +151,7 @@ export function buildWorkLogReminders(today: string, submissions: SubmittedDay[]
   let latestEligibleDate: string | null = null;
   const { from, previousWeek } = getWorkLogReminderWindow(today, eligibility.joinedDate);
   for (let day = from; day < today; day = addCalendarDays(day, 1)) {
-    if (getWorkdayKind(day, eligibility) !== "day") continue;
+    if (!requiresWorkLog(day, eligibility)) continue;
     latestEligibleDate = day;
     if (!submitted.has(day)) missingDates.push(day);
   }
@@ -362,17 +368,15 @@ export function buildWorkStatistics(entries: Array<WorkLogEntry & { id: string; 
 export function getDailyCalendarContext(events: Array<StatisticsCalendarEvent & { assignee_id: string | null }>,
   invites: Array<Pick<Tables["calendar_event_invites"]["Row"], "event_id" | "user_id" | "status">>,
   participants: Array<Pick<Tables["calendar_event_participants"]["Row"], "event_id" | "user_id">>,
-  userId: string, date: string, now: string,
+  userId: string, date: string, now: string, eligibility: WorkLogEligibility = { joinedDate: null },
 ) {
-  const assignments = calendarStatisticsAssignments(events, invites, participants).filter(row => row.personId === userId);
+  const assignments = new Set(calendarStatisticsAssignments(events, invites, participants)
+    .filter(row => row.personId === userId).map(row => row.eventId));
   // Keep templates for moved overrides, but discard occurrences assigned to others.
-  const report = buildCalendarStatistics(events, [], { from: date, through: date }, now,
-    { members: [{ id: userId, name: "", active: true }], assignments });
-  const person = report.people.find(row => row.id === userId);
-  const categories = (person?.categories ?? []).map(category => ({
-    eventType: category.eventType, minutes: category.hours * 60, allDayCount: category.allDayCount,
-  })).filter(row => row.minutes > 0 || row.allDayCount > 0);
-  return { minutes: (person?.hours ?? 0) * 60, categories };
+  const occurrences = materializeStatisticsEvents(events, { from: date, through: date })
+    .filter(event => assignments.has(event.id));
+  const { minutes, categories } = summarizeDailyCalendarWork(occurrences, date, now, eligibility);
+  return { minutes, categories };
 }
 
 export function getSuggestedTaskIds(activities: WorkLogActivity[],

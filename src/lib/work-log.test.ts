@@ -163,8 +163,8 @@ describe("work log domain", () => {
       entry({ id: "review", user_id: "reviewer", work_date: "2026-10-01", activity_kind: "review", review_round_id: roundId, minutes: 30 })];
     const report = buildWorkStatistics([...logged, ...logged], [round({ completed_at: "2026-10-01T09:00:00Z" })], members, range);
     expect(calendar.totals.hours).toBe(11); // Event durations, including unassigned general activity.
-    expect(calendar.people.find(row => row.id === "reviewer")?.hours).toBe(10);
-    expect(calendar.people.find(row => row.id === "worker")?.hours).toBe(6);
+    expect(calendar.people.find(row => row.id === "reviewer")?.hours).toBe(6);
+    expect(calendar.people.find(row => row.id === "worker")).toBeUndefined();
     expect(report.totals).toEqual({ internalMinutes: 0, taskMinutes: 90, reviewMinutes: 30, totalMinutes: 120, reviewsCompleted: 1, reviewSessionsCompleted: 0 });
     expect(report.totals).not.toHaveProperty("calendarMinutes");
     expect(report.employees.find(row => row.id === "reviewer")).toMatchObject({ reviewMinutes: 30, totalMinutes: 30 });

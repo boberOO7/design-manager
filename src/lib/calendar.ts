@@ -195,7 +195,6 @@ export function isCalendarEventRelevantToUser(event: CalendarEventRelevance, use
       return event.participantIds.includes(userId);
     case "meeting":
     case "presentation":
-      return event.organizerId === userId || event.inviteeIds.includes(userId);
     case "general":
     case "internal_review":
       return event.inviteeIds.includes(userId);

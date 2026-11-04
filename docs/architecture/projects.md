@@ -148,6 +148,11 @@ Invariants:
   the impact check and removal RPC keep this atomic.
 - Project templates create the project, memberships, task structure, and defaults
   atomically. Template task priority and ordering are normalized by migrations.
+- Template `stage_names` stores optional names for the four canonical source
+  stages (1–80 characters). Names are editable in the template, retained on copy,
+  and copied into new project/direction stage labels ahead of localized defaults.
+  Later template edits and appending template tasks preserve existing project
+  labels. Unnamed Stage 4 defaults to “Additional tasks”; its kind stays additional.
 - A project-template task may reference one same-studio checklist template. Project
   creation and stage application copy its current items into task checklist rows;
   created projects do not retain template links.

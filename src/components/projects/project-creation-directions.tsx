@@ -76,11 +76,11 @@ function TemplateField({ value, templates, onChange, initial = false }: { value:
 }
 
 function TemplateAssignments({ template, members, values, onChange }: { template?: ProjectTemplate; members: ActiveStudioAssignee[]; values: Record<string, string>; onChange: (stage: string, id: string) => void }) {
-  const t = useTranslations("ProjectForm");
+  const t = useTranslations("ProjectForm"), stageT = useTranslations("TaskStages");
   if (!template?.tasks.length) return null;
-  return <AnimatedDisclosure title={t("templateTeam")} className="mt-1"><div className="grid gap-3 pb-1">{PROJECT_TEMPLATE_STAGES.map((stage, index) => {
+  return <AnimatedDisclosure title={t("templateTeam")} className="mt-1"><div className="grid gap-3 pb-1">{PROJECT_TEMPLATE_STAGES.map(stage => {
     const tasks = getTemplateStageTasks(template, stage);
-    return tasks.length ? <div key={stage} className="grid gap-1.5"><label className={styles.smallField}>{t("templateStage", { index: index + 1, count: tasks.length })}<Select value={values[stage] ?? ""} onValueChange={value => onChange(stage, value)} size="compact"><SelectItem value="">{t("unassigned")}</SelectItem>{members.map(member => <SelectItem key={member.id} value={member.id} textValue={member.full_name}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="boardCard"/>{member.full_name}</span></SelectItem>)}</Select></label><ol className="list-decimal space-y-1 pl-4 text-xs text-[var(--ui-text-secondary)]">{tasks.map(task => <li key={task.id}>{task.title}</li>)}</ol></div> : null;
+    return tasks.length ? <div key={stage} className="grid gap-1.5"><label className={styles.smallField}>{t("templateStage", { name: template.stageNames?.[stage] ?? stageT(stage), count: tasks.length })}<Select value={values[stage] ?? ""} onValueChange={value => onChange(stage, value)} size="compact"><SelectItem value="">{t("unassigned")}</SelectItem>{members.map(member => <SelectItem key={member.id} value={member.id} textValue={member.full_name}><span className="flex items-center gap-2"><UserAvatar decorative imageUrl={member.avatar_url} name={member.full_name} size="boardCard"/>{member.full_name}</span></SelectItem>)}</Select></label><ol className="list-decimal space-y-1 pl-4 text-xs text-[var(--ui-text-secondary)]">{tasks.map(task => <li key={task.id}>{task.title}</li>)}</ol></div> : null;
   })}</div></AnimatedDisclosure>;
 }
 

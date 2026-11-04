@@ -6727,6 +6727,7 @@ export type Database = {
           is_default: boolean
           name: string
           project_type: string
+          stage_names: Json
           stage_progress_methods: Json
           studio_id: string
           updated_at: string
@@ -6739,6 +6740,7 @@ export type Database = {
           is_default?: boolean
           name: string
           project_type: string
+          stage_names?: Json
           stage_progress_methods?: Json
           studio_id: string
           updated_at?: string
@@ -6751,6 +6753,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           project_type?: string
+          stage_names?: Json
           stage_progress_methods?: Json
           studio_id?: string
           updated_at?: string
@@ -12047,6 +12050,7 @@ export type Database = {
           p_is_default: boolean
           p_name: string
           p_project_type: string
+          p_stage_names?: Json
           p_stage_progress_methods?: Json
           p_studio_id: string
           p_tasks: Json

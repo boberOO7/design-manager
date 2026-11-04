@@ -3,13 +3,13 @@ import "server-only";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
 import { isProjectPriority, isProjectTypeKey, type ProjectTypeKey } from "@/lib/validation/project";
-import { templateStageProgressMethodsSchema, isProjectTemplateDependencyMode, isProjectTemplateStage, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
+import { templateStageNamesSchema, templateStageProgressMethodsSchema, isProjectTemplateDependencyMode, isProjectTemplateStage, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
 
 export async function getStudioProjectTemplates(): Promise<ProjectTemplate[]> {
   const membership = await getActiveStudioMembership();
   if (!membership) return [];
   const supabase = await createClient();
-  const { data: templates, error: templateError } = await supabase.from("project_templates").select("id, name, project_type, is_active, is_default, stage_progress_methods").eq("studio_id", membership.studio_id).eq("is_active", true).order("name");
+  const { data: templates, error: templateError } = await supabase.from("project_templates").select("id, name, project_type, is_active, is_default, stage_progress_methods, stage_names").eq("studio_id", membership.studio_id).eq("is_active", true).order("name");
   if (templateError) throw new Error("Unable to load project templates.", { cause: templateError });
   const validTemplates = (templates ?? []).filter((template): template is typeof template & { project_type: ProjectTypeKey } => isProjectTypeKey(template.project_type));
   if (!validTemplates.length) return [];
@@ -39,6 +39,7 @@ export async function getStudioProjectTemplates(): Promise<ProjectTemplate[]> {
     return {
       id: template.id, name: template.name, projectType: template.project_type, isActive: template.is_active, isDefault: template.is_default,
       stageProgressMethods: templateStageProgressMethodsSchema.parse(template.stage_progress_methods),
+      stageNames: templateStageNamesSchema.parse(template.stage_names),
       tasks: mappedTasks.map((task) => task.dependencyMode === "custom"
         ? { ...task, dependsOnIds: reduceTemplateDirectDependencies(mappedTasks, task.dependsOnIds) }
         : task),

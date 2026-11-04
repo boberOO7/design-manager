@@ -47,6 +47,7 @@ describe("team activity month query", () => {
     }
     expect(calls).toContainEqual({ table: "time_off_requests", field: "studio_id", value: "studio", op: "eq" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "status", value: "approved", op: "eq" });
+    expect(calls).toContainEqual({ table: "time_off_requests", field: "all_day", value: true, op: "eq" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "cancelled_at", value: null, op: "is" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "start_date", value: next, op: "lt" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "end_date", value: `${month}-01`, op: "gte" });

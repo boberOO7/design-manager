@@ -60,7 +60,7 @@ dependent compensation-event read.
 
 Real events use language-neutral types: general, meeting, interview, site visit,
 business trip, presentation, internal review, and work makeup. Types determine
-the meaningful roles and fields: invitees, organizer/presenter, assignee,
+the meaningful roles and fields: invitees, owner, assignee,
 participants, destination, meeting mode, recurrence, or linked day off.
 
 Invariants:
@@ -76,8 +76,13 @@ Invariants:
   retain self-only assignment. Site-visit additions notify each new participant;
   relevance and Google projection use the participant set. Legacy visit assignees
   are backfilled into that relation; interviews keep their single assignee.
-- A general event may include its organizer as an invitee; other event types
-  retain their organizer-specific role and invitation restrictions.
+- General events, meetings and presentations may include their owner as an invitee.
+  Meetings/presentations default the creator into the removable participant list;
+  ownership retains management rights but does not imply participation or hours.
+  All invitees, including the creator, start pending and must accept for hours to
+  count. Later acceptance includes past event dates. Legacy meeting/presentation
+  owners receive pending invitations without migration-time notifications.
+  Site-visit/trip assignments and interview assignees retain their non-RSVP roles.
 - Recurrence preserves a root series and occurrence identity; update/cancel
   behavior must keep Google mappings and reconciliation rooted consistently.
 
@@ -110,7 +115,7 @@ is implied. See [Finance — Business trips](finance.md#business-trips).
 | --- | --- |
 | Site visit, interview | Assignee |
 | Business trip | Participant |
-| Meeting, presentation | Organizer or invitee |
+| Meeting, presentation | Invitee |
 | General, internal review | Invitee |
 | Work makeup | Organizer |
 

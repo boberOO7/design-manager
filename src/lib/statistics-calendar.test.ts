@@ -100,7 +100,7 @@ describe("calendar statistics occurrences", () => {
     ]);
   });
 
-  it("counts scheduled roles, pending invitations, and organizer invitations once per person", () => {
+  it("counts accepted invitations and scheduled roles once, excluding unconfirmed invitations", () => {
     const roleEvents = [
       { id: "meeting", event_type: "meeting" as const, organizer_id: "organizer", assignee_id: null },
       { id: "trip", event_type: "business_trip" as const, organizer_id: "creator-only", assignee_id: null },
@@ -110,7 +110,7 @@ describe("calendar statistics occurrences", () => {
       { event_id: "meeting", user_id: "pending-person", status: "pending" as const },
       { event_id: "meeting", user_id: "declined-person", status: "declined" as const },
     ], []);
-    expect(assignments).toContainEqual({ eventId: "meeting", personId: "pending-person" });
+    expect(assignments).not.toContainEqual({ eventId: "meeting", personId: "pending-person" });
     expect(assignments).not.toContainEqual({ eventId: "trip", personId: "creator-only" });
 
     const report = buildCalendarStatistics([
@@ -121,7 +121,7 @@ describe("calendar statistics occurrences", () => {
       { id: "pending-person", name: "Pending", active: true },
       { id: "creator-only", name: "Creator", active: true },
     ], assignments });
-    expect(report.people.map(person => [person.id, person.count])).toEqual([["organizer", 1], ["pending-person", 1]]);
+    expect(report.people.map(person => [person.id, person.count])).toEqual([["organizer", 1]]);
     expect(report.unassignedCount).toBe(1);
     expect(report.totals).toMatchObject({ count: 2, hours: 2 });
   });

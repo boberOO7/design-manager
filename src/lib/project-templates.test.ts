@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { moveProjectTemplateTask } from "@/lib/project-template-task-order";
-import { createProjectTemplateCopy, getActiveProjectTemplates, getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateDependencyIssue, getTemplateStageTasks, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
+import { templateStageNamesSchema, createProjectTemplateCopy, getActiveProjectTemplates, getActiveProjectTemplatesForType, getDefaultProjectTemplate, getTemplateDependencyIssue, getTemplateStageTasks, getTemplateTaskDirectDependencies, mergeSavedProjectTemplate, reduceTemplateDirectDependencies, type ProjectTemplate, type ProjectTemplateTask } from "@/lib/project-templates";
 
 const templates: ProjectTemplate[] = [
   { id: "dental", name: "Стоматологія", projectType: "medical", isActive: true, isDefault: true, tasks: [] },
@@ -156,5 +156,24 @@ describe("template dependency modes", () => {
   it("removes ancestors already implied by another selected predecessor", () => {
     const tasks = [scheduledTask("A", 0, "independent"), scheduledTask("B", 1), scheduledTask("C", 2, "custom", ["A", "B"])];
     expect(reduceTemplateDirectDependencies(tasks, ["A", "B", "A"])).toEqual(["B"]);
+  });
+});
+
+describe("template stage names", () => {
+  it("validates optional names without changing stable stage keys", () => {
+    expect(templateStageNamesSchema.parse({ stage_1: " Концепція ", stage_4: "Авторський нагляд" }))
+      .toEqual({ stage_1: "Концепція", stage_4: "Авторський нагляд" });
+    expect(templateStageNamesSchema.parse({})).toEqual({});
+    for (const names of [{ stage_1: " " }, { stage_4: "x".repeat(81) }, { custom_stage: "Other" }, { stage_2: 2 }]) {
+      expect(templateStageNamesSchema.safeParse(names).success).toBe(false);
+    }
+  });
+
+  it("retains custom names when duplicating and saving templates", () => {
+    const original = { ...templates[0], stageNames: { stage_1: "Concept", stage_4: "Site support" } };
+    const copy = createProjectTemplateCopy(original, "Copy");
+    expect(copy.stageNames).toEqual(original.stageNames);
+    expect(mergeSavedProjectTemplate(templates, { ...original, stageNames: { stage_1: "Planning" } })[0].stageNames)
+      .toEqual({ stage_1: "Planning" });
   });
 });

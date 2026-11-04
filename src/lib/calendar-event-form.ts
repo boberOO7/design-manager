@@ -32,7 +32,12 @@ export function groupCalendarEventProjects(projects: readonly CalendarProject[])
 }
 
 export function isCalendarEventInviteeSelectable(eventType: CalendarEventType, personId: string, organizerId: string): boolean {
-  return eventType === "general" || personId !== organizerId;
+  return eventType === "general" || eventType === "meeting" || eventType === "presentation" || personId !== organizerId;
+}
+
+export function getCalendarEventTypeAttendees(eventType: CalendarEventType, attendeeIds: string[], creatorId: string): string[] {
+  return eventType === "meeting" || eventType === "presentation"
+    ? [...new Set([...attendeeIds, creatorId])] : attendeeIds;
 }
 
 export function updateEventStartDate(values: CalendarEventFormValues, startDate: string, endDateLinked: boolean): CalendarEventFormValues {
