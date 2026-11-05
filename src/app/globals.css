@@ -322,12 +322,130 @@ body,
   height: 0 !important;
 }
 
+/* Fixed rows reserve the same native gutter as the independently scrolling hours. */
+.calendar-week-fixed-row,
 .calendar-week-timeline {
-  scrollbar-color: var(--ui-border-strong) var(--ui-surface);
+  scrollbar-gutter: stable;
+}
+
+.calendar-week-fixed-row { overflow: hidden; flex-shrink: 0; }
+.calendar-week-grid {
+  display: grid;
+  grid-template-columns: var(--calendar-hour-width, 3.5rem) repeat(7, minmax(0, 1fr));
+}
+
+.calendar-week-grid > :last-child { border-right-width: 0; }
+
+.calendar-week-timeline {
+  scrollbar-color: var(--ui-border-strong) transparent;
 }
 
 .calendar-week-timeline::-webkit-scrollbar-track {
-  background: var(--ui-surface);
+  background: transparent;
+}
+
+/* Keep the native hit area while painting only a slim thumb, without arrow buttons. */
+@supports selector(::-webkit-scrollbar) {
+  .calendar-week-fixed-row,
+  .calendar-week-timeline {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  .calendar-week-timeline::-webkit-scrollbar-button { display: none; }
+}
+
+/* Content fits the event's real time slot; very short slots remain focusable bars. */
+.calendar-week-event {
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  height: calc(100% - 1px);
+}
+
+.calendar-week-event-shell { z-index: 1; border-radius: var(--radius-sm); background: transparent; }
+.calendar-week-creation-preview {
+  background: color-mix(in srgb, var(--ui-text) 4%, transparent);
+}
+.calendar-week-event-shell[data-editing] .calendar-week-event { opacity: 0; }
+.calendar-week-event-shell[data-saving] .calendar-week-event { cursor: default; }
+.calendar-week-saving { position: absolute; right: 3px; top: 1px; pointer-events: none; }
+.calendar-week-event-shell[data-short] .calendar-week-saving > svg { display: none; }
+.calendar-week-event-shell[data-short] .calendar-week-saving::before { content: ""; display: block; width: 8px; height: 2px; background: currentColor; }
+.calendar-week-event-shell[data-saving] .calendar-week-event-content { padding-right: 16px; }
+
+.calendar-week-event-content {
+  display: none;
+  min-width: 0;
+  padding-inline: 2px;
+}
+
+.calendar-week-event-icon,
+.calendar-week-event-meta {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .calendar-week-event-shell[data-editable] .calendar-week-event { cursor: grab; }
+}
+
+.calendar-week-resize-handle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 1px;
+  display: flex;
+  width: min(44px, calc(100% - 4px));
+  height: min(12px, calc(100% - 1px));
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: ns-resize;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-out;
+  background: transparent;
+}
+
+.calendar-week-resize-handle > span { width: min(28px, 100%); border-top: 2px solid currentColor; border-radius: 1px; }
+.calendar-week-event-shell:hover .calendar-week-resize-handle,
+.calendar-week-event-shell:focus-within .calendar-week-resize-handle { opacity: 1; pointer-events: auto; }
+.calendar-week-event-shell[data-editing] .calendar-week-resize-handle { opacity: 0; transition: none; }
+.calendar-week-resize-handle:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+/* Expand only the invisible hit area; the visible grip stays inside a short card. */
+.calendar-week-event-shell[data-short] .calendar-week-resize-handle::before { content: ""; position: absolute; inset: -6px 0; }
+.calendar-week-view:has([data-editing="move"]) .calendar-week-timeline * { cursor: grabbing; }
+.calendar-week-view:has([data-editing="resize"]) .calendar-week-timeline * { cursor: ns-resize; }
+.calendar-week-edit-preview { border-radius: var(--radius-sm); will-change: transform; }
+.calendar-cancel-hold[data-holding] { color: var(--ui-danger-text); border-color: var(--ui-danger-border); }
+.calendar-week-edit-preview { transition: left 160ms ease-out, width 160ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .calendar-week-event-shell, .calendar-week-edit-preview, .calendar-week-resize-handle { transition: none; }
+  .calendar-cancel-fill { transition: none !important; }
+}
+
+@container (min-height: 16px) {
+  .calendar-week-event-content { display: block; }
+}
+
+@container (min-width: 96px) and (min-height: 32px) {
+  .calendar-week-event-content { padding: 2px 4px; }
+  .calendar-week-event-icon { display: inline-flex; }
+  .calendar-week-event-meta { display: block; }
+}
+
+/* During editing, a compact card prioritizes its new time over a clipped second row. */
+@container (min-height: 16px) and (max-height: 31px) {
+  .calendar-week-event[data-preview] .calendar-week-event-title,
+  .calendar-week-event[data-preview] .calendar-week-event-location { display: none; }
+  .calendar-week-event[data-preview] .calendar-week-event-meta { display: block; line-height: 16px; }
+}
+
+@container (min-height: 32px) {
+  .calendar-week-event[data-preview] .calendar-week-event-meta { display: block; }
 }
 
 /* On usable desktop heights, Calendar views consume the app shell's remaining space.
@@ -403,9 +521,15 @@ body,
 }
 
 .calendar-week-timeline::-webkit-scrollbar-thumb {
-  border: 2px solid var(--ui-surface);
+  border: 3px solid transparent;
   border-radius: var(--ui-radius-control);
   background: var(--ui-border-strong);
+  background-clip: padding-box;
+}
+
+.calendar-week-timeline::-webkit-scrollbar-thumb:hover,
+.calendar-week-timeline::-webkit-scrollbar-thumb:active {
+  background-color: var(--ui-text-muted);
 }
 
 ::selection {

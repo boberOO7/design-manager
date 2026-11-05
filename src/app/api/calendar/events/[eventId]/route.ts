@@ -4,7 +4,9 @@ import { getActiveStudioMembership } from "@/data/queries/active-studio-membersh
 import { getNormalizedCalendarEvent } from "@/data/queries/calendar-item";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateCalendarEventType } from "@/lib/calendar-creation";
-import { calendarEventSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
+import { calendarEventSchema, calendarEventScheduleSchema, calendarFieldErrors, getCalendarEventPersistenceError } from "@/lib/validation/calendar";
+import { canEditWeekEvent, getWeekEventUpdate } from "@/lib/calendar-week-edit";
+import { instantToDateOnly } from "@/lib/calendar";
 import { getBusinessTripTitle, isCalendarEventInviteeSelectable } from "@/lib/calendar-event-form";
 import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 
@@ -16,6 +18,32 @@ export async function PATCH(request: Request, context: Context) {
   const { eventId } = await context.params;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, formError: "Invalid request body." }, { status: 400 }); }
+  if (typeof body === "object" && body !== null && "intent" in body && body.intent === "reschedule") {
+    const parsed = calendarEventScheduleSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
+    const value = parsed.data;
+    const supabase = await createClient();
+    const { data: row, error: readError } = await supabase.from("calendar_events")
+      .select("updated_at, recurrence_rule").eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).maybeSingle();
+    if (readError || !row) return NextResponse.json({ success: false, formError: "The event is unavailable." }, { status: 404 });
+    // Read everything required for validation/response before the single atomic write.
+    const item = await getNormalizedCalendarEvent(eventId);
+    if (!item || row.recurrence_rule || !canEditWeekEvent(item, { currentUserId: membership.authenticatedUserId, isAdmin: membership.system_role === "admin" })) {
+      return NextResponse.json({ success: false, formError: "This event cannot be rescheduled." }, { status: 403 });
+    }
+    if (!getWeekEventUpdate(item, value, "Europe/Kyiv")) return NextResponse.json({ success: false, fieldErrors: { endsAt: "Use a valid time range for this event type." } }, { status: 400 });
+    const { data, error } = await supabase.from("calendar_events")
+      .update({ starts_at: value.startsAt, ends_at: value.endsAt })
+      .eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null)
+      .eq("updated_at", row.updated_at).eq("starts_at", value.expectedStartsAt).eq("ends_at", value.expectedEndsAt)
+      .select("starts_at, ends_at").maybeSingle();
+    if (error) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
+    if (!data) return NextResponse.json({ success: false, formError: "The event changed. Reload it before trying again." }, { status: 409 });
+    // DB guards, notifications and the Google outbox run in this UPDATE's transaction.
+    // No invitation/participant writes or fallible reload after committing the time change.
+    scheduleGoogleCalendarReconciliation();
+    return NextResponse.json({ success: true, item: { ...item, startsAt: data.starts_at, endsAt: data.ends_at, startDate: instantToDateOnly(data.starts_at), endDate: instantToDateOnly(data.ends_at) } });
+  }
   const parsed = calendarEventSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, fieldErrors: calendarFieldErrors(parsed.error) }, { status: 400 });
 

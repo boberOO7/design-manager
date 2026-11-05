@@ -24,6 +24,8 @@ export type CalendarEventFormValues = {
   assigneeId?: string;
 };
 
+export type CalendarEventFormRange = Pick<CalendarEventFormValues, "startDate" | "endDate" | "startTime" | "endTime">;
+
 export function groupCalendarEventProjects(projects: readonly CalendarProject[]): { current: CalendarProject[]; completed: CalendarProject[] } {
   return {
     current: projects.filter((project) => project.status !== "completed" && project.status !== "archived"),
@@ -73,6 +75,7 @@ export function createCalendarEventFormValues(
   item: Extract<CalendarItem, { source: "calendar_event" }> | undefined,
   baseDate: string,
   timeZone = "Europe/Kyiv",
+  initialRange?: CalendarEventFormRange,
 ): CalendarEventFormValues {
   const start = item ? splitWallDateTime(instantToWallInput(item.startsAt, timeZone)) : { date: baseDate, time: "09:00" };
   const end = item ? splitWallDateTime(instantToWallInput(item.endsAt, timeZone)) : { date: baseDate, time: "10:00" };
@@ -95,6 +98,7 @@ export function createCalendarEventFormValues(
     recurrenceRule: item?.recurrenceRule ?? null,
     compensatesTimeOffRequestId: item?.compensatesTimeOffRequestId ?? "",
     assigneeId: item?.assigneeId ?? "",
+    ...(!item ? initialRange : undefined),
   };
 }
 

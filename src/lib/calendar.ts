@@ -296,8 +296,8 @@ export function getMonthMobileDayItems(items: CalendarItem[], segments: MonthLay
   return getVisibleDayItems([...timedItems, ...startingAllDayItems], date, limit);
 }
 
-export const WEEK_PIXELS_PER_MINUTE = 1;
-export const WEEK_MIN_EVENT_HEIGHT = 18;
+// 72 px/hour leaves a full title line in a 15-minute slot.
+export const WEEK_PIXELS_PER_MINUTE = 1.2;
 export const MONTH_EVENT_GEOMETRY = {
   cellPaddingBlockStart: 8,
   dateHeaderHeight: 28,
@@ -514,7 +514,7 @@ export function getTimedWeekSegments(items: CalendarItem[], dates: string[], tim
   });
 }
 
-export function getTimedWeekLayout(segments: TimedWeekSegment[]): TimedWeekLayoutSegment[] {
+export function getTimedWeekLayout(segments: TimedWeekSegment[], preferences?: { columns: ReadonlyMap<string, number>; activeItemId?: string }): TimedWeekLayoutSegment[] {
   const byDate = new Map<string, TimedWeekSegment[]>();
   for (const segment of segments) byDate.set(segment.date, [...(byDate.get(segment.date) ?? []), segment]);
   return [...byDate.values()].flatMap((daySegments) => {
@@ -535,16 +535,47 @@ export function getTimedWeekLayout(segments: TimedWeekSegment[]): TimedWeekLayou
         laneEnds[assignedColumn] = segment.endMinute;
         return { segment, column: assignedColumn };
       });
-      return assigned.map(({ segment, column }) => ({ ...segment, column, columnCount: laneEnds.length }));
+      // Permute whole lanes, so preserving a visual column cannot introduce overlaps or extra lanes.
+      const columns = new Map<number, number>();
+      const used = new Set<number>();
+      const ranks = Array.from({ length: laneEnds.length }, () => Number.POSITIVE_INFINITY);
+      if (preferences) {
+        const active = assigned.find(({ segment }) => segment.itemId === preferences.activeItemId);
+        if (active) {
+          const preferred = preferences.columns.get(active.segment.segmentId);
+          if (preferred !== undefined && preferred >= 0) {
+            const target = Math.min(preferred, laneEnds.length - 1);
+            columns.set(active.column, target);
+            used.add(target);
+          }
+        }
+        for (const { segment, column } of assigned) {
+          const preferred = preferences.columns.get(segment.segmentId);
+          if (preferred !== undefined) ranks[column] = Math.min(ranks[column], preferred);
+        }
+      }
+      // Insert the active lane without reversing the neighbors' existing left-to-right order.
+      const laneOrder = Array.from({ length: laneEnds.length }, (_, column) => column).sort((left, right) => ranks[left] - ranks[right] || left - right);
+      for (const column of laneOrder) {
+        if (columns.has(column)) continue;
+        let target = 0;
+        while (used.has(target)) target++;
+        columns.set(column, target);
+        used.add(target);
+      }
+      return assigned.map(({ segment, column }) => ({ ...segment, column: columns.get(column) ?? column, columnCount: laneEnds.length }));
     });
   });
 }
 
-export function getTimedEventHeight(startMinute: number, endMinute: number, pixelsPerMinute = WEEK_PIXELS_PER_MINUTE, minimumHeight = WEEK_MIN_EVENT_HEIGHT): number {
-  return Math.max(minimumHeight, (endMinute - startMinute) * pixelsPerMinute);
+export function getTimedEventHeight(startMinute: number, endMinute: number, pixelsPerMinute = WEEK_PIXELS_PER_MINUTE): number {
+  return Math.max(0, (endMinute - startMinute) * pixelsPerMinute);
 }
 
-export function getInitialWeekScrollTop(pixelsPerMinute = WEEK_PIXELS_PER_MINUTE): number { return 8 * 60 * pixelsPerMinute; }
+export function getInitialWeekScrollTop(dates: string[], now: Date, timeZone = APPLICATION_TIME_ZONE): number {
+  const current = getCurrentWeekTimePosition(dates, now, timeZone);
+  return Math.max(0, current ? current.minute - 90 : 8 * 60) * WEEK_PIXELS_PER_MINUTE;
+}
 
 export function getCurrentWeekTimePosition(dates: string[], now: Date, timeZone = APPLICATION_TIME_ZONE): { dayIndex: number; minute: number } | null {
   const current = getZonedDateTime(now, timeZone);

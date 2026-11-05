@@ -239,12 +239,7 @@ describe("Calendar viewport sizing", () => {
     expect(source).toContain('gridTemplateRows: `repeat(${desktopWeekCount}, minmax(0, 1fr))`');
   });
 
-  it("lets the Week timeline fill and scale within its available card height", () => {
-    expect(source).toContain('const [pixelsPerMinute, setPixelsPerMinute] = useState(WEEK_MIN_PIXELS_PER_MINUTE);');
-    expect(source).toContain('new ResizeObserver(updateScale)');
-    expect(source).toContain('const WEEK_VIEWPORT_WINDOW_MINUTES = 11 * 60;');
-    expect(source).toContain('const WEEK_MIN_PIXELS_PER_MINUTE = 0.92;');
-    expect(source).toContain('Math.max(WEEK_MIN_PIXELS_PER_MINUTE, container.clientHeight / WEEK_VIEWPORT_WINDOW_MINUTES)');
+  it("lets the Week timeline fill its available card height with proportional event geometry", () => {
     expect(source).toContain('height: 24 * 60 * pixelsPerMinute');
     expect(source).toContain('top: segment.startMinute * pixelsPerMinute');
     expect(source).toContain('height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute)');

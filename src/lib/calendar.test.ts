@@ -4,7 +4,7 @@ import {
   filterCalendarItems, getDayItems, getMonthDesktopWeekCount, getMonthGrid, getVisibleDayItems, instantToDateOnly,
   isCalendarItemRelevantToUser, isKyivTimeZone, isValidEventRange, isValidTimeOffRange, itemOccursOn, mergeCalendarItem, reconcileCalendarItems,
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthItemTop, getMonthLaneLayout, getMonthLayoutSegments, getMonthMobileDayItems, getMonthSegmentGeometry,
-  getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments,
+  getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments, WEEK_PIXELS_PER_MINUTE,
   MONTH_EVENT_GEOMETRY, getCalendarItemDisplayTitle, normalizeCalendarTime, normalizeCalendarTimeFormat, normalizeCoworkerTimeOff, normalizePrivateTimeOff, sortCalendarItems, zonedWallTimeToIso,
 } from "./calendar";
 import type { CalendarItem } from "@/types/calendar";
@@ -308,8 +308,34 @@ describe("Hourly Week layout", () => {
     const event = timedEvent("morning", "2026-07-27T06:00:00.000Z", "2026-07-27T07:30:00.000Z");
     const [segment] = getTimedWeekSegments([event], dates);
     expect(segment).toMatchObject({ date: "2026-07-27", startMinute: 540, endMinute: 630 });
-    expect(getTimedEventHeight(540, 630)).toBe(90);
-    expect(getTimedEventHeight(540, 545)).toBe(18);
+    expect(getTimedEventHeight(540, 630)).toBe(108);
+    expect(getTimedEventHeight(540, 545)).toBe(6);
+    expect(getTimedEventHeight(540, 555)).toBe(18);
+  });
+
+  it.each([5, 15])("keeps consecutive %i-minute cards inside their own time slots", (duration) => {
+    const items = Array.from({ length: 3 }, (_, index) => timedEvent(
+      `short-${index}`,
+      new Date(Date.UTC(2026, 6, 27, 6, index * duration)).toISOString(),
+      new Date(Date.UTC(2026, 6, 27, 6, (index + 1) * duration)).toISOString(),
+    ));
+    const layout = getTimedWeekLayout(getTimedWeekSegments(items, dates));
+    expect(layout).toHaveLength(3);
+    for (const [index, segment] of layout.entries()) {
+      expect(segment).toMatchObject({ column: 0, columnCount: 1 });
+      const bottom = segment.startMinute * WEEK_PIXELS_PER_MINUTE + getTimedEventHeight(segment.startMinute, segment.endMinute);
+      expect(bottom).toBeLessThanOrEqual(segment.endMinute * WEEK_PIXELS_PER_MINUTE);
+      const next = layout[index + 1];
+      if (next) expect(bottom).toBeLessThanOrEqual(next.startMinute * WEEK_PIXELS_PER_MINUTE);
+    }
+  });
+
+  it.each([2, 3])("keeps %i simultaneous events in distinct equal-width columns", (count) => {
+    const items = Array.from({ length: count }, (_, index) => timedEvent(`same-${index}`, "2026-07-27T06:00:00.000Z", "2026-07-27T07:00:00.000Z"));
+    const layout = getTimedWeekLayout(getTimedWeekSegments(items, dates));
+    expect(layout.map((segment) => segment.column)).toEqual(Array.from({ length: count }, (_, index) => index));
+    expect(layout.every((segment) => segment.columnCount === count)).toBe(true);
+    expect(getTimedWeekLayout(getTimedWeekSegments([...items].reverse(), dates))).toEqual(layout);
   });
 
   it("projects partial-day time off into the timed Week layout with its local date and duration", () => {
@@ -319,7 +345,7 @@ describe("Hourly Week layout", () => {
     const [segment] = getTimedWeekSegments([timeOff], week);
 
     expect(segment).toMatchObject({ itemId: timeOff.key, item: timeOff, date: "2026-08-12", startMinute: 540, endMinute: 720 });
-    expect(getTimedEventHeight(segment?.startMinute ?? 0, segment?.endMinute ?? 0)).toBe(180);
+    expect(getTimedEventHeight(segment?.startMinute ?? 0, segment?.endMinute ?? 0)).toBe(216);
     expect(getWeekAllDaySegments([timeOff], week)).toEqual([]);
   });
 
@@ -356,6 +382,18 @@ describe("Hourly Week layout", () => {
     expect(layout.find((segment) => segment.itemId === later.key)).toMatchObject({ column: 0, columnCount: 1 });
   });
 
+  it("reuses a column at an exact end boundary within a partial-overlap group", () => {
+    const items = [
+      timedEvent("long", "2026-07-27T06:00:00.000Z", "2026-07-27T07:00:00.000Z"),
+      timedEvent("short", "2026-07-27T06:00:00.000Z", "2026-07-27T06:15:00.000Z"),
+      timedEvent("next", "2026-07-27T06:15:00.000Z", "2026-07-27T06:30:00.000Z"),
+    ];
+    const layout = getTimedWeekLayout(getTimedWeekSegments(items, dates));
+    expect(layout.find((segment) => segment.itemId === "calendar_event:long")).toMatchObject({ column: 0, columnCount: 2 });
+    expect(layout.find((segment) => segment.itemId === "calendar_event:short")).toMatchObject({ column: 1, columnCount: 2 });
+    expect(layout.find((segment) => segment.itemId === "calendar_event:next")).toMatchObject({ column: 1, columnCount: 2 });
+  });
+
   it("splits midnight-crossing events into day-local segments that retain the source identity", () => {
     const event = timedEvent("overnight", "2026-07-27T20:00:00.000Z", "2026-07-28T00:30:00.000Z");
     const segments = getTimedWeekSegments([event], dates);
@@ -372,7 +410,15 @@ describe("Hourly Week layout", () => {
     const dstWeek = ["2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-28", "2026-03-29"];
     expect(getCurrentWeekTimePosition(dstWeek, new Date("2026-03-29T06:15:00.000Z"))).toEqual({ dayIndex: 6, minute: 555 });
     expect(getCurrentWeekTimePosition(dates, new Date("2026-03-29T06:15:00.000Z"))).toBeNull();
-    expect(getInitialWeekScrollTop()).toBe(480);
+    expect(getInitialWeekScrollTop(dstWeek, new Date("2026-03-29T06:15:00.000Z"))).toBe(558);
+    expect(getInitialWeekScrollTop(dates, new Date("2026-03-29T06:15:00.000Z"))).toBe(576);
+  });
+
+  it("clamps early-morning initial scroll and uses the displayed timezone", () => {
+    const now = new Date("2026-07-27T10:00:00.000Z");
+    expect(getInitialWeekScrollTop(dates, now, "Europe/Kyiv")).toBe(828);
+    expect(getInitialWeekScrollTop(dates, now, "America/New_York")).toBe(324);
+    expect(getInitialWeekScrollTop(dates, new Date("2026-07-26T21:15:00.000Z"))).toBe(0);
   });
 });
 

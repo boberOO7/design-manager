@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, use, createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Popover from "@radix-ui/react-popover";
-import { Banknote, CakeSlice, CalendarHeart, CalendarOff, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Ellipsis, Filter, Info, MapPin, Pencil, PhoneCall, Repeat2, RotateCcw, Settings2, Trash2, TreePalm, Cross, UserRoundMinus, Video, X, type LucideIcon } from "lucide-react";
+import { Banknote, CakeSlice, CalendarHeart, CalendarOff, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Ellipsis, Filter, Info, LoaderCircle, MapPin, Pencil, PhoneCall, Repeat2, RotateCcw, Settings2, Trash2, TreePalm, Cross, UserRoundMinus, Video, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectNavigationLink } from "@/components/projects/project-navigation-link";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -24,9 +24,18 @@ import {
   getCurrentWeekTimePosition, getInitialWeekScrollTop, getMonthDateLaneLayout, getMonthItemGeometry, getMonthLaneLayout, getMonthLayoutSegments, getMonthSegmentGeometry,
   getTimedEventHeight, getTimedWeekLayout, getTimedWeekSegments, getWeekAllDaySegments, getMonthMobileDayItems,
   getMonthItemTop, getCalendarItemDisplayTitle, itemOccursOn, mergeCalendarItem, MONTH_EVENT_GEOMETRY, MONTH_LANE_GAP, MONTH_LANE_HEIGHT, parseDateOnly,
-  reconcileCalendarItems, removeCalendarItem, startOfMondayWeek, toDateOnly, instantToDateOnly, zonedWallTimeToIso, isKyivTimeZone,
+  reconcileCalendarItems, removeCalendarItem, startOfMondayWeek, toDateOnly, instantToDateOnly, zonedWallTimeToIso, isKyivTimeZone, WEEK_PIXELS_PER_MINUTE, type TimedWeekLayoutSegment,
 } from "@/lib/calendar";
-import { getCalendarEventTypeAttendees, createCalendarEventFormValues, getBusinessTripTitle, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime } from "@/lib/calendar-event-form";
+import { getCalendarEventTypeAttendees, createCalendarEventFormValues, getBusinessTripTitle, getSiteVisitTitle, getWorkMakeupTitle, groupCalendarEventProjects, isCalendarEventInviteeSelectable, toCalendarEventMutationPayload, updateEventStartDate, updateEventStartTime, type CalendarEventFormRange } from "@/lib/calendar-event-form";
+import { getWeekCreationRange, getWeekPointerMinute, getWeekSelectionMinutes, isWeekSelectionDrag } from "@/lib/calendar-week-selection";
+import { canEditWeekEvent, getWeekEventBounds, getWeekEventEditLayout, getWeekEventUpdate, weekEventBoundsChanged, type WeekEventBounds, type WeekEventEditMode, type WeekEventPreview } from "@/lib/calendar-week-edit";
+import { WeekEditPreview, type WeekEditPreviewHandle } from "./calendar-week-edit-preview";
+import { WeekCreationPreview, type WeekCreationPreviewHandle } from "./calendar-week-creation-preview";
+import { WeekEventContent } from "./calendar-week-event-content";
+import { CalendarEventCancelAction } from "./calendar-event-cancel-action";
+import { useWeekColumnMotion } from "./use-week-column-motion";
+import { saveCalendarEvent } from "@/lib/calendar-event-client";
+import type { CalendarEventRequest } from "@/lib/validation/calendar";
 import { updateLinkedStartDate, updateLinkedStartTime } from "@/lib/calendar-form-range";
 import { getCreatableCalendarEventTypes, getCreatableTimeOffRequestTypes } from "@/lib/calendar-creation";
 import type { RecurrenceRule } from "@/lib/calendar-recurrence";
@@ -42,13 +51,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 const CalendarTimeZoneContext = createContext(APPLICATION_TIME_ZONE);
 
-type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string } | { kind: "time-off-form"; date?: string } | { kind: "days-off" } | null;
+type Drawer = { kind: "day"; date: string } | { kind: "item"; item: CalendarItem } | { kind: "event-form"; item?: Extract<CalendarItem, { source: "calendar_event" }>; date?: string; range?: CalendarEventFormRange; instance?: number } | { kind: "time-off-form"; date?: string } | { kind: "days-off" } | null;
 
 const fieldClass = inputClassName;
-// An eleven-hour desktop window and compact baseline keep the time grid dense
-// while preserving the pixel-per-minute geometry used for timed events.
-const WEEK_VIEWPORT_WINDOW_MINUTES = 11 * 60;
-const WEEK_MIN_PIXELS_PER_MINUTE = 0.92;
 
 function recurrenceText(locale: string, rule: RecurrenceRule | null) {
   const uk = locale.startsWith("uk"); if (!rule) return uk ? "Не повторювати" : "Does not repeat";
@@ -168,17 +173,47 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, proje
   const searchParams = useSearchParams();
   const param = (key: string) => searchParams.getAll(key).length === 1 ? searchParams.get(key) ?? "" : "";
   const [itemState, setItemState] = useState<{ snapshot: CalendarItem[]; items: CalendarItem[]; refreshBase: CalendarItem[] | null }>(() => ({ snapshot: initialData.items, items: initialData.items, refreshBase: null }));
-  const { items } = itemState;
+  const weekSaveInFlight = useRef(new Set<string>());
+  const [weekPending, setWeekPending] = useState(new Map<string, CalendarItem>());
+  const items = itemState.items.map((item) => weekPending.get(item.key) ?? item);
   // URL-only changes keep the snapshot. A real refresh owns the collection,
   // except for mutation results that arrived after its request began.
   if (itemState.snapshot !== initialData.items) {
-    setItemState({ snapshot: initialData.items, items: itemState.refreshBase ? reconcileCalendarItems(initialData.items, itemState.refreshBase, items) : initialData.items, refreshBase: null });
+    setItemState({ snapshot: initialData.items, items: itemState.refreshBase ? reconcileCalendarItems(initialData.items, itemState.refreshBase, itemState.items) : initialData.items, refreshBase: null });
   }
   function setItems(update: (current: CalendarItem[]) => CalendarItem[], refresh = false) {
     setItemState((current) => {
       const items = update(current.items);
       return { ...current, items, refreshBase: refresh ? items : current.refreshBase };
     });
+  }
+  async function saveWeekEvent(item: Extract<CalendarItem, { source: "calendar_event" }>, bounds: WeekEventBounds) {
+    if (weekSaveInFlight.current.has(item.key) || !canEditWeekEvent(item, initialData)) return false;
+    const current = items.find((candidate) => candidate.key === item.key);
+    if (!current || !canEditWeekEvent(current, initialData) || current.startsAt !== item.startsAt || current.endsAt !== item.endsAt) return false;
+    const payload = getWeekEventUpdate(current, bounds, timeZone);
+    if (!payload) return false;
+    if (!weekEventBoundsChanged(current, bounds)) return true;
+    weekSaveInFlight.current.add(current.key);
+    setWeekPending((pending) => new Map(pending).set(current.key, { ...current, ...bounds, startDate: instantToDateOnly(bounds.startsAt, timeZone), endDate: instantToDateOnly(bounds.endsAt, timeZone) }));
+    let message = t("eventScheduleFailed");
+    try {
+      const { response, result } = await saveCalendarEvent(current.id, { intent: "reschedule", startsAt: bounds.startsAt, endsAt: bounds.endsAt, expectedStartsAt: current.startsAt, expectedEndsAt: current.endsAt });
+      if (!response.ok || !isMutationResult(result) || result.item?.source !== "calendar_event" || result.item.id !== current.id) {
+        message = response.status === 409 ? t("eventScheduleConflict") : t("eventScheduleFailed");
+        throw new Error(message);
+      }
+      const updated = result.item;
+      // Retain this result if an already-running refresh arrives with an older snapshot.
+      setItemState((state) => ({ ...state, items: mergeCalendarItem(state.items, updated), refreshBase: state.refreshBase ?? state.items }));
+      return true;
+    } catch {
+      router.refresh();
+      throw new Error(message);
+    } finally {
+      weekSaveInFlight.current.delete(current.key);
+      setWeekPending((pending) => { const next = new Map(pending); next.delete(current.key); return next; });
+    }
   }
   const [timeFormat, setTimeFormat] = useState<CalendarTimeFormat>(initialData.timeFormat);
   const [timeZone, setTimeZone] = useState(initialData.timeZone);
@@ -202,6 +237,7 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, proje
     return item ? { kind: "item", item } : null;
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(() => drawer !== null);
+  const formInstanceRef = useRef(0);
   const filters: CalendarFilters = {
     events: param("events") !== "0",
     projectDeadlines: param("projects") !== "0",
@@ -219,7 +255,8 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, proje
   const visibleItems = filterCalendarItems(items.map((item) => !item.allDay && (item.source === "calendar_event" || item.source === "crm_follow_up") ? { ...item, startDate: instantToDateOnly(item.startsAt, timeZone), endDate: instantToDateOnly(item.endsAt, timeZone) } : item), filters, initialData.currentUserId);
 
   function openDrawer(nextDrawer: Exclude<Drawer, null>) {
-    setDrawer(nextDrawer);
+    // A new selection must reinitialize the form even during its previous exit.
+    setDrawer(nextDrawer.kind === "event-form" ? { ...nextDrawer, instance: ++formInstanceRef.current } : nextDrawer);
     setIsDrawerOpen(true);
   }
 
@@ -272,15 +309,15 @@ export function CalendarWorkspace({ initialData, initialView, initialDate, proje
       <DayDetails date={drawer.date} items={getDayItems(visibleItems, drawer.date)} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} />
       <div className="mt-6 flex flex-wrap gap-2"><Button size="sm" onClick={() => openDrawer({ kind: "event-form", date: drawer.date })}>{t("addEventOnDay")}</Button><Button size="sm" variant="outline" onClick={() => openDrawer({ kind: "time-off-form", date: drawer.date })}>{t("requestTimeOff")}</Button></div>
     </DetailPanel> : null}
-    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen && items.some((item) => item.key === drawer.item.key)} onExited={clearExitedDrawer} item={items.find((item) => item.key === drawer.item.key) ?? drawer.item} data={initialData} projects={projects} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { setItems((current) => { const remaining = removedKey ? removeCalendarItem(current, removedKey) : current; return item ? mergeCalendarItem(remaining, item) : remaining; }, true); if (item) openDrawer({ kind: "item", item }); else closeDrawer(); router.refresh(); }} /> : null}
-    {drawer?.kind === "event-form" ? <Suspense fallback={<CalendarPanelPlaceholder isOpen={isDrawerOpen} onClose={closeDrawer} onExited={clearExitedDrawer} />}><CalendarSupportedData core={initialData} projects={projects} people={people}>{(data) => <EventForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={data} item={drawer.item} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} />}</CalendarSupportedData></Suspense> : null}
+    {drawer?.kind === "item" ? <ItemPanel isOpen={isDrawerOpen && items.some((item) => item.key === drawer.item.key)} onExited={clearExitedDrawer} item={items.find((item) => item.key === drawer.item.key) ?? drawer.item} saving={weekPending.has(drawer.item.key)} data={initialData} projects={projects} timeFormat={timeFormat} onClose={closeDrawer} onEdit={(item) => openDrawer({ kind: "event-form", item })} onMutated={(item, removedKey) => { setItems((current) => { const remaining = removedKey ? removeCalendarItem(current, removedKey) : current; return item ? mergeCalendarItem(remaining, item) : remaining; }, true); if (item) openDrawer({ kind: "item", item }); else closeDrawer(); router.refresh(); }} /> : null}
+    {drawer?.kind === "event-form" ? <Suspense fallback={<CalendarPanelPlaceholder isOpen={isDrawerOpen} onClose={closeDrawer} onExited={clearExitedDrawer} />}><CalendarSupportedData core={initialData} projects={projects} people={people}>{(data) => <EventForm key={drawer.instance} isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={data} item={drawer.item} initialDate={drawer.date} initialRange={drawer.range} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} />}</CalendarSupportedData></Suspense> : null}
     {drawer?.kind === "time-off-form" ? <TimeOffForm isOpen={isDrawerOpen} onExited={clearExitedDrawer} data={initialData} initialDate={drawer.date} onClose={closeDrawer} onSaved={(item) => { setItems((current) => mergeCalendarItem(current, item)); openDrawer({ kind: "item", item }); }} /> : null}
     {drawer?.kind === "days-off" ? <StudioDaysOffPanel isOpen={isDrawerOpen} onExited={clearExitedDrawer} initialYear={Number(initialDate.slice(0, 4))} items={items.filter((item): item is Extract<CalendarItem, { source: "studio_day_off" }> => item.source === "studio_day_off")} onClose={closeDrawer} onChange={(next, removedKey) => { setItems((current) => removedKey ? removeCalendarItem(current, removedKey) : next ? mergeCalendarItem(current, next) : current, true); router.refresh(); }} /> : null}
     {settingsOpen ? <CalendarSettingsDialog isOpen returnFocusRef={settingsTriggerRef} timeFormat={timeFormat} onClose={() => setSettingsOpen(false)} onSaved={(next) => { setTimeFormat(next); setSettingsOpen(false); }} /> : null}
   </>}>
     <InstaLoadReady name="calendar-events" className="contents instaload-panel [--instaload-reveal-duration:200ms]">
       {initialView === "month" ? <MonthView anchor={initialDate} today={today} items={visibleItems} timeFormat={timeFormat} onDay={(date) => openDrawer({ kind: "day", date })} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
-      {initialView === "week" ? <WeekView anchor={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
+      {initialView === "week" ? <WeekView anchor={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} onCreate={(range) => openDrawer({ kind: "event-form", date: range.startDate, range })} editAccess={initialData} savingKeys={weekSaveInFlight.current} onEventChange={saveWeekEvent} /> : null}
       {initialView === "agenda" ? <AgendaView start={initialDate} items={visibleItems} timeFormat={timeFormat} onItem={(item) => openDrawer({ kind: "item", item })} /> : null}
     </InstaLoadReady>
   </CalendarShell></CalendarTimeZoneContext.Provider>;
@@ -446,7 +483,7 @@ function MonthView({ anchor, today, items, onDay, onItem, timeFormat, loading = 
     <div className="divide-y divide-[var(--ui-border-subtle)] md:hidden">{dates.filter((date) => getDayItems(items, date).some((item) => !allDayItemKeys.has(item.key)) || segments.some((segment) => segment.visibleStartDate === date) || date === today).map((date) => { const { visible, overflow } = getMonthMobileDayItems(items, segments, date); return <div key={date} className="flex w-full gap-3 p-3 text-left sm:gap-4 sm:p-4"><button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={`Open ${dateLabel(date, { weekday: "long", month: "long", day: "numeric" })}`} className="min-h-11 w-12 shrink-0 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><span className="block text-xs font-semibold uppercase text-[var(--ui-text-subtle)]">{dateLabel(date, { weekday: "short" })}</span><span className={`mx-auto mt-1 flex size-9 items-center justify-center rounded-full font-semibold ${date === today ? "bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)]" : "text-[var(--ui-text)]"}`}>{Number(date.slice(-2))}</span></button><div className="min-w-0 flex-1" style={{ display: "grid", rowGap: MONTH_EVENT_GEOMETRY.laneGap }}>{visible.map((item) => <CalendarPill key={item.key} item={item} mobile month timeFormat={timeFormat} onClick={() => onItem(item)} />)}{overflow ? <button type="button" disabled={loading} onClick={() => onDay(date)} aria-label={`Show ${overflow} more events on ${dateLabel(date, { month: "long", day: "numeric" })}`} className="min-h-11 text-left text-xs font-semibold text-[var(--ui-text-secondary)]">+{overflow} more</button> : null}</div></div>; })}</div></div>;
 }
 
-function WeekView({ anchor, items, onItem, timeFormat, loading = false }: { loading?: boolean; anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
+function WeekView({ anchor, items, onItem, onCreate, onEventChange, editAccess, savingKeys, timeFormat, loading = false }: { loading?: boolean; anchor: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; onCreate?: (range: CalendarEventFormRange) => void; onEventChange?: (item: Extract<CalendarItem, { source: "calendar_event" }>, bounds: WeekEventBounds) => Promise<boolean>; editAccess?: Pick<CalendarCoreData, "currentUserId" | "isAdmin">; savingKeys?: ReadonlySet<string>; timeFormat: CalendarTimeFormat }) {
   const timeZone = useContext(CalendarTimeZoneContext);
   const showUkraineTime = !isKyivTimeZone(timeZone);
   const t = useTranslations("Calendar");
@@ -454,17 +491,200 @@ function WeekView({ anchor, items, onItem, timeFormat, loading = false }: { load
   const itemTitle = useCalendarItemTitle();
   const start = startOfMondayWeek(anchor);
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index)), [start]);
-  const allDaySegments = getWeekAllDaySegments(items, dates);
+  const allDaySegments = useMemo(() => getWeekAllDaySegments(items, dates), [items, dates]);
   const allDayLanes = Math.max(1, ...allDaySegments.map((segment) => segment.lane + 1));
-  const timedSegments = getTimedWeekLayout(getTimedWeekSegments(items, dates, timeZone));
+  const [layoutColumns, setLayoutColumns] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const timedSegments = useMemo(() => getTimedWeekLayout(getTimedWeekSegments(items, dates, timeZone), { columns: layoutColumns }), [items, dates, timeZone, layoutColumns]);
+  const [previewColumns, setPreviewColumns] = useState<ReadonlyMap<string, Pick<TimedWeekLayoutSegment, "column" | "columnCount">> | null>(null);
+  const updatePreviewLayout = useCallback((layout: TimedWeekLayoutSegment[] | null) => {
+    setPreviewColumns((current) => {
+      if (!layout) return null;
+      if (current?.size === layout.length && layout.every((segment) => {
+        const previous = current.get(segment.segmentId);
+        return previous?.column === segment.column && previous?.columnCount === segment.columnCount;
+      })) return current;
+      return new Map(layout.map((segment) => [segment.segmentId, { column: segment.column, columnCount: segment.columnCount }]));
+    });
+  }, []);
   const timedByDate = new Map<string, typeof timedSegments>();
   for (const segment of timedSegments) timedByDate.set(segment.date, [...(timedByDate.get(segment.date) ?? []), segment]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const initialCurrentDayIndexRef = useRef<number | undefined>(undefined);
   const [now, setNow] = useState<Date | null>(null);
-  const [pixelsPerMinute, setPixelsPerMinute] = useState(WEEK_MIN_PIXELS_PER_MINUTE);
+  const pixelsPerMinute = WEEK_PIXELS_PER_MINUTE;
   const currentTime = now ? getCurrentWeekTimePosition(dates, now, timeZone) : null;
+  const gestureRef = useRef<{ pointerId: number; date: string; startX: number; startY: number; anchorMinute: number; dragging: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const cardPointerDownRef = useRef(false);
+  const [selection, setSelection] = useState<{ date: string; startMinute: number; endMinute: number } | null>(null);
+  const eventGestureRef = useRef<{ pointerId: number; item: Extract<CalendarItem, { source: "calendar_event" }>; mode: WeekEventEditMode; date: string; pointerMinute: number; startX: number; startY: number; dragging: boolean; previewStarted?: boolean; preview?: Pick<WeekEventPreview, "item" | "valid"> } | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  useWeekColumnMotion(scrollRef, timedSegments, previewColumns, editingKey);
+  const editPreviewRef = useRef<WeekEditPreviewHandle>(null);
+  const creationPreviewRef = useRef<WeekCreationPreviewHandle>(null);
+  const eventFrameRef = useRef<number | null>(null);
+  const eventPointerRef = useRef<Pick<ReactPointerEvent<HTMLElement>, "pointerId" | "clientX" | "clientY"> | null>(null);
+  const [eventError, setEventError] = useState("");
+
+  function clearCreationPreview() { creationPreviewRef.current?.update(null); }
+
+  function clearEventPreview() {
+    if (eventFrameRef.current !== null) cancelAnimationFrame(eventFrameRef.current);
+    eventFrameRef.current = null;
+    eventPointerRef.current = null;
+    editPreviewRef.current?.update(null);
+    setEditingKey(null);
+    setPreviewColumns(null);
+  }
+
+  function cancelEventEdit() {
+    if (!eventGestureRef.current) return;
+    eventGestureRef.current = null;
+    suppressClickRef.current = true;
+    clearEventPreview();
+  }
+
+  function eventTarget(event: Pick<ReactPointerEvent<HTMLElement>, "clientX" | "clientY">) {
+    const container = scrollRef.current;
+    const viewport = container?.getBoundingClientRect();
+    const horizontal = horizontalScrollRef.current?.getBoundingClientRect();
+    if (!container || !viewport || !horizontal || event.clientY < viewport.top || event.clientY > viewport.bottom || event.clientX < horizontal.left || event.clientX > horizontal.right) return null;
+    for (const column of container.querySelectorAll<HTMLElement>("[data-week-date]")) {
+      const rect = column.getBoundingClientRect();
+      if (event.clientX >= rect.left && event.clientX < rect.right && column.dataset.weekDate) return { date: column.dataset.weekDate, minute: getWeekPointerMinute(event.clientY - rect.top) };
+    }
+    return null;
+  }
+
+  function startEventEdit(event: ReactPointerEvent<HTMLElement>, item: CalendarItem, date: string, mode: WeekEventEditMode) {
+    clearCreationPreview();
+    cardPointerDownRef.current = true;
+    suppressClickRef.current = false;
+    if (loading || savingKeys?.has(item.key) || !onEventChange || !editAccess || !canEditWeekEvent(item, editAccess) || event.pointerType !== "mouse" || event.button !== 0 || !event.isPrimary) return;
+    const target = eventTarget(event);
+    if (!target) return;
+    event.stopPropagation();
+    setEventError("");
+    eventGestureRef.current = { pointerId: event.pointerId, item, mode, date, pointerMinute: target.minute, startX: event.clientX, startY: event.clientY, dragging: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function readEventPreview(event: Pick<ReactPointerEvent<HTMLElement>, "clientX" | "clientY">): WeekEventPreview | null {
+    const gesture = eventGestureRef.current;
+    const target = eventTarget(event);
+    if (!gesture || !target) return null;
+    const deltaMinutes = target.minute - gesture.pointerMinute;
+    const bounds = getWeekEventBounds(gesture.item, gesture.mode, gesture.date, target.date, deltaMinutes, timeZone);
+    let preview = gesture.preview;
+    if (!bounds) preview = { item: gesture.item, valid: false };
+    else if (!preview || preview.item.startsAt !== bounds.startsAt || preview.item.endsAt !== bounds.endsAt) {
+      preview = { item: { ...gesture.item, ...bounds, startDate: instantToDateOnly(bounds.startsAt, timeZone), endDate: instantToDateOnly(bounds.endsAt, timeZone) }, valid: Boolean(getWeekEventUpdate(gesture.item, bounds, timeZone)) };
+    }
+    gesture.preview = bounds ? preview : undefined;
+    return { ...preview, original: gesture.item, mode: gesture.mode, sourceDate: gesture.date, targetDate: target.date, deltaMinutes };
+  }
+
+  function moveEventEdit(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = eventGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture.dragging) {
+      if (!isWeekSelectionDrag(gesture.startX, gesture.startY, event.clientX, event.clientY)) return;
+      gesture.dragging = true;
+    }
+    eventPointerRef.current = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY };
+    if (eventFrameRef.current !== null) return;
+    eventFrameRef.current = requestAnimationFrame(() => {
+      eventFrameRef.current = null;
+      const pointer = eventPointerRef.current;
+      const activeGesture = eventGestureRef.current;
+      if (!pointer || activeGesture?.pointerId !== pointer.pointerId) return;
+      const preview = readEventPreview(pointer);
+      if (preview && !activeGesture.previewStarted) {
+        activeGesture.previewStarted = true;
+        setEditingKey(activeGesture.item.key);
+      }
+      editPreviewRef.current?.update(preview);
+    });
+  }
+
+  async function finishEventEdit(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = eventGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const dragging = gesture.dragging || isWeekSelectionDrag(gesture.startX, gesture.startY, event.clientX, event.clientY);
+    const preview = dragging ? readEventPreview(event) : null;
+    clearEventPreview();
+    eventGestureRef.current = null;
+    if (!dragging) return;
+    event.stopPropagation();
+    suppressClickRef.current = true;
+    if (!preview?.valid || !onEventChange || !weekEventBoundsChanged(gesture.item, preview.item)) {
+      if (preview && !preview.valid) setEventError(t("invalidDateRange"));
+      return;
+    }
+    const committedColumns = new Map(getWeekEventEditLayout(timedSegments, getTimedWeekSegments([preview.item], dates, timeZone), gesture.item.key, gesture.date).map((segment) => [segment.segmentId, segment.column]));
+    setLayoutColumns(committedColumns);
+    const restoreColumns = () => setLayoutColumns((current) => current === committedColumns ? layoutColumns : current);
+    try {
+      if (!await onEventChange(gesture.item, { startsAt: preview.item.startsAt, endsAt: preview.item.endsAt })) { restoreColumns(); setEventError(t("eventSaveFailed")); }
+    } catch (error) { restoreColumns(); setEventError(`${gesture.item.title}: ${error instanceof Error ? error.message : t("eventScheduleFailed")}`); }
+  }
+
+  function cancelSelection() {
+    if (!gestureRef.current) return;
+    suppressClickRef.current = true;
+    gestureRef.current = null;
+    setSelection(null);
+  }
+
+  function startSelection(event: ReactPointerEvent<HTMLDivElement>, date: string) {
+    clearCreationPreview();
+    if (!onCreate || loading || event.target !== event.currentTarget || event.button !== 0 || !event.isPrimary) return;
+    cardPointerDownRef.current = false;
+    suppressClickRef.current = false;
+    // Native touch scrolling owns the gesture; a tap is handled by onClick.
+    if (event.pointerType !== "mouse") return;
+    gestureRef.current = { pointerId: event.pointerId, date, startX: event.clientX, startY: event.clientY, anchorMinute: getWeekPointerMinute(event.clientY - event.currentTarget.getBoundingClientRect().top), dragging: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveSelection(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture) {
+      const date = event.currentTarget.dataset.weekDate;
+      if (onCreate && !loading && !eventGestureRef.current && event.pointerType === "mouse" && event.buttons === 0 && event.target === event.currentTarget && date) {
+        creationPreviewRef.current?.update({ date, minute: getWeekPointerMinute(event.clientY - event.currentTarget.getBoundingClientRect().top) });
+      } else clearCreationPreview();
+      return;
+    }
+    if (gesture.pointerId !== event.pointerId) return;
+    gesture.dragging ||= isWeekSelectionDrag(gesture.startX, gesture.startY, event.clientX, event.clientY);
+    if (gesture.dragging) setSelection({ date: gesture.date, ...getWeekSelectionMinutes(gesture.anchorMinute, getWeekPointerMinute(event.clientY - event.currentTarget.getBoundingClientRect().top)) });
+  }
+
+  function finishSelection(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const dragging = gesture.dragging || isWeekSelectionDrag(gesture.startX, gesture.startY, event.clientX, event.clientY);
+    gestureRef.current = null;
+    suppressClickRef.current = true;
+    setSelection(null);
+    if (!loading) onCreate?.(getWeekCreationRange(gesture.date, gesture.anchorMinute, dragging ? getWeekPointerMinute(event.clientY - event.currentTarget.getBoundingClientRect().top) : undefined));
+  }
+
+  useEffect(() => {
+    function cancel() { clearCreationPreview(); cancelSelection(); cancelEventEdit(); }
+    function keyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        clearCreationPreview();
+        if (gestureRef.current || eventGestureRef.current) { event.preventDefault(); cancel(); }
+      }
+    }
+    clearCreationPreview();
+    window.addEventListener("keydown", keyDown);
+    window.addEventListener("blur", cancel);
+    return () => { window.removeEventListener("keydown", keyDown); window.removeEventListener("blur", cancel); cancel(); };
+  }, [dates, timeZone]);
   useEffect(() => {
     const initialNow = new Date();
     initialCurrentDayIndexRef.current = getCurrentWeekTimePosition(dates, initialNow, timeZone)?.dayIndex;
@@ -479,42 +699,52 @@ function WeekView({ anchor, items, onItem, timeFormat, loading = false }: { load
 
   useEffect(() => {
     const container = scrollRef.current;
-    if (!container || !window.matchMedia("(min-width: 1024px) and (min-height: 900px)").matches) return;
-    const updateScale = () => setPixelsPerMinute(Math.max(WEEK_MIN_PIXELS_PER_MINUTE, container.clientHeight / WEEK_VIEWPORT_WINDOW_MINUTES));
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
+    if (container) container.scrollTop = getInitialWeekScrollTop(dates, new Date(), timeZone);
+  }, [dates, timeZone]);
 
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (container) container.scrollTop = getInitialWeekScrollTop() * pixelsPerMinute;
-  }, [dates, pixelsPerMinute]);
-
-  return <div className="calendar-week-view relative" aria-busy={loading}><p id="week-scroll-hint" className="border-b border-[var(--ui-border-subtle)] px-3 py-2 text-xs text-[var(--ui-text-muted)] md:hidden">{t("weekScrollHint")}</p><div ref={horizontalScrollRef} aria-describedby="week-scroll-hint" aria-label={t("weeklyCalendar")} className="calendar-week-horizontal overflow-x-auto overscroll-x-contain"><div className="calendar-week-content min-w-[840px] sm:min-w-[900px]">
-    <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"} border-b border-[var(--ui-border)]`}>
+  return <div className="calendar-week-view relative" aria-busy={loading}>{eventError ? <p role="alert" className="absolute right-2 top-2 z-30 max-w-sm rounded-md border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] px-3 py-2 text-sm text-[var(--ui-danger-text)]">{eventError}</p> : null}<p id="week-scroll-hint" className="border-b border-[var(--ui-border-subtle)] px-3 py-2 text-xs text-[var(--ui-text-muted)] md:hidden">{t("weekScrollHint")}</p><div ref={horizontalScrollRef} onScroll={clearCreationPreview} aria-describedby="week-scroll-hint" aria-label={t("weeklyCalendar")} className="calendar-week-horizontal overflow-x-auto overscroll-x-contain"><div className={`calendar-week-content min-w-[840px] sm:min-w-[900px] ${showUkraineTime ? "[--calendar-hour-width:4.5rem]" : ""}`}>
+    <div className="calendar-week-fixed-row calendar-week-grid border-b border-[var(--ui-border)]">
       <div className="border-r border-[var(--ui-border)]" />
       {dates.map((date, dayIndex) => <div key={date} className={`border-r border-[var(--ui-border)] px-2 py-3 text-center text-xs font-semibold ${currentTime?.dayIndex === dayIndex ? "bg-[var(--ui-surface-subtle)] text-[var(--ui-text)]" : "text-[var(--ui-text-muted)]"}`}><span className="block uppercase tracking-wide">{dateLabel(date, { weekday: "short" }, locale)}</span><span className="mt-1 block text-sm">{dateLabel(date, { month: "short", day: "numeric" }, locale)}</span></div>)}
     </div>
-    <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"} border-b border-[var(--ui-border)]`}>
+    <div className="calendar-week-fixed-row calendar-week-grid border-b border-[var(--ui-border)]">
       <div className="border-r border-[var(--ui-border)] px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-text-subtle)]">{t("allDay")}</div>
       <div className="relative col-span-7 grid grid-cols-7 gap-y-1 px-1 py-1" style={{ minHeight: allDayLanes * 22 + 8, gridTemplateRows: `repeat(${allDayLanes}, 20px)` }}>
         {loading ? dates.map((date, index) => <div key={date} className="instaload-blueprint" style={{ gridColumn: index + 1 }}><span className="instaload-mark h-5 w-3/4" /></div>) : null}
-        {allDaySegments.map((segment) => { const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-md"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-md"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span></button></Tooltip>; })}
+        {allDaySegments.map((segment) => { const title = itemTitle(segment.item); return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${dateLabel(segment.visibleStartDate)} to ${dateLabel(segment.visibleEndDate)}`} className={`calendar-week-all-day min-w-0 border-l-2 px-2 text-left text-xs font-medium leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] focus:ring-offset-1 ${itemTone(segment.item)} ${segment.continuesBefore ? "rounded-l-none" : "rounded-l-sm"} ${segment.continuesAfter ? "rounded-r-none" : "rounded-r-sm"}`} style={{ gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`, gridRow: segment.lane + 1 }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span></button></Tooltip>; })}
       </div>
     </div>
-    <div ref={scrollRef} className="calendar-week-timeline max-h-[36rem] overflow-y-auto">
-      <div className={`grid ${!showUkraineTime ? "grid-cols-[3.5rem_repeat(7,minmax(7rem,1fr))]" : "grid-cols-[4.5rem_repeat(7,minmax(7rem,1fr))]"}`}>
-        <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="border-r border-b border-[var(--ui-border)] pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-subtle)]" style={{ height: 60 * pixelsPerMinute }}>{formatCalendarClockTime(hour, 0, timeFormat)}{showUkraineTime ? <span className="block text-[9px] font-normal text-[var(--ui-text-muted)]">UA {kyivGutterTime(dates[0], hour, timeZone, timeFormat)}</span> : null}</div>)}</div>
-        {dates.map((date, dayIndex) => <div key={date} className={`relative border-r border-[var(--ui-border)] ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * pixelsPerMinute, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${60 * pixelsPerMinute - 1}px, var(--ui-calendar-gridline) ${60 * pixelsPerMinute}px)`, backgroundSize: `100% ${60 * pixelsPerMinute}px` }}>
+    <div ref={scrollRef} onScroll={clearCreationPreview} className="calendar-week-timeline max-h-[36rem] overflow-y-auto">
+      <div className="calendar-week-grid">
+        <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="border-r border-b border-[var(--ui-border)] pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-secondary)]" style={{ height: 60 * pixelsPerMinute }}>{formatCalendarClockTime(hour, 0, timeFormat)}{showUkraineTime ? <span className="block text-[9px] font-normal text-[var(--ui-text-secondary)]">UA {kyivGutterTime(dates[0], hour, timeZone, timeFormat)}</span> : null}</div>)}</div>
+        {dates.map((date, dayIndex) => <div key={date} data-week-date={date} className={`relative border-r border-[var(--ui-border)] ${onCreate && !loading ? "cursor-crosshair select-none" : ""} ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * pixelsPerMinute, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${60 * pixelsPerMinute - 1}px, var(--ui-calendar-gridline) ${60 * pixelsPerMinute}px)`, backgroundSize: `100% ${60 * pixelsPerMinute}px` }} onPointerDown={(event) => startSelection(event, date)} onPointerMove={moveSelection} onPointerLeave={clearCreationPreview} onPointerUp={finishSelection} onPointerCancel={cancelSelection} onLostPointerCapture={cancelSelection} onClick={(event) => {
+          if (event.target !== event.currentTarget || event.button !== 0 || loading || !onCreate) return;
+          if (cardPointerDownRef.current) { cardPointerDownRef.current = false; return; }
+          if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+          onCreate(getWeekCreationRange(date, getWeekPointerMinute(event.clientY - event.currentTarget.getBoundingClientRect().top)));
+        }}>
           {loading ? <div className="instaload-blueprint absolute inset-x-2" style={{ top: 9 * 60 * pixelsPerMinute }}><span className="instaload-mark h-12 w-3/4" /></div> : null}
-          {(timedByDate.get(date) ?? []).map((segment) => { const title = itemTitle(segment.item); const timeLabel = segment.item.source === "calendar_event" ? `${formatCalendarTime(segment.item.startsAt, timeFormat, timeZone)}–${formatCalendarTime(segment.item.endsAt, timeFormat, timeZone)}` : segment.item.source === "crm_follow_up" ? formatCalendarTime(segment.item.startsAt, timeFormat, timeZone) : `${formatCalendarWallTime(segment.item.startTime ?? "00:00", timeFormat)}–${formatCalendarWallTime(segment.item.endTime ?? "00:00", timeFormat)}`; return <Tooltip content={title} key={segment.segmentId}><button data-instaload-arrival={segment.segmentId} type="button" onClick={() => onItem(segment.item)} aria-label={`${title}, ${timeLabel}`} className={`absolute overflow-hidden border-l-2 px-2 py-1 text-left text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-focus)] ${itemTone(segment.item)}`} style={{ top: segment.startMinute * pixelsPerMinute, height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute), left: `calc(${(segment.column / segment.columnCount) * 100}% + 2px)`, width: `calc(${100 / segment.columnCount}% - 4px)` }}><span className="flex min-w-0 items-center gap-1"><CalendarChipIcon item={segment.item} /><span className="truncate">{title}</span></span><span className="block truncate text-[10px] font-normal opacity-80">{timeLabel}{segment.item.source === "calendar_event" && segment.item.location ? ` · ${segment.item.location}` : ""}</span></button></Tooltip>; })}
-          {currentTime?.dayIndex === dayIndex ? <div className="pointer-events-none absolute z-10 inset-x-0 border-t-2 border-[var(--ui-danger-solid)]" style={{ top: currentTime.minute * pixelsPerMinute }} aria-label={t("currentTime", { time: formatCalendarClockTime(Math.floor(currentTime.minute / 60), currentTime.minute % 60, timeFormat) })}><span className="absolute -left-1 -top-1.5 size-3 rounded-full bg-[var(--ui-danger-surface)]0" /></div> : null}
+          {(timedByDate.get(date) ?? []).map((segment) => {
+            const title = itemTitle(segment.item);
+            const placement = previewColumns?.get(segment.segmentId) ?? segment;
+            const timeLabel = segment.item.source === "calendar_event" || segment.item.source === "crm_follow_up"
+              ? `${formatCalendarTime(segment.item.startsAt, timeFormat, timeZone)}–${formatCalendarTime(segment.item.endsAt, timeFormat, timeZone)}`
+              : `${formatCalendarWallTime(segment.item.startTime ?? "00:00", timeFormat)}–${formatCalendarWallTime(segment.item.endTime ?? "00:00", timeFormat)}`;
+            const location = segment.item.source === "calendar_event" ? segment.item.location : null;
+            const details = [title, timeLabel, location].filter(Boolean).join("\n");
+            const saving = savingKeys?.has(segment.item.key) ?? false;
+            const editable = Boolean(!saving && onEventChange && editAccess && canEditWeekEvent(segment.item, editAccess));
+            const lastSegment = segment.item.source === "calendar_event" && !getTimedWeekSegments([segment.item], [addCalendarDays(date, 1)], timeZone).length;
+            return <div key={segment.segmentId} data-week-segment={segment.segmentId} className={`calendar-week-event-shell absolute ${itemTone(segment.item)}`} data-editable={editable || undefined} data-saving={saving || undefined} data-editing={editingKey === segment.item.key ? eventGestureRef.current?.mode : undefined} data-short={getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute) < 16 || undefined} style={{ top: segment.startMinute * pixelsPerMinute, height: getTimedEventHeight(segment.startMinute, segment.endMinute, pixelsPerMinute), left: `calc(${(placement.column / placement.columnCount) * 100}% + 2px)`, width: `calc(${100 / placement.columnCount}% - 4px)` }}><Tooltip content={editingKey ? "" : details}><button data-instaload-arrival={segment.segmentId} type="button" onPointerDown={(event) => startEventEdit(event, segment.item, date, "move")} onPointerMove={moveEventEdit} onPointerUp={(event) => { void finishEventEdit(event); }} onPointerCancel={cancelEventEdit} onLostPointerCapture={cancelEventEdit} onClick={(event) => { event.stopPropagation(); if (event.detail && suppressClickRef.current) { suppressClickRef.current = false; return; } onItem(segment.item); }} aria-busy={saving} aria-label={`${details.replaceAll("\n", ", ")}${saving ? `, ${t("saving")}` : ""}`} className={`calendar-week-event absolute inset-0 w-full overflow-hidden border-l-2 text-left text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] ${itemTone(segment.item)}`}>
+              <WeekEventContent title={title} timeLabel={timeLabel} location={location} icon={<CalendarChipIcon item={segment.item} />} />
+            </button></Tooltip>{saving ? <span role="status" className="calendar-week-saving" aria-label={`${title}: ${t("saving")}`}><LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" /></span> : null}{editable && lastSegment ? <button type="button" aria-label={`${t("endTime")}: ${title}`} className={`calendar-week-resize-handle text-current`} onPointerDown={(event) => startEventEdit(event, segment.item, date, "resize")} onPointerMove={moveEventEdit} onPointerUp={(event) => { void finishEventEdit(event); }} onPointerCancel={cancelEventEdit} onLostPointerCapture={cancelEventEdit} onClick={(event) => { event.stopPropagation(); if (event.detail && suppressClickRef.current) { suppressClickRef.current = false; return; } onItem(segment.item); }}><span aria-hidden="true" /></button> : null}</div>;
+          })}
+          {selection?.date === date ? <div role="status" className="pointer-events-none absolute inset-x-0 z-20 overflow-hidden rounded-sm border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)]/60 px-1 text-xs font-medium text-[var(--ui-info-text)]" style={{ top: selection.startMinute * pixelsPerMinute, height: (selection.endMinute - selection.startMinute) * pixelsPerMinute }}><span className="sticky top-0 block truncate">{formatCalendarClockTime(Math.floor(selection.startMinute / 60), selection.startMinute % 60, timeFormat)}–{formatCalendarClockTime(Math.floor(selection.endMinute / 60) % 24, selection.endMinute % 60, timeFormat)}</span></div> : null}
+          {currentTime?.dayIndex === dayIndex ? <div className="pointer-events-none absolute z-10 inset-x-0 border-t-2 border-[var(--ui-danger-solid)]" style={{ top: currentTime.minute * pixelsPerMinute }} aria-label={t("currentTime", { time: formatCalendarClockTime(Math.floor(currentTime.minute / 60), currentTime.minute % 60, timeFormat) })}><span className="absolute -left-1 -top-1.5 size-3 rounded-full bg-[var(--ui-danger-solid)]" /></div> : null}
         </div>)}
       </div>
     </div>
-  </div></div></div>;
+  </div></div><WeekEditPreview ref={editPreviewRef} onLayoutChange={updatePreviewLayout} segments={timedSegments} dates={dates} timeZone={timeZone} timeFormat={timeFormat} container={scrollRef} /><WeekCreationPreview ref={creationPreviewRef} container={scrollRef} dates={dates} /></div>;
 }
 
 function AgendaView({ start, items, onItem, timeFormat, loading = false }: { loading?: boolean; start: string; items: CalendarItem[]; onItem: (item: CalendarItem) => void; timeFormat: CalendarTimeFormat }) {
@@ -539,16 +769,28 @@ function DayDetails({ items, onItem, timeFormat }: { date: string; items: Calend
   return <div className="space-y-2">{items.map((item) => <button key={item.key} type="button" onClick={() => onItem(item)} className={`w-full rounded-xl border-l-4 p-3 text-left ${itemTone(item)}`}><p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide opacity-70"><CalendarChipIcon item={item} size="size-3.5" />{itemTypeLabel(item)}</p><p className="mt-1 font-semibold">{itemTitle(item)}</p>{timedItemStart(item) ? <p className="mt-1 text-sm">{formatCalendarTime(timedItemStart(item) ?? "", timeFormat, timeZone)}{item.source === "calendar_event" ? `–${formatCalendarTime(item.endsAt, timeFormat, timeZone)}` : ""}</p> : null}</button>)}</div>;
 }
 
-function ItemPanel({ isOpen, onExited, item, data, projects, onClose, onEdit, onMutated, timeFormat }: { isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarCoreData; projects: Promise<CalendarProject[]>; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void; timeFormat: CalendarTimeFormat }) {
+function ItemPanel({ saving = false, isOpen, onExited, item, data, projects, onClose, onEdit, onMutated, timeFormat }: { saving?: boolean; isOpen: boolean; onExited: () => void; item: CalendarItem; data: CalendarCoreData; projects: Promise<CalendarProject[]>; onClose: () => void; onEdit: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void; onMutated: (item: CalendarItem | null, removedKey: string | null) => void; timeFormat: CalendarTimeFormat }) {
   const timeZone = useContext(CalendarTimeZoneContext);
   const t = useTranslations("Calendar"); const locale = useLocale(); const timeOff = useTranslations("TimeOff"); const status = useTranslations("Status"); const priority = useTranslations("Priority");
   const itemTitle = useCalendarItemTitle();
   const itemTypeLabel = useCalendarItemTypeLabel();
   const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [reviewNote, setReviewNote] = useState("");
   const timeOffMutationInFlight = useRef(false);
+  const eventCancellationInFlight = useRef(false);
   const notifications = useTranslations("Notifications");
   const itemEyebrow = itemTypeLabel(item);
-  async function cancelEvent() { if (item.source !== "calendar_event") return; const thisOccurrence = item.occurrenceStart && window.confirm(locale.startsWith("uk") ? "Скасувати лише цю подію? Натисніть «Скасувати» для всієї серії." : "Cancel only this event? Press Cancel to cancel the entire series."); if (!thisOccurrence && !window.confirm(t("cancelEventConfirm"))) return; setPending(true); const suffix = thisOccurrence ? `?scope=this&occurrenceStart=${encodeURIComponent(item.occurrenceStart ?? "")}` : ""; const response = await fetch(`/api/calendar/events/${encodeURIComponent(item.id)}${suffix}`, { method: "DELETE" }); setPending(false); if (response.ok) onMutated(null, item.key); else setError(t("eventCancelFailed")); }
+  async function cancelEvent(scope: "this" | "series") {
+    if (item.source !== "calendar_event" || eventCancellationInFlight.current || pending || saving || !isOpen || (scope === "this" && !item.occurrenceStart)) return;
+    eventCancellationInFlight.current = true;
+    setPending(true); setError("");
+    const suffix = scope === "this" ? `?scope=this&occurrenceStart=${encodeURIComponent(item.occurrenceStart ?? "")}` : "";
+    try {
+      const response = await fetch(`/api/calendar/events/${encodeURIComponent(item.id)}${suffix}`, { method: "DELETE" });
+      if (response.ok) onMutated(null, item.key);
+      else setError(t("eventCancelFailed"));
+    } catch { setError(t("eventCancelFailed")); }
+    finally { eventCancellationInFlight.current = false; setPending(false); }
+  }
   async function respondToInvitation(inviteId: string, invitationStatus: "accepted" | "declined") {
     setPending(true); setError("");
     try {
@@ -562,7 +804,7 @@ function ItemPanel({ isOpen, onExited, item, data, projects, onClose, onEdit, on
   return <DetailPanel isOpen={isOpen} onExited={onExited} title={itemTitle(item)} eyebrow={itemEyebrow} item={item} onClose={pending ? () => undefined : onClose}>{error ? <p role="alert" className="mb-4 rounded-xl bg-[var(--ui-danger-surface)] p-3 text-sm text-[var(--ui-danger-text)]">{error}</p> : null}<div className="space-y-6 text-sm">
     <section><h3 className="font-semibold text-[var(--ui-text)]">{t("when")}</h3><p className="mt-2 text-[var(--ui-text-secondary)]">{item.source === "calendar_event" ? item.allDay ? `${dateLabel(item.startDate, { month: "long", day: "numeric", year: "numeric" }, locale)}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" }, locale)}` : ""}` : `${formatCalendarDateTime(item.startsAt, locale, timeFormat, timeZone)} – ${formatCalendarDateTime(item.endsAt, locale, timeFormat, timeZone)}` : item.source === "crm_follow_up" ? formatCalendarDateTime(item.startsAt, locale, timeFormat, timeZone) : `${dateLabel(item.startDate, item.source === "birthday" || item.source === "team_anniversary" ? { month: "long", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" })}${item.endDate !== item.startDate ? ` – ${dateLabel(item.endDate, { month: "long", day: "numeric", year: "numeric" })}` : ""}`}</p></section>
     {item.source === "birthday" || item.source === "team_anniversary" || item.source === "salary_payment" ? <section className="flex items-center gap-3 border-t border-[var(--ui-border-subtle)] pt-4"><UserAvatar decorative imageUrl={item.member.avatarUrl} name={item.member.fullName} size="sm" /><div><h3 className="font-semibold text-[var(--ui-text)]">{item.member.fullName}</h3><p className="text-sm text-[var(--ui-text-secondary)]">{item.source === "team_anniversary" ? t("teamAnniversaryDuration", { count: item.anniversaryYears }) : itemTypeLabel(item)}</p></div></section> : null}
-    {item.source === "calendar_event" ? <><CalendarEventDetails item={item} data={data} projects={projects} pending={pending} onRespond={(inviteId, invitationStatus) => void respondToInvitation(inviteId, invitationStatus)} />{(data.isAdmin || item.organizer.id === data.currentUserId) ? <div className="flex gap-2"><Button disabled={pending} onClick={() => onEdit(item)}>{t("editEvent")}</Button><Button disabled={pending} variant="outline" onClick={() => void cancelEvent()}>{t("cancelEvent")}</Button></div> : null}</> : null}
+    {item.source === "calendar_event" ? <><CalendarEventDetails item={item} data={data} projects={projects} pending={pending} onRespond={(inviteId, invitationStatus) => void respondToInvitation(inviteId, invitationStatus)} />{(data.isAdmin || item.organizer.id === data.currentUserId) ? <div className="flex flex-wrap items-start gap-2"><Button disabled={pending || saving} onClick={() => onEdit(item)}>{t("editEvent")}</Button><CalendarEventCancelAction key={item.key} disabled={pending || saving || !isOpen} occurrence={Boolean(item.occurrenceStart)} onConfirm={(scope) => { void cancelEvent(scope); }} /></div> : null}</> : null}
     {item.source === "project_deadline" ? <><p className="text-[var(--ui-text-secondary)]">{item.project.clientName ?? t("projectMilestone")} · {status(item.project.status)}</p><ProjectNavigationLink href={`/projects/${item.project.id}`} label={t("openProject")} name={item.project.name} /></> : null}
     {item.source === "task_deadline" ? <><p className="whitespace-pre-wrap text-[var(--ui-text-secondary)]">{item.task.description || t("taskDescription")}</p><dl className="grid grid-cols-2 gap-4"><div><dt className="text-[var(--ui-text-muted)]">{t("assignee")}</dt><dd>{item.task.assigneeName}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("status")}</dt><dd>{status(item.task.status)}</dd></div><div><dt className="text-[var(--ui-text-muted)]">{t("priority")}</dt><dd className="inline-flex items-center gap-1.5"><TaskPriorityIcon priority={item.task.priority} />{priority(item.task.priority)}</dd></div></dl><ProjectNavigationLink href={`/projects/${item.task.projectId}`} label={t("openTask", { project: item.task.projectName })} name={item.task.projectName} /></> : null}
     {item.source === "crm_follow_up" ? <Button asChild><Link href={`/crm/leads?lead=${item.id}`}><PhoneCall className="size-4" aria-hidden="true" />{t("openLead")}</Link></Button> : null}
@@ -690,12 +932,12 @@ function RecurrenceControl({ allDayControl, locale, value, onChange }: { allDayC
   return <section className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">{allDayControl}<div className="flex min-h-11 min-w-0 items-center gap-2 text-sm font-medium max-sm:w-full max-sm:justify-between"><span className="flex shrink-0 items-center gap-2"><Repeat2 className="size-4" aria-hidden="true" /><span className="whitespace-nowrap">{label}</span></span><Select className="w-48 max-w-full" value={selected} onValueChange={(next) => { if (next === "none") onChange(null); else if (next === "custom") onChange(value ?? { frequency: "weekly", interval: 2, weekdays: [], endsOn: null, occurrenceCount: null }); else onChange({ frequency: next as RecurrenceRule["frequency"], interval: 1, weekdays: [], endsOn: null, occurrenceCount: null }); }}><SelectItem value="none">{options[0][0]}</SelectItem>{options.slice(1).map(([name, rule]) => <SelectItem key={rule?.frequency} value={rule?.frequency ?? "none"}>{name}</SelectItem>)}<SelectItem value="custom">{uk ? "Власний графік" : "Custom schedule"}</SelectItem></Select></div></div>{value ? <><p className="text-xs text-[var(--ui-text-secondary)]">{recurrenceText(locale, value)}</p>{custom ? <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium">{uk ? "Інтервал" : "Interval"}<input min="1" max="99" type="number" className={`${fieldClass} mt-1`} value={value.interval} onChange={(event) => onChange({ ...value, interval: Number(event.target.value) || 1 })} /></label><label className="text-sm font-medium">{uk ? "Завершити після" : "End after"}<input min="1" max="999" type="number" className={`${fieldClass} mt-1`} value={value.occurrenceCount ?? ""} placeholder={uk ? "Ніколи" : "Never"} onChange={(event) => onChange({ ...value, occurrenceCount: event.target.value ? Number(event.target.value) : null })} /></label>{value.frequency === "weekly" ? <div className="sm:col-span-2"><p className="text-sm font-medium">{uk ? "Дні тижня" : "Days of week"}</p><div className="mt-1 flex flex-wrap gap-2">{(uk ? ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]).map((day, index) => <label key={day} className="flex min-h-11 items-center gap-1 text-sm"><input type="checkbox" checked={value.weekdays.includes(index)} onChange={() => onChange({ ...value, weekdays: value.weekdays.includes(index) ? value.weekdays.filter((item) => item !== index) : [...value.weekdays, index] })} />{day}</label>)}</div></div> : null}<div className="text-sm font-medium sm:col-span-2"><p>{uk ? "До дати" : "End date"}</p><DatePicker className="mt-1" aria-label={uk ? "До дати" : "End date"} locale={locale} value={value.endsOn ?? ""} onValueChange={(endsOn) => onChange({ ...value, endsOn: endsOn || null })} /></div></div> : null}</> : null}</section>;
 }
 
-function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarPageData; item?: Extract<CalendarItem, { source: "calendar_event" }>; initialDate?: string; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void }) {
+function EventForm({ isOpen, onExited, data, item, initialDate, initialRange, onClose, onSaved }: { isOpen: boolean; onExited: () => void; data: CalendarPageData; item?: Extract<CalendarItem, { source: "calendar_event" }>; initialDate?: string; initialRange?: CalendarEventFormRange; onClose: () => void; onSaved: (item: Extract<CalendarItem, { source: "calendar_event" }>) => void }) {
   const t = useTranslations("Calendar"); const locale = useLocale();
   const timeZone = useContext(CalendarTimeZoneContext);
   const baseDate = initialDate ?? instantToDateOnly(new Date().toISOString(), timeZone);
   const allowedEventTypes = getCreatableCalendarEventTypes(data.isAdmin ? "admin" : "employee");
-  const rawInitial = createCalendarEventFormValues(item, baseDate, timeZone);
+  const rawInitial = createCalendarEventFormValues(item, baseDate, timeZone, initialRange);
   const initial = { ...rawInitial, eventType: item?.eventType ?? allowedEventTypes[0], ...(item?.eventType === "site_visit" || item?.eventType === "interview" ? { allDay: false, endDate: rawInitial.startDate } : {}) };
   const [values, setValues] = useState(initial); const [endDateLinked, setEndDateLinked] = useState(initial.endDate === initial.startDate); const [endTimeLinked, setEndTimeLinked] = useState(true); const [scope, setScope] = useState<"this" | "series">("this"); const [pending, setPending] = useState(false); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); const dirty = JSON.stringify(values) !== JSON.stringify(initial);
   const isWorkMakeup = values.eventType === "work_makeup";
@@ -758,15 +1000,14 @@ function EventForm({ isOpen, onExited, data, item, initialDate, onClose, onSaved
       const previousContributionMinutes = selectedDayOff && item && item.compensatesTimeOffRequestId === selectedDayOff.id
         ? getWorkMakeupMinutes({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay })
         : 0;
-      const payload = {
+      const payload: CalendarEventRequest = {
         ...toCalendarEventMutationPayload(values, timeZone),
         title: isWorkMakeup ? getWorkMakeupTitle(values, locale, selectedDayOff ? { ...selectedDayOff, previousContributionMinutes } : null, timeZone) : isSiteVisit ? getSiteVisitTitle(data.projects.find((project) => project.id === values.projectId)?.name ?? "", locale) : isBusinessTrip ? getBusinessTripTitle(data.projects.find((project) => project.id === values.projectId)?.name ?? "", locale) : values.title,
         assigneeId: isInterview ? values.assigneeId || null : null,
         scope: item?.occurrenceStart ? scope : "series",
         occurrenceStart: item?.occurrenceStart ?? undefined,
       };
-      const response = await fetch(item ? `/api/calendar/events/${encodeURIComponent(item.id)}` : "/api/calendar/events", { method: item ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const result: unknown = await response.json();
+      const { response, result } = await saveCalendarEvent(item?.id, payload);
       if (response.ok && isMutationResult(result) && result.item?.source === "calendar_event") onSaved(result.item);
       else if (response.ok && typeof result === "object" && result !== null && "requiresRefresh" in result && result.requiresRefresh === true) window.location.reload();
       else if (typeof result === "object" && result !== null) {

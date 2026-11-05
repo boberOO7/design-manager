@@ -106,6 +106,18 @@ export const timeOffActionSchema = z.object({
 }).strict();
 
 export type CalendarEventInput = z.infer<typeof calendarEventSchema>;
+// Transport accepts the schema's input, before empty text is normalized to null.
+export type CalendarEventRequest = z.input<typeof calendarEventSchema>;
+export const calendarEventScheduleSchema = z.object({
+  intent: z.literal("reschedule"),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+  expectedStartsAt: z.iso.datetime({ offset: true }),
+  expectedEndsAt: z.iso.datetime({ offset: true }),
+}).strict().refine((value) => isValidEventRange(value.startsAt, value.endsAt), {
+  path: ["endsAt"], message: "Event end must be after its start.",
+});
+export type CalendarEventScheduleRequest = z.input<typeof calendarEventScheduleSchema>;
 export type TimeOffRequestInput = z.infer<typeof timeOffRequestSchema>;
 
 export function calendarFieldErrors(error: z.ZodError): Record<string, string> {
