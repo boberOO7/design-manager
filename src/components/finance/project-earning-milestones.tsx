@@ -8,6 +8,7 @@ import type { FinanceProjectData } from "@/data/queries/finance";
 import type { FinanceCurrency } from "@/lib/finance";
 import { formatFinanceAmount } from "@/lib/finance";
 import { earningExceptionKey, type EarningsReport } from "@/lib/finance-earnings";
+import { projectAgreementName } from "@/lib/finance-project-view";
 import { saveEarningMilestone, fulfillEarningMilestone, voidUnrecognizedEarningMilestone } from "@/app/(app)/finance/project-orders/earning-actions";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -17,9 +18,25 @@ import { FinanceActionForm } from "./finance-action-form";
 import { formatDateOnly } from "@/lib/utils";
 
 type Milestone = EarningsReport["milestones"][number];
-type Props = { project: FinanceProjectData; orderId: string; currency: FinanceCurrency; onPending: (pending: boolean) => void };
+type Props = { project: FinanceProjectData; orderId: string; currency: FinanceCurrency; title?: string; onPending?: (pending: boolean) => void };
 
-export function ProjectEarningMilestones({ project, orderId, currency, onPending }: Props) {
+export function ProjectRevenueRecognition({ project, currencies }: { project: FinanceProjectData; currencies: FinanceCurrency[] }) {
+  const t = useTranslations("Finance.earnings"), ordersT = useTranslations("Finance.orders");
+  const orders = project.orders.flatMap(order => {
+    if (order.status !== "confirmed") return [];
+    const term = project.terms.find(term => term.order_id === order.id && term.stream === "design");
+    const currency = currencies.find(currency => currency.code === term?.currency);
+    return currency ? [{ order, currency }] : [];
+  });
+  if (!orders.length) return null;
+  return <section id="project-revenue-recognition" aria-labelledby="project-revenue-recognition-title" className="min-w-0 space-y-3 rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 sm:p-5">
+    <h3 id="project-revenue-recognition-title" className="font-semibold">{t("title")}</h3>
+    <p className="text-xs leading-5 text-[var(--ui-text-secondary)]">{t("help")}</p>
+    {orders.map(({ order, currency }) => <ProjectEarningMilestones key={order.id} project={project} orderId={order.id} currency={currency} title={projectAgreementName(order.name, ordersT("defaultName"))}/>)}
+  </section>;
+}
+
+export function ProjectEarningMilestones({ project, orderId, currency, title, onPending = () => {} }: Props) {
   const t = useTranslations("Finance.earnings"), locale = useLocale(), router = useRouter();
   const summary = project.earnings.orders.find(order => order.orderId === orderId);
   const milestones = project.earnings.milestones.filter(milestone => milestone.order_id === orderId);
@@ -27,12 +44,11 @@ export function ProjectEarningMilestones({ project, orderId, currency, onPending
   const money = (value: string | null) => value === null ? "—" : formatFinanceAmount(value, currency, locale);
   if (!summary) return null;
   const known = summary.configured || summary.hasRecognition;
-  return <section data-testid="order-earnings" className="space-y-2 border-t border-[var(--ui-border)] pt-3">
-    <dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-[var(--ui-text-secondary)]">{t("earned")}</dt><dd className="mt-1 font-medium tabular-nums">{money(known ? summary.earned : null)}</dd></div><div><dt className="text-xs text-[var(--ui-text-secondary)]">{t("unearned")}</dt><dd className="mt-1 font-medium tabular-nums">{money(known ? summary.unearned : null)}</dd></div></dl>
-    {!summary.configured ? <p className="text-xs text-[var(--ui-warning-text)]">{t("unconfigured")}</p> : !summary.complete ? <p className="text-xs text-[var(--ui-warning-text)]">{t("partialPlan")}</p> : null}
-    <AnimatedDisclosure title={t("title")}>
+  return <section data-testid="order-earnings" data-order-id={orderId} className="border-t border-[var(--ui-border)] pt-1">
+    <AnimatedDisclosure title={title ?? t("title")}>
       <div className="space-y-4 pb-2 pt-3">
-        <p className="text-xs leading-5 text-[var(--ui-text-secondary)]">{t("help")}</p>
+        <dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-[var(--ui-text-secondary)]">{t("earned")}</dt><dd className="mt-1 font-medium tabular-nums">{money(known ? summary.earned : null)}</dd></div><div><dt className="text-xs text-[var(--ui-text-secondary)]">{t("unearned")}</dt><dd className="mt-1 font-medium tabular-nums">{money(known ? summary.unearned : null)}</dd></div></dl>
+        {!summary.configured ? <p className="text-xs text-[var(--ui-warning-text)]">{t("unconfigured")}</p> : !summary.complete ? <p className="text-xs text-[var(--ui-warning-text)]">{t("partialPlan")}</p> : null}
         <ul className="space-y-4">{milestones.map(milestone => <li key={milestone.id} data-testid="earning-milestone" className="space-y-2 border-b border-[var(--ui-border-subtle)] pb-4 last:border-b-0">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-medium">{milestone.title}</p><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t(milestone.condition === "delivery" ? "onDelivery" : "onAcceptance")}</p></div><span className="shrink-0 text-sm tabular-nums">{money(milestone.net_amount)}</span></div>
           {milestone.events.map(event => <p key={event.id} className="text-xs leading-5 text-[var(--ui-text-secondary)]">{t(event.kind)} · {formatDateOnly(event.date, locale)} · {event.actorName}</p>)}

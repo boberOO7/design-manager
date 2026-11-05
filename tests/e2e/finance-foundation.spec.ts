@@ -269,7 +269,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await dialog.getByRole("checkbox",{ name:p.differentExpectedDate,exact:true }).check();
   await dialog.getByRole("combobox",{ name:p.expectedDate,exact:true }).click();
   await dialog.getByRole("gridcell",{ name:"30",exact:true }).first().click();
-  await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-01");
+  await expect(dialog.locator('[name="dueDate"]')).toHaveValue("2026-09-01");
   await page.screenshot({ path:testInfo.outputPath("finance-expected-form.png"),fullPage:true });
   await dialog.getByRole("button",{ name:p.save,exact:true }).click();await expect(dialog).toHaveCount(0);
   const item=page.locator("article").filter({ has:page.getByRole("heading",{ name:"Studio milestone",exact:true }) });
@@ -319,7 +319,7 @@ test("categories, expected items, partial overdue settlement and contextual paym
   await expect(page.getByRole("heading",{ name:p.unapplied,exact:true })).toBeVisible();
   await expect(page.getByText(/Client receipt/)).toBeVisible();await expect(page.getByText(/Walk-in receipt/)).toHaveCount(0);
   await item.locator("summary").click();await item.getByRole("button",{ name:t.edit,exact:true }).click();dialog=page.getByRole("dialog");
-  await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-01");await expect(dialog.locator('select[name="expectedDate"]')).toHaveValue("2026-09-30");
+  await expect(dialog.locator('[name="dueDate"]')).toHaveValue("2026-09-01");await expect(dialog.locator('[name="expectedDate"]')).toHaveValue("2026-09-30");
   await dialog.getByRole("button",{ name:t.movements.close,exact:true }).click();
   await page.setViewportSize({ width:375,height:900 });await page.emulateMedia({ colorScheme:"dark",reducedMotion:"reduce" });
   await page.context().addCookies([{ name:"studioflow-locale",value:"uk",url:"http://127.0.0.1:3100" }]);await page.reload();
@@ -479,28 +479,17 @@ for (const locale of ["en", "uk"] as const) {
         expect(amount?.y).toBe(currency?.y);
         await dialog.getByRole("radio",{name:p.income,exact:true}).focus();await page.keyboard.press("ArrowRight");await expect(dialog.getByRole("radio",{name:p.expenses,exact:true})).toBeChecked();await page.keyboard.press("ArrowLeft");
         await page.screenshot({path:testInfo.outputPath("create-default.png"),fullPage:true});
-        await dialog.getByRole("combobox",{name:p.dueDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"15",exact:true}).first().click();
-        await expect(dialog.locator('input[name="expectedDate"]')).toHaveValue("2026-09-15");await expect(dialog.locator('input[name="established"]')).toHaveValue("true");
-        await dialog.getByRole("checkbox",{name:p.differentExpectedDate,exact:true}).check();
-        const due=await dialog.getByRole("combobox",{name:p.dueDate,exact:true}).boundingBox(),expected=await dialog.getByRole("combobox",{name:p.expectedDate,exact:true}).boundingBox();
-        if(viewport.width>=640)expect(due?.y).toBe(expected?.y);else expect(expected?.y).toBeGreaterThan(due?.y??0);
-        await dialog.getByRole("combobox",{name:p.expectedDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"25",exact:true}).first().click();await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-15");
-        await page.screenshot({path:testInfo.outputPath("create-date-pair.png"),fullPage:true});
-        await dialog.getByRole("checkbox",{name:p.plannedPayment,exact:true}).check();
-        await expect(dialog.locator('input[name="commitment"]')).toHaveValue("tentative");await expect(dialog.locator('input[name="established"]')).toHaveValue("false");await expect(dialog.getByText(p.financialTreatment,{exact:true})).toHaveCount(0);
-        await page.screenshot({path:testInfo.outputPath("create-planned.png"),fullPage:true});
-        await dialog.getByRole("checkbox",{name:p.plannedPayment,exact:true}).uncheck();await dialog.getByRole("checkbox",{name:p.estimatedAmount,exact:true}).check();
-        await expect(dialog.locator('input[name="certainty"]')).toHaveValue("estimated");await expect(dialog.locator('input[name="established"]')).toHaveValue("false");await expect(dialog.getByText(p.financialTreatment,{exact:true})).toHaveCount(0);
-        await page.screenshot({path:testInfo.outputPath("create-estimated.png"),fullPage:true});
-        await dialog.getByRole("checkbox",{name:p.estimatedAmount,exact:true}).uncheck();await dialog.getByText(p.financialTreatment,{exact:true}).click();await dialog.getByRole("checkbox",{name:p.trackReceivable,exact:true}).uncheck();
-        await expect(dialog.locator('input[name="established"]')).toHaveValue("false");
-        await dialog.getByText(t.movements.description,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill("Optional payment note");
-        await dialog.getByRole("button",{name:p.save,exact:true}).scrollIntoViewIfNeeded();await expect(dialog.getByRole("button",{name:p.save,exact:true})).toBeInViewport();
-        await page.screenshot({path:testInfo.outputPath("create-advanced.png"),fullPage:true});
+        for(const label of [p.plannedPayment,p.estimatedAmount,p.differentExpectedDate,p.trackReceivable]) await expect(dialog.getByRole("checkbox",{name:label,exact:true})).toHaveCount(0);
+        await expect(dialog.getByRole("combobox",{name:p.dueDate,exact:true})).toHaveCount(0);
+        await dialog.getByRole("combobox",{name:p.expectedDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"25",exact:true}).first().click();
+        await expect(dialog.locator('[name="dueDate"]')).toHaveValue("");await expect(dialog.locator('input[name="established"]')).toHaveValue("false");
+        await dialog.getByLabel(t.movements.description,{exact:true}).fill("Optional payment note");
+        await dialog.getByRole("button",{name:p.createAction,exact:true}).scrollIntoViewIfNeeded();await expect(dialog.getByRole("button",{name:p.createAction,exact:true})).toBeInViewport();
+        await page.screenshot({path:testInfo.outputPath("create-simplified.png"),fullPage:true});
         expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
         await dialog.getByRole("button",{name:t.movements.close,exact:true}).click();
         const item=page.locator("article").filter({has:page.getByRole("heading",{name:"Design milestone",exact:true})});await item.locator("summary").click();await item.getByRole("button",{name:t.edit,exact:true}).click();
-        await expect(dialog.getByLabel(t.movements.description,{exact:true})).toHaveValue("Design milestone");await expect(dialog.locator('select[name="dueDate"]')).toHaveValue("2026-09-15");await expect(dialog.locator('select[name="expectedDate"]')).toHaveValue("2026-09-25");await expect(dialog.locator('input[name="established"]')).toHaveValue("true");
+        await expect(dialog.getByLabel(t.movements.description,{exact:true})).toHaveValue("Design milestone");await expect(dialog.locator('[name="dueDate"]')).toHaveValue("2026-09-15");await expect(dialog.locator('[name="expectedDate"]')).toHaveValue("2026-09-25");await expect(dialog.locator('input[name="established"]')).toHaveValue("true");
         await page.screenshot({path:testInfo.outputPath("edit.png"),fullPage:true});
         expect(errors).toEqual([]);
       });
@@ -508,7 +497,7 @@ for (const locale of ["en", "uk"] as const) {
   }
 }
 
-test("expected scenarios persist planned, estimated and explicit financial overrides",async({page})=>{
+test("simplified expected forms preserve legacy metadata and contractual dates on edit",async({page})=>{
   clearFoundation();
   const actor=actors[0],t=en.Finance,p=t.planning;
   sql(`insert into public.finance_settings(studio_id,base_currency,cutover_date,created_by) values(${studioLiteral},'UAH','2026-09-01','${actor.id}');
@@ -520,20 +509,20 @@ test("expected scenarios persist planned, estimated and explicit financial overr
     await page.getByRole("button",{name:p.create,exact:true}).click();const dialog=page.getByRole("dialog");
     await dialog.getByRole("radio",{name:p.expenses,exact:true}).check();await dialog.getByLabel(t.movements.amount,{exact:true}).fill("250");
     await dialog.getByRole("combobox",{name:t.movements.category,exact:true}).click();await page.getByRole("option",{name:p.defaults.rent,exact:true}).click();
-    await dialog.getByRole("combobox",{name:p.dueDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"15",exact:true}).first().click();
-    if(scenario==="planned")await dialog.getByRole("checkbox",{name:p.plannedPayment,exact:true}).check();
-    if(scenario==="estimated")await dialog.getByRole("checkbox",{name:p.estimatedAmount,exact:true}).check();
-    if(scenario==="override"){
-      await dialog.getByText(p.financialTreatment,{exact:true}).click();await dialog.getByRole("checkbox",{name:p.trackObligation,exact:true}).uncheck();
-      await dialog.getByRole("checkbox",{name:p.plannedPayment,exact:true}).check();await dialog.getByRole("checkbox",{name:p.plannedPayment,exact:true}).uncheck();
-      await expect(dialog.locator('input[name="established"]')).toHaveValue("false");
-      await dialog.getByRole("checkbox",{name:p.differentExpectedDate,exact:true}).check();await dialog.getByRole("combobox",{name:p.expectedDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"25",exact:true}).first().click();
-      await dialog.getByRole("checkbox",{name:p.differentExpectedDate,exact:true}).uncheck();await expect(dialog.locator('input[name="expectedDate"]')).toHaveValue("2026-09-15");
-    }
-    await dialog.getByText(t.movements.description,{exact:true}).click();await dialog.getByLabel(t.movements.description,{exact:true}).fill(scenario);await dialog.getByRole("button",{name:p.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-    expect(sql(`select concat(direction,'|',commitment,'|',certainty,'|',is_established,'|',due_date,'|',expected_payment_date) from public.finance_expected_items where studio_id=${studioLiteral} and description='${scenario}'`)).toBe(`outgoing|${scenario==="planned"?"tentative":"agreed"}|${scenario==="estimated"?"estimated":"fixed"}|f|2026-09-15|2026-09-15`);
-    const item=page.locator("article").filter({has:page.getByRole("heading",{name:scenario,exact:true})});await item.locator("summary").click();await item.getByRole("button",{name:t.edit,exact:true}).click();await dialog.getByRole("button",{name:p.save,exact:true}).click();await expect(dialog).toHaveCount(0);
-    expect(sql(`select is_established from public.finance_expected_items where studio_id=${studioLiteral} and description='${scenario}'`)).toBe("f");
+    await dialog.getByRole("combobox",{name:p.expectedDate,exact:true}).click();await dialog.getByRole("gridcell",{name:"15",exact:true}).first().click();
+    await dialog.getByLabel(t.movements.description,{exact:true}).fill(scenario);await dialog.getByRole("button",{name:p.createAction,exact:true}).click();await expect(dialog).toHaveCount(0);
+    expect(sql(`select concat(commitment,'|',certainty,'|',is_established,'|',due_date is null) from public.finance_expected_items where studio_id=${studioLiteral} and description='${scenario}'`)).toBe("agreed|fixed|f|t");
+    // Seed historical metadata on this fixture row, then verify an ordinary edit preserves it.
+    sql(`select set_config('request.jwt.claim.sub','${actor.id}',false);
+      update public.finance_expected_items set commitment='${scenario==="planned"?"tentative":"agreed"}',certainty='${scenario==="estimated"?"estimated":"fixed"}',
+        due_date=date_trunc('month',expected_payment_date)::date,version=version+1 where studio_id=${studioLiteral} and description='${scenario}';`);
+    const before=sql(`select concat(commitment,'|',certainty,'|',is_established,'|',due_date,'|',expected_payment_date) from public.finance_expected_items where studio_id=${studioLiteral} and description='${scenario}'`);
+    await page.reload();
+    const item=page.locator("article").filter({has:page.getByRole("heading",{name:scenario,exact:true})});await item.locator("summary").click();await item.getByRole("button",{name:t.edit,exact:true}).click();
+    for(const label of [p.plannedPayment,p.estimatedAmount,p.differentExpectedDate,p.trackObligation]) await expect(dialog.getByRole("checkbox",{name:label,exact:true})).toHaveCount(0);
+    await expect(dialog.getByRole("combobox",{name:p.dueDate,exact:true})).toHaveCount(0);
+    await dialog.getByRole("button",{name:p.save,exact:true}).click();await expect(dialog).toHaveCount(0);
+    expect(sql(`select concat(commitment,'|',certainty,'|',is_established,'|',due_date,'|',expected_payment_date) from public.finance_expected_items where studio_id=${studioLiteral} and description='${scenario}'`)).toBe(before);
   }
   expect(sql(`select count(*) from public.finance_movements where studio_id=${studioLiteral}`)).toBe("0");
 });

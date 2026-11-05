@@ -4,6 +4,14 @@ import type { Database } from "@/types/database.types";
 export type FinanceCategory = Database["public"]["Tables"]["finance_categories"]["Row"];
 type ExpectedBalance = Database["public"]["Views"]["finance_expected_balances"]["Row"];
 export type FinanceExpected = Omit<ExpectedBalance, "overpaid_amount"> & Partial<Pick<ExpectedBalance, "overpaid_amount">> & Partial<Pick<Database["public"]["Views"]["finance_project_expected_balances"]["Row"], "order_id" | "order_name">>;
+export function expectedPaymentDates(item: Pick<FinanceExpected, "due_date" | "expected_payment_date"> | undefined, expected: string) {
+  const original = item?.expected_payment_date ?? item?.due_date ?? "";
+  return {
+    dueDate: item?.due_date ?? "",
+    // An unchanged fallback date must not create a new forecast override.
+    expectedDate: item && expected === original ? item.expected_payment_date ?? "" : expected,
+  };
+}
 export function projectPaymentPresentation(description: string | null, projectName: string, paymentType: string, fallbackTitle: string) {
   return { title: description?.trim() || fallbackTitle, context: `${projectName} · ${paymentType}` };
 }

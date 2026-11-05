@@ -11690,6 +11690,15 @@ export type Database = {
         }
         Returns: string
       }
+      record_finance_project_income: {
+        Args: {
+          p_input: Json
+          p_project_id: string
+          p_request_id: string
+          p_studio_id: string
+        }
+        Returns: string
+      }
       record_finance_project_payment: {
         Args: {
           p_allocations: Json

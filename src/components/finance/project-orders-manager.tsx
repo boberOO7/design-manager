@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, ChevronRight, LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, History, LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import { saveFinanceProjectOrder } from "@/app/(app)/finance/project-orders/actions";
 import type { FinanceProjectData, getFinanceData } from "@/data/queries/finance";
 import { formatFinanceAmount } from "@/lib/finance";
@@ -15,10 +15,10 @@ import { orderPaymentStateClass } from "./order-payment-progress";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/form-field";
+import { Tooltip } from "@/components/ui/tooltip";
 import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
 import { FinanceActionForm } from "./finance-action-form";
 import { ProjectValueBuilder } from "./project-value-builder";
-import { ProjectEarningMilestones } from "./project-earning-milestones";
 import { ProjectOrderCurrencyCorrection } from "./project-order-currency-correction";
 import { OrderWorkDirections } from "./order-work-directions";
 import type { FinanceActionState } from "@/lib/finance";
@@ -35,7 +35,7 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
   const query = useSearchParams();
   const [newDirection] = useState(() => scopeDirectionId ?? (project.directions.some(direction => direction.id === query.get("workDirection")) ? query.get("workDirection") ?? "" : project.directions[0]?.id ?? ""));
   const [selectedId, setSelectedId] = useState(initialOrderId ?? ""), [adding, setAdding] = useState(initiallyAdding);
-  const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | null>(initiallyAdding ? "pricing" : initialEditor ?? null), [pending, setPending] = useState(false);
+  const [editor, setEditor] = useState<"pricing" | "proposal" | "currency" | "history" | null>(initiallyAdding ? "pricing" : initialEditor ?? null), [pending, setPending] = useState(false);
   const [renaming, setRenaming] = useState(false), [nameValue, setNameValue] = useState(""), [nameError, setNameError] = useState("");
   const nameButton = useRef<HTMLButtonElement>(null), nameForm = useRef<HTMLFormElement>(null);
   const renameInFlight = useRef(false), restoreNameFocus = useRef(false);
@@ -135,25 +135,25 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
         </div>
         <Button variant="ghost" className="size-11 shrink-0 p-0" aria-label={t("movements.close")} aria-disabled={pending} onClick={() => closeManager("explicit")}><X aria-hidden="true" className="size-5"/></Button>
       </header> : null}
-      <div className={`min-h-0 overflow-y-auto overscroll-contain ${order ? "space-y-4 px-4 pb-2 sm:px-6" : adding ? "space-y-3 p-4 pt-3" : "space-y-2 p-2"}`}>
+      <div className={`min-h-0 overflow-y-auto overscroll-contain ${order ? "space-y-4 px-4 pb-4 sm:px-6 sm:pb-5" : adding ? "space-y-3 p-4 pt-3" : "space-y-2 p-2"}`}>
         {order ? <>
-          <OrderWorkDirections key={`directions-${order.id}`} project={project} orderId={order.id} onPending={setPending}/>
-          <div className="grid grid-cols-2 items-end gap-x-5 gap-y-4 py-1 sm:grid-cols-[1.2fr_1fr_1.15fr]">
-            <div className="col-span-2 min-w-0 sm:col-span-1">
-              <p className="ui-numeric break-words text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{money(term?.gross_amount ?? amounts?.gross)}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-4">
+            <div className="min-w-0">
+              <p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.value")}</p>
+              <p className="ui-numeric mt-1 break-words text-2xl font-semibold tracking-tight text-[var(--ui-text)]">{money(term?.gross_amount ?? amounts?.gross)}</p>
               {display && currency && currency.code !== display.currency.code ? <p className="mt-1 text-xs text-[var(--ui-text-muted)]">{nativeMoney(term?.gross_amount ?? amounts?.gross)}</p> : null}
-              <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t("builder.netShort")} <span className="ui-numeric">{money(net)}</span></p>
+              {Number(term?.vat_rate ?? draft?.vatRate) > 0 ? <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{t("builder.netShort")} <span className="ui-numeric">{money(net)}</span></p> : null}
             </div>
-            {totals ? <dl className="col-span-2 grid grid-cols-subgrid gap-x-5 sm:col-span-2">
-              <div className="min-w-0"><dt className="text-xs text-[var(--ui-text-secondary)]">{t("project.outstanding")}</dt><dd className="ui-numeric mt-1 break-words text-sm font-medium text-[var(--ui-text)]">{money(totals.outstanding_amount)}</dd></div>
-              <div className="min-w-0"><dt className="text-xs text-[var(--ui-text-secondary)]">{t("project.planned")}</dt><dd className="ui-numeric mt-1 break-words text-sm font-medium text-[var(--ui-text)]">{money(totals.planned_amount)}</dd></div>
-            </dl> : null}
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" className="h-auto min-h-11 cursor-pointer gap-2 whitespace-normal px-3 text-left text-[var(--ui-text)] hover:bg-[var(--ui-surface-strong)]" disabled={pending || order.status === "discarded"} onClick={() => setEditor("pricing")}><Pencil aria-hidden="true" className="size-4 shrink-0"/>{t("project.editAgreement")}</Button>
+              {term ? <Tooltip content={t("orders.changeHistory")}><Button type="button" variant="ghost" className="size-11 shrink-0 cursor-pointer p-0 hover:bg-[var(--ui-surface-strong)]" aria-label={t("orders.changeHistory")} aria-haspopup="dialog" disabled={pending} onClick={() => setEditor("history")}><History aria-hidden="true" className="size-4"/></Button></Tooltip> : null}
+            </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button variant="outline" className="h-auto min-h-11 justify-between gap-2 whitespace-normal px-3 text-left" disabled={pending || order.status === "discarded"} onClick={() => setEditor("pricing")}>{t("project.editAgreement")}<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]"/></Button>
-            <Button variant="outline" className="h-auto min-h-11 justify-between gap-2 whitespace-normal px-3 text-left" disabled={pending || (!term && !draft)} onClick={() => setEditor("proposal")}>{t("proposal.action")}<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]"/></Button>
-          </div>
-          {order.status === "confirmed" && term ? <Button variant="ghost" size="sm" className="min-h-11 text-xs text-[var(--ui-text-secondary)]" disabled={pending} onClick={() => setEditor("currency")}>{t("currencyCorrection.action")}</Button> : null}
+          {totals && (Number(totals.outstanding_amount) > 0 || Number(totals.planned_amount) > 0) ? <dl className="flex flex-wrap gap-x-8 gap-y-3">
+            {Number(totals.outstanding_amount) > 0 ? <div className="min-w-0"><dt className="text-xs text-[var(--ui-text-secondary)]">{t("project.outstanding")}</dt><dd className="ui-numeric mt-1 break-words text-sm font-medium">{money(totals.outstanding_amount)}</dd></div> : null}
+            {Number(totals.planned_amount) > 0 ? <div className="min-w-0"><dt className="text-xs text-[var(--ui-text-secondary)]">{t("project.planned")}</dt><dd className="ui-numeric mt-1 break-words text-sm font-medium">{money(totals.planned_amount)}</dd></div> : null}
+          </dl> : null}
+          {order.status !== "confirmed" ? <Button variant="ghost" className="min-h-11 gap-2" disabled={pending || (!term && !draft)} onClick={() => setEditor("proposal")}><FileText aria-hidden="true" className="size-4 shrink-0"/>{t("proposal.action")}<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--ui-text-muted)]"/></Button> : null}
           {order.status === "draft" ? <p className="text-sm text-[var(--ui-text-secondary)]">{t("orders.draftHelp")}</p> : null}
           {(term?.vat_rate ?? draft?.vatRate) != null || revenueTax ? <dl className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-[var(--ui-text-secondary)]">
             {(term?.vat_rate ?? draft?.vatRate) != null ? <div><dt>{t("builder.vat")} · {term?.vat_rate ?? draft?.vatRate}%</dt><dd className="ui-numeric mt-1 font-medium">{money(term?.vat_amount ?? amounts?.vat)}</dd></div> : null}
@@ -169,24 +169,26 @@ export function ProjectOrdersManager({ project, currencies, reportingCurrency, i
             {draft ? <FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.confirm")} onSaved={() => {}} onPending={setPending} className="space-y-3 border-t border-[var(--ui-border)] pt-4">{orderFields}<input type="hidden" name="intent" value="confirm"/><p className="text-sm">{t("orders.confirmHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.confirmCheck")}</label></FinanceActionForm> : <p className="text-sm text-[var(--ui-text-muted)]">{t("orders.noPlan")}</p>}
             <AnimatedDisclosure title={t("orders.discard")}><FinanceActionForm refreshWorkspaceOnSave action={saveFinanceProjectOrder} label={t("orders.discard")} onSaved={() => setSelectedId("")} onPending={setPending} className="space-y-3 pt-3" submitClassName="bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]">{orderFields}<input type="hidden" name="intent" value="discard"/><p className="text-xs text-[var(--ui-text-secondary)]">{t("orders.discardHelp")}</p><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" required/>{t("orders.discardCheck")}</label></FinanceActionForm></AnimatedDisclosure>
           </> : null}
-          {order.status === "confirmed" && currency ? <ProjectEarningMilestones key={order.id} project={project} orderId={order.id} currency={currency} onPending={setPending}/> : null}
-          {term ? <AnimatedDisclosure title={t("project.history")} className="border-t border-[var(--ui-border)] pt-1"><ul className="space-y-3 pb-3 pt-2">{project.termHistory.filter(item => item.order_id === order.id).map(item => {
-            const unit = currencies.find(unit => unit.code === item.currency);
-            const tax = item.revenue_tax_rate !== null && item.net_amount !== null && unit ? projectRevenueTaxAmounts(String(item.net_amount),String(item.revenue_tax_rate),unit.minor_units) : null;
-            const plan = project.planRevisions.find(plan => plan.terms_id === item.id);
-            return <li key={item.id} className="space-y-1 text-xs text-[var(--ui-text-secondary)]"><p className="text-sm font-medium text-[var(--ui-text)]">{t("project.revision", { version: item.revision })} · {nativeMoney(item.amount, item.currency)}{item.price_basis ? ` · ${t(item.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>
-              {Number(item.discount_amount) > 0 ? <p>{t("builder.discountWithPercent",{percent:projectDiscountAmounts(String(item.amount),item.discount_type === "fixed" ? "fixed" : "percentage",String(item.discount_value),unit?.minor_units ?? 2).percentage})} · −{nativeMoney(item.discount_amount,item.currency)}</p> : null}
-              {item.vat_rate !== null ? <p>{t("project.vatBreakdown",{net:nativeMoney(item.net_amount,item.currency),vat:nativeMoney(item.vat_amount,item.currency),gross:nativeMoney(item.gross_amount,item.currency)})}</p> : null}
-              {tax ? <p>{t("project.revenueTaxEstimate",{rate:item.revenue_tax_rate ?? 0,tax:nativeMoney(tax.tax,item.currency),afterTax:nativeMoney(tax.afterTax,item.currency)})}</p> : null}
-              {plan?.pricing_method === "area" ? <p>{t("builder.areaSummary",{area:plan.area_snapshot ?? 0,rate:`${plan.rate_per_m2} ${item.currency}`})}</p> : null}
-              <p>{formatDateOnly(item.created_at.slice(0,10),locale)} · {item.reason}</p></li>;
-          })}</ul></AnimatedDisclosure> : null}
+          <div className="border-t border-[var(--ui-border)] pt-1"><OrderWorkDirections key={`directions-${order.id}`} project={project} orderId={order.id} onPending={setPending}/></div>
         </> : <>
           {visibleOrders.some(item => item.status !== "discarded") ? <ul className="divide-y divide-[var(--ui-border-subtle)]">{visibleOrders.filter(item => item.status !== "discarded").map(renderOrder)}</ul> : !visibleOrders.length ? <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.empty")}</p> : null}
           {visibleOrders.some(item => item.status === "discarded") ? <AnimatedDisclosure title={t("orders.history")} defaultOpen={historyOnly}><ul>{visibleOrders.filter(item => item.status === "discarded").map(renderOrder)}</ul></AnimatedDisclosure> : null}
         </>}
       </div>
     </Dialog>
+    {editor === "history" && order && term ? <Dialog isOpen title={t("orders.changeHistory")} description={agreementName(order.name)} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} className="h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem]">
+      <ul className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-6">{project.termHistory.filter(item => item.order_id === order.id).map(item => {
+        const unit = currencies.find(unit => unit.code === item.currency);
+        const tax = item.revenue_tax_rate !== null && item.net_amount !== null && unit ? projectRevenueTaxAmounts(String(item.net_amount),String(item.revenue_tax_rate),unit.minor_units) : null;
+        const plan = project.planRevisions.find(plan => plan.terms_id === item.id);
+        return <li key={item.id} className="space-y-1 border-b border-[var(--ui-border-subtle)] pb-4 text-xs text-[var(--ui-text-secondary)] last:border-0 last:pb-0"><p className="text-sm font-medium text-[var(--ui-text)]">{t("project.revision", { version: item.revision })} · {nativeMoney(item.amount, item.currency)}{item.price_basis ? ` · ${t(item.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>
+          {Number(item.discount_amount) > 0 ? <p>{t("builder.discountWithPercent",{percent:projectDiscountAmounts(String(item.amount),item.discount_type === "fixed" ? "fixed" : "percentage",String(item.discount_value),unit?.minor_units ?? 2).percentage})} · −{nativeMoney(item.discount_amount,item.currency)}</p> : null}
+          {item.vat_rate !== null ? <p>{t("project.vatBreakdown",{net:nativeMoney(item.net_amount,item.currency),vat:nativeMoney(item.vat_amount,item.currency),gross:nativeMoney(item.gross_amount,item.currency)})}</p> : null}
+          {tax ? <p>{t("project.revenueTaxEstimate",{rate:item.revenue_tax_rate ?? 0,tax:nativeMoney(tax.tax,item.currency),afterTax:nativeMoney(tax.afterTax,item.currency)})}</p> : null}
+          {plan?.pricing_method === "area" ? <p>{t("builder.areaSummary",{area:plan.area_snapshot ?? 0,rate:`${plan.rate_per_m2} ${item.currency}`})}</p> : null}
+          <p>{formatDateOnly(item.created_at.slice(0,10),locale)} · {item.reason}</p></li>;
+      })}</ul>
+    </Dialog> : null}
     {editor === "pricing" && (order || adding) ? <Dialog isOpen title={order ? `${agreementName(order.name)} · ${t("project.editAgreement")}` : t("agreements.create")} closeLabel={t("movements.close")} onRequestClose={() => finishEditor()} closeDisabled={pending} className="sm:!max-w-[70rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectValueBuilder key={order ? `${order.id}-${order.version}` : "new"} order={order} scopeDirectionId={newDirection} project={project} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={finishEditor} onPending={setPending} onCorrectCurrency={() => setEditor("currency")}/></div></Dialog> : null}
     {editor === "currency" && order && term ? <Dialog isOpen title={`${agreementName(order.name)} · ${t("currencyCorrection.action")}`} closeLabel={t("movements.close")} onRequestClose={() => setEditor(null)} closeDisabled={pending} className="sm:max-w-[36rem]"><div className="min-h-0 overflow-y-auto overscroll-contain"><ProjectOrderCurrencyCorrection key={`${order.id}-${order.version}`} project={project} order={order} term={term} currencies={currencies} reportingCurrency={reportingCurrency} onSaved={() => setEditor(null)} onCancel={() => setEditor(null)} onPending={setPending}/></div></Dialog> : null}
     {editor === "proposal" && order ? <ProposalEditor projectId={project.projectId} orderId={order.id} orderName={agreementName(order.name)} readOnly={order.status === "discarded"} onClose={finishEditor}/> : null}

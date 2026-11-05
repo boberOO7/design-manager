@@ -1321,6 +1321,7 @@
         "positionName": "Additional component {number} name",
         "positionArea": "Additional component {number} area",
         "positionCoefficient": "Additional component {number} coefficient",
+        "positionCoefficientSlider": "Additional component {number} coefficient slider",
         "remove": "Remove additional component {number}"
       }
     },
@@ -4438,6 +4439,20 @@
         "fx": "Enter a positive exchange rate with up to 10 decimals. Reload if these assumptions are from an earlier date."
       }
     },
+    "projectIncome": {
+      "add": "Add income",
+      "type": "Income type",
+      "chooseType": "Choose an income type",
+      "state": "Income status",
+      "expected": "Expected",
+      "received": "Already received",
+      "saveExpected": "Save expectation",
+      "saveReceived": "Record receipt",
+      "chooseAccount": "Choose an account",
+      "noAccount": "No active account in {currency}. Choose another currency or add an account in Finance.",
+      "existingReceiptHelp": "If this money is already recorded in Movements, match the existing receipt through the project’s received-funds actions.",
+      "supervisionHelp": "Add a manual charge or a site-visit charge. Generate monthly payments through the supervision terms and Generate months action."
+    },
     "project": {
       "overrideVisitPrice": "Use a manual price for this visit",
       "cancelExpectation": "Cancel expectation",
@@ -5282,6 +5297,7 @@
       "defaultBadge": "Main agreement",
       "back": "All agreements",
       "details": "Terms",
+      "changeHistory": "Change history",
       "empty": "No commercial agreements yet.",
       "create": "Create draft",
       "saveDraft": "Save draft",
@@ -5357,13 +5373,13 @@
     },
     "earnings": {
       "mainDirection": "Main work",
-      "title": "How revenue is earned",
+      "title": "Revenue recognition",
       "earned": "Earned revenue · net",
       "unearned": "Remaining unearned · net",
       "help": "Revenue is earned on actual contractual delivery, or client acceptance when required by the agreement. Advances, payment schedules and task status do not establish fulfillment. Amounts exclude VAT.",
       "unconfigured": "No earning plan is configured. No recognition entries does not establish zero earned revenue.",
       "partialPlan": "Milestones do not cover the current agreement value. Revenue completeness is not confirmed.",
-      "coverageWarning": "Earning plans are incomplete or have exceptions for {count} agreements. Zero in the known subtotal does not establish no earned revenue. Review milestones in the project agreement details.",
+      "coverageWarning": "Earning plans are incomplete or have exceptions for {count} agreements. Zero in the known subtotal does not establish no earned revenue. Review deliverables in the Result tab of project finances.",
       "add": "Add contractual deliverable",
       "edit": "Edit definition",
       "remove": "Remove unfulfilled deliverable",

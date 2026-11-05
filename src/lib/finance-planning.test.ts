@@ -1,5 +1,5 @@
 import { describe,expect,it } from "vitest";
-import { allocationInputSchema,categoryInputSchema,expectedInputSchema,financeCategoryLabel,financeMovementCategoryLabel,financeOverdueDashboardHref,projectPaymentPresentation,parseFinanceExpectedAttention,parseFinanceExpectedStatus,FINANCE_OVERDUE_DB_FILTER,type FinanceCategory } from "./finance-planning";
+import { allocationInputSchema,categoryInputSchema,expectedInputSchema,expectedPaymentDates,financeCategoryLabel,financeMovementCategoryLabel,financeOverdueDashboardHref,projectPaymentPresentation,parseFinanceExpectedAttention,parseFinanceExpectedStatus,FINANCE_OVERDUE_DB_FILTER,type FinanceCategory } from "./finance-planning";
 const id="64000000-0000-4000-8000-000000000100";
 const item={ requestId:id,direction:"incoming",amount:"100,25",currency:"UAH",categoryId:id,commitment:"agreed",certainty:"fixed",established:"true",dueDate:"2026-09-01",expectedDate:"2026-10-01" };
 describe("Finance planning inputs",()=>{
@@ -25,6 +25,20 @@ describe("Finance planning inputs",()=>{
   it("preserves exact expected amounts and distinct contractual/forecast dates",()=>{
     expect(expectedInputSchema.parse(item)).toMatchObject({ amount:"100.25",dueDate:"2026-09-01",expectedDate:"2026-10-01" });
     expect(expectedInputSchema.safeParse({ ...item,dueDate:"" }).success).toBe(true);
+  });
+  it("keeps new expected dates separate from contractual deadlines",()=>{
+    expect(expectedPaymentDates(undefined,"2026-11-10")).toEqual({dueDate:"",expectedDate:"2026-11-10"});
+  });
+  it("preserves existing deadlines and nullable forecast overrides on unchanged edits",()=>{
+    expect(expectedPaymentDates({due_date:"2026-11-01",expected_payment_date:null},"2026-11-01"))
+      .toEqual({dueDate:"2026-11-01",expectedDate:""});
+    expect(expectedPaymentDates({due_date:"2026-11-01",expected_payment_date:"2026-11-10"},"2026-11-10"))
+      .toEqual({dueDate:"2026-11-01",expectedDate:"2026-11-10"});
+  });
+  it("replans or clears a forecast date without changing the contractual deadline",()=>{
+    const existing={due_date:"2026-11-01",expected_payment_date:"2026-11-10"};
+    expect(expectedPaymentDates(existing,"2026-11-20")).toEqual({dueDate:"2026-11-01",expectedDate:"2026-11-20"});
+    expect(expectedPaymentDates(existing,"")).toEqual({dueDate:"2026-11-01",expectedDate:""});
   });
   it("requires agreed fixed value for an established receivable or obligation",()=>{
     expect(expectedInputSchema.safeParse({ ...item,commitment:"tentative" }).success).toBe(false);

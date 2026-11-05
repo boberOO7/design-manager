@@ -55,12 +55,11 @@ test.afterAll(async () => {
 test("order earning milestones recognize actual delivery and acceptance, including concurrent retries", async ({ page }) => {
   await page.context().addCookies([{ name: "studioflow-locale", value: "uk", url: "http://localhost:3000" }]);
   await signInLocalTestUser(page, actor);
-  await page.goto(`/projects/${projectId}?view=finance`);
-  await page.getByRole("button", { name: uk.Finance.orders.manage.replace("{count}", "1") }).click();
-  await page.getByRole("button", { name: /Основне замовлення/ }).click();
-  const earnings = page.getByTestId("order-earnings");
+  await page.goto(`/projects/${projectId}?view=finance&workDirection=all&financeTab=result`);
+  const earnings = page.locator(`[data-testid="order-earnings"][data-order-id="${orderId}"]`);
+  await expect(page.getByRole("heading", { name: e.title, exact: true })).toBeVisible();
   await expect(earnings).toContainText(e.unconfigured);
-  await earnings.getByRole("button", { name: e.title, exact: true }).click();
+  await earnings.getByRole("button", { name: uk.Finance.orders.defaultName, exact: true }).click();
   await earnings.getByRole("button", { name: e.add, exact: true }).click();
   const form = earnings.locator('form').filter({ has: page.locator('input[name="title"]') });
   await form.locator('input[name="title"]').fill("Contract drawings");

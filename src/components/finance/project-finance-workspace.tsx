@@ -29,6 +29,8 @@ import { DisplayCurrencySelect } from "./display-currency-select";
 import { directionWorkspaceHeaderClass, directionWorkspaceHeadingClass } from "@/components/projects/direction-workspace-layout";
 import { DirectionFinanceActions } from "./direction-finance-workspace";
 import { ProjectOrdersManager } from "./project-orders-manager";
+import { ProjectRevenueRecognition } from "./project-earning-milestones";
+import { ProjectIncomeForm } from "./project-income-form";
 
 type Props = NonNullable<Awaited<ReturnType<typeof getFinanceData>>> & {
   planning: Promise<{ data: FinancePlanningData; display?: ProjectFinanceDisplay }> | null; surfaceKey: string; tab: ProjectFinanceTab; itemId?: string; children?: ReactNode; cashPending?: Promise<FinanceProjectCash | null>;
@@ -72,11 +74,11 @@ function MonthsForm({ data, onSaved, onPending }: { data: Props; onSaved: () => 
   </FinanceActionForm>;
 }
 
-function PlanningContent({ workspace, pending, toolbar, toolbarActions, toolbarDetails, onManageOrder }: {
-  workspace: Props; pending: NonNullable<Props["planning"]>; toolbar?: ReactNode; toolbarActions?: ReactNode; toolbarDetails?: ReactNode; onManageOrder: (id?: string) => void;
+function PlanningContent({ workspace, pending, toolbar, toolbarActions, toolbarDetails, onManageOrder, onAddIncome }: {
+  workspace: Props; pending: NonNullable<Props["planning"]>; toolbar?: ReactNode; toolbarActions?: ReactNode; toolbarDetails?: ReactNode; onManageOrder: (id?: string, editor?: "pricing" | "proposal") => void; onAddIncome?: () => void;
 }) {
   const { data, display } = use(pending);
-  return <FinanceExpectedWorkspace {...workspace} {...data} display={display} project={{ ...workspace.project, stream: workspace.stream, today: workspace.today }} toolbar={toolbar} toolbarActions={toolbarActions} toolbarDetails={toolbarDetails} onManageOrder={onManageOrder}/>;
+  return <FinanceExpectedWorkspace {...workspace} {...data} display={display} project={{ ...workspace.project, stream: workspace.stream, today: workspace.today }} toolbar={toolbar} toolbarActions={toolbarActions} toolbarDetails={toolbarDetails} onManageOrder={onManageOrder} onAddIncome={onAddIncome}/>;
 }
 
 export function ProjectFinanceWorkspace(props: Props) {
@@ -90,7 +92,7 @@ export function ProjectFinanceWorkspace(props: Props) {
   const [manager, setManager] = useState<string | null>(null);
   const [managerEditor, setManagerEditor] = useState<"pricing" | "proposal" | undefined>();
   const openAgreement = (id: string, editor?: "pricing" | "proposal") => { setManagerEditor(editor); setManager(id); };
-  const [editor, setEditor] = useState<"supervision" | "months" | null>(null), [historyOpen, setHistoryOpen] = useState(false), [pending, setPending] = useState(false);
+  const [editor, setEditor] = useState<"supervision" | "months" | "income" | null>(null), [historyOpen, setHistoryOpen] = useState(false), [pending, setPending] = useState(false);
   const supervision = props.project.terms.find(item => item.stream === "supervision");
   const confirmed = props.project.orders.filter(order => order.status === "confirmed");
   const hasAgreementHistory = props.project.orders.some(order => order.status === "draft" || order.status === "discarded");
@@ -145,11 +147,12 @@ export function ProjectFinanceWorkspace(props: Props) {
     <ProjectFinanceTabs projectId={props.project.projectId} directionId={props.directionId} tab={visibleTab} stream={props.stream} labels={{ label: t("projectWorkspace.navigation"), tabs: { payments: t("projectWorkspace.tabs.payments"), expenses: t("projectWorkspace.tabs.expenses"), result: t("projectWorkspace.tabs.result") } }}/>
     {changingTab ? <ProjectFinanceBodyBlueprint tab={visibleTab} direction={Boolean(props.directionId)} project={samePage ? props.project : undefined} page={props.page} stream={props.directionId ? "design" : search.get("stream") ?? "design"}/> : <>
     {props.directionId && props.tab !== "payments" ? <section className={panel}><p className="text-sm leading-6 text-[var(--ui-text-secondary)]">{t(props.tab === "expenses" ? "agreements.projectExpensesHelp" : "agreements.projectResultHelp")}</p><Link href={`/projects/${props.project.projectId}?view=finance&workDirection=all&financeTab=${props.tab}`} className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium underline underline-offset-4">{t(props.tab === "expenses" ? "agreements.projectExpenses" : "agreements.projectResult")}<ArrowUpRight aria-hidden="true" className="size-4"/></Link></section> : null}
-    {props.planning ? <div id="project-payments"><Suspense fallback={<ProjectFinanceBodyBlueprint tab={props.tab} direction={Boolean(props.directionId)} project={props.project} page={props.page} stream={props.stream}/>}><PlanningContent workspace={props} pending={props.planning} toolbar={props.tab === "payments" ? props.directionId ? <h2 className="text-base font-semibold">{t("builder.schedule")}</h2> : incomeSelector : undefined} toolbarActions={incomeActions} toolbarDetails={incomeDetails} onManageOrder={id => openAgreement(id ?? "")}/></Suspense></div> : null}
+    {props.planning ? <div id="project-payments"><Suspense fallback={<ProjectFinanceBodyBlueprint tab={props.tab} direction={Boolean(props.directionId)} project={props.project} page={props.page} stream={props.stream}/>}><PlanningContent workspace={props} pending={props.planning} toolbar={props.tab === "payments" ? props.directionId ? <h2 className="text-base font-semibold">{t("builder.schedule")}</h2> : incomeSelector : undefined} toolbarActions={incomeActions} toolbarDetails={incomeDetails} onManageOrder={(id, editor) => openAgreement(id ?? "", editor)} onAddIncome={props.directionId ? undefined : () => setEditor("income")}/></Suspense></div> : null}
     {props.children}
+    {props.tab === "result" && !props.directionId ? <ProjectRevenueRecognition project={props.allProject} currencies={props.currencies}/> : null}
     {manager !== null ? <ProjectOrdersManager key={`${manager}-${managerEditor}`} initialOrderId={manager === "new" || manager === "history" ? undefined : manager || undefined} historyOnly={manager === "history"} initiallyAdding={manager === "new"} initialEditor={managerEditor} scopeDirectionId={props.directionId} project={props.allProject} currencies={props.currencies} reportingCurrency={props.settings.base_currency} display={props.display} onClose={() => setManager(null)}/> : null}
     <Dialog isOpen={historyOpen} onRequestClose={()=>setHistoryOpen(false)} title={t("project.history")} closeLabel={t("movements.close")}><ul className="min-h-0 space-y-3 overflow-y-auto p-5">{props.project.termHistory.filter(term=>term.stream==="supervision").map(term=><li key={term.id}><p className="text-sm font-medium">{t("project.revision",{version:term.revision})} · {term.amount !== null ? money(term.amount,term.currency) : t(`project.modes.${term.mode}`)}{term.price_basis ? ` · ${t(term.price_basis === "net" ? "builder.net" : "builder.gross")}` : ""}</p>{term.vat_rate !== null ? <p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{term.amount === null ? `${t("builder.vat")} ${term.vat_rate}%` : t("project.vatBreakdown",{net:money(term.net_amount,term.currency),vat:money(term.vat_amount,term.currency),gross:money(term.gross_amount,term.currency)})}</p> : null}<p className="mt-1 text-xs text-[var(--ui-text-muted)]">{formatDateOnly(term.created_at.slice(0,10),locale)}{term.effective_from ? ` · ${formatDateOnly(term.effective_from,locale)}` : ""}</p><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ui-text-secondary)]">{term.reason}</p></li>)}</ul></Dialog>
-    <Dialog isOpen={editor !== null} onRequestClose={()=>setEditor(null)} closeDisabled={pending} title={t(editor === "months" ? "project.generate" : "project.editSupervision")} closeLabel={t("movements.close")}><div className="min-h-0 overflow-y-auto p-4 sm:p-6">{editor === "months" ? <MonthsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : editor ? <TermsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : null}</div></Dialog>
+    <Dialog isOpen={editor !== null} onRequestClose={()=>{ if (!pending) setEditor(null); }} closeDisabled={pending} title={t(editor === "income" ? "projectIncome.add" : editor === "months" ? "project.generate" : "project.editSupervision")} closeLabel={t("movements.close")} className={editor === "income" ? "h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[38rem]" : undefined}><div className="min-h-0 overflow-y-auto p-4 sm:p-6">{editor === "income" ? <ProjectIncomeForm data={props} project={props.allProject} initialStream={props.stream} today={props.today} pending={pending} onPending={setPending} onSaved={(stream, id) => { setEditor(null); const target = `${href("payments", stream)}${id ? `&item=${id}` : ""}`; if (navigation) navigation.refresh(target); else { router.push(target, { scroll: false }); router.refresh(); } }}/> : editor === "months" ? <MonthsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : editor ? <TermsForm data={props} onSaved={()=>setEditor(null)} onPending={setPending}/> : null}</div></Dialog>
     </>}
   </div>;
 }

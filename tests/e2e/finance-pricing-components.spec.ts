@@ -108,10 +108,11 @@ test("single to multiple components, immutable revision, preview and PDF", async
   await editor.getByRole("button", { name: "50 / 50", exact: true }).click();
   await editor.getByLabel(f.project.reason, { exact: true }).fill("Уточнення прилеглої території");
   await editor.getByRole("button", { name: f.builder.saveRevision, exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("button", { name: f.proposal.action, exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("button", { name: f.project.editAgreement, exact: true })).toBeVisible();
   expect(sql(`select string_agg(area_components->1->>'actualArea',',' order by t.revision) from public.finance_project_plan_revisions r join public.finance_project_terms t on t.id=r.terms_id where t.order_id='${order}'`)).toBe("30,40");
   expect(sql(`select amount from public.finance_project_current_terms where order_id='${order}'`)).toBe("2960.00");
-  await page.getByRole("dialog").getByRole("button", { name: f.proposal.action, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: f.movements.close, exact: true }).click();
+  await workspace.locator("[data-order-group]").first().getByRole("button", { name: f.proposal.action, exact: true }).click();
   const proposal = page.getByRole("dialog");
   await expect(proposal.locator("[data-proposal-pages] canvas")).toBeVisible({ timeout: 60000 });
   await expect(proposal.locator("[data-proposal-pages]")).toContainText("Прилегла територія");

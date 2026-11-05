@@ -1,5 +1,5 @@
 "use client";
-import { ArrowDownLeft, ArrowUpRight, ReceiptText, Banknote, BriefcaseBusiness, CalendarDays, History, Info, ChevronDown, CircleAlert, CircleCheck, Calculator, Link2, MoreHorizontal, Pencil, Plus, RefreshCw } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ReceiptText, Banknote, BriefcaseBusiness, CalendarDays, History, Info, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Calculator, FileText, Link2, MoreHorizontal, Pencil, Plus, RefreshCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
 import { useProjectWorkspaceRouter as useRouter } from "@/components/projects/project-workspace-navigation";
@@ -32,11 +32,12 @@ import { FinanceCategorySelect } from "./category-select";
 import { FinanceCurrencySelect } from "./currency-select";
 import { ExpenseReceiptControl } from "./expense-receipt-control";
 import type { FinanceExpected } from "@/lib/finance-planning";
-import { financeCategoryLabel,financeMovementCategoryLabel,projectPaymentPresentation } from "@/lib/finance-planning";
+import { expectedPaymentDates,financeCategoryLabel,financeMovementCategoryLabel,projectPaymentPresentation } from "@/lib/finance-planning";
 import { financeAmountText,financeAmountUnits,formatFinanceAmount,formatFinanceDecimal } from "@/lib/finance";
 import { indicativeFinanceConversion } from "@/lib/finance-fx-preview";
 import { formatProjectFinanceMoney, projectAgreementName, projectOrderPaymentProgress, type ProjectFinanceDisplay } from "@/lib/finance-project-view";
 import { projectVatAmounts } from "@/lib/finance-project-plan";
+import { parseProjectOrderDraft } from "@/lib/finance-project-orders";
 import { formatDateOnly } from "@/lib/utils";
 import type { FinancePlanningPeriod,getFinanceData,FinancePlanningData,FinanceProjectData } from "@/data/queries/finance";
 import type { projectStreams } from "@/lib/finance-projects";
@@ -66,7 +67,7 @@ function PayrollExpectedDateForm({ item, title, onSaved, onPending, onCalculatio
   </FinanceActionForm>;
 }
 
-function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,onSaved,onPending }: { data:Foundation; hasAllocationHistory?:boolean; item?:FinanceExpected; project?:ProjectContext; obligation?:string; onSaved:()=>void; onPending:(value:boolean)=>void }) {
+export function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,hideCategory=false,onSaved,onPending }: { data:Foundation; hasAllocationHistory?:boolean; hideCategory?:boolean; item?:FinanceExpected; project?:ProjectContext; obligation?:string; onSaved:()=>void; onPending:(value:boolean)=>void }) {
   const t=useTranslations("Finance"),locale=useLocale();
   const isExpense=project?.stream==="expenses";
   const [direction,setDirection]=useState(item?.direction??(isExpense?"outgoing":"incoming"));
@@ -81,13 +82,11 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
   const [priceOverride,setPriceOverride]=useState(false);
   const [amountEntered,setAmountEntered]=useState(false),[currencyEntered,setCurrencyEntered]=useState(false);
   const [category,setCategory]=useState(item?.category_id??defaultCategory?.id??"");
-  const [commitment,setCommitment]=useState(item?.commitment??(project?.stream==="contractor_bonus"?"tentative":"agreed"));
+  const [commitment,setCommitment]=useState(item?.commitment??"agreed");
   const [source,setSource]=useState("manual"),[visit,setVisit]=useState(""),[contractor,setContractor]=useState(""),[extraVisit,setExtraVisit]=useState(false);
-  const [estimated,setEstimated]=useState(item?.certainty==="estimated");
-  const [established,setEstablished]=useState(item?.is_established??false);
-  const [establishedTouched,setEstablishedTouched]=useState(Boolean(item));
-  const [due,setDue]=useState(item?.due_date??""),[expected,setExpected]=useState(item?.expected_payment_date??"");
-  const [separateExpected,setSeparateExpected]=useState(Boolean(item?.expected_payment_date&&item.expected_payment_date!==item.due_date));
+  const certainty = item?.certainty ?? "fixed";
+  const [expected,setExpected]=useState(item?.expected_payment_date??item?.due_date??"");
+  const dates = expectedPaymentDates(item, expected);
   const fixedPayroll=Boolean(obligation && ["payout","deductions","bonus"].includes(obligation));
   const selectedVisit=source==="visit"&&!item?project?.visits.find((v)=>v.id===visit):undefined;
   const visitTerms=selectedVisit&&project?supervisionVisitTerms(project.termHistory,selectedVisit.starts_at):null;
@@ -96,8 +95,7 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
   const monthlyExtra=visitTerms?.mode==="monthly";
   const effectiveAmount=contractDefault?String(visitTerms.amount??""):monthlyExtra&&!amountEntered?"":amount;
   const effectiveCurrency=contractDefault?visitTerms.currency:monthlyExtra&&!currencyEntered?"":currency;
-  const canEstablish=commitment==="agreed"&&!estimated;
-  const effectiveEstablished=canEstablish&&(establishedTouched?established:Boolean(due)&&(!project||due<=project.today));
+  const effectiveEstablished=commitment==="agreed"&&certainty==="fixed"&&Boolean(item?.is_established);
   const rawExpectedVatRate=item?item.vat_rate??null:(contractDefault?visitTerms?.vat_rate:terms?.vat_rate)??null;
   const expectedVatRate=rawExpectedVatRate===null?null:String(rawExpectedVatRate);
   const rawExpectedPriceBasis=item?item.price_basis??null:(contractDefault?visitTerms?.price_basis:terms?.price_basis)??null;
@@ -108,7 +106,7 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
   if (confirmedOrder && project && item) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} fieldsetClassName="min-w-0 space-y-3" submitClassName="min-h-11">
     <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value={item.id ?? ""}/><input type="hidden" name="version" value={item.version ?? 0}/>
     <input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value={project.stream}/><input type="hidden" name="orderId" value={confirmedOrder.id}/><input type="hidden" name="direction" value={item.direction ?? "incoming"}/>
-    <input type="hidden" name="commitment" value={item.commitment ?? "agreed"}/><input type="hidden" name="certainty" value={item.certainty ?? "fixed"}/><input type="hidden" name="established" value={String(item.commitment === "agreed" && item.certainty === "fixed" ? true : item.is_established ?? false)}/>
+    <input type="hidden" name="commitment" value={item.commitment ?? "agreed"}/><input type="hidden" name="certainty" value={item.certainty ?? "fixed"}/><input type="hidden" name="established" value={String(item.is_established ?? false)}/>
     <div className="space-y-1"><p className="break-words text-base font-semibold">{confirmedOrder.name}</p><p className="text-xs text-[var(--ui-text-muted)]">{t("orders.order")}</p></div>
     <FormField label={t("builder.paymentName")}><Input name="description" aria-label={t("builder.paymentName")} defaultValue={item.description ?? ""} maxLength={2000} data-dialog-initial-focus/></FormField>
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
@@ -116,11 +114,9 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
       <FormField label={t("planning.currency")}>{allocationProtected ? <Input name="currency" aria-label={t("planning.currency")} value={currency} readOnly/> : <FinanceCurrencySelect aria-label={t("planning.currency")} name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency ?? ""} value={currency} onValueChange={setCurrency}/>}</FormField>
     </div>
     {vatPreview ? <p className="text-xs text-[var(--ui-text-secondary)]">{vatPreview}</p> : null}
-    {allocationProtected ? <input type="hidden" name="dueDate" value={due}/> : null}
-    <div className="grid gap-3 sm:grid-cols-2">
-      <FormField label={t("planning.dueDate")}><DatePicker disabled={allocationProtected} name="dueDate" aria-label={t("planning.dueDate")} value={due} onValueChange={setDue} locale={locale}/></FormField>
-      <FormField label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
-    </div>
+    <input type="hidden" name="dueDate" value={dates.dueDate}/><input type="hidden" name="expectedDate" value={dates.expectedDate}/>
+    <FormField as="div" className="max-w-44" label={t("planning.expectedDate")}><DatePicker aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
+    {item.due_date ? <p className="text-xs text-[var(--ui-text-muted)]">{t("planning.dueDate")}: {formatDateOnly(item.due_date,locale)}</p> : null}
     <FinanceCategorySelect categories={data.categories} direction={direction} value={category} onValueChange={setCategory} currentId={item.category_id} showActions={false} disabled={allocationProtected}/>
   </FinanceActionForm>;
   if(isExpense&&project) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} disabled={project?.stream === "design" && !orderId}>
@@ -133,36 +129,26 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
     </div>
     <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
       <FinanceCategorySelect categories={data.categories} direction="outgoing" operatingOnly projectExpenseOnly value={category} onValueChange={setCategory} currentId={item?.category_id}/>
-      <FormField label={t("planning.expectedDate")}><DatePicker className="max-w-44" name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
+      <FormField label={t("planning.expectedDate")}><input type="hidden" name="expectedDate" value={dates.expectedDate}/><DatePicker className="max-w-44" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
     </div>
     <FormField label={t("movements.description")}><Textarea name="description" defaultValue={item?.description??""} rows={1} maxLength={2000} /></FormField>
   </FinanceActionForm>;
   if (!item && !project && !obligation) return <FinanceActionForm action={saveFinancePlanning} label={t("planning.createAction")} onSaved={onSaved} onPending={onPending} submitClassName={expectedPrimaryActionClass}>
-    <input type="hidden" name="intent" value="expected" /><input type="hidden" name="id" value="" /><input type="hidden" name="version" value="0" />
-    <input type="hidden" name="certainty" value={estimated ? "estimated" : "fixed"} /><input type="hidden" name="commitment" value={commitment} /><input type="hidden" name="established" value={String(effectiveEstablished)} />
+    <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value=""/><input type="hidden" name="version" value="0"/>
+    <input type="hidden" name="certainty" value={certainty}/><input type="hidden" name="commitment" value={commitment}/><input type="hidden" name="established" value="false"/>
+    <input type="hidden" name="dueDate" value=""/>
     {directionField}
     <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-3 sm:max-w-[22rem]">
-      <FormField label={t("movements.amount")}><Input name="amount" value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" className="ui-numeric text-lg font-semibold" required /></FormField>
-      <FormField label={t("planning.currency")}><FinanceCurrencySelect name="currency" aria-label={t("planning.currency")} currencies={data.currencies} reportingCurrency={data.settings?.base_currency ?? ""} value={currency} onValueChange={setCurrency} /></FormField>
+      <FormField label={t("movements.amount")}><Input name="amount" value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" className="ui-numeric text-lg font-semibold" required/></FormField>
+      <FormField as="div" label={t("planning.currency")}><FinanceCurrencySelect name="currency" aria-label={t("planning.currency")} currencies={data.currencies} reportingCurrency={data.settings?.base_currency ?? ""} value={currency} onValueChange={setCurrency}/></FormField>
     </div>
     <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
-      <FinanceCategorySelect categories={data.categories} direction={direction} value={category} onValueChange={setCategory} showActions={false} />
-      <FormField className="max-w-44" label={t("planning.dueDate")}><DatePicker name="dueDate" aria-label={t("planning.dueDate")} value={due} onValueChange={value => { setDue(value); if (!separateExpected) setExpected(value); }} locale={locale} /></FormField>
+      <FinanceCategorySelect categories={data.categories} direction={direction} value={category} onValueChange={setCategory} showActions={false}/>
+      <FormField as="div" className="max-w-44" label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
     </div>
-    <FormField label={t("movements.description")}><Textarea name="description" rows={1} maxLength={2000} /></FormField>
-    <AnimatedDisclosure title={t("planning.additionalOptions")}>
-      <div className="space-y-3 pb-2 pt-1">
-        <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-4" checked={estimated} onChange={event => setEstimated(event.target.checked)} />{t("planning.estimatedAmount")}</label>
-        <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-4" checked={commitment === "tentative"} onChange={event => setCommitment(event.target.checked ? "tentative" : "agreed")} />{t("planning.plannedPayment")}</label>
-        <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-4" checked={separateExpected} onChange={event => { setSeparateExpected(event.target.checked); if (!event.target.checked) setExpected(due); }} />{t("planning.differentExpectedDate")}</label>
-        {separateExpected ? <FormField className="max-w-44" label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale} /></FormField> : null}
-        {canEstablish ? <div><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-4" checked={effectiveEstablished} onChange={event => { setEstablishedTouched(true); setEstablished(event.target.checked); }} />{t(direction === "incoming" ? "planning.trackReceivable" : "planning.trackObligation")}</label><p className="text-xs text-[var(--ui-text-muted)]">{t("planning.establishedAdvancedHelp")}</p></div> : null}
-        <Link href="/finance/categories" className="inline-flex min-h-11 items-center text-sm text-[var(--ui-text-secondary)] underline underline-offset-4 hover:text-[var(--ui-text)]">{t("planning.manageCategories")}</Link>
-      </div>
-    </AnimatedDisclosure>
-    {!separateExpected ? <input type="hidden" name="expectedDate" value={expected} /> : null}
+    <FormField label={t("movements.description")}><Textarea name="description" rows={2} maxLength={2000}/></FormField>
   </FinanceActionForm>;
-  return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} disabled={project?.stream === "design" && !orderId}>
+  return <FinanceActionForm action={saveFinancePlanning} label={t("planning.save")} onSaved={onSaved} onPending={onPending} disabled={(project?.stream === "design" && !orderId) || (hideCategory && !category)}>
     <input type="hidden" name="intent" value="expected"/><input type="hidden" name="id" value={item?.id??""}/><input type="hidden" name="version" value={item?.version??0}/>
     {project?<><input type="hidden" name="projectId" value={project.projectId}/><input type="hidden" name="stream" value={project.stream}/>
       {project.stream === "design" ? <><input type="hidden" name="orderId" value={orderId}/>{!item && confirmedOrders.length > 1 ? <FormField label={t("orders.order")}><Select aria-label={t("orders.order")} value={orderId} required onValueChange={id => { setOrderId(id); const next = project.terms.find(term => term.order_id === id); if(next?.currency) setCurrency(next.currency); }}><SelectItem value="">{t("orders.choose")}</SelectItem>{confirmedOrders.map(order=><SelectItem key={order.id} value={order.id}>{order.name}</SelectItem>)}</Select></FormField> : <p className="text-sm text-[var(--ui-text-secondary)]">{confirmedOrders.find(order=>order.id===orderId)?.name}</p>}</> : null}
@@ -171,6 +157,7 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
           {source==="visit"?<><FormField label={t("project.visit")}><Select name="visitId" aria-label={t("project.visit")} value={visit} onValueChange={setVisit} required searchPlaceholder={t("project.searchVisits")}>{project.visits.map((v)=><SelectItem key={v.id} value={v.id}>{v.title} · {formatDateOnly(instantToDateOnly(v.starts_at),locale)}</SelectItem>)}</Select></FormField><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={extraVisit} required={monthlyExtra} onChange={(e)=>setExtraVisit(e.target.checked)}/>{t("project.extraVisit")}</label><input type="hidden" name="extraVisit" value={String(extraVisit)}/></>:null}</>:null}
         {project.stream==="contractor_bonus"?<FormField label={t("project.contractor")}><Select name="contractorId" aria-label={t("project.contractor")} value={contractor} onValueChange={setContractor} searchPlaceholder={t("project.searchContractors")}><SelectItem value="">{t("project.noContractor")}</SelectItem>{project.contractors.map((c)=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</Select></FormField>:null}
       </>:null}</>:null}
+    {hideCategory&&!category?<p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("planning.noCategories")}</p>:null}
     {selectedVisit?<><input type="hidden" name="visitPricing" value={contractDefault?"contract":"manual"}/><input type="hidden" name="visitTermsId" value={visitTerms?.id??""}/><input type="hidden" name="useAgreementBasis" value={String(contractDefault)}/>
       {visitTerms?.mode==="per_visit"?<div className="space-y-2 text-sm"><p>{t("project.contractVisitPrice",{amount:visitTerms.amount??0,currency:visitTerms.currency})}</p><label className="flex items-start gap-2"><input type="checkbox" checked={priceOverride} onChange={(e)=>{if(e.target.checked){setAmount(effectiveAmount);setCurrency(effectiveCurrency);setAmountEntered(true);setCurrencyEntered(true);}setPriceOverride(e.target.checked);}}/>{t("project.overrideVisitPrice")}</label></div>:null}
     </>:null}
@@ -183,25 +170,15 @@ function ExpectedForm({ data,item,project,obligation,hasAllocationHistory=false,
         {contractDefault?<FormField label={t("planning.currency")}><Input name="currency" value={effectiveCurrency} readOnly/></FormField>:obligation?<input type="hidden" name="currency" value={currency}/>:<FormField label={t("planning.currency")}><FinanceCurrencySelect aria-label={t("planning.currency")} name="currency" currencies={data.currencies} reportingCurrency={data.settings?.base_currency??""} value={effectiveCurrency} onValueChange={(value)=>{setCurrency(value);setCurrencyEntered(true);if(monthlyExtra)setPriceOverride(true);}}/></FormField>}
       </div>
       {vatPreview?<p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{vatPreview}</p>:null}
-      {!fixedPayroll?<label className="flex min-h-11 items-center gap-3 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={estimated} onChange={(event)=>setEstimated(event.target.checked)} className="size-4"/>{t("planning.estimatedAmount")}</label>:null}
     </div>
-    {obligation?<input type="hidden" name="categoryId" value={category}/>:<FinanceCategorySelect categories={data.categories} direction={direction} operatingOnly={isExpense} owner={data.categories.find((c)=>c.id===item?.category_id)?.nature==="owner_distribution"} value={category} onValueChange={setCategory} currentId={item?.category_id}/>}
+    {obligation||hideCategory?<input type="hidden" name="categoryId" value={category}/>:<FinanceCategorySelect categories={data.categories} direction={direction} operatingOnly={isExpense} owner={data.categories.find((c)=>c.id===item?.category_id)?.nature==="owner_distribution"} value={category} onValueChange={setCategory} currentId={item?.category_id}/>}
     </div>
-    {isExpense?<><input type="hidden" name="dueDate" value={due}/><FormField label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField></>:<div className="space-y-1">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {obligation?<input type="hidden" name="dueDate" value={due}/>:<FormField label={t("planning.dueDate")}><DatePicker name="dueDate" aria-label={t("planning.dueDate")} value={due} onValueChange={(value)=>{setDue(value);if(!separateExpected)setExpected(value);}} locale={locale}/></FormField>}
-        {separateExpected?<FormField label={t("planning.expectedDate")}><DatePicker name="expectedDate" aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>:<input type="hidden" name="expectedDate" value={expected}/>}
-      </div>
-      <label className="flex min-h-11 items-center gap-3 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={separateExpected} onChange={(event)=>{setSeparateExpected(event.target.checked);if(!event.target.checked)setExpected(due);}} className="size-4"/>{t("planning.differentExpectedDate")}</label>
-    </div>}
-    <input type="hidden" name="certainty" value={estimated?"estimated":"fixed"}/><input type="hidden" name="established" value={String(effectiveEstablished)}/>
-    {item?<FormField label={t("planning.agreementState")}><Select name="commitment" aria-label={t("planning.agreementState")} value={commitment} onValueChange={setCommitment}>{(project&&item.commitment!=="cancelled"?["agreed","tentative"]:["agreed","tentative","cancelled"]).map((value)=><SelectItem key={value} value={value}>{t(`planning.agreementOptions.${value}`)}</SelectItem>)}</Select></FormField>:<div>
-      <input type="hidden" name="commitment" value={commitment}/>
-      <label className="flex min-h-11 items-center gap-3 text-sm text-[var(--ui-text-secondary)]"><input type="checkbox" checked={commitment==="tentative"} onChange={(event)=>setCommitment(event.target.checked?"tentative":"agreed")} className="size-4"/>{t("planning.plannedPayment")}</label>
-      {commitment==="tentative"?<p className="pl-7 text-xs text-[var(--ui-text-muted)]">{t("planning.plannedPaymentHelp")}</p>:null}
-    </div>}
-    {isExpense?<FormField label={t("movements.description")}><Textarea name="description" defaultValue={item?.description??""} rows={1} maxLength={2000} required/></FormField>:<details open={Boolean(item?.description)} className="group/description rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] text-sm text-[var(--ui-text-secondary)]"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("movements.description")}<ChevronDown aria-hidden="true" className="size-4 shrink-0 group-open/description:rotate-180"/></summary><div className="border-t border-[var(--ui-border)] p-3"><Textarea aria-label={t("movements.description")} name="description" defaultValue={item?.description??""} rows={1} maxLength={2000}/></div></details>}
-    {canEstablish?<details className="group/treatment rounded-[var(--ui-radius-control)] border border-[var(--ui-border)] text-sm text-[var(--ui-text-secondary)]"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">{t("planning.financialTreatment")}<ChevronDown aria-hidden="true" className="size-4 shrink-0 group-open/treatment:rotate-180"/></summary><div className="space-y-1.5 border-t border-[var(--ui-border)] p-3"><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={effectiveEstablished} onChange={(event)=>{setEstablishedTouched(true);setEstablished(event.target.checked);}} className="size-4"/>{t(direction==="incoming"?"planning.trackReceivable":"planning.trackObligation")}</label><p className="text-xs text-[var(--ui-text-muted)]">{t("planning.establishedAdvancedHelp")}</p></div></details>:null}
+    <input type="hidden" name="dueDate" value={dates.dueDate}/><input type="hidden" name="expectedDate" value={dates.expectedDate}/>
+    <FormField as="div" className="max-w-44" label={t("planning.expectedDate")}><DatePicker aria-label={t("planning.expectedDate")} value={expected} onValueChange={setExpected} locale={locale}/></FormField>
+    {item?.due_date ? <p className="text-xs text-[var(--ui-text-muted)]">{t("planning.dueDate")}: {formatDateOnly(item.due_date,locale)}</p> : null}
+    <input type="hidden" name="certainty" value={certainty}/><input type="hidden" name="established" value={String(effectiveEstablished)}/>
+    {item?<FormField label={t("planning.agreementState")}><Select name="commitment" aria-label={t("planning.agreementState")} value={commitment} onValueChange={setCommitment}>{(project&&item.commitment!=="cancelled"?["agreed","tentative"]:["agreed","tentative","cancelled"]).map((value)=><SelectItem key={value} value={value}>{t(`planning.agreementOptions.${value}`)}</SelectItem>)}</Select></FormField>:<input type="hidden" name="commitment" value={commitment}/>}
+    <FormField label={t("movements.description")}><Textarea name="description" defaultValue={item?.description??""} rows={2} maxLength={2000}/></FormField>
   </FinanceActionForm>;
 }
 
@@ -220,7 +197,7 @@ function PayrollCostForm({ cost,onSaved,onPending }: { cost:FinancePlanningData[
   </FinanceActionForm>;
 }
 
-export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ page:number;creditPage:number;filter:string;period?:FinancePlanningPeriod;today?:string;payrollUsdRate?:string;project?:ProjectContext;itemId?:string;toolbar?:ReactNode;toolbarActions?:ReactNode;toolbarDetails?:ReactNode;onManageOrder?:(orderId?:string)=>void;directionId?:string;cashData?:FinanceProjectCash|null;cashPending?:Promise<FinanceProjectCash|null>;display?:ProjectFinanceDisplay;attention?:"overdue";status?:"overdue"|"cancelled" }) {
+export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ page:number;creditPage:number;filter:string;period?:FinancePlanningPeriod;today?:string;payrollUsdRate?:string;project?:ProjectContext;itemId?:string;toolbar?:ReactNode;toolbarActions?:ReactNode;toolbarDetails?:ReactNode;onManageOrder?:(orderId?:string,editor?:"pricing"|"proposal")=>void;onAddIncome?:()=>void;directionId?:string;cashData?:FinanceProjectCash|null;cashPending?:Promise<FinanceProjectCash|null>;display?:ProjectFinanceDisplay;attention?:"overdue";status?:"overdue"|"cancelled" }) {
   const t=useTranslations("Finance"),locale=useLocale();
   const router=useRouter();
   const [editing,setEditing]=useState<FinanceExpected|"new"|null>(null);
@@ -423,17 +400,22 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
   };
   function renderOrderGroups() {
     if (!props.project) return null;
-    const confirmed = props.project.orders.filter(order => order.status === "confirmed");
+    const project = props.project;
+    const confirmed = project.orders.filter(order => order.status === "confirmed");
     return <div className="space-y-6">{confirmed.map(order => {
       const rows = props.items.filter(item => props.links.find(link => link.expected_item_id === item.id)?.order_id === order.id);
       const total = props.project?.orderTotals.find(total => total.order_id === order.id);
       const sharedDirections = props.project?.directionLinks.filter(link => link.order_id === order.id) ?? [];
       const sharedNames = sharedDirections.flatMap(link => props.project?.directions.find(direction => direction.id === link.direction_id) ?? []).map(direction => direction.name ?? t(direction.kind ? `directionWorkspace.kinds.${direction.kind}` : "orders.defaultDirectionName")).join(", ");
       const progress = projectOrderPaymentProgress(total, props.currencies.find(currency => currency.code === total?.currency)?.minor_units ?? 2);
+      const hasProposalSource = project.terms.some(term => term.order_id === order.id && term.stream === "design") || parseProjectOrderDraft(order.draft_plan, project.projectId, order.id) !== null;
       if (!rows.length && Number(total?.payment_count) > 0) return null;
       return <section key={order.id} data-order-group={order.id} aria-label={projectAgreementName(order.name, t("orders.defaultName"))} className="space-y-2">
         {sharedDirections.length > 1 ? <p className="px-1 text-xs leading-5 text-[var(--ui-text-secondary)]">{t("agreements.sharedScope", { names: sharedNames })}{props.directionId ? ` · ${t("agreements.notAllocated")}` : ""}</p> : null}
-        <div className="flex items-start justify-between gap-3 px-1"><div className="min-w-0 flex-1"><h3 className="break-words text-sm font-semibold">{projectAgreementName(order.name, t("orders.defaultName"))}<span className={`ml-2 text-xs font-medium ${orderPaymentStateClass(progress.state)}`}>{t(`orders.paymentStates.${progress.state}`)}</span></h3><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{displayMoney(total?.contract_gross_amount ?? null,total?.currency ?? null)}{props.display && total?.currency !== props.display.currency.code ? <span className="ml-2 text-[var(--ui-text-muted)]">{money(total?.contract_gross_amount ?? null,total?.currency ?? null)}</span> : null} · {t("orders.payments",{count:total?.payment_count ?? 0})}</p></div><Button variant="ghost" size="sm" onClick={()=>props.onManageOrder?.(order.id)}>{t("orders.details")}</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1"><div className="min-w-0 flex-1 basis-64"><h3 className="break-words text-sm font-semibold">{projectAgreementName(order.name, t("orders.defaultName"))}<span className={`ml-2 text-xs font-medium ${orderPaymentStateClass(progress.state)}`}>{t(`orders.paymentStates.${progress.state}`)}</span></h3><p className="mt-1 text-xs text-[var(--ui-text-secondary)]">{displayMoney(total?.contract_gross_amount ?? null,total?.currency ?? null)}{props.display && total?.currency !== props.display.currency.code ? <span className="ml-2 text-[var(--ui-text-muted)]">{money(total?.contract_gross_amount ?? null,total?.currency ?? null)}</span> : null} · {t("orders.payments",{count:total?.payment_count ?? 0})}</p></div>{props.onManageOrder ? <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <Button variant="ghost" size="compact" className="cursor-pointer gap-2" disabled={!hasProposalSource} onClick={()=>props.onManageOrder?.(order.id,"proposal")}><FileText aria-hidden="true" className="size-4 shrink-0"/>{t("proposal.action")}</Button>
+          <Button variant="ghost" size="compact" className="group cursor-pointer gap-2 bg-[var(--ui-surface-muted)] text-[var(--ui-text)] hover:bg-[var(--ui-surface-strong)]" onClick={()=>props.onManageOrder?.(order.id)}><SlidersHorizontal aria-hidden="true" className="size-4 shrink-0"/>{t("orders.details")}<ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[var(--ui-text-muted)] transition-colors duration-200 group-hover:text-[var(--ui-text)] motion-reduce:transition-none"/></Button>
+        </div> : null}</div>
         {rows.length ? <div className="space-y-1.5">{rows.map(renderItem)}</div> : <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-[var(--ui-text-secondary)]"><p>{t("orders.noSchedule")}</p><Button variant="ghost" size="sm" onClick={()=>props.onManageOrder?.(order.id)}>{t("orders.configure")}</Button></div>}
       </section>;
     })}{!confirmed.length ? <p className="py-4 text-sm text-[var(--ui-text-secondary)]">{t("orders.allDrafts")}</p> : null}</div>;
@@ -448,7 +430,8 @@ export function FinanceExpectedWorkspace(props:Foundation&FinancePlanningData&{ 
       <div className={props.toolbar ? `flex ${props.directionId ? "" : "h-14"} min-w-0 items-center overflow-x-auto p-1` : "contents"}>
         <div className={props.toolbar ? "ml-auto flex w-max shrink-0 items-center gap-1.5 sm:gap-2" : "contents"}>
           {props.toolbarActions}
-          {props.settings?.finalized_at && props.project.stream !== "design" && !emptyProjectExpenses ? <Button size={props.toolbar ? "compact" : "default"} className={props.toolbar ? "gap-2" : "min-h-11 gap-2"} onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t(props.project.stream === "expenses" ? "project.addExpense" : props.project.stream === "contractor_bonus" ? "project.addContractorBonus" : props.project.stream === "other" ? "project.addOtherIncome" : "project.addPayment")}</Button> : null}
+          {props.settings?.finalized_at && props.project.stream !== "expenses" && props.onAddIncome ? <Button size="compact" variant="outline" className="gap-2" onClick={props.onAddIncome}><Plus aria-hidden="true" className="size-4"/>{t("projectIncome.add")}</Button> : null}
+          {props.settings?.finalized_at && props.project.stream !== "design" && !(props.onAddIncome && props.project.stream !== "expenses") && !emptyProjectExpenses ? <Button size={props.toolbar ? "compact" : "default"} className={props.toolbar ? "gap-2" : "min-h-11 gap-2"} onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden="true"/>{t(props.project.stream === "expenses" ? "project.addExpense" : props.project.stream === "contractor_bonus" ? "project.addContractorBonus" : props.project.stream === "other" ? "project.addOtherIncome" : "project.addPayment")}</Button> : null}
           {props.cashPending ? <ProjectCashStream pending={props.cashPending} compact={Boolean(props.toolbar)} currencies={props.currencies} projectId={props.project.projectId} display={props.display} onMatch={setCashToMatch}/> : props.cashData ? <ProjectCashWorkspace compact={Boolean(props.toolbar)} data={props.cashData} currencies={props.currencies} projectId={props.project.projectId} display={props.display} onMatch={setCashToMatch}/> : null}
         </div>
       </div>

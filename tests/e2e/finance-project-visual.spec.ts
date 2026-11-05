@@ -103,7 +103,7 @@ test("Project Finance rendered audit", async ({page}, testInfo) => {
     await page.getByRole('option', { name: messages.project.streams[stream], exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`stream=${stream}`));
     await expect(page.getByRole('combobox', { name: messages.orders.category, exact: true })).toContainText(messages.project.streams[stream]);
-    await expect(page.getByRole('button',{name:width < 640 ? messages.projectWorkspace.add : messages.project.addPayment,exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:messages.projectIncome.add,exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`${stream}-${label}-${language}-${theme}.png`),fullPage:true});
    }

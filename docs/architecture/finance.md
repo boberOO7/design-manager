@@ -281,11 +281,10 @@ candidates appear only in explicitly opened matching/attribution flows.
   request audit. Amount cannot fall below effective settlement. After allocation history
   exists, currency/direction/reporting nature are locked; descriptive/category edits
   within the same nature remain possible, including unchanged archived categories.
-- Manual expected-payment creation defaults to agreed/fixed. Planned commitment
-  and estimated amount are separate choices; only agreed/fixed payments expose the
-  optional collection/payment override. Due date initially also drives expected
-  cash timing; a separate expected date never moves the overdue boundary. Existing
-  records retain their dates, status, description and explicit established value on edit.
+- Manual expected-payment creation defaults to agreed/fixed and exposes one expected
+  cash date; it does not establish a receivable/payable or contractual deadline.
+  Existing records retain their dates, status, description and established value
+  on edit. Replanning the expected date never moves the contractual overdue boundary.
 - `finance_allocations` is immutable signed matching history referencing original
   incoming/outgoing movement IDs and expected-item IDs through same-studio keys.
   Positive allocations support many-to-many and partial matching; negative releases
@@ -444,6 +443,10 @@ or notifications containing private data.
   contractor bonus, and other income use incoming Finance expectations. Project
   payment recording composes the existing ledger/allocation RPC and returns to
   the originating project; global matching sees the same expected and movement IDs.
+  `record_finance_project_income` creates a bonus/other expectation and records its
+  same-currency receipt/allocation in one transaction. The parent planning request
+  owns retries; failures roll back all child writes. Supervision retains its own
+  terms, visit and month-generation workflows.
   The separate project-expense stream uses the same project link with outgoing
   operating expectations. Payment or matching creates a ledger allocation, not a
   second expense; paid amounts and cross-currency settlement/cash snapshots remain
@@ -512,7 +515,8 @@ or notifications containing private data.
   One permanent charge identity per visit prevents duplicate billing. Custom/manual
   supervision expectations remain available. Changing or stopping supervision is
   an explicit effective-dated revision, independent of project status.
-- Contractor bonuses are income to the studio. They default to tentative and can
+- Contractor bonuses are income to the studio. New entries default to agreed/fixed;
+  existing entries retain their stored commitment/certainty on edit. Bonuses can
   reference an existing contractor; studio ownership is verified through its category.
   Contractor names and visit titles/dates are snapshotted in private Finance context.
   Foreign keys restrict deletion of referenced projects, contractors and visits;
